@@ -4,6 +4,7 @@
 // typical ranges for a brand of that size. Deterministic per brand, so every viewer sees the same demo account.
 // Every number made here is labelled as demo data: on the connect sheet, the cards ("demo account") and the ledger.
 import { moneyFmt } from './brand-pack.js';
+import { roasX } from './connectors/common.js';
 
 export const DEMO_V = 4; /* 4: Google Analytics and Google Ads are separate accounts */
 const seeded = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909), (h >>> 0) / 4294967296)); };
@@ -39,7 +40,7 @@ export function demoFor(profile, seed = {}) {
     { name: 'Retargeting | 30 days', share: 0, roas: roas * j(1.3, 1.7), freq: j(3.6, 4.8) }];
   camp[2].share = 1 - camp[0].share - camp[1].share; camp.forEach((c) => { c.spend = round(spend * c.share / 30, india ? 100 : 1); });
   const meta = { spend, roas, cpa, live, camp, tired: Math.max(2, round(live * j(0.2, 0.35))),
-    stats: [['Spend, last 30 days', big(spend)], ['Return on ad spend', `${roas.toFixed(1)}x`], ['Cost per first order', money(round(cpa, india ? 10 : 1))], ['Live ads', n0(live)]] };
+    stats: [['Spend, last 30 days', big(spend)], ['Return on ad spend', `${roasX(roas)}`], ['Cost per first order', money(round(cpa, india ? 10 : 1))], ['Live ads', n0(live)]] };
   // Google + GA4: the real category searches the read found
   const terms = (p.search?.terms || []).slice(0, 4), branded = j(52, 68), gspend = round(spend * j(0.25, 0.4), india ? 1000 : 10);
   const mix = [['Paid social', j(30, 38)], ['Direct', j(18, 24)], ['Organic search', j(14, 20)], ['Paid search', j(10, 15)], ['Email and WhatsApp', j(4, 8)]];
@@ -85,9 +86,9 @@ export function demoFor(profile, seed = {}) {
     card('freq', 'meta', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder', 'brand'], badge: [`Frequency ${rt.freq.toFixed(1)}`, 'warn'], cta: 'Rotate creative',
       title: `Retargeting is showing the same ads ${rt.freq.toFixed(1)} times a week`, sub: `${n0(meta.tired)} of the ${n0(live)} live ads are tired: same people, falling clicks. Swap in fresh versions of the best ones before cost per order climbs further.`,
       rows: [['Campaign', rt.name], ['Frequency, 7 days', rt.freq.toFixed(1)], ['Spend a day', sp(rt.spend)], ['Tired ads', n0(meta.tired)]], detail: { why: ['Above 3.5 a week, clicks fall and cost rises.', 'Fresh versions of winners reset it fastest.'], how: ['Pick the 3 best ads by cost per order', 'Make 2 new versions of each', 'Pause the tired ones as the new ones go live'] } }),
-    card('shift', 'meta', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder'], badge: [`${best.roas.toFixed(1)}x`, 'ok'], cta: 'Shift budget',
-      title: `Move ${sp(worst.spend * 0.2)} a day to ${best.name.split(' | ')[0]}`, sub: `${best.name} returns ${best.roas.toFixed(1)}x and ${worst.name} ${worst.roas.toFixed(1)}x. Moving a fifth of the weaker budget, in one step, keeps learning intact.`,
-      rows: [['From', `${worst.name} · ${worst.roas.toFixed(1)}x`], ['To', `${best.name} · ${best.roas.toFixed(1)}x`], ['Move a day', sp(worst.spend * 0.2)], ['Cost per first order', money(round(cpa, india ? 10 : 1))]], detail: { why: [`The catalog campaign earns more per ${india ? 'rupee' : 'dollar'}.`, 'One step of 20% keeps the learning phase.'], how: ['Move the budget tomorrow at 7 am', 'Read it after 7 days', 'Move it back if cost per order rises 15%'] } }),
+    card('shift', 'meta', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder'], badge: [`${roasX(best.roas)}`, 'ok'], cta: 'Shift budget',
+      title: `Move ${sp(worst.spend * 0.2)} a day to ${best.name.split(' | ')[0]}`, sub: `${best.name} returns ${roasX(best.roas)} and ${worst.name} ${roasX(worst.roas)}. Moving a fifth of the weaker budget, in one step, keeps learning intact.`,
+      rows: [['From', `${worst.name} · ${roasX(worst.roas)}`], ['To', `${best.name} · ${roasX(best.roas)}`], ['Move a day', sp(worst.spend * 0.2)], ['Cost per first order', money(round(cpa, india ? 10 : 1))]], detail: { why: [`The catalog campaign earns more per ${india ? 'rupee' : 'dollar'}.`, 'One step of 20% keeps the learning phase.'], how: ['Move the budget tomorrow at 7 am', 'Read it after 7 days', 'Move it back if cost per order rises 15%'] } }),
     card('brand', 'google', { agent: 'performance', sector: 'ads', type: 'idea', roles: ['growth', 'founder', 'ecom'], badge: [pct(branded), 'info'], cta: 'Launch the ad group',
       title: `${pct(branded)} of your search clicks are people typing ${name}`, sub: `Searches like ${terms[0] ? `“${terms[0]}”` : 'your category'} bring few clicks, so new buyers who don’t know ${name} yet rarely find you. One category ad group tests it on a small budget.`,
       rows: [['Searches for your name', pct(branded)], ['Category searches', pct(100 - branded)], ['Search spend, 30 days', big(gspend)], ['Term to test', terms[0] || 'your category']], detail: { why: ['Branded clicks would mostly come anyway.', 'Category searches are where new buyers start.'], how: [`Start with ${terms.slice(0, 3).map((t) => `“${t}”`).join(', ') || 'three category terms'}`, 'Send them to the best-selling product page', 'Read cost per first order after 14 days'] } }),
@@ -122,7 +123,7 @@ export function demoFor(profile, seed = {}) {
   const L = (key, label, v, n) => ({ key, label: `${label} (demo account)`, v: String(v), ...(n != null ? { n: +(+n).toFixed(2) } : {}), layer: 'observed', src: 'Demo account in Brew', method: 'demo connector', demo: true });
   const ledger = {
     shopify: [L('shopify.orders.30d', 'Orders, last 30 days', n0(orders), orders), L('shopify.aov', 'Average order value', money(aov), aov), L('shopify.conversion', 'Store conversion rate', pct(cr, 1), cr), L('shopify.repeat.90d', 'Second order within 90 days', pct(repeat), repeat), L('shopify.checkout.left', 'Checkouts started but not finished, 30 days', n0(left), left), ...(india ? [L('shopify.cod.share', 'Cash on delivery share of orders', pct(cod), cod), L('shopify.rto', 'COD orders returned unpaid', pct(rto), rto)] : [])],
-    meta: [L('meta.spend.30d', 'Meta spend, last 30 days', big(spend), spend), L('meta.roas', 'Meta return on ad spend', `${roas.toFixed(1)}x`, roas), L('meta.cpa.first', 'Meta cost per first order', money(round(cpa)), cpa), L('meta.retargeting.frequency', 'Retargeting frequency, 7 days', rt.freq.toFixed(1), rt.freq)],
+    meta: [L('meta.spend.30d', 'Meta spend, last 30 days', big(spend), spend), L('meta.roas', 'Meta return on ad spend', `${roasX(roas)}`, roas), L('meta.cpa.first', 'Meta cost per first order', money(round(cpa)), cpa), L('meta.retargeting.frequency', 'Retargeting frequency, 7 days', rt.freq.toFixed(1), rt.freq)],
     ga4: [L('ga4.sessions.30d', 'Sessions, last 30 days', n0(sessions), sessions), L('ga4.mobile.share', 'Mobile share of sessions', pct(mob), mob), L('ga4.pdp.to.cart', 'Product page to add-to-cart', pct(atc / google.pdp * 100), atc / google.pdp * 100)],
     google: [L('gads.branded.share', 'Branded share of search clicks', pct(branded), branded)],
     klaviyo: [L('klaviyo.list', 'Email list size', n0(klaviyo.list), klaviyo.list), L('klaviyo.flows.live', 'Email flows live', '2 of 5', 2)]

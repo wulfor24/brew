@@ -1912,7 +1912,7 @@ body:has(#dp.dp-full) .rail{position:fixed;top:0;left:0;bottom:0;height:auto;wid
 .cn-card.is-on .cn-will li::before{background:var(--ok)}
 .cn-card > footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .cn-acct{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:13.5px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cn-acct .ic{flex:0 0 auto;color:var(--ok)}.cn-acct.is-muted,.cn-acct.is-muted .ic{color:var(--fg-3)}
+.cn-acct .ic{flex:0 0 auto;color:var(--ok)}.cn-acct .cn-an{min-width:0;overflow:hidden;text-overflow:ellipsis}.cn-acct .cn-ago{flex:0 0 auto}.cn-acct.is-muted,.cn-acct.is-muted .ic{color:var(--fg-3)}
 .cn-btn{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border:0;border-radius:999px;background:var(--fg);color:var(--bg);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer}
 .cn-btn:hover{background:color-mix(in srgb,var(--fg) 86%,var(--bg))}
 .cn-btn.is-ghost{background:none;color:var(--fg-2);box-shadow:inset 0 0 0 1px var(--line);font-weight:550}
@@ -1921,7 +1921,7 @@ body:has(#dp.dp-full) .rail{position:fixed;top:0;left:0;bottom:0;height:auto;wid
    the account sits on its own line and the actions stay pinned to the foot so every row of cards lines up */
 .cn-grid{grid-auto-flow:row dense;gap:14px}
 .cn-card{gap:16px;padding:20px}
-.cn-grid .cn-card .cn-name span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:unset}
+.cn-grid .cn-card .cn-name span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;overflow:hidden}
 .cn-mid{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0}
 .cn-mid:empty{display:none}
 .cn-card .cn-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:0;padding:0;background:none}

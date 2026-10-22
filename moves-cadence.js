@@ -15,7 +15,7 @@
 // (ids ending -p, privateOf the move number) and private/audit/scorecard.json; the public run and its files never change.
 import { allowedFromLedger, scanNumbers } from './moves-engine.js';
 import { closedLine } from './reader/closed.js';
-import { realRows, privId } from './connectors/common.js';
+import { evidenceRows, privId } from './connectors/common.js';
 import { mergeLedger } from './refresh.js';
 import { withLive } from './on-connect.js';
 
@@ -44,7 +44,7 @@ const SKILLS = ['ai-seo', 'seo-audit', 'schema', 'cro', 'ads', 'ad-creative', 'e
 export const gradeOf = (s) => (s >= 80 ? 'A' : s >= 60 ? 'B' : s >= 40 ? 'C' : 'D');
 const AREAS = [['site', 'Site and product pages'], ['seo', 'Search (SEO)'], ['ai', 'AI answers'], ['ads', 'Paid ads'], ['crm', 'Email and CRM'], ['social', 'Social'], ['reviews', 'Reviews']];
 /* the team's connected rows by key (real rows only: a simulated account is never evidence) */
-export const liveOf = (rows) => Object.fromEntries(realRows(rows).filter((e) => e.key && e.v != null).map((e) => [e.key, e]));
+export const liveOf = (rows) => Object.fromEntries(evidenceRows(rows).filter((e) => e.key && e.v != null).map((e) => [e.key, e]));
 const nOf = (e) => (e?.n != null && Number.isFinite(+e.n) ? +e.n : null);
 export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), live = null } = {}) {
   const host = p.host || slug, site = `https://${String(host).replace(/^https?:\/\//, '')}`, read = p.meta?.readAt ? dayOf(Date.parse(p.meta.readAt)) : dayOf(now);
@@ -115,7 +115,10 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
       if (liveN != null) parts.push(part('Live ads', (Math.min(liveN, 20) / 20) * 30, 30, `${liveN ? `${lv['meta.ads.live'].v} ads are live` : 'no ads are live'} in the connected Meta account${lv['meta.spend.30d'] ? ` (spend over the last 30 days: ${lv['meta.spend.30d'].v})` : ''}`, src, '', at('meta.ads.live')));
       if (roas != null) parts.push(part('Return on ad spend', (Math.min(roas, 4) / 4) * 40, 40, `Meta returned ${lv['meta.roas'].v} on ad spend over the last 30 days`, src, '', at('meta.roas')));
       if (freq != null) parts.push(part('Ad fatigue', freq <= 2.5 ? 30 : freq >= 5 ? 0 : ((5 - freq) / 2.5) * 30, 30, `the highest campaign frequency over 7 days is ${lv['meta.frequency.max'].v}${freq >= 3.5 ? ' (above 3.5, people tire of the same ads)' : ''}`, src, '', at('meta.frequency.max')));
-      if (cpa != null && aov) { const r = cpa / aov; parts.push(part('Cost per order', r <= 0.25 ? 30 : r >= 1 ? 0 : ((1 - r) / 0.75) * 30, 30, `Meta cost per purchase is ${lv['meta.cpa'].v} against an average order of ${lv['shopify.aov'].v}`, src, '', at('meta.cpa'))); }
+      /* a cost and an order value in two currencies are never set against each other (an INR ad account for a USD store) */
+      const cc = lv['meta.cpa']?.cur || null, ac = lv['shopify.aov']?.cur || null, apart = cpa != null && aov && cc && ac && cc !== ac;
+      if (apart) parts.push(part('Cost per order', 0, 0, `Meta is in ${cc} and Shopify in ${ac}, so its cost per purchase (${lv['meta.cpa'].v}) isn’t set against the average order (${lv['shopify.aov'].v})`, src, '', at('meta.cpa')));
+      else if (cpa != null && aov) { const r = cpa / aov; parts.push(part('Cost per order', r <= 0.25 ? 30 : r >= 1 ? 0 : ((1 - r) / 0.75) * 30, 30, `Meta cost per purchase is ${lv['meta.cpa'].v} against an average order of ${lv['shopify.aov'].v}`, src, '', at('meta.cpa'))); }
       else if (cpa != null) parts.push(part('Cost per order', 0, 0, `Meta cost per purchase is ${lv['meta.cpa'].v} (no order value is connected to compare it with)`, src, '', at('meta.cpa')));
     } else if (readAds) {
       const live = own.live || 0, fresh = items.filter((x) => (x.days ?? 999) <= 30).length, vid = items.some((x) => x.format === 'video' || x.video), img = items.some((x) => !(x.format === 'video' || x.video));
@@ -435,8 +438,8 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
      the rows by key (the scorecard's paid area, the Klaviyo flows). null when no real account is connected */
   async function privPackFor(slug, pack) {
     const g = (n, d = null) => packs.getJSON(slug, n, d).catch(() => d);
-    const rows = realRows(await g('private/connected-ledger.json', [])); if (!rows.length) return null;
-    const conn = [...realRows(await g('connected-ledger.json', [])), ...rows];
+    const rows = evidenceRows(await g('private/connected-ledger.json', [])); if (!rows.length) return null;
+    const conn = [...evidenceRows(await g('connected-ledger.json', [])), ...rows];
     return { ...pack, profile: withLive(pack.profile, await g('private/profile-live.json')), ledger: mergeLedger(pack.ledger || [], [], { connected: conn }).ledger,
       brief: (await g('private/brief.json')) || pack.brief, live: liveOf(rows) };
   }
@@ -550,11 +553,13 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
   async function scorecardFor(slug, member) {
     const pub = () => packs.getJSON(slug, 'audit/scorecard.json', null).catch(() => null);
     if (!member) return pub();
-    const rows = realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []).catch(() => [])); if (!rows.length) return pub();
+    const rows = evidenceRows(await packs.getJSON(slug, 'private/connected-ledger.json', []).catch(() => [])); if (!rows.length) return pub();
     const saved = await packs.getJSON(slug, 'private/audit/scorecard.json', null).catch(() => null), newest = Math.max(0, ...rows.map((e) => Date.parse(e.at || 0) || 0));
-    if (saved?.private && Date.parse(saved.at || 0) >= newest) return saved;
+    /* re-scored when a newer read came in, or when the set of rows it rests on changed (an account went stale or came back) */
+    const sig = rows.map((e) => e.key).sort().join(',');
+    if (saved?.private && Date.parse(saved.at || 0) >= newest && (saved.rowsSig == null || saved.rowsSig === sig)) return saved;
     const profile = await packs.getJSON(slug, 'profile.json', null).catch(() => null); if (!profile) return pub();
-    const sc = auditScorecard({ profile, slug, now: now(), live: liveOf(rows) }); await packs.put(slug, 'private/audit/scorecard.json', sc).catch(() => {}); return sc;
+    const sc = { ...auditScorecard({ profile, slug, now: now(), live: liveOf(rows) }), rowsSig: sig }; await packs.put(slug, 'private/audit/scorecard.json', sc).catch(() => {}); return sc;
   }
   const dueOf = async (slug, o = {}) => { const st = await stateOf(slug); const [s0, th, tr, pr] = await Promise.all([packs.getJSON(slug, 'status.json', {}), packs.getJSON(slug, 'listen/themes.json', null), packs.getJSON(slug, 'listen/threads.json', null), packs.getJSON(slug, 'profile.json', null)]).catch(() => [{}, null, null, null]);
     return movesDue(st, cfg, { now: now(), aiLive: ai?.live !== false, ready: !!s0?.ready, hasListen: !!(th?.themes?.length || tr?.threads?.length), readAt: pr?.meta?.readAt || null, ...o }); };

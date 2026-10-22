@@ -17,7 +17,7 @@ import slack, { api as slackApi, why as slackWhy, join as slackJoin } from './sl
 import { createSim, SIM_IDS, NAME } from './sim.js';
 import { createVault } from '../vault.js';
 import { DEMO, sk } from '../demo-mode.js';
-import { privId, realRows, backoff } from './common.js';
+import { privId, realRows, backoff, connectedOk } from './common.js';
 import { emailHtml, p as para } from '../mail-layout.js';
 import { ideaCards, pickIdeas } from '../social-feed.js';
 import { staticProduct } from '../statics.js'; // a team static names the product in its photo
@@ -32,7 +32,7 @@ const OFF = new Set(['marketplaces']);
    accounts go every 6 hours; a connector can set its own `every` (hours) and a new one without it gets 12 hours. A failed
    read tries again after 3 hours, not every hour. */
 const EVERY_H = { shopify: 6, meta: 6, google: 6, ga4: 12, klaviyo: 12, reviews: 12, marketplaces: 24 /* paid treg read */ };
-const DEFAULT_H = 12, RETRY_H = 3;
+const DEFAULT_H = 12, RETRY_H = 3, SYNC_GAP = 10 * 60e3; /* Sync now: one read per account every 10 minutes */
 export const everyOf = (id) => (REAL[id]?.every || EVERY_H[id] || DEFAULT_H) * 3600e3;
 /* a failed read waits until retryAt: the platform's Retry-After on a rate limit, else doubling from 15 minutes up to
    12 hours, with jitter (failure() below). A record saved before retryAt existed keeps the old 3-hour wait */
@@ -191,9 +191,12 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'syncing', syncAt: Date.now() }; });
     try {
       const d = await read(slug, id);
-      const data = { at: Date.now(), account: d.account || (await conns(slug))[id]?.account || null, ...(Array.isArray(d.accounts) ? { accounts: d.accounts } : {}), stats: d.stats || [], changed: d.changed || [], cards: d.cards || [], ledger: d.ledger || [], notes: d.notes || [], ...(d.sim ? { sim: true } : {}) };
+      const data = { at: Date.now(), account: d.account || (await conns(slug))[id]?.account || null, ...(Array.isArray(d.accounts) ? { accounts: d.accounts } : {}), stats: d.stats || [], changed: d.changed || [], cards: d.cards || [], ledger: d.ledger || [], notes: d.notes || [], ...(d.ownPageId ? { ownPageId: d.ownPageId } : {}), ...(d.sim ? { sim: true } : {}) };
       await packs.put(slug, liveName(id), data);
-      await editC(slug, (c) => { const x = c[id] || {}; c[id] = { ...x, state: 'live', lastSync: data.at, error: null, account: data.account || x.account, ...(data.accounts ? { accounts: data.accounts.map((a) => ({ ...((x.accounts || []).find((y) => String(y.id) === String(a.id)) || {}), ...a })) } : {}), notes: data.notes,
+      /* an account's `ok` and `why` are the ownership check's verdict (owns); the read's own per-account result never overwrites them */
+      const merged = (x) => data.accounts.map((a) => { const prev = (x.accounts || []).find((y) => String(y.id) === String(a.id)) || {}, { ok: readOk, error: readErr, ...rest } = a;
+        return { ...prev, ...rest, ...(readOk === false ? { readError: readErr || 'not read' } : { readError: null }) }; });
+      await editC(slug, (c) => { const x = c[id] || {}; c[id] = { ...x, state: 'live', lastSync: data.at, error: null, account: data.account || x.account, ...(data.accounts ? { accounts: merged(x) } : {}), notes: data.notes,
         fails: 0, retryAt: null, rateLimited: false, stale: false, staleWhy: null, needsReconnect: false, ...(d.exp ? { expiresAt: d.exp.expiresAt, refreshedAt: d.exp.refreshedAt || x.refreshedAt || null, ...(d.exp.expiresAt !== x.expiresAt ? { expiryWarned: null } : {}) } : {}) }; });
       cache.delete(sk(slug));
       await builder.liveConnected?.(slug, id, data.ledger, true, { public: PUBLIC.has(id) }).catch((e) => log.warn('[connect] moves', e.message));
@@ -203,18 +206,23 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     } catch (e) {
       log.warn('[connect] sync', slug, id, e.message);
       /* an account that read before keeps its last read and says what went wrong; a new one shows the error */
-      let wentStale = null;
-      await editC(slug, (c) => { const x = c[id] || {}, f = failure(x, e); if (f.stale && !x.stale) wentStale = f.staleWhy;
+      let wentStale = null, fx = {};
+      await editC(slug, (c) => { const x = c[id] || {}, f = failure(x, e); fx = f; if (f.stale && !x.stale) wentStale = f.staleWhy;
         c[id] = { ...x, state: x.lastSync ? 'live' : 'error', error: e.message.slice(0, 200), errorAt: Date.now(), ...f }; });
       cache.delete(sk(slug));
       /* its numbers stay on the fact sheet, marked stale, and stop being evidence for the moves, cards and answers */
       if (wentStale) await builder.staleConnected?.(slug, id, wentStale, { public: PUBLIC.has(id) }).catch((er) => log.warn('[connect] stale', slug, id, er.message));
-      return { ok: false, error: e.message.slice(0, 200) };
+      /* a platform asking Brew to slow down is said in plain words; the read tries again on its own at retryAt */
+      return { ok: false, error: e.message.slice(0, 200), rateLimited: !!fx.rateLimited, retryAt: fx.retryAt || null };
     }
   }
   const disconnect = (slug, id) => perBrand(slug, () => disconnect0(slug, id));
   async function disconnect0(slug, id) {
-    if (!simOnly(id) && !PUBLIC.has(id)) await vault.drop(slug, id);
+    /* the sign-in goes, and every sign-in still waiting for its account to be picked (<id>-pending-*). The grant on the
+       platform's side is left alone on purpose: one person's Meta sign-in may serve several brands, and taking it back
+       (DELETE /me/permissions) would cut every one of them off */
+    if (!simOnly(id) && !PUBLIC.has(id)) { await vault.drop(slug, id);
+      for (const f of await packs.listFiles?.(slug, 'private/vault').catch(() => []) || []) { const k = String(f).replace(/\.json$/, ''); if (k.startsWith(`${id}-pending-`)) await vault.drop(slug, k).catch(() => {}); } }
     await editC(slug, (c) => { delete c[id]; });
     await packs.put(slug, liveName(id), { at: Date.now(), gone: true, stats: [], changed: [], cards: [], ledger: [] });
     cache.delete(sk(slug));
@@ -243,23 +251,27 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     const ctx = await ctxOf(slug), born = (await packs.getJSON(slug, 'status.json', null).catch(() => null))?.born || null;
     return { me, signin: auth.signinOn(), access, full: auth.isAdmin(me), conns: out, avail: avail(), shop: member ? ctx.shopifyShop : null, dummy: DEMO, born };
   }
+  /* the accounts connected right now (read at least once, not disconnected): what a private move's connectedWith is checked against */
+  async function connectedIds(slug) { const L = await liveOf(slug); return Object.keys(L.live).filter((id) => !L.live[id]?.gone); }
+  /* a connector card says how long ago its account was read ("3 h"), not "just now" forever */
+  const agoShort = (at) => { const m = Math.max(0, Math.round((Date.now() - (+at || Date.now())) / 60e3)); return m < 2 ? 'just now' : m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`; };
   // for feed-service: the connector cards and connected ids a viewer of this brand gets (team only, except marketplaces)
   async function forViewer(slug, member) {
     const L = await liveOf(slug), cards = [], on = {};
     for (const [id, d] of Object.entries(L.live)) { if (d.gone) continue; if (!member && !PUBLIC.has(id)) continue; on[id] = true;
-      cards.push(...(d.cards || []).map((c) => ({ ...c, ...(simOnly(id) || d.sim ? { dummy: true } : {}), ...(PUBLIC.has(id) ? { liveOnly: false, publicLive: true } : {}) }))); }
+      cards.push(...(d.cards || []).map((c) => ({ ...c, time: agoShort(d.at), ...(simOnly(id) || d.sim ? { dummy: true } : {}), ...(PUBLIC.has(id) ? { liveOnly: false, publicLive: true } : {}) }))); }
     /* DUMMY: a simulated account's rows never reach the team's numbers (they lose their demo flag once copied, so they stay out here) */
     /* a stale account (connections.json stale) is never quoted: its numbers wait for a good read */
-    const ledger = {}; if (member) for (const [id, d] of Object.entries(L.live)) if (!d.gone && !d.sim && !simOnly(id) && !L.conns[id]?.stale) for (const e of realRows(d.ledger)) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label };
+    const ledger = {}; if (member) for (const [id, d] of Object.entries(L.live)) if (!d.gone && !d.sim && !simOnly(id) && !L.conns[id]?.stale) for (const e of realRows(d.ledger)) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label, ...(e.cur ? { cur: e.cur } : {}) };
     /* the moves rewritten from the team's accounts (private/cards.json): members get those cards, and the shared cards of the
        same moves step aside (privMoves). Cards saved before they had their own id get it here */
     let privMoves = [], privStatics = false;
-    if (member) { const pc = await packs.getJSON(slug, 'private/cards.json', []).catch(() => []);
+    if (member) { const pc = await packs.getJSON(slug, 'private/cards.json', []).catch(() => []), pm = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({})) || {}, ids = await connectedIds(slug);
       /* a team static saved before it named its product gets it back from the set's own record (private/statics.json) */
       const bare = (Array.isArray(pc) ? pc : []).filter((c) => c?.teamStatics && /^static-.+-p$/.test(c.id || '') && !c.product);
       if (bare.length) { const [st, prof] = await Promise.all([packs.getJSON(slug, 'private/statics.json', {}).catch(() => ({})), packs.getJSON(slug, 'profile.json', null).catch(() => null)]);
         for (const c of bare) { const h = st?.[c.id.replace(/^static-|-p$/g, '')]?.product, ti = h && (prof?.catalog?.products || []).find((x) => x?.handle === h)?.title; if (ti) Object.assign(c, staticProduct(ti)); } }
-      for (const c of Array.isArray(pc) ? pc : []) if (c?.id && c.privateOf != null) cards.push({ ...c, id: privId(c.id), liveOnly: true });
+      for (const c of Array.isArray(pc) ? pc : []) if (c?.id && c.privateOf != null && connectedOk(pm[c.privateOf]?.meta, ids)) cards.push({ ...c, id: privId(c.id), liveOnly: true });
       privMoves = [...new Set(cards.filter((c) => c.privateOf != null).map((c) => +c.privateOf))]; privStatics = cards.some((c) => c.teamStatics);
       /* the team's ideas (private/ideas/ideas.json, written with the connected facts): members only, next to the public ones */
       const mi = await packs.getJSON(slug, 'private/ideas/ideas.json', null).catch(() => null);
@@ -334,7 +346,12 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
           if (C && !C.ready(deps)) return json(res, 200, { ok: false, error: 'The marketplace read is off on this server.' }), true;
           if (!s) return json(res, 200, await finish(slug, id, {}, me)), true;
           return json(res, 200, await sync(slug, id)), true; }
-        if (!member) return json(res, 403, { error: 'Only the brand’s team can sync it.' }), true; return json(res, 200, await sync(slug, id)), true; }
+        if (!member) return json(res, 403, { error: 'Only the brand’s team can sync it.' }), true;
+        /* one read per account every SYNC_GAP: a second click soon after says when it last read, it doesn't read again */
+        const s = (await liveOf(slug, true)).conns[id];
+        if (s?.state === 'syncing' && Date.now() - (s.syncAt || 0) < 30 * 60e3) return json(res, 200, { ok: true, state: 'syncing', busy: true, note: 'Already reading it. This takes a minute.' }), true;
+        if (s?.state === 'live' && !s.error && s.lastSync && Date.now() - s.lastSync < SYNC_GAP) return json(res, 200, { ok: true, state: 'live', recent: true, lastSync: s.lastSync, note: `Read ${Math.max(1, Math.round((Date.now() - s.lastSync) / 60e3))} min ago. You can read it again in ${Math.max(1, Math.ceil((SYNC_GAP - (Date.now() - s.lastSync)) / 60e3))} min.` }), true;
+        return json(res, 200, await sync(slug, id)), true; }
       if (b.action === 'disconnect') { if (!member) return json(res, 403, { error: 'Only the brand’s team can disconnect it.' }), true; return json(res, 200, await disconnect(slug, id)), true; }
       if (!C) { if (['demo', 'key', 'select', 'connect'].includes(b.action)) return json(res, 200, await finish(slug, id, null, me)), true; return json(res, 400, { error: 'unknown action' }), true; }
       if (b.action === 'key') { if (!C.fromKey) return json(res, 400, { error: 'This one connects by signing in.' }), true;
@@ -361,7 +378,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       const cs = await conns(slug).catch(() => ({}));
       for (const [id, s] of Object.entries(cs)) {
         const stuck = s?.state === 'syncing' && Date.now() - (s.syncAt || 0) > 30 * 60e3; /* a read cut off by a restart */
-        if ((s?.state !== 'live' && !stuck) || simOnly(id) || s.sim || OFF.has(id)) continue;
+        /* a first read that failed (state error, never read) tries again once its backoff (retryAt) has passed */
+        const retry = s?.state === 'error' && !s.lastSync && !s.needsReconnect && Date.now() >= (s.retryAt || 0);
+        if ((s?.state !== 'live' && !stuck && !retry) || simOnly(id) || s.sim || OFF.has(id)) continue;
         if (due(id, s)) await sync(slug, id).catch(() => {});
         await ageCheck(slug, id).catch((e) => log.warn('[connect] age', slug, id, e.message));
         await expiryCheck(slug, id).catch((e) => log.warn('[connect] expiry', slug, id, e.message));
@@ -467,5 +486,5 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     return false;
   }
 
-  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, shopSlug, liveOf, forViewer, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, ageCheck, expiryCheck, CONNECTORS };
+  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, shopSlug, liveOf, forViewer, connectedIds, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, ageCheck, expiryCheck, CONNECTORS };
 }

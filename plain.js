@@ -95,14 +95,19 @@ ${JSON.stringify(list)}
 
 Return every card by its id.`;
 
-export function createPlain({ ai, store, spend = () => true, isMock = () => false, log = console, kindsOf = () => ({}) }) { /* kindsOf(slug): what Brew holds for the brand (proof-logic.js evidenceKinds) */
+/* isPrivate(card): a card only the brand's team sees (a connected account's card, a move rewritten from the team's numbers);
+   its rewrite carries the team's real numbers, so it is kept in private/plain.json, never in the brand's shared plain.json */
+const PRIV_FILE = 'private/plain.json';
+const isPrivate0 = (c) => !!c && !c.publicLive && (c.liveOnly === true || c.privateOf != null || !!c.memberIdea || !!c.teamStatics || /^live-(?!marketplaces-)|-p$/.test(String(c.id || '')));
+export function createPlain({ ai, store, spend = () => true, isMock = () => false, log = console, kindsOf = () => ({}), isPrivate = isPrivate0 }) { /* kindsOf(slug): what Brew holds for the brand (proof-logic.js evidenceKinds) */
   const mem = new Map(), chain = new Map(), running = new Map(), failedAt = new Map(), tries = new Map();
-  const load = async (slug) => { if (!mem.has(slug)) mem.set(slug, (await store?.getJSON(slug, FILE, {}).catch(() => ({}))) || {}); return mem.get(slug); };
-  const save = (slug) => { const all = mem.get(slug); if (!all || !store?.put) return;
-    const ks = Object.keys(all); if (ks.length > MAX_KEEP) for (const k of ks.sort((a, b) => (all[a].at || 0) - (all[b].at || 0)).slice(0, ks.length - MAX_KEEP)) delete all[k];
-    const run = (chain.get(slug) || Promise.resolve()).then(() => store.put(slug, FILE, all)); chain.set(slug, run.catch(() => {})); return run; };
+  const mk = (slug, priv) => (priv ? `${slug}\u0000p` : slug);
+  const load = async (slug, priv = false) => { const k = mk(slug, priv); if (!mem.has(k)) mem.set(k, (await store?.getJSON(slug, priv ? PRIV_FILE : FILE, {}).catch(() => ({}))) || {}); return mem.get(k); };
+  const save = (slug, priv = false) => { const k = mk(slug, priv), all = mem.get(k); if (!all || !store?.put) return;
+    const ks = Object.keys(all); if (ks.length > MAX_KEEP) for (const x of ks.sort((a, b) => (all[a].at || 0) - (all[b].at || 0)).slice(0, ks.length - MAX_KEEP)) delete all[x];
+    const run = (chain.get(k) || Promise.resolve()).then(() => store.put(slug, priv ? PRIV_FILE : FILE, all)); chain.set(k, run.catch(() => {})); return run; };
   /* the cached rewrite for a card, if its words haven't changed since (sync: the feed never waits on a load) */
-  const get = (slug, c) => { const all = mem.get(slug); if (!all) { load(slug).catch(() => {}); return null; } return all[plainKey(c)] || null; };
+  const get = (slug, c) => { const priv = isPrivate(c), all = mem.get(mk(slug, priv)); if (!all) { load(slug, priv).catch(() => {}); return null; } return all[plainKey(c)] || null; };
   /* the card a person reads: the rewrite where there is one, else its own words with the jargon swapped */
   /* a rewrite is swapped too: one written before a word joined the list still never shows it */
   const apply = (slug, c) => { if (!c || typeof c !== 'object') return c; const p = get(slug, c);
@@ -127,8 +132,8 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
   const queue = (slug, cards, brand) => {
     if (!slug || !ai || isMock() || running.has(slug) || Date.now() - (failedAt.get(slug) || 0) < 10 * 60e3) return false;
     const job = (async () => {
-      const all = await load(slug);
-      const todo = (cards || []).filter((c) => c?.id && c.title && !all[plainKey(c)]);
+      const pub = await load(slug), priv = await load(slug, true), allOf = (c) => (isPrivate(c) ? priv : pub);
+      const todo = (cards || []).filter((c) => c?.id && c.title && !allOf(c)[plainKey(c)]);
       for (let i = 0; i < todo.length; i += BATCH) {
         if (!spend('text')) break;
         const part = todo.slice(i, i + BATCH);
@@ -140,11 +145,11 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
              at most 3 times, then the card keeps its own words with the jargon swapped */
           let kept = 0, half = 0;
           const kinds = (() => { try { return kindsOf(slug) || {}; } catch { return {}; } })();
-          for (const c of part) { const x = by.get(c.id), r = check(c, x, kinds), k = plainKey(c);
+          for (const c of part) { const x = by.get(c.id), r = check(c, x, kinds), k = plainKey(c), all = allOf(c);
             if (r && x?.sub && x?.because) { all[k] = r; kept++; tries.delete(k); }
             else { half++; const n = (tries.get(k) || 0) + 1; tries.set(k, n); if (n >= 3 && r) { all[k] = r; tries.delete(k); } } }
           log.log?.(`[plain] ${slug} ${part.length} cards: ${kept} rewritten${half ? `, ${half} came back incomplete (tried again later)` : ''}`);
-          await save(slug);
+          await save(slug); if (part.some(isPrivate)) await save(slug, true);
         } catch (e) { log.warn('[plain]', slug, e.message); failedAt.set(slug, Date.now()); break; }
       }
     })().finally(() => running.delete(slug));

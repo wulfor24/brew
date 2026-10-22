@@ -140,7 +140,7 @@ const CHANNELS = [['ga4.channels', 'Traffic by channel'], ['meta.spend.30d', 'Me
 const ANSWERS = [[/revenue|sales|turnover|orders|order value|aov|basket/i, /^shopify\.(revenue|orders|aov)/], [/repeat|retention|second order|lifetime/i, /^shopify\.repeat/], [/channel|traffic|where.*(buyers|customers|visitors) come/i, /^ga4\.channels/],
   [/ad spend|paid|meta ads|facebook ads|budget/i, /^(meta|gads)\.spend/], [/email|klaviyo|flows|newsletter/i, /^klaviyo\./], [/cash on delivery|cod/i, /^shopify\.cod/]];
 export function briefWithConnected(brief, rows = []) {
-  const by = Object.fromEntries((rows || []).filter((e) => e?.key && e.v != null && !e.demo).map((e) => [e.key, e]));
+  const by = Object.fromEntries((rows || []).filter((e) => e?.key && e.v != null && !e.demo && !e.stale).map((e) => [e.key, e]));
   if (!brief || !Object.keys(by).length) return null;
   const src = (e) => e.src || 'Connected account';
   const keep = (xs) => (xs || []).filter((r) => !String(r?.k || '').split(/[,\s]+/).some((k) => CONN.test(k)));

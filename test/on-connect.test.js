@@ -88,6 +88,8 @@ test('a real account connecting rewrites every move with its numbers, privately,
   assert.ok(await P.getJSON(slug, 'private/brief.json', null), 'the private brief is saved');
   const view = await b.updates(slug, { member: false });
   assert.equal(view.connect, null, 'visitors never see the team’s run');
+  assert.ok(view.history.length && view.history.every((h) => !(h.connected || h.private) || h.because == null), 'nor why the team’s moves were rewritten');
+  assert.ok((await b.updates(slug, { member: true })).history.some((h) => h.because), 'the team does');
 
   await b.liveConnected(slug, 'shopify', SHOP, true, { public: false }); /* the daily resync: same numbers */
   await settle(); assert.equal(runs.length, 1, 'a resync does not rewrite everything again');

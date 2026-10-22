@@ -77,7 +77,7 @@
     const f = () => { const p = b.parentElement; p.classList.toggle('is-up', b.scrollTop > 2); p.classList.toggle('is-down', b.scrollHeight - b.scrollTop - b.clientHeight > 2); };
     b.addEventListener('scroll', f, { passive: true }); new ResizeObserver(f).observe(b); f(); });
   /* what a connector unlocks, from the brand's own connector card; a plain line per platform when the pack has none */
-  const READS = { google: ['Spend, clicks and orders from search', 'Which searches bring buyers'], ga4: ['Sessions, sources and checkouts', 'Where shoppers drop off'], meta: ['Spend, reach and cost per order', 'Which ads are winning'],
+  const READS = { google: ['Spend, clicks and orders from search', 'Which searches bring buyers'], ga4: ['Sessions, sources and checkouts', 'Where shoppers drop off'], meta: ['Spend, return and cost per purchase, 30 days', 'Which campaigns return most this week', 'Ads people have seen too often'],
     shopify: ['Orders, customers and carts', 'Products and stock'], klaviyo: ['Flows, campaigns and their revenue', 'How the list grows'], reviews: ['Reviews and ratings', 'What customers praise and complain about'], slack: ['Post cards and jams to a channel', 'Thread replies land in the jam', 'Approve from Slack'] };
   const unlocks = (id) => { const xs = (B()?.connectors?.[id]?.changed || READS[id] || []).slice(0, 3).map(esc); return xs.length ? kick('What it unlocks') + ticks(xs) : ''; };
   const askAdmin = (id) => box({ id, title: `${esc(nm(id))} is connected by an admin`, line: `Ask ${esc(adminName())} to connect it. Once it’s on, you can sync it any time.`, go: goBtn('Got it', 'data-close') });
@@ -302,12 +302,13 @@
       : x.stale ? `<span class="cn-st is-off" title="${esc(`Its last numbers are not used until it reads again${x.staleWhy ? ` (${x.staleWhy})` : ''}`)}">Stale</span>`
       : left != null && left <= 7 ? `<span class="cn-st is-off" title="Connect it again before then so Brew keeps reading it">Sign-in runs out in ${left} day${left === 1 ? '' : 's'}</span>`
       : x.error ? `<span class="cn-st is-off" title="${esc(x.rateLimited ? 'The platform asked Brew to slow down; it tries again on its own' : 'The last refresh did not go through')}">${x.rateLimited ? 'Busy, retrying' : 'Last refresh failed'}</span>` : '';
-    if (x.state === 'live') return x.dummy ? `<span class="cn-st is-on is-live"><i></i>Connected</span><span class="dummy-tag">Dummy</span>` : `<span class="cn-st is-on is-live"><i></i>Live</span>${warn}`;
+    if (x.state === 'live') return x.dummy ? `<span class="cn-st is-on is-live"><i></i>Connected</span><span class="dummy-tag">Dummy</span>` : (warn || '<span class="cn-st is-on is-live"><i></i>Live</span>'); /* one pill: the warning replaces Live, never sits beside it */
     if (x.state === 'syncing') return `<span class="cn-st is-on"><i></i>Reading…</span>`;
     return `<span class="cn-st is-off"><i></i>Needs attention</span>`; };
   const footer = (id) => { const x = L.conns?.[id]; if (!x || !member() && x.state !== 'live') return null;
-    const accts = (x.accounts || []).length > 1 ? ` title="${esc(x.accounts.map((a) => a.name || a.id).join(', '))}"` : '';
-    return `<span class="cn-acct"${accts}>${ic('check', 's14')}${esc(x.account || nm(id))}${x.lastSync ? ` · ${ago(x.lastSync)}` : ''}</span>${member() || L.avail?.[id]?.modes?.includes('public') ? `<button class="cn-btn is-ghost" data-lsync="${id}">Sync now</button>` : ''}${member() && boss() ? `<button class="cn-btn is-ghost" data-lunlink="${id}">Disconnect</button>` : ''}`; };
+    /* the full account name(s) on hover, always: a long name is cut on the card, and the time read stays in sight */
+    const full = (x.accounts || []).length > 1 ? x.accounts.map((a) => a.name || a.id).join(', ') : x.account || nm(id), accts = ` title="${esc(`${full}${x.lastSync ? ` · read ${ago(x.lastSync)}` : ''}`)}"`;
+    return `<span class="cn-acct"${accts}>${ic('check', 's14')}<span class="cn-an">${esc(x.account || nm(id))}</span>${x.lastSync ? `<span class="cn-ago">· ${ago(x.lastSync)}</span>` : ''}</span>${member() || L.avail?.[id]?.modes?.includes('public') ? `<button class="cn-btn is-ghost" data-lsync="${id}">Sync now</button>` : ''}${member() && boss() ? `<button class="cn-btn is-ghost" data-lunlink="${id}">Disconnect</button>` : ''}`; };
   const intro = () => { if (!GENB || (!L.signin && !L.me)) return null; const n = B().brand.name;
     if (!L.me) return L.dummy ? `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect accounts. Connected accounts are simulated in this demo (Dummy).` : `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect ${n}’s real accounts, read-only (Slack posts to the channel you pick).`;
     if (member() && !boss()) return `Every source Brew reads for ${n}. Only ${n}’s admins connect or disconnect accounts; you can sync the connected ones.`;
@@ -316,7 +317,10 @@
     if (L.access?.eligible) return `Every source Brew reads for ${n}. You’re the first from ${esc(host())}: connect an account and ${n} is yours. <button class="linkish" data-lclaim>Claim it with your email</button>`;
     return `Every source Brew reads for ${n}. Here you see the demo: the first person to sign in with a work email at ${esc(host())} and connect an account becomes its admin.`; };
   function bindPage(root) {
-    root.querySelectorAll('[data-lsync]').forEach((b) => b.onclick = async () => { b.disabled = true; b.textContent = 'Reading…'; const r = await post(`/api/brands/${slug}/connect/${b.dataset.lsync}`, { action: 'sync' }); if (r.ok) location.reload(); else { b.disabled = false; b.textContent = 'Sync now'; A().toast(esc(r.error || 'Could not sync')); } });
+    root.querySelectorAll('[data-lsync]').forEach((b) => b.onclick = async () => { b.disabled = true; b.textContent = 'Reading…'; const r = await post(`/api/brands/${slug}/connect/${b.dataset.lsync}`, { action: 'sync' });
+      /* read a few minutes ago, or already reading: said plainly, nothing reloads; a platform asking Brew to slow down is said in plain words */
+      if (r.ok && (r.recent || r.busy)) { b.disabled = false; b.textContent = 'Sync now'; A().toast(esc(r.note || 'Read a few minutes ago')); return; }
+      if (r.ok) location.reload(); else { b.disabled = false; b.textContent = 'Sync now'; A().toast(esc(r.rateLimited ? `${nm(b.dataset.lsync)} asked Brew to slow down. It reads again by itself${r.retryAt ? ` after ${new Date(r.retryAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ' shortly'}.` : r.error || 'Could not sync')); } });
     root.querySelectorAll('[data-lunlink]').forEach((b) => b.onclick = () => unlinkBox(b.dataset.lunlink));
     root.querySelectorAll('[data-lclaim]').forEach((b) => b.onclick = claim);
   }

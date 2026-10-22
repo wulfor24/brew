@@ -9,7 +9,7 @@
 import crypto from 'node:crypto';
 import { exactSite, bareHost } from '../auth.js';
 import { UA } from '../reader/util.js';
-import { card, L, n0, pct, has, fmt, getJSON, form } from './common.js';
+import { card, L, n0, pct, has, fmt, getJSON, form, roasX } from './common.js';
 
 /* Google retires each Ads API version about a year after release, and a retired one answers 404 to every call (v21 did by
    2026-10-16, which showed as "no Google Ads account"). Bump GOOGLE_ADS_API_VERSION when Google's sunset email comes. */
@@ -169,13 +169,13 @@ const base = {
     const GF = m.gcur ? fmt({ ...ctx.profile, currency: m.gcur, ...(m.gcur === 'INR' ? { country: 'IN', locale: 'en-IN' } : ctx.profile?.country === 'IN' ? { country: 'XX', locale: 'en-US' } : {}) }) : F;
     if (has(m.branded) && m.branded >= 40) out.push(card(k, name, lane, 'brand', { agent: 'performance', sector: 'ads', type: 'idea', roles: ['growth', 'founder', 'ecom'], badge: [pct(m.branded), 'info'], cta: 'Launch the ad group',
       title: `${pct(m.branded)} of your search ad clicks are people typing ${ctx.profile?.name || 'your name'}`, sub: `Those buyers mostly know you already. New buyers search the category${m.terms?.[0] ? `, like “${m.terms[0]}”` : ''}; one category ad group on a small budget tests that.`,
-      rows: [['Clicks on your own name', pct(m.branded)], ['Google Ads spend, 30 days', has(m.gspend) ? GF.big(m.gspend) : null], ['Return on Google Ads spend', has(m.groas) ? `${m.groas.toFixed(1)}x` : null], ['Term to test', m.terms?.[0]]], detail: { why: ['Branded clicks would mostly come anyway.'], how: ['Start with three category terms', 'Send them to the best-selling product page', 'Read cost per first order after 14 days'] } }));
-    const stats = [has(m.sessions) && ['Sessions, last 30 days', n0(m.sessions)], has(m.cr) && ['Conversion (GA4)', pct(m.cr, 2)], has(m.mob) && ['Mobile share of visits', pct(m.mob)], has(m.gspend) && ['Google Ads spend, 30 days', GF.big(m.gspend)], has(m.groas) && ['Return on Google Ads spend', `${m.groas.toFixed(1)}x`], has(m.branded) && ['Search clicks on your name', pct(m.branded)]].filter(Boolean).slice(0, 4);
+      rows: [['Clicks on your own name', pct(m.branded)], ['Google Ads spend, 30 days', has(m.gspend) ? GF.big(m.gspend) : null], ['Return on Google Ads spend', has(m.groas) ? `${roasX(m.groas)}` : null], ['Term to test', m.terms?.[0]]], detail: { why: ['Branded clicks would mostly come anyway.'], how: ['Start with three category terms', 'Send them to the best-selling product page', 'Read cost per first order after 14 days'] } }));
+    const stats = [has(m.sessions) && ['Sessions, last 30 days', n0(m.sessions)], has(m.cr) && ['Conversion (GA4)', pct(m.cr, 2)], has(m.mob) && ['Mobile share of visits', pct(m.mob)], has(m.gspend) && ['Google Ads spend, 30 days', GF.big(m.gspend)], has(m.groas) && ['Return on Google Ads spend', `${roasX(m.groas)}`], has(m.branded) && ['Search clicks on your name', pct(m.branded)]].filter(Boolean).slice(0, 4);
     const changed = [has(m.sessions) && `Cards read your ${n0(m.sessions)} sessions from GA4`, (m.sessions || 0) >= 300 && has(m.pdp, m.atc) && `The product-page leak: ${pct(100 - 100 * m.atc / m.pdp)} never add to cart`, has(m.branded) && `${pct(m.branded)} of search clicks are your own name`].filter(Boolean);
     const ledger = [has(m.sessions) && L('ga4.sessions.30d', 'Sessions, last 30 days (GA4)', n0(m.sessions), m.sessions, src), has(m.cr) && L('ga4.conversion', 'Purchases per session, 30 days (GA4)', pct(m.cr, 2), m.cr, src), has(m.mob) && L('ga4.mobile.share', 'Mobile share of sessions', pct(m.mob), m.mob, src),
       has(m.pdp, m.atc) && L('ga4.pdp.to.cart', 'Product page to add-to-cart', pct(100 * m.atc / m.pdp), 100 * m.atc / m.pdp, src), m.mix?.length && L('ga4.channels', 'Sessions by channel, 30 days', m.mix.map(([c2, s]) => `${c2} ${s.toFixed(0)}%`).join('; '), null, src),
       m.countries?.length && L('ga4.countries', 'Sessions by country, 30 days', m.countries.map(([c2, s]) => `${c2} ${s.toFixed(0)}%`).join('; '), null, src),
-      has(m.gspend) && L('gads.spend.30d', 'Google Ads spend, last 30 days', GF.big(m.gspend), m.gspend, src), has(m.groas) && L('gads.roas', 'Google Ads conversion value per spend', `${m.groas.toFixed(1)}x`, m.groas, src), has(m.branded) && L('gads.branded.share', 'Branded share of search ad clicks', pct(m.branded), m.branded, src)].filter(Boolean);
+      has(m.gspend) && L('gads.spend.30d', 'Google Ads spend, last 30 days', GF.big(m.gspend), m.gspend, src), has(m.groas) && L('gads.roas', 'Google Ads conversion value per spend', `${roasX(m.groas)}`, m.groas, src), has(m.branded) && L('gads.branded.share', 'Branded share of search ad clicks', pct(m.branded), m.branded, src)].filter(Boolean);
     return { metrics: m, stats, changed, cards: out, ledger, notes };
   }
 };

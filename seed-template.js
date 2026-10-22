@@ -79,7 +79,7 @@ function baseSeed({ slug, host, name, tagline, colors, logo, mark, face, typeNam
     geo: { score: 0, band: 'Not read yet' },
     connectors: {
       shopify: { name: 'Shopify', /* what connecting does, whatever the store runs on: never "Custom" (QA 19 Oct; the Shopify-only note says the rest) */ color: '#5E8E3E', glyph: 'S', account: host, kind: 'Orders, customers, carts and pages', perms: ['Read orders and customers', 'Read abandoned checkouts'], log: ['Reading 12 months of orders', 'Reading abandoned checkouts', 'Matching opt-ins'], changed: ['Cards show your real orders', 'Checkout cards show your real drop-off'], health: {} },
-      meta: { name: 'Meta Ads', color: '#0866FF', glyph: 'f', account: `${name} ad account`, kind: 'Campaigns, spend, reach and the pixel', perms: ['Read campaigns, ad sets and ads', 'Read the last 90 days of results'], log: ['Reading campaigns and live ads', 'Reading 14 days of results', 'Checking frequency and match quality'], changed: ['Ad cards show live cost per order', 'Ad cards show which ads are winning'], health: {} },
+      meta: { name: 'Meta Ads', color: '#0866FF', glyph: 'f', account: `${name} ad account`, kind: 'Campaigns, spend, return and ad fatigue', perms: ['Read campaigns, ad sets and ads', 'Read the last 30 days of results'], log: ['Reading campaigns and live ads', 'Reading 30 days of results', 'Checking frequency and return per campaign'], changed: ['Ad cards measure against your real cost per purchase', 'Budget and fatigue cards from your own campaigns'], health: {} },
       ga4: { name: 'Google Analytics', color: '#E37400', glyph: 'A', account: `${name} · GA4`, kind: 'Visits, funnel and site events (GA4)', perms: ['Read GA4 reports'], log: ['Reading 30 days of sessions', 'Checking the funnel'], changed: ['Storefront cards show your real funnel', 'Tracking card shows the live gap'], health: {} },
       google: { name: 'Google Ads', color: '#4285F4', glyph: 'G', account: `${name} · Google Ads`, kind: 'Search and Shopping campaigns', perms: ['Read campaigns and searches'], log: ['Reading campaigns and searches'], changed: ['Search cards show real searches', 'Ad cards show search spend and return'], health: {} },
       marketplaces: { name: mkName, color: '#FF9900', glyph: 'a', account: `${marketplaces.length || ''} seller accounts`.trim(), kind: 'Listings, ranks, stock and reviews', perms: ['Read listings, titles and images', 'Read ranks, stock and ratings'], log: ['Reading listings', 'Reading ranks and stock'], changed: ['Listing cards show live rank and stock'], health: {} },
@@ -152,6 +152,7 @@ export function seedFromProfile(slug, profile, findings, extra = {}) {
 const ACTS = /only with your OK|actions? run|can send|approve in slack|create (flows|ads|ad groups)|edit (pages|titles)|send (review asks|approved)/i;
 /* Google Analytics and Google Ads are two accounts (2026-10-16): a pack made before lists one "Google Ads + GA4"; at load it becomes both */
 const GA4_CONN = (account) => ({ name: 'Google Analytics', color: '#E37400', glyph: 'A', account, kind: 'Visits, funnel and site events (GA4)', perms: ['Read GA4 reports'], log: ['Reading 30 days of sessions', 'Checking the funnel'], changed: ['Storefront cards show your real funnel', 'Tracking card shows the live gap'], health: {} });
+const META_COPY = { kind: 'Campaigns, spend, return and ad fatigue', perms: ['Read campaigns, ad sets and ads', 'Read the last 30 days of results'], log: ['Reading campaigns and live ads', 'Reading 30 days of results', 'Checking frequency and return per campaign'], changed: ['Ad cards measure against your real cost per purchase', 'Budget and fatigue cards from your own campaigns'] };
 export function prototypeConnectors(conns = {}) {
   const out = {};
   for (const [id0, c0] of Object.entries(conns || {})) { if (id0 === 'whatsapp') continue;
@@ -159,6 +160,8 @@ export function prototypeConnectors(conns = {}) {
     if (id === 'google' && !conns.ga4 && /GA4|Analytics/i.test(`${c.name} ${c.kind}`)) {
       out.ga4 = GA4_CONN(String(c.account || '').replace(/Google$/, 'GA4'));
       c = { ...c, name: 'Google Ads', account: String(c.account || '').replace(/Google$/, 'Google Ads'), kind: 'Search and Shopping campaigns', perms: (c.perms || []).filter((x) => !/GA4/i.test(x)), changed: (c.changed || []).filter((x) => !/tracking|GA4|product-page/i.test(x)) }; }
+    /* Meta's copy said "the pixel" and "90 days" before 22 Oct, which the connector never reads: at load it says what it does */
+    if (id === 'meta' && /pixel|90 days/i.test(`${c.kind} ${(c.perms || []).join(' ')}`)) c = { ...c, ...META_COPY };
     out[id] = { ...c, perms: (c.perms || []).filter((x) => !ACTS.test(x)), changed: (c.changed || []).filter((x) => !ACTS.test(x)), ...(c.changedDemo ? { changedDemo: c.changedDemo.filter((x) => !ACTS.test(x)) } : {}) }; }
   return out;
 }

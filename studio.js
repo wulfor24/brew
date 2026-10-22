@@ -107,7 +107,7 @@ export const FIELDS = {
   ],
   meta_ops: [
     { k: 'summary', label: 'What changes', type: 'text', req: true },
-    { k: 'items', label: 'Ad sets', type: 'rows', cols: ['name', 'now', 'next'], req: true, hint: '2-5 rows: ad set name, its state or budget now, and after' },
+    { k: 'items', label: 'Campaigns or ad sets', type: 'rows', cols: ['name', 'now', 'next'], req: true, hint: '1-5 rows: only campaign or ad set names the card gives (never invent one), its state or budget now, and after' },
     { k: 'rule', label: 'Rule', type: 'text', hint: 'The condition, e.g. cost per first order over the stop line for 48 hours' },
     { k: 'checkAt', label: 'Checks', type: 'text' },
     { k: 'spendChangeWeek', label: 'Spend change a week', type: 'number', hint: 'Positive adds spend, negative saves, 0 if none' }
@@ -499,11 +499,16 @@ const socialPkg = (act, c, i, F) => {
 const genericPkg = (family, action, c, i = 0, angle = '', F = {}) => {
   const P = tplProduct(c, F), act = String(action).split('.').pop(), N = BN(), sym = B().sym || '';
   if (family === 'meta_ops' && opsPkg(act, c)) return opsPkg(act, c);
+  if (family === 'meta_ops' && act === 'shift_budget' && c.shift?.from && c.shift?.to) return shiftPkg(c, sym);
   if (act === 'fix_links') return linksPkg(c);
   const claim = P.claim ? ` ${P.claim.replace(/[.!]+$/, '')}.` : '', hook = P.hook;
   const sh = P.short.replace(/^the /, '');
   if (family === 'meta_ad') return { primaryText: `${P.lead ? `${P.lead}. ` : ''}${P.name}${P.price ? `, ${P.price}` : ''}.${claim}`, headline: wcut(hook, 40), description: 'Shop the range', overlay: hook, cta: act === 'whatsapp_ad' ? 'Send WhatsApp message' : 'Shop now', ...(act === 'whatsapp_ad' ? { chat: [{ from: 'in', text: `Hi, I want to know about ${P.short}` }, { from: 'out', text: `Hi! ${P.name}${P.price ? ` is ${P.price}` : ''}.${claim}` }] } : {}), imageBrief: P.photo, format: '4:5', audience: `${CTRY()}, people interested in ${B().config.category || 'the category'}`, placements: 'Instagram and Facebook feeds, Reels', adSet: `${sh} | Broad | ${act === 'new_test' ? 'Test' : 'Feed'}`, schedule: 'Starts tomorrow, read after 7 days', utm: `${P.page}?utm_source=meta&utm_campaign=remix` };
-  if (family === 'meta_ops') return { summary: `${angle && !/^do it\b/i.test(angle) ? angle + ': ' : ''}${ACT_LABEL[act] || 'Change'} on the ${sh} campaign` /* never the intent chip (QA J-19) */, items: [`${sh} | Broad | Feed`, `${sh} | Retargeting 30d`].map((name) => ({ name, now: 'As set today', next: act === 'pause_losers' ? 'Paused if above target' : 'Changed by the rule' })), rule: 'Pause any ad set whose cost per first order stays above target for 48 hours', checkAt: 'Every morning at 9', spendChangeWeek: 0 };
+  /* the campaigns or ad sets the card itself names; without any, one row for the team to fill in, never a made-up ad set name */
+  if (family === 'meta_ops') { const named = (c.rows || []).filter((r) => /^(campaigns?|ad sets?|from|to|tired ad)/i.test(String(r?.[0] || '')) && r[1]).slice(0, 5).map((r) => String(r[1]).split(' · ')[0].slice(0, 90));
+    return { summary: `${angle && !/^do it\b/i.test(angle) ? angle + ': ' : ''}${ACT_LABEL[act] || 'Change'}${sh ? ` for ${sh}` : ''}` /* never the intent chip (QA J-19) */,
+      items: (named.length ? named : ['The ad sets your team picks']).map((name) => ({ name, now: 'As set today', next: act === 'pause_losers' ? 'Paused if above target' : act === 'scale_budget' ? 'Budget up 20%' : 'Changed by the rule' })),
+      rule: OPS_RULE[act] || 'Pause any ad set whose cost per first order stays above target for 48 hours', checkAt: 'Every morning at 9', spendChangeWeek: 0 }; }
   if (family === 'store') return { pages: P.page, section: i % 2 ? 'Top of the product description' : 'End of the product description', heading: hook, body: `${P.name}.${claim}`.trim(), bullets: [P.claim].filter(Boolean) }; /* the product's own claim: a card's reasons are notes for the team, never page points (QA J-19) */
   if (family === 'vis') return { file: act === 'llms_txt' ? `${BH()}/llms.txt` : act === 'schema_fix' ? `Product markup (JSON-LD) on ${BH()} product pages` : `${BH()}/pages/faq`, entries: [{ q: c.q || `Is ${P.name} good?`, a: `${P.name}${P.price ? ` costs ${P.price} on ${BH()}` : ''}.${claim}`, source: 'Product page' }], asOf: 'As of today' };
   if (family === 'crm') return { channel: act === 'flow_copy' || act === 'review_ask' ? 'WhatsApp' : 'Email', flow: 'Second order flow, step 1', trigger: 'Day 21 after delivery', segment: 'Opted-in buyers', exclusions: 'Returns, anyone who ordered this week', subject: `How is ${P.short} going?`, message: act === 'review_ask' ? `Hi {first_name}, how is ${P.short} going? A quick review helps others decide.` : `Hi {first_name}, how is ${P.short} going? Need more before it runs out?`, buttons: act === 'review_ask' ? ['Write a review', 'Ask a question'] : ['Reorder', 'Ask a question'] };
@@ -525,6 +530,15 @@ const OUT_WHO = [[/\bhr (?:teams?|leads?|heads?)\b|\bcorporate\b/i, 'Head of HR'
   [/\bgyms?|studios?\b/i, 'Studio manager', 'Gyms and studios'], [/\bexpo|trade show|fair\b/i, 'Buyer you meet at the show', 'Show visitors'], [/\bproduction|agenc(?:y|ies)\b/i, 'Producer', 'Production companies']];
 export const outreachTo = (c = {}) => { const t = `${c.title || ''} ${c.sub || ''}`; const hit = OUT_WHO.find(([re]) => re.test(t)); return hit ? { to: hit[1], company: hit[2] } : { to: 'The right person at the business', company: 'The business the card names' }; };
 const ACT_LABEL = { pause_losers: 'Pause the weakest ad sets', stop_rule: 'Add a stop rule', scale_budget: 'Scale the winners', shift_budget: 'Shift budget to the winners', pause_pointing: 'Pause the ads on sold-out products', restart_paused: 'Restart the ads paused for stock', price_in_ads: 'Put the new price in the ads' };
+/* the rule each ad account change runs by */
+const OPS_RULE = { pause_losers: 'Pause any ad set whose cost per first order stays above target for 48 hours', stop_rule: 'Pause any ad set whose cost per first order stays above target for 48 hours', scale_budget: 'Raise a winner by 20% at most every 3 days, while its cost per order holds', shift_budget: 'Read it after 7 days; move it back if cost per purchase rises 15%' };
+/* a budget card from the team's Meta account (connectors/meta.js `shift`): the two real campaigns, from what they spend a day now
+   to after the move. Total spend stays the same, and Brew changes nothing in Ads Manager: the team makes the move */
+const shiftPkg = (c, sym = '') => { const s = c.shift, m = (n) => `${sym}${Math.round(+n || 0).toLocaleString(sym === '₹' ? 'en-IN' : 'en-US')}`;
+  return { summary: `Move ${m(s.perDay)} a day from ${s.from} to ${s.to}`,
+    items: [{ name: s.from, now: `About ${m(s.fromDay)} a day`, next: `About ${m(Math.max(0, s.fromDay - s.perDay))} a day` }, { name: s.to, now: `About ${m(s.toDay)} a day`, next: `About ${m(s.toDay + s.perDay)} a day` }],
+    rule: (c.detail?.how || []).find((x) => /move it back|read it/i.test(x)) ? `${(c.detail.how.find((x) => /read it/i.test(x)) || 'Read it after 7 days').replace(/\.$/, '')}; ${(c.detail.how.find((x) => /move it back/i.test(x)) || 'move it back if cost per purchase rises 15%').replace(/^M/, 'm').replace(/\.$/, '')}` : OPS_RULE.shift_budget,
+    checkAt: 'After 7 days', spendChangeWeek: 0 }; };
 /* the ops changes that follow a store event (stock, price): one row per product the card names, never invented ad sets */
 const OPS_ROWS = { pause_pointing: ['Running', 'Paused until back in stock'], restart_paused: ['Paused for stock', 'Running again'], price_in_ads: ['Quotes the old price', 'Quotes the new price'] };
 /* a move card's rows are [label, value] ("Product", "Blue Tee"): the value names the product; a header row names none (QA J-19) */

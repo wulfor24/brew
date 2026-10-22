@@ -52,7 +52,7 @@ export function healthReadings(liveLedger = {}) {
 }
 
 /* a card's measure baseline from the team's own account (members only): the number the result is read against */
-const BASE = { creatives: ['meta.cpa'], ads: ['meta.cpa', 'gads.roas'], storefront: ['ga4.conversion'], signals: ['shopify.repeat.90d'] };
+const BASE = { creatives: ['meta.cpa'], ads: ['meta.cpa'], /* a cost baseline: a return (gads.roas, "3.2x") is not a cost per order */ storefront: ['ga4.conversion'], signals: ['shopify.repeat.90d'] };
 export function baselineOf(sector, liveLedger = {}) {
   for (const k of BASE[sector] || []) { const e = liveLedger?.[k]; if (e && e.n != null && Number.isFinite(+e.n)) return { baseline: +(+e.n).toFixed(2), baselineV: String(e.v), baselineFrom: e.label || k }; }
   return null;

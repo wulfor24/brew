@@ -1114,7 +1114,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await lock; await staticsJob; await pdfQ;
       const usd = +(spentFor(slug) - usd0).toFixed(2), at = Date.now();
       await potSpend(slug, kind, book());
-      await editUpd(slug, (u) => { u.history = [{ at, auto, ...(kind ? { kind } : {}), moves: written, usd, because: written.map((w) => stale[w.n]?.why).filter(Boolean)[0] || null }, ...(u.history || [])].slice(0, 30); });
+      await editUpd(slug, (u) => { u.history = [{ at, auto, ...(kind ? { kind } : {}), ...(priv ? { private: true } : {}), moves: written, usd, because: written.map((w) => stale[w.n]?.why).filter(Boolean)[0] || null }, ...(u.history || [])].slice(0, 30); });
       await setStatus(slug, { state: (await status(slug)).done ? 'Ready' : prevState });
       emit(slug, { type: 'rewrite-done', n: written.length, usd });
       if (written.length && !priv) notify(slug, 'update', { at, moves: written, because: auto ? 'Your read changed, and these plans quoted what changed.' : '' }).catch((e) => log.warn('[notify]', e.message));
@@ -1157,7 +1157,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   async function updates(slug, { member = true } = {}) {
     const u = await upd(slug), x = st(slug), s0 = await status(slug), moves = await packs.getJSON(slug, 'moves.json', {});
-    if (!member) u.stale = Object.fromEntries(Object.entries(u.stale || {}).filter(([, v]) => !v.private));
+    if (!member) u.stale = Object.fromEntries(Object.entries(u.stale || {}).filter(([, v]) => !v.private).map(([k, v]) => [k, ACCOUNT_SAID.test(v.why || '') ? { ...v, why: 'New evidence came in from the team’s accounts.', changes: [] } : v]));
     /* where an outdated move's refresh stands (staleSweep): being rewritten, queued, waiting for next week's pot, or due within
        the hour; off when the team turned automatic updates off */
     const inQ = new Set((u.queue || []).flatMap((q) => (q.ns || []).map(Number))), wq = potOf(u).waits || {}, rw = new Set([...(x.rewriting || [])].map(Number));
@@ -1166,11 +1166,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const stale = Object.values(u.stale || {}).filter((s) => moves[s.n] && s.via !== 'connected' /* a connected run rewrites them on its own */).sort((a, b) => (a.priority === b.priority ? a.n - b.n : a.priority === 'high' ? -1 : 1)).map((s) => ({ ...s, title: nm(s.n), refresh: refreshOf(s.n) }));
     const last = u.lastCheck?.at || s0?.doneAt || null;
     return { auto: u.auto !== false, every: REFRESH_DAYS, potNext: nextWeek(), checking: x.checking ? (u.checking || { at: Date.now() }) : null, lastCheck: u.lastCheck || null, lastError: u.lastError || null, stale,
-      next: u.auto !== false && s0?.done ? (last || Date.now()) + REFRESH_DAYS * 864e5 : null, history: (u.history || []).slice(0, 10),
+      next: u.auto !== false && s0?.done ? (last || Date.now()) + REFRESH_DAYS * 864e5 : null, history: (u.history || []).slice(0, 10).map((h) => (member || !(h.connected || h.private || h.live || ACCOUNT_SAID.test(h.because || '')) ? h : { ...h, because: null })), /* a rewrite from the team's accounts (or saved before that was marked, naming one) says why only to the team */
       rewriting: x.rewriting ? [...x.rewriting].map((n) => ({ n, title: nm(n), secs: x.inflight.has(n) ? Math.round((Date.now() - x.inflight.get(n)) / 1e3) : null, done: !x.inflight.has(n) && moves[n]?.meta?.rewrittenAt && Date.parse(moves[n].meta.rewrittenAt) > Date.now() - 3 * 3600e3 })) : null,
       /* a connected account's run, for the team: waiting for more connects, then rewriting every move with the numbers */
       connect: member && (u.connectRun || (u.connectDone && !u.connectDone.finished)) ? { names: (u.connectRun?.ids || u.connectDone?.ids || []).map((k) => NAME_OF[k] || k), waiting: !!u.connectRun, due: u.connectRun?.due || null,
-        n: u.connectDone?.n || null, written: u.connectDone?.written || 0, later: (u.queue || []).some((q) => q.via === 'connected' && q.notBefore > Date.now()) } : null,
+        n: u.connectDone?.n || null, written: await writtenSince(slug, u.connectDone), /* counted from the moves themselves, so it moves as the run writes */ later: (u.queue || []).some((q) => q.via === 'connected' && q.notBefore > Date.now()) } : null,
       pot: await (async () => { /* the week's pot, only once something drew from it or waits on it (quiet: never a $0 line) */
         const P = await potInfo(slug), waits = Object.entries(P.pot.waits || {}).filter(([n, k]) => (k === 'new' ? !moves[n] : !!u.stale?.[n])).length;
         return P.pot.usd > 0 || waits ? { spent: +P.pot.usd.toFixed(2), cap: P.cap, waiting: waits, est: P.est } : null; })(),
@@ -1222,6 +1222,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (!n) return 0;
     await packs.put(slug, file, L);
     await hooks.connected?.(slug, id); /* the fact sheet (facts-desk connected) shows them as stale; the site's fact is the truth again */
+    if (!pub) await teamView(slug).catch((e) => log.warn('[connect] team view', slug, e.message)); /* the team's profile and brief stop resting on them too */
     log.log?.(`[connect] ${slug} ${id}: ${n} rows stale (${why})`);
     return n;
   }
@@ -1285,6 +1286,12 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (left) armConnect(slug, left.due || 0);
   }
   /* which of the team's accounts a set of ledger rows comes from (shopify, meta, ga4, ...) */
+  const ACCOUNT_SAID = /\b(Google Analytics|Shopify|Meta Ads|Meta|Klaviyo|Judge\.me|Google Ads|connected account)\b/i;
+  /* how many moves a connected run has written so far: each move rewritten since the run began (private or shared copy) */
+  async function writtenSince(slug, d) { if (!d?.at) return 0; if (d.finished) return d.written || 0;
+    const pub = await packs.getJSON(slug, 'moves.json', {}).catch(() => ({})), pm = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({}));
+    const ns = Array.isArray(d.ns) && d.ns.length ? d.ns : [...new Set([...Object.keys(pm || {}), ...Object.keys(pub || {})])].filter((n) => +n > 0);
+    return ns.filter((n) => Math.max(Date.parse(pm?.[n]?.meta?.rewrittenAt || 0) || 0, Date.parse(pub?.[n]?.meta?.rewrittenAt || 0) || 0) >= d.at).length; }
   const idsOfRows = (rows = []) => Object.entries(PREFIX).filter(([, ps]) => rows.some((e) => ps.some((p) => String(e?.key || '').startsWith(p)))).map(([id]) => id).sort();
   function armConnect(slug, due) {
     clearTimeout(settling.get(slug));
@@ -1294,8 +1301,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
      numbers (no AI, no spend). Built again whenever an account's numbers change, so a corrected read (a currency, the brand's own
      campaigns) never leaves an old number in the brief the moves are written from. No rows left: the private copies go. */
   async function teamView(slug, rows = null) {
-    rows ||= realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []));
-    if (!rows.length) { for (const f of ['private/profile-live.json', 'private/brief.json', 'private/brief.md']) await packs.del?.(slug, f).catch(() => {}); return; }
+    rows ||= evidenceRows(await packs.getJSON(slug, 'private/connected-ledger.json', [])); /* a stale account's rows stop shaping the team's view */
+    /* no account left to read (all disconnected or stale): the team's view falls back to the shared one (a null file reads as absent;
+       there is no delete on the packs) */
+    if (!rows.length) { for (const f of ['private/profile-live.json', 'private/brief.json']) await packs.put(slug, f, null).catch(() => {}); return; }
     const profile = normalizeProfile(await packs.getJSON(slug, 'profile.json', {})), live = profileLive(rows, profile);
     await packs.put(slug, 'private/profile-live.json', live);
     const b = briefWithConnected(await packs.getJSON(slug, 'brief.json', null), rows);
@@ -1624,8 +1633,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (blocked(slug) || st(slug).running) return null;
     const p = await packs.getJSON(slug, 'profile.json'); if (!p?.host || !p.slug) return null;
     const L = await packs.getJSON(slug, 'ledger.json', []) || [];
-    const rows = [...realRows(await packs.getJSON(slug, 'connected-ledger.json', [])), ...realRows(await packs.getJSON(slug, 'private/connected-ledger.json', []))];
-    const { market: m, changed } = marketFor(p, L, rows); if (!changed) return null;
+    const rows = [...evidenceRows(await packs.getJSON(slug, 'connected-ledger.json', [])), ...evidenceRows(await packs.getJSON(slug, 'private/connected-ledger.json', []))];
+    const { market: m0, changed } = marketFor(p, L, rows); if (!changed) return null;
+    /* profile.json and ledger.json are public: a market read from the team's own accounts says where it came from, never
+       the team's shares ("65% of orders ship to the US" stays on the team's fact sheet) */
+    const m = ['orders', 'ga4'].includes(m0.by) ? { ...m0, why: m0.by === 'orders' ? 'Where most of the store’s orders ship (from the connected store)' : 'Where most of the site’s visitors are (from Google Analytics)' } : m0;
     /* too close to call from the site alone (market.js toConfirm): a market the read only guessed is cleared, so the check page
        asks for it ("To confirm"). Nothing is rewritten for it and nothing is spent; the brand's answer pins it */
     if (!m.primary && m.toConfirm) { if (!p.country || p.market?.by !== 'site') return null;

@@ -57,7 +57,7 @@ test('the live site’s gate never says “Demo mode”, and sign-in can’t be 
 /* ---------- 2. Meta Ads: several ad accounts ---------- */
 const PAGES = { 1: [{ id: 'p1', name: 'Acme', website: 'https://acme.in' }], 2: [{ id: 'p1', name: 'Acme', website: 'https://www.acme.in/' }], 3: [{ id: 'p9', name: 'Agency client', website: 'https://other.com' }] };
 const NAME = { 1: 'Acme US', 2: 'Acme EU', 3: 'Agency' }, SPEND = { 1: ['100', '4', '400'], 2: ['50', '1', '100'], 3: ['999', '9', '9'] };
-const graph = (calls = []) => async (url) => { const u = new URL(url), p = u.pathname.replace('/v21.0/', ''); calls.push(p);
+const graph = (calls = []) => async (url) => { const u = new URL(url), p = u.pathname.replace(/^\/v[\d.]+\//, ''); calls.push(p);
   if (p === 'me/adaccounts') return res200({ data: [1, 2, 3].map((n) => ({ account_id: String(n), name: NAME[n], currency: 'USD', account_status: 1 })) });
   const m = p.match(/^act_(\d)(?:\/(\w+))?$/); if (!m) return resErr(404, { error: { message: 'no' } }); const [, n, what] = m;
   if (!what) return res200({ name: NAME[n], currency: 'USD' });

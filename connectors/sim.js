@@ -3,7 +3,7 @@
 // from demo-data.js demoFor(): built from the brand's real read (its products and prices, review count, live ads, search
 // terms), deterministic per brand. Nothing here touches a real account.
 import { demoFor, DEMO_V } from '../demo-data.js';
-import { card, L, fmt, n0, pct } from './common.js';
+import { card, L, fmt, n0, pct, roasX } from './common.js';
 
 export const SIM_IDS = ['shopify', 'meta', 'ga4', 'google', 'klaviyo', 'reviews', 'slack', 'marketplaces'];
 export const NAME = { shopify: 'Shopify', meta: 'Meta Ads', ga4: 'Google Analytics', google: 'Google Ads', klaviyo: 'Klaviyo', reviews: 'Judge.me', slack: 'Slack', marketplaces: 'Marketplaces' };
@@ -34,7 +34,7 @@ export function createSim({ packs, log = console }) {
       L('shopify.top.30d', 'Best seller, last 30 days', s.top?.[0]?.title || '—', s.top?.[0]?.orders ?? null, nm));
     if (id === 'meta') ledger.push(L('meta.ads.live', 'Live Meta ads', n0(m.live), m.live, nm));
     if (id === 'ga4') ledger.push(L('ga4.conversion', 'Conversion rate (GA4)', pct(s.cr, 1), s.cr, nm));
-    if (id === 'google') ledger.push(L('gads.spend.30d', 'Google Ads spend, last 30 days', F.big(g.gspend), g.gspend, nm), L('gads.roas', 'Google Ads return on spend', `${(m.roas * 1.15).toFixed(1)}x`, m.roas * 1.15, nm));
+    if (id === 'google') ledger.push(L('gads.spend.30d', 'Google Ads spend, last 30 days', F.big(g.gspend), g.gspend, nm), L('gads.roas', 'Google Ads return on spend', `${roasX((m.roas * 1.15))}`, m.roas * 1.15, nm));
     if (id === 'klaviyo') ledger.push(L('klaviyo.flows.off', 'Email flows not built', '3 of 5', 3, nm));
     if (id === 'reviews') ledger = [L('reviews.judgeme.total', 'Reviews', n0(r.total), r.total, nm), L('reviews.judgeme.rating.recent', 'Average rating, last 90 days', `${r.rating} of 5`, r.rating, nm), L('reviews.judgeme.open', 'Low-star reviews with no reply', n0(r.unanswered), r.unanswered, nm)];
     if (id === 'marketplaces') ledger = [L('market.amazon.listings', 'Amazon listings', n0(mk.listings), mk.listings, nm), L('market.amazon.rating', 'Amazon rating', `${r.rating} of 5`, r.rating, nm)];

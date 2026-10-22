@@ -71,7 +71,9 @@ export default {
     return { ok, strong: ok, account: { id: s.myshopifyDomain, name: `${s.name} · ${s.primaryDomain?.host || s.myshopifyDomain}` }, why: ok ? `Shopify store ${s.myshopifyDomain} is ${ctx.host}` : `${s.myshopifyDomain} serves ${s.primaryDomain?.host || 'another domain'}, not ${ctx.host}` };
   },
   async sync(c, ctx) {
-    const F = fmt(ctx.profile), notes = [], m = {};
+    /* money in the store's own currency (a store in USD for a brand read as Indian said "₹" before), and each row says which */
+    const cur = await gql(c, '{ shop { currencyCode } }').then((d) => d?.shop?.currencyCode || null).catch(() => null);
+    const F = fmt(cur ? { ...ctx.profile, currency: cur, ...(cur === 'INR' ? { country: 'IN', locale: 'en-IN' } : ctx.profile?.country === 'IN' ? { country: 'XX', locale: 'en-US' } : {}) } : ctx.profile), notes = [], m = {};
     // orders, last 90 days (customers too when the token may read them)
     const since90 = dayISO(90 * 864e5), cut30 = Date.now() - 30 * 864e5;
     const Q = (cust) => `query($q:String,$a:String){ orders(first:250, after:$a, query:$q, sortKey:CREATED_AT, reverse:true){ pageInfo{ hasNextPage endCursor } nodes{ createdAt cancelledAt displayFinancialStatus paymentGatewayNames totalPriceSet{ shopMoney{ amount } } ${cust ? 'customer{ id numberOfOrders }' : ''} lineItems(first:5){ nodes{ title quantity } } } } }`;
@@ -130,6 +132,7 @@ export default {
       m.shipTo?.length && L('shopify.orders.countries', 'Orders by shipping country, 90 days', m.shipTo.map(([x, s]) => `${x} ${s.toFixed(0)}%`).join('; '), m.shipToN, src),
       has(m.products) && L('shopify.products.active', 'Active products (Shopify admin)', n0(m.products), m.products, src), /* beats the public products.json count on the fact sheet (facts-desk.js PRECEDENCE) */
       m.top?.length && L('shopify.top.30d', 'Best sellers by units, 30 days', m.top.map((x) => `${x.title} (${x.units})`).join('; '), null, src)].filter(Boolean);
+    if (cur) for (const r of ledger) r.cur = cur;
     return { metrics: m, stats, changed, cards: out, ledger, notes };
   }
 };

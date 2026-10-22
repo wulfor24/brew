@@ -6,7 +6,7 @@
 import { budgetWhy } from './budget.js'; // whose daily share ran out, in plain words
 import { fitCta } from './cards-gen.js'; /* a saved card's button heals as it is read (renamed, or one about another topic) */
 import { ctaName } from './seed-template.js';
-import { realRows } from './connectors/common.js';
+import { realRows, isPrivateCard, acctRows } from './connectors/common.js';
 import { baselineOf, healthReadings } from './on-connect.js'; // the team's own account numbers on cards and the health card
 import fs from 'node:fs';
 import { scoreText } from './viral-gate.js'; // viral cards: "47×" only when the creator's usual views were read
@@ -531,12 +531,15 @@ export function createFeedService(o) {
   // bring a workspace in line with what this viewer may see: add the live cards, drop the ones they may not have
   const applyLive = async (t, viewer) => {
     if (!t) return; t.member = !!viewer?.member; t.claimed = !!viewer?.claimed; t.memberEmail = viewer?.member && viewer?.email ? viewer.email : null; /* a signed-out or non-member viewer no longer carries the last member's name or personal memory */
-    const L = await liveFor(t.brandId || DEFAULT_BRAND, t.member).catch(() => ({ cards: [], on: {}, privMoves: [] }));
-    t.liveConn = L.on; t.privMoves = L.privMoves || []; t.privStatics = !!L.privStatics; t.liveLedger = L.ledger || {};
+    /* the live state is this request's own (member-ctx.js); a read that failed changes nothing, and only a member's view adds or
+       drops the team's cards: a visitor's request, or a failed read, never takes the team's cards out of the workspace */
+    const L = await liveFor(t.brandId || DEFAULT_BRAND, t.member).catch((e) => (log.warn?.('[live] read', t.brandId, e.message), null));
+    if (!L) return;
+    t.liveConn = L.on || {}; t.privMoves = L.privMoves || []; t.privStatics = !!L.privStatics; t.liveLedger = L.ledger || {};
     L.cards = (L.cards || []).filter((c) => c && c.id); /* one bad card from a connector (undefined) used to throw on every request for the brand */
     const fitLive = packs.peek(t.brandId || DEFAULT_BRAND)?.fitLive; if (fitLive) try { L.cards = fitLive(L.cards).filter((c) => c && c.id); } catch (e) { log.warn?.('[live] fit', e.message); } /* the same photo and button fitting as the shared cards */
     const ids = new Set(L.cards.map((c) => c.id)), t0 = now(t);
-    for (const [id, c] of t.cards) if ((c.liveOnly || c.publicLive) && !ids.has(id)) t.cards.delete(id);
+    if (t.member) for (const [id, c] of t.cards) if ((c.liveOnly || c.publicLive) && !ids.has(id)) t.cards.delete(id);
     for (const p of L.cards) { const have = t.cards.get(p.id);
       if (!have) t.cards.set(p.id, { ...clone(p), family: p.family || FAMILY[p.type] || 'idea', state: 'ready', origin: 'live', createdAt: t0, expiresAt: null, history: [['ready', t0]], shownCount: 0 });
       else if (have.title !== p.title || JSON.stringify(have.rows) !== JSON.stringify(p.rows)) Object.assign(have, { title: p.title, sub: p.sub, rows: clone(p.rows), badge: p.badge, detail: clone(p.detail) });
@@ -1484,7 +1487,7 @@ export function createFeedService(o) {
   const answerOnly = async (t, w, body) => {
     /* grounded and checked (jam-answer.js): numbers and performance claims only where the card and the facts hold them */
     if (EVIDENCE_ASK.test(body)) { const pa = proofSay(t, w.cardId); if (pa) return pa; } /* "what's the evidence?": the card's own proof */
-    if (!isMock() && spend('text')) { try { const acct = realRows(t.liveLedger).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
+    if (!isMock() && spend('text')) { try { const acct = acctRows(t).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
       const j = await answerGrounded({ ai: (pr, sc, mx, tag) => claudeTool(pr, sc, mx, tag), question: body, who: AGENT[w.agent] || 'Brew',
         evidence: `${cardBrief({ ...(t.cards.get(w.cardId) || {}), ...curV(w), agent: w.agent }, seatLine(t.viewer))}${acct.length ? `\n\nConnected accounts:\n${acct.map((e) => `- ${e.label}: ${e.v}`).join('\n')}` : '\n\nConnected accounts: none with results for this yet.'}` });
       if (j.answer) return clean(j.answer); } catch (e) { log.warn('[answer]', e.message); if (e.billing) return 'I can’t answer right now: Brew’s writing is paused for a while. Your question stays here in the jam; ask again later, or tag a teammate.'; } }
@@ -1688,7 +1691,7 @@ export function createFeedService(o) {
       .map((c) => ({ id: c.id, title: (process.env.PLAIN_OFF === '1' ? c : PLAIN.apply(slug, c)).title, did: did.get(c.id) || 'You saw it' })); };
   on('GET', '/api/tenants/:id/feed', async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts);
     if (t.visit && t.feedVisit !== t.visit.at) { t.feedVisit = t.visit.at; if (t.onboarding.readyAt) await runFree(t, 'visit', 6000); }
-    await PLAIN.load(slugOfT(t)).catch(() => {});
+    await PLAIN.load(slugOfT(t)).catch(() => {}); if (t.member) await PLAIN.load(slugOfT(t), true).catch(() => {}); /* the team's private cards' rewrites */
     const f = feed(t); if (process.env.PLAIN_OFF !== '1' && !demoReq()) PLAIN.queue(slugOfT(t), f.order.map((id) => t.cards.get(id)).filter(Boolean), BN()); /* cards still in their first words get plain ones in the background */
     oneTitles(t);
     return { ...f, newIds: newIdsOf(t, f.order), saved: [...savedOf(t)], cards: allCards(t), withTeam: withTeam(t.work.filter((w) => shown0(w) && guestSees(t)(w))), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, aiRing: aiRingWeekly(), decided: t.decided || {}, yesterday: yesterdayOf(t), clock: now(t) }; });
@@ -1960,7 +1963,7 @@ export function createFeedService(o) {
   // discard a jam (kept under Discarded, can be restored). Something live is undone first, never discarded under people.
   on('POST', '/api/work/:wid/discard', async (b, t, p) => {
     const w = W(t, p.wid); if (!w) return { error: 'not found' };
-    if (['deploying', 'measuring'].includes(w.stage)) return { error: 'It’s live. Undo it first, then discard it.' };
+    if (['deploying', 'measuring'].includes(w.stage)) return { error: 'It was sent to your team already. Open a jam for the next version instead.' };
     w.discarded = now(t); w.unread = false;
     // its remix leaves the jam too, back in the studio
     const ch = w.changeId && RMX?.changes(t)[w.changeId]; if (ch?.state === 'jam') ch.state = 'draft';
@@ -2119,24 +2122,47 @@ export function createFeedService(o) {
   const PAGES = liveView((b) => b.pages), MOVE_DOCS = liveView((b) => b.moveDocs);
   /* a card page is paid for once: written pages are kept in the brand pack (pages.json), so a reload or a deploy doesn't write them again */
   const pageLocks = new Map();
-  const keepPage = (key, page) => { const slug = B()?.slug, P = o.globalPacks; if (!slug || !P?.getJSON || B()?.kind !== 'generated') return;
-    const run = (pageLocks.get(slug) || Promise.resolve()).catch(() => {}).then(async () => { const all = await P.getJSON(slug, 'pages.json', {}).catch(() => ({})); all[key] = page; await P.put(slug, 'pages.json', all); }).catch((e) => log.warn('[card page] keep', e.message));
+  /* `file`: pages.json for everyone's cards; a page of a card only the team sees (isPrivateCard) goes to private/pages.json */
+  const keepPage = (key, page, file = 'pages.json') => { const slug = B()?.slug, P = o.globalPacks; if (!slug || !P?.getJSON || B()?.kind !== 'generated') return;
+    const run = (pageLocks.get(slug) || Promise.resolve()).catch(() => {}).then(async () => { const all = await P.getJSON(slug, file, {}).catch(() => ({})); all[key] = page; await P.put(slug, file, all); }).catch((e) => log.warn('[card page] keep', e.message));
     pageLocks.set(slug, run); };
+  /* the team's card pages (a connected account's card, a move rewritten from the team's numbers): never in the brand's shared
+     pages, never built for or shown to anyone outside the team, loaded once per brand from private/pages.json */
+  const PRIV_PAGES = new Map();
+  const privPages = async () => { const slug = B()?.slug; if (!slug) return {}; if (!PRIV_PAGES.has(slug)) PRIV_PAGES.set(slug, await (o.globalPacks?.getJSON?.(slug, 'private/pages.json', {}) || Promise.resolve({})).catch(() => ({})) || {}); return PRIV_PAGES.get(slug); };
   const PAGE_FACTS_OF = () => B().pageFacts;
   const building = new Map();
   // what the card page says right now, without waiting on AI (for the first brief)
-  const pageNow = (t, c) => { if (!c) return null; const key = c.id + '|' + (c.title || ''); if (PAGES[c.id] && (!PAGES[c.id].title || PAGES[c.id].title === c.title)) return PAGES[c.id]; return PAGES[key] || fallbackPage(c, MOVE_DOCS, MOVES); };
+  const pageNow = (t, c) => { if (!c) return null; const key = c.id + '|' + (c.title || '');
+    if (isPrivateCard(c)) { if (!t?.member) return null; return PRIV_PAGES.get(B()?.slug)?.[`priv|${key}`] || fallbackPage(c, MOVE_DOCS, MOVES); } if (PAGES[c.id] && (!PAGES[c.id].title || PAGES[c.id].title === c.title)) return PAGES[c.id]; return PAGES[key] || fallbackPage(c, MOVE_DOCS, MOVES); };
   const pageOf = async (t, c) => {
+    if (isPrivateCard(c)) return privPageOf(t, c);
     const key = c.id + '|' + (c.title || '');
     if (PAGES[c.id] && (!PAGES[c.id].title || PAGES[c.id].title === c.title)) return PAGES[c.id];
     if (PAGES[key]) return PAGES[key];
     if (isMock() || demoReq() || !spend('text')) return fallbackPage(c, MOVE_DOCS, MOVES); // demo mode: a page already written, or the plain one
     if (!building.has(key)) building.set(key, (async () => {
       const { nums, moveText } = moveTextOf(MOVE_DOCS, MOVES, c);
-      const measure = measureOf(t, c), mNums = new Set([measure.baseline, measure.target].filter((x) => x != null).flatMap((v) => numbersIn(`₹${v} ${v}% ${v}`)));
+      /* a shared page is cached for every viewer, so it never carries the team's connected baseline (measureOf without a viewer) */
+      const measure = measureOf(null, c), mNums = new Set([measure.baseline, measure.target].filter((x) => x != null).flatMap((v) => numbersIn(`₹${v} ${v}% ${v}`)));
       const ok = (s) => unbacked({ text: String(s || '') }, FACT_OK).every((x) => mNums.has(x.n));
       const j = await claudeTool(pagePrompt({ card: c, factBrief: PAGE_FACTS_OF(), moveText, nums, measure }), PAGE_SCHEMA, 3500, 'card_page');
       const pg = (PAGES[key] = { ...sanitizePage(j, { card: c, M: MOVE_DOCS, nums, ok }), title: c.title }); keepPage(key, pg); return pg;
+    })().catch((e) => { log.warn('[card page]', e.message); return fallbackPage(c, MOVE_DOCS, MOVES); }).finally(() => building.delete(key)));
+    return building.get(key);
+  };
+  /* a team-only card's page: members only, with the team's own baseline, kept apart (priv| keys, private/pages.json) */
+  const privPageOf = async (t, c) => {
+    if (!t?.member) return null;
+    const key = `priv|${c.id}|${c.title || ''}`, PP = await privPages();
+    if (PP[key]) return PP[key];
+    if (isMock() || demoReq() || !spend('text')) return fallbackPage(c, MOVE_DOCS, MOVES);
+    if (!building.has(key)) building.set(key, (async () => {
+      const { nums, moveText } = moveTextOf(MOVE_DOCS, MOVES, c);
+      const measure = measureOf(t, c), mNums = new Set([measure.baseline, measure.target, ...(c.liveNums || [])].filter((x) => x != null).flatMap((v) => numbersIn(`₹${v} ${v}% ${v}`)));
+      const ok = (s) => unbacked({ text: String(s || '') }, factOkFor(t)).every((x) => mNums.has(x.n));
+      const j = await claudeTool(pagePrompt({ card: c, factBrief: PAGE_FACTS_OF(), moveText, nums, measure }), PAGE_SCHEMA, 3500, 'card_page');
+      const pg = (PP[key] = { ...sanitizePage(j, { card: c, M: MOVE_DOCS, nums, ok }), title: c.title }); keepPage(key, pg, 'private/pages.json'); return pg;
     })().catch((e) => { log.warn('[card page]', e.message); return fallbackPage(c, MOVE_DOCS, MOVES); }).finally(() => building.delete(key)));
     return building.get(key);
   };
@@ -2154,8 +2180,9 @@ export function createFeedService(o) {
   on('GET', '/api/tenants/:id/share', async (b, t, p, q) => { const r = reqOf(t), wid = q?.get?.('wid') || null;
     if (!(r?.member || (wid && r?.guest?.wids?.includes(wid)))) return { status: 403, error: 'Sign in as part of the team to share this jam.' };
     if (wid && !W(t, wid)) return { status: 404, error: 'not found' };
+    if (wid && !r?.member && jamPrivate(t, W(t, wid))) return { status: 403, error: TEAM_ONLY };
     return { token: shareToken(t.id, wid) }; });
-  on('GET', '/api/work/:wid/handoff', async (b, t, p, q) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; { const r = reqOf(t); if (!(r?.member || r?.guest?.wids?.includes(w.id)) && process.env.DEMO_MODE !== '1') return { status: 403, error: 'Sign in as part of the team to share this jam.' }; } /* its links carry a jam token: only someone in the jam makes them */ const x = await HO.build(t, w, { base: q.get('base') || undefined, changeId: q.get('ch') || undefined }); return { handoff: x, text: HO.text(x, q.get('to') || 'whatsapp') }; });
+  on('GET', '/api/work/:wid/handoff', async (b, t, p, q) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; { const r = reqOf(t); if (!(r?.member || r?.guest?.wids?.includes(w.id)) && process.env.DEMO_MODE !== '1') return { status: 403, error: 'Sign in as part of the team to share this jam.' }; if (!r?.member && jamPrivate(t, w)) return { status: 403, error: TEAM_ONLY }; } /* its links carry a jam token: only someone in the jam makes them */ const x = await HO.build(t, w, { base: q.get('base') || undefined, changeId: q.get('ch') || undefined }); return { handoff: x, text: HO.text(x, q.get('to') || 'whatsapp') }; });
   /* what Brew has learned that bears on this card's pick: the brand (taste rules from edits, past results)
      and this person (how they decided before, hearts, "fewer", their seat). Short lines, newest evidence first. */
   const learnedFor = (t, c) => {
@@ -2176,7 +2203,7 @@ export function createFeedService(o) {
   on('GET', '/api/cards/:cid/learned', async (b, t, p) => { const raw = t.cards.get(p.cid); return raw ? { learned: learnedFor(t, fillCard(raw, t)) } : { learned: [] }; });
   /* the proof sheet (the shield on every card): why Brew suggested it, and the evidence it rests on, each line with its source */
   on('GET', '/api/cards/:cid/evidence', async (b, t, p) => { const raw = t.cards.get(p.cid); if (!raw || !seatOk(t, raw)) return { error: 'not found' };
-    const slug = slugOfT(t); await PLAIN.load(slug).catch(() => {}); const c = fillCard(raw, t), pl = PLAIN.get(slug, raw), shown = PLAIN.apply(slug, raw);
+    const slug = slugOfT(t); await PLAIN.load(slug).catch(() => {}); if (t.member) await PLAIN.load(slug, true).catch(() => {}); const c = fillCard(raw, t), pl = PLAIN.get(slug, raw), shown = PLAIN.apply(slug, raw);
     const voice = await voiceReady(slug), ev = refineProof(c, EV.evidenceOf({ ...c, brand: BN() }, { liveLedger: t.member ? t.liveLedger : null, plain: pl, voice, team: toldSeen(t) }), { voice, connected: (id) => connOn(t, id), has: (id) => !!SEED?.connectors?.[id] });
     return { evidence: { ...ev, ...(ev.why ? { why: { ...ev.why, because: dejargon(ev.why.because), reasons: (ev.why.reasons || []).map(dejargon) } } : {}), ...(Array.isArray(ev.moves) ? { moves: ev.moves.map((m) => ({ ...m, title: dejargon(m.title) })) } : {}), items: (ev.items || []).map((x) => ({ ...x, label: dejargon(x.label), src: dejargon(x.src) })), card: { id: raw.id, title: shown.title, sub: shown.sub, orig: shown.orig || null }, brand: BN() } }; }); /* source lines, the lead line, the reasons and "How Brew worked it out" in plain words too (no products.json, no JSON-LD: final QA pass 19 Oct) */
   on('GET', '/api/cards/:cid/page', async (b, t, p) => { const raw = t.cards.get(p.cid); if (!raw) return { error: 'not found' }; const c = fillCard(raw, t); return { page: await pageOf(t, c) }; });
@@ -2224,6 +2251,10 @@ export function createFeedService(o) {
     const br = await packs.load(slug); if (!br) return null; await JAMS.load(br.slug);
     const w = (JAMS.peek(br.slug)?.work || []).find((x) => x.slack?.ts === thread); if (!w) return JAM2 ? JAM2.slackIn({ slug: br.slug, kind, thread, ts, user, text, n }) : null; /* not a v1 jam's thread: maybe a Jam v2 one */
     const t = (w.slack.tid && await getTenant(w.slack.tid).catch(() => null)) || brandTenants(br)[0]; if (!t) return null;
+    /* who wrote in Slack is a member of the brand's team only when their Slack email is on the team: then Brew's answer in the
+       thread may quote the team's account numbers; anyone else in the channel gets answers without them (member-ctx.js) */
+    const member = !!(user.email && o.isMemberEmail && await o.isMemberEmail(br.slug, user.email).catch(() => false));
+    return MC.run({ member, email: member ? String(user.email).toLowerCase() : null, slug: br.slug, via: 'slack' }, t, async () => { if (member) await runIn(br, () => applyLive(t, { member: true })).catch(() => {});
     return runIn(br, () => {
       if (kind === 'reply') {
         const seen = (w.slack.seen ||= []); if (seen.includes(ts)) return { dup: true }; seen.push(ts); if (seen.length > 200) seen.splice(0, seen.length - 200);
@@ -2241,12 +2272,16 @@ export function createFeedService(o) {
         if (w.assignee?.ask === 'approve') w.assignee = null; move(t, w, 'ready', `${user.name || 'Someone'} approved it in Slack`);
       }
       store?.save(t); return { w };
-    });
+    }); });
   };
+  /* a jam on a team-only card (a connected account's card, a move rewritten from the team's numbers) stays with the team:
+     no guests, no share or handoff link that opens it for anyone outside the team */
+  const jamPrivate = (t, w) => !!w && (isPrivateCard(t?.cards?.get?.(w.cardId)) || isPrivateCard({ id: w.cardId }));
+  const TEAM_ONLY = 'This jam uses the team’s own account numbers, so only the team can open or share it.';
   /* jam guests: what they may do is guestAllows (above), for the jams this email is a guest of */
   const guestOk = (t, email, path) => {
-    const wids = JAMS.guestWids(t.brandId || DEFAULT_BRAND, email); if (!wids.length) return false;
     const all = JAMS.peek(t.brandId || DEFAULT_BRAND)?.work || [], changes = JAMS.peek(t.brandId || DEFAULT_BRAND)?.changes || {};
+    const wids = JAMS.guestWids(t.brandId || DEFAULT_BRAND, email).filter((id) => !jamPrivate(t, all.find((w) => w.id === id))); if (!wids.length) return false;
     return guestAllows(path, { wids, changes, cards: new Set(all.filter((w) => wids.includes(w.id)).map((w) => w.cardId).filter(Boolean)) });
   };
   /* the writes a demo-mode visitor may still make: none of them calls a model or makes an asset */
@@ -2301,7 +2336,7 @@ export function createFeedService(o) {
     if (gen && br.kind === 'generated' && req.method === 'GET' && /\/feed$/.test(u.pathname)) o.onOpen?.(br.slug); // the social scheduler and background drafts spend only on brands their team opens
     /* this request's viewer, checked from the signed-in user (REQ): t.member and t.memberEmail read it. A team member who opens
        the workspace becomes the one the background clock re-checks (teamEmail) */
-    const gw = !viewer?.member && viewer?.email ? JAMS.guestWids(br.slug, viewer.email) : [];
+    const gw = !viewer?.member && viewer?.email ? JAMS.guestWids(br.slug, viewer.email).filter((id) => !jamPrivate(t0, (JAMS.peek(br.slug)?.work || []).find((w) => w.id === id))) : [];
     const who = { member: !!viewer?.member, me: viewer?.email || null /* whoever is signed in, member or staff: their own setup answers */, email: viewer?.member ? viewer.email || null : null, name: viewer?.member ? viewer.name || null : null, pic: viewer?.member ? viewer.pic || null : null, claimed: !!viewer?.claimed, slug: br.slug, seats: viewer?.member && Array.isArray(viewer.seats) ? viewer.seats : null,
       guest: gw.length ? { email: String(viewer.email).toLowerCase(), name: viewer.name || null, pic: viewer.pic || null, wids: gw } : null };
     return SF_CTX.run(sfReq(req, u), () => GEN_CTX.run(gen, () => MC.run(who, t0, () => runIn(br, () => withPrefs(prefsOf(req), () => handleIn(req, res, u, viewer)))))); // the jam's model and memory choice, for this request
@@ -2311,6 +2346,8 @@ export function createFeedService(o) {
     if (hm && req.method === 'GET') {
       const tok = parseToken(hm[1]); const t = tok && await getTenant(tok.tid); const w = t && (W(t, tok.wid) || teamJam(t, tok.wid));
       if (!w) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('This handoff link is not valid.'); return true; }
+      /* a jam on the team's own numbers opens only for a signed-in member of the brand's team */
+      if (jamPrivate(t, w) && !t.member) { res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }); res.end(`${TEAM_ONLY} Sign in with your work email to open it.`); return true; }
       /* links shared before the jam link existed open the jam itself (same card, same change, latest state); ?full=1 is the read-only page */
       if (u.searchParams.get('full') !== '1') { res.writeHead(302, { location: jamPath(t, w), 'cache-control': 'no-store' }); res.end(); return true; }
       /* a shared brief is frozen: the page shows what was shared (w.jamBrief.context), not the jam as it is now; sharing again replaces it */
@@ -2328,6 +2365,7 @@ export function createFeedService(o) {
       if (!email && tok.wid) { send(res, 200, { signin: true, jam: tok.wid }); return true; }
       /* a teammate opens it in their own workspace: it is the team's jam already */
       if (viewer?.member && w) { if (!JAMS.isIn(w, email)) JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'joined'); send(res, 200, { member: true, jam: w.id }); return true; }
+      if (email && w && !viewer?.member && jamPrivate(t, w)) { send(res, 403, { error: TEAM_ONLY, teamOnly: true }); return true; }
       if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
       send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
     if (!/^\/api\/(tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$)/.test(u.pathname)) return false;
@@ -2339,7 +2377,8 @@ export function createFeedService(o) {
       if (r.pattern !== '/api/tenants' && !t) { send(res, 404, { error: 'unknown tenant' }); return true; }
       if (t) { clampSeat(t); const me0 = meOf(t); if (reqOf(t)?.member) JAMS.adopt(t, me0); JAMS.hydrate(t); }
       /* a card outside the viewer's views can't be opened, jammed or acted on by id either */
-      if (t && params.cid) { const c = t.cards.get(params.cid); if (c && !seatOk(t, c)) { send(res, 404, { error: 'not found' }); return true; } }
+      /* a team-only card (a connected account's, a move rewritten from the team's numbers) is not found for anyone outside the team */
+      if (t && params.cid) { const c = t.cards.get(params.cid); if (c && (!seatOk(t, c) || (isPrivateCard(c) && !t.member))) { send(res, 404, { error: 'not found' }); return true; } }
       if (t) await TUNE.load(t.brandId || DEFAULT_BRAND).catch(() => null); /* the ranker reads tuning without waiting */
       if (t) { touch(t); const k = `${r.method} ${r.pattern.replace('/api', '')}`; t.api[k] = { n: (t.api[k]?.n || 0) + 1, last: Date.now() }; if (viewer) await applyLive(t, viewer); }
       if (r.pattern === '/api/tenants/:id/onboarding') { await onboardingStream(t, req, res); return true; }

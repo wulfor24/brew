@@ -54,7 +54,7 @@ import { createMemoryRoutes } from './memory-routes.js'; // brand memory
 import { createMovesScheduler } from './moves-cadence.js'; // audit, listening and automation moves, weekly
 import { teamStatic } from './statics.js'; // the team's static ads, members only
 import { createIdeas } from './ideas.js'; // OPS_TEAM_PROBE: the team's ideas run
-import { realRows } from './connectors/common.js'; // simulated account rows are never evidence
+import { realRows, connectedOk } from './connectors/common.js'; // simulated account rows are never evidence
 import { createLearnings, briefView } from './brand-learnings.js'; // /update-brand-learnings: a pasted call, notes or emails → brief, memory, moves
 import { createDraftsBg } from './drafts-bg.js'; // first drafts on the top cards, in the background
 import { createCardsGen } from './cards-gen.js';
@@ -703,7 +703,7 @@ const brandRoutes = async (req, res, u) => {
   /* one name for the team (FEED-QA-10): move docs written before say "the Brew deployment team"; they read the agreed phrase */
   const crewName = (d) => { const j = d && JSON.stringify(d); return j && j.includes('Brew deployment team') ? JSON.parse(j.replace(/\bthe Brew deployment team\b/g, 'the ShopOS team, Brew’s build crew').replace(/\bBrew deployment team\b/g, 'The ShopOS team, Brew’s build crew')) : d; };
   const mm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/moves\/(\d+)$/);
-  if (mm) { const p = await loadBrand(mm[1]), v = await viewerOf(req, mm[1]); const priv = v.member ? (await packs.getJSON(mm[1], 'private/moves.json', {}))[+mm[2]] : null;
+  if (mm) { const p = await loadBrand(mm[1]), v = await viewerOf(req, mm[1]); const priv0 = v.member ? (await packs.getJSON(mm[1], 'private/moves.json', {}))[+mm[2]] : null, priv = priv0 && connectedOk(priv0.meta, await connectors.connectedIds(mm[1])) ? priv0 : null; /* a move written from an account since disconnected waits hidden */
     return send(res, 200, crewName(priv ? { ...(p?.fitMove ? p.fitMove(priv) : markMoveClaims(priv, packSource(p))), private: true } : p?.moveDocs?.[+mm[2]] || { error: 'not written yet' })), true; } /* the team's own moves are marked like the shared ones (QA-25); one name for the team */
   /* the fact sheet: anyone may read the public sheet; members also see their connected facts; on a claimed brand only its team edits */
   const fm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/facts$/);
@@ -757,7 +757,7 @@ const brandRoutes = async (req, res, u) => {
   const staleTrue = (x, p) => { const ch = (x?.changes || []).map((c) => /^(.*) price: .+? → (.+)$/.exec(String(c))); if (!ch.length || ch.some((m) => !m)) return true;
     const num = (t) => { const m = /([\d.,]+)\s*([kKmM])?/.exec(String(t)); if (!m) return NaN; return +m[1].replace(/,/g, '') * (m[2] ? (/k/i.test(m[2]) ? 1e3 : 1e6) : 1); };
     return ch.some(([, name, now]) => { const it = (p?.catalog || []).find((y) => y.t === name.trim()); if (!it?.price) return true; const a = num(it.price), b = num(now); return !Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a - b) / Math.max(a, 1) <= 0.03; }); };
-  if (what === 'updates' && req.method === 'GET') { const u = await builder.updates(slug, { member: v.member || !v.claimed }); if (Array.isArray(u?.stale)) { const pk = await loadBrand(slug); u.stale = u.stale.filter((x) => staleTrue(x, pk)); } return send(res, 200, u), true; }
+  if (what === 'updates' && req.method === 'GET') { const u = await builder.updates(slug, { member: !!v.member }); if (Array.isArray(u?.stale)) { const pk = await loadBrand(slug); u.stale = u.stale.filter((x) => staleTrue(x, pk)); } return send(res, 200, u), true; }
   if (what === 'updates' && req.method === 'POST') { const b = await readBody(req); // check | rewrite { moves } | auto { on }
     const r = b.action === 'check' ? await builder.checkUpdates(slug) : b.action === 'rewrite' ? await builder.rewrite(slug, b.moves || []) : b.action === 'auto' ? await builder.setAuto(slug, b.on) : { error: 'unknown action' };
     return send(res, 200, r), true; }
@@ -765,7 +765,7 @@ const brandRoutes = async (req, res, u) => {
   if (what === 'pro' && req.method === 'POST') { const me = auth.user(req); return send(res, 200, await builder.goPro(slug, { by: me?.email || v.email || null })), true; } // the paused build carries on to every move
   if (what === 'check' && req.method === 'GET') return send(res, 200, await builder.checkData(slug, { heal: !auth.signinOn() || !!auth.user(req), opened: !!auth.user(req) && !!(v.member || v.eligible) })), true; // a paid repair of the saved read only for someone signed in; the team opening it gets the full wait from now (build.js checkOpened)
   if (what === 'check' && req.method === 'POST') { const g = await signGate(); if (g) return send(res, 401, g), true; const b = await readBody(req); return send(res, 200, await builder.applyCheck(slug, b)), true; }
-  if (what === 'moves') { const p = await loadBrand(slug); const pm = v.member ? await packs.getJSON(slug, 'private/moves.json', {}) : {}, ms = { ...(p?.moveDocs || {}), ...Object.fromEntries(Object.entries(pm || {}).map(([k, x]) => [k, p?.fitMove ? p.fitMove(x) : x])) };
+  if (what === 'moves') { const p = await loadBrand(slug); const ids = v.member ? await connectors.connectedIds(slug) : [], pm = v.member ? Object.fromEntries(Object.entries((await packs.getJSON(slug, 'private/moves.json', {})) || {}).filter(([, x]) => connectedOk(x?.meta, ids))) : {}, ms = { ...(p?.moveDocs || {}), ...Object.fromEntries(Object.entries(pm || {}).map(([k, x]) => [k, p?.fitMove ? p.fitMove(x) : x])) };
     const stale = Object.fromEntries(Object.entries((await packs.getJSON(slug, 'updates.json', null))?.stale || {}).filter(([, x]) => (v.member || !x.private) && staleTrue(x, p))), ppdf = v.member ? await packs.getJSON(slug, 'private/pdfs.json', {}) : {};
     return send(res, 200, { moves: Object.values(ms).sort((a, b) => a.n - b.n).map((x) => ({ n: x.n, group: x.group, skill: x.skill || null, family: x.family || null, kicker: x.kicker, title: x.title, stat: x.stat, statLabel: x.statLabel, gives: x.gives, live: x.live, verified: !!x.meta?.verified, words: x.meta?.words || null,
       version: x.meta?.version || 1, rewrittenAt: x.meta?.rewrittenAt || null, because: x.meta?.because || null, at: x.meta?.at || null, private: !!pm[x.n], past: x.past || null, stale: stale[x.n] ? { why: stale[x.n].why, priority: stale[x.n].priority } : null })), pdfs: { ...((await builder.status(slug))?.pdfs || {}), ...ppdf }, zips: (await builder.status(slug))?.zips || [], status: await builder.status(slug) }), true; }

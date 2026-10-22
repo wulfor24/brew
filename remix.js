@@ -20,7 +20,7 @@ import { withSteps } from './card-plan.js';
 import { shopperLine, familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx, isAdVideo, namesLiveTest } from './studio.js';
 import { buildPack } from './publish-pack.js';
 import { impactInputs, projectImpact } from './impact.js';
-import { realRows } from './connectors/common.js';
+import { realRows, acctRows } from './connectors/common.js';
 import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // a question gets an answer, never a version; "keep the photo" never makes one
 import { EVIDENCE_ASK, proofAnswer } from './evidence.js'; // "what's the evidence?" is answered from the card's own proof
 import { moveNo } from './value.js';
@@ -42,7 +42,7 @@ export const ACTIONS = {
     stop_rule: { label: 'Set a stop-or-scale rule', target: { conn: 'meta', object: 'Automated rule' }, money: false, rollback: 'Switch the rule off', scope: [[1, 'This campaign'], [3, '3 campaigns'], [12, 'Every campaign']], preview: 'numbers', settings: [['Check', 'Every morning at 9'], ['Stop', 'Over the stop line for 48 hours'], ['Scale', 'Asks you first']] },
     swap_copy: { label: 'Swap the copy in a live ad', target: { conn: 'meta', object: 'Live ad' }, money: false, rollback: 'Restore the old copy', scope: [[1, 'This ad'], [12, '12 ads with the same hook'], [40, 'All 40 live ads']], preview: 'image', settings: [['Budget', 'Unchanged'], ['Learning', 'Copy only, learning keeps']] },
     scale_budget: { label: 'Scale the budget', target: { conn: 'meta', object: 'Campaign budget' }, money: true, rollback: 'Return to the old daily budget', scope: [[1, 'This campaign']], preview: 'numbers', settings: [['Step', '+20% a day'], ['Where', 'The winning ad set'], ['Stop if', 'Cost per order passes the stop line']] },
-    shift_budget: { label: 'Shift budget', target: { conn: 'meta', object: 'Campaign budgets' }, money: true, rollback: 'Move the budget back', scope: [[1, 'Two campaigns']], preview: 'numbers', settings: [['From', 'The weakest campaign'], ['To', 'The best cost per order'], ['Total spend', 'Same, just moved']] },
+    shift_budget: { label: 'Shift budget', target: { conn: 'meta', object: 'Campaign budgets' }, money: false /* the total stays the same: nothing new is spent */, rollback: 'Move the budget back', scope: [[1, 'Two campaigns']], preview: 'numbers', settings: [['From', 'The weakest campaign'], ['To', 'The best cost per order'], ['Total spend', 'Same, just moved']] },
     /* store events (stock, price, removed pages) acted on in the ad account: the rows are the products the card names */
     pause_pointing: { label: 'Pause ads on sold-out products', target: { conn: 'meta', object: 'Ads on sold-out products' }, money: false, rollback: 'Turn the same ads back on', scope: [[1, 'The ads on these products']], preview: 'numbers', settings: [['Pause', 'Every ad that sends people to a sold-out product'], ['Restart', 'When it is back in stock'], ['Spend', 'Goes down, never up']] },
     restart_paused: { label: 'Restart the paused ads', target: { conn: 'meta', object: 'Ads paused for stock' }, money: true, rollback: 'Pause them again', scope: [[1, 'The ads on these products']], preview: 'numbers', settings: [['Restart', 'Only ads paused because the product sold out'], ['Budget', 'As it was before the pause']] },
@@ -904,7 +904,7 @@ export function createRemix(o) {
     if (EVIDENCE_ASK.test(message) && o.evidenceOf) { const pa = proofAnswer(o.evidenceOf(t, c)); if (pa) { ch.thread.push({ from: 'ai', text: pa.text, proof: pa.proof, cardId: c.id, at: now(t), answer: true }); return ch; } }
     if (isMock() || !spend('text')) { ch.thread.push({ from: 'ai', text: 'AI is offline right now, so I can’t answer that. Nothing changed.', at: now(t), offline: true, answer: true }); return ch; }
     const pf = o.evidenceOf ? proofAnswer(o.evidenceOf(t, c)) : null; /* every answer can name where a number came from */
-    const acct = realRows(t.liveLedger).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
+    const acct = acctRows(t).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
     const evidence = [cardBrief(c, seatLine(t.viewer)), `The package (${ch.actionLabel} on ${ch.target.name}):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}`,
       movePassages(c, message, 3).map((x) => `${moveTag(x)}: ${x.text || x.t || ''}`).join('\n'),
       pf ? `Where the card's numbers come from:\n${pf.text}` : '',
@@ -1463,7 +1463,8 @@ export function createRemix(o) {
     return { remixes: rows.sort((a, b) => b.at - a.at) };
   });
   on('GET', '/api/changes/:chid', async (b, t, p) => { const ch = C(t, p.chid); return ch ? { change: pubChange(t, evaluate(t, ch)) } : { error: 'not found' }; });
-  const editable = (ch) => (['running', 'live', 'deploy_team'].includes(ch.state) ? 'It is live. Undo it first, or open a jam for the next version.' : null);
+  /* Brew never changes the brand's accounts (read-only by design): a change that went out went to the team as a brief, and the next one is a new version */
+  const editable = (ch) => (!['running', 'live', 'deploy_team'].includes(ch.state) ? null : ch.state === 'deploy_team' ? 'It’s in a shared brief. Share a new version from the jam instead.' : 'It was sent to your team. Open a jam for the next version.');
   // another version: a different cut of the same package
   /* ---------- Redo it: one new take (Param, 19 Oct: "always lead with only 1 and let them redo it if they don't like it").
      One version on the stage, never options to pick from: Redo it writes the next take from a new angle (the card's next
@@ -1902,7 +1903,7 @@ export function createRemix(o) {
       if (w && !(t.work || []).some((x) => x !== w && !x.discarded && x.cardId === w.cardId && !['shared', 'result', 'out'].includes(x.stage))) { delete w.discarded; delete w.discardedWith; w.updatedAt = now(t); }
       return { ok: true }; }
     ensurePkg(t, ch); const v = versionById(t, ch.id, b.versionId); if (!v) return { error: 'no version' };
-    if (editable(ch)) return { error: 'It is live. Undo it first.' };
+    if (editable(ch)) return { error: editable(ch) };
     useVersion(t, ch, v);
     return { change: pubChange(t, ch) };
   });
@@ -1912,7 +1913,7 @@ export function createRemix(o) {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); const op = optionsOf(t, ch); if (!op) return { error: 'There are no options to pick from here.' };
     if (b.opt == null) { ch.options.picked = null; return { change: pubChange(t, ch) }; }
     const it = op.list.find((x) => x.id === b.opt); if (!it) return { error: 'That option is gone.' };
-    if (headOf(t, ch)?.id !== it.tip) { if (editable(ch)) return { error: 'It is live. Undo it first.' }; useVersion(t, ch, versionById(t, ch.id, it.tip)); }
+    if (headOf(t, ch)?.id !== it.tip) { if (editable(ch)) return { error: editable(ch) }; useVersion(t, ch, versionById(t, ch.id, it.tip)); }
     if (b.use !== false) ch.options.picked = it.id; o.save?.(t);
     return { change: pubChange(t, ch) };
   });
@@ -1921,7 +1922,7 @@ export function createRemix(o) {
   on('POST', '/api/changes/:chid/discard', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' };
     const set = ch.batchKey ? Object.values(changes(t)).filter((x) => x.cardId === ch.cardId && x.batchKey) : [ch];
-    if (set.some((x) => LIVEISH.includes(x.state))) return { error: set.length > 1 ? 'Some of these ads are live. Undo them first.' : ch.state === 'deploy_team' ? 'It’s in a shared brief. Share a new version instead.' : 'It’s live. Undo it first, then discard it.' };
+    if (set.some((x) => LIVEISH.includes(x.state))) return { error: set.length > 1 ? 'Some of these were sent to your team already. Open a jam for the next version.' : ch.state === 'deploy_team' ? 'It’s in a shared brief. Share a new version instead.' : 'It was sent to your team already. Open a jam for the next version.' };
     set.forEach((x) => (x.discarded = now(t)));
     /* the studio is its jam's package: the jam goes with it, or opening the card reopens the package you just discarded */
     const ws = (t.work || []).filter((w) => !w.discarded && set.some((x) => x.id === w.changeId) && !['deploying', 'measuring'].includes(w.stage));
