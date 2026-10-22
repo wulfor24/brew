@@ -52,7 +52,9 @@ export function mountJam2(d) {
   const out = (jam, t = null) => { if (t) try { priceAlerts(t, jam); } catch {} const v = jamView(jam); /* a job a restart cut off: its mark (saved with the jam) shows as the board's state until it is resumed or tried again */
     v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || (jam.running?.[b.id] ? { op: jam.running[b.id].op, at: jam.running[b.id].at, error: jam.running[b.id].error || 'Brew restarted while this was being made. Press it again.' } : null)])); delete v.running; delete v.cuts; return v; };
   const load = async (t, jid) => { const j = await store.get(slugOfT(t), jid, whoOf(t)); if (!j) throw Object.assign(new Error('not found'), { status: 404 }); return j; };
-  const wrap = (fn) => async (b, t, p, q) => { try { return await fn(b, t, p, q); } catch (e) { return { error: e.message, status: e.status || 200 }; } };
+  /* every jam call reads the brand's pack (catalog, config): right after a restart it may not be loaded yet, so it is loaded first
+     (23 Oct: the first Studio make after a deploy refused the brand's own product as "not from your catalog") */
+  const wrap = (fn) => async (b, t, p, q) => { try { if (t && !brandOfT(t) && d.loadBrandOfT) await d.loadBrandOfT(t).catch(() => null); return await fn(b, t, p, q); } catch (e) { return { error: e.message, status: e.status || 200 }; } };
 
   /* ---------- catalogue, partners, brand book ---------- */
   on('GET', '/api/jam2/catalogue', wrap(async () => ({ recipes: RECIPES, families: FAMILIES, sizes: SIZES, how: HOW, howLabel: HOW_LABEL, partners: engines.status() })));
