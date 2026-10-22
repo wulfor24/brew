@@ -129,3 +129,13 @@ test('feed-service guards stay in place (pins: no test builds the whole feed ser
   assert.match(src, /MC\.run\(\{ member, email: member \?/, 'a Slack reply is answered as the person who wrote it');
   assert.match(fs.readFileSync('server.js', 'utf8'), /builder\.updates\(slug, \{ member: !!v\.member \}\)/, 'an unclaimed brand’s visitors are not the team');
 });
+
+test('a card from a real connected account is never tagged Dummy; a simulated one is', async () => {
+  const src = fs.readFileSync('public/app.js', 'utf8'), m = src.match(/const dummyCard = (\(p\) => [^\n]+);/); assert.ok(m, 'one rule for the Dummy tag');
+  const dummyCard = eval(m[1]);
+  assert.equal(dummyCard({ id: 'live-meta-shift', onlyWhen: 'meta', liveOnly: true }), false, 'Arata’s real budget card');
+  assert.equal(dummyCard({ id: 'live-meta-shift', onlyWhen: 'meta', liveOnly: true, dummy: true }), true, 'a simulated account’s card (demo site)');
+  assert.equal(dummyCard({ id: 'm21-1-p', privateOf: 21, liveOnly: true }), false); assert.equal(dummyCard({ id: 'sample', onlyWhen: 'shopify' }), true, 'a pack’s sample card');
+  assert.equal(dummyCard({ id: 'm21-1' }), false); assert.equal((src.match(/is-dummy' : ''/g) || []).filter((x) => x).length >= 2, true);
+  assert.ok(!/p\.onlyWhen \|\| \/\^live-\/\.test\(p\.id\) \? ' is-dummy'/.test(src), 'the old rule (every live card Dummy) is gone');
+});

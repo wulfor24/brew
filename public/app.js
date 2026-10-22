@@ -981,6 +981,10 @@
     box.innerHTML = r?.evidence ? proofHtml(r.evidence, p) : `<p class="pf-note">${ic('info', 's14')}The proof didn’t load. Try again in a moment.</p>`;
   };
   // card times read as times: "26 min" → "26 min ago" ("Just now", "Mon", "Yesterday" stay as they are)
+  /* a card is Dummy only when it is simulated: a demo row, a simulated account's card (dummy, from connectors/index.js
+     forViewer), or a pack's sample card that waits for an account (onlyWhen without a real read behind it). A card from a real
+     connected account (liveOnly, the team's rewrite, a public marketplace read) is real and never tagged (Arata, 22 Oct) */
+  const dummyCard = (p) => !!(p && (p.dummy || p.demo || ((p.onlyWhen || /^live-/.test(String(p.id || ''))) && !p.liveOnly && !p.publicLive && p.privateOf == null)));
   const agoText = (x) => String(x || '').replace(/^(\d+\s*(?:s|sec|secs|min|mins|m|hr|hrs|h|hour|hours|d|day|days|wk|wks|week|weeks))$/i, '$1 ago');
   /* a card says where it came from in plain words (not which agent wrote it): "From your competitors", "From your store" */
   const FROM_FAMILY = { 'rival-weakness': 'From your competitors', listening: 'From your customers', 'social-posts': 'For your socials', seo: 'From Google search', 'ai-seo': 'From AI answers', seasonal: 'Coming up on the calendar', weather: 'From the weather', 'price-offer': 'Prices and offers', cro: 'From your store', automation: 'Saves you time', result: 'Your results' };
@@ -1099,7 +1103,7 @@
     /* "New": made since the last visit and not seen before it; "Start here": the first card to open on a first visit */
     const tags = `${NEWSET.has(p.id) && !isNew ? '<span class="new-tag">New</span>' : ''}${p.id === START_ID ? `<button class="start-tag" data-start>${ic('sparkles', 's12')}Start here</button>` : ''}`;
     const hd = head(c.agent, sub, c.badge, true, fromLabel(c)).replace('<button class="icon-btn" data-more', `${tags}<button class="icon-btn" data-more`);
-    return `<article class="card${c.liveFrom ? ' is-live' : ''}${p.dummy || p.demo || p.onlyWhen || /^live-/.test(p.id) ? ' is-dummy' : ''}${isNew ? ' is-new' : ''}${fd ? ' has-draft' : ''}${p.id === START_ID ? ' is-start' : ''}" data-post="${i}" data-id="${esc(p.id)}">${hd}${fd || slotHtml(c)}${media ? barHtml(c.cta, dn) + actsHtml(p) + body + rows : actsHtml(p) + body + barHtml(c.cta, dn)}</article>`;
+    return `<article class="card${c.liveFrom ? ' is-live' : ''}${dummyCard(p) ? ' is-dummy' : ''}${isNew ? ' is-new' : ''}${fd ? ' has-draft' : ''}${p.id === START_ID ? ' is-start' : ''}" data-post="${i}" data-id="${esc(p.id)}">${hd}${fd || slotHtml(c)}${media ? barHtml(c.cta, dn) + actsHtml(p) + body + rows : actsHtml(p) + body + barHtml(c.cta, dn)}</article>`;
   };
 
   const introCard = () => `<article class="card" data-intro>${head('brew', 'Welcome', null, false)}
@@ -1285,7 +1289,7 @@
   /* a calm list: the photo only when there is one, the title, one line, and the one action. The row itself opens the card */
   const qThumb = (p, c) => { const img = (c.images || p.images || [])[0]; return img ? `<span class="q-thumb"><img src="${img}" alt="" loading="lazy"></span>` : ''; };
   const qRow = (p, i) => { const c = cardOf(p);
-    return `<article class="card q-card${(c.images || p.images || [])[0] ? '' : ' no-img'}${p.dummy || p.demo || p.onlyWhen || /^live-/.test(p.id) ? ' is-dummy' : ''}" data-post="${i}" data-id="${esc(p.id)}">${qThumb(p, c)}
+    return `<article class="card q-card${(c.images || p.images || [])[0] ? '' : ' no-img'}${dummyCard(p) ? ' is-dummy' : ''}" data-post="${i}" data-id="${esc(p.id)}">${qThumb(p, c)}
       <div class="q-body"><div class="q-meta">${face(p.agent)}${c.badge ? `<span class="badge ${c.badge[1]}">${esc(c.badge[0])}</span>` : `<span>${esc(fromLabel(c))}</span>`}</div>
         ${p.told && !isToldCard(c) ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p></div>
       <div class="q-acts">${barHtml(c.cta || { label: 'Open' }, c.done)}</div></article>`; };
