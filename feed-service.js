@@ -34,7 +34,10 @@ import { createReferences } from './references.js';
 import { createFinalsRoutes } from './finals-routes.js';
 import { buildDraft } from './sloosh-prompt.js'; // one brief for every draft picture // Make the final: Sloosh, quote first, behind a button (finals.js) // References: the brand's uploaded photos, past ads, looks and videos, for the generators // Drop anything: memory, my preferences, just this once // Send brief: the full email and the "N with the team" pill
 import { shipLine, oneCard, oneTake } from './text-fit.js';
-import { createDrafts, fakeMakers } from './drafts.js';
+import { createDrafts, fakeMakers, createMakers } from './drafts.js';
+import { mountJam2 } from './jam2/routes.js'; // Jam v2 (?v=2): its own routes and data, v1 untouched
+import { makeVideo as jam2Video, makeVoice as jam2Voice } from './media.js';
+import { genFile as jam2GenFile } from './gen-store.js';
 import { cardProduct, cardScene, matchProduct } from './product-match.js';
 import { gapFix } from './ai-gap.js';
 import { newsForUs, newsCta, adForUs } from './for-us.js'; // every rival and news story ends on one line for the brand (QA FEED-ARV-10) // the AI-answers gap card's own fix (QA FEED-ARV-09)
@@ -281,6 +284,7 @@ export function createFeedService(o) {
   let HO = null; // the full-context handoff (handoff.js)
   let MOVES = null; // the move documents (moves.js)
   let RMX = null; // the studio (remix.js), wired up once the routes exist
+  let JAM2 = null; // Jam v2 (jam2/routes.js), ?v=2 only
   let JAM_FINALS = null; // the jam's finals (finals-routes.js), for a final that lands after a restart
   let linkChange = null; // a jam's change package for its work item (set with the work routes)
  // the measuring engine (measure-engine.js), behind MEASURE_ENGINE; off = the old simulated loop
@@ -2181,6 +2185,10 @@ export function createFeedService(o) {
   const FAKE = process.env.MEDIA_FAKE === '1' && !process.env.K_SERVICE ? fakeMakers() : null;
   RMX = createRemix({ evidenceOf: (t, c) => proofOfCard(t, c), /* refined like the shield: the studio never lists proof the card's sheet removed (FEED-ARV-01) */ rivalAdOf: rivalAd, rivalStoreOf, rivalSummary, viralOf, refSummary, references: (t) => REFS.list(t.brandId || DEFAULT_BRAND), finals: o.finals || null, sloosh: o.sloosh || null, creditsLeft: (slug) => o.budgetLeft?.(slug) || null, brandOfT, slugOfT, meOf, onMedia: (t, ch, m) => studioMedia(t, ch, m), onFinal: (t, ch, r) => studioFinal(t, ch, r), onVersion: (t, ch, v, why) => studioVersion(t, ch, v, why), onShopos: (t, w, x) => shoposMail(t, w, x), askPerson: async (t, w, q, email) => { const [x] = await tagsOf(t, w, [email]); if (!x) return { error: 'They’re not on the team yet. Invite them first.' }; const me0 = meOf(t);
       JAMS.join(w, x, 'asked'); say(t, w, { from: 'system', body: `${nameOf(me0)} asked ${nameOf(x)}: ${q.q}` }); mailEv(t, w, { kind: 'asked', to: [x.email], by: me0, text: q.q, id: `q_${w.id}_${q.id}` }); return x; }, ...(FAKE ? { makers: FAKE.makers, videoImage: FAKE.image, mediaFake: true } : {}), planOf: (t, c) => (c ? planOfCard(c) : null), save: (t) => store?.save(t), catalogOf: (t) => (t ? brandOfT(t)?.catalog : null), photoAsync: o.photoAsync, photoFile, handoffPath, MOVES, seedJam: (t, w) => JB?.seed(t, w), claudeTool, geminiImage, PUB, LANE_PHOTO, FACTS, unbackedNums: (text) => unbacked({ text: String(text).replace(/\b(?:Rs\.?|INR)\s?(?=\d)/gi, '₹') }, FACT_OK).map((x) => x.n), SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, measureOf, log  });
+  /* Jam v2 (?v=2): the new jam lives beside v1 in jam2/, with its own routes (/api/jam2/*), data (jams-v2.json, brandbook.json) and
+     public pages (/p/<token>, /brief/<token>); nothing in v1 calls it */
+  JAM2 = mountJam2({ on, packs: o.globalPacks || packs, slugOfT, brandOfT, meOf, reqOf, cardOf: (t, id) => { const c = t.cards.get(id); return c ? fillCard(c, t) : null; }, sourceOf: (t, c) => packSource(brandOfT(t), c), refsOf: (slug) => REFS.list(slug), isMock, spend: (k) => spend(k),
+    geminiImage, vertexVideo: (frame, prompt, x) => jam2Video(frame, prompt, x, log), vertexVoice: (text, v) => jam2Voice(text, v, {}, log), finals: o.finals || null, saveGen, genFile: jam2GenFile, photoAsync: o.photoAsync, claudeTool, launchBrowser: o.launchBrowser, shoot: createMakers({ geminiImage, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, log }).shoot, zipBuffer: o.zipBuffer, log });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {
     let t = tenants.get(id); if (t || !store || !id) return t;
@@ -2243,7 +2251,7 @@ export function createFeedService(o) {
   const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|find-more|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
-    if (!/^\/(h\/|api\/(share|tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$))/.test(u.pathname)) return false;
+    if (!/^\/(h\/|p\/|brief\/|api\/(share|tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$))/.test(u.pathname)) return false;
     let tid = null;
     const hm0 = u.pathname.match(/^\/h\/([\w~-]+)$/), sm0 = u.pathname.match(/^\/api\/share\/([\w~-]+)$/);
     if (hm0) tid = parseToken(hm0[1])?.tid; else if (sm0) tid = parseShare(sm0[1])?.tid; else tid = u.pathname.match(/^\/api\/tenants\/(t_[a-f0-9]+)/)?.[1] || req.headers['x-tenant'];
@@ -2293,6 +2301,7 @@ export function createFeedService(o) {
     return SF_CTX.run(sfReq(req, u), () => GEN_CTX.run(gen, () => MC.run(who, t0, () => runIn(br, () => withPrefs(prefsOf(req), () => handleIn(req, res, u, viewer)))))); // the jam's model and memory choice, for this request
   };
   const handleIn = async (req, res, u, viewer) => {
+    if (JAM2 && /^\/(p|brief)\//.test(u.pathname) && await JAM2.publicHandle(req, res, u)) return true; /* Jam v2's ready-to-post and brief links */
     const hm = u.pathname.match(/^\/h\/([\w~-]+)$/);
     if (hm && req.method === 'GET') {
       const tok = parseToken(hm[1]); const t = tok && await getTenant(tok.tid); const w = t && (W(t, tok.wid) || teamJam(t, tok.wid));
@@ -2316,7 +2325,7 @@ export function createFeedService(o) {
       if (viewer?.member && w) { if (!JAMS.isIn(w, email)) JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'joined'); send(res, 200, { member: true, jam: w.id }); return true; }
       if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
       send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
-    if (!/^\/api\/(tenants|cards|jams|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$)/.test(u.pathname)) return false;
+    if (!/^\/api\/(tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$)/.test(u.pathname)) return false;
     for (const r of ROUTES) {
       if (r.method !== req.method) continue; const m = u.pathname.match(r.re); if (!m) continue;
       const params = m.groups || {};
@@ -2346,5 +2355,5 @@ export function createFeedService(o) {
   const syncSocial = (slug) => { const br = packs.peek(slug); if (!br) return; runIn(br, () => { for (const t of brandTenants(br)) { streamSync(t, SEED.posts); store?.save(t); } }); };
   // a cadence move was retired (moves-cadence.js): its cards leave every open workspace, unless someone acted on them
   const dropCards = (slug, ids) => { const br = packs.peek(slug); if (!br || !ids?.length) return; runIn(br, () => { for (const t of brandTenants(br)) { for (const id of ids) { const c = t.cards.get(id); if (c && ['ready', 'shown'].includes(c.state) && !t.acted?.has?.(id) && !(t.work || []).some((w) => w.cardId === id)) setState(t, c, 'expired'); } store?.save(t); } }); };
-  return { handle, slackIn, finalDone, tenants, jams: JAMS, addCards, dropCards, refreshLive, syncSocial, save: (t) => store?.save(t), wire: (b) => { wireResearch(b); wireLive(b); } };
+  return { handle, slackIn, finalDone, tenants, jams: JAMS, jam2: { flush: () => JAM2?.flush() }, addCards, dropCards, refreshLive, syncSocial, save: (t) => store?.save(t), wire: (b) => { wireResearch(b); wireLive(b); } };
 }

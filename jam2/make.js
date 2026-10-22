@@ -1,0 +1,288 @@
+// Jam v2: the one make layer. Every board is made the same way: the idea and the words (one writer call, from the card and the
+// Brand Book), then the pictures. A picture is never the model drawing the product: the real product photo is cut out (free,
+// on our server), a scene is made with an empty spot for it (one partner call), the product is placed in it with a contact
+// shadow, and the words are set in the brand's own type. Edits work on one layer at a time; free ones cost nothing, a model
+// call shows its price first. Every step says which partner made it and what it cost.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { sceneHtml, typePreset, reflow, sentencesOf } from '../public/jam2/scene.js';
+import { recipe, SIZES } from './catalogue.js';
+import { productFor } from './ingredients.js';
+import { addTake, headOf, sizeOf, uid, note } from './core.js';
+import { claimFlags } from '../claims.js';
+
+const tidy = (s, n = 240) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
+const sha = (b) => crypto.createHash('sha1').update(b).digest('hex').slice(0, 16);
+const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
+
+/* the writer's answer, one schema for every kind (fields a kind doesn't use stay empty) */
+const SCHEMA = { type: 'object', properties: {
+  angle: { type: 'string', description: 'the one-line idea, in the brand’s words, outcome first' },
+  goal: { type: 'string', enum: ['awareness', 'launch', 'conversion', 'community'] },
+  audience: { type: 'string' }, offer: { type: 'string', description: 'only an offer the card or brand facts name; empty otherwise' },
+  proof: { type: 'array', items: { type: 'string' }, description: '1–3 proof lines, each a real review quote or a fact from the card, word for word' },
+  headline: { type: 'string', description: '≤ 7 words, set on the picture' }, sub: { type: 'string', description: '≤ 12 words, optional' },
+  badge: { type: 'string', description: '≤ 4 words, only from the proof (e.g. "4.6★ from 2,100 reviews"), else empty' }, cta: { type: 'string', description: '1–3 words' },
+  caption: { type: 'string', description: 'the post caption, native to the platform, in the brand voice' }, hashtags: { type: 'array', items: { type: 'string' } }, alt: { type: 'string' },
+  scene: { type: 'string', description: 'the photo setting WITHOUT the product: surface, place, light, props, mood; leave clear space where the product will stand' },
+  body: { type: 'string', description: 'for posts, replies, messages, page copy: the full text' }, subject: { type: 'string', description: 'email subject, if a message' },
+  slides: { type: 'array', items: { type: 'object', properties: { onSlide: { type: 'string' }, small: { type: 'string' }, scene: { type: 'string' } } }, description: 'carousel / stories / set: 3–6' },
+  shots: { type: 'array', items: { type: 'object', properties: { sec: { type: 'number' }, see: { type: 'string', description: 'what is on screen, product real' }, vo: { type: 'string' }, words: { type: 'string', description: 'on-screen text' }, camera: { type: 'string' } } }, description: 'video: 3–5 shots' },
+  blocks: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' } } }, description: 'briefs, scripts, act-on plans: the sections' },
+  cols: { type: 'array', items: { type: 'string' }, description: 'change lists: the 3 column names, e.g. ["Ad", "Where", "Change"]' },
+  rows: { type: 'array', items: { type: 'object', properties: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } } }, description: 'change lists: one row per change, 3–8 rows, real names from the facts given' }
+}, required: ['angle', 'goal', 'headline', 'caption'] };
+
+const BRIEF_SECTIONS = {
+  creator: ['Who it’s for', 'The product truths', 'Open with this hook', 'Talking points (in your words)', 'Must say', 'Never say', 'Claims you may make', 'What to deliver', 'Filming tips', 'References', 'Call to action and link', 'Disclosure (#ad) and usage', 'Timeline'],
+  script: ['Hook (0–2 s)', 'Beats with timing', 'Voiceover / dialogue', 'On-screen text', 'Shot list', 'B-roll', 'References', 'Call to action', 'Cut-downs'],
+  shoot: ['The idea', 'Hero shots we need', 'Shot list (framing)', 'Props', 'Places', 'Cast', 'Mood (from our style refs)', 'Deliverables and sizes'],
+  act: ['What to change', 'Owner', 'Steps (exactly where in your tools)', 'Assets', 'Done when']
+};
+
+export function createMaker({ engines, brandbook, claudeTool, isMock, spend = () => true, launchBrowser, shoot, saveGen, genFile, photoAsync, publicUrl = process.env.PUBLIC_URL || '', log = console }) {
+  const keep = (buf, ext) => { const name = `j2-${sha(buf)}.${ext}`; saveGen(name, buf); return 'gen/' + name; };
+  /* a stored src ('gen/x', '/b/slug/..', 'https://..') → a local file path */
+  const fileOf = async (src) => { if (!src) return null; const s = String(src); if (s.startsWith('data:')) return null;
+    if (/^\/?gen\//.test(s)) return (await genFile(s.replace(/^\/?gen\//, ''))) || null; return (await photoAsync(s).catch(() => null)) || null; };
+  const dataUri = async (src) => { if (!src) return null; if (String(src).startsWith('data:')) return src; const f = await fileOf(src); if (!f || !fs.existsSync(f)) return null; const b = fs.readFileSync(f), ext = path.extname(f).slice(1).toLowerCase(); return `data:${MIME[ext] || (b[0] === 0x89 ? 'image/png' : 'image/jpeg')};base64,${b.toString('base64')}`; };
+
+  /* ---------- the idea and the words ---------- */
+  async function write(ctx, board, { ask = '' } = {}) {
+    const { card, bbv, jam } = ctx, r = recipe(board.recipe), c = jam.concept;
+    if (isMock()) return mockWords(card, r, bbv);
+    const brief = [
+      `You are Brew's creative director for ${bbv.name || 'the brand'}${bbv.category ? ` (${bbv.category})` : ''}. Make ONE ${r.label} the brand can post today.`,
+      `What it is: ${r.looks}`,
+      `The spark (${c.spark?.kind || 'idea'}): ${c.spark?.title || ''}. ${c.spark?.says || ''} ${(c.spark?.why || []).join(' ')}`.trim(),
+      c.angle ? `The idea so far: ${c.angle}. Goal: ${c.goal}.${c.audience ? ` For: ${c.audience}.` : ''}${c.offer ? ` Offer: ${c.offer}.` : ''}` : '',
+      ctx.product?.name ? `The product: ${ctx.product.name}. It appears as its real photo; describe only the setting around it.` : '',
+      brandbook.promptBlock(bbv, { recipe: r.id }),
+      ['creator', 'script', 'shoot', 'act'].includes(r.kind) ? `Write the sections as blocks, in this order: ${BRIEF_SECTIONS[r.kind].join(' · ')}. Concrete, specific to this brand, ready to hand over; nothing generic.` : '',
+      r.kind === 'video' ? `Write ${Math.max(3, Math.round((r.seconds || 15) / 4))} shots that add up to about ${r.seconds || 15} seconds. Hook in the first 2 seconds. VO reads at about 2.5 words a second.` : '',
+      ['carousel'].includes(r.kind) ? 'Write 4–6 slides: one idea each, a cover line first, a buy line last.' : '',
+      ['post', 'message', 'page'].includes(r.kind) ? `Write the full text in body${r.id === 'email' ? ' and a subject' : ''}. Native to where it runs; never salesy in a community.` : '',
+      r.id === 'ai-faq' ? 'Write body as 3–5 questions people ask AI apps about this product, each on its own line ending in "?", each followed by a two-sentence answer on the next line. Then blocks: "Product schema" (JSON-LD, real price only) and "llms.txt line".' : '',
+      r.kind === 'table' ? 'This is a change list someone applies by hand in their own tool. Fill cols (3 short names) and rows (one change per row, 3–8 rows). Use only names, prices and places from the facts given; where a fact is missing write [YOURS]. Put the steps to apply it in blocks: "Where", "Steps", "Done when".' : '',
+      board.ask ? `This board: ${board.label}. ${board.ask}` : '',
+      ask ? `The team asked: ${ask}` : '',
+      'Never invent numbers, discounts, codes, guarantees or reviews. Quote reviews only word for word from the lines given. One version only.'
+    ].filter(Boolean).join('\n\n');
+    const out = await claudeTool(brief, SCHEMA, 3000, 'jam2_write');
+    return clean(out, r);
+  }
+  const clean = (o = {}, r) => ({ ...o, headline: tidy(o.headline, 60), sub: tidy(o.sub, 90), badge: tidy(o.badge, 34), cta: tidy(o.cta, 22), caption: tidy(o.caption, 2200), scene: tidy(o.scene, 400), hashtags: (o.hashtags || []).slice(0, 8).map((h) => `#${String(h).replace(/^#/, '').replace(/\s+/g, '')}`),
+    slides: (o.slides || []).slice(0, 6), cols: (o.cols || []).slice(0, 3).map((x) => tidy(x, 24)), rows: (o.rows || []).slice(0, 10).map((x) => ({ a: tidy(x.a, 120), b: tidy(x.b, 160), c: tidy(x.c, 80) })), shots: (o.shots || []).slice(0, 6), blocks: (o.blocks || []).slice(0, 16), proof: (o.proof || []).slice(0, 3) });
+  const mockWords = (card = {}, r, bbv) => { const t = tidy(card.title || r.label, 60), h = t.split(/\s+/).slice(0, 6).join(' ');
+    return { angle: t, goal: 'conversion', audience: '', offer: '', proof: (bbv.reviews || []).slice(0, 1).map((x) => x.text), headline: h, sub: tidy(card.sub, 80), badge: '', cta: 'Shop now', caption: `${tidy(card.sub || card.title, 200)}`, hashtags: [], alt: t,
+      scene: 'a sunlit bathroom shelf with soft morning light, a folded towel, clean tiles', body: `${tidy(card.sub || card.title, 400)}`, subject: h,
+      slides: [1, 2, 3, 4].map((i) => ({ onSlide: `${h} (${i})`, small: '' })), shots: [{ sec: 3, see: 'the product on the shelf', vo: h, words: h, camera: 'push in' }, { sec: 4, see: 'hands use it', vo: tidy(card.sub, 60), words: '', camera: 'handheld' }, { sec: 4, see: 'the product close up', vo: 'Shop now', words: 'Shop now', camera: 'static' }],
+      blocks: (BRIEF_SECTIONS[r.kind] || (r.kind === 'table' ? ['Where', 'Steps', 'Done when'] : [])).map((title) => ({ title, text: `${title}: from the card, ${tidy(card.title, 80)}.` })),
+      cols: ['What', 'Where', 'Change'], rows: r.kind === 'table' ? [1, 2, 3].map((i) => ({ a: `${tidy(card.title, 40)} (${i})`, b: ['Meta', 'Google', 'Shopify'][i - 1], c: 'Change it' })) : [] }; };
+
+  /* ---------- the product, cut out once and kept ---------- */
+  async function cutout(ctx) {
+    const p = ctx.product; if (!p?.img) return null; const src = await fileOf(p.img); if (!src) return null;
+    const key = sha(Buffer.from(String(p.img))); ctx.cuts ||= {}; if (ctx.cuts[key]) return ctx.cuts[key];
+    let r; try { r = await engines.run('cutout', { srcFile: src, slug: ctx.slug, product: p.name }); } catch (e) { log.warn?.('[jam2] cutout', e.message); return { file: p.img, raw: true, provider: 'none' }; }
+    let file = r.file; /* trim the empty edges so the product fills its box */
+    try { const sharp = (await import('sharp')).default; const f = await fileOf(file); if (f) { const t = await sharp(fs.readFileSync(f)).trim({ threshold: 2 }).png().toBuffer(); file = keep(t, 'png'); } } catch (e) { log.warn?.('[jam2] trim', e.message); }
+    const out = { file, provider: r.provider, model: r.model, usd: r.usd || 0, white: !!r.white }; ctx.cuts[key] = out; return out;
+  }
+
+  /* ---------- a scene with room for the product ---------- */
+  async function scene(ctx, { describe, ratio, place = null, styleRefs = [] }) {
+    if (!spend('image', ctx.slug)) throw Object.assign(new Error('Today’s picture budget is used up. It resets tonight.'), { budget: true });
+    const look = (ctx.bbv.styleRefs || []).slice(0, 2), refFiles = (await Promise.all([...styleRefs, ...look.map((x) => x.src)].slice(0, 2).map((s) => fileOf(s).catch(() => null)))).filter(Boolean);
+    const prompt = [`A real photograph for an ad, ${ratio} frame: ${place?.describe || describe}.`,
+      'Leave a clear, empty, well-lit spot in the lower middle of the frame where a product will be placed later: an uncluttered surface, nothing standing there.',
+      'No product, no packaging, no bottle, no brand, no logo, no words, no letters, no numbers anywhere in the picture.', 'Natural light, true colours, real textures, shot on a full-frame camera, shallow depth of field in the background.',
+      refFiles.length ? `The attached images are style references only (the brand’s own posts): match their light, colour and mood; copy nothing in them.` : ''].filter(Boolean).join(' ');
+    return engines.run('still.scene', { prompt, ratio, refFiles, slug: ctx.slug, product: false });
+  }
+
+  /* ---------- compose a static scene ---------- */
+  function composeScene({ size, bgFile, cut, words, kit, preset = 'top' }) {
+    const { w, h } = size, tall = h / w > 1.6, wide = w / h > 1.4;
+    const pw = Math.round(w * (tall ? 0.62 : wide ? 0.34 : 0.5)), ph = Math.round(h * (tall ? 0.42 : wide ? 0.7 : 0.48));
+    const px = Math.round(wide ? w * 0.6 : (w - pw) / 2), py = Math.round(tall ? h * 0.44 : wide ? h * 0.18 : h * (preset === 'bottom-bar' ? 0.2 : 0.42));
+    const layers = [];
+    if (cut?.file) layers.push({ id: 'product', kind: 'product', src: cut.file, x: px, y: py, w: pw, h: ph, z: 3, locked: true, shadow: true, fit: 'contain', blend: cut.white ? 'multiply' : null });
+    layers.push(...typePreset(preset, { w, h, kit, headline: words.headline || '', sub: words.sub || '', badge: words.badge || '', cta: '' }));
+    if (kit.logo) layers.push({ id: 'logo', kind: 'logo', src: kit.logo, x: w - Math.round(w * 0.2) - Math.round(w * 0.05), y: h - Math.round(h * 0.08) - Math.round(w * 0.05) - (tall ? Math.round(h * 0.14) : 0), w: Math.round(w * 0.2), h: Math.round(h * 0.07), z: 8, fit: 'contain' });
+    return { w, h, bg: { color: kit.colors?.[1] || '#efece6', src: bgFile || null }, kit: { fonts: kit.fonts || {}, colors: kit.colors || [] }, layers };
+  }
+
+  /* ---------- render a scene to the file people download ---------- */
+  async function render(sc, { ext = 'jpg' } = {}) {
+    const srcs = {}; for (const s of [sc.bg?.src, ...(sc.layers || []).map((l) => l.src)].filter(Boolean)) srcs[s] = await dataUri(s);
+    const html = sceneHtml(sc, { srcOf: (s) => srcs[s] || '' }); const browser = await launchBrowser();
+    try { const buf = await shoot(browser, html, [sc.w, sc.h]); return keep(buf, ext); } finally { await browser.close?.().catch?.(() => {}); }
+  }
+
+  /* ---------- the gate: before the brand sees "Ready to post" ---------- */
+  function gate(ctx, take, board) {
+    const checks = [], r = recipe(board.recipe), text = [take.words?.headline, take.words?.sub, take.words?.badge, take.words?.caption, take.words?.body, ...(take.words?.slides || []).map((s) => s.onSlide), ...(take.words?.shots || []).map((s) => `${s.vo || ''} ${s.words || ''}`), ...(take.words?.blocks || []).map((b) => b.text)].filter(Boolean).join('\n');
+    const src = ctx.source || '';
+    const flags = claimFlags(text, src); checks.push({ k: 'claims', ok: !flags.length, why: flags.length ? flags.slice(0, 2).map((f) => f.why).join('; ') : 'No invented codes, guarantees or timed results.' });
+    const never = (ctx.bbv.never || []).filter((w) => w && new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text)); checks.push({ k: 'never', ok: !never.length, why: never.length ? `Uses words the brand never uses: ${never.join(', ')}` : 'None of the brand’s never-say words.' });
+    if (take.scene) {
+      const prod = take.scene.layers.find((l) => l.kind === 'product'); checks.push({ k: 'product', ok: !!prod || !!take.harmonized, why: prod ? 'The real product photo, cut out: its pixels are untouched.' : take.harmonized ? (take.guard?.same === false ? 'The blended picture may have changed the product.' : 'Blended into the scene; checked against the real photo.') : 'No product in this picture.' });
+      const tall = take.scene.h / take.scene.w > 1.6; const outside = take.scene.layers.filter((l) => (l.kind === 'text' || l.kind === 'badge') && !l.hidden && (l.x < 0 || l.x + l.w > take.scene.w + 2 || (tall && (l.y < take.scene.h * 0.14 || l.y > take.scene.h * 0.84))));
+      checks.push({ k: 'safe', ok: !outside.length, why: outside.length ? 'Some words sit where the app draws its own bars or off the edge.' : 'Words inside the safe area.' });
+      const fonts = ctx.bbv.kit?.fonts || {}; checks.push({ k: 'kit', ok: !!(fonts.heading || fonts.body) && !!ctx.bbv.kit?.colors?.length, why: fonts.heading ? `In ${fonts.heading}${ctx.bbv.kit?.colors?.length ? ' and your colours' : ''}.` : 'Your brand font isn’t set yet: add it in the Brand Book.', soft: true });
+      checks.push({ k: 'spelling', ok: true, why: 'Words are set as real type from the approved text, never drawn by the model.' });
+    }
+    if (['creator', 'script', 'shoot', 'act'].includes(r.kind)) { const want = BRIEF_SECTIONS[r.kind] || [], have = new Set((take.words?.blocks || []).filter((b) => b.text?.trim()).map((b) => b.title)); const miss = want.filter((x) => !have.has(x));
+      checks.push({ k: 'complete', ok: miss.length <= 1, why: miss.length ? `Still to fill: ${miss.join(', ')}` : 'Every section is there.' }); }
+    const hard = checks.filter((c) => !c.ok && !c.soft); return { pass: !hard.length, checks, at: Date.now() };
+  }
+
+  /* ---------- the first take of a board ---------- */
+  async function first(ctx, board, { ask = '' } = {}) {
+    const r = recipe(board.recipe), size = sizeOf(board), made = [];
+    const words = await write(ctx, board, { ask });
+    if (!ctx.jam.concept.by || ctx.jam.concept.by === 'card') Object.assign(ctx.jam.concept, { angle: words.angle || ctx.jam.concept.angle, goal: words.goal || ctx.jam.concept.goal, audience: words.audience || ctx.jam.concept.audience, offer: words.offer || '', proof: (words.proof || []).map((t) => ({ kind: 'proof', text: t })), by: 'brew' });
+    const take = { op: 'first', by: ctx.by, words, made, how: board.how };
+    if (['static', 'carousel'].includes(r.kind) || (r.kind === 'message' && r.est !== 'free')) {
+      const cut = await cutout(ctx); if (cut && !cut.raw) made.push({ cap: 'cutout', provider: cut.provider, model: cut.model, usd: cut.usd });
+      if (r.kind === 'carousel') {
+        take.slides = [];
+        for (const [i, s] of (words.slides || []).slice(0, 6).entries()) { const bg = await scene(ctx, { describe: s.scene || words.scene, ratio: size.ratio }).catch((e) => ({ error: e })); if (bg.file) made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
+          const sc = composeScene({ size, bgFile: bg.file, cut, words: { headline: s.onSlide, sub: s.small }, kit: ctx.bbv.kit, preset: i === 0 ? 'top' : 'bottom-bar' }); take.slides.push({ scene: sc, file: await render(sc) }); }
+        take.scene = take.slides[0]?.scene || null; take.file = take.slides[0]?.file || null;
+      } else {
+        const bg = await scene(ctx, { describe: words.scene, ratio: size.ratio }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
+        take.scene = composeScene({ size, bgFile: bg.file, cut, words, kit: ctx.bbv.kit }); take.file = await render(take.scene);
+      }
+    } else if (r.kind === 'video') {
+      /* the storyboard is free: one still per shot (the real product in its scene comes on Render); nothing is rendered until the brand confirms the price */
+      const cut = await cutout(ctx); take.timeline = { shots: (words.shots || []).map((s) => ({ id: uid('sh'), sec: Math.max(2, Math.min(10, +s.sec || 4)), see: s.see, vo: s.vo, words: s.words, camera: s.camera || 'static', still: null, clip: null })), voice: ctx.bbv.voice?.narrator || 'Kore', music: ctx.bbv.music?.moods?.[0] || 'no music', captions: true };
+      take.cut = cut?.file || null; take.quote = await videoQuote(ctx, board, take);
+    }
+    take.cost = { usd: +made.reduce((s, m) => s + (m.usd || 0), 0).toFixed(3), credits: made.reduce((s, m) => s + (m.credits || 0), 0) };
+    const t = addTake(ctx.jam, board, take); board.conceptRev = ctx.jam.concept.rev; t.gate = gate(ctx, t, board); return t;
+  }
+
+  /* ---------- video: price first, then render shots, voice, captions, stitch ---------- */
+  async function videoQuote(ctx, board, take) {
+    const r = recipe(board.recipe), cap = r.caps.includes('video.ugc') ? 'video.ugc' : 'video.shot'; let usd = 0, credits = 0, provider = null;
+    for (const s of take.timeline?.shots || []) { const q = await engines.quote(cap, { seconds: s.sec, slug: ctx.slug }); if (q.error) return { error: q.error }; usd += q.usd || 0; credits += q.credits || 0; provider = q.provider; }
+    const stills = (take.timeline?.shots || []).length; const sq = await engines.quote('still.scene', { slug: ctx.slug }); usd += (sq.usd || 0) * stills;
+    return { cap, usd: +usd.toFixed(2), credits, provider, seconds: (take.timeline?.shots || []).reduce((a, s) => a + s.sec, 0), at: Date.now() };
+  }
+  async function renderVideo(ctx, board, { confirmUsd } = {}) {
+    const t0 = headOf(board); if (!t0?.timeline) throw new Error('This board has no storyboard yet.');
+    const q = await videoQuote(ctx, board, t0); if (q.error) throw new Error(q.error);
+    if (!isMock() && (confirmUsd == null || +confirmUsd + 0.01 < q.usd)) return { needsConfirm: true, quote: q };
+    const size = sizeOf(board), cut = t0.cut ? { file: t0.cut } : await cutout(ctx), made = [], shots = [];
+    for (const s of t0.timeline.shots) {
+      const bg = await scene(ctx, { describe: s.see, ratio: '9:16' }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
+      const sc = composeScene({ size: { ...size, w: 1080, h: 1920 }, bgFile: bg.file, cut, words: { headline: '' }, kit: ctx.bbv.kit }); sc.layers = sc.layers.filter((l) => l.kind !== 'text' && l.kind !== 'shape' && l.kind !== 'badge');
+      const still = await render(sc); const sf = await fileOf(still);
+      const clip = await engines.run(q.cap, { srcFile: sf, srcUrl: still, prompt: `${s.camera || 'static'} camera. ${s.see}. The product stays exactly as in the first frame: same shape, label and colours. Natural motion, no text, no logos added.`, seconds: s.sec, ratio: '9:16', slug: ctx.slug, by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
+      made.push({ cap: q.cap, provider: clip.provider, model: clip.model, usd: clip.usd || 0, credits: clip.credits || 0 }); shots.push({ ...s, still, clip: clip.file });
+    }
+    const vo = t0.timeline.shots.map((s) => s.vo).filter(Boolean).join(' ');
+    const voice = vo && ctx.bbv.comfort?.aiVoice !== 'no' ? await engines.run('voice.tts', { text: vo, voice: t0.timeline.voice, slug: ctx.slug }).catch((e) => { log.warn?.('[jam2] voice', e.message); return null; }) : null;
+    if (voice) made.push({ cap: 'voice.tts', provider: voice.provider, model: voice.model, usd: voice.usd || 0 });
+    const file = await stitch(shots, voice?.file || null);
+    const take = { op: 'render', by: ctx.by, words: t0.words, timeline: { ...t0.timeline, shots }, file, made, cost: { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(2), credits: made.reduce((a, m) => a + (m.credits || 0), 0) }, parent: t0.id, how: board.how };
+    const t = addTake(ctx.jam, board, take); t.gate = gate(ctx, t, board); return { take: t };
+  }
+  /* ffmpeg: the shots end to end at 1080×1920, the voice over them; a shot that has no clip shows its still */
+  async function stitch(shots, voiceFile) {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'j2v-')), parts = [];
+    const ff = (args) => new Promise((ok, no) => import('node:child_process').then(({ execFile }) => execFile('ffmpeg', ['-y', '-v', 'error', ...args], { timeout: 180e3 }, (e) => (e ? no(e) : ok()))));
+    try {
+      for (const [i, s] of shots.entries()) { const out = path.join(tmp, `p${i}.mp4`); const clip = s.clip ? await fileOf(s.clip) : null, still = await fileOf(s.still);
+        if (clip) await ff(['-i', clip, '-t', String(s.sec), '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,format=yuv420p', '-an', '-c:v', 'libx264', '-preset', 'veryfast', out]);
+        else if (still) await ff(['-loop', '1', '-i', still, '-t', String(s.sec), '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,format=yuv420p', '-c:v', 'libx264', '-preset', 'veryfast', out]); else continue;
+        parts.push(out); }
+      if (!parts.length) throw new Error('no shot came through');
+      const list = path.join(tmp, 'list.txt'); fs.writeFileSync(list, parts.map((p) => `file '${p}'`).join('\n')); const joined = path.join(tmp, 'joined.mp4'); await ff(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', joined]);
+      let final = joined; const vf = voiceFile ? await fileOf(voiceFile) : null;
+      if (vf) { final = path.join(tmp, 'final.mp4'); await ff(['-i', joined, '-i', vf, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-af', 'apad,loudnorm=I=-14', '-shortest', final]); }
+      return keep(fs.readFileSync(final), 'mp4');
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  }
+
+  /* ---------- Edit this: one element, one change ---------- */
+  async function edit(ctx, board, { target = null, region = null, ask = '', patch = null, op = null } = {}) {
+    const h = headOf(board); if (!h) throw new Error('Nothing to edit yet.'); const r = recipe(board.recipe);
+    const base = JSON.parse(JSON.stringify(h)); delete base.id; delete base.n; delete base.gate; base.parent = h.id; base.by = ctx.by; base.made = []; base.at = Date.now();
+    /* free: the canvas's own moves (drag, resize, retype, font, colour, hide, preset, size) arrive as a scene patch */
+    if (patch?.scene && base.scene) { base.scene = patch.scene; base.op = 'arrange'; base.file = await render(base.scene); base.words = { ...base.words, ...(patch.words || {}) }; }
+    else if (patch?.words) { base.words = { ...base.words, ...patch.words }; base.op = 'words';
+      if (base.scene) for (const l of base.scene.layers) if (l.role && patch.words[l.role] !== undefined) l.words = patch.words[l.role]; if (base.scene) base.file = await render(base.scene); }
+    else if (patch?.timeline && base.timeline) { base.timeline = patch.timeline; base.op = 'timeline'; base.quote = await videoQuote(ctx, board, base); }
+    else if (patch?.slide != null && base.slides?.[patch.slide]) { const sl = base.slides[patch.slide]; if (patch.slideScene) sl.scene = patch.slideScene;
+      for (const l of sl.scene.layers) if (l.role && patch.slideWords?.[l.role] !== undefined) l.words = patch.slideWords[l.role];
+      if (patch.slideWords?.headline !== undefined && base.words?.slides?.[patch.slide]) base.words.slides[patch.slide].onSlide = patch.slideWords.headline;
+      sl.file = await render(sl.scene); if (patch.slide === 0) { base.scene = sl.scene; base.file = sl.file; } base.op = 'slide'; }
+    else if (op === 'line') { const now = getLine(base, target); if (now == null) throw new Error('Pick a line first.'); const nx = await rewriteLine(ctx, board, now, ask || 'rewrite'); setLine(base, target, nx); base.op = 'line';
+      if (base.scene) { for (const l of base.scene.layers) if (l.role && base.words[l.role] !== undefined) l.words = base.words[l.role]; base.file = await render(base.scene); }
+      if (target?.kind === 'slide' && base.slides?.[target.i]) { const sl = base.slides[target.i]; for (const l of sl.scene.layers) if (l.role === 'headline') l.words = nx; sl.file = await render(sl.scene); if (target.i === 0) { base.scene = sl.scene; base.file = sl.file; } } }
+    else if (op === 'final' && base.scene) { const sc = JSON.parse(JSON.stringify(base.scene)); const comp = await render(sc), cf = await fileOf(comp);
+      if (!spend('image', ctx.slug)) throw new Error('Today’s picture budget is used up.');
+      const out = await engines.run('still.full', { srcFile: cf, prompt: `Finish this ad as a premium photograph: keep the layout, the product, its label and every word exactly as they are; lift the light, depth and detail. ${ask || ''}`.trim(), ratio: sizeOf(board).ratio, slug: ctx.slug, product: ctx.product?.name || null, words: [base.words?.headline, base.words?.sub].filter(Boolean), by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
+      base.made.push({ cap: 'still.full', provider: out.provider, model: out.model, usd: out.usd || 0, credits: out.credits || 0 }); base.file = out.file; base.final = true; base.op = 'final'; }
+    else if (op === 'resize' && base.scene) { const s = SIZES[patch?.size || ask]; if (!s) throw new Error('Pick a size.'); board.size = patch?.size || ask; base.scene = reflow(base.scene, s.w, s.h); base.op = 'resize'; base.file = await render(base.scene); }
+    else if (op === 'swap-product') { ctx.product = productFor({ pick: patch?.product, catalog: ctx.catalog }); ctx.cuts = {}; const cut = await cutout(ctx); if (!cut) throw new Error('That product has no photo.');
+      for (const l of base.scene?.layers || []) if (l.kind === 'product') l.src = cut.file; base.op = 'swap-product'; base.file = await render(base.scene); }
+    else if (op === 'redo-words') { const w = await write(ctx, board, { ask: ask || 'A different angle and new words; same product.' }); base.words = w; base.op = 'redo-words';
+      if (base.scene) { for (const l of base.scene.layers) if (l.role && w[l.role] !== undefined) l.words = w[l.role]; base.file = await render(base.scene); } }
+    /* priced: the background only (the product is its own layer and never goes to the model), or a brushed area of it */
+    else if (op === 'background' || op === 'place' || (target === 'bg' && ask)) {
+      const place = op === 'place' ? (ctx.bbv.places || []).find((p) => p.id === patch?.place) : null, size = sizeOf(board);
+      let bg;
+      if (region && base.scene?.bg?.src) { const sf = await fileOf(base.scene.bg.src); if (!spend('image', ctx.slug)) throw new Error('Today’s picture budget is used up.');
+        bg = await engines.run('still.edit', { srcFile: sf, prompt: `Change only the area inside the box from ${Math.round(region.x * 100)}% to ${Math.round((region.x + region.w) * 100)}% across and ${Math.round(region.y * 100)}% to ${Math.round((region.y + region.h) * 100)}% down: ${ask}. Keep everything else exactly as it is. No words, no logos.`, ratio: size.ratio, slug: ctx.slug }); }
+      else bg = await scene(ctx, { describe: ask || base.words?.scene, ratio: size.ratio, place });
+      base.made.push({ cap: bg.cap || 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd || 0 }); base.scene.bg.src = bg.file; base.op = region ? 'edit-area' : 'background'; base.file = await render(base.scene); }
+    /* priced: blend the real product into the light of the scene (checked against the real photo; a miss keeps the composite) */
+    else if (op === 'blend') { const sc = JSON.parse(JSON.stringify(base.scene)); sc.layers = sc.layers.filter((l) => l.kind === 'product'); const comp = await render(sc), cf = await fileOf(comp);
+      const pf = ctx.product?.img ? await fileOf(ctx.product.img) : null;
+      if (!spend('image', ctx.slug)) throw new Error('Today’s picture budget is used up.');
+      const out = await engines.run('still.harmonize', { srcFile: pf || cf, refFiles: pf ? [cf] : [], prompt: `Image 2 is a finished composition of image 1 (the product) placed in a scene. Return image 2 with the product's lighting, shadow and reflections matched to the scene so it looks photographed there. Do not move, resize, redraw or relabel the product: its shape, label, text and colours stay exactly as in image 1. Change nothing else. No words added.`, ratio: sizeOf(board).ratio, slug: ctx.slug, product: ctx.product?.name || null });
+      base.made.push({ cap: 'still.harmonize', provider: out.provider, model: out.model, usd: out.usd || 0 });
+      if (out.guard?.fallback || out.guard?.same === false) { base.op = 'blend-kept'; base.note = 'The blend changed the product, so the real photo stays as placed.'; }
+      else { base.scene.bg.src = out.file; for (const l of base.scene.layers) if (l.kind === 'product') l.hidden = true; base.harmonized = true; base.guard = out.guard || null; base.op = 'blend'; base.file = await render(base.scene); } }
+    /* priced: a new picture, same words (Redo) */
+    else if (op === 'redo') { const size = sizeOf(board), bg = await scene(ctx, { describe: ask || base.words?.scene, ratio: size.ratio }); base.made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd || 0 });
+      if (base.scene) { base.scene.bg.src = bg.file; for (const l of base.scene.layers) if (l.kind === 'product') l.hidden = false; base.harmonized = false; base.file = await render(base.scene); } base.op = 'redo'; }
+    /* words-only boards: ask the writer */
+    else if (ask) { const w = await write(ctx, board, { ask }); base.words = { ...base.words, ...w }; base.op = 'ask'; if (base.scene) { for (const l of base.scene.layers) if (l.role && w[l.role] !== undefined) l.words = w[l.role]; base.file = await render(base.scene); } }
+    else throw new Error('Say what to change.');
+    if (r.kind === 'video' && base.timeline && patch?.timeline) { base.timeline = patch.timeline; base.quote = await videoQuote(ctx, board, base); }
+    base.cost = { usd: +base.made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(3), credits: base.made.reduce((a, m) => a + (m.credits || 0), 0) };
+    const t = addTake(ctx.jam, board, base); t.gate = gate(ctx, t, board); note(ctx.jam, `${base.op} on ${board.label}`, ctx.by?.email); return t;
+  }
+
+  /* one line of a board: a headline, a sentence of the body, a block, a row cell, a slide or a shot's words */
+  function getLine(t, g = {}) { const w = t.words || {};
+    if (g.kind === 'role') return w[g.role] ?? null; if (g.kind === 'subject') return w.subject ?? null;
+    if (g.kind === 'sent') { const p = sentencesOf(w.body); return p[g.i * 2] ?? null; }
+    if (g.kind === 'block') return w.blocks?.[g.i]?.text ?? null; if (g.kind === 'row') return w.rows?.[g.i]?.[g.col || 'b'] ?? null;
+    if (g.kind === 'slide') return w.slides?.[g.i]?.onSlide ?? null; if (g.kind === 'shot') return t.timeline?.shots?.[g.i]?.[g.field || 'vo'] ?? null; return null; }
+  function setLine(t, g = {}, v) { const w = (t.words ||= {});
+    if (g.kind === 'role') w[g.role] = v; else if (g.kind === 'subject') w.subject = v;
+    else if (g.kind === 'sent') { const p = sentencesOf(w.body); p[g.i * 2] = v; w.body = p.join(''); }
+    else if (g.kind === 'block' && w.blocks?.[g.i]) w.blocks[g.i].text = v; else if (g.kind === 'row' && w.rows?.[g.i]) w.rows[g.i][g.col || 'b'] = v;
+    else if (g.kind === 'slide' && w.slides?.[g.i]) w.slides[g.i].onSlide = v; else if (g.kind === 'shot' && t.timeline?.shots?.[g.i]) t.timeline.shots[g.i][g.field || 'vo'] = v; }
+  const HOWS = { shorter: 'Make it shorter: keep the meaning, cut words.', warmer: 'Make it warmer and more human.', friendlier: 'Make it friendlier, like a person talking.', hindi: 'Write it in natural Hindi (Devanagari), same meaning.', rewrite: 'Say it a different, better way.' };
+  async function rewriteLine(ctx, board, text, how) {
+    if (isMock()) return how === 'shorter' ? tidy(String(text).split(/[,;:–—]/)[0].replace(/[.!?]?$/, '.'), 120) : how === 'hindi' ? `(हिंदी) ${text}` : how === 'warmer' || how === 'friendlier' ? `Honestly, ${String(text).charAt(0).toLowerCase()}${String(text).slice(1)}` : `${text} `.trim();
+    const out = await claudeTool([`Rewrite one line for ${ctx.bbv.name || 'the brand'} (${recipe(board.recipe).label}).`, `The line: ${text}`, HOWS[how] || `The team asked: ${how}`, brandbook.promptBlock(ctx.bbv, { recipe: board.recipe }), 'Same facts only: never invent numbers, discounts, codes, guarantees or reviews. Return just the new line.'].join('\n\n'), { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] }, 400, 'jam2_line');
+    return tidy(out?.text || text, 600); }
+
+  /* what each priced action would cost right now, for the buttons */
+  async function prices(ctx) {
+    const s = await engines.quote('still.scene', { slug: ctx.slug }), e = await engines.quote('still.edit', { slug: ctx.slug }), hz = await engines.quote('still.harmonize', { slug: ctx.slug });
+    const f = await engines.quote('still.full', { slug: ctx.slug }).catch(() => ({}));
+    return { background: s.usd ?? null, redo: s.usd ?? null, area: e.usd ?? null, blend: hz.usd ?? null, final: f.usd ?? null, finalCredits: f.credits ?? null, providers: { scene: s.provider || null, edit: e.provider || null } };
+  }
+  return { getLine, setLine, sentencesOf, write, first, edit, render, renderVideo, videoQuote, gate, prices, cutout, composeScene, fileOf, dataUri, BRIEF_SECTIONS };
+}

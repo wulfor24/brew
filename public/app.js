@@ -4331,6 +4331,7 @@
   };
   const jamWait = () => { $('.jam-wait')?.remove(); document.body.insertAdjacentHTML('beforeend', `<div class="jam-wait" role="status" aria-live="polite"><p><brew-load class="spin"></brew-load>Opening the jam…</p></div>`); return $('.jam-wait'); };
   const openRemix = async (p, chId, o = {}) => {
+    if (window.Jam2?.on() && !String(p?.id || '').startsWith('jam-')) { closeDetail(true); return window.Jam2.open(p, o.make || cardOf(p).cta?.label || '', tapi); } /* Jam v2 (?v=2): the card's button opens the new jam; v1 is untouched */
     // Remix is the jam now: versions and quick turns live on the jam's canvas
     /* the jam page is the studio: one widget on a stage, Chat · Adjust · Details · History, versions. It works on the
        card's own package (made once per jam); a card with no package (a pure decision) keeps the canvas jam */

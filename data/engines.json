@@ -1,0 +1,32 @@
+{
+  "v": 1,
+  "note": "Jam v2 partner routing: capability → adapters in order of preference. The first one that is connected and can do it runs; the next is the fallback. Change the order here, not in code. Costs are estimates until the partner bench; every priced button asks the adapter for a fresh quote.",
+  "route": {
+    "still.scene": ["vertex", "higgsfield", "sloosh"],
+    "still.edit": ["vertex", "higgsfield"],
+    "still.harmonize": ["vertex"],
+    "still.full": ["sloosh", "higgsfield", "vertex"],
+    "still.tryon": ["sloosh", "fal"],
+    "cutout": ["local", "vertex"],
+    "upscale": ["fal", "sloosh"],
+    "video.shot": ["vertex", "higgsfield", "sloosh"],
+    "video.ugc": ["higgsfield", "sloosh", "heygen"],
+    "video.avatar": ["heygen", "higgsfield"],
+    "video.edit": ["higgsfield", "fal"],
+    "voice.tts": ["elevenlabs", "vertex"],
+    "cast.create": ["higgsfield"]
+  },
+  "higgsfield": {
+    "base": "https://api.higgsfield.ai",
+    "models": {
+      "still.full": "marketing-studio/image",
+      "still.scene": "marketing-studio/image",
+      "still.edit": "marketing-studio/image",
+      "video.shot": "kling-video/v3.0/std/image-to-video",
+      "video.ugc": "bytedance/seedance-2.5/reference-to-video",
+      "cast.create": "higgsfield/ai-influencer"
+    },
+    "usd": { "still": 0.11, "videoPerSecond": 0.17, "cast": 0.05 }
+  },
+  "vertex": { "usd": { "still": 0.04, "stillPro": 0.14, "videoPerSecond": 0.15, "voice": 0.002 } }
+}
