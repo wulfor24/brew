@@ -166,3 +166,20 @@ export function marketLine(p = {}) {
 }
 /* the same, short, for a "Brand: X (host), …" line */
 export const marketShort = (p = {}) => `selling market ${p.country || 'unknown'}${p.registeredCountry && p.registeredCountry !== p.country ? ` (registered in ${p.registeredCountry}; its shoppers are in ${p.country})` : ''}`;
+
+/* ---------- where the AI tools and searches are asked from: one map, one rule (answers.js, ai-questions.js, live-watch.js) ---------- */
+/* DataForSEO location codes for every market Brew names (COUNTRY_NAME) */
+export const DFS_LOC = { IN: 2356, US: 2840, GB: 2826, CA: 2124, AU: 2036, AE: 2784, SG: 2702, DE: 2276, FR: 2250, NL: 2528, IE: 2372, NZ: 2554, SA: 2682, MY: 2458, JP: 2392, ZA: 2710,
+  IT: 2380, ES: 2724, PT: 2620, BE: 2056, AT: 2040, CH: 2756, SE: 2752, DK: 2208, NO: 2578, FI: 2246, PL: 2616, CZ: 2203, HU: 2348, RO: 2642, GR: 2300, TR: 2792, IL: 2376,
+  KR: 2410, TW: 2158, HK: 2344, CN: 2156, VN: 2704, TH: 2764, ID: 2360, PH: 2608, EG: 2818, NG: 2566, KE: 2404, PK: 2586, BD: 2050, LK: 2144, NP: 2524, QA: 2634, KW: 2414,
+  BH: 2048, OM: 2512, BR: 2076, MX: 2484, AR: 2032, CL: 2152, CO: 2170, PE: 2604, UA: 2804, SK: 2703, SI: 2705, HR: 2191, BG: 2100, EE: 2233, LV: 2428, LT: 2440, LU: 2442, RS: 2688, IS: 2352 };
+const ASK_LANG = new Set(['en', 'de', 'fr', 'es', 'it', 'pt', 'nl', 'ja', 'ko', 'pl', 'sv', 'da', 'no', 'fi', 'tr', 'cs', 'ro', 'hu', 'el', 'he', 'th', 'vi', 'id']);
+/** the market to ask from: the brand's own, else the read's best candidate (a market "to confirm"), else the US, said so
+ *  (guessed: true, and the answers carry askedFrom). Language: the site's own when the tools support it, else English */
+export function askMarket(profile = {}, config = {}) {
+  const m = profile.market || {};
+  const own = CC(profile.country) || CC(config.country), cand = CC(m.others?.[0]) || CC(m.registered) || CC(m.signals?.phone) || CC(m.signals?.place);
+  const cc = own || cand || 'US';
+  const lang = String(profile.locale || config.locale || 'en').split(/[-_]/)[0].toLowerCase();
+  return { cc, loc: DFS_LOC[cc] || 2840, lang: ASK_LANG.has(lang) ? lang : 'en', guessed: !own, name: nameOf(cc) };
+}

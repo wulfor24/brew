@@ -249,7 +249,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       saveAsset: async (sl, name, buf, type) => { const n = String(name).replace(/[^a-zA-Z0-9._-]+/g, '-'); await packs.put(sl, 'assets/' + n, buf, type); return `/b/${sl}/a/${n}`; }, /* photos the cards show */
       saveRaw: (sl, name, data) => (paidOnly(name) ? packs.put(sl, `raw/${new Date().toISOString().slice(0, 10)}/${String(name).replace(/[^a-zA-Z0-9._-]+/g, '-')}`, data) : Promise.resolve()),
       loadRaw: async (sl, name) => (paidOnly(name) ? packs.getJSON(sl, `raw/${new Date().toISOString().slice(0, 10)}/${String(name).replace(/[^a-zA-Z0-9._-]+/g, '-')}`, null) : null) });
-    return reader.read(s.url, { fresh: false, onEvent, signal, admin: await adminFor(slug, s), slug });
+    return reader.read(s.url, { fresh: false, onEvent, signal, admin: await adminFor(slug, s), slug, config: await packs.getJSON(slug, 'config.json', null).catch(() => null) });
   }
   // the brand's spend survives a restart (cost.json is written as it goes)
   const restoreSpend = async (slug) => { const x = st(slug); if (x.usdLoaded) return; x.usdLoaded = true; const c = await packs.getJSON(slug, 'cost.json', null); x.usd = Math.max(x.usd || 0, +c?.usd || 0); };
@@ -280,7 +280,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await halt(slug); if (await budgetPause(slug, 0)) return;
         await stage(slug, 'read', 'running'); await setStatus(slug, { state: 'Reading the site', error: null }); /* a new run clears the last one's error, or the brand stays hidden */
         const reader = makeReader(m);
-        const out = await reader.read(s.url, { fresh: !!s.freshRead, onEvent: (e) => emit(slug, { type: 'reader', ev: e }), admin: await adminFor(slug, s, null), slug });
+        const out = await reader.read(s.url, { fresh: !!s.freshRead, onEvent: (e) => emit(slug, { type: 'reader', ev: e }), admin: await adminFor(slug, s, null), slug, config: await packs.getJSON(slug, 'config.json', null).catch(() => null) });
         /* the store did not open: nothing to write a brief or moves from, so stop here without spending more */
         if (!storeOpened(out)) { await packs.put(slug, 'findings.json', out.findings || null).catch(() => {}); await stage(slug, 'read', 'failed');
           await setStatus(slug, { state: out.closed ? `${s.host || 'The store'} is behind Shopify’s password page, so its site can’t be read. Open Brew from your Shopify admin to read it from there.` : `We could not open ${s.host || 'the store'}. Check the address and try again.`, error: 'store did not open', unreadable: true, ...(out.closed ? { closed: true } : {}) }); return; }
@@ -742,7 +742,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const stillBroken = !!p.ads?.own?.error || (p.ads?.rivals || []).some((r) => r.error) || (!p.ai?.answers?.length && !!p.meta?.errors?.answers); /* the AI tools step failed in the read: ask again hourly */
       if (!outdated && p.meta?.healedAt && Date.now() - Date.parse(p.meta.healedAt) < (stillBroken ? 36e5 : 864e5)) return null;
       const reader = makeReader(await load()); if (!reader.heal) return null;
-      const out = await reader.heal(p, { findings: await packs.getJSON(slug, 'findings.json'), ledger: await packs.getJSON(slug, 'ledger.json', []), log });
+      const out = await reader.heal(p, { findings: await packs.getJSON(slug, 'findings.json'), ledger: await packs.getJSON(slug, 'ledger.json', []), log, config: await packs.getJSON(slug, 'config.json', null).catch(() => null) });
       if (!out) { p.meta = { ...(p.meta || {}), healedAt: new Date().toISOString(), healed: [] }; await packs.put(slug, 'profile.json', p); return null; }
       if (st(slug).running) return null; // a build started meanwhile: its read wins
       await packs.put(slug, 'profile.json', out.profile); await packs.put(slug, 'ledger.json', out.ledger); if (out.findings) await packs.put(slug, 'findings.json', out.findings);
@@ -999,7 +999,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function doCheck(slug, { auto, why, max = null, via = null }) {
     const m = await load(); await restoreSpend(slug); const usd0 = spentFor(slug), s0 = await status(slug);
     const old = await packs.getJSON(slug, 'ledger.json', []), oldP = await packs.getJSON(slug, 'profile.json');
-    const out = await makeReader(m).read(s0.url, { fresh: true, prev: oldP, admin: await adminFor(slug, s0, oldP), slug, onEvent: (e) => { if (e.type === 'step' && e.done) emit(slug, { type: 'update-step', k: e.k, text: e.done }); } });
+    const out = await makeReader(m).read(s0.url, { fresh: true, prev: oldP, admin: await adminFor(slug, s0, oldP), slug, config: await packs.getJSON(slug, 'config.json', null).catch(() => null), onEvent: (e) => { if (e.type === 'step' && e.done) emit(slug, { type: 'update-step', k: e.k, text: e.done }); } });
     /* the store did not open today: nothing is compared or overwritten (the error is kept and the next try waits a day) */
     if (!storeOpened(out)) throw new Error('The store did not open, so nothing was compared. Brew tries again tomorrow.');
     const gone = removedKeys(oldP?.catalog?.removed);

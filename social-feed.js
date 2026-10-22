@@ -285,10 +285,13 @@ export function dueFor(st = {}, cfg, { now = Date.now(), aiLive = true, ready = 
   if (cfg.off) return { listen: false, ideas: false, why: ['background work is off here (SOCIAL_BG / RESEARCH_OFF / LIVE_OFF)'] };
   if (cfg.mock || !aiLive) return { listen: false, ideas: false, why: ['AI is on mock: nothing runs, nothing is spent'] };
   if (!ready) return { listen: false, ideas: false, why: ['the brand is not built yet'] };
-  let listen = !cfg.listenOff && now - (st.lastListen || 0) >= cfg.listenEveryH * H;
-  if (cfg.listenOff) why.push('LISTEN_OFF'); else if (!listen) why.push(`listened in the last ${cfg.listenEveryH} hours`);
+  /* a run that started and never finished (the instance was replaced by a deploy, or it crashed) did not listen: it is due
+     again, with the same depth it started with, instead of waiting out the 8 hours its start stamped (Nutrova, 22 Oct) */
+  const killed = st.listen?.state === 'running' && (!!st.listen.killed || now - (st.listen.startedAt || 0) > (cfg.runStaleMin || 20) * 60e3);
+  let listen = !cfg.listenOff && (killed || now - (st.lastListen || 0) >= cfg.listenEveryH * H);
+  if (cfg.listenOff) why.push('LISTEN_OFF'); else if (!listen) why.push(st.listen?.state === 'running' ? 'listening now' : `listened in the last ${cfg.listenEveryH} hours`);
   // the full paid sweep once a day; the runs between are light (a run before this field existed counts as not full)
-  const listenFull = now - (st.lastFullListen || 0) >= cfg.listenFullEveryH * H, listenEst = listenFull ? cfg.listenEstUsd : cfg.listenLiteEstUsd;
+  const listenFull = (killed && !!st.listen.full) || now - (st.lastFullListen || 0) >= cfg.listenFullEveryH * H, listenEst = listenFull ? cfg.listenEstUsd : cfg.listenLiteEstUsd;
   const opened = st.lastOpen && now - st.lastOpen <= cfg.openDays * DAY;
   let ideas = !cfg.ideasOff && opened && now - (st.lastIdeas || 0) >= cfg.ideasEveryH * H && today(st.lastIdeas || 0) !== today(now);
   if (cfg.ideasOff) why.push('IDEAS_OFF'); else if (!opened) why.push(`nobody opened it in the last ${cfg.openDays} days`); else if (!ideas) why.push('ideas already made today');
@@ -300,7 +303,9 @@ export function dueFor(st = {}, cfg, { now = Date.now(), aiLive = true, ready = 
 export function createSocialScheduler({ packs, ai, treg, memory = null, log = console, now = () => Date.now(), env = process.env, onFresh = async () => {}, make = {} } = {}) {
   const cfg = socialConfig(env);
   const P = 'social/state.json', mem = new Map(), opens = new Map(), rotDay = new Map();
-  const stateOf = async (slug) => { if (mem.has(slug)) return mem.get(slug); const s = (await packs.getJSON(slug, P, null).catch(() => null)) || {}; mem.set(slug, s); return s; };
+  /* a run still marked running when this instance first reads the state was another instance's, cut off by its stop: killed */
+  const stateOf = async (slug) => { if (mem.has(slug)) return mem.get(slug); const s = (await packs.getJSON(slug, P, null).catch(() => null)) || {};
+    if (s.listen?.state === 'running') s.listen.killed = true; mem.set(slug, s); return s; };
   const save = async (slug, s) => { mem.set(slug, s); await packs.put(slug, P, s).catch((e) => log.warn?.('[social] state', slug, e.message)); };
   const charge = (s, usd) => { const d = today(now()); if (s.spend?.day !== d) s.spend = { day: d, usd: 0 }; s.spend.usd = +((s.spend.usd || 0) + (usd || 0)).toFixed(4); };
   // someone opened this brand's feed (kept in memory, written at most once an hour)
@@ -321,7 +326,8 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
   }
   async function runOne(slug, due) {
     const s = await stateOf(slug); let changed = false;
-    if (due.listen) { const full = due.listenFull !== false; s.lastListen = now(); if (full) s.lastFullListen = now(); await save(slug, s);
+    /* in flight until it ends: a run cut off by a restart is seen as killed (dueFor) and runs again, never counted as heard */
+    if (due.listen) { const full = due.listenFull !== false; s.lastListen = now(); if (full) s.lastFullListen = now(); s.listen = { ...(s.listen?.at ? { last: { at: s.listen.at, items: s.listen.items ?? null, ...(s.listen.error ? { error: s.listen.error } : {}) } } : {}), state: 'running', startedAt: now(), full }; await save(slug, s);
       const w = W(slug);
       try { const r = await w.run({ paid: cfg.paid, lite: !full, capUsd: Math.max(0, Math.min(full ? cfg.listenRunCapUsd : cfg.listenLiteCapUsd, due.left)) });
         charge(s, r?.status?.usd?.total || 0); s.listen = { at: now(), full, items: r?.status?.items ?? null, usd: r?.status?.usd?.total || 0 }; changed = !r?.busy; if (!r?.busy) await remember(slug, r); }
@@ -348,7 +354,11 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
   async function tick() {
     if (busy) return { busy: true }; busy = true; const ran = [];
     try {
-      const brands = (await packs.list().catch(() => [])).filter((b) => b.slug && b.status?.name);
+      /* a brand that has never been heard (or whose run was cut off) goes first: the 3-a-tick limit never leaves a new brand
+         waiting behind ones heard this morning */
+      const all = (await packs.list().catch(() => [])).filter((b) => b.slug && b.status?.name);
+      const never = await Promise.all(all.map(async (b) => { const s = await stateOf(b.slug); return !s.listen?.at || s.listen?.state === 'running'; }));
+      const brands = [...all.filter((b, i) => never[i]), ...all.filter((b, i) => !never[i])];
       for (const b of brands) {
         const s = await stateOf(b.slug); if (opens.get(b.slug) > (s.lastOpen || 0)) s.lastOpen = opens.get(b.slug);
         const due = dueFor(s, cfg, { now: now(), aiLive: ai?.live !== false, ready: !!b.status.ready });
@@ -365,5 +375,8 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
   let timer = null;
   const start = () => { if (timer || cfg.off || cfg.mock) { log.log?.(`[social] background listening and ideas ${cfg.off ? 'off here' : cfg.mock ? 'off (AI mock)' : 'already on'}`); return false; }
     timer = setTimeout(function go() { tick().catch((e) => log.warn?.('[social] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.(); return true; };
-  return { cfg, tick, start, opened, runOne, stateOf, due: async (slug, ready = true) => dueFor(await stateOf(slug), cfg, { now: now(), aiLive: ai?.live !== false, ready }) };
+  /* a brand just became ready (its moves landed): listen now rather than on the next half-hour tick; at most once in 5 minutes */
+  let kickedAt = 0;
+  const kick = () => { if (cfg.off || cfg.mock || now() - kickedAt < 5 * 60e3) return false; kickedAt = now(); const t = setTimeout(() => tick().catch((e) => log.warn?.('[social] kick', e.message)), 10e3); t.unref?.(); return true; };
+  return { cfg, tick, start, kick, opened, runOne, stateOf, due: async (slug, ready = true) => dueFor(await stateOf(slug), cfg, { now: now(), aiLive: ai?.live !== false, ready }) };
 }

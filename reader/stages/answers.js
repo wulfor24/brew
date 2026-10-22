@@ -4,6 +4,7 @@
 // Also: inferCategory (category, subcategory, category search terms) used by rivals, ads and company.
 import { marketShort } from '../../market.js';
 import { clean, hostOf, registrable, pool, brandRe } from '../util.js';
+import { askMarket } from '../../market.js';
 import { providerNow } from '../../gemini-client.js';
 
 // DataForSEO location codes
@@ -62,31 +63,40 @@ export async function inferCategory(ctx) {
 export async function answers(ctx) {
   const { profile, ledger } = ctx;
   if (!ctx.aiOn && !ctx.tregOn) { ctx.finding('answers', { kind: 'answer', t: 'Asked ChatGPT', src: 'not asked', q: '', a: 'AI answers were not checked in this read (paid sources off).', cap: '' }); return ctx.done('answers', 'not checked (paid sources off)', 'empty'); }
-  const cc = profile.country || 'US'; const loc = LOC[cc] || 2840;
+  /* asked from the brand's market (market.js askMarket): a market still "to confirm" is asked from its best candidate, and
+     every answer says where it was asked from; the site's own language when the tools speak it */
+  const am = askMarket(profile, ctx.config || {}), cc = am.cc, loc = am.loc, lang = am.lang;
+  const enquiry = profile.storeKind === 'enquiry', who = enquiry ? 'buyer' : 'shopper', what = profile.subcategory || profile.category || (enquiry ? 'this kind of service' : 'this kind of product');
   /* the questions: a brand Brew has read before keeps its questions, so weeks compare and every answer already paid for
      this week (the read, the live watcher, the weekly check) is reused instead of asked again */
-  let qs = (ctx.prev?.ai?.questions || []).filter((q) => typeof q === 'string' && q.trim()).slice(0, 8)
+  /* the data-backed set comes first (ai-questions.js: Google suggestions, search volume, the threads Brew heard), so the
+     read asks what people really search; else the brand's last questions, so weeks compare */
+  const sourced = (ctx.sourced || []).filter((x) => x?.q && x.why?.kind !== 'none').slice(0, 8);
+  let qs = sourced.length >= 4 ? sourced.map((x) => ({ q: x.q, branded: !!x.branded, why: x.why || null })) : (ctx.prev?.ai?.questions || []).filter((q) => typeof q === 'string' && q.trim()).slice(0, 8)
     .map((q, i) => ({ q, branded: (ctx.prev.ai.answers || []).find((a) => a.q === q)?.branded ?? i >= 5 }));
   // template questions from a read whose AI failed are written properly once the AI is back
   if (qs.length < 6 || (ctx.prev?.ai?.questionsBy === 'template' && ctx.aiOn)) qs = [];
-  let qErr = null, qBy = qs.length ? ctx.prev.ai.questionsBy || 'ai' : 'ai';
+  let qErr = null, qBy = sourced.length >= 4 ? 'sourced' : qs.length ? ctx.prev.ai.questionsBy || 'ai' : 'ai';
   if (!qs.length && ctx.aiOn) {
     try {
       const r = await ctx.ai({ tag: 'reader-questions', model: 'sonnet', max: 900, schema: { type: 'object', properties: { questions: { type: 'array', items: { type: 'object', properties: { q: { type: 'string' }, branded: { type: 'boolean' } } } } } },
-        prompt: `Write 8 real questions a shopper in ${cc} would type into ChatGPT before buying ${profile.subcategory || profile.category || 'this kind of product'} (the brand is ${profile.name}, ${profile.host}). 5 unbranded (best X for Y, which X works, X without Y, is ingredient Z safe, X for a specific person), 3 branded (is ${profile.name} good, ${profile.name} vs a well-known rival, a question about ${profile.name}'s best seller "${(profile.catalog?.products || []).find((p) => p.handle === profile.catalog?.hero?.[0])?.title || ''}"). Use the words shoppers in ${cc} use. Short, natural, no brand in the unbranded ones.` });
+        prompt: `Write 8 real questions a ${who} in ${am.name} would type into ChatGPT before ${enquiry ? 'choosing' : 'buying'} ${what} (the brand is ${profile.brandName || profile.name}, ${profile.host})${enquiry ? '. It sells by enquiry, not online: ask what a buyer weighs (best developers or providers in a city, track record, prices, reviews, comparisons), never "which one works" or "worth buying online"' : ''}${lang !== 'en' ? `. Write them in the language people there search in (${lang})` : ''}. 5 unbranded (best X for Y, which X works, X without Y, is ingredient Z safe, X for a specific person), 3 branded (is ${profile.name} good, ${profile.name} vs a well-known rival, a question about ${profile.name}'s best seller "${(profile.catalog?.products || []).find((p) => p.handle === profile.catalog?.hero?.[0])?.title || ''}"). Use the words shoppers in ${cc} use. Short, natural, no brand in the unbranded ones.` });
       qs = (r.json?.questions || []).filter((x) => x.q).slice(0, 8);
     } catch (e) { ctx.log.warn?.('[reader] questions', e.message); qErr = e.message; }
   }
   /* the AI could not write them: shopper questions from a template, so ChatGPT, Gemini and Perplexity (asked through
      treg, not Brew's AI) are still asked. The error stays on the read, so heal writes real ones next time. */
-  if (!qs.length && ctx.tregOn) { qs = templateQuestions(profile); qBy = 'template'; if (qErr || !ctx.aiOn) profile.meta = { ...(profile.meta || {}), errors: { ...(profile.meta?.errors || {}), answers: qErr || 'AI off: shopper questions written from a template' } }; }
+  /* at least 5 unbranded (what the AI says before anyone names the brand is the test): a short side is topped up */
+  if (qs.length && qs.filter((x) => !x.branded).length < 5 && qBy !== 'sourced') { const t = templateQuestions(profile, am).filter((x) => !x.branded && !qs.some((y) => y.q.toLowerCase() === x.q.toLowerCase()));
+    qs = [...qs.filter((x) => !x.branded), ...t].slice(0, 5).concat(qs.filter((x) => x.branded).slice(0, 3)); }
+  if (!qs.length && ctx.tregOn) { qs = templateQuestions(profile, am); qBy = 'template'; if (qErr || !ctx.aiOn) profile.meta = { ...(profile.meta || {}), errors: { ...(profile.meta?.errors || {}), answers: qErr || 'AI off: shopper questions written from a template' } }; }
   if (!qs.length) { ctx.finding('answers', { kind: 'answer', t: 'Asked ChatGPT', src: 'not asked', q: '', a: ctx.aiOn ? "Could not write the shopper questions this time; the next refresh tries again." : 'Could not write the shopper questions (AI off).', cap: '' }); return ctx.done('answers', 'questions not written', 'empty'); }
-  profile.ai = { questions: qs.map((x) => x.q), questionsBy: qBy, answers: [], score: null };
+  profile.ai = { questions: qs.map((x) => x.q), questionsBy: qBy, askedFrom: { cc, lang, guessed: am.guessed }, ...(qBy === 'sourced' ? { why: Object.fromEntries(qs.filter((x) => x.why).map((x) => [x.q, x.why])) } : {}), answers: [], score: null };
   if (qBy === 'ai' && profile.meta?.errors?.answers) delete profile.meta.errors.answers;
   const ask = {
-    chatgpt: async (q) => { const r = await ctx.dfs('dataforseo.x.ai-optimization-chat-gpt-llm-scraper-live-advanced', [{ keyword: q, location_code: loc, language_code: 'en', force_web_search: true }], `${loc}-${q}`);
+    chatgpt: async (q) => { const r = await ctx.dfs('dataforseo.x.ai-optimization-chat-gpt-llm-scraper-live-advanced', [{ keyword: q, location_code: loc, language_code: lang, force_web_search: true }], `${loc}-${lang}-${q}`);
       return r && { text: r.markdown || '', sources: (r.sources || []).map((s) => s.url || s.domain).filter(Boolean), brands: (r.brand_entities || []).map((b) => b.title || b.name).filter(Boolean), model: r.model }; },
-    gemini: async (q) => { const r = await ctx.dfs('dataforseo.x.ai-optimization-gemini-llm-scraper-live-advanced', [{ keyword: q, location_code: loc, language_code: 'en' }], `${loc}-${q}`);
+    gemini: async (q) => { const r = await ctx.dfs('dataforseo.x.ai-optimization-gemini-llm-scraper-live-advanced', [{ keyword: q, location_code: loc, language_code: lang }], `${loc}-${lang}-${q}`);
       return r && { text: r.markdown || '', sources: (r.sources || []).map((s) => s.url || s.domain).filter(Boolean), model: r.model }; },
     perplexity: async (q) => { const r = await ctx.dfs('dataforseo.x.ai-optimization-perplexity-llm-responses-live', [{ user_prompt: q, model_name: 'sonar', web_search_country_iso_code: cc, max_output_tokens: 1200 }], `${cc}-${q}`);
       const sec = (r?.items || []).flatMap((i) => i.sections || []); return r && { text: sec.map((s) => s.text).join('\n'), sources: sec.flatMap((s) => (s.annotations || []).map((a) => a.url)).filter(Boolean), model: r.model_name }; },
@@ -125,15 +135,19 @@ export async function answers(ctx) {
 function answerCard(a, profile, cc) {
   const label = { chatgpt: 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity', claude: 'Claude' }[a.tool];
   const s = a.plain || a.text; const cut = s.slice(0, 260); const end = cut.lastIndexOf('. ');
-  return { kind: 'answer', t: `Asked ${label}`, src: `${label.toLowerCase()} · asked from ${cc} · ${a.at}`, q: a.q, a: (end > 120 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, '')) + '…', cap: `${profile.name} is ${a.named ? '' : 'not '}named` };
+  return { kind: 'answer', t: `Asked ${label}`, src: `${label.toLowerCase()} · asked from ${cc} · ${a.at}`, q: a.q, a: (end > 120 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, '')) + '…', cap: `${profile.name} is ${a.named ? '' : 'not '}named${profile.ai?.askedFrom?.guessed ? ` (asked from ${askMarket(profile).name}: your market is still to confirm)` : ''}${profile.ai?.questionsBy === 'template' ? ' · a template question: the AI could not write them this time' : ''}` };
 }
 const count = (xs) => { const m = new Map(); xs.forEach((x) => m.set(x, (m.get(x) || 0) + 1)); return [...m.entries()].sort((a, b) => b[1] - a[1]); };
 
 const COUNTRY = { IN: 'India', US: 'the US', GB: 'the UK', UK: 'the UK', AE: 'the UAE', CA: 'Canada', AU: 'Australia', SG: 'Singapore', DE: 'Germany', FR: 'France' };
 /** 8 shopper questions without an AI: 5 unbranded, 3 branded, from the category, best seller and first rival */
-export function templateQuestions(profile) {
+export function templateQuestions(profile, am = askMarket(profile)) {
   const cat = String(profile.subcategory || profile.category || 'products').toLowerCase().replace(/\s+/g, ' ').trim();
-  const where = COUNTRY[profile.country] || COUNTRY.US; const name = profile.name || profile.host;
+  const where = am.name; const name = profile.brandName || profile.name || profile.host;
+  /* a brand that sells by enquiry (real estate, services): what a buyer weighs, never "which one works" */
+  if (profile.storeKind === 'enquiry') { const rival = (profile.rivals || []).map((r) => r.name).find(Boolean);
+    return [{ q: `best ${cat} in ${where}`, branded: false }, { q: `most trusted names for ${cat} in ${where}`, branded: false }, { q: `how to choose ${cat}`, branded: false },
+      { q: `${cat} prices in ${where}`, branded: false }, { q: `${cat} reviews ${where}`, branded: false }, { q: `is ${name} good`, branded: true }, { q: rival ? `${name} vs ${rival}` : `${name} reviews`, branded: true }, { q: `${name} track record`, branded: true }]; }
   const best = (profile.catalog?.products || []).find((p) => p.handle === profile.catalog?.hero?.[0])?.title;
   const rival = (profile.rivals || []).map((r) => r.name).find(Boolean);
   return [

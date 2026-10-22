@@ -11,7 +11,8 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { productFromPage, offeringFromPage } from './reader/products.js';
-import { UA as BROWSER_UA } from './reader/util.js';
+import { UA as BROWSER_UA, brandRe } from './reader/util.js';
+import { askMarket, DFS_LOC } from './market.js';
 
 const H = 3600e3, D = 24 * H;
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
@@ -29,10 +30,12 @@ const domainOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, '')
 
 // One instance per brand (server.js makes it with the brand pack). Snapshot: brands/<slug>/live-watch.json.
 export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken, brand, tregClient = null, namePass = null, log = console }) {
-  const cfg = brand.config, FACTS = brand.facts || {}, HOST = brand.host, IN = cfg.locationCode || 2356, GEO = cfg.country || 'IN';
+  /* asked from the brand's market in its language (market.js askMarket), one rule for every tool: a brand whose market is
+     still to confirm is asked from its best candidate, never India by default */
+  const cfg = brand.config, AM = askMarket({ country: cfg.country, locale: cfg.locale, market: cfg.market }, cfg), FACTS = brand.facts || {}, HOST = brand.host, IN = DFS_LOC[AM.cc] || cfg.locationCode || 2840, GEO = AM.cc, LANG = AM.lang;
   const QUESTIONS = cfg.questions || [], RIVALS = cfg.rivalsAI || cfg.rivals || [];
   const esc = (x) => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const nameRe = new RegExp(`\\b${esc(brand.name)}\\b`, 'i'), hostRe = new RegExp(`(^|\\.)${esc(HOST)}$`);
+  const nameRe = brandRe(brand.name, [cfg.brandName].filter(Boolean), HOST) /* "PUMA India" or "PUMA" */, hostRe = new RegExp(`(^|\\.)${esc(HOST)}$`);
   const named = (s) => nameRe.test(s);
   const inr = (n) => brand.money(n);
   const OBJECT = `brands/${brand.slug}/live-watch.json`;
@@ -140,9 +143,9 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
 
   /* ---------- AI visibility ---------- */
   const ask = {
-    chatgpt: async (q) => { const r = await treg('dataforseo.x.ai-optimization-chat-gpt-llm-scraper-live-advanced', [{ keyword: q, location_code: IN, language_code: 'en', force_web_search: true }]);
+    chatgpt: async (q) => { const r = await treg('dataforseo.x.ai-optimization-chat-gpt-llm-scraper-live-advanced', [{ keyword: q, location_code: IN, language_code: LANG, force_web_search: true }]);
       return r && { text: r.markdown || '', sources: (r.sources || []).map((s) => s.url || s.domain).filter(Boolean), brands: (r.brand_entities || []).map((b) => b.title || b.name).filter(Boolean), model: r.model }; },
-    gemini: async (q) => { const r = await treg('dataforseo.x.ai-optimization-gemini-llm-scraper-live-advanced', [{ keyword: q, location_code: IN, language_code: 'en' }]);
+    gemini: async (q) => { const r = await treg('dataforseo.x.ai-optimization-gemini-llm-scraper-live-advanced', [{ keyword: q, location_code: IN, language_code: LANG }]);
       return r && { text: r.markdown || '', sources: (r.sources || []).map((s) => s.url || s.domain).filter(Boolean), model: r.model }; },
     perplexity: async (q) => { const r = await treg('dataforseo.x.ai-optimization-perplexity-llm-responses-live', [{ user_prompt: q, model_name: 'sonar', web_search_country_iso_code: GEO, max_output_tokens: 1200 }]);
       const sec = (r?.items || []).flatMap((i) => i.sections || []); return r && { text: sec.map((s) => s.text).join('\n'), sources: sec.flatMap((s) => (s.annotations || []).map((a) => a.url)).filter(Boolean), model: r.model_name }; },

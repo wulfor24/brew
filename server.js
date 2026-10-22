@@ -328,6 +328,10 @@ const routes = {
   'GET /api/ops/busy': async () => { const by = { ...(builder?.paidWork?.() || {}), drafts: draftsBg?.busy?.() || 0, cadence: movesCadence?.busy?.() || 0, finals: finals?.busy?.() || 0 };
     return { busy: Object.values(by).reduce((a, n) => a + n, 0), by, rev: process.env.K_REVISION || null }; },
   'GET /api/ops/sloosh': async (b, req) => slooshOps(req),
+  /* SquareUp staff: listen for one brand now (a brand whose run was cut off, or one a customer is waiting on). Same caps */
+  'POST /api/ops/listen': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only' }; const slug = String(b?.slug || '').replace(/[^a-z0-9-]/g, ''); if (!slug || blocked(slug)) return { error: 'unknown brand' };
+    const due = await social.due(slug); if (due.why?.some((w) => /off here|mock/.test(w))) return { error: due.why.join('; ') };
+    social.runOne(slug, { ...due, listen: true, listenFull: b.full !== false, ideas: false }).catch((e) => console.warn('[ops] listen', slug, e.message)); return { started: slug }; },
   'GET /api/config': async (b, req) => ({ ai: MOCK ? 'mock' : 'live', provider: PROVIDER, paused: !MOCK && aiPaused(), image: !!(GPROJECT || OPENAI_KEY), caps: CAPS, used: budget.state.all, share: budget.left(cfgSlug(req)), brandCaps: budget.caps.brand }),
   'POST /api/config': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only', ai: MOCK ? 'mock' : 'live' }; if (b.ai === 'mock') MOCK = true; if (b.ai === 'live' && anthropic) MOCK = false; return { ai: MOCK ? 'mock' : 'live' }; }
 };
@@ -415,7 +419,7 @@ const questionsHeal = (p) => {
 /* which brands each weekly AI answer names, by the read's own pass (reader/stages/named.js) on the fast model */
 const namedPass = async (p, as) => {
   if (MOCK) throw new Error('AI is off');
-  const prof = { name: p.name, ai: { answers: as.map((a) => ({ text: a.text || [a.said, a.excerpt].filter(Boolean).join(' '), entities: a.brands || [] })) } };
+  const prof = { name: p.name, brandName: p.config?.brandName || p.profile?.brandName || null, ai: { answers: as.map((a) => ({ text: a.text || [a.said, a.excerpt].filter(Boolean).join(' '), entities: a.brands || [] })) } };
   await namedStage({ profile: prof, aiOn: true, ai: (o) => ai.call(o) });
   prof.ai.answers.forEach((x, i) => { as[i].brandsNamed = x.brandsNamed || []; });
 };
@@ -468,7 +472,7 @@ setInterval(() => evidenceTick().catch((e) => console.warn('[evidence]', e.messa
 /* ---------- moves on a cadence (moves-cadence.js): audit, listening and automation moves for every built brand, weekly. Cap MOVES_WEEK_CAP_USD (default $3 a brand a week),
    kill switch MOVES_REFRESH_OFF=1; off under AI_MOCK and on local servers unless MOVES_BG=1. Manual: POST /api/brands/:slug/moves/refresh (team-only on claimed brands) ---------- */
 const movesCadence = createMovesScheduler({ packs, ai, memory: MEMORY_ON() ? memory : null, cardsGen: createCardsGen, log: console,
-  onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); }, onCards: (slug, cards, o) => { if (o?.private) connectors?.drop(slug); feedSvc?.addCards(slug, cards, o); } /* the team's run: members only */, dropCards: (slug, ids) => { connectors?.drop(slug); feedSvc?.dropCards(slug, ids); }, pdfFor: null /* PDFs are made on download (builder.pdfOn) */ });
+  onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); social?.kick?.(); /* a brand that just became ready is heard first (social-feed.js) */ }, onCards: (slug, cards, o) => { if (o?.private) connectors?.drop(slug); feedSvc?.addCards(slug, cards, o); } /* the team's run: members only */, dropCards: (slug, ids) => { connectors?.drop(slug); feedSvc?.dropCards(slug, ids); }, pdfFor: null /* PDFs are made on download (builder.pdfOn) */ });
 movesCadence.start();
 /* ---------- a one-off paid check of the team-only views (OPS_TEAM_PROBE=<slug,...>), for a brand with real accounts connected:
    one weekly automation run (public and team), one team ideas run and the team's static ads from its Move 21. Once per brand
@@ -676,7 +680,9 @@ const brandRoutes = async (req, res, u) => {
     const [th, tr, cm, st, it, lc, pf] = await Promise.all([g('listen/themes.json'), g('listen/threads.json'), g('listen/communities.json'), g('listen/status.json'), g('listen/items.json'), g('listen/config.json'), g('profile.json')]);
     const v = heardView({ themes: th?.themes || [], total: th?.total || 0, threads: tr?.threads || [], communities: cm?.communities || [], status: st, items: it?.items || [], config: lc }, { name: packs.peek(slug)?.name || (await packs.getJSON(slug, 'status.json', {}))?.name || slug, profile: pf || {} });
     const bg = await social.due(slug).catch(() => null), ss = await social.stateOf(slug).catch(() => ({}));
-    return send(res, 200, { heard: v, schedule: { lastListen: ss.lastListen || null, lastIdeas: ss.lastIdeas || null, spentToday: ss.spend || null, due: bg } }), true; }
+    /* lastListen is when a run FINISHED: a run that started and was cut off by a restart is not "heard" (social-feed.js dueFor) */
+    const ls = ss.listen || {}, running = ls.state === 'running' && !ls.killed;
+    return send(res, 200, { heard: v, schedule: { lastListen: ls.at || ls.last?.at || null, listening: running, interrupted: ls.state === 'running' && !!ls.killed, error: ls.error || null, lastIdeas: ss.lastIdeas || null, spentToday: ss.spend || null, due: bg } }), true; }
   // What we heard: every quote (filter by source, mode, theme, intent, words; paged), the asked threads, the daily history
   const hx = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/heard\/(items|asked|history)$/);
   if (hx) { const [, slug, what] = hx; if (blocked(slug)) return send(res, 404, { error: 'unknown brand' }), true;

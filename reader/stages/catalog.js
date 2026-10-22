@@ -55,7 +55,8 @@ export async function catalog(ctx) {
   const page = async (u, key, probe = false) => {
     const r = await http.get(u, { key }).catch(() => null);
     if (r?.ok && r.text && isProductPage(r.text)) return { html: r.text, url: r.url || u };
-    if (!r?.ok || !r.text || (!probe && !/ld\+json|og:type/i.test(r.text))) { const rr = await ctx.render(u, key + '-rendered'); if (rr?.html) return { html: rr.html, url: u }; }
+    /* a paid browser render: 24 at most for one catalog (a store that blocks every plain fetch reads a smaller sample) */
+    if ((!r?.ok || !r.text || (!probe && !/ld\+json|og:type/i.test(r.text))) && (state.catRenders = (state.catRenders || 0) + 1) <= 24) { const rr = await ctx.render(u, key + '-rendered'); if (rr?.html) return { html: rr.html, url: u }; }
     return r?.ok ? { html: r.text, url: r.url || u } : null;
   };
   if (!products.length) {
@@ -146,7 +147,8 @@ export async function catalog(ctx) {
   const rows = top.map((p) => [shortTitle(p.title), p.mrp > p.price ? `${money(p.price, p.currency)} (MRP ${money(p.mrp, p.currency)})` : money(p.price, p.currency)]);
   const partial = how?.startsWith('jsonld') && (ctx.state.productPageCount || 0) > products.length;
   if (profile.storeKind === 'enquiry') {
-    const noun = group ? group.replace(/s$/, '') + 's' : 'offerings';
+    /* the group's own word when it names what is offered (projects, services, courses); a city or a section name is not one */
+    const noun = group && /^(projects?|propert(y|ies)|residences?|homes?|developments?|listings?|services?|solutions?|products?|programs?|programmes?|courses?|plans?|packages?|treatments?|collections?|models?|vehicles?|cars?|tours?|rooms?|destinations?)$/i.test(group) ? group.replace(/ies$/, 'y').replace(/s$/, '').replace(/y$/, (m) => (/propert$/.test(group.replace(/ies$|y$/, '')) ? 'ie' : 'y')) + 's' : 'offerings';
     ctx.finding('catalog', { kind: 'rows', t: `What ${profile.brandName || profile.name} offers`, src: pathOf(origin + '/' + (group || '')), rows: top.map((p) => [shortTitle(p.title), p.priceText || '']), cap: `${num(total || products.length, currency)} ${noun} on the site${products.length < (total || 0) ? `, ${products.length} read` : ''}. No online store: visitors enquire.`, order: 'site order' }, 'Read what you offer');
     if (shots.length) ctx.finding('catalog', { kind: 'grid', t: 'Pictures on your site', src: pathOf(origin), imgs: shots.slice(0, 4), all: shots, cap: `${shots.length} pictures saved.` }, 'Saved the pictures');
     return ctx.done('catalog', `${num(total || products.length, currency)} ${noun}, sells by enquiry`);

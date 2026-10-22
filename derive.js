@@ -1,3 +1,4 @@
+import { DFS_LOC } from './market.js';
 // Turn what the reader found (profile + ledger) into the pack files the runtime reads: facts.json, config.json.
 // Only observed values become facts the cards may quote; anything inferred stays out of the fact sheet.
 import { nextFestival } from './calendar.js';
@@ -66,7 +67,9 @@ export const CURRENCY_OF = { IN: 'INR', US: 'USD', GB: 'GBP', AU: 'AUD', CA: 'CA
 export function marketConfig(p = {}) {
   const cc = String(p.country || '').toUpperCase();
   return { country: cc, countryName: cc ? CNAME[cc] || cc : '', markets: (p.markets || [cc]).filter(Boolean), registeredCountry: p.registeredCountry || null, locale: LOCALE[cc] || 'en-US',
-    tzOffsetH: (TZ[cc] || [0])[0], timezone: (TZ[cc] || [0, 'UTC'])[1], locationCode: LOC[cc] || 2840, festival: cc ? nextFestival(cc) : null };
+    tzOffsetH: (TZ[cc] || [0])[0], timezone: (TZ[cc] || [0, 'UTC'])[1], locationCode: DFS_LOC[cc] || LOC[cc] || 2840, festival: cc ? nextFestival(cc) : null,
+    /* a market still to confirm: its candidates, so the AI checks ask from the likeliest one (market.js askMarket), never a default */
+    market: p.market ? { others: p.market.others || [], registered: p.market.registered || null } : null };
 }
 export function configFromProfile(p, extra = {}) {
   const cc = String(p.country || '').toUpperCase(), cur = String(p.currency || (cc === 'IN' ? 'INR' : cc === 'GB' ? 'GBP' : cc === 'US' ? 'USD' : '')).toUpperCase(); /* no market, no guessed currency (marketConfig) */
@@ -87,7 +90,7 @@ export function configFromProfile(p, extra = {}) {
     banned: BANNED[kind] || BANNED.default,
     spend: {}, spendLimitWeekly: 0, baseMonthly: 0,
     /* the store's platform and how it sells: connectors, storefront jobs and the jam branch on them (store.js) */
-    platform: p.platform || null, storeKind: p.storeKind || 'store',
+    platform: p.platform || null, storeKind: p.storeKind || 'store', brandName: p.brandName || null,
     catalogUrl: p.platform === 'shopify' && !/^(jsonld|offerings)/.test(p.catalog?.source || '') ? `https://${p.host}/products.json` : null,
     /* any other platform: the product pages the read saved, watched page by page (live-watch.js refreshCatalog) */
     catalogPages: p.platform === 'shopify' && !/^(jsonld|offerings)/.test(p.catalog?.source || '') ? undefined : (p.catalog?.products || []).filter((x) => x.url && !x.addedByBrand).slice(0, 30).map((x) => ({ handle: x.handle, url: x.url, ...(x.kind ? { kind: x.kind } : {}) })),

@@ -188,7 +188,13 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
   const withIndirect = (c, ind) => ({ ...c, terms: { ...c.terms, problems: ind.problems, questions: ind.questions, indirectBy: ind.by, indirectAt: now() }, filter: { ...c.filter, needs: ind.needs } });
   async function config({ fresh = false, paid = true, capUsd } = {}) {
     const old = await packs.getJSON(slug, P('config'), null);
+    /* what the config was built from (the market, the name, the rivals, the category): a brand corrected later (a US default
+       fixed to India, rivals edited on the check page) gets a new config, never the stale one for good */
+    const pr0 = await packs.getJSON(slug, 'profile.json', {}) || {}, pc0 = await packs.getJSON(slug, 'config.json', {}) || {};
+    const basis = JSON.stringify([String(pr0.country || pc0.country || '').toUpperCase(), pr0.name || '', (pr0.rivals || []).map((r) => r?.name || r).slice(0, 8), pc0.category || pr0.subcategory || pr0.category || '']);
+    if (old && old.v === CFG_V && !fresh && old.basis && old.basis !== basis) fresh = true;
     if (old && old.v === CFG_V && !fresh && (old.filter?.by === 'claude' || !ai?.live)) {
+      if (!old.basis) { old.basis = basis; await packs.put(slug, P('config'), old); } /* a config from before this check: its basis is today's */
       if (hasIndirect(old)) return old;
       // a config from before the indirect searches gets them on its next run (no rebuild)
       const c = withIndirect(old, await indirect(old, await packs.getJSON(slug, 'profile.json', {}) || {}, { paid, capUsd }));
@@ -226,7 +232,7 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
       category: [...new Set([...(f?.categoryQueries || []), ...catTerms])].slice(0, 2)
     };
     runCost.cfgAi += usd;
-    const base = { v: CFG_V, at: now(), slug, name, host, country, category, noun, products, rivals, terms, myshopify, reviewApp: profile.reviews?.app || null, instagram: ig, xHandle: xh,
+    const base = { v: CFG_V, at: now(), basis, slug, name, host, country, category, noun, products, rivals, terms, myshopify, reviewApp: profile.reviews?.app || null, instagram: ig, xHandle: xh,
       amazon: AMAZON[country] || AMAZON.US, filter: { strong, weak, must, junk: lc(f?.junk), rivals: lc(rivals), by: f ? 'claude' : 'fallback' }, usd };
     const c = withIndirect(base, await indirect(base, profile, { paid, capUsd }));
     await packs.put(slug, P('config'), c);
@@ -658,7 +664,9 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
         try { const xs = await timed(RUN[k](c, o, st, prevItems, ex), timeouts[k] || 150e3, k); got[k] = xs; st.got = xs.length; st.state = 'ok';
           /* a source whose calls failed inside (a 402 from an empty treg balance, a 429 quota) comes back with nothing and the
              reason in its notes: that is an error, never "ok, 0 found" */
-          const why = !xs.length && st.notes.find((n) => FAILED.test(n)); if (why) { st.state = 'error'; st.error = String(why).slice(0, 200); } }
+          const why = !xs.length && st.notes.find((n) => FAILED.test(n)); if (why) { st.state = 'error'; st.error = String(why).slice(0, 200); }
+          /* some calls failed but others answered: what came back is real, and the source says it is incomplete */
+          else if (xs.length && st.notes.some((n) => FAILED.test(n))) { st.partial = true; st.warn = String(st.notes.find((n) => FAILED.test(n))).slice(0, 200); } }
         catch (e) {
           // what a source read before it ran out of time (or failed part way) is kept; the error goes in its notes
           if (st.partial?.length) { st.stop = true; got[k] = [...st.partial]; st.got = got[k].length; st.state = 'ok'; st.partial = true; st.notes.unshift(`kept ${got[k].length} read before: ${e.message.slice(0, 140)}`); log.warn?.(`[listen ${k}] partial`, e.message); }

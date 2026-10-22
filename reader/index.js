@@ -85,7 +85,7 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
 
   /* admin: a Shopify Admin API snapshot (stages/admin.js adminCatalog) for a store whose storefront is behind the password page:
      the read opens from it instead of the public site, and the stages that need the site say plainly that they didn't run */
-  async function read(input, { onEvent = () => {}, signal, only = null, fresh = false, free = false, prev = null, admin = null, slug: as = null } = {}) { // prev: the brand's last profile (a re-read keeps its rivals, searches and questions)
+  async function read(input, { onEvent = () => {}, signal, only = null, fresh = false, free = false, prev = null, admin = null, slug: as = null, config = null } = {}) { /* config: the brand's config.json (its sourced AI questions, its market) */ // prev: the brand's last profile (a re-read keeps its rivals, searches and questions)
     /* as: the brand's own slug (build.js): in.puma.com is in-puma-com, and its photos live with it, not under puma-com */
     const url = normalizeUrl(input); const slug = as || slugOf(url.href);
     const want = (k) => !only || only.includes(k);
@@ -102,7 +102,7 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
     const aiOn = !free && !!ai && ai.live !== false;
 
     const ctx = {
-      url, slug, http, ledger, profile, state: {}, log, signal, free, tregOn, aiOn, saveAsset, saveRaw, today: today(), prev,
+      url, slug, http, ledger, profile, state: {}, log, signal, free, tregOn, aiOn, saveAsset, saveRaw, today: today(), prev, config: config || {}, sourced: config?.questionsV ? config.questions || [] : [],
       tick(k, t) { const s = stepOf(k); if (!s) return emit({ type: 'sub', k, tick: t }); if (!s.tick.includes(t) && s.tick.length < 12) s.tick.push(t); if (s.state === 'queued') s.state = 'reading'; emit({ type: 'step', k, i: steps.indexOf(s), state: 'reading', tick: t }); },
       finding(k, f, say) { cards.push({ ...f, k }); emit({ type: 'finding', k, i: steps.findIndex((s) => s.k === k), finding: f, ...(say ? { say } : {}) }); },
       /* partial: the step found something but part of it couldn't be checked (a live tour then keeps the saved read's step) */
@@ -177,7 +177,7 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
   }
   /** Mend a saved read without reading the brand again: re-run the ads stage when any Ad Library lookup failed or
    *  our own page was never found, and write the one-liner when Claude never did. Returns what changed, or null. */
-  async function heal(saved, { findings = null, ledger: L = [], log: lg = log } = {}) {
+  async function heal(saved, { findings = null, ledger: L = [], log: lg = log, config = null } = {}) {
     const profile = JSON.parse(JSON.stringify(saved)); const slug = profile.slug;
     const http = createFetcher({ slug, saveRaw, loadRaw, fresh: false, log: lg });
     /* a store that was closed (Shopify's password page) is looked at again once a day: still closed, it says when it was
@@ -208,7 +208,7 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
     if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length && !catalogStale && !reviewsStale && !nameMissing) return null;
     const added = [], cards = [], stepsDone = {}, healPicks = {};
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
-    const ctx = { url: new URL(profile.url), slug, http, profile, state: { homeUrl: profile.url, ...(profile.closed ? { closed: profile.closed, home: '' } : {}) }, log: lg, tregOn, aiOn, saveAsset, saveRaw, today: today(),
+    const ctx = { config: config || {}, sourced: config?.questionsV ? config.questions || [] : [], url: new URL(profile.url), slug, http, profile, state: { homeUrl: profile.url, ...(profile.closed ? { closed: profile.closed, home: '' } : {}) }, log: lg, tregOn, aiOn, saveAsset, saveRaw, today: today(),
       ledger: { add: (e) => added.push({ layer: 'observed', at: today(), ...e }) },
       tick() {}, finding: (k, f) => { cards.push({ ...f, k }); }, done: (k, text, state = 'done', { partial = false } = {}) => { stepsDone[k] = { done: text, state, ...(partial ? { partial: true } : {}) }; }, picks: (k, items) => { healPicks[k] = items; },
       ...services({ slug, http, tregOn, aiOn, fresh: false }) };

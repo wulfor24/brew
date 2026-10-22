@@ -82,6 +82,13 @@ export async function open(ctx) {
   const segs = title.split(/\s+[|–—-]\s+|\s*\|\s*/).map(clean).filter(Boolean);
   const name = site || (segs.length > 1 ? segs.sort((a, b) => a.length - b.length)[0] : segs[0]) || registrable(profile.host).split('.')[0];
   profile.name = name.replace(/\s*(official\s+(store|site|website)|online\s+store)$/i, '').trim() || name;
+  /* an SEO title is not a name ("Online Shopping for Men & Women Clothing… at The Souled Store"): the brand it names at the
+     end, the organization's own name, else the domain's */
+  if (profile.name.length > 40 || /\b(online shopping|buy|shop (for|online)|best|cheap|official site|free shipping)\b/i.test(profile.name)) {
+    const tail = profile.name.match(/\b(?:at|by|from|on|with)\s+((?:the\s+)?[A-Z][\w&'’.-]*(?:\s+[A-Z][\w&'’.-]*){0,3})\s*$/);
+    const stem = registrable(profile.host).split('.')[0];
+    profile.name = clean(tail?.[1] || (org?.name && String(org.name).length <= 40 ? org.name : '') || stem.replace(/(^|[-_])(\w)/g, (m, a, b) => (a ? ' ' : '') + b.toUpperCase()));
+  }
   /* the brand without its market suffix ("PUMA India" → "PUMA"): what AI answers, marketplaces and reviews call it */
   profile.brandName = brandBase(profile.name, profile.host);
   const desc = segs.find((s) => s.toLowerCase() !== profile.name.toLowerCase() && !s.toLowerCase().includes(profile.name.toLowerCase() + ' ')) || null;
@@ -113,6 +120,10 @@ export async function open(ctx) {
       await pool(kids.slice(0, 25), 6, (k) => readSm(k, depth + 1)); return;
     }
     const locs = [...r.text.matchAll(/<url>[\s\S]*?<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => clean(m[1]));
+    /* a page list whose entries are other sitemap files (lenskart.com/sitemap.xml lists products.xml): followed as an index */
+    if (locs.length && depth < 2 && locs.every((l) => /\.xml(\.gz)?(\?|$)/i.test(l))) { const kids = locs.filter((k) => registrable(hostOf(k)) === registrable(hostOf(origin))); allSm += kids.length;
+      kids.sort((a, b) => /product|pdp|catalog|item/i.test(b.split('/').pop()) - /product|pdp|catalog|item/i.test(a.split('/').pop()));
+      await pool(kids.slice(0, 25), 6, (k) => readSm(k, depth + 1)); return; }
     sitemaps.push({ url: u, pages: locs.length }); pageUrls.push(...locs);
   };
   await pool(smUrls.slice(0, 4), 4, (u) => readSm(u));

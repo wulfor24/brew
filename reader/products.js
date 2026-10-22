@@ -96,6 +96,9 @@ export async function findProductUrls({ urls = [], homeLinks = [], origin, fetch
     probed[s] = { pages: g.length, hits, of: picks.length };
     if (hits) shapes.push(s);
   });
+  /* a tail shape (~num/3) stays only when it finds product URLs the first-part shapes (pd/3) miss: never wider than needed */
+  const heads = shapes.filter((x) => !x.startsWith('~'));
+  if (heads.length) for (const t of shapes.filter((x) => x.startsWith('~'))) if (own.filter((u) => matchesShape(u, [t], prefix)).every((u) => matchesShape(u, heads, prefix))) shapes.splice(shapes.indexOf(t), 1);
   let found = own.filter((u) => matchesShape(u, shapes, prefix));
   // nothing learned (no sitemap, or every probe failed): the common paths on the URLs we have
   if (!found.length) found = own.filter((u) => isProductUrl(u));
