@@ -121,6 +121,8 @@ test('a team-only card, a move written from a disconnected account, and account 
   assert.equal(connectedOk({ connectedWith: ['meta'] }, { meta: true }), true);
   assert.equal(connectedOk({ connectedWith: ['meta', 'shopify'] }, ['shopify']), false, 'Meta was disconnected: the move waits');
   assert.equal(connectedOk({}, []), true, 'a move written before connectedWith always shows');
+  assert.equal(connectedOk({ connectedWith: ['meta', 'shopify'] }, ['shopify'], 40), true, 'an email move written while Meta was on stays when Meta goes');
+  assert.equal(connectedOk({ connectedWith: ['meta', 'shopify'] }, ['shopify'], 21), false, 'a paid move waits');
   const rows = { 'meta.cpa': { v: '₹780', n: 780 } };
   assert.deepEqual(acctRows({ member: false, liveLedger: rows }), []); assert.equal(acctRows({ member: true, liveLedger: rows }).length, 1);
 });

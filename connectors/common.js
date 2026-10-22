@@ -2,6 +2,7 @@
 // ledger entries for the moves and small fetch helpers. The real connectors (shopify.js, meta.js, google.js, klaviyo.js,
 // reviews.js, market.js) and the demo site's simulated ones (sim.js, which marks every row demo) fill the same shapes.
 import { moneyFmt } from '../brand-pack.js';
+import { CONNECTED_MOVES } from '../refresh.js';
 
 export const n0 = (x) => Math.round(x).toLocaleString('en-US');
 export const pct = (x, d = 0) => `${(+x).toFixed(d)}%`;
@@ -59,7 +60,11 @@ export const privId = (id) => (/-p$/.test(String(id)) ? String(id) : `${id}-p`);
 /* a private move written from accounts that are no longer all connected (one was disconnected) waits, hidden, and the shared
    move shows instead; reconnecting brings it back without a second rewrite (on-connect's once-per-set-of-accounts rule).
    `on`: the connected ids ({ id: true } or an array). A move written before connectedWith existed always shows */
-export const connectedOk = (meta, on) => { const w = meta?.connectedWith; if (!Array.isArray(w) || !w.length) return true; const has = Array.isArray(on) ? new Set(on) : new Set(Object.keys(on || {}).filter((k) => on[k])); return w.every((id) => has.has(id)); };
+/* `n`: the move's number. connectedWith lists every account connected when it was written, so only an account whose area
+   the move uses (refresh.js CONNECTED_MOVES: Meta's paid moves, Shopify's store moves…) hides it when it goes */
+const AREA = { shopify: 'store', meta: 'paid', google: 'paid', ga4: 'analytics', klaviyo: 'email', reviews: 'reviews' };
+export const connectedOk = (meta, on, n = null) => { const w = meta?.connectedWith; if (!Array.isArray(w) || !w.length) return true; const has = Array.isArray(on) ? new Set(on) : new Set(Object.keys(on || {}).filter((k) => on[k]));
+  return w.every((id) => has.has(id) || (n != null && !(CONNECTED_MOVES[AREA[id]] || []).includes(+n))); };
 
 /* a rate limit (429) waits and tries again within the read when the wait is short (Retry-After up to 20 seconds, else a
    few seconds with jitter), at most `retries` times; a longer one is thrown with e.retryAfter, and the hourly tick backs off */

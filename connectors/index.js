@@ -271,7 +271,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       const bare = (Array.isArray(pc) ? pc : []).filter((c) => c?.teamStatics && /^static-.+-p$/.test(c.id || '') && !c.product);
       if (bare.length) { const [st, prof] = await Promise.all([packs.getJSON(slug, 'private/statics.json', {}).catch(() => ({})), packs.getJSON(slug, 'profile.json', null).catch(() => null)]);
         for (const c of bare) { const h = st?.[c.id.replace(/^static-|-p$/g, '')]?.product, ti = h && (prof?.catalog?.products || []).find((x) => x?.handle === h)?.title; if (ti) Object.assign(c, staticProduct(ti)); } }
-      for (const c of Array.isArray(pc) ? pc : []) if (c?.id && c.privateOf != null && connectedOk(pm[c.privateOf]?.meta, ids)) cards.push({ ...c, id: privId(c.id), liveOnly: true });
+      for (const c of Array.isArray(pc) ? pc : []) if (c?.id && c.privateOf != null && connectedOk(pm[c.privateOf]?.meta, ids, c.privateOf)) cards.push({ ...c, id: privId(c.id), liveOnly: true });
       privMoves = [...new Set(cards.filter((c) => c.privateOf != null).map((c) => +c.privateOf))]; privStatics = cards.some((c) => c.teamStatics);
       /* the team's ideas (private/ideas/ideas.json, written with the connected facts): members only, next to the public ones */
       const mi = await packs.getJSON(slug, 'private/ideas/ideas.json', null).catch(() => null);
