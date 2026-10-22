@@ -99,7 +99,7 @@ test('market: a WordPress en-US default never outvotes an Indian phone and Benga
 });
 
 test('fonts: a Google Fonts spec is the family name only', () => {
-  assert.equal(fontName('Cormorant:100,100italic,200|Manrope:100,200'), 'Cormorant'); assert.equal(fontName("'Inter', sans-serif"), 'Inter');
+  assert.equal(fontName('Cormorant:100,100italic,200|Manrope:100,200'), 'Cormorant'); assert.equal(fontName('Cormorant%3A100%2C200%7CManrope%3A100'), 'Cormorant');
 });
 
 test('connectors fit the platform: no Shopify to connect on a Salesforce Commerce store, no review app when reviews are off', () => {
