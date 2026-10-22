@@ -280,7 +280,7 @@
         <p>${free ? `A personal email like ${esc(me)} can’t open a brand.` : `You’re signed in as ${esc(me)}, which isn’t on ${n}${/s$/i.test(B.brand.name || '') ? '’' : '’s'} team.`} ${A0.claimed ? `Sign in with your work email at ${esc(h)}, or ask the team to invite you.` : `Sign in with your work email at ${esc(h)} to open it.`}</p>
         <p>Just looking around? The demo stores show Brew end to end, with nothing to set up.</p>
         <a class="btn btn-primary lg sw-go" href="${DEMO_STORES}">See demo stores</a>
-        <div class="cx-btns"><a class="btn btn-ghost" href="${workEmailHref()}">Switch to your work email</a></div></div></main>`;
+        <a class="btn btn-ghost" href="${workEmailHref()}">Switch to your work email</a></div></main>`;
       return true;
     }
     if (!needSignin()) return false;
