@@ -86,7 +86,11 @@ export function configFromProfile(p, extra = {}) {
     questions: q.slice(0, 8),
     banned: BANNED[kind] || BANNED.default,
     spend: {}, spendLimitWeekly: 0, baseMonthly: 0,
-    catalogUrl: p.platform === 'shopify' ? `https://${p.host}/products.json` : null,
+    /* the store's platform and how it sells: connectors, storefront jobs and the jam branch on them (store.js) */
+    platform: p.platform || null, storeKind: p.storeKind || 'store',
+    catalogUrl: p.platform === 'shopify' && !/^(jsonld|offerings)/.test(p.catalog?.source || '') ? `https://${p.host}/products.json` : null,
+    /* any other platform: the product pages the read saved, watched page by page (live-watch.js refreshCatalog) */
+    catalogPages: p.platform === 'shopify' && !/^(jsonld|offerings)/.test(p.catalog?.source || '') ? undefined : (p.catalog?.products || []).filter((x) => x.url && !x.addedByBrand).slice(0, 30).map((x) => ({ handle: x.handle, url: x.url, ...(x.kind ? { kind: x.kind } : {}) })),
     marketplaces: extra.marketplaces || [],
     sampleWork: false,
     ...extra.config

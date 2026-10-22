@@ -8,6 +8,7 @@ import { numbersIn, canon } from './fact-gate.js';
 import { moneyFmt } from './brand-pack.js';
 import { simulated } from './connectors/common.js';
 import { dejargon } from './plain.js';
+import { productFromPage, offeringFromPage } from './reader/products.js';
 
 const D = 864e5, today = () => new Date().toISOString().slice(0, 10);
 const NOT_PRODUCT = /gift ?wrap|gift ?card|e-?gift|shipping protection|route protection|insurance|sample|tester|donation/i;
@@ -52,24 +53,29 @@ export const overrides = (priv = {}) => Object.values(priv).filter((f) => f.was 
 export const storeItems = (products = [], host) => products.filter((p) => p && p.handle && !NOT_PRODUCT.test(p.title || '')).map((p) => { const vs = p.variants || [], v = vs[0] || {}, price = +v.price || 0;
   return { handle: p.handle, title: String(p.title || '').replace(/\s+/g, ' ').trim(), price, mrp: Math.max(+v.compare_at_price || 0, price), inStock: vs.some((x) => x.available), url: `https://${host}/products/${p.handle}`, img: p.images?.[0]?.src || null, published: p.published_at || null }; });
 const handleOf = (key) => String(key).replace(/^(price|mrp)\./, '');
+/* the fact's source: the product's own page (host + path), whatever the platform's URL shape */
+const srcOf = (x, host) => { try { const u = new URL(x.url); return u.hostname.replace(/^www\./, '') + u.pathname.replace(/\/$/, ''); } catch { return `${hostOf(host)}/products/${x.handle}`; } };
 // a generated brand: ledger price entries vs the store → the new ledger and what changed
-export function diffCatalog(ledger = [], items = [], { host, currency = 'USD', locale = 'en-US', at = today(), removedByBrand = [], tombs = [] } = {}) {
+/* partial: a page-by-page check (any platform but Shopify): only the products read are compared, and a product is gone
+   only when its page answered 404/410 (gone: the handles), never because one fetch failed */
+export function diffCatalog(ledger = [], items = [], { host, currency = 'USD', locale = 'en-US', at = today(), removedByBrand = [], tombs = [], partial = false, gone404 = [] } = {}) {
   const by = new Map(items.map((x) => [x.handle, x])), money = moneyFmt(currency, locale), gone = new Set(removedByBrand || []), changes = [], out = [];
   const ours = (e) => /^(price|mrp)\./.test(e.key) && (!e.url || hostOf(e.url) === hostOf(host));
   const tomb = (k, v) => (tombs || []).some((t) => t.key === k && same(t.v, v));
   for (const e of ledger) {
     if (!ours(e)) { out.push(e); continue; }
     const x = by.get(handleOf(e.key));
+    if (!x && partial && !gone404.includes(handleOf(e.key))) { out.push(e); continue; }
     if (!x) { changes.push({ kind: 'removed', key: e.key, handle: handleOf(e.key), label: e.label || e.key, was: String(e.v), wasN: e.n, src: e.url || e.src }); continue; }
     const n = e.key.startsWith('mrp.') ? x.mrp : x.price;
     /* a price 50 times higher or lower in one day is a unit slip in the read (cents for dollars), never a real change: skipped (QA 20 Oct) */
     if (Number.isFinite(e.n) && e.n > 0 && n > 0 && (n / e.n >= 50 || e.n / n >= 50)) { out.push(e); continue; }
     if (Number.isFinite(e.n) && n > 0 && Math.abs(n - e.n) >= 0.01) { const v = money(n); changes.push({ kind: 'changed', key: e.key, handle: x.handle, label: e.label || e.key, was: String(e.v), wasN: e.n, now: v, nowN: n, src: x.url });
-      out.push({ ...e, v, n, at, src: `${hostOf(host)}/products/${x.handle}`, url: x.url, method: e.method && /added by the brand/.test(e.method) ? e.method : 'product list (daily check)' }); }
+      out.push({ ...e, v, n, at, src: srcOf(x, host), url: x.url, method: e.method && /added by the brand/.test(e.method) ? e.method : 'product list (daily check)' }); }
     else out.push(e);
   }
   const have = new Set(ledger.filter(ours).map((e) => handleOf(e.key)));
-  for (const x of items) { if (have.has(x.handle) || gone.has(x.handle) || !(x.price > 0)) continue; const v = money(x.price); if (tomb(`price.${x.handle}`, v)) continue;
+  for (const x of items) { if (partial || have.has(x.handle) || gone.has(x.handle) || !(x.price > 0)) continue; const v = money(x.price); if (tomb(`price.${x.handle}`, v)) continue;
     const e = { key: `price.${x.handle}`, label: `${x.title} price`, v, n: x.price, unit: currency, layer: 'observed', src: `${hostOf(host)}/products/${x.handle}`, url: x.url, at, method: 'product list (daily check)' };
     out.push(e); changes.push({ kind: 'new', key: e.key, handle: x.handle, label: e.label, now: v, nowN: x.price, src: x.url, item: x }); }
   return { ledger: out, changes, gone: [...new Set(changes.filter((c) => c.kind === 'removed').map((c) => c.handle))] };
@@ -236,6 +242,17 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
     }
     return products;
   }
+  /* any other platform: the product pages the read saved, opened again (30 at most); a page that 404s is gone, a failed fetch is
+     left as it was. Returns { items, gone404, failed } */
+  async function readStoreGeneric(P) {
+    const list = (P.catalog?.products || []).filter((x) => x.url && !x.addedByBrand).slice(0, 30), items = [], gone404 = []; let failed = 0;
+    for (let i = 0; i < list.length; i += 6) await Promise.all(list.slice(i, i + 6).map(async (x) => {
+      try { const r = await fetchImpl(x.url, { headers: UA, signal: AbortSignal.timeout(25e3) }); if (r.status === 404 || r.status === 410) { gone404.push(x.handle); return; } if (!r.ok) { failed++; return; }
+        const html = await r.text(); const it = (x.kind === 'offering' ? offeringFromPage(html, x.url) : productFromPage(html, x.url)); if (!it) { failed++; return; }
+        items.push({ handle: x.handle, title: it.title || x.title, price: it.price || 0, mrp: Math.max(it.mrp || 0, it.price || 0), inStock: it.inStock ?? x.inStock ?? null, url: x.url, img: it.images?.[0] || null, published: null }); }
+      catch { failed++; } }));
+    return { items, gone404, failed, of: list.length };
+  }
   async function daily(slug, { force = false } = {}) {
     const st = await packs.getJSON(slug, 'facts-daily.json', null);
     if (!force && st?.day === today()) return { skipped: 'done today' };
@@ -245,20 +262,28 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
   async function dailyGenerated(slug, st) {
     const P = await packs.getJSON(slug, 'profile.json', null), L = await packs.getJSON(slug, 'ledger.json', null), cfg = await packs.getJSON(slug, 'config.json', {});
     if (!P || !L) return { skipped: 'not read' };
-    if (P.platform && P.platform !== 'shopify' && !cfg.catalogUrl) return { skipped: 'not shopify' };
-    const raw = await readStore(P.host, cfg.catalogUrl); if (!raw) { await packs.put(slug, 'facts-daily.json', { day: today(), at: Date.now(), summary: 'Not a Shopify store: nothing to check.' }); return { skipped: 'not shopify' }; }
-    if (!raw.length) throw new Error('the store returned no products');
-    const items = storeItems(raw, P.host), E = await editsOf(slug);
-    const d = diffCatalog(L, items, { host: P.host, currency: P.currency || cfg.currency, locale: P.locale || cfg.locale, removedByBrand: P.catalog?.removed, tombs: E.removed });
+    /* Shopify: its product list; every other platform: the product pages the read saved, page by page (partial) */
+    const shop = (!P.platform || P.platform === 'shopify') && !/^(jsonld|offerings)/.test(P.catalog?.source || '');
+    let items, partial = false, gen = null;
+    const raw = shop ? await readStore(P.host, cfg.catalogUrl) : null;
+    if (raw) { if (!raw.length) throw new Error('the store returned no products'); items = storeItems(raw, P.host); }
+    else { gen = await readStoreGeneric(P); partial = true; items = gen.items;
+      if (!gen.of) { await packs.put(slug, 'facts-daily.json', { day: today(), at: Date.now(), summary: 'No product pages saved from the read yet: nothing to check.' }); return { skipped: 'no product pages' }; }
+      if (!items.length && !gen.gone404.length) throw new Error(`none of the ${gen.of} product pages opened this time`);
+      /* every page answering 404 is the site (moved, down, a new URL scheme), not every product gone: nothing is removed */
+      if (!items.length && gen.gone404.length >= gen.of) { await packs.put(slug, 'facts-daily.json', { day: today(), at: Date.now(), summary: `All ${gen.of} product pages answered 404: the site may have moved its pages. Nothing changed; a re-read finds them again.` }); return { skipped: 'pages unreachable' }; } }
+    const E = await editsOf(slug);
+    const d = diffCatalog(L, items, { host: P.host, currency: P.currency || cfg.currency, locale: P.locale || cfg.locale, removedByBrand: P.catalog?.removed, tombs: E.removed, partial, gone404: gen?.gone404 || [] });
     /* stock: each product's flag, and the catalog counts the cards quote */
     const by = new Map(items.map((x) => [x.handle, x])), gone = new Set(d.gone); let stock = 0;
     P.catalog ||= {}; P.catalog.products = (P.catalog.products || []).filter((x) => !gone.has(x.handle) || x.addedByBrand && hostOf(x.url || '') !== hostOf(P.host)).map((x) => { const y = by.get(x.handle); if (!y) return x; if (!!x.inStock !== y.inStock) stock++; return { ...x, inStock: y.inStock, price: y.price || x.price, priceLabel: y.price ? moneyFmt(P.currency, P.locale)(y.price) : x.priceLabel }; });
     P.catalog.hero = (P.catalog.hero || []).filter((h) => !gone.has(h));
-    P.catalog.count = items.length; /* the count every screen shows (pack-numbers.js products) moves with the check, as the ledger's does */
+    if (!partial) P.catalog.count = items.length; /* the count every screen shows (pack-numbers.js products) moves with the check, as the ledger's does */
     for (const c of d.changes.filter((c) => c.kind === 'new' && !P.catalog.products.some((x) => x.handle === c.item.handle))) P.catalog.products.push({ handle: c.item.handle, title: c.item.title, price: c.item.price, currency: P.currency, inStock: c.item.inStock, url: c.item.url, img: c.item.img, images: c.item.img ? [c.item.img] : [], published: c.item.published, claims: [] });
-    const counts = { 'catalog.count': items.length, 'catalog.out_of_stock': items.filter((x) => !x.inStock).length }, ledger = d.ledger.map((e) => (counts[e.key] != null && +String(e.v).replace(/,/g, '') !== counts[e.key] ? { ...e, v: counts[e.key].toLocaleString('en-US'), n: counts[e.key], at: today(), method: 'product list (daily check)' } : e));
+    /* a page-by-page check saw a sample: the catalog's counts stay as the read left them */
+    const counts = partial ? {} : { 'catalog.count': items.length, 'catalog.out_of_stock': items.filter((x) => !x.inStock).length }, ledger = d.ledger.map((e) => (counts[e.key] != null && +String(e.v).replace(/,/g, '') !== counts[e.key] ? { ...e, v: counts[e.key].toLocaleString('en-US'), n: counts[e.key], at: today(), method: 'product list (daily check)' } : e));
     const n = { changed: d.changes.filter((c) => c.kind === 'changed').length, removed: d.gone.length, added: d.changes.filter((c) => c.kind === 'new').length };
-    const summary = `${items.length} products read · ${n.changed} price${n.changed === 1 ? '' : 's'} changed · ${n.removed} gone · ${n.added} new · ${stock} stock change${stock === 1 ? '' : 's'}`;
+    const summary = `${items.length}${partial ? ` of ${gen.of} product pages` : ' products'} read · ${n.changed} price${n.changed === 1 ? '' : 's'} changed · ${n.removed} gone · ${n.added} new · ${stock} stock change${stock === 1 ? '' : 's'}`;
     if (d.changes.length || stock || ledger.some((e, i) => e !== d.ledger[i])) {
       await packs.put(slug, 'ledger.json', ledger); await packs.put(slug, 'profile.json', P);
       await builder.republish(slug);

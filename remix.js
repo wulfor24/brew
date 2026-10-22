@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { saveGen, genFile } from './gen-store.js';
+import { platformLabel } from './store-facts.js';
 import { checkVideoText } from './text-check.js'; // a video final's on-screen words, read back
 import { createMakers } from './drafts.js';
 import { cardProduct, sceneOf, matchProduct } from './product-match.js';
@@ -623,11 +624,16 @@ export function createRemix(o) {
   const version = (t, ch, author, reason, label) => { const v = addV(t, 'change', ch.id, snapOf(ch), { author, reason, parent: headOf(t, ch)?.id }); v.label = cleanLabel(label) || versionLabel(reason, { first: v.n === 1 }); ch.headVersionId = v.id; try { mirror(t, ch, v); } catch (e) { log.warn('[studio] jam mirror', e.message); } return v; };
   // a version's name in the strip and History: the AI's 2-4 words when it gave them, else the rule-based name
   const cleanLabel = (x) => { const s = String(x || '').replace(/[."“”]/g, '').trim(); const n = s.split(/\s+/).length; return s && n <= 5 && s.length <= 32 ? s[0].toUpperCase() + s.slice(1) : ''; };
+  /* who ships a change: the connected tool when the brand can connect it; off Shopify, a storefront change is the brand's web
+     team's job on their own platform (store-facts.js platformLabel), never a Shopify item that can't be ticked */
+  const targetOf = (tg) => { const cx = tg.conn && SEED.connectors?.[tg.conn];
+    if (cx || !tg.conn) return { conn: tg.conn || null, name: tg.name || (cx ? cx.name : 'A person'), object: tg.object };
+    const pl = platformLabel(B()?.config?.platform); return { conn: null, name: tg.conn === 'shopify' ? (pl ? `Your web team (${pl})` : 'Your web team') : 'A person', object: tg.object }; };
   const build = (t, c, cv, r, x, { intent, prompt }) => {
     const act = actOf(x.action); const family = familyOf(x.action);
     const lf = labelFor(x.action, c) || act; /* what this change is called follows the card it came from (a thread of its own, a video's comments) */
     const ch = { id: uid('ch'), fromCard: !!x.fromCard, cardId: c.id, cardVersionId: cv.id, agent: act.agent, cardAgent: c.agent, type: r.type, kind: c.kind, recipe: r.key, action: x.action, actionLabel: lf.label, family, angle: x.angle || 'Version', intent: intent || null, prompt: prompt || '',
-      target: { conn: lf.target.conn, name: lf.target.name || (lf.target.conn ? SEED.connectors[lf.target.conn]?.name : 'A person'), object: lf.target.object }, preview: previewOf(c, act), money: !!act.money, rollback: act.rollback,
+      target: targetOf(lf.target), preview: previewOf(c, act), money: !!act.money, rollback: act.rollback,
       scope: act.scope.map(([n, label]) => ({ n, label })), why: x.why || '', from: x.from || null, before: cardSnap(c), state: 'draft', thread: [], createdAt: now(t) };
     ch.pkg = rulePkg(t, act.agent, family, cleanPkg(family, x.action, x.pkg || mockPkg(family, x.action, c, 0, '', FACTS), clean));
     ch.pkg.knobs ||= {}; ch.chips = chipsFor(x.action, c, B()); /* the composer's chips, made once per change so they never flicker */
@@ -673,7 +679,7 @@ export function createRemix(o) {
     if (ch.plan && o.planOf) { const fresh = o.planOf(t, t.cards.get(ch.cardId) || {}); if (fresh && ch.plan.v !== fresh.v) ch.plan = fresh; } /* plans saved before one-always rebuild */
     adClip(ch);
     if (ch.state === 'draft' && !ch.batchKey) { const lf = labelFor(ch.action, t.cards.get(ch.cardId) || {}); /* jams opened before the card-led names heal on read */
-      if (lf && lf.label !== ch.actionLabel && ['creative.add_variants', 'creative.short_video'].includes(ch.action)) { ch.actionLabel = lf.label; ch.target = { conn: lf.target.conn, name: lf.target.name || (lf.target.conn ? SEED.connectors[lf.target.conn]?.name : 'A person'), object: lf.target.object }; } }
+      if (lf && lf.label !== ch.actionLabel && ['creative.add_variants', 'creative.short_video'].includes(ch.action)) { ch.actionLabel = lf.label; ch.target = targetOf(lf.target); } }
     healDraftCode(t, ch);
     if (ch.pkg && ch.pkg.landing?.v !== LANDING_V && isLanding(ch, t.cards.get(ch.cardId) || {})) sync(t, ch); /* a jam saved before landing drafts gains its page */
     const opts = optionsOf(t, ch); /* first: healing an old jam can move its stage */

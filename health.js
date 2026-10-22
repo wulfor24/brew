@@ -76,11 +76,15 @@ function storefront(p, fix) {
     if (ps.score < 50) fix.push(['Storefront', `Mobile PageSpeed is ${ps.score} of 100${ps.lcp ? `; the main image shows at ${ps.lcp}` : ''}. Speed up the first screen.`]); }
   /* the walk: only what it actually saw counts. A walk that stopped early, or a checkout app that loads after the walk
      (GoKwik, opened by /checkout), is left out, never scored as a no */
-  const reached = reachedOf(co), seen = reached && !co.direct;
+  /* a brand that sells by enquiry: the walk to its enquiry form, and its Google reviews, stand in for a checkout and site reviews */
+  const enquiry = p.storeKind === 'enquiry';
+  if (enquiry && co.kind === 'enquiry' && co.reached) { sp.push(['Reaching the enquiry form', (co.clicks ?? 9) <= 1 ? 15 : 10, 15, `${co.clicks ? `${co.clicks} click${co.clicks === 1 ? '' : 's'}` : 'on the home page'}; asks for ${(co.fields || []).join(', ') || 'a few details'}`, co.at || readAt]);
+    if ((co.fields || []).length > 5) fix.push(['Storefront', `The enquiry form asks for ${co.fields.length} things. Ask for a name and a phone number first; the rest can wait for the call.`]); }
+  const reached = !enquiry && reachedOf(co), seen = reached && !co.direct;
   if (reached) sp.push(['Reaching checkout', 10 + ((co.clicks ?? 9) <= 2 ? 5 : 0), 15, `reached in ${co.clicks ?? '?'} click${co.clicks === 1 ? '' : 's'} from the product page`, co.at || readAt]);
   if (seen && co.guest != null) { sp.push(['Guest checkout', co.guest ? 10 : 0, 10, co.guest ? 'offered' : 'login first', co.at || readAt]); if (!co.guest) fix.push(['Storefront', 'The walk was asked to log in before checkout. Let people buy as a guest.']); }
   const pay = co.payments || []; if (seen && pay.length) sp.push(['Payment options', pay.length >= 3 ? 10 : 5, 10, `${pay.length} seen: ${pay.slice(0, 4).join(', ')}`, co.at || readAt]);
-  if (prods.length) { const photos = prods.reduce((a, x) => a + (x.images?.length || 0), 0) / prods.length, thin = prods.filter((x) => (x.images?.length || 0) <= 1).length;
+  if (prods.length && !enquiry) { const photos = prods.reduce((a, x) => a + (x.images?.length || 0), 0) / prods.length, thin = prods.filter((x) => (x.images?.length || 0) <= 1).length;
     sp.push(['Photos per product', Math.min(photos / 4, 1) * 15, 15, `${photos.toFixed(1)} on average over ${prods.length} product${prods.length === 1 ? '' : 's'}`, readAt]);
     if (thin) fix.push(['Storefront', `${thin} product${thin === 1 ? ' has' : 's have'} one photo or none. Add angles so shoppers and catalog ads can trust them.`]); }
   /* reviews on the brand's own site only: marketplace reviews are not on the store */
@@ -89,9 +93,13 @@ function storefront(p, fix) {
   /* a closed store (Shopify's password page): the speed, the walk and the site's reviews can't be read yet, so they are left out
      and the ring says why (reader/stages/admin.js), never "no reviews on the site" */
   const closed = !!p.closed;
-  if (p.reviews && !rvErr && !(closed && p.reviews.closed && !rv)) { sp.push(['Reviews on the site', rv >= 100 ? 15 : rv > 0 ? 8 : 0, 15, rv ? `${fmt(rv)} on the site${pl.some((x) => MKT.test(x.name || '')) ? ' (marketplaces not counted)' : ''}` : 'no reviews on the site', readAt]);
+  /* reviews the store switched off are its choice, not a gap: left out of the score, with the marketplace ratings named */
+  const off = p.reviews?.onSite === 'off', unread = p.reviews?.onSite === 'unread' && !closed;
+  const gm = enquiry ? pl.find((x) => /google/i.test(x.name || '')) : null;
+  if (gm) sp.push(['Google reviews', (gm.count || 0) >= 100 && (gm.rating || 0) >= 4.2 ? 15 : (gm.count || 0) > 0 ? 8 : 0, 15, `${fmt(gm.count || 0)}${gm.rating ? ` at ${gm.rating.toFixed(1)}★` : ''}`, readAt]);
+  else if (p.reviews && !rvErr && !off && !unread && !enquiry && !(closed && p.reviews.closed && !rv)) { sp.push(['Reviews on the site', rv >= 100 ? 15 : rv > 0 ? 8 : 0, 15, rv ? `${fmt(rv)} on the site${pl.some((x) => MKT.test(x.name || '')) ? ' (marketplaces not counted)' : ''}` : 'no reviews on the site', readAt]);
     if (!rv) fix.push(['Storefront', 'No reviews were found on the site. Ask for one after delivery.']); }
-  const closedWhat = closed ? `the checkout walk, page speed and site reviews wait: ${CLOSED_WHY}` : null;
+  const closedWhat = closed ? `the checkout walk, page speed and site reviews wait: ${CLOSED_WHY}` : off ? `reviews are switched off on the site${pl.length ? ` (read on ${pl.map((x) => x.name).join(', ')})` : ''}` : unread ? `${p.reviews.app || 'the review app'} couldn’t be read this time, the next refresh tries again` : null;
   if (!sp.length) return { k: 'Storefront', v: 0, read: false, what: closed ? `Not checked: ${CLOSED_WHY}. Brew checks once the store opens` : rvErr || p.meta?.errors?.site ? 'The store couldn’t be read this time; the next refresh tries again' : 'Not read yet', parts: [], src: 'the site read' };
   const got = sp.reduce((a, x) => a + x[1], 0), max = sp.reduce((a, x) => a + x[2], 0);
   return { k: 'Storefront', v: clamp((100 * got) / max), read: true, what: `From ${p.host || 'your store'}: ${sp.map((x) => x[0].toLowerCase()).join(', ')}${rvErr ? '; reviews couldn’t be read this time, the next refresh tries again' : ''}${closedWhat ? `; ${closedWhat}` : ''}`,

@@ -140,6 +140,7 @@ export function seedFromProfile(slug, profile, findings, extra = {}) {
     colors: id.colors || [], logo: id.logo, mark: id.mark, face: fontName(id.fonts?.heading || id.fonts?.body) || undefined, typeName: fontName(id.typeName) || undefined, /* a saved read with weights in the name heals here */
     steps, lanes, laneImg, rivals: (p.rivals || []).map((r) => r.name), marketplaces: extra.marketplaces || [], reviewApp: p.reviews?.platforms?.[0]?.name, art, stack: { platform: p.platform }
   });
+  storeConnectors(seed, p);
   seed.scrape = findings?.cards || [];
   seed.brand.products = String(cat.count || prods.length || '');
   seed.rivalLogos = (p.rivals || []).filter((r) => r.logo).map((r) => [r.name, r.logo]);
@@ -167,4 +168,15 @@ export function prototypeConnectors(conns = {}) {
     if (id === 'meta' && /pixel|90 days/i.test(`${c.kind} ${(c.perms || []).join(' ')}`)) c = { ...c, ...META_COPY };
     out[id] = { ...c, perms: (c.perms || []).filter((x) => !ACTS.test(x)), changed: (c.changed || []).filter((x) => !ACTS.test(x)), ...(c.changedDemo ? { changedDemo: c.changedDemo.filter((x) => !ACTS.test(x)) } : {}) }; }
   return out;
+}
+
+/* connectors that fit how the brand sells (store-facts.js): Shopify only for a Shopify store (connecting does nothing for a
+   Salesforce Commerce or WordPress site), a review app only when the site shows reviews. Healed on load (brand-pack.js) */
+export function storeConnectors(seed, p) {
+  if (!seed?.connectors || !p) return false; let changed = false;
+  if (p.platform && p.platform !== 'shopify' && seed.connectors.shopify) { delete seed.connectors.shopify; changed = true; }
+  if ((p.reviews?.onSite === 'off' || p.storeKind === 'enquiry') && seed.connectors.reviews) { delete seed.connectors.reviews; changed = true; }
+  if (p.storeKind === 'enquiry' && seed.connectors.marketplaces) { delete seed.connectors.marketplaces; changed = true; }
+  if (p.storeKind === 'enquiry' && seed.vocab?.item === 'product') { seed.vocab = { ...seed.vocab, buyer: 'buyer', buyers: 'buyers' }; changed = true; }
+  return changed;
 }

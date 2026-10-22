@@ -90,7 +90,7 @@ test('6: "Is this right?" is saved as a step, a refresh reopens it, and it has t
 });
 
 /* 7. the Shopify connector */
-test('7: the store connector is always Shopify (never "Custom"), and a saved seed heals on load', async () => {
+test('7: the store connector is Shopify (never "Custom") on a Shopify store, gone on any other platform, and a saved seed heals on load', async () => {
   assert.equal(skeletonSeed({ slug: 'acme-com', host: 'acme.com' }).connectors.shopify.name, 'Shopify');
   assert.doesNotMatch(src('seed-template.js'), /titleCase\(stack\.platform\)/);
   const P = tmpPacks(), slug = 'custom-example-com';
@@ -99,7 +99,14 @@ test('7: the store connector is always Shopify (never "Custom"), and a saved see
   await P.put(slug, 'config.json', { country: 'IN', countryName: 'India' });
   await P.put(slug, 'seed.json', { brand: { name: 'Acme', host: 'custom.example.com' }, lanes: { core: { name: 'Core', line: 'x' } }, connectors: { shopify: { name: 'Custom' } }, posts: [] });
   const pk = await P.load(slug, { fresh: true });
-  assert.equal(pk.seed.connectors.shopify.name, 'Shopify'); assert.equal((await P.getJSON(slug, 'seed.json')).connectors.shopify.name, 'Shopify');
+  /* a custom store can't connect Shopify: the connector is gone, never offered */
+  assert.equal(pk.seed.connectors.shopify, undefined); assert.equal((await P.getJSON(slug, 'seed.json')).connectors.shopify, undefined);
+  const s2 = 'shop-example-com';
+  await P.put(s2, 'status.json', { name: 'Acme', host: 'shop.example.com', done: true, stages: { read: { state: 'done' } } });
+  await P.put(s2, 'profile.json', { name: 'Acme', host: 'shop.example.com', slug: s2, country: 'IN', platform: 'shopify', catalog: { products: [] } });
+  await P.put(s2, 'config.json', { country: 'IN', countryName: 'India' });
+  await P.put(s2, 'seed.json', { brand: { name: 'Acme', host: 'shop.example.com' }, lanes: { core: { name: 'Core', line: 'x' } }, connectors: { shopify: { name: 'Custom' } }, posts: [] });
+  assert.equal((await P.load(s2, { fresh: true })).seed.connectors.shopify.name, 'Shopify');
 });
 
 /* 8. demo sign-out */

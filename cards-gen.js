@@ -304,7 +304,7 @@ Return every card by its id.`;
     const p = profile, ok = allowedFrom(facts), N = numbersOf({ profile: p }); /* the same counts every other screen shows (pack-numbers.js) */
     const ev = JSON.stringify({ catalog: (p.catalog?.products || []).slice(0, 12).map((x) => ({ t: x.title, price: x.priceLabel, mrp: x.mrp, stock: x.inStock, photos: (x.images || []).length, reviews: x.reviews })), count: N.products.n,
       reviews: { total: N.reviews.n, platforms: N.reviews.platforms, quotes: (p.reviews?.quotes || []).slice(0, 8) }, ads: { own: N.ownAds.n, rivals: N.rivals.map((r) => ({ name: r.name, live: r.live, hooks: ((p.ads?.rivals || []).find((x) => x.name === r.name)?.items || []).slice(0, 3).map((a) => a.hook) })) },
-      ai: { score: p.ai?.score, answers: (p.ai?.answers || []).slice(0, 8).map((a) => ({ tool: a.tool, q: a.q, named: a.named, rivals: a.rivalsNamed })) }, checkout: p.site?.checkout, tech: p.site?.tech }).slice(0, 18000);
+      ai: { score: p.ai?.score, answers: (p.ai?.answers || []).slice(0, 8).map((a) => ({ tool: a.tool, q: a.q, named: a.named, rivals: a.rivalsNamed })) }, checkout: checkoutForPrompt(p.site?.checkout, p.storeKind), sellsBy: p.storeKind === 'enquiry' ? 'enquiry (no online store: a lead form)' : 'online store', tech: p.site?.tech }).slice(0, 18000);
     const SCH = { type: 'object', properties: { cards: { type: 'array', items: SCHEMA.properties.cards.items } } };
     const kinds = evidenceKinds({ voice: voiceOfProfile(p), facts }); /* a first read has no connected account: no visits, carts or sales to claim */
     let j;
@@ -332,4 +332,13 @@ Return every card by its id.`;
     return { cards: [{ id: `m${String(move.n).padStart(2, '0')}-1`, agent: agent0, sector: sector0, type: 'report', lane, roles: ROLES[sector0] || ['founder'], src: `Move ${String(move.n).padStart(2, '0')}`, time: '20 min', kind: 'rows', rows: [['Move', move.title.slice(0, 40)]], title: move.title.slice(0, 60), sub: String(move.gives || '').slice(0, 220), detail: { why: [], how: [] }, cta: { label: 'Open the scoreboard' }, mock: true }], label: { short: move.title.slice(0, 26), line: move.gives, heads: {} } };
   };
   return { fromMove, fromRead };
+}
+
+/* the walk as the cards prompt sees it: what it reached, and when it stopped, that Brew's headless browser stopped (never
+   "the store's checkout is broken": a walk can fall short on a size picker or a script-drawn button) */
+export function checkoutForPrompt(co, kind) {
+  if (!co) return null;
+  const reached = co.kind === 'enquiry' ? !!co.reached : (co.walk || []).some((s) => s.step === 'Checkout entry' && s.ok);
+  const { walk, notes, ...rest } = co;
+  return { ...rest, reached, ...(reached ? {} : { note: `Brew's headless walk stopped${co.stopReason ? ` (${co.stopReason})` : ''}; this says nothing about real shoppers. Never write a card that says checkout or add to cart is broken.` }), ...(kind === 'enquiry' ? { kind: 'enquiry' } : {}) };
 }

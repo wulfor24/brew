@@ -90,24 +90,30 @@ export function ratings({ profile, status } = {}) {
 /** products in the catalog: { n, at, src: 'read' | 'watch' } */
 export function products({ profile, liveWatch, daily, status } = {}) {
   const c = profile?.catalog || {};
-  const n0 = c.count != null ? +c.count : Array.isArray(c.products) ? c.products.length : null;
+  /* every product the store lists (catalog.total: its product pages, read from the sitemap), not only the pages opened */
+  const n0 = +c.total > 0 ? +c.total : c.count != null ? +c.count : Array.isArray(c.products) ? c.products.length : null;
   const read = n0 != null ? { n: n0, at: Math.max(ts(daily?.at), ts(status?.stages?.read?.at)), src: 'read' } : null;
   const w = liveWatch?.catalog;
-  const watch = w && w.count != null && +w.count > 0 ? { n: +w.count, at: ts(w.fetchedAt), src: 'watch' } : null;
-  return fresher(read, watch) || { n: null, at: 0 };
+  /* a page-by-page watch (any platform but Shopify) sees a sample, never the catalog's size */
+  const watch = w && w.count != null && +w.count > 0 && !/product pages/.test(w.source || '') ? { n: +w.count, at: ts(w.fetchedAt), src: 'watch' } : null;
+  const best = fresher(read, watch); return best ? { ...best, how: c.source || null } : { n: null, at: 0 };
 }
 
 /** one plain note when the store is outside what Brew reads well (FEED-QA-27), or null. Only on what the read really saw:
     the catalog stage ran without an error and found no product (a failed or skipped read is never "empty"), or the store is
     on a platform the read named that isn't Shopify. Worked out from the saved profile, so every saved read shows it too */
-export const NO_CATALOG_NOTE = 'Brew is built for Shopify stores today. We couldn’t read a product catalog here, so product cards will be thin.';
-export const NOT_SHOPIFY_NOTE = 'Brew is built for Shopify stores today, so some store details may be thin here.';
+export const NO_CATALOG_NOTE = 'We couldn’t find product pages on this site, so product cards will be thin. Add your products by link below.';
+export const CATALOG_FAILED_NOTE = 'The catalog couldn’t be read this time. Brew tries again on the next refresh.';
+export const ENQUIRY_NOTE = 'This site takes enquiries rather than orders, so Brew read what it offers from its pages.';
+export const PAGES_NOTE = 'Read from the store’s own product pages, a sample of the whole catalog. Prices and stock on them are checked every day.';
 export function storeNote({ profile, liveWatch } = {}) {
   if (!profile) return null;
   const ran = profile.meta?.timings?.catalog != null, failed = !!profile.meta?.errors?.catalog, n = products({ profile, liveWatch }).n;
-  if (ran && !failed && !(+n > 0)) return NO_CATALOG_NOTE;
-  const plat = String(profile.platform || '').toLowerCase();
-  if (plat && plat !== 'shopify' && plat !== 'unknown' && +n > 0) return NOT_SHOPIFY_NOTE;
+  if (failed) return CATALOG_FAILED_NOTE; /* a failed check says so, never "no catalog" and never nothing */
+  if (profile.storeKind === 'enquiry') return ENQUIRY_NOTE;
+  if (ran && !(+n > 0)) return NO_CATALOG_NOTE;
+  /* read page by page (any platform but Shopify and WooCommerce's APIs): the count is the sitemap's, the details a sample */
+  if (/^jsonld/.test(profile.catalog?.source || '') && +profile.catalog?.total > (profile.catalog?.products || []).length) return PAGES_NOTE;
   return null;
 }
 
@@ -167,7 +173,7 @@ export function numberRows(N, name = 'The brand') {
   const rows = [], add = (key, label, n, at, src, unit) => { if (n == null || !Number.isFinite(+n)) return; rows.push({ key, label, v: big(n), n: +n, unit, layer: 'observed', src, at: isoDay(at), current: true }); };
   add('ads.own.live', `${name}: live Meta ads`, N.ownAds?.n, N.ownAds?.at, N.ownAds?.src === 'tracker' ? 'Meta Ad Library (daily own-ads read)' : 'Meta Ad Library', 'ads');
   for (const r of N.rivals || []) add(`rival.${host(r.host || r.name)}.ads.live`, `${r.name}: live Meta ads`, r.live, r.at, r.src === 'tracker' ? 'Meta Ad Library (daily rivals read)' : 'Meta Ad Library', 'ads');
-  add('catalog.count', 'Products in the catalog', N.products?.n, N.products?.at, 'products.json', 'products');
+  add('catalog.count', 'Products in the catalog', N.products?.n, N.products?.at, /^jsonld/.test(N.products?.how || '') ? 'product pages in the sitemap' : /^offerings/.test(N.products?.how || '') ? 'pages on the site' : 'products.json', 'products');
   add('reviews.total', 'Reviews and ratings found (all platforms read)', N.reviews?.n, N.reviews?.at, 'site and marketplaces', 'reviews+ratings');
   for (const m of N.ratings || []) add(/amazon/i.test(m.name) ? 'reviews.amazon.count' : `reviews.${host(m.name)}.count`, `${m.name} ratings${m.listings ? ` across ${m.listings} listings` : ''}`, m.n, m.at, m.name, 'ratings');
   return rows;

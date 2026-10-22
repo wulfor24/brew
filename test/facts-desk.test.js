@@ -91,8 +91,8 @@ test('daily check end to end: facts.json rebuilt, the gone price no longer passe
   /* a move written before still quotes the gone price: it leaves the move before the move backs a card */
   const moved = scrubRetired((await P.getJSON(slug, 'moves.json'))[7], retiredSet(E.retired, ok)); assert.ok(!backedNumbers(moved).has(canon('₹1,499')));
   assert.equal((await desk.daily(slug)).skipped, 'done today');
-  /* a store that is not Shopify is skipped */
-  const desk2 = createFactsDesk({ packs: P, builder, log: quiet, fetchImpl: async () => ({ ok: false, status: 404 }) }); assert.equal((await desk2.daily(slug, { force: true })).skipped, 'not shopify');
+  /* no products.json: the saved product pages are checked one by one; every page answering 404 is the site, never every product gone */
+  const desk2 = createFactsDesk({ packs: P, builder, log: quiet, fetchImpl: async () => ({ ok: false, status: 404 }) }); assert.equal((await desk2.daily(slug, { force: true })).skipped, 'pages unreachable');
 });
 
 test('team edit: Not true any more removes the fact, keeps it in the audit list, flags the moves; a pasted link is read, never typed', async () => {

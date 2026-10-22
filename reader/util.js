@@ -29,7 +29,9 @@ export async function publicUrl(u) {
 export async function safeFetch(u, o = {}, hops = 5) {
   let url = await publicUrl(u);
   for (let i = 0; i <= hops; i++) {
-    const r = await fetch(url, { ...o, redirect: 'manual' });
+    /* a browser's user agent unless the caller set one: store image CDNs (images.puma.com) answer 404 to Node's own */
+    const h = new Headers(o.headers || {}); if (!h.has('user-agent')) h.set('user-agent', UA);
+    const r = await fetch(url, { ...o, headers: h, redirect: 'manual' });
     if (r.status >= 300 && r.status < 400 && r.headers.get('location')) { url = await publicUrl(new URL(r.headers.get('location'), url).href); continue; }
     if (i) Object.defineProperty(r, 'url', { value: url.href });
     return r;

@@ -56,7 +56,7 @@ export async function inferCategory(ctx) {
     } catch (e) { ctx.log.warn?.('[reader] category', e.message); }
   }
   // free: the most common product type is all we can say
-  if (types.length) { profile.subcategory = types[0][0]; ledger.add({ key: 'market.category', label: 'Most common product type', v: types[0][0], layer: 'inferred', url: `${state.origin}/products.json`, method: 'products.json', conf: 'low', note: types.slice(0, 5).map(([t, n]) => `${t} ${n}`).join(', ') }); }
+  if (types.length) { profile.subcategory = types[0][0]; ledger.add({ key: 'market.category', label: 'Most common product type', v: types[0][0], layer: 'inferred', url: profile.platform === 'shopify' && /products\.json/.test(profile.catalog?.source || '') ? `${state.origin}/products.json` : state.origin, method: profile.catalog?.source?.split(' ')[0] || 'crawl', conf: 'low', note: types.slice(0, 5).map(([t, n]) => `${t} ${n}`).join(', ') }); }
 }
 
 export async function answers(ctx) {

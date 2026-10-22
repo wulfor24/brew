@@ -138,9 +138,10 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     const pick = []; const pushP = (p) => p && !pick.includes(p) && pick.push(p);
     (profile.catalog?.hero || []).forEach((h) => pushP(all.find((p) => p.handle === h)));
     (brief.catalogue || []).forEach((c) => pushP(byTitle.get(norm(c.name))));
-    all.filter((p) => p.inStock).sort((a, b) => String(b.published).localeCompare(String(a.published))).slice(0, 10).forEach(pushP);
-    const products = pick.slice(0, 24).map((p) => ({ handle: p.handle, title: p.title, type: p.type, price: p.price, inStock: p.inStock, url: p.url, images: (p.images || []).slice(0, 3), claim: (p.claims || [])[0] || '' }));
-    for (const p of products) { add(`${p.title} price (product page)`, `${sym || ''}${Number(p.price).toLocaleString('en-IN')}`, p.url, 'price'); if (p.claim) add(`${p.title} product page claim`, p.claim, p.url, 'claim'); }
+    /* in stock (or not known, off Shopify), newest first where the platform dates them */
+    all.filter((p) => p.inStock !== false).sort((a, b) => String(b.published || '').localeCompare(String(a.published || ''))).slice(0, 10).forEach(pushP);
+    const products = pick.slice(0, 24).map((p) => ({ handle: p.handle, title: p.title, type: p.type, price: p.price, priceText: p.priceText || null, inStock: p.inStock, url: p.url, images: (p.images || []).slice(0, 3), claim: (p.claims || [])[0] || '' }));
+    for (const p of products) { if (+p.price > 0) add(`${p.title} price (product page)`, p.priceText || `${sym || ''}${Number(p.price).toLocaleString('en-IN')}`, p.url, 'price'); /* no price read: never ₹0 */ if (p.claim) add(`${p.title} product page claim`, p.claim, p.url, 'claim'); }
     // moves digest: title, what it gives, key takeaways
     const cardsOf = {}; for (const c of (seed.posts || [])) { const m = /^Move (\d+)/.exec(c.src || ''); if (m) (cardsOf[m[1]] ||= []).push(c.id); }
     const movesD = Object.values(moves).filter((m) => m && m.n > 0).sort((a, b) => a.n - b.n).map((m) => {
@@ -299,7 +300,7 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
 
   function context(c, d) {
     const ev = c.ev.map((e) => `${e.id} [${e.kind}] ${e.label}: ${e.value}`).join('\n');
-    const prods = c.products.map((p) => `- ${p.handle}: ${p.title} (${p.type}), ${c.sym}${Number(p.price).toLocaleString('en-IN')}${p.inStock ? '' : ', SOLD OUT'}${p.claim ? ' · ' + cut(p.claim, 140) : ''}`).join('\n');
+    const prods = c.products.map((p) => `- ${p.handle}: ${p.title}${p.type ? ` (${p.type})` : ''}${+p.price > 0 ? `, ${p.priceText || c.sym + Number(p.price).toLocaleString('en-IN')}` : ''}${p.inStock === false ? ', SOLD OUT' : ''}${p.claim ? ' · ' + cut(p.claim, 140) : ''}`).join('\n');
     const mv = c.movesD.map((m) => `${m.ref} · ${m.title}: ${m.gives}${m.take.length ? '\n   takeaways: ' + m.take.join(' | ') : ''}`).join('\n');
     const th = d.threads.map((t, i) => `T${i + 1} r/${t.sub} · ${t.at} · ${repliesText(t.comments, t.commentsFloor) || 'replies not counted'}${t.intent ? ` · ${t.intent}/${t.sentiment || '?'}` : ''} · "${t.title}"${t.text ? ' · OP: ' + cut(t.text, 260) : ''}`).join('\n');
     const cm = d.communities.map((x, i) => `C${i + 1} ${x.name}${x.weekly ? ` (${x.weekly.toLocaleString('en-IN')} weekly active)` : ''}: ${x.desc || ''}${x.why ? ' · heard: ' + x.why : ''}\n   RULES: ${cut(x.rules, 1100) || 'not read'}`).join('\n');

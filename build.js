@@ -2,7 +2,8 @@
 // core "Know the brand" set first), turns each move into feed cards as it lands, and renders the Brew PDFs.
 // Every stage writes to the brand pack (brand-pack.js) and to status.json, so a restart resumes where it was.
 // Events are kept per brand and replayed, so the onboarding screen and anyone opening later see the same read.
-import { safeFetch } from './reader/util.js'; // user-pasted links reach only the public internet
+import { safeFetch, links as rlinks } from './reader/util.js';
+import { productFromPage, offeringFromPage, findProductUrls, sitemapUrls, handleOf } from './reader/products.js'; // user-pasted links reach only the public internet
 import { emailHtml, esc as mailEsc, p as mailP, list as mailList, images as mailImages } from './mail-layout.js';
 import { teamRecipients } from './digest.js'; // who hears about a brand: its team, its starter and anyone who asked, minus mail off
 import crypto from 'node:crypto';
@@ -775,7 +776,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const N = await numbersFor(packs.getJSON, slug, { 'profile.json': p }); /* the same numbers every other screen shows */
     const s0 = (await status(slug)) || {};
     return {
-      name: p.name, host: p.host, logo: p.identity?.logo || null, count: N.products.n ?? prods.length, storeNote: N.storeNote || null, /* not Shopify, or no catalog read (pack-numbers.js storeNote) */
+      name: p.name, host: p.host, logo: p.identity?.logo || null, count: N.products.n ?? prods.length, read: prods.length, storeNote: N.storeNote || null, /* not Shopify, or no catalog read (pack-numbers.js storeNote) */
       /* when Brew starts writing with what it read unless someone checks first (null: it waits for a check, or it has started) */
       writeAt: awaitingCheck(s0) && !s0.confirmedAt ? s0.writeAt || null : null, started: s0.stages?.confirm?.state === 'done',
       who: [
@@ -802,15 +803,19 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   // a product page link → its real title, price and photo (Shopify's .js, else JSON-LD)
   async function readProduct(slug, url, p) {
     const u = String(url).split('?')[0].replace(/\/$/, '');
-    let t = null, price = null, img = null, cur = p.currency;
-    try { const r = await safeFetch(u + '.js', { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const j = await r.json(); t = j.title; price = (j.price || 0) / 100; img = j.featured_image || j.images?.[0]; } } catch {}
-    if (!t) { const r = await safeFetch(u, { headers: UA, signal: AbortSignal.timeout(25e3) }); const h = await r.text();
-      for (const m of h.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) { try { const j = [].concat(JSON.parse(m[1])).flatMap((x) => x['@graph'] || [x]).find((x) => String(x['@type']).includes('Product')); if (j) { t = j.name; const o = [].concat(j.offers || [])[0] || {}; price = +o.price || +o.lowPrice || null; cur = o.priceCurrency || cur; img = [].concat(j.image || [])[0]; break; } } catch {} }
-      t ||= (h.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i) || [])[1]; img ||= (h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i) || [])[1]; }
+    let t = null, price = null, img = null, cur = p.currency, item = null;
+    /* Shopify answers <product>.js; every platform's page is read with the reader's own product reader (reader/products.js) */
+    if (!p.platform || p.platform === 'shopify' || /\/products\//.test(u)) try { const r = await safeFetch(u + '.js', { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const j = await r.json(); t = j.title; price = (j.price || 0) / 100; img = j.featured_image || j.images?.[0]; } } catch {}
+    if (!t) { const r = await safeFetch(u, { headers: UA, signal: AbortSignal.timeout(25e3) });
+      /* a page that refused us is not "not a product": say which */
+      if (!r.ok) throw new Error(r.status === 403 || r.status === 429 ? 'That store blocked our read of the page. Try again in a minute, or paste a different link.' : `That page did not open (${r.status}).`);
+      const h = await r.text(); item = productFromPage(h, u) || (p.storeKind === 'enquiry' ? offeringFromPage(h, u) : null);
+      if (item) { t = item.title; price = item.price || null; cur = item.currency || cur; img = item.images?.[0] || null; } }
+    if (img && typeof img === 'object') img = img.url || img.contentUrl || null;
     if (!t) throw new Error('That page did not show a product.');
     if (img && img.startsWith('//')) img = 'https:' + img;
     let asset = null; if (img) try { const r = await safeFetch(img, { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const b = Buffer.from(await r.arrayBuffer()); const n = 'added-' + u.split('/').pop().replace(/[^a-z0-9-]/gi, '').slice(0, 40) + (img.includes('.png') ? '.png' : '.jpg'); await packs.put(slug, 'assets/' + n, b); asset = `/b/${slug}/a/${n}`; } } catch {}
-    return { handle: u.split('/').pop(), title: String(t).trim(), price, currency: cur, img: asset, images: asset ? [asset] : [], url: u, inStock: true, addedByBrand: true, claims: [] };
+    return { handle: handleOf(u), title: String(t).trim(), price, currency: cur, /* the same handle the catalog read gives the page (no duplicate) */ img: asset, images: asset ? [asset] : [], url: u, inStock: true, addedByBrand: true, claims: [] };
   }
   // a rival's website → name, logo, a few live prices (Shopify), and its live ads by domain
   async function readRival(url, p) {
@@ -819,6 +824,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const name = ((h.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)/i) || [])[1] || (h.match(/<title>([^<|–-]+)/i) || [])[1] || host).trim().slice(0, 40);
     const prices = [];
     try { const j = await (await safeFetch(`https://${host}/products.json?limit=12${p.country ? `&country=${p.country}` : ''}`, { headers: UA, signal: AbortSignal.timeout(20e3) })).json(); (j.products || []).filter((x) => !NOT_PRODUCT.test(x.title)).slice(0, 6).forEach((x) => { const v = x.variants?.[0]; if (v?.price) prices.push({ title: x.title, price: +v.price, currency: p.currency, url: `https://${host}/products/${x.handle}` }); }); } catch {}
+    /* not Shopify (no products.json): the rival's product pages, learned from its home page and sitemap (reader/products.js) */
+    if (!prices.length) try { const get = async (x) => { const rr = await safeFetch(x, { headers: UA, signal: AbortSignal.timeout(20e3) }).catch(() => null); return rr?.ok ? rr.text() : null; };
+      let f = await findProductUrls({ urls: [], homeLinks: rlinks(h, `https://${host}/`), origin: `https://${host}`, fetchPage: get, max: 6 });
+      if (!f.urls.length) f = await findProductUrls({ urls: await sitemapUrls(async (x) => { const rr = await safeFetch(x, { headers: UA, signal: AbortSignal.timeout(20e3) }).catch(() => null); return { ok: !!rr?.ok, text: rr?.ok ? await rr.text() : '' }; }, `https://${host}`), origin: `https://${host}`, fetchPage: get, max: 6, market: p.country });
+      for (const x of f.urls.slice(0, 4)) { const hh = await get(x); const it = hh && productFromPage(hh, x); if (it?.price > 0) prices.push({ title: it.title.slice(0, 70), price: it.price, currency: it.currency || p.currency, url: x }); } } catch {}
     let live = null; try { const k = await adCall(treg, 'scrapecreators.x.v1-facebook-adlibrary-search-ads', { query: { query: host, country: p.country || 'ALL', status: 'ACTIVE', trim: true }, tag: 'check-rival-ads' }); live = (k?.searchResults || []).filter((a) => String(a.snapshot?.link_url || '').includes(host)).length; } catch {}
     return { name, host, url: `https://${host}`, why: 'Named by the brand', how: 'named by the brand, site read live', prices, claims: [], offers: [], liveAds: live };
   }

@@ -179,7 +179,7 @@ export const nearTitle = (a, b) => !!a && !!b && near({ h: String(a) }, { h: Str
 const watchersFor = (b) => (b._watchers ||= [
   { id: 'trends', data: 'live', name: 'Trends', agent: 'brew', cadence: 'Daily', demoEvery: D, firstAt: 45e3, watches: 'Category news, search interest, the festive calendar', produces: 'Trends ring slides; idea cards when a trend meets a product' },
   { id: 'ads-library', data: 'live', name: 'Popular ads', agent: 'performance', cadence: 'Daily', demoEvery: D, firstAt: 75e3, watches: 'Ad libraries in and around the category', produces: 'Popular ads ring; “rivals run this” cards' },
-  { id: 'catalog', name: 'Catalog', agent: 'storefront', cadence: 'Every 3 hours', demoEvery: D, firstAt: 30e3, data: 'live', watches: `The live ${b.host} catalog: prices, stock, launches, removed items, photos`, produces: 'Exception cards: out of stock, price changes, prices our cards quote, thin listings, new launches' },
+  { id: 'catalog', name: 'Catalog', agent: 'storefront', cadence: 'Every 3 hours', demoEvery: D, firstAt: 30e3, data: 'live', watches: `The live ${b.host} ${b.config?.catalogUrl ? 'catalog' : 'product pages'}: prices, stock, launches, removed items, photos`, produces: 'Exception cards: out of stock, price changes, prices our cards quote, thin listings, new launches' },
   b.kind === 'generated'
     ? { id: 'ads', data: 'live', name: 'Your ads', agent: 'performance', cadence: 'Daily', demoEvery: D, firstAt: 50e3, watches: `Your own live ads in the Meta Ad Library (${b.config.countryName || 'your market'}): how many run, how long each has run, versions, formats, new launches`, produces: 'Refresh cards for ads that have run for months unchanged; launch and count changes. Spend, cost per order and frequency need your Meta account' }
     : { id: 'ads', data: 'sample', name: 'Ads', agent: 'performance', cadence: 'Hourly with Meta connected', demoEvery: 2 * 60e3, firstAt: 25e3, needs: 'meta', watches: 'Frequency, cost per result, fatigue', produces: 'Rotate creative and Shift budget cards' },
@@ -970,7 +970,9 @@ export function createFeedService(o) {
      units sold in 30 days (a connected Shopify, team only), else the store's own best-seller list, else review counts, else price.
      Products our cards and ads point to always lead */
   const CAT_V = 2, VIS_V = 2; /* VIS_V: AI-answers gap cards say their own fix */
-  const quotedOf = () => new Set(Object.values(B()?.facts || {}).filter((f) => f && f.kind === 'price' && /\/products\//.test(String(f.src || ''))).map((f) => String(f.src).split('/').pop()));
+  /* the products a price fact quotes, by handle: Shopify's /products/<handle>, or a watched product page on any other platform */
+  const quotedOf = () => { const pages = new Map((B()?.config?.catalogPages || []).map((x) => { try { const u = new URL(x.url); return [u.hostname.replace(/^www\./, '') + u.pathname.replace(/\/$/, ''), x.handle]; } catch { return ['', null]; } }));
+    return new Set(Object.values(B()?.facts || {}).filter((f) => f && f.kind === 'price').map((f) => { const src = String(f.src || '').replace(/^www\./, '').replace(/\/$/, ''); return pages.get(src) || (/\/products\//.test(src) ? src.split('/').pop() : null); }).filter(Boolean)); };
   const nameOfItem = (i) => { const f = /^[\w.-]+$/.test(String(i?.title || '')) ? B()?.facts?.[i.title] : null; return f?.label ? String(f.label).replace(/\s+(price|mrp)$/i, '') : String(i?.title || ''); }; /* a removed product saved as its fact key reads as its name */
   const unitsOf = (t) => { const e = t?.member ? t.liveLedger?.['shopify.top.30d'] : null; return e && !e.demo && !e.stale ? unitsFrom(e.v) : new Map(); }; /* the team's own Shopify, never a simulated one */
   const salesRank = (x, t, quoted) => salesRank0(x, { rank: B()?.catalogRank || {}, units: unitsOf(t), quoted });
@@ -1036,7 +1038,7 @@ export function createFeedService(o) {
     if (w.id === 'creative') { const r = await creativeIdea(t); proposals = r.cards; how = r.how; }
     else if (w.id === 'catalog' || w.id === 'visibility') { const s = live?.get()?.[w.id]; proposals = fromLive(t, w.id, w.id === 'catalog' ? 3 : 3);
       how = w.id === 'catalog' ? `from the live ${BH()} catalog (${s?.count || 0} products)` : `from real ${(() => { const r0 = live?.get()?.visibility?.runs?.[0]; return r0 ? andList([...new Set(r0.answers.map((a) => ENG[a.engine] || a.engine))]) : 'AI'; })()} answers`;
-      if (!proposals.length) { wlog(t, w, !s ? (live?.running().includes(w.id) ? 'Reading the live source now' : 'Live source not read yet') : `Checked ${w.id === 'catalog' ? `${s.count} products on ${BH()}` : 'the latest AI answers'}: nothing new`); return []; } }
+      if (!proposals.length) { wlog(t, w, !s ? (live?.running().includes(w.id) ? 'Reading the live source now' : w.id === 'catalog' && !B()?.config?.catalogUrl && !(B()?.config?.catalogPages || []).length ? 'Nothing to watch yet: the read found no product pages on the site' : 'Live source not read yet') : `Checked ${w.id === 'catalog' ? `${s.count} products on ${BH()}` : 'the latest AI answers'}: nothing new`); return []; } }
     else if (w.id === 'ads' && B().kind === 'generated') { proposals = fromOwnAds(t, 2); how = `from your live ads in the Meta Ad Library, ${CTRY()}`; }
     else if (w.id === 'trends' || w.id === 'ads-library') { proposals = fromResearch(t, w.id, w.id === 'trends' ? 2 : 2); how = w.id === 'trends' ? `from Google Trends, ${CTRY()}` : `from the Meta Ad Library, ${CTRY()}`; }
     else proposals = fromPool(t, w.id, 1);

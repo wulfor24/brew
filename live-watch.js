@@ -10,6 +10,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { productFromPage, offeringFromPage } from './reader/products.js';
+import { UA as BROWSER_UA } from './reader/util.js';
 
 const H = 3600e3, D = 24 * H;
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
@@ -75,24 +77,40 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
 
   /* ---------- Catalog: the brand's store ---------- */
   // fact keys the cards quote, by store handle (src: <host>/products/<handle>)
-  const quoted = Object.entries(FACTS).filter(([k, f]) => f.kind === 'price' && !k.endsWith('_mrp') && (f.src || '').startsWith(HOST + '/products/')).map(([k, f]) => ({ key: k, handle: f.src.split('/').pop(), n: f.n }));
+  /* off Shopify a fact's source is the product page itself (host + path): matched to the watched pages (cfg.catalogPages) */
+  const pagePath = new Map((cfg.catalogPages || []).map((x) => { try { const u = new URL(x.url); return [u.hostname.replace(/^www\./, '') + u.pathname.replace(/\/$/, ''), x.handle]; } catch { return [null, null]; } }).filter(([k]) => k));
+  const quoted = Object.entries(FACTS).filter(([k, f]) => f.kind === 'price' && !k.endsWith('_mrp') && ((f.src || '').startsWith(HOST + '/products/') || pagePath.has(String(f.src || '').replace(/^www\./, '').replace(/\/$/, '')))).map(([k, f]) => ({ key: k, handle: pagePath.get(String(f.src || '').replace(/^www\./, '').replace(/\/$/, '')) || f.src.split('/').pop(), n: f.n }));
+  /* the watched product pages, opened again with a browser's user agent (stores refuse bots): a page that 404s is gone,
+     one that fails to open is not news */
+  async function pageItems() {
+    const out = [], gone = new Set(), list = cfg.catalogPages || [];
+    for (let i = 0; i < list.length; i += 6) await Promise.all(list.slice(i, i + 6).map(async (x) => { try {
+      const r = await fetch(x.url, { headers: { 'user-agent': BROWSER_UA, 'accept-language': 'en' }, signal: AbortSignal.timeout(25e3) }); if (r.status === 404 || r.status === 410) { gone.add(x.handle); return; } if (!r.ok) return;
+      const html = await r.text(); const it = x.kind === 'offering' ? offeringFromPage(html, x.url) : productFromPage(html, x.url); if (!it) return;
+      out.push({ handle: x.handle, title: it.title, type: it.type || '', price: it.price || 0, mrp: Math.max(it.mrp || 0, it.price || 0), inStock: it.inStock !== false, variants: it.variants || 1, images: (it.images || []).length, img: it.images?.[0] || null, published: null, url: x.url }); } catch {} }));
+    return { items: out, gone };
+  }
   async function refreshCatalog() {
-    if (!cfg.catalogUrl) return 0; // not a store with a public products.json: the build's catalog read stands
+    if (!cfg.catalogUrl && !(cfg.catalogPages || []).length) return 0; // nothing to watch: the build's catalog read stands
     const now = Date.now(), products = [];
+    let items, partial = null;
+    if (!cfg.catalogUrl) { partial = await pageItems(); if (!partial.items.length && !partial.gone.size) throw new Error(`${HOST}: none of the ${cfg.catalogPages.length} product pages opened`); items = partial.items; }
+    else {
     for (let page = 1; page <= 5; page++) {
       const r = await fetch(`${cfg.catalogUrl}?limit=250&page=${page}`, { headers: { 'user-agent': 'Brew-catalog-watch/1' }, signal: AbortSignal.timeout(30e3) });
       if (!r.ok) throw new Error(`${HOST} products.json ${r.status}`);
       const { products: ps = [] } = await r.json(); products.push(...ps); if (ps.length < 250) break;
     }
     if (!products.length) throw new Error(`${HOST} returned no products`);
-    const items = products.map((p) => { const vs = p.variants || [], v = vs[0] || {}; const price = +v.price || 0;
+    items = products.map((p) => { const vs = p.variants || [], v = vs[0] || {}; const price = +v.price || 0;
       return { handle: p.handle, title: String(p.title || '').replace(/\s+/g, ' ').trim(), type: p.product_type || '', price, mrp: Math.max(+v.compare_at_price || 0, price), inStock: vs.some((x) => x.available), variants: vs.length, images: (p.images || []).length, img: p.images?.[0]?.src || null, published: p.published_at, url: `https://${HOST}/products/${p.handle}` }; });
+    }
     const prev = snap.catalog, before = new Map((prev?.items || []).map((x) => [x.handle, x])), by = new Map(items.map((x) => [x.handle, x]));
     const ev = [], day = new Date(now).toISOString().slice(0, 10), add = (e) => ev.push({ ...e, at: now });
     // cards quote these prices: a live price that differs means every card that says the old one is now wrong
     const drift = quoted.map((q) => ({ ...q, p: by.get(q.handle) })).filter((q) => q.p && Math.round(q.p.price * 100) !== Math.round(q.n * 100) && inr(q.n) !== inr(q.p.price)); // paise count: ₹1,850.40 is not a change from ₹1,850
     if (drift.length) add({ id: 'cat-drift-' + sha(drift.map((q) => q.handle + q.p.price).join()), kind: 'drift', items: drift.map((q) => ({ title: q.p.title, url: q.p.url, was: inr(q.n), now: inr(q.p.price) })) });
-    const gone = quoted.map((q) => ({ ...q, p: by.get(q.handle) })).filter((q) => !q.p);
+    const gone = quoted.map((q) => ({ ...q, p: by.get(q.handle) })).filter((q) => !q.p && (!partial || partial.gone.has(q.handle)));
     if (gone.length) add({ id: 'cat-gone-quoted-' + sha(gone.map((q) => q.handle).join()), kind: 'gone', quoted: true, items: gone.map((q) => ({ title: q.key, url: `https://${HOST}/products/${q.handle}` })) });
     // stock: ONE reading of everything sold out, naming the products our cards and ads point to (urgent when there are any). Two
     // readings (ours, and a roll-up that held them again) showed as two cards, 74 and 373 (QA FEED-11, 19 Oct)
@@ -103,18 +121,20 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
       if (back.length) add({ id: 'cat-back-' + day + sha(back.map((x) => x.handle).join()), kind: 'back', items: back });
       const moved = items.filter((x) => before.get(x.handle) && Math.round(before.get(x.handle).price) !== Math.round(x.price)).map((x) => ({ ...x, was: before.get(x.handle).price }));
       if (moved.length) add({ id: 'cat-price-' + sha(moved.map((x) => x.handle + x.price).join()), kind: 'price', items: moved });
-      const removed = [...before.values()].filter((x) => !by.has(x.handle));
+      const removed = [...before.values()].filter((x) => !by.has(x.handle) && (!partial || partial.gone.has(x.handle)));
       if (removed.length) add({ id: 'cat-removed-' + sha(removed.map((x) => x.handle).join()), kind: 'removed', items: removed });
     }
     // launched in the last 14 days (or since the last pass)
-    const fresh = items.filter((x) => (prev && !before.has(x.handle)) || (x.published && now - Date.parse(x.published) < 14 * D));
+    const fresh = items.filter((x) => (prev && !partial && !before.has(x.handle)) || (x.published && now - Date.parse(x.published) < 14 * D));
     if (fresh.length) add({ id: 'cat-new-' + sha(fresh.map((x) => x.handle).join()), kind: 'new', items: fresh });
     // listings catalog ads can't show well: one photo or none
     const thin = items.filter((x) => x.inStock && x.images <= 1);
     if (thin.length) add({ id: 'cat-thin-' + sha(thin.map((x) => x.handle).join()), kind: 'thin', items: thin });
     const known = new Set((prev?.events || []).map((e) => e.id));
     const events = [...ev.filter((e) => !known.has(e.id)), ...(prev?.events || [])].slice(0, 40);
-    snap.catalog = { fetchedAt: now, count: items.length, items, events, source: `${HOST} catalog` };
+    /* a page-by-page watch keeps what it couldn't open from the last pass, so nothing flips to "new" or "removed" on a failed fetch */
+    if (partial && prev) for (const x of prev.items || []) if (!by.has(x.handle) && !partial.gone.has(x.handle)) items.push(x);
+    snap.catalog = { fetchedAt: now, count: items.length, items, events, source: `${HOST} catalog${partial ? ' (product pages)' : ''}` };
     return ev.filter((e) => !known.has(e.id)).length;
   }
 

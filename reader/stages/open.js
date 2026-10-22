@@ -120,7 +120,9 @@ export async function open(ctx) {
   const allUrls = uniq.length;
   if (loc) { const inLoc = uniq.filter((u) => { try { return new URL(u).pathname.toLowerCase().startsWith('/' + loc + '/') || new URL(u).pathname.toLowerCase() === '/' + loc; } catch { return false; } }); if (inLoc.length) uniq = inLoc; }
   const pages = uniq.length;
-  profile.site = { ...(profile.site || {}), pages: pages || null, sitemaps: sitemaps.map((s) => ({ url: s.url, pages: s.pages })) };
+  /* blog and article pages by their own URLs, on any platform (moves-cadence.js counts them for search) */
+  const articles = uniq.filter((u) => { try { return /\/(blogs?|articles?|posts?|news|journal|guides?|stories|insights|learn|magazine)\//i.test(new URL(u).pathname); } catch { return false; } }).length;
+  profile.site = { ...(profile.site || {}), pages: pages || null, articles: sitemaps.length ? articles : null, sitemaps: sitemaps.map((s) => ({ url: s.url, pages: s.pages })) };
   ctx.state.pageUrls = uniq;
   if (sitemaps.length) {
     ledger.add({ key: 'site.pages', label: 'Pages listed in the sitemaps', v: String(pages), n: pages, unit: 'pages', url: smUrls[0], method: 'crawl', note: loc ? `market /${loc} only (the site sent this visit there); ${allUrls} URLs in the sitemaps read` : undefined });

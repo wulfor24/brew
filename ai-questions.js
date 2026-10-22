@@ -93,7 +93,7 @@ export function createAiQuestions({ packs, treg = null, ai = null, fetchFn = fet
     for (const c of cands) c.volume = vol[norm(c.text)] || 0;
     for (const s of seeds) { const k = `best ${s}`; if (!seen.has(k) && vol[k]) add({ kind: 'search', text: k, volume: vol[k], branded: false }); }
     for (const t of b.threads) add({ kind: 'thread', text: cut(t.title || t.quote, 160), platform: t.platform, url: t.url, replies: t.replies || 0, branded: new RegExp(`\\b${escRe(brand)}\\b`).test(norm(t.title || t.quote)) });
-    b.heroes.forEach((h, i) => add({ kind: 'product', text: h.title, rank: i + 1, reviews: h.reviews?.count || h.reviews || 0, url: b.host && h.handle ? `https://${b.host}/products/${h.handle}` : null, branded: true }));
+    b.heroes.forEach((h, i) => add({ kind: 'product', text: h.title, rank: i + 1, reviews: h.reviews?.count || h.reviews || 0, url: h.url || (b.host && h.handle && (!b.platform || b.platform === 'shopify') ? `https://${b.host}/products/${h.handle}` : null), branded: true }));
     return { seeds, cands };
   }
 

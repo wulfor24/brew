@@ -15,6 +15,7 @@
 // (ids ending -p, privateOf the move number) and private/audit/scorecard.json; the public run and its files never change.
 import { allowedFromLedger, scanNumbers } from './moves-engine.js';
 import { closedLine } from './reader/closed.js';
+import { catalogSourceUrl, catalogTotal, sellsByEnquiry } from './store-facts.js';
 import { evidenceRows, privId } from './connectors/common.js';
 import { mergeLedger } from './refresh.js';
 import { withLive } from './on-connect.js';
@@ -59,21 +60,30 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
   const part = (k, pts, of, note, src, url, at = read) => ({ k, pts: Math.max(0, Math.min(of, pts)), of, note, src, url, at });
   /* site and product pages */
   const prods = p.catalog?.products || [], co = p.site?.checkout || {}, keyPages = p.site?.keyPages || [];
-  { const parts = [];
-    if (prods.length) {
+  { const parts = [], enquiry = sellsByEnquiry(p), listUrl = catalogSourceUrl(p) || site;
+    if (prods.length && !enquiry) {
       const avg = prods.reduce((a, x) => a + (x.images?.length || 0), 0) / prods.length, thin = prods.filter((x) => (x.images?.length || 0) <= 1).length;
-      parts.push(part('Photos per product', (Math.min(avg, 4) / 4) * 20, 20, `${avg.toFixed(1)} photos per product on average across ${prods.length} products read; ${thin} have one photo or none`, `${host} product list`, `${site}/products.json`));
+      parts.push(part('Photos per product', (Math.min(avg, 4) / 4) * 20, 20, `${avg.toFixed(1)} photos per product on average across ${prods.length} products read; ${thin} have one photo or none`, `${host} product list`, listUrl));
       const inStock = prods.filter((x) => x.inStock !== false).length;
-      parts.push(part('In stock', (inStock / prods.length) * 20, 20, `${inStock} of ${prods.length} products read are in stock (${pct(inStock, prods.length)}%)`, `${host} product list`, `${site}/products.json`));
+      parts.push(part('In stock', (inStock / prods.length) * 20, 20, `${inStock} of ${prods.length} products read are in stock (${pct(inStock, prods.length)}%)`, `${host} product list`, listUrl));
       const withRev = prods.filter((x) => (x.reviews?.count ?? x.reviews?.n ?? (typeof x.reviews === 'number' ? x.reviews : 0)) > 0).length;
       if (p.closed && p.reviews?.closed && !withRev) parts.push(part('Reviews on product pages', 0, 0, closedLine('review widgets'), `${host} product pages`, site)); /* a closed store: never "no review widget" */
+      /* reviews switched off by the store: its choice, not a gap; the marketplaces' ratings are read instead (reviews.js onSite) */
+      else if (p.reviews?.onSite === 'off') parts.push(part('Reviews on product pages', 0, 0, `reviews are switched off on the site${(p.reviews.platforms || []).length ? `; read on ${p.reviews.platforms.map((x) => x.name).join(', ')} instead` : ''}`, `${host} product pages`, site));
+      else if (p.reviews?.onSite === 'unread') parts.push(part('Reviews on product pages', 0, 0, `${p.reviews.app || 'the review app'} is on the site but couldn't be read this time`, `${host} product pages`, site));
       else if (p.reviews?.app || withRev) parts.push(part('Reviews on product pages', p.reviews?.app ? 15 : (withRev / prods.length) * 15, 15, p.reviews?.app ? `review app on the site: ${p.reviews.app}` : `${withRev} of ${prods.length} products show reviews`, `${host} product pages`, site));
       else parts.push(part('Reviews on product pages', 0, 15, 'no review widget was found on the product pages read', `${host} product pages`, site));
     }
-    const walk = co.walk || [];
+    /* an enquiry-led brand: its Google reviews and the walk to its enquiry form, not a cart */
+    if (enquiry) { const g = (p.reviews?.platforms || []).find((x) => /google/i.test(x.name));
+      parts.push(g ? part('Google reviews', (Math.min(g.count || 0, 100) / 100) * 15 * Math.min(1, (g.rating || 0) / 4.5), 15, `${g.count} Google reviews${g.rating ? ` at ${g.rating.toFixed(1)}★` : ''} on ${g.label?.replace(/^Google reviews on /, '') || 'its places'}`, 'Google Maps', g.url) : part('Google reviews', 0, 0, 'Google reviews not read yet', 'Google Maps', ''));
+      if (co.kind === 'enquiry') parts.push(co.reached ? part('Path to an enquiry', co.clicks <= 1 ? 25 : 18, 25, `the enquiry form is ${co.clicks ? `${co.clicks} click${co.clicks === 1 ? '' : 's'}` : 'on the home page'} away and asks for ${(co.fields || []).join(', ') || 'a few details'}`, 'Brew enquiry walk', co.stoppedAt || site) : part('Path to an enquiry', 0, 0, `not checked: the walk stopped (${(co.walk || []).find((s) => !s.ok)?.err || 'form not reached'})`, 'Brew enquiry walk', site)); }
+    const walk = enquiry ? [] : co.walk || [];
     if (co.closed) parts.push(part('Path to checkout', 0, 0, closedLine('the walk to checkout'), 'Brew checkout walk', site));
-    if (walk.length) { const ok = walk.filter((s) => s.ok).length; parts.push(part('Path to checkout', (ok / walk.length) * 25, 25, `${ok} of ${walk.length} steps of the walk to checkout worked (home, product, cart, checkout)${co.msToCheckout ? `, ${(co.msToCheckout / 1000).toFixed(1)} s to checkout` : ''}`, 'Brew checkout walk', walk[0]?.url || site)); }
-    const want = [['faq|help', 'FAQ or help'], ['return', 'returns'], ['shipping', 'shipping'], ['contact', 'contact']];
+    /* a walk that stopped is Brew's headless browser falling short as often as the store: not scored, said plainly */
+    if (walk.length && !walk.some((s) => s.step === 'Checkout entry' && s.ok)) parts.push(part('Path to checkout', 0, 0, `not checked: the walk stopped at ${(walk.find((s) => !s.ok) || {}).step || 'a step'} (${(walk.find((s) => !s.ok) || {}).err || 'checkout not reached'}); the next refresh walks it again`, 'Brew checkout walk', site));
+    else if (walk.length) { const ok = walk.filter((s) => s.ok).length; parts.push(part('Path to checkout', (ok / walk.length) * 25, 25, `${ok} of ${walk.length} steps of the walk to checkout worked (home, product, cart, checkout)${co.msToCheckout ? `, ${(co.msToCheckout / 1000).toFixed(1)} s to checkout` : ''}`, 'Brew checkout walk', walk[0]?.url || site)); }
+    const want = enquiry ? [['faq|help', 'FAQ or help'], ['contact', 'contact']] : [['faq|help', 'FAQ or help'], ['return', 'returns'], ['shipping', 'shipping'], ['contact', 'contact']]; /* nothing ships for an enquiry */
     const have = want.filter(([re]) => keyPages.some((u) => new RegExp(re, 'i').test(u)));
     if (p.closed && !keyPages.length) parts.push(part('Help pages', 0, 0, closedLine('help pages'), `${host} key pages`, site));
     else if (keyPages.length || p.site) parts.push(part('Help pages', (have.length / want.length) * 20, 20, `${have.length} of ${want.length} help pages found: ${have.map((x) => x[1]).join(', ') || 'none'}${have.length < want.length ? `; not found: ${want.filter((x) => !have.includes(x)).map((x) => x[1]).join(', ')}` : ''}`, `${host} key pages`, keyPages[0] || site));
@@ -81,10 +91,12 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
   }
   /* search */
   { const parts = [], sm = p.site?.sitemaps || [], terms = p.search?.terms || [], serp = p.search?.serp || [];
-    const arts = sm.filter((s) => /articles|blogs/.test(s.url)).reduce((a, s) => a + (s.pages || 0), 0);
+    /* blog pages counted from the sitemap's own URLs (open.js site.articles) on any platform; Shopify's file names as the fallback */
+    const arts = p.site?.articles ?? sm.filter((s) => /articles|blogs|blog|post|news/.test(s.url)).reduce((a, s) => a + (s.pages || 0), 0);
     if (sm.length) parts.push(part('Articles and guides', (Math.min(arts, 40) / 40) * 30, 30, `${arts} blog and article pages in the sitemap`, `${host} sitemap.xml`, sm.find((s) => /articles/.test(s.url))?.url || `${site}/sitemap.xml`));
-    const prodPages = sm.filter((s) => /sitemap_products/.test(s.url)).reduce((a, s) => a + (s.pages || 0), 0);
-    if (sm.length && p.catalog?.count) parts.push(part('Products in the sitemap', (Math.min(prodPages, p.catalog.count) / p.catalog.count) * 20, 20, `${prodPages} product pages in the sitemap for ${p.catalog.count} products in the catalog`, `${host} sitemap.xml`, `${site}/sitemap.xml`));
+    /* off Shopify the product pages ARE what the catalog read from the sitemap (catalog.total) */
+    const prodPages = p.platform === 'shopify' || p.catalog?.source === 'products.json' ? sm.filter((s) => /sitemap_products/.test(s.url)).reduce((a, s) => a + (s.pages || 0), 0) : catalogTotal(p);
+    if (sm.length && p.catalog?.count && !sellsByEnquiry(p)) parts.push(part('Products in the sitemap', (Math.min(prodPages, Math.max(p.catalog.count, catalogTotal(p))) / Math.max(p.catalog.count, catalogTotal(p))) * 20, 20, `${prodPages} product pages in the sitemap for ${Math.max(p.catalog.count, catalogTotal(p))} products in the catalog`, `${host} sitemap.xml`, `${site}/sitemap.xml`));
     if (p.closed || p.search?.closed) parts.push(part('Ranks for category searches', 0, 0, closedLine('Google rank'), 'Google results', ''));
     else if (serp.length) { const bare = String(host).replace(/^www\./, ''), hits = serp.filter((s) => (s.results || []).some((r) => String(r.domain || '').includes(bare)));
       const top = serp[0]?.results?.slice(0, 3).map((r) => r.domain).join(', ');

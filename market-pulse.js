@@ -231,7 +231,7 @@ export function createPulse({ slug, packs, treg, ai, log = console, now = () => 
   } };
   // page health: the home page and the two hero product pages
   S.pages = { cadence: 'weekly', family: 'cro', async run(b, L) {
-    if (!b.host) return; const urls = [`https://${b.host}/`, ...b.heroes.filter((p) => p.handle).slice(0, 2).map((p) => `https://${b.host}/products/${p.handle}`)];
+    if (!b.host) return; const urls = [`https://${b.host}/`, ...b.heroes.map((p) => p.url || (p.handle && (!b.platform || b.platform === 'shopify') ? `https://${b.host}/products/${p.handle}` : null)).filter(Boolean).slice(0, 2)]; /* the product's own page, never a guessed /products/ path that 404s off Shopify */
     await pool(urls, 1, async (u) => { const r = (await dfsRows('dataforseo.web.page.audit', { url: u, enable_javascript: true }))[0]?.items?.[0]; if (!r) return; const t = r.page_timing || {};
       L({ key: `page.score.${kslug(u.replace(/^https:\/\//, ''))}`, label: `Page health score: ${u.replace(/^https:\/\//, '')}`, value: r.onpage_score != null ? Math.round(r.onpage_score) : null, unit: 'of 100', loadMs: t.duration_time ?? t.dom_complete ?? null, interactiveMs: t.time_to_interactive ?? null, status: r.status_code, source: 'Page health check', family: 'cro', url: u }); });
   } };

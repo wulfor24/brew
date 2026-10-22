@@ -622,7 +622,7 @@
     root.innerHTML = `<main class="screen ck2"><div class="ck2-wrap">
       <header class="ck2-head">${D.logo ? `<span class="ck2-logo"><img src="${esc(D.logo)}" alt=""></span>` : ''}<button class="btn btn-ghost sm ck2-skip" id="ck-skip">${S.onboarded ? 'Skip to my feed' : 'Skip for now'}</button><div><h1>Is this right?</h1><p>${D.started ? 'Brew is writing with what it read. Fix anything that’s off and the brief and your first moves are rewritten with it.' : `${writeAtLine(D)} Fix anything that’s off.`}</p></div></header>
       <section class="ck2-card"><h2>Who you are <small>${readFrom(D.who)}</small></h2><div class="ck2-grid">${D.who.map((x) => field(x, 'who')).join('')}</div></section>
-      <section class="ck2-card"><h2>What you sell <small>${D.count} read · tap to choose the ones to lead with</small></h2>${D.storeNote ? `<p class="ck2-note">${ic('info', 's14')}${esc(D.storeNote)}</p>` : ''}<div class="ck2-prods${D.products.length > 8 ? ' is-cap' : ''}" id="ck2-prods">${D.products.map(prodTile).join('')}</div>${D.products.length > 8 ? `<button class="linkbtn ck2-all" data-ckall>Show ${D.products.length - 8} more</button>` : ''}
+      <section class="ck2-card"><h2>What you sell <small>${D.read != null && D.count > D.read ? `${D.read} of ${Number(D.count).toLocaleString('en-IN')}` : D.count} read · tap to choose the ones to lead with</small></h2>${D.storeNote ? `<p class="ck2-note">${ic('info', 's14')}${esc(D.storeNote)}</p>` : ''}<div class="ck2-prods${D.products.length > 8 ? ' is-cap' : ''}" id="ck2-prods">${D.products.map(prodTile).join('')}</div>${D.products.length > 8 ? `<button class="linkbtn ck2-all" data-ckall>Show ${D.products.length - 8} more</button>` : ''}
         <form class="ck2-add" data-add="product"><input placeholder="Paste a product page link to add it" inputmode="url"><button class="btn btn-ghost sm">Add product</button></form></section>
       <section class="ck2-card"><h2>Who you compete with</h2><div class="ck2-rivals" id="ck2-rivals">${D.rivals.length ? D.rivals.map(rivalTile).join('') : '<p class="ck2-empty">No rivals yet. Add the brands you lose sales to.</p>'}</div>
         <form class="ck2-add" data-add="rival"><input placeholder="Paste a rival’s website, e.g. rivalbrand.com" inputmode="url"><button class="btn btn-ghost sm">Add rival</button></form></section>
@@ -3484,7 +3484,14 @@
   const pmBrief = (m) => { let s = String(m || '').replace(/\s*Use the reference photos? of[\s\S]*$/i, '').replace(/https?:\/\/\S+/g, '').replace(/\(\s*[, ]*\)/g, '').replace(/^\s*(real|vertical|square)[^:.]{0,48}:\s(?!\d)/i, '').trim();
     const ss = s.split(/(?<=\.)\s+/); while (ss.length > 1 && ss[0].length < 70 && /^(real|vertical|square|horizontal|\d)/i.test(ss[0])) ss.shift(); s = ss.join(' '); return s.charAt(0).toUpperCase() + s.slice(1); };
   /* store photos come as 4,000px originals; Shopify's CDN serves a small copy from the same address */
-  const cdnSized = (u, w) => { try { const x = new URL(u, location.href); if (!(/(^|\.)cdn\.shopify\.com$/.test(x.hostname) || x.pathname.startsWith('/cdn/shop/'))) return u; x.searchParams.set('width', w); return x.toString(); } catch { return u; } };
+  /* the image CDN's own resize, so the feed never loads a 2000px original: Shopify (?width), Cloudinary-style paths (w_2000 →
+     w_600: images.puma.com and most Next.js stores), Salesforce Commerce (?sw=), imgix and WordPress-style (?w=) */
+  const cdnSized = (u, w) => { try { const x = new URL(u, location.href);
+    if (/(^|\.)cdn\.shopify\.com$/.test(x.hostname) || x.pathname.startsWith('/cdn/shop/')) { x.searchParams.set('width', w); return x.toString(); }
+    if (/\/image\/upload\//.test(x.pathname) && /(^|[,/])w_\d+/.test(x.pathname)) { x.pathname = x.pathname.replace(/(^|[,/])w_\d+/, `$1w_${w}`).replace(/,h_\d+/, ''); return x.toString(); }
+    if (/demandware\.static|\/dw\/image\//.test(x.href)) { x.searchParams.set('sw', w); return x.toString(); }
+    if (/(^|\.)imgix\.net$/.test(x.hostname) || x.searchParams.has('w')) { x.searchParams.set('w', w); return x.toString(); }
+    return u; } catch { return u; } };
   const pmMedia = (ch, p, lg, { ratio = '', video = false } = {}) => {
     const made = imgOf(ch); if (!p.media && !made && !(p.photos || []).length) return lg && view === 'remix' ? `<div class="pm-media pm-add"><button class="btn btn-ghost sm" data-ph-open>${ic('pic', 's14')}Add a photo</button></div>` : '';
     if (video && p.video) return `<div class="pm-media sv-media" style="aspect-ratio:9/16"><video class="sv-vid" src="${esc(p.video)}"${p.poster ? ` poster="${esc(p.poster)}"` : ''} muted autoplay loop playsinline preload="metadata" data-sv-play></video>
