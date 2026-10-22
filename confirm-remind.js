@@ -14,6 +14,7 @@
 // Recipients: private/created.json (who started the read) and the owners in private/members.json. A brand nobody signed
 // in for has no one to remind; it still shows "waiting for you" to whoever opens it.
 import { emailHtml, p as mailP, esc as mailEsc } from './mail-layout.js';
+import { officialFor } from './auth.js';
 
 export const REMIND_AT = [3 * 36e5, 24 * 36e5]; // a few hours, then a day
 
@@ -46,8 +47,8 @@ const realAddr = (e) => EMAIL.test(e) && !/@demo\.brew$/i.test(e);
 
 /** who to remind: the starter and the brand's owners, once each */
 export async function recipients(packs, slug) {
-  const [created, members] = await Promise.all([packs.getJSON(slug, 'private/created.json', null).catch(() => null), packs.getJSON(slug, 'private/members.json', null).catch(() => null)]);
-  const xs = [created?.by, ...((members?.members || []).filter((m) => m.role === 'owner').map((m) => m.email)), members?.owner];
+  const [created, members, st] = await Promise.all([packs.getJSON(slug, 'private/created.json', null).catch(() => null), packs.getJSON(slug, 'private/members.json', null).catch(() => null), packs.getJSON(slug, 'status.json', null).catch(() => null)]);
+  const xs = [officialFor(created?.by, members?.host || st?.host) ? created.by : null, /* a starter only on the brand's own email */ ...((members?.members || []).filter((m) => m.role === 'owner').map((m) => m.email)), members?.owner];
   return [...new Set(xs.map((e) => String(e || '').trim().toLowerCase()).filter(realAddr))];
 }
 

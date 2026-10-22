@@ -43,16 +43,19 @@ async function brand(P, slug, { status = {}, moves = null, brief = null, onRun =
 const team = async (P, slug) => {
   await P.put(slug, 'notify.json', { emails: [{ email: 'Opt@Acme.in', at: 1 }], sent: {} });
   await P.put(slug, 'private/created.json', { by: 'Ana@acme.in', at: 1 });
-  await P.put(slug, 'private/members.json', { owner: 'raj@acme.in', members: [{ email: 'raj@acme.in', role: 'owner' }, { email: 'sam@acme.in', role: 'member', seats: 'all' }, { email: 'quiet@acme.in', role: 'member' }, { email: 'x@demo.brew', role: 'member' }] });
+  await P.put(slug, 'private/members.json', { host: 'acme.in', owner: 'raj@acme.in', members: [{ email: 'raj@acme.in', role: 'owner' }, { email: 'sam@acme.in', role: 'member', seats: 'all' }, { email: 'quiet@acme.in', role: 'member' }, { email: 'x@demo.brew', role: 'member' }] });
   await P.put(slug, 'private/mail-prefs.json', { 'quiet@acme.in': { mail: 'off', muted: [] }, 'sam@acme.in': { mail: 'tags', muted: [] } });
 };
 
 /* ---------- 1. who hears ---------- */
-test('notify recipients: the opted-in, the creator and every member, once each; muted and demo addresses skipped', async () => {
+test('notify recipients: the opted-in, the creator (on the brand’s own email) and every member, once each; muted and demo addresses skipped', async () => {
   const P = tmpPacks(), slug = 'acme-in'; await team(P, slug);
   assert.deepEqual(await teamRecipients(P, slug, { extra: ['opt@acme.in', 'RAJ@acme.in'] }), ['opt@acme.in', 'raj@acme.in', 'ana@acme.in', 'sam@acme.in']);
   assert.deepEqual(await teamRecipients(P, slug, { membersOnly: true }), ['raj@acme.in', 'sam@acme.in'], 'a team-only rewrite: members only');
   assert.deepEqual(await teamRecipients(P, 'nobody-here'), []);
+  /* a starter on Gmail is not the team: it hears nothing about the brand (Param, 23 Oct) */
+  await P.put(slug, 'private/created.json', { by: 'ana@gmail.com', at: 1 });
+  assert.deepEqual(await teamRecipients(P, slug), ['raj@acme.in', 'sam@acme.in']);
 });
 
 test('the build’s "all moves ready" email goes to the whole team with a ?go=feed button; one per person', async () => {

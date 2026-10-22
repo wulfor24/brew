@@ -27,6 +27,8 @@ export const exactSite = (a, b) => { a = bareHost(a); b = bareHost(b); return !!
 /* a work email that belongs to the brand: the same domain, a subdomain of the brand's site, or the company domain the brand's
    site sits under (shop.brand.com for you@brand.com); never a shared platform domain or a free mailbox */
 export const ownDomain = (emailDomain, host) => { const a = bareHost(emailDomain), b = bareHost(host); if (!a || !b || FREE.test(a)) return false; if (a === b) return true; if (PLATFORM.test(a) || !a.includes('.')) return false; return a.endsWith('.' + b) || b.endsWith('.' + a); };
+/* an email that counts for this brand: its own domain, never a free mailbox (also who hears about a brand: digest.js, confirm-remind.js) */
+export const officialFor = (email, host) => !!email && !!host && !freeMail(email) && ownDomain(domainOf(email), host);
 
 /* SquareUp's own people: every brand, every view, every generation (FULL_ACCESS_DOMAINS, subdomains included) */
 const fullDomains = () => String(process.env.FULL_ACCESS_DOMAINS ?? 'joinsquareup.com,shopos.ai').toLowerCase().split(/[,;\s]+/).filter(Boolean);
@@ -121,18 +123,16 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       return added;
     });
   }
-  /* the person who started the read (private/created.json, written on the first confirm or check): while nobody has claimed
-     the brand they count as its own, whatever their email's domain (a founder on Gmail), and may claim it. Brew's own people
-     never do (they see everything already) */
-  const starterOf = async (slug, u) => { if (!u || isAdmin(u)) return false; const c = await packs.getJSON(slug, 'private/created.json', null).catch(() => null); return !!c?.by && String(c.by).toLowerCase() === String(u.email).toLowerCase(); };
+  /* starting a read gives nothing on its own (Param, 23 Oct): a Gmail could start a read of a brand nobody claimed and take it.
+     Only an official email, an invite or SquareUp's own people open a brand */
   // claim by email domain (instant); a connected account claims through claimWith (connectors/index.js)
   async function claimInfo(slug, u) {
     const host = await hostOf(slug), m = await getM(slug), role = await roleOf(slug, u);
     const domainOk = !!u && !freeMail(u.email) && ownDomain(domainOf(u.email), host);
     const boss = role === 'owner' || role === 'admin', seats = role ? await seatsOf(slug, u) : null;
-    const starter = !!u && !role && !m.owner && !domainOk && (await starterOf(slug, u));
-    /* eligible: an official email on a brand nobody has claimed yet, or the person who started its read (they may claim it). gen: may make fresh work here */
-    const eligible = !!u && !role && !m.owner && (domainOk || starter), gen = DEMO_SITE() || !!role || eligible;
+    const starter = false; /* kept in the answer for older pages; starting a read never opens a brand */
+    /* eligible: an official email on a brand nobody has claimed yet (they may claim it). gen: may make fresh work here */
+    const eligible = !!u && !role && !m.owner && domainOk, gen = DEMO_SITE() || !!role || eligible;
     return { host, claimed: !!m.owner, role, seats, canClaim: eligible, eligible, starter, gen, full: isAdmin(u), domainOk, 
       owner: m.owner ? m.owner.replace(/^(.).*@/, '$1•••@') : null, me: u?.email || null,
       /* the person looking is always on the list: Brew's own people (admins on every brand) show as themselves, first */
@@ -149,9 +149,9 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     const host = await hostOf(slug); await editM(slug, (m) => { m.host ||= host; });
     const m = await getM(slug);
     if (m.owner) return (await roleOf(slug, u)) ? { ok: true } : { error: 'This brand is already claimed. Ask its team to invite you.' };
-    const mine = (!freeMail(u.email) && ownDomain(domainOf(u.email), host)) || (await starterOf(slug, u)); /* the brand's domain, or the person who started its read */
+    const mine = officialFor(u.email, host); /* only the brand's own domain */
     if (!mine && isAdmin(u)) return { error: `You have full access as Brew team. Only someone with an email at ${host} can claim it.`, full: true };
-    if (!mine) return { error: `Sign in with the email you used to start this read, or with your work email at ${host}, to claim it.`, needs: 'work_email' };
+    if (!mine) return { error: `Sign in with your work email at ${host} to claim it.`, needs: 'work_email' };
     await addMember(slug, u, 'owner', via || `Email at ${domainOf(u.email)}`);
     log.log?.(`[auth] ${slug} claimed by ${u.email} (${via || 'email domain'})`);
     return { ok: true, role: 'owner' };
@@ -264,7 +264,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       if (!me) return json(res, 401, { error: 'Sign in first.', signin: true }), true;
       if (!(await hostOf(slug))) return json(res, 404, { error: 'unknown brand' }), true;
       /* Claim: idempotent (the team gets { ok }); the client calls it as the seat picker opens, so a brand whose check was
-         missed is still claimed by its starter or a same-domain person before "Invite your team" and jam tags need a team */
+         missed is still claimed by a same-domain person before "Invite your team" and jam tags need a team */
       if (what === 'claim' && req.method === 'POST') { const r = await claim(slug, me); return json(res, 200, { ...r, access: await claimInfo(slug, me) }), true; }
       if (what === 'team') {
         const role = await roleOf(slug, me); if (!role) return json(res, 403, { error: 'Only the team sees the team.' }), true;

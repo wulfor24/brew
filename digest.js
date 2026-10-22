@@ -14,6 +14,7 @@
 // Live site only (server.js starts it on Cloud Run), never on the demo site. If the brand's Slack is connected, the same
 // lines go to its channel once.
 import { emailHtml, esc, p as mailP, list as mailList, heading, images as mailImages, footLink } from './mail-layout.js';
+import { officialFor } from './auth.js'; // the read's starter hears about the brand only on its official email
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 
 const DAY = 864e5, WEEK = 7 * DAY, IST = 5.5;
@@ -30,10 +31,11 @@ const getJ = (packs, slug) => (f, d = null) => Promise.resolve().then(() => pack
     team, lowercased and once each, never a demo address and never anyone whose mail is off. membersOnly: the team alone */
 export async function teamRecipients(packs, slug, { extra = [], membersOnly = false } = {}) {
   const g = getJ(packs, slug);
-  const [created, members, prefs] = await Promise.all([g('private/created.json'), g('private/members.json'), g('private/mail-prefs.json')]);
+  const [created, members, prefs, st] = await Promise.all([g('private/created.json'), g('private/members.json'), g('private/mail-prefs.json'), g('status.json')]);
+  const by = officialFor(created?.by, members?.host || st?.host) ? created.by : null; /* a starter on Gmail or another domain is not the team */
   const team = [...(members?.members || []).map((m) => m?.email), members?.owner];
   const off = (e) => prefs?.[e]?.mail === 'off';
-  return [...new Set((membersOnly ? team : [...extra, created?.by, ...team]).map(lc).filter((e) => realAddr(e) && !off(e)))];
+  return [...new Set((membersOnly ? team : [...extra, by, ...team]).map(lc).filter((e) => realAddr(e) && !off(e)))];
 }
 
 /* ---------- the brand's clock ---------- */

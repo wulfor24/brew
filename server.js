@@ -604,20 +604,32 @@ const closedGate = createClosedGate({ status: (slug) => builder.status(slug), pr
   on: () => !DEMO && auth.signinOn(), ttl: process.env.CLOSED_GATE_TTL != null ? +process.env.CLOSED_GATE_TTL : 15e3, renew: (req, u, res) => shopifyApp?.renew?.(req, u, res) || null, log: console });
 // is this person on the brand's team, and is the brand claimed (cached a minute: every feed call asks)
 const MEMO = new Map();
+/* every signed-in email that opens a brand, and what it got (Param, 23 Oct): _brew/private/visitors.json, one row per brand and
+   email (first and last seen, how often, its access then). Counted when a verdict is worked out (not every request), written at most
+   every 30 s and on SIGTERM; staff read it at GET /api/admin/visitors */
+const VIS = { m: null, dirty: false, t: null }, VIS_FILE = 'private/visitors.json';
+const visLoad = () => (VIS.m ||= packs.getJSON('_brew', VIS_FILE, {}).then((x) => x || {}).catch(() => ({})));
+const visFlush = async () => { clearTimeout(VIS.t); VIS.t = null; if (!VIS.dirty) return; VIS.dirty = false; await packs.put('_brew', VIS_FILE, await visLoad()).catch((e) => console.warn('[visitors]', e.message)); };
+const visSeen = (slug, me, v, a) => { const email = String(me?.email || '').toLowerCase(); if (!email || !slug || slug === DEFAULT || process.env.DEMO_MODE === '1') return;
+  visLoad().then((m) => { const k = `${slug}|${email}`, r = (m[k] ||= { slug, email, first: Date.now(), n: 0 });
+    r.last = Date.now(); r.n++; if (me.name) r.name = me.name;
+    r.access = a.full ? 'brew' : v.member ? 'team' : v.gen ? 'official' : 'blocked'; /* brew: SquareUp; official: the brand's own email, unclaimed */
+    if (r.access === 'blocked') r.blocked = (r.blocked || 0) + 1;
+    VIS.dirty = true; VIS.t ||= setTimeout(visFlush, 30e3); }).catch(() => {}); };
 const viewerOf = async (req, slug) => { if (process.env.DEV_MEMBER === '1' && !process.env.K_SERVICE && !auth.user(req)?.sub?.startsWith?.('dev')) return { member: true, claimed: true, gen: true, email: process.env.DEV_EMAIL || 'dev@local', name: process.env.DEV_NAME || 'Dev', seats: process.env.DEV_SEATS != null ? process.env.DEV_SEATS.split(',').filter(Boolean) : null }; // local testing of team-only paths; never on Cloud Run
   const me = auth.user(req), k = `${slug}|${me?.email || ''}`, c = MEMO.get(k); if (c && Date.now() - c.at < (c.v.gen ? 60e3 : 10e3)) return c.v; // a demo verdict is kept only briefly: an invite or claim on another instance shows up within seconds
   /* gen: may make fresh work here (the team, SquareUp, an official email on an unclaimed brand); everyone else sees the demo.
      A server with no sign-in (local) has nobody to tell apart, so it stays open */
   const a = await auth.accessOf(slug, me), member = !!a.role;
   const dev = !process.env.K_SERVICE && String(me?.sub || '').startsWith('dev'); /* a local dev sign-in (/auth/dev) is judged like a real one */
-  const v = { member, claimed: a.claimed, eligible: a.eligible, gen: a.gen || (!auth.signinOn() && !dev), host: a.host || null, email: me?.email || null, name: me?.name || null, pic: me?.pic || null, seats: member ? a.seats : null }; MEMO.set(k, { at: Date.now(), v }); if (MEMO.size > 5000) MEMO.clear(); return v; };
+  const v = { member, claimed: a.claimed, eligible: a.eligible, gen: a.gen || (!auth.signinOn() && !dev), host: a.host || null, email: me?.email || null, name: me?.name || null, pic: me?.pic || null, seats: member ? a.seats : null }; MEMO.set(k, { at: Date.now(), v }); if (MEMO.size > 5000) MEMO.clear(); visSeen(slug, me, v, a); return v; };
 /* fresh work (AI text, images, video, voice, rewrites) for this brand: the gate every generation route asks. With no brand
    open (the Brew default context), only SquareUp's people make new work */
 const genOk = async (req, slug) => { const dev = !process.env.K_SERVICE && String(auth.user(req)?.sub || '').startsWith('dev');
   if (process.env.DEMO_MODE === '1' || ((!auth.signinOn() || (process.env.DEV_MEMBER === '1' && !process.env.K_SERVICE)) && !dev)) return true;
   if (!slug || slug === DEFAULT) return auth.isAdmin(auth.user(req)); return !!(await viewerOf(req, slug)).gen; };
 /* the gate's words: 'Demo mode' only on the demo site; on live the person is told how to get in */
-const demoErr = (host) => ({ error: DEMO ? `Demo mode: sign in with your work email${host ? ` at ${host}` : ''} to make this.` : `Sign in with the email you used to start this read${host ? ` or a work email at ${host}` : ''}, or ask the owner for an invite.`, demo: true, host: host || null });
+const demoErr = (host) => ({ error: DEMO ? `Demo mode: sign in with your work email${host ? ` at ${host}` : ''} to make this.` : `Sign in with your work email${host ? ` at ${host}` : ''}, or ask the owner for an invite.`, demo: true, host: host || null });
 let connectors = null;
 /* real connected accounts on the live site (read only, tokens in the vault; Slack posts what the team sends); DUMMY: simulated on the demo site (connectors/index.js simOnly) */
 connectors = createConnectors({ packs, auth, builder, treg, log: console, onLive: (slug) => { MEMO.clear(); feedSvc?.refreshLive(slug).catch(() => {}); } });
@@ -703,6 +715,11 @@ const brandRoutes = async (req, res, u) => {
       return send(res, 200, { markets: Array.isArray(mk) ? mk : mk?.markets || [], events }), true; }
     catch (e) { return send(res, 200, { markets: [], events: [], error: e.message }), true; } }
   // admins: tools treg added this week that Brew doesn't use yet, and this month's treg spend for a brand
+  /* who opened which brand (visSeen): newest first; ?slug= one brand, ?blocked=1 only the ones kept out */
+  if (req.method === 'GET' && u.pathname === '/api/admin/visitors') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
+    const slug = u.searchParams.get('slug'), bl = u.searchParams.get('blocked') === '1';
+    const rows = Object.values(await visLoad()).filter((r) => (!slug || r.slug === slug) && (!bl || r.access === 'blocked' || r.blocked)).sort((x, y) => y.last - x.last);
+    return send(res, 200, { n: rows.length, emails: new Set(rows.map((r) => r.email)).size, rows }), true; }
   if (req.method === 'GET' && u.pathname === '/api/admin/treg') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
     const slug = u.searchParams.get('brand'), month = new Date().toISOString().slice(0, 7);
     const [news, spend] = await Promise.all([watchCatalog(treg).catch((e) => ({ error: e.message })), slug ? packs.getJSON(slug, `spend/${month}.json`, null).catch(() => null) : null]);
@@ -727,7 +744,7 @@ const brandRoutes = async (req, res, u) => {
   // Everyone else sees the brand in demo mode
   const v = await viewerOf(req, slug);
   if (!v.gen && req.method === 'POST' && what !== 'notify' && !v.email && auth.signinOn() && process.env.BUILD_SIGNIN !== '0') return send(res, 401, { error: 'Sign in with your work email to continue.', signin: true }), true;
-  if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403, { ...demoErr(v.host), error: v.claimed ? 'Only this brand’s team changes it. Sign in with the email you used to start this read, or ask the owner for an invite.' : `Sign in with the email you used to start this read, or with a work email at ${v.host || 'the brand’s domain'}, or ask the owner for an invite.`, team: true }), true;
+  if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403, { ...demoErr(v.host), error: v.claimed ? 'Only this brand’s team changes it. Ask the owner for an invite.' : `Sign in with a work email at ${v.host || 'the brand’s domain'}, or ask the owner for an invite.`, team: true }), true;
   if (what === 'status') { let s = (await builder.status(slug)) || { error: 'unknown brand' };
     /* one count: never fewer written than the moves on file (pack-numbers.js), and a time left only from the measured pace.
        Within one build it never goes down (QA FEED-QA-21: 10 then 9 when the cached pack count fell away): the highest count this
@@ -911,7 +928,7 @@ const server = http.createServer(async (req, res) => {
 process.once('SIGTERM', () => { builder?.stop?.(); /* no new move starts here; the next instance resumes the build */
   movesCadence?.stop?.(); /* the weekly families end before the next one; the next instance carries on */
   const closed = new Promise((r) => { try { server.close(() => r()); server.closeIdleConnections?.(); } catch { r(); } }); /* in-flight requests finish; idle keep-alives go now */
-  const work = Promise.allSettled([feedSvc?.jams?.flush?.(), feedSvc?.jam2?.flush?.(), store.flushPending(), budget.flush(), tregLedger.flush(), jamMail.drain(), closed]);
+  const work = Promise.allSettled([feedSvc?.jams?.flush?.(), feedSvc?.jam2?.flush?.(), store.flushPending(), budget.flush(), tregLedger.flush(), visFlush(), jamMail.drain(), closed]);
   Promise.race([work, new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
 async function serve(req, res, u) {
   try {

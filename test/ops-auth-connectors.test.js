@@ -25,33 +25,28 @@ const fakeRes = () => ({ code: 0, headers: {}, body: '', writeHead(c, h) { this.
 const fakeReq = (method, cookie, body) => Object.assign(Readable.from(body ? [JSON.stringify(body)] : []), { method, headers: { cookie, host: 'x.test', 'content-type': 'application/json' } });
 
 /* ---------- 1. the person who started the read ---------- */
-test('the person who started a read counts as the brand’s own while it is unclaimed, on any email, and may claim it', async () => {
+test('starting a read opens nothing: only the brand’s own email (or an invite, or SquareUp) opens or claims it', async () => {
   const packs = memPacks(['acme-in']), auth = createAuth({ packs, hostOf: async () => 'acme.in', log: quiet }); auth.mail = async () => true;
   await packs.put('acme-in', 'private/created.json', { by: 'founder@gmail.com', at: Date.now() });
-  const founder = { email: 'founder@gmail.com' }, stranger = { email: 'someone@gmail.com' }, work = { email: 'ana@acme.in' };
+  const founder = { email: 'founder@gmail.com' }, work = { email: 'ana@acme.in' };
   const a = await auth.claimInfo('acme-in', founder);
-  assert.equal(a.gen, true, 'the read stream, Check what we read and the feed open for them'); assert.equal(a.eligible, true); assert.equal(a.starter, true);
-  assert.equal((await auth.claimInfo('acme-in', stranger)).gen, false, 'another Gmail is not let in');
-  assert.equal((await auth.claimInfo('acme-in', work)).gen, true, 'the domain rule still holds for everyone else');
-  assert.equal((await auth.claimInfo('acme-in', { email: 'x@otherco.com' })).gen, false);
-  assert.ok((await auth.claim('acme-in', stranger)).error, 'a stranger can’t claim it');
-  const c = await auth.claim('acme-in', founder, 'Confirmed the read'); assert.equal(c.role, 'owner');
-  const m = await auth.getMembers('acme-in'); assert.equal(m.owner, 'founder@gmail.com'); assert.equal(m.domain, undefined, 'gmail.com never becomes the team’s domain');
-  assert.equal((await auth.claimInfo('acme-in', founder)).role, 'owner');
-  assert.equal((await auth.claimInfo('acme-in', work)).gen, false, 'once claimed, a work email no longer walks in on a Gmail-owned brand');
-  /* Brew's own people never take a brand by starting its read */
-  const p2 = memPacks(['b']), a2 = createAuth({ packs: p2, hostOf: async () => 'b.com', log: quiet });
-  await p2.put('b', 'private/created.json', { by: 'param@joinsquareup.com' });
-  assert.equal((await a2.claimInfo('b', { email: 'param@joinsquareup.com' })).starter, false);
+  assert.equal(a.gen, false, 'a Gmail that started the read is not let in (Param, 23 Oct)'); assert.equal(a.eligible, false); assert.equal(a.starter, false);
+  assert.match((await auth.claim('acme-in', founder, 'Confirmed the read')).error, /work email at acme\.in/, 'nor may it claim the brand');
+  assert.equal((await auth.claimInfo('acme-in', { email: 'x@otherco.com' })).gen, false, 'another company is not let in');
+  assert.equal((await auth.claimInfo('acme-in', work)).gen, true, 'the brand’s own email is');
+  const c = await auth.claim('acme-in', work, 'Confirmed the read'); assert.equal(c.role, 'owner');
+  assert.equal((await auth.getMembers('acme-in')).owner, 'ana@acme.in');
+  assert.equal((await auth.claimInfo('acme-in', { email: 'param@joinsquareup.com' })).gen, true, 'SquareUp sees every brand');
+  assert.equal((await auth.claimInfo('acme-in', { email: 'x@shopos.ai' })).gen, true);
 });
 
 test('the live site’s gate never says “Demo mode”, and sign-in can’t be off on Cloud Run by accident', () => {
   const s = fs.readFileSync(new URL('../server.js', import.meta.url), 'utf8');
   const gate = s.split('\n').find((l) => l.includes("if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403"));
-  assert.ok(gate && !/Demo mode/.test(gate)); assert.match(gate, /Sign in with the email you used to start this read/);
+  assert.ok(gate && !/Demo mode/.test(gate)); assert.match(gate, /ask the owner for an invite/); assert.ok(!/you used to start this read/.test(s), 'starting a read is never a way in');
   assert.match(s, /const demoErr = \(host\) => \(\{ error: DEMO \?/);
   assert.match(s, /process\.env\.K_SERVICE && !auth\.signinOn\(\) && process\.env\.OPEN_SITE !== '1'\) throw/);
-  assert.match(s, /budget\.flush\(\), tregLedger\.flush\(\), jamMail\.drain\(\), closed/, 'SIGTERM flushes everything');
+  assert.match(s, /budget\.flush\(\), tregLedger\.flush\(\), visFlush\(\), jamMail\.drain\(\), closed/, 'SIGTERM flushes everything');
 });
 
 /* ---------- 2. Meta Ads: several ad accounts ---------- */
