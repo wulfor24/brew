@@ -1,7 +1,7 @@
 // Stage 4 · reviews: detect the review app from page source and read its public endpoints (totals + recent
 // reviews); per-product ratings from JSON-LD; marketplace listings and ratings via treg (Amazon search, and
 // Amazon review text for the most-reviewed listing). Verbatims are kept exactly, with rating, date and URL.
-import { jsonLd, typeIs, clean, stripTags, pathOf, num, pool, attr, withTimeout } from '../util.js';
+import { jsonLd, typeIs, clean, stripTags, pathOf, num, pool, attr, withTimeout, brandBase } from '../util.js';
 import { CLOSED_WHY } from '../closed.js';
 
 const AMAZON = { IN: ['in', 'amazon.in'], US: ['us', 'amazon.com'], GB: ['uk', 'amazon.co.uk'], CA: ['ca', 'amazon.ca'], AU: ['au', 'amazon.com.au'], DE: ['de', 'amazon.de'], FR: ['fr', 'amazon.fr'], AE: ['ae', 'amazon.ae'], JP: ['jp', 'amazon.co.jp'] };
@@ -11,16 +11,25 @@ export function detectReviewApp(html) {
   const h = String(html || '');
   if (/judge\.me|jdgm-|judgeme/i.test(h)) return 'judge.me';
   if (/loox\.io|loox-rating/i.test(h)) return 'loox';
-  if (/staticw2\.yotpo\.com|yotpo/i.test(h)) return 'yotpo';
+  if (/staticw2\.yotpo\.com|cdn-widgetsrepository\.yotpo\.com|class=["'][^"']*yotpo/i.test(h)) return 'yotpo';
   if (/okendo\.io|data-oke-/i.test(h)) return 'okendo';
   if (/stamped\.io|stamped-main-badge/i.test(h)) return 'stamped';
   if (/reviews\.io|reviewsio|widget\.reviews\.co\.uk/i.test(h)) return 'reviews.io';
-  if (/bazaarvoice|bvapi|bv-/i.test(h) && /bazaarvoice/i.test(h)) return 'bazaarvoice';
-  if (/powerreviews/i.test(h)) return 'powerreviews';
+  /* a vendor counts when its script or widget is on the page, never a config key that names it
+     (in.puma.com has "bazaarVoiceReviewFormScriptUrl":null with reviews switched off) */
+  if (/apps\.bazaarvoice\.com|display\.ugc\.bazaarvoice\.com|\/bvapi\.js|data-bv-show=/i.test(h)) return 'bazaarvoice';
+  if (/ui\.powerreviews\.com|display\.powerreviews\.com|static\.powerreviews\.com|id=["']pr-reviewdisplay/i.test(h)) return 'powerreviews';
   if (/spr-badge|shopify-product-reviews|productReviews/i.test(h)) return 'shopify product reviews';
-  if (/trustpilot/i.test(h)) return 'trustpilot (widget)';
+  if (/widget\.trustpilot\.com|class=["'][^"']*trustpilot-widget/i.test(h)) return 'trustpilot (widget)';
   return null;
 }
+
+/** the store switched its reviews off (a headless store's own config says so): reviews are not missing, there are none to read */
+export const reviewsOff = (html) => /["'](ratingsAndReviews|reviews|productReviews|ratings)(Enabled|Active)["']\s*:\s*false\b|["'](enable|show|display)(Product)?Reviews["']\s*:\s*false\b/i.test(String(html || ''))
+  && !/["'](ratingsAndReviews|reviews|productReviews)(Enabled|Active)["']\s*:\s*true\b/i.test(String(html || ''));
+
+/** bump when reviews start reading differently: heal() reads every saved read with an older version again */
+export const REVIEWS_V = 2;
 
 export async function reviews(ctx) {
   const { http, ledger, profile, state } = ctx; const origin = state.origin;
@@ -39,7 +48,8 @@ export async function reviews(ctx) {
   for (const x of ppHtml) {
     // the page's own product, not a recommended one further down
     const norm = (t) => clean(t).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-    const ld = jsonLd(x.html).filter((y) => (typeIs(y, 'Product') || typeIs(y, 'ProductGroup')) && y.aggregateRating).find((y) => norm(y.name) === norm(x.p.title) || String(y.url || y['@id'] || '').includes('/products/' + x.p.handle));
+    const path = (u) => { try { return new URL(u, x.url).pathname.replace(/\/$/, ''); } catch { return ''; } };
+    const ld = jsonLd(x.html).filter((y) => (typeIs(y, 'Product') || typeIs(y, 'ProductGroup')) && y.aggregateRating).find((y) => norm(y.name) === norm(x.p.title) || (y.url || y['@id']) && path(y.url || y['@id']) === path(x.url) || String(y.url || y['@id'] || '').includes('/products/' + x.p.handle));
     const ar = ld?.aggregateRating; const count = +(ar?.reviewCount || ar?.ratingCount || 0); const rating = +ar?.ratingValue || null;
     if (count) { const pr = prods.find((p) => p.handle === x.p.handle); if (pr) pr.reviews = { count, rating };
       ledger.add({ key: `reviews.product.${x.p.handle}`, label: `${x.p.title} reviews on site`, v: `${num(count)} reviews${rating ? `, ${rating.toFixed(2).replace(/0$/, '')}★` : ''}`, n: count, unit: 'reviews', url: x.url, method: 'jsonld' }); }
@@ -48,35 +58,61 @@ export async function reviews(ctx) {
   /* the review app's own public feed */
   try {
     if (app === 'judge.me') await judgeme(); else if (app === 'yotpo') await yotpo(); else if (app === 'okendo') await okendo(); else if (app === 'stamped') await stamped(); else if (app === 'loox') await loox(); else if (app === 'reviews.io') await reviewsio();
+    else if (app === 'bazaarvoice') await bazaarvoice(); else if (app === 'powerreviews') await powerreviews();
   } catch (e) { notes.push(`${app}: ${e.message}`); ctx.log.warn?.('[reader] reviews app', app, e.message); }
+  /* an app the page loads by script (Bazaarvoice, PowerReviews, any we have no reader for): the rendered page's JSON-LD ratings */
+  if (app && !platforms.some((p) => p.name === app) && !prods.some((p) => p.reviews?.count) && ppHtml.length) {
+    await pool(ppHtml.slice(0, 3), 3, async (x, i) => { const rr = await ctx.render(x.url, 'hero-pp-rendered-' + i); const ar = rr && jsonLd(rr.html).find((y) => (typeIs(y, 'Product') || typeIs(y, 'ProductGroup')) && y.aggregateRating)?.aggregateRating;
+      const count = +(ar?.reviewCount || ar?.ratingCount || 0); if (count) { const pr = prods.find((p) => p.handle === x.p.handle); if (pr) pr.reviews = { count, rating: +ar.ratingValue || null }; } });
+  }
+  /* reviews switched off on the store's own pages: not "none found", and not a failure */
+  const off = !closed && !app && !prods.some((p) => p.reviews?.count) && [state.home, ...ppHtml.map((x) => x.html)].some(reviewsOff);
   if (app && !platforms.some((p) => p.name === app)) {
     // fall back to the JSON-LD counts of the pages we read (a floor, not a total)
     const known = prods.filter((p) => p.reviews?.count); const sum = known.reduce((a, p) => a + p.reviews.count, 0);
     if (sum) platforms.push({ name: app, count: sum, rating: null, url: origin, scope: `JSON-LD on ${known.length} product pages (not the store total)` });
   }
   if (closed) notes.push(`Review widgets on the site not read: ${CLOSED_WHY}.`);
+  else if (off) notes.push('The store has reviews switched off on its own pages.');
   else if (!app) notes.push('No review widget found on the home page or the top product pages.');
   if (app) ledger.add({ key: 'site.tech.review_app', label: 'Review app on the site', v: app, url: state.homeUrl, method: 'crawl' });
 
   /* marketplaces through treg */
-  const mk = AMAZON[profile.country] || null;
+  /* a brand that sells by enquiry (catalog.js storeKind) is not on Amazon, Myntra or Flipkart: its reviews are on Google Maps */
+  const enquiry = profile.storeKind === 'enquiry';
+  const mk = enquiry ? null : AMAZON[profile.country] || null;
+  if (enquiry && ctx.tregOn && !closed) { ctx.tick('reviews', 'Google Maps'); try { await withTimeout(googleMaps(), 60e3, 'Google Maps'); } catch (e) { notes.push(`Google Maps: ${e.message.slice(0, 100)}`); } }
   if (ctx.tregOn && mk && profile.name) {
     ctx.tick('reviews', mk[1]);
     try { await withTimeout(amazon(mk), 45e3, 'Amazon'); } catch (e) { notes.push(`Amazon: ${e.message.slice(0, 100)}`); }
   } else if (!ctx.tregOn) notes.push('Marketplaces not checked (treg off).');
-  if (profile.country === 'IN') notes.push('Flipkart and Nykaa ratings not read yet.');
+  /* Indian marketplaces through Apify (treg has none): Myntra and Flipkart listings with their ratings, a few reviews.
+     A check that fails is kept as { name, error } in checks, never shown as "no listings" */
+  const checks = [];
+  if (profile.country === 'IN' && !closed && !enquiry) {
+    const runs = [['myntra.com', myntra], ['flipkart.com', flipkart]];
+    if (!ctx.apify?.live) for (const [n] of runs) checks.push({ name: n, error: ctx.apify ? 'Apify not set up (APIFY_TOKEN)' : 'Apify off for this read' });
+    else await Promise.all(runs.map(async ([n, fn]) => { ctx.tick('reviews', n); try { await withTimeout(fn(), 150e3, n); checks.push({ name: n, ok: true }); } catch (e) { checks.push({ name: n, error: e.message.slice(0, 120) }); notes.push(`${n}: ${e.message.slice(0, 100)}`); } }));
+  }
 
   /* pick 3 real quotes: praise, a specific result, one complaint if there is one */
   const pool3 = quotes.filter((q) => q.text && q.text.length >= 25 && q.text.length <= 260 && !/https?:\/\//.test(q.text));
   const used = new Set(); const pick = (fn) => { const q = pool3.filter((x) => !used.has(x.text) && fn(x)).sort((a, b) => (Date.parse(b.at || 0) || 0) - (Date.parse(a.at || 0) || 0))[0]; if (q) used.add(q.text); return q; };
   const chosen = [pick((q) => q.rating >= 4 && RESULT.test(q.text)), pick((q) => q.rating === 5 && !RESULT.test(q.text) && q.text.length < 160), pick((q) => q.rating != null && q.rating <= 2)].filter(Boolean);
   while (chosen.length < 3) { const q = pick((x) => x.rating >= 4); if (!q) break; chosen.push(q); }
-  profile.reviews = { platforms, total: platforms.length ? platforms.reduce((a, p) => a + (p.count || 0), 0) : null, quotes: chosen, recent: quotes.slice(0, 40), app, notes, at: new Date().toISOString().slice(0, 10), ...(closed ? { closed: true } : {}) }; /* at: the day the counts were read (pack-numbers.js reviews) */
+  /* onSite: 'found' (the store's own reviews were read), 'off' (switched off by the store), 'unread' (a vendor is there but
+     could not be read), 'none' (no reviews on the site); the health card and scorecard branch on it (health.js, moves-cadence.js) */
+  const siteFound = platforms.some((p) => !MARKET.test(p.name));
+  const onSite = closed ? 'unread' : siteFound ? 'found' : off ? 'off' : app ? 'unread' : 'none';
+  profile.reviews = { platforms, total: platforms.length ? platforms.reduce((a, p) => a + (p.count || 0), 0) : null, quotes: chosen, recent: quotes.slice(0, 40), app, notes, onSite, checks, v: REVIEWS_V, at: new Date().toISOString().slice(0, 10), ...(closed ? { closed: true } : {}) }; /* at: the day the counts were read (pack-numbers.js reviews) */
   if (profile.reviews.total) ledger.add({ key: 'reviews.total', label: 'Reviews and ratings found (all platforms read)', v: num(profile.reviews.total), n: profile.reviews.total, unit: 'reviews+ratings', url: platforms[0]?.url, method: 'crawl', note: platforms.map((p) => `${p.name} ${num(p.count)}${p.scope ? ` (${p.scope})` : ''}`).join('; ') });
 
-  const cap = platforms.length ? platforms.map((p) => `${num(p.count)} ${p.label || p.name}${p.rating ? ` (${p.rating.toFixed(1)}★)` : ''}`).join(' · ') + '.' : closed ? `Reviews on the site not read: ${CLOSED_WHY}. Brew reads them once the store opens.` : 'No reviews found on the site.';
+  const failed = checks.filter((c) => c.error).map((c) => c.name);
+  const siteLine = onSite === 'off' ? 'The store has reviews switched off on its own pages.' : onSite === 'unread' && app && !closed ? `${app} is on the site, but its reviews couldn't be read this time; the next refresh tries again.` : '';
+  const cap = [platforms.length ? platforms.map((p) => `${num(p.count)} ${p.label || p.name}${p.rating ? ` (${p.rating.toFixed(1)}★)` : ''}`).join(' · ') + '.' : closed ? `Reviews on the site not read: ${CLOSED_WHY}. Brew reads them once the store opens.` : siteLine || 'No reviews found on the site.',
+    platforms.length && siteLine ? siteLine : '', failed.length ? `${failed.join(' and ')} couldn't be read this time; the next refresh tries again.` : ''].filter(Boolean).join(' ');
   ctx.finding('reviews', { kind: 'quotes', t: 'How your customers write', src: [...new Set(chosen.map((q) => q.src))].join(' · ') || (app || 'site'), quotes: chosen.map((q) => `“${q.text}”`), items: chosen, cap: chosen.length ? cap : `${cap} No review text could be read.` }, chosen.length ? 'Read real reviews' : undefined);
-  ctx.done('reviews', profile.reviews.total ? `${num(profile.reviews.total)} reviews and ratings` : closed ? `not read on the site: ${CLOSED_WHY}` : app ? `${app} found, no totals readable` : 'no reviews found', profile.reviews.total ? 'done' : 'empty');
+  ctx.done('reviews', profile.reviews.total ? `${num(profile.reviews.total)} reviews and ratings${onSite === 'off' ? ' (off on the site)' : ''}` : closed ? `not read on the site: ${CLOSED_WHY}` : onSite === 'off' ? 'reviews switched off on the site' : app ? `${app} found, couldn't be read` : 'no reviews found', profile.reviews.total ? 'done' : 'empty', { partial: !!failed.length || onSite === 'unread' });
 
   /* ---------- review apps ---------- */
   async function judgeme() {
@@ -166,8 +202,73 @@ export async function reviews(ctx) {
   async function productId(p) { const r = await http.get(`${origin}/products/${p.handle}.js`, { as: 'json', key: 'pjs-' + p.handle }); return r.json?.id || null; }
 
   /* ---------- Amazon ---------- */
+  /* ---------- marketplaces through Apify (India) ---------- */
+  async function marketplace(domain, actor, input, how) {
+    const name = profile.brandName || brandBase(profile.name, profile.host);
+    const nameRe = new RegExp(`(^|\\b)${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')}\\b`, 'i');
+    const items = await ctx.apify.run(actor, input, { maxItems: 30, maxUsd: 0.25, perItemUsd: 0.004, tag: `reader-${domain}` });
+    // the brand's own listings: its name in the brand field or the title's start
+    const rows = (items || []).map(listingOf).filter((r) => r.title && (nameRe.test(r.brand || '') || nameRe.test(r.title.slice(0, 60))));
+    const src = how(name);
+    ledger.add({ key: `reviews.${domain.split('.')[0]}.listings`, label: `${domain} listings found for "${name}"`, v: String(rows.length), n: rows.length, url: src, method: `apify:${actor}` });
+    if (!rows.length) { notes.push(`No ${name} listings in the ${domain} search.`); return; }
+    const total = rows.reduce((a, r) => a + (r.reviews || 0), 0), wr = rows.reduce((a, r) => a + (r.reviews || 0) * (r.rating || 0), 0);
+    if (total) { platforms.push({ name: domain, label: `${domain} ratings on ${rows.length} listings`, count: total, rating: wr / total, listings: rows.length, url: src, scope: `top ${rows.length} search results for "${name}"` });
+      ledger.add({ key: `reviews.${domain.split('.')[0]}.count`, label: `${domain} ratings across ${rows.length} ${name} listings`, v: num(total), n: total, unit: 'ratings', url: src, method: `apify:${actor}` }); }
+    profile.marketplaces = [...(profile.marketplaces || []).filter((m) => m.name !== domain), { name: domain, listings: rows.slice(0, 20).map((r) => ({ title: r.title.slice(0, 140), price: r.price, rating: r.rating, reviews: r.reviews, url: r.url })) }];
+    for (const r of rows) for (const q of r.texts.slice(0, 5)) quotes.push({ text: q.text, rating: q.rating, at: dateOf(q.at), product: r.title.slice(0, 80), src: domain.replace(/\.com$/, '').replace(/^./, (c) => c.toUpperCase()), url: r.url || src, id: `${domain}:${q.text.slice(0, 24)}` });
+  }
+  function myntra() { return marketplace('myntra.com', 'codingfrontend/myntra-product-search-scraper', { search: profile.brandName || profile.name, brand: profile.brandName || profile.name, sortBy: 'popularity', maxProductsPerSearch: 20, maxPages: 1, scrapeReviews: true, maxReviewsPerProduct: 5 }, (n) => `https://www.myntra.com/${encodeURIComponent(n.toLowerCase().replace(/\s+/g, '-'))}`); }
+  function flipkart() { return marketplace('flipkart.com', 'shahidirfan/Flipkart-Product-Scraper', { keyword: profile.brandName || profile.name, results_wanted: 20 }, (n) => `https://www.flipkart.com/search?q=${encodeURIComponent(n)}`); }
+
+  /* ---------- vendors the page loads by script: their public display APIs, with the key the page itself carries ---------- */
+  async function bazaarvoice() {
+    const all = [state.home, ...ppHtml.map((x) => x.html)].join('\n');
+    let key = (all.match(/passkey["']?\s*[:=]\s*["']([A-Za-z0-9]{20,})/i) || [])[1];
+    const dep = all.match(/https?:\/\/apps\.bazaarvoice\.com\/deployments\/([\w-]+)\/([\w-]+)\/([\w-]+)\/([\w_-]+)\/bv\.js/i);
+    if (!key && dep) { const r = await http.get(dep[0], { key: 'bv-js' }); key = r.ok ? (String(r.text).match(/["']?(?:passkey|apiKey|conversationsApiKey)["']?\s*:\s*["']([A-Za-z0-9]{20,})/i) || [])[1] : null; }
+    if (!key) throw new Error('Bazaarvoice key not found on the page');
+    const ids = [...new Set([...all.matchAll(/data-bv-product-id=["']([^"']+)/gi)].map((m) => m[1]).concat(heroes.map((p) => p.sku || p.handle)))].slice(0, 10);
+    if (!ids.length) throw new Error('no Bazaarvoice product ids on the page');
+    const st = await http.get(`https://api.bazaarvoice.com/data/statistics.json?apiversion=5.4&passkey=${key}&stats=Reviews&filter=ProductId:${ids.map(encodeURIComponent).join(',')}`, { as: 'json', key: 'bv-stats' });
+    if (!st.ok || st.json?.HasErrors) throw new Error(`Bazaarvoice answered ${st.json?.Errors?.[0]?.Message || st.status || 'an error'}`);
+    const rs = (st.json.Results || []).map((x) => x.ProductStatistics?.ReviewStatistics).filter(Boolean);
+    const count = rs.reduce((a, x) => a + (+x.TotalReviewCount || 0), 0), wr = rs.reduce((a, x) => a + (+x.TotalReviewCount || 0) * (+x.AverageOverallRating || 0), 0);
+    if (count) platforms.push({ name: 'bazaarvoice', count, rating: wr / count, url: origin, scope: `${rs.length} top products (not the store total)` });
+    const rv = await http.get(`https://api.bazaarvoice.com/data/reviews.json?apiversion=5.4&passkey=${key}&Filter=ProductId:${encodeURIComponent(ids[0])}&Sort=SubmissionTime:desc&Limit=20`, { as: 'json', key: 'bv-reviews' });
+    for (const x of rv.json?.Results || []) quotes.push({ text: clean(x.ReviewText), title: clean(x.Title || ''), rating: +x.Rating || null, at: dateOf(x.SubmissionTime), src: 'site', url: origin, id: 'bv:' + x.Id });
+  }
+  async function powerreviews() {
+    const all = [state.home, ...ppHtml.map((x) => x.html)].join('\n');
+    const key = (all.match(/api_key["']?\s*[:=]\s*["']([\w-]{20,})/i) || [])[1], merchant = (all.match(/merchant_id["']?\s*[:=]\s*["']?(\d+)/i) || [])[1];
+    if (!key || !merchant) throw new Error('PowerReviews key not found on the page');
+    let count = 0, wr = 0;
+    await pool(ppHtml.slice(0, 5), 3, async (x) => { const id = (x.html.match(/page_id["']?\s*[:=]\s*["']([^"']+)/i) || [])[1] || x.p.sku || x.p.handle;
+      const r = await http.get(`https://display.powerreviews.com/m/${merchant}/l/en_US/product/${encodeURIComponent(id)}/reviews?apikey=${key}&paging.size=10`, { as: 'json', key: 'pr-' + id });
+      const ro = r.json?.results?.[0]; const n = +ro?.rollup?.review_count || 0; count += n; wr += n * (+ro?.rollup?.average_rating || 0);
+      for (const v of ro?.reviews || []) quotes.push({ text: clean(v.details?.comments || ''), title: clean(v.details?.headline || ''), rating: +v.metrics?.rating || null, at: dateOf(v.details?.created_date), product: x.p.title, src: 'site', url: x.url, id: 'pr:' + v.review_id }); });
+    if (count) platforms.push({ name: 'powerreviews', count, rating: wr / count, url: origin, scope: `${Math.min(5, ppHtml.length)} top products (not the store total)` });
+  }
+
+  /* the brand's own places on Google Maps (offices, sites, show flats): their ratings and the newest reviews */
+  async function googleMaps() {
+    const name = profile.brandName || brandBase(profile.name, profile.host), host = profile.host.replace(/^www\./, '');
+    const j = await ctx.treg('crawl4ai.google.serp.maps', { body: { query: `${name}${profile.country === 'IN' ? ' India' : ''}`, limit: 10 } }, `maps-${name}`);
+    const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')}\\b`, 'i');
+    const places = (j?.rows || []).filter((p) => p.place_id && (String(p.website || '').includes(host.split('.').slice(-2).join('.')) || re.test(p.name || ''))).sort((a, b) => (b.review_count || 0) - (a.review_count || 0)).slice(0, 5);
+    const src = `https://www.google.com/maps/search/${encodeURIComponent(name)}`;
+    ledger.add({ key: 'reviews.gmaps.places', label: `Google Maps places found for "${name}"`, v: String(places.length), n: places.length, url: src, method: 'treg:crawl4ai.google.serp.maps' });
+    if (!places.length) { notes.push(`No ${name} places on Google Maps.`); return; }
+    const count = places.reduce((a, p) => a + (+p.review_count || 0), 0), wr = places.reduce((a, p) => a + (+p.review_count || 0) * (+p.rating || 0), 0);
+    if (count) { platforms.push({ name: 'google maps', label: `Google reviews on ${places.length} place${places.length === 1 ? '' : 's'}`, count, rating: wr / count, url: src, scope: places.map((p) => p.name).slice(0, 3).join(', ') });
+      ledger.add({ key: 'reviews.gmaps.count', label: `Google reviews across ${places.length} ${name} places`, v: num(count), n: count, unit: 'reviews', url: src, method: 'treg:crawl4ai.google.serp.maps', note: places.map((p) => `${p.name} ${p.rating}★ ${p.review_count}`).join('; ') }); }
+    const top = places[0];
+    const rv = await ctx.treg('crawl4ai.google.maps.reviews', { body: { place: top.place_id, limit: 20, sort: 'newest' } }, 'gmaps-' + top.place_id).catch(() => null);
+    for (const x of rv?.rows || []) if (x.text) quotes.push({ text: clean(x.text), rating: +x.rating || null, at: dateOf(x.date), product: clean(top.name).slice(0, 80), src: 'Google Maps', url: x.url || src, id: 'gm:' + x.review_id });
+  }
+
   async function amazon([country, domain]) {
-    const name = profile.name; const nameRe = new RegExp(`(^|\\b)${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')}\\b`, 'i');
+    const name = profile.brandName || brandBase(profile.name, profile.host); /* "PUMA", not "PUMA India": Amazon lists the brand */ const nameRe = new RegExp(`(^|\\b)${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')}\\b`, 'i');
     const j = await ctx.treg('crawl4ai.amazon.search.products', { body: { keywords: name, country, limit: 60 } }, `${country}-${name}`);
     const rows = (j?.rows || []).filter((r) => r.title && nameRe.test(String(r.title).slice(0, 60)));
     const uniq = [...new Map(rows.map((r) => [r.asin, r])).values()];
@@ -191,5 +292,16 @@ export async function reviews(ctx) {
       }
     }
   }
+}
+const MARKET = /amazon\.|myntra|flipkart|nykaa|google maps/i;
+const pickNum = (o, ...ks) => { for (const k of ks) { const v = k.split('.').reduce((a, x) => (a == null ? a : a[x]), o); const n = +String(v ?? '').replace(/[^\d.]/g, ''); if (v != null && v !== '' && !isNaN(n) && n > 0) return n; } return null; };
+const pickStr = (o, ...ks) => { for (const k of ks) { const v = k.split('.').reduce((a, x) => (a == null ? a : a[x]), o); if (typeof v === 'string' && v.trim()) return v.trim(); } return null; };
+/** one marketplace listing from any actor's row: the field names differ per actor, the meaning doesn't */
+export function listingOf(r) {
+  return { title: clean(pickStr(r, 'title', 'name', 'productName', 'product_name') || ''), brand: pickStr(r, 'brand', 'brandName', 'brand_name', 'seller'),
+    rating: pickNum(r, 'rating', 'averageRating', 'avgRating', 'ratings.average', 'rating.average', 'stars', 'product_rating'),
+    reviews: pickNum(r, 'ratingCount', 'ratingsCount', 'ratings_count', 'totalRatings', 'reviewsCount', 'reviewCount', 'reviews_count', 'numberOfRatings', 'rating.count', 'ratings.count'),
+    price: pickNum(r, 'price', 'sellingPrice', 'selling_price', 'discountedPrice', 'price.value', 'finalPrice'), url: pickStr(r, 'url', 'productUrl', 'product_url', 'link', 'landingPageUrl'),
+    texts: [].concat(r.reviews || r.reviewList || r.topReviews || []).filter((x) => x && typeof x === 'object').map((x) => ({ text: clean(pickStr(x, 'text', 'review', 'reviewText', 'body', 'comment', 'content') || ''), rating: pickNum(x, 'rating', 'stars', 'userRating'), at: pickStr(x, 'date', 'createdAt', 'reviewDate', 'time') })).filter((x) => x.text) };
 }
 const dateOf = (s) => { const d = Date.parse(s); return isNaN(d) ? null : new Date(d).toISOString().slice(0, 10); };

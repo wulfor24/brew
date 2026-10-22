@@ -94,7 +94,7 @@ export function createStatics({ ai, image, packs, launchBrowser, log = console }
       for (const a of want) {
         try {
           const p = prods.find((x) => x.handle === a.product);
-          const m = /^\/?b\/[^/]+\/a\/(.+)$/.exec(String(p.img)); const raw = m && (await packs.get(slug, 'assets/' + m[1])); if (!raw) continue;
+          const m = /^\/?b\/([^/]+)\/a\/(.+)$/.exec(String(p.img)); const raw = m && ((await packs.get(m[1], 'assets/' + m[2])) || (await packs.get(slug, 'assets/' + m[2]))); /* the photo's own folder first: reads before 23 Oct saved in.x.com under x-com */ if (!raw) continue;
           const jpg = await toJpeg(browser, raw, /\.png$/i.test(p.img) ? 'image/png' : /\.webp$/i.test(p.img) ? 'image/webp' : 'image/jpeg');
           const tmp = path.join(os.tmpdir(), `st-${slug}-${a.id}.jpg`); fs.writeFileSync(tmp, jpg);
           const scene = await image({ srcFile: tmp, slug, ratio: '4:5', prompt: buildDraft({ kind: 'image', title: `${profile.name} static ad`, visual: a.scene, hasSrc: true, ratio: '4:5', topSpace: true, product: { name: p.title || p.handle }, brand: { name: profile.name, ...(profile.config?.product || {}) } }).prompt });

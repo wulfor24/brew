@@ -6,15 +6,16 @@
 // sample; a stage that finds nothing says so. One failing stage never stops the read.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeUrl, slugOf, createFetcher, createLedger, defaultStore, withTimeout, sha, extOf, today, pathOf } from './util.js';
+import { normalizeUrl, slugOf, createFetcher, createLedger, defaultStore, withTimeout, sha, extOf, today, pathOf, pool, links, brandBase } from './util.js';
+import { sitemapUrls } from './products.js';
 import { open } from './stages/open.js';
 import { brand, whoOf } from './stages/brand.js';
-import { catalog } from './stages/catalog.js';
-import { reviews } from './stages/reviews.js';
+import { catalog, CATALOG_V } from './stages/catalog.js';
+import { reviews, REVIEWS_V } from './stages/reviews.js';
 import { ads, findRivals, ADS_V } from './stages/ads.js';
 import { site, SITE_V, speedOn } from './stages/site.js';
 import { pageSpeed, keepSpeed } from '../health.js';
-import { answers, inferCategory, writeLine } from './stages/answers.js';
+import { answers, inferCategory, writeLine, rescoreNamed } from './stages/answers.js';
 import { socials } from './stages/socials.js';
 import { named, namedStale } from './stages/named.js';
 import { company } from './stages/company.js';
@@ -35,13 +36,15 @@ const LIMIT = { open: 45e3, brand: 40e3, catalog: 60e3, reviews: 75e3, category:
 
 /* stages heal() can run again from a saved profile plus the home page (a failed or timed-out one is recorded in meta.errors) */
 const RERUN = { reviews, socials, company };
-export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadRaw, log = console, root = ROOT } = {}) {
+export function createReader({ ai = null, treg = null, apify = null, saveAsset, saveRaw, loadRaw, log = console, root = ROOT } = {}) {
   const store = defaultStore(root);
   saveAsset ||= store.saveAsset; saveRaw ||= store.saveRaw; loadRaw ||= (saveRaw === store.saveRaw ? store.loadRaw : null);
 
   // the paid and downloaded services a stage uses (treg, Claude, rendered pages, assets), cached per brand per day
   function services({ slug, http, tregOn, aiOn, fresh }) {
     const svc = {
+      /* Apify (apify.js: one shared cache, a week for reviews): marketplaces treg has no endpoint for; off on a free read */
+      apify: tregOn && apify ? apify : null,
       // treg with a same-day cache: a rerun reuses the paid answer unless fresh
       async treg(id, o = {}, cacheKey) {
         if (!tregOn) throw Object.assign(new Error('treg is off for this read'), { off: true });
@@ -82,8 +85,9 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
 
   /* admin: a Shopify Admin API snapshot (stages/admin.js adminCatalog) for a store whose storefront is behind the password page:
      the read opens from it instead of the public site, and the stages that need the site say plainly that they didn't run */
-  async function read(input, { onEvent = () => {}, signal, only = null, fresh = false, free = false, prev = null, admin = null } = {}) { // prev: the brand's last profile (a re-read keeps its rivals, searches and questions)
-    const url = normalizeUrl(input); const slug = slugOf(url.href);
+  async function read(input, { onEvent = () => {}, signal, only = null, fresh = false, free = false, prev = null, admin = null, slug: as = null } = {}) { // prev: the brand's last profile (a re-read keeps its rivals, searches and questions)
+    /* as: the brand's own slug (build.js): in.puma.com is in-puma-com, and its photos live with it, not under puma-com */
+    const url = normalizeUrl(input); const slug = as || slugOf(url.href);
     const want = (k) => !only || only.includes(k);
     const ledger = createLedger();
     const profile = blankProfile(url, slug);
@@ -185,13 +189,23 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
     const answersBroken = answersFailed(profile, findings);
     const siteBroken = siteFailed(profile);
     const namedBroken = namedStale(profile); /* the brands each answer names: missing, older, or failed over an hour ago */
+    const due = (k) => { const t = profile.meta?.healTried?.[k]; return !t || Date.now() - Date.parse(t) >= 864e5; };
+    /* a catalog from before the store's product URLs were learned (reader/products.js), empty or read from product pages,
+       is read again (once a day until it reads); a Shopify or WooCommerce catalog is never touched here */
+    const catalogStale = !!profile.host && !profile.closed && (profile.catalog?.v || 0) < CATALOG_V && (!profile.catalog?.products?.length || /^jsonld/.test(profile.catalog?.source || '')) && due('catalog');
+    /* reviews from before vendor/marketplace reading (REVIEWS_V): read again once when the detection could have been wrong
+       (a script vendor, a switched-off store, nothing found) or an Indian store has no marketplace check yet */
+    const rv = profile.reviews || {};
+    const reviewsStale = !!profile.host && !profile.closed && (rv.v || 0) < REVIEWS_V && due('reviews') && (!rv.platforms?.length || /bazaarvoice|powerreviews|trustpilot|yotpo/i.test(rv.app || '') || (profile.country === 'IN' && !rv.checks));
+    /* the brand's name without its market ("PUMA India" → "PUMA"), and saved AI answers named again with it (free) */
+    const nameMissing = !!profile.name && !profile.brandName;
     /* a stage the read recorded as failed or timed out (meta.errors: reviews, socials, company) is run again from the saved
        profile and the home page, once a day per stage (meta.healTried), so "No reviews found" never stands for a failed check */
     const tried = profile.meta?.healTried || {};
     const failedStages = Object.keys(profile.meta?.errors || {}).filter((k) => RERUN[k] && !!profile.host && (!tried[k] || Date.now() - Date.parse(tried[k]) >= 864e5));
     /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
     const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.triedAt || ps.at || 0) >= 864e5)); /* triedAt: a kept reading's last failed try */
-    if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length) return null;
+    if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length && !catalogStale && !reviewsStale && !nameMissing) return null;
     const added = [], cards = [], stepsDone = {}, healPicks = {};
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
     const ctx = { url: new URL(profile.url), slug, http, profile, state: { homeUrl: profile.url, ...(profile.closed ? { closed: profile.closed, home: '' } : {}) }, log: lg, tregOn, aiOn, saveAsset, saveRaw, today: today(),
@@ -199,6 +213,21 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
       tick() {}, finding: (k, f) => { cards.push({ ...f, k }); }, done: (k, text, state = 'done', { partial = false } = {}) => { stepsDone[k] = { done: text, state, ...(partial ? { partial: true } : {}) }; }, picks: (k, items) => { healPicks[k] = items; },
       ...services({ slug, http, tregOn, aiOn, fresh: false }) };
     const changed = reopen ? [reopen] : [];
+    /* the base name alone is not a change worth saving (every reader falls back to brandBase); answers named again are */
+    if (nameMissing) { profile.brandName = brandBase(profile.name, profile.host); const card = rescoreNamed(profile); if (card) { cards.push({ ...card, k: 'answers' }); changed.push('named-again'); } }
+    const stamp = (k) => { profile.meta = { ...(profile.meta || {}), healTried: { ...(profile.meta?.healTried || {}), [k]: new Date().toISOString() } }; };
+    /* the home page and the sitemap URLs the catalog and reviews stages read (the open stage's work, without renaming the brand) */
+    const homeAndPages = async () => { if (ctx.state.home) return; try { const r = await http.get(profile.url, { key: 'heal-home' }); if (r.ok) { ctx.state.home = r.text; ctx.state.homeUrl = r.url || profile.url; ctx.state.homeLinks = links(r.text, ctx.state.homeUrl); } } catch (e) { lg.warn?.('[reader] heal home', slug, e.message); }
+      ctx.state.origin = new URL(ctx.state.homeUrl || profile.url).origin; ctx.state.home ||= '';
+      const files = (profile.site?.sitemaps || []).map((x) => x.url).filter(Boolean);
+      const urls = []; await pool(files.slice(0, 25), 6, async (u) => { const r = await http.get(u, { key: 'sitemap-' + u.replace(/^https?:\/\//, '').replace(/[^a-z0-9]+/gi, '-').slice(0, 80), ms: 25e3 }).catch(() => null); if (r?.ok) for (const m of String(r.text).matchAll(/<url>[\s\S]*?<loc>\s*([^<\s]+)/gi)) urls.push(m[1]); });
+      ctx.state.pageUrls = urls.length ? [...new Set(urls)] : await sitemapUrls((u) => http.get(u, { key: 'heal-sm' }), ctx.state.origin).catch(() => []); };
+    if (catalogStale) { stamp('catalog'); await homeAndPages();
+      try { await withTimeout(catalog(ctx), LIMIT.catalog * 2, 'catalog'); changed.push(profile.catalog?.products?.length ? 'catalog' : 'catalog:empty'); if (profile.meta?.errors) delete profile.meta.errors.catalog; }
+      catch (e) { lg.warn?.('[reader] heal catalog', slug, e.message); profile.meta.errors = { ...(profile.meta.errors || {}), catalog: e.message }; changed.push('catalog:failed'); } }
+    if (reviewsStale || changed.includes('catalog')) { stamp('reviews'); await homeAndPages();
+      try { await withTimeout(reviews(ctx), LIMIT.reviews * 2, 'reviews'); changed.push('reviews'); if (profile.meta?.errors) delete profile.meta.errors.reviews; }
+      catch (e) { lg.warn?.('[reader] heal reviews', slug, e.message); changed.push('reviews:failed'); } }
     if (adsBroken) { try { await withTimeout(ads(ctx), LIMIT.ads, 'ads'); changed.push('ads'); } catch (e) { lg.warn?.('[reader] heal ads', slug, e.message); } }
     if (lineMissing && aiOn) { try { if (await writeLine(ctx)) changed.push('line'); } catch (e) { lg.warn?.('[reader] heal line', slug, e.message); } }
     // the AI tools step that timed out or failed in the read is asked again (it needs only the saved profile)
@@ -212,7 +241,7 @@ export function createReader({ ai = null, treg = null, saveAsset, saveRaw, loadR
       try { await withTimeout(named(ctx), LIMIT.named, 'named'); changed.push('named'); } catch (e) { lg.warn?.('[reader] heal named', slug, e.message); changed.push('named:failed'); }
     }
     // the checkout walk from an older walker, or one that never reached checkout, is walked again
-    if (siteBroken) { try { await withTimeout(site(ctx), LIMIT.site, 'site'); changed.push('site'); } catch (e) { lg.warn?.('[reader] heal site', slug, e.message); } }
+    if (siteBroken || (changed.includes('catalog') && siteFailed(profile))) { try { await withTimeout(site(ctx), LIMIT.site, 'site'); changed.push('site'); } catch (e) { lg.warn?.('[reader] heal site', slug, e.message); } }
     if (speedMissing) { profile.site = { ...(profile.site || {}), pagespeed: keepSpeed(profile.site?.pagespeed, await pageSpeed(profile.url, { log: lg })) }; changed.push('pagespeed'); }
     if (failedStages.length) {
       /* the stages read the home page (review widget, social links): fetched once here, as the open stage did */
@@ -245,7 +274,11 @@ export function siteFailed(profile) {
   const co = profile.site?.checkout;
   if (co?.closed) return false; /* not walked because the store is closed: reopenCheck clears it once the store opens */
   if (!co || co.v !== SITE_V) return true;
-  return !(co.walk || []).some((s) => s.step === 'Checkout entry' && s.ok);
+  if ((co.walk || []).some((s) => s.step === 'Checkout entry' && s.ok) || (co.kind === 'enquiry' && co.reached)) return false;
+  /* a store the headless walk can't get through (no add-to-cart, no cart, a login wall) is walked again weekly, not daily;
+     one that had no product to walk with is walked as soon as the catalog has one */
+  if (co.stopReason && !['other', 'no-product'].includes(co.stopReason) && co.at && Date.now() - Date.parse(co.at) < 7 * 864e5) return false;
+  return true;
 }
 
 /** the read's AI tools step failed or timed out and no answers were saved */

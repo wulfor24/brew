@@ -83,7 +83,8 @@ export async function brand(ctx) {
   heading = heading && fontName(heading); body = body && fontName(body);
   if (heading && GENERIC.test(heading)) heading = null; if (body && GENERIC.test(body)) body = null;
   const mono = famList.find((f) => /mono|code/i.test(f)) || null;
-  profile.identity.fonts = { heading: heading || null, body: body || null, mono };
+  heading = fontName(heading); body = fontName(body);
+  profile.identity.fonts = { heading: heading || null, body: body || null, mono: fontName(mono) };
   profile.identity.typeName = heading || body || null;
   if (heading) ledger.add({ key: 'brand.font.heading', label: 'Heading font', v: heading, url: fetchedCss[0]?.url || base, method: 'crawl' });
   if (body) ledger.add({ key: 'brand.font.body', label: 'Body font', v: body, url: fetchedCss[0]?.url || base, method: 'crawl' });
@@ -118,3 +119,4 @@ function selFont(css, selRe) {
   for (const m of css.matchAll(re)) { const ff = (m[m.length - 1].match(/font-family\s*:\s*([^;}]+)/i) || [])[1]; if (ff) { const f = firstFamily(ff); if (f) return f; } }
   return null;
 }
+

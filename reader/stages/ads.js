@@ -6,7 +6,8 @@ import { marketLine } from '../../market.js';
 import { CLOSED_WHY } from '../closed.js';
 import { adLibrary, adCall } from '../adlib.js';
 import { numbersOf, adsStepLine } from '../../pack-numbers.js';
-import { meta, titleOf, jsonLd, typeIs, clean, stripTags, pathOf, hostOf, money, pool, registrable, today } from '../util.js';
+import { meta, titleOf, jsonLd, typeIs, clean, stripTags, pathOf, hostOf, money, pool, registrable, today, links } from '../util.js';
+import { findProductUrls, productFromPage, sitemapUrls } from '../products.js';
 
 const NOT_BRANDS = /(^|\.)(amazon|flipkart|nykaa|myntra|ajio|meesho|tatacliq|jiomart|bigbasket|blinkit|zepto|swiggy|purplle|1mg|netmeds|pharmeasy|apollopharmacy|healthkart|walmart|target|ulta|sephora|cvs|walgreens|costco|ebay|etsy|aliexpress|temu|shein|boots|superdrug|lookfantastic|feelunique|cultbeauty|youtube|facebook|instagram|reddit|quora|wikipedia|pinterest|tiktok|twitter|x|linkedin|medium|healthline|webmd|mayoclinic|clevelandclinic|byrdie|allure|vogue|elle|cosmopolitan|refinery29|nytimes|wirecutter|forbes|buzzfeed|economictimes|indiatimes|timesofindia|ndtv|hindustantimes|livemint|news18|thehindu|indianexpress|vogue|femina|nykaa|google|bing|gov|nih|ncbi|sciencedirect|researchgate|practo|lybrate|justdial|indiamart|glamour|goodhousekeeping|harpersbazaar|womenshealthmag|menshealth|gq|businessinsider|cnn|bbc|theguardian|telegraph|dailymail|independent|which|trustpilot|sitejabber|bestproducts|thestrategist|nymag|verywellhealth|everydayhealth|medicalnewstoday|drugs|rxlist|skinkraft|stylecraze|bebeautiful|missmalini|popxo|pinkvilla|scoopwhoop|thebetterindia|yourstory|inc42|entrackr|vccircle|crunchbase|tracxn)\./i;
 
@@ -152,10 +153,22 @@ async function crawlRival(ctx, r) {
     for (const p of ps.filter((p) => !/🎁|\bfree\b|gift|bag|pouch|merch|mist by/i.test(p.title)).slice(0, 6)) { const v = p.variants.find((x) => x.available) || p.variants[0]; const price = +v.price; if (!price) continue; r.prices.push({ title: clean(p.title).slice(0, 70), price, mrp: +v.compare_at_price > price ? +v.compare_at_price : null, currency: cur, url: `${new URL(base).origin}/products/${p.handle}` }); }
     r.platform = 'shopify';
   } else {
-    const pl = [...new Set([...html.matchAll(/href=["']([^"']*\/(?:products?|p)\/[^"'#?]+)["']/gi)].map((m) => new URL(m[1], base).href))].slice(0, 2);
-    for (const u of pl) { const pr = await http.get(u, { key: `rival-${key}-pp-${pl.indexOf(u)}` }); if (!pr.ok) continue; const ld = jsonLd(pr.text).find((x) => typeIs(x, 'Product')); const o = [].concat(ld?.offers || [])[0]; const price = +String(o?.price ?? o?.lowPrice ?? '').replace(/[^\d.]/g, ''); if (ld && price) r.prices.push({ title: clean(ld.name).slice(0, 70), price, currency: o.priceCurrency || cur, url: u }); }
+    /* any other platform: learn the rival's product links from its home page (reader/products.js), then read a few */
+    const page = async (u, k) => { const pr = await http.get(u, { key: `rival-${key}-${k}` }).catch(() => null); return pr?.ok ? pr.text : null; };
+    const ro = new URL(base).origin;
+    let found = await findProductUrls({ urls: [], homeLinks: links(html, base), origin: ro, fetchPage: page, max: 6 }).catch(() => ({ urls: [] }));
+    // a home page drawn by script, or blocked: the rival's own sitemap (product files first)
+    if (!found.urls.length) { const sm = await sitemapUrls((u) => http.get(u, { key: `rival-${key}-sm-${u.split('/').pop().slice(0, 40)}` }), ro).catch(() => []);
+      if (sm.length) found = await findProductUrls({ urls: sm, origin: ro, fetchPage: page, max: 6, market: ctx.profile.country }).catch(() => found); }
+    let renders = 0; /* a product page drawn by script or blocked: rendered through treg, at most 3 per rival */
+    for (const [i, u] of found.urls.slice(0, 5).entries()) { if (r.prices.length >= 4) break;
+      let h = await page(u, 'pp-' + i); let it = h && productFromPage(h, u);
+      if (!(it?.price > 0) && renders < 3) { renders++; const rr = await ctx.render(u, `rival-${key}-pp-${i}-rendered`); it = rr?.html ? productFromPage(rr.html, u) : it; }
+      if (it?.title && it.price > 0) r.prices.push({ title: clean(it.title).slice(0, 70), price: it.price, mrp: it.mrp || null, currency: it.currency || cur, url: u }); }
+    r.platform = r.platform || 'other';
+    if (!r.prices.length) r.pricesError = found.urls.length ? "product pages found, but their prices couldn't be read" : "no product pages found on the home page";
   }
-  r.prices.forEach((p, i) => ledger.add({ key: `rival.${key}.price.${i + 1}`, label: `${r.name}: ${p.title}`, v: money(p.price, p.currency), n: p.price, unit: p.currency, url: p.url, method: r.platform === 'shopify' ? 'products.json' : 'jsonld' }));
+  r.prices.forEach((p, i) => ledger.add({ key: `rival.${key}.price.${i + 1}`, label: `${r.name}: ${p.title}`, v: money(p.price, p.currency), n: p.price, unit: p.currency, url: p.url, method: r.platform === 'shopify' ? 'products.json' : 'jsonld (product page)' }));
   if (r.guarantee) ledger.add({ key: `rival.${key}.guarantee`, label: `${r.name} guarantee line`, v: r.guarantee.slice(0, 160), url: base, method: 'crawl' });
 }
 

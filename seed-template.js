@@ -1,6 +1,7 @@
 // The seed for a generated brand: the same shape as public/data/brew.js, built only from what the reader
 // actually found (profile.json) and, later, the cards the moves engine writes. Nothing here invents a number:
 // connector logs are number-free until a real account is connected, demo boards start empty.
+import { registrable } from './reader/util.js';
 const hexOk = (x) => /^#[0-9a-f]{6}$/i.test(String(x || ''));
 const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.max(0, Math.min(255, Math.round(v * f)))); return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join(''); };
 const lum = (hex) => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114) / 255; };
@@ -42,7 +43,7 @@ const STEPS = [
 
 // before the read: just the address
 export function skeletonSeed({ slug, host }) {
-  const name = titleCase(host.split('.')[0]);
+  const name = titleCase(registrable(host).split('.')[0]); /* in.puma.com is Puma, never "In" */
   return baseSeed({ slug, host, name, tagline: '', colors: ['#171717', '#6B7280', '#E5E7EB'], logo: null, steps: STEPS.map((s) => ({ ...s, done: '' })) });
 }
 
@@ -135,7 +136,7 @@ export function seedFromProfile(slug, profile, findings, extra = {}) {
   const art = [...new Set(prods.filter((x) => x.img).map((x) => x.img))].slice(0, 6);
   const steps = STEPS.map((s) => ({ ...s, done: findings?.steps?.find((x) => x.k === s.k)?.done || '' }));
   const seed = baseSeed({
-    slug, host: p.host, name: p.name || titleCase(p.host?.split('.')[0]), tagline: p.descriptor || p.tagline,
+    slug, host: p.host, name: p.name || titleCase(registrable(p.host || '').split('.')[0]), tagline: p.descriptor || p.tagline,
     colors: id.colors || [], logo: id.logo, mark: id.mark, face: fontName(id.fonts?.heading || id.fonts?.body) || undefined, typeName: fontName(id.typeName) || undefined, /* a saved read with weights in the name heals here */
     steps, lanes, laneImg, rivals: (p.rivals || []).map((r) => r.name), marketplaces: extra.marketplaces || [], reviewApp: p.reviews?.platforms?.[0]?.name, art, stack: { platform: p.platform }
   });

@@ -59,6 +59,35 @@ export const registrable = (host) => {
 /* a shared platform domain (brand.myshopify.com, brand.wixsite.com: auth.js PLATFORM) is never the brand: the whole host is */
 export const slugOf = (url) => { const h = normalizeUrl(url).hostname.toLowerCase().replace(/^www\./, ''), r = registrable(h); return (PLATFORM.test(r) ? h : r).replace(/\./g, '-'); };
 
+/* ---------- brand names ---------- */
+/* every country's English name ("India", "United States"), built once: a store titled "PUMA India" is the brand PUMA */
+const COUNTRIES = (() => { const out = new Set(['uk', 'usa', 'us', 'uae', 'ksa', 'eu', 'europe', 'asia', 'global', 'international', 'intl', 'worldwide']);
+  try { const dn = new Intl.DisplayNames(['en'], { type: 'region' }); for (let a = 65; a <= 90; a++) for (let b = 65; b <= 90; b++) { const c = String.fromCharCode(a, b); try { const n = dn.of(c); if (n && n !== c) { out.add(n.toLowerCase()); out.add(c.toLowerCase()); } } catch {} } } catch {}
+  return out; })();
+const TAIL = /\s*[-–—|:,]?\s*(official\s+(online\s+)?(store|site|website|shop)|online\s+(store|shop)|store|shop|official)\s*$/i;
+/** the brand without its market or store suffix: "PUMA India" → "PUMA", "Nike UK Official Store" → "Nike"; never empty.
+ *  With the store's host, the shorter name must be the domain's own name (airindia.com keeps "Air India") */
+export function brandBase(name, host = '') {
+  let n = String(name || '').trim(); if (!n) return n;
+  for (let i = 0; i < 3; i++) {
+    const t = n.replace(TAIL, '').trim();
+    const words = t.split(/\s+/); let cut = t;
+    for (const k of [3, 2, 1]) { if (words.length > k && COUNTRIES.has(words.slice(-k).join(' ').toLowerCase().replace(/[^a-z ]/g, ''))) { cut = words.slice(0, -k).join(' ').replace(/[\s\-–—|:,]+$/, ''); break; } }
+    if (cut === n || !cut) break;
+    const sq = (x) => String(x).toLowerCase().replace(/[^a-z0-9]+/g, ''), stem = host ? sq(registrable(host).split('.')[0]) : '';
+    /* airindia.com: the country is part of the domain's name, so it is part of the brand's */
+    if (stem && (stem.includes(sq(n.slice(cut.length))) || !(stem.startsWith(sq(cut)) || sq(cut).startsWith(stem)))) break;
+    n = cut;
+  }
+  return n || String(name).trim();
+}
+/** a regex that finds the brand in text by any of its names ("PUMA India" or "PUMA"), whole words, spaces flexible */
+export function brandRe(name, extra = [], host = '') {
+  const names = [...new Set([name, brandBase(name, host), ...extra].map((x) => String(x || '').trim()).filter((x) => x.length >= 2))].sort((a, b) => b.length - a.length);
+  if (!names.length) return /(?!)/;
+  return new RegExp(`\\b(${names.map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')).join('|')})\\b`, 'i');
+}
+
 /* ---------- HTML ---------- */
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', hellip: '…', trade: '™', reg: '®', copy: '©', rupee: '₹' };
 export const decode = (s) => String(s ?? '').replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => e[0] === '#' ? String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : +e.slice(1)) : (ENT[e.toLowerCase()] ?? m));

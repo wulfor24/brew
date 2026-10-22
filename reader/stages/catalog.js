@@ -4,9 +4,11 @@
 import { jsonLd, typeIs, clean, stripTags, pathOf, money, num, pool, hostOf, meta, links } from '../util.js';
 import { moneyFmt } from '../../brand-pack.js'; // the price label the check page prints (build.js normalizeProfile)
 import { adminUrl } from './admin.js';
+import { findProductUrls, isProductPage, productFromPage, PACK, claimsOf, storeKindOf, offeringUrls, offeringFromPage, spread } from '../products.js';
 
-const PACK = /\bpack of \d+|\b\d+\s?x\s?\d+|\bcombo\b|\bkit\b|\bbundle\b|\bset of\b|\bduo\b|\btrio\b|\bregimen\b|\broutine\b|\bvalue pack\b|\bgift set\b/i;
-const CLAIM = /(\d+(\.\d+)?\s?%|\bup to\b|\bclinically\b|\bdermatologist|\bproven\b|\bstudy\b|\btested\b|\bin \d+ (days|weeks)|\b\d+[xX]\b|\bcertified\b|\bno\. ?1\b|#1\b)/i;
+/** bump when the catalog starts reading differently: heal() re-reads every saved catalog with an older version */
+export const CATALOG_V = 2;
+
 const NOT_PRODUCT = /gift ?wrap|gift ?card|e-?gift|shipping protection|route protection|insurance|sample|tester|donation/i; // what the check page leaves out (build.js checkData)
 const NONPRODUCT = /gift ?card|e-?gift|shipping protection|route|insurance|free gift|freebie|sample|tester|donation|\bwarranty\b|\bfee\b/i;
 
@@ -45,25 +47,41 @@ export async function catalog(ctx) {
     }
     if (products.length) how = 'woocommerce store api';
   }
+  let shapes = null, prefix = '', total = null;
+  // every other store (Salesforce Commerce, Magento, BigCommerce, headless, custom): learn which of the sitemap's URLs
+  // are product pages from the pages themselves (reader/products.js), then read a spread of them
+  /* probe: learning the shapes renders only a blocked page (a category page is not a product, rendered or not);
+     a page picked as a product is rendered when its plain HTML shows none (drawn by script) */
+  const page = async (u, key, probe = false) => {
+    const r = await http.get(u, { key }).catch(() => null);
+    if (r?.ok && r.text && isProductPage(r.text)) return { html: r.text, url: r.url || u };
+    if (!r?.ok || !r.text || (!probe && !/ld\+json|og:type/i.test(r.text))) { const rr = await ctx.render(u, key + '-rendered'); if (rr?.html) return { html: rr.html, url: u }; }
+    return r?.ok ? { html: r.text, url: r.url || u } : null;
+  };
   if (!products.length) {
-    // JSON-LD on product pages from the sitemap (or the home page's product links)
-    const all = state.pageUrls || [];
-    let pu = all.filter((u) => /\/(products?|p|item|shop)\/[^/]+|\/[^/]+\/p\/|\.html$|\/dp\//i.test(new URL(u).pathname) && !/\/(collections?|category|categories|blog|pages?)\//i.test(u));
-    if (!pu.length) pu = (state.homeLinks || []).map((l) => l.url).filter((u) => hostOf(u) === hostOf(origin) && /\/(products?|p)\/|\.html$/i.test(new URL(u).pathname));
-    pu = [...new Set(pu.map((u) => u.split('?')[0]))];
-    ctx.state.productPageCount = pu.length;
-    const sample = pu.slice(0, 30);
-    await pool(sample, 6, async (u, i) => {
+    ctx.tick('catalog', 'product pages');
+    const found = await findProductUrls({ urls: state.pageUrls || [], homeLinks: state.homeLinks || [], origin, market: state.localePath || profile.country, fetchPage: async (u, k) => (await page(u, k, true))?.html, tick: (t) => ctx.tick('catalog', '/' + t + '/') });
+    shapes = found.shapes; prefix = found.prefix; total = found.total;
+    ctx.state.productPageCount = found.total;
+    await pool(found.urls, 6, async (u, i) => {
       if (i % 5 === 0) ctx.tick('catalog', pathOf(u).replace(profile.host, ''));
-      let r = await http.get(u, { key: 'pp-' + i });
-      let html = r.ok ? r.text : null;
-      if (!html || !/ld\+json/i.test(html)) { const rr = await ctx.render(u, 'pp-' + i + '-rendered'); if (rr) html = rr.html; }
-      if (!html) return;
-      const ld = jsonLd(html).find((x) => typeIs(x, 'Product') || typeIs(x, 'ProductGroup'));
-      if (ld) products.push(ldItem(ld, r.url || u, html));
+      const pg = await page(u, 'pp-' + i); if (!pg) return;
+      const item = productFromPage(pg.html, u); if (item) products.push(item);
     });
-    if (products.length) how = `jsonld (${sample.length} of ${pu.length} product pages read)`;
+    if (products.length) how = `jsonld (${found.urls.length} of ${found.total} product pages read)`;
+    else if (found.total && !products.length) ctx.state.catalogNote = `${found.total} product pages found, but none of the ${found.urls.length} opened showed a product`;
   }
+  /* no catalog, and the site asks visitors to get in touch rather than buy (real estate, services, B2B): read what it offers
+     (its biggest non-content URL group: /project/, /services/, /courses/) as the catalog, and say it is not a store */
+  let group = null;
+  if (!products.length && !admin && storeKindOf(state.home, []) === 'enquiry') {
+    profile.storeKind = 'enquiry';
+    const off = offeringUrls(state.pageUrls || []); group = off.group;
+    if (off.urls.length) { ctx.tick('catalog', '/' + off.group + '/');
+      await pool(spread(off.urls, 16), 6, async (u, i) => { const pg = await page(u, 'off-' + i); const it = pg && offeringFromPage(pg.html, u); if (it) products.push(it); });
+      if (products.length) { how = `offerings (/${off.group}/ pages)`; total = off.urls.length; ctx.state.productPageCount = off.urls.length; ctx.state.catalogNote = null; } }
+  } else profile.storeKind = 'store';
+
 
   products = products.filter((p) => p && p.title && !NONPRODUCT.test(p.title + ' ' + (p.type || '')));
   const currency = products.find((p) => p.currency)?.currency || cur;
@@ -79,7 +97,7 @@ export async function catalog(ctx) {
       if (r.ok && r.text) { const hs = [...new Set([...r.text.matchAll(/\/products\/([a-z0-9][a-z0-9-]*)/gi)].map((m) => m[1].toLowerCase()))].filter((h) => products.some((p) => p.handle === h)); if (hs.length >= 3) { order = hs; orderHow = 'the store\'s best-selling sort (/collections/all?sort_by=best-selling)'; } } }
   }
   const rank = (p) => { const i = order ? order.indexOf(p.handle) : -1; return i < 0 ? 1e4 + products.indexOf(p) : i; };
-  const sellable = products.filter((p) => p.price > 0);
+  const sellable = products.filter((p) => p.price > 0 || p.kind === 'offering'); /* an offering may not print a price */
   const ranked = [...sellable].sort((a, b) => rank(a) - rank(b));
   const singles = ranked.filter((p) => !p.pack);
   const hero = [...singles, ...ranked.filter((p) => p.pack)].slice(0, 8);
@@ -100,10 +118,12 @@ export async function catalog(ctx) {
   for (const c of collections.slice(0, 200)) collOut.push({ handle: c.handle, title: clean(c.title), count: c.products_count ?? null });
   profile.catalog = {
     count: products.length, collections: collOut,
-    products: products.map((p) => ({ ...(p.id ? { id: p.id } : {}), handle: p.handle, title: p.title, type: p.type || null, price: p.price || null, mrp: p.mrp || null, currency: p.currency || null, inStock: p.inStock, variants: p.variants, images: p.images.slice(0, 6), img: p.img || null, url: p.url, published: p.published || null, tags: p.tags || [], claims: p.claims || [], pack: !!p.pack, reviews: p.reviews || null })),
-    hero: hero.map((p) => p.handle), order: orderHow || 'catalog order', source: how
+    products: products.map((p) => ({ ...(p.id ? { id: p.id } : {}), handle: p.handle, title: p.title, type: p.type || null, price: p.price || null, mrp: p.mrp || null, currency: p.currency || null, inStock: p.inStock, variants: p.variants, images: p.images.slice(0, 6), img: p.img || null, url: p.url, published: p.published || null, tags: p.tags || [], claims: p.claims || [], pack: !!p.pack, reviews: p.reviews || null, ...(p.kind ? { kind: p.kind, priceText: p.priceText || null, summary: p.summary || null } : {}) })),
+    hero: hero.map((p) => p.handle), order: orderHow || 'catalog order', source: how,
+    /* every product page the store lists (count is only the ones read) and the URL shapes learned for them */
+    ...(group ? { offerings: group } : {}), total: total ?? products.length, ...(shapes?.length ? { shapes, prefix } : {}), v: CATALOG_V
   };
-  if (products.length) ledger.add({ key: 'catalog.count', label: 'Products in the catalog', v: String(products.length), n: products.length, unit: 'products', url: admin ? listUrl : how === 'products.json' ? `${origin}/products.json` : origin, method: how?.startsWith('jsonld') ? 'jsonld' : admin ? listHow : how || 'crawl', note: how?.startsWith('jsonld') ? `only product pages read so far; ${ctx.state.productPageCount || 0} product URLs in the sitemap` : admin ? `active products in the Shopify admin${admin.partial ? `; the first ${products.length} of ${admin.count} read` : ''}` : undefined });
+  if (products.length) ledger.add({ key: 'catalog.count', label: 'Products in the catalog', v: String(products.length), n: products.length, unit: 'products', url: admin ? listUrl : how === 'products.json' ? `${origin}/products.json` : origin, method: how?.startsWith('jsonld') ? 'jsonld' : admin ? listHow : how || 'crawl', note: how?.startsWith('jsonld') ? `only product pages read so far; ${ctx.state.productPageCount || 0} product pages in the sitemap${shapes?.length ? ` (${shapes.map((x) => '/' + x.split('/')[0] + '/').join(', ')})` : ''}` : admin ? `active products in the Shopify admin${admin.partial ? `; the first ${products.length} of ${admin.count} read` : ''}` : undefined });
   if (collections.length) ledger.add({ key: 'catalog.collections', label: 'Collections', v: String(collections.length), n: collections.length, url: admin ? adminUrl(admin.shop?.myshopify, '/collections') : `${origin}/collections.json`, method: listHow });
   const packs = products.filter((p) => p.pack); if (products.length) ledger.add({ key: 'catalog.packs', label: 'Packs, kits and bundles', v: String(packs.length), n: packs.length, url: listUrl, method: how?.startsWith('jsonld') ? 'jsonld' : listHow, layer: 'inferred', conf: 'medium', note: 'titles that say pack/kit/combo/set/duo/trio' });
   const oos = products.filter((p) => p.inStock === false); if (products.length) ledger.add({ key: 'catalog.out_of_stock', label: 'Products out of stock', v: String(oos.length), n: oos.length, url: listUrl, method: how?.startsWith('jsonld') ? 'jsonld' : listHow });
@@ -119,12 +139,18 @@ export async function catalog(ctx) {
 
   // findings
   if (!products.length) {
-    ctx.finding('catalog', { kind: 'rows', t: 'The catalog', src: admin ? 'Shopify admin' : pathOf(origin), rows: [], cap: admin ? 'The Shopify admin has no active products yet.' : 'No product catalog found on the site.' });
-    return ctx.done('catalog', 'no products found', 'empty');
+    ctx.finding('catalog', { kind: 'rows', t: 'The catalog', src: admin ? 'Shopify admin' : pathOf(origin), rows: [], cap: admin ? 'The Shopify admin has no active products yet.' : ctx.state.catalogNote ? `${ctx.state.catalogNote}.` : 'No product pages found on the site.' });
+    return ctx.done('catalog', ctx.state.catalogNote ? 'product pages found, none readable' : 'no products found', 'empty');
   }
   const top = hero.slice(0, 5);
   const rows = top.map((p) => [shortTitle(p.title), p.mrp > p.price ? `${money(p.price, p.currency)} (MRP ${money(p.mrp, p.currency)})` : money(p.price, p.currency)]);
   const partial = how?.startsWith('jsonld') && (ctx.state.productPageCount || 0) > products.length;
+  if (profile.storeKind === 'enquiry') {
+    const noun = group ? group.replace(/s$/, '') + 's' : 'offerings';
+    ctx.finding('catalog', { kind: 'rows', t: `What ${profile.brandName || profile.name} offers`, src: pathOf(origin + '/' + (group || '')), rows: top.map((p) => [shortTitle(p.title), p.priceText || '']), cap: `${num(total || products.length, currency)} ${noun} on the site${products.length < (total || 0) ? `, ${products.length} read` : ''}. No online store: visitors enquire.`, order: 'site order' }, 'Read what you offer');
+    if (shots.length) ctx.finding('catalog', { kind: 'grid', t: 'Pictures on your site', src: pathOf(origin), imgs: shots.slice(0, 4), all: shots, cap: `${shots.length} pictures saved.` }, 'Saved the pictures');
+    return ctx.done('catalog', `${num(total || products.length, currency)} ${noun}, sells by enquiry`);
+  }
   const capBits = [partial ? `${num(ctx.state.productPageCount, currency)} product pages in the sitemap, ${products.length} read.` : admin?.partial ? `${num(products.length, currency)} of ${num(admin.count, currency)} active products read from the Shopify admin.` : `${num(products.length, currency)} products${admin ? ' from the Shopify admin' : ''}.`];
   if (newest) capBits.push(`Newest: ${shortTitle(newest.title)}, ${fmtDate(newest.published)}.`);
   ctx.finding('catalog', { kind: 'rows', t: 'The catalog', src: admin ? 'Shopify admin' : pathOf(how === 'products.json' ? `${origin}/products.json` : origin), rows, cap: capBits.join(' '), order: orderHow || 'catalog order' }, 'Read live prices');
@@ -145,20 +171,6 @@ function wooItem(p) {
   const minor = +(p.prices?.currency_minor_unit ?? 2); const f = (x) => (x == null || x === '' ? null : +x / 10 ** minor);
   const price = f(p.prices?.price) || 0, reg = f(p.prices?.regular_price);
   return { handle: p.slug, title: clean(stripTags(p.name)), type: clean(p.categories?.[0]?.name || ''), price, mrp: reg > price ? reg : null, currency: p.prices?.currency_code || null, inStock: !!p.is_in_stock, variants: (p.variations || []).length || 1, images: (p.images || []).map((i) => i.src), url: p.permalink, published: null, tags: (p.tags || []).map((t) => t.name), claims: claimsOf(stripTags(p.description || p.short_description || '')), pack: PACK.test(p.name), reviews: p.review_count ? { count: +p.review_count, rating: +p.average_rating || null } : null };
-}
-function ldItem(ld, url, html) {
-  const offers = [].concat(ld.offers || ld.hasVariant?.flatMap?.((v) => [].concat(v.offers || [])) || []).flatMap((o) => (o && o['@type'] === 'AggregateOffer' ? [{ price: o.lowPrice, priceCurrency: o.priceCurrency, availability: o.availability }].concat(o.offers || []) : [o])).filter(Boolean);
-  const o = offers.find((x) => x.price != null) || {};
-  const price = +String(o.price ?? '').replace(/[^\d.]/g, '') || 0;
-  const list = offers.map((x) => +(x.priceSpecification?.price ?? NaN)).find((x) => x > price) || null;
-  const imgs = [].concat(ld.image || []).map((i) => (typeof i === 'string' ? i : i.url || i.contentUrl)).filter(Boolean);
-  const handle = new URL(url).pathname.split('/').filter(Boolean).pop().replace(/\.html$/, '').toLowerCase().slice(0, 80);
-  const ar = ld.aggregateRating;
-  return { handle, title: clean(ld.name), type: clean(typeof ld.category === 'string' ? ld.category : ''), price, mrp: list, currency: o.priceCurrency || null, inStock: o.availability ? /InStock|LimitedAvailability|PreOrder/i.test(o.availability) : null, variants: Math.max(1, offers.length), images: imgs.length ? imgs : [meta(html, 'og:image')].filter(Boolean), url, published: null, tags: [], claims: claimsOf(stripTags(ld.description || '')), pack: PACK.test(ld.name || ''), reviews: ar ? { count: +(ar.reviewCount || ar.ratingCount) || null, rating: +ar.ratingValue || null } : null };
-}
-function claimsOf(text) {
-  const s = String(text).replace(/\n/g, '. ').match(/[^.!?]{12,220}[.!?]?/g) || [];
-  return [...new Set(s.map(clean).filter((x) => CLAIM.test(x)))].slice(0, 6);
 }
 const sizeUp = (src) => (/cdn\.shopify\.com|\/cdn\/shop\//.test(src) ? src.replace(/^\/\//, 'https://') + (src.includes('?') ? '&' : '?') + 'width=1200' : src.replace(/^\/\//, 'https://'));
 export const shortTitle = (t) => clean(String(t).replace(/\s*[|]\s*.*$/, '').replace(/™|®/g, '')).slice(0, 60);

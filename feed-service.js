@@ -219,7 +219,8 @@ export function tourStep(ev, old, savedCards = [], liveFindings = []) {
 }
 export function followRead({ builder, slug, loadSeed, send, isOpen = () => true, startedAt = Date.now(), replayMs = 500 }) {
   let sentReady = false, doneSeen = false, hold = !(builder.events(slug) || []).some((e) => e.type === 'reader');
-  const ready = () => { if (sentReady || !isOpen()) return; sentReady = true; send({ type: 'ready', ms: Date.now() - startedAt }); };
+  /* ready carries the read's own name: the reading page opened on the address's placeholder ("In" for in.puma.com) */
+  const ready = async () => { if (sentReady || !isOpen()) return; sentReady = true; const f = await Promise.resolve(loadSeed?.()).catch(() => null); if (isOpen()) send({ type: 'ready', ms: Date.now() - startedAt, ...(f?.brand?.name ? { name: f.brand.name } : {}) }); };
   const on = (e) => {
     if (e.type === 'reader') { const ev = e.ev, i = STEP_KEYS.indexOf(ev.k);
       if (ev.type === 'step' && ev.state === 'reading') send({ type: 'step', i, state: 'reading', tick: ev.tick || '' });

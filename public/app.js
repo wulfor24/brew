@@ -568,7 +568,7 @@
         $$('.agent-row').forEach((r) => { r.classList.remove('on'); r.querySelector('.st').textContent = 'Nothing read'; }); /* nothing was read, so no agent has ideas */
         document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><div><b>We couldn’t read ${esc(B.brand.name)}.</b><span>${esc(readFail(ev.msg))}</span></div><button class="btn btn-primary lg" id="su-next">Back to the start</button></div>`);
         $('#su-next').onclick = () => { location.href = '/'; }; return; }
-      if (ev.type === 'ready') { es.close(); finishRead(); }
+      if (ev.type === 'ready') { es.close(); if (ev.name && ev.name !== B.brand.name) { B.brand.name = ev.name; const h = $('.su-head h2'); if (h) h.textContent = `Reading ${ev.name}`; document.title = document.title.replace(/^[^·]*·/, `${ev.name} ·`); } finishRead(); }
     };
     const finishRead = async () => {
       if (readIn) return; readIn = true; $$('.agent-row').forEach((r) => { r.classList.add('on'); r.querySelector('.st').textContent = 'Has ideas ready'; });

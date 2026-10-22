@@ -20,6 +20,40 @@ const TECH = {
 const SUBS = [['recharge', /rechargepayments|rechargecdn|recharge-/i], ['skio', /skio/i], ['loop', /loopsubscriptions|loop-subscriptions/i], ['appstle', /appstle/i], ['seal', /sealsubscriptions/i], ['bold', /boldapps\.net\/subscriptions|bold-subscriptions/i], ['stay.ai', /stay\.ai|retextion/i], ['ordergroove', /ordergroove/i]];
 const CHAT = [['gorgias', /gorgias/i], ['intercom', /widget\.intercom\.io|intercomSettings/i], ['zendesk', /zdassets\.com|zopim/i], ['tidio', /tidio/i], ['freshchat', /freshchat|wchat\.freshchat/i], ['richpanel', /richpanel/i], ['crisp', /client\.crisp\.chat/i], ['whatsapp', /wa\.me\/|api\.whatsapp\.com\/send|whatsapp-widget|interakt|wati\.io|gallabox/i], ['kustomer', /kustomer/i], ['re:amaze', /reamaze/i], ['livechat', /livechatinc/i], ['tawk', /tawk\.to/i], ['haptik', /haptik/i]];
 const CHECKOUT_APPS = [['gokwik', /gokwik/i], ['shopflo', /shopflo/i], ['fastrr (shiprocket)', /fastrr|shiprocket.*checkout/i], ['razorpay magic', /magic-checkout|razorpay.*magic/i], ['simpl', /getsimpl|simpl-checkout/i], ['bold checkout', /boldcommerce.*checkout/i], ['shop pay', /shop-pay|shopify-payment-button/i]];
+/* tags seen firing in the walk's own network requests: a pixel loaded through GTM is not in the page source */
+const NET = { metaPixel: /facebook\.com\/tr[/?]|connect\.facebook\.net\/[^?]*fbevents\.js/i, ga4: /google-analytics\.com\/g\/collect|analytics\.google\.com\/g\/collect|googletagmanager\.com\/gtag\/js\?id=G-/i,
+  googleAds: /googleadservices\.com\/pagead\/conversion|googleads\.g\.doubleclick\.net|googletagmanager\.com\/gtag\/js\?id=AW-/i, tiktokPixel: /analytics\.tiktok\.com/i, pinterest: /ct\.pinterest\.com|s\.pinimg\.com\/ct\//i,
+  snapchat: /tr\.snapchat\.com|sc-static\.net\/scevent/i, clarity: /clarity\.ms\//i, hotjar: /hotjar\.(com|io)/i, klaviyo: /klaviyo\.com/i, gtm: /googletagmanager\.com\/gtm\.js/i };
+/** a size, colour or variant picker on a product page: the first option that can be bought. Returns its label or null. */
+export async function pickVariant(page) {
+  return page.evaluate(() => {
+    const vis = (e) => { const r = e.getBoundingClientRect(); const st = getComputedStyle(e); return r.width > 0 && r.height > 0 && st.visibility !== 'hidden' && st.display !== 'none'; };
+    const off = (e) => e.disabled || e.getAttribute('aria-disabled') === 'true' || /disabled|unavailable|sold-?out|out-?of-?stock|crossed|strike/i.test(e.className + ' ' + (e.getAttribute('data-state') || '') + ' ' + (e.getAttribute('aria-label') || ''));
+    const picked = [];
+    // a <select> for size/colour/variant with no choice made
+    for (const sel of document.querySelectorAll('select')) {
+      const k = (sel.name + ' ' + sel.id + ' ' + (sel.getAttribute('aria-label') || '') + ' ' + (sel.labels?.[0]?.innerText || '')).toLowerCase();
+      if (!/size|colou?r|variant|option|shade|pack|qty|quantity/.test(k) || /qty|quantity/.test(k) || !vis(sel)) continue;
+      const opt = [...sel.options].find((o) => o.value && !o.disabled && !/select|choose|pick/i.test(o.textContent)); if (!opt || sel.value === opt.value) continue;
+      sel.value = opt.value; sel.dispatchEvent(new Event('input', { bubbles: true })); sel.dispatchEvent(new Event('change', { bubbles: true })); picked.push(opt.textContent.trim());
+    }
+    // swatches and size buttons: radio groups, or a group whose label says size
+    const groups = [...document.querySelectorAll('[role=radiogroup], fieldset, [class*="size" i][class*="list" i], [class*="size" i][class*="select" i], [data-test-id*="size" i], [data-testid*="size" i], [class*="swatch" i], [class*="variant" i]')].filter(vis);
+    for (const g of groups.slice(0, 6)) {
+      const opts = [...g.querySelectorAll('input[type=radio], [role=radio], button, label, li')].filter((e) => vis(e) || e.type === 'radio');
+      if (opts.length < 2 || opts.length > 40) continue;
+      if (opts.some((e) => e.checked || e.getAttribute('aria-checked') === 'true' || e.getAttribute('aria-pressed') === 'true' || /\b(selected|active|is-checked)\b/.test(e.className))) continue;
+      const o = opts.find((e) => !off(e) && !(e.type === 'radio' && e.disabled)); if (!o) continue;
+      const target = o.type === 'radio' ? (o.labels?.[0] || o) : o; target.click(); picked.push(((target.innerText || o.value || '').trim().split(/\n+/).pop() || '').trim().slice(0, 20));
+    }
+    return picked.length ? picked.join(', ') : null;
+  }).catch(() => null);
+}
+/** the number on the header's cart icon (any platform): null when there is no badge to read */
+const badgeCount = (page) => page.evaluate(() => {
+  const els = [...document.querySelectorAll('[class*="cart" i] [class*="count" i], [class*="cart" i] [class*="badge" i], [class*="bag" i] [class*="count" i], [class*="bag" i] [class*="badge" i], [data-test-id*="cart" i] [class*="count" i], [aria-label*="cart" i], [aria-label*="bag" i], [class*="cart-count" i], [class*="cartCount" i], [data-cart-count]')];
+  for (const e of els) { const t = (e.getAttribute('data-cart-count') || e.innerText || e.getAttribute('aria-label') || '').match(/\b(\d{1,3})\b/); if (t) return +t[1]; }
+  return null; }).catch(() => null);
 const PAY = [['UPI', /\bUPI\b|google ?pay|phonepe|paytm|bhim/i], ['Cash on delivery', /cash on delivery|\bCOD\b|pay on delivery/i], ['Cards', /credit card|debit card|\bvisa\b|mastercard|amex|american express|rupay|card number/i], ['Net banking', /net ?banking/i], ['Wallets', /\bwallets?\b|mobikwik|amazon pay|freecharge/i], ['PayPal', /paypal/i], ['Apple Pay', /apple ?pay/i], ['Google Pay', /google ?pay|gpay/i], ['Shop Pay', /shop ?pay/i], ['Klarna', /klarna/i], ['Afterpay', /afterpay|clearpay/i], ['Affirm', /\baffirm\b/i], ['Sezzle', /sezzle/i], ['Simpl / pay later', /\bsimpl\b|lazypay|pay later|pay in 3|snapmint/i], ['EMI', /\bEMI\b/]];
 
 export function detectTech(html) {
@@ -33,7 +67,7 @@ export function detectTech(html) {
 
 const CHROME = () => process.env.CHROME_PATH || ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].find((p) => fs.existsSync(p));
 /** bump when the walk starts reading differently: heal() re-walks every saved read with an older version */
-export const SITE_V = 3;
+export const SITE_V = 4; /* 4: picks a size first, counts any cart, sees tags fire (GTM-loaded pixels) */
 // one-click checkout apps open on their own host, usually in an iframe over the cart (GoKwik, Razorpay Magic, Shopflo…)
 const APP_HOST = /gokwik|shopflo|razorpay|fastrr|shiprocket|getsimpl|simpl\.in|snapmint/i;
 const APP_SEL = ['[id*="gokwik" i] button', 'button[class*="gokwik" i]', '[class*="gokwik" i] button', '[class*="shopflo" i] button', 'button[class*="shopflo" i]', '[class*="magic-checkout" i]', 'button[class*="razorpay" i]', '[class*="fastrr" i] button', 'button[class*="fastrr" i]'];
@@ -59,6 +93,8 @@ export async function site(ctx) {
   const exe = CHROME();
   if (!exe) { await speed; profile.site.checkout = { v: SITE_V, error: 'no Chrome on this machine (set CHROME_PATH)' }; ctx.finding('site', { kind: 'rows', t: 'The path to checkout', src: pathOf(state.homeUrl), rows: techRows(tech), cap: 'Checkout not walked: no browser available.' }); return ctx.done('site', 'tech read, checkout not walked', 'empty'); }
   const { default: puppeteer } = await import('puppeteer-core');
+  /* a brand that sells by enquiry (catalog.js storeKind): walk home → the enquiry form instead, and never submit it */
+  if (profile.storeKind === 'enquiry') { await speed; return enquiryWalk(ctx, puppeteer, exe, tech); }
   const browser = await puppeteer.launch({ executablePath: exe, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1366,900', '--lang=en-US'] });
   const kill = () => browser.close().catch(() => {});
   const onAbort = () => kill(); ctx.signal?.addEventListener?.('abort', onAbort, { once: true });
@@ -73,11 +109,18 @@ export async function site(ctx) {
     }
   } finally { ctx.signal?.removeEventListener?.('abort', onAbort); await kill(); await speed; }
 
+  /* tags the walk saw fire count as on the site, whatever loaded them (GTM, a consent manager, the platform's own pixel) */
+  const fired = Object.keys(walk.fired || {}).filter((k) => k in tech && !tech[k]);
+  for (const k of fired) { tech[k] = true; ledger.add({ key: `site.tech.${k}`, label: `Tech on the site: ${k}`, v: 'yes', url: state.homeUrl, method: 'crawl', note: 'seen firing in the headless walk (not in the page source)' }); }
+  if (Object.keys(walk.fired || {}).length) tech.firedLive = Object.keys(walk.fired);
   const ms = (label) => walk.steps.find((s) => s.step === label)?.ms;
   const toCart = walk.steps.filter((s) => ['Product page', 'Add to cart', 'Cart', 'Cart drawer'].includes(s.step)).reduce((a, s) => a + s.ms, 0);
   const reached = walk.reached;
   const app = walk.direct ? tech.checkoutApp || null : walk.checkoutApp || tech.checkoutApp || null;
-  profile.site.checkout = { v: SITE_V, steps: walk.steps.length, clicks: walk.clicks, msToCart: toCart || null, msToCheckout: reached ? walk.steps.reduce((a, s) => a + s.ms, 0) : null, payments: walk.payments, paymentsAfter: walk.paymentsAfter || null, cod: walk.cod, guest: walk.guest, popups: walk.popups, checkoutApp: app, direct: !!walk.direct, inPage: walk.inPage || null, device: walk.device, cartItems: walk.cartItems ?? null, otp: walk.otp || null, stoppedAt: walk.stoppedAt, notes: walk.notes, walk: walk.steps, product: hero?.url || null, ...(hero ? {} : { error: 'no in-stock product to walk with' }) };
+  const stopErr = walk.reached ? null : walk.steps.find((s) => !s.ok)?.err || (hero ? null : 'no in-stock product');
+  /* why the walk stopped, so a store that can't be walked headless is tried again weekly, not every day (reader/index.js siteFailed) */
+  const stopReason = walk.reached ? null : !hero ? 'no-product' : /add-to-cart/i.test(stopErr || '') ? 'no-add-to-cart' : /cart not reachable/i.test(stopErr || '') ? 'no-cart' : /login|sign ?in/i.test(stopErr || '') ? 'login' : /checkout/i.test(stopErr || '') ? 'no-checkout' : 'other';
+  profile.site.checkout = { v: SITE_V, at: new Date().toISOString(), stopReason, picked: walk.picked || null, steps: walk.steps.length, clicks: walk.clicks, msToCart: toCart || null, msToCheckout: reached ? walk.steps.reduce((a, s) => a + s.ms, 0) : null, payments: walk.payments, paymentsAfter: walk.paymentsAfter || null, cod: walk.cod, guest: walk.guest, popups: walk.popups, checkoutApp: app, direct: !!walk.direct, inPage: walk.inPage || null, device: walk.device, cartItems: walk.cartItems ?? null, otp: walk.otp || null, stoppedAt: walk.stoppedAt, notes: walk.notes, walk: walk.steps, product: hero?.url || null, ...(hero ? {} : { error: 'no in-stock product to walk with' }) };
   const src = state.homeUrl;
   ledger.add({ key: 'checkout.reached', label: 'Checkout entry page reached in a headless walk', v: reached ? 'yes' : 'no', url: src, method: 'crawl', note: walk.steps.map((s) => `${s.step} ${s.ok ? 'ok' : 'failed'} ${s.ms} ms`).join('; ') + (walk.device === 'mobile' ? ' (walked as a phone)' : '') });
   if (reached) ledger.add({ key: 'checkout.clicks', label: 'Clicks from product page to checkout', v: String(walk.clicks), n: walk.clicks, unit: 'clicks', url: hero.url, method: 'crawl' });
@@ -98,7 +141,7 @@ export async function site(ctx) {
   // the product's name cut on a word, never mid-word ("…Hair Growth Se.")
   const heroName = hero ? ((t) => t.length <= 48 ? t : t.slice(0, 47).replace(/\s+\S*$/, '') + '…')(clean(hero.title || '').replace(/\s+-\s+\d+\s*(ml|g|gm|kg|l)\b.*$/i, '')) : '';
   const how = walk.device === 'mobile' ? ' as a phone' : '';
-  const capT = !hero ? 'No in-stock product to walk with: checkout not walked.'
+  const capT = !hero ? (profile.catalog?.products?.length ? 'No in-stock product to walk with: checkout not walked.' : "Checkout not walked: the catalog couldn't be read, so there was no product to walk with. The next refresh tries again.")
     : reached && walk.direct ? `Walked with ${heroName}${how}. Checkout button did not load headless, opened /checkout. Nothing entered.`
     : reached && walk.inPage ? `Walked with ${heroName}${how}. ${walk.inPage} opened over the page; stopped there, nothing entered.`
     : reached ? `Walked with ${heroName}${how}. Stopped at the checkout page, nothing entered.`
@@ -123,6 +166,7 @@ async function walkOnce(ctx, browser, hero, tech, device) {
     page.setDefaultTimeout(20e3);
     // never send anything: a form POST that navigates is allowed only for the cart (add to cart, go to checkout;
     // WooCommerce posts add-to-cart to the product page itself)
+    walk.fired = {}; page.on('requestfinished', (rq) => { const u = rq.url(); for (const [k, re] of Object.entries(NET)) if (!walk.fired[k] && re.test(u)) walk.fired[k] = true; });
     await page.setRequestInterception(true);
     page.on('request', (rq) => { let p = ''; try { p = new URL(rq.url()).pathname; } catch {} if (rq.method() === 'POST' && rq.isNavigationRequest() && rq.frame() === page.mainFrame() && !/^\/cart(\/(add|change|update))?(\.js)?\/?$/.test(p) && !/add-to-cart/.test(rq.url() + (rq.postData() || ''))) { walk.blocked = (walk.blocked || 0) + 1; return rq.abort(); } rq.continue(); });
     const t = async (label, fn) => { const s = Date.now(); let ok = true, err = null; try { await fn(); } catch (e) { ok = false; err = e.message.slice(0, 120); } walk.steps.push({ step: label, ms: Date.now() - s, ok, url: bare(page.url()), ...(err ? { err } : {}) }); return ok; };
@@ -140,22 +184,34 @@ async function walkOnce(ctx, browser, hero, tech, device) {
     await t('Product page', () => page.goto(hero.url, { waitUntil: 'domcontentloaded', timeout: 30e3 }));
     await settle(page, 2500); await popups();
     ctx.tick('site', 'add to cart');
+    const ATC = ['form[action*="/cart/add"] [type=submit]:not([disabled])', 'button[name="add"]:not([disabled])', '[data-add-to-cart]', '.product-form__submit', '#AddToCart', 'button.single_add_to_cart_button', '#add-to-cart-button', '[data-testid*="add-to-cart" i]', '[data-test-id*="add-to-cart" i]'];
+    const ATC_RE = /^(add to (cart|bag|basket)|buy now|add)\b/i;
+    // apparel and many non-Shopify stores need a size before Add to cart: pick the first one that can be bought
+    const size = await pickVariant(page); if (size) { walk.picked = size; walk.notes.push(`Picked ${size} first.`); await settle(page, 1200); }
+    const asksSize = () => page.evaluate(() => /(please )?(select|choose|pick) (a |your )?(size|colou?r|variant|option)/i.test(document.body.innerText.slice(0, 40000))).catch(() => false);
+    const badge0 = await badgeCount(page);
     const added = await t('Add to cart', async () => {
-      const clicked = await pollClick(page, ['form[action*="/cart/add"] [type=submit]:not([disabled])', 'button[name="add"]:not([disabled])', '[data-add-to-cart]', '.product-form__submit', '#AddToCart', 'button.single_add_to_cart_button', '#add-to-cart-button', '[data-testid*="add-to-cart" i]'], /^(add to (cart|bag|basket)|buy now|add)\b/i, 8e3);
+      let clicked = await pollClick(page, ATC, ATC_RE, 8e3);
       if (!clicked) throw new Error('no add-to-cart button found'); walk.clicks++;
       await settle(page, 3000);
+      // the store asked for a size after the click: pick one and click again, once
+      if (await asksSize()) { const s2 = await pickVariant(page); if (s2) { walk.picked = s2; walk.notes.push(`The store asked for a size; picked ${s2}.`); await settle(page, 1000); if (await pollClick(page, ATC, ATC_RE, 5e3)) { walk.clicks++; await settle(page, 3000); } } }
     });
     await popups();
     if (!added) return walk;
     ctx.tick('site', '/cart');
     // a cart drawer often opens: use its checkout button if there is one, else open the cart page
     const drawerCheckout = await page.$$eval('button, a, input[type=submit]', (els) => els.some((e) => /check ?out/i.test((e.innerText || e.value || '').trim()) && e.offsetParent !== null)).catch(() => false);
-    const openCart = async () => { const r = await page.goto(`${shopOrigin}/cart`, { waitUntil: 'domcontentloaded', timeout: 25e3 }); if (!r || r.status() >= 400) { const c = await clickFirst(page, ['a[href$="/cart"]', '[aria-label*="cart" i]', '.cart-icon', '#cart-icon-bubble'], /cart|bag|basket/i); if (!c) throw new Error('cart not reachable'); walk.clicks++; } await settle(page, 2000); };
+    /* the cart page under the market path (/in/en/cart), then the common other names, then the header's cart icon */
+    const openCart = async () => { for (const pth of [...new Set([`${shopOrigin}/cart`, `${origin}/cart`, `${shopOrigin}/bag`, `${shopOrigin}/basket`])]) { const r = await page.goto(pth, { waitUntil: 'domcontentloaded', timeout: 25e3 }).catch(() => null); if (r && r.status() < 400 && !/\/404|not-?found/i.test(page.url())) { await settle(page, 2000); return; } }
+      const c = await clickFirst(page, ['a[href$="/cart"]', 'a[href*="/cart"]', 'a[href*="/bag"]', '[aria-label*="cart" i]', '[aria-label*="bag" i]', '.cart-icon', '#cart-icon-bubble'], /cart|bag|basket/i); if (!c) throw new Error('cart not reachable'); walk.clicks++; await settle(page, 2000); };
     let atCart;
     if (!drawerCheckout) atCart = await t('Cart', openCart);
     else { walk.steps.push({ step: 'Cart drawer', ms: 0, ok: true, url: bare(page.url()) }); atCart = true; }
     const cartCount = () => page.evaluate(() => fetch('/cart.js', { credentials: 'same-origin' }).then((r) => r.json()).then((j) => j.item_count).catch(() => null)).catch(() => null);
-    walk.cartItems = await cartCount();
+    walk.cartItems = profile.platform === 'shopify' || tech.shopify ? await cartCount() : null;
+    /* any other store: the header badge (null when there is none: unknown is never 0) */
+    if (walk.cartItems == null) { const b = await badgeCount(page); if (b != null) walk.cartItems = b; else if (badge0 == null && walk.picked) walk.notes.push('Cart count not shown on this store.'); }
     // the click "worked" but the cart is empty (the theme's script wasn't ready, so the form posted without it):
     // add the product through the store's own cart API, then reload the cart. An empty cart's /checkout goes home.
     if (profile.platform === 'shopify' && walk.cartItems === 0) {
@@ -260,4 +316,52 @@ async function clickFirst(page, selectors, textRe) {
     const el = h.asElement(); if (el) { await el.evaluate((e) => e.scrollIntoView({ block: 'center' })).catch(() => {}); await el.click().catch(() => el.evaluate((e) => e.click())); return true; }
   }
   return false;
+}
+
+/* ---------- the path to an enquiry (real estate, services, B2B): home → the enquiry button → the form. Never types, never submits ---------- */
+const ENQ_RE = /^\s*(enquire( now)?|enquiry|inquire( now)?|book an? (site |free |home )?(visit|demo|consultation|appointment|call)|schedule an? (visit|demo|call)|request an? (call ?back|callback|quote|demo|brochure)|get a quote|get in touch|contact( us| sales)?|talk to (an? )?(expert|advisor|sales)|download (the )?brochure)\b/i;
+async function enquiryWalk(ctx, puppeteer, exe, tech) {
+  const { profile, ledger, state } = ctx;
+  const browser = await puppeteer.launch({ executablePath: exe, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1366,900', '--lang=en-US'] });
+  const w = { steps: [], clicks: 0, fields: [], channels: [], cta: null, notes: [], fired: {} };
+  try {
+    const page = await browser.newPage(); await page.setViewport({ width: 1366, height: 900 }); await page.setUserAgent((await browser.userAgent()).replace('HeadlessChrome', 'Chrome'));
+    page.on('requestfinished', (rq) => { const u = rq.url(); for (const [k, re] of Object.entries(NET)) if (!w.fired[k] && re.test(u)) w.fired[k] = true; });
+    await page.setRequestInterception(true); page.on('request', (rq) => (rq.method() === 'POST' && rq.isNavigationRequest() ? rq.abort() : rq.continue())); /* nothing is ever submitted */
+    const t = async (label, fn) => { const s0 = Date.now(); let ok = true, err = null; try { await fn(); } catch (e) { ok = false; err = e.message.slice(0, 120); } w.steps.push({ step: label, ms: Date.now() - s0, ok, ...(err ? { err } : {}) }); return ok; };
+    ctx.tick('site', '/');
+    await t('Home', () => page.goto(state.walkUrl || state.homeUrl || profile.url, { waitUntil: 'domcontentloaded', timeout: 30e3 })); await settle(page, 2500);
+    w.channels = await page.evaluate(() => { const hs = [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href') || ''); const out = [];
+      if (hs.some((h) => /wa\.me|api\.whatsapp\.com|whatsapp:/i.test(h))) out.push('WhatsApp'); if (hs.some((h) => /^tel:/i.test(h))) out.push('Phone'); if (hs.some((h) => /^mailto:/i.test(h))) out.push('Email');
+      if ([...document.querySelectorAll('iframe, script')].some((e) => /tawk|intercom|freshchat|zopim|crisp|drift|livechat|wati|interakt|gallabox/i.test(e.src || e.textContent.slice(0, 300)))) out.push('Live chat'); return out; }).catch(() => []);
+    const formNow = () => page.evaluate(() => { const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+      const forms = [...document.querySelectorAll('form')].filter(vis).filter((f) => !/search/i.test(f.getAttribute('role') + ' ' + f.className + ' ' + f.action));
+      const f = forms.find((x) => [...x.querySelectorAll('input, select, textarea')].filter((i) => vis(i) && !['hidden', 'submit', 'button'].includes(i.type)).length >= 2); if (!f) return null;
+      return [...f.querySelectorAll('input, select, textarea')].filter((i) => vis(i) && !['hidden', 'submit', 'button'].includes(i.type)).map((i) => { const k = (i.name + ' ' + i.placeholder + ' ' + (i.labels?.[0]?.innerText || '') + ' ' + i.type).toLowerCase();
+        return /phone|mobile|tel/.test(k) ? 'phone' : /mail/.test(k) ? 'email' : /name/.test(k) ? 'name' : /otp|code/.test(k) ? 'OTP' : /city|location|pin/.test(k) ? 'location' : /budget|price/.test(k) ? 'budget' : /project|property|interest|service|config|bhk/.test(k) ? 'interest' : i.tagName === 'TEXTAREA' ? 'message' : i.type === 'checkbox' ? 'consent' : 'other'; }); }).catch(() => null);
+    ctx.tick('site', 'enquiry button');
+    let fields = await formNow();
+    await t('Enquiry button', async () => { const c = await pollClick(page, ['[data-enquire]', 'a[href*="enquir" i]', 'button[class*="enquir" i]', 'a[href*="contact" i]'], ENQ_RE, 6e3); if (!c) { if (fields) { w.notes.push('The enquiry form is on the home page itself.'); return; } throw new Error('no enquiry button found'); }
+      w.clicks++; w.cta = await page.evaluate(() => (document.activeElement?.innerText || '').trim().slice(0, 40)).catch(() => null); await settle(page, 2500); });
+    await t('Enquiry form', async () => { fields = (await formNow()) || fields; if (!fields) throw new Error('no form showed after the button'); });
+    w.fields = [...new Set(fields || [])].filter((f) => f !== 'other');
+    w.reached = !!fields;
+    w.stoppedAt = (() => { try { return new URL(page.url()).origin + new URL(page.url()).pathname; } catch { return null; } })();
+  } finally { await browser.close().catch(() => {}); }
+  for (const k of Object.keys(w.fired).filter((k) => k in tech && !tech[k])) { tech[k] = true; ledger.add({ key: `site.tech.${k}`, label: `Tech on the site: ${k}`, v: 'yes', url: state.homeUrl, method: 'crawl', note: 'seen firing in the headless walk (not in the page source)' }); }
+  if (Object.keys(w.fired).length) tech.firedLive = Object.keys(w.fired);
+  const home = w.steps.find((s) => s.step === 'Home')?.ms;
+  profile.site.checkout = { v: SITE_V, at: new Date().toISOString(), kind: 'enquiry', reached: !!w.reached, clicks: w.clicks, fields: w.fields, channels: w.channels, cta: w.cta, walk: w.steps, notes: w.notes, stoppedAt: w.stoppedAt,
+    stopReason: w.reached ? null : /button/.test(w.steps.find((s) => !s.ok)?.err || '') ? 'no-enquiry-button' : 'no-form', payments: [], popups: [] };
+  ledger.add({ key: 'enquiry.reached', label: 'Enquiry form reached in a headless walk', v: w.reached ? 'yes' : 'no', url: state.homeUrl, method: 'crawl', note: w.steps.map((s) => `${s.step} ${s.ok ? 'ok' : 'failed'} ${s.ms} ms`).join('; ') });
+  if (w.fields.length) ledger.add({ key: 'enquiry.fields', label: 'What the enquiry form asks for', v: w.fields.join(', '), n: w.fields.length, unit: 'fields', url: w.stoppedAt || state.homeUrl, method: 'crawl' });
+  if (w.channels.length) ledger.add({ key: 'enquiry.channels', label: 'Other ways to get in touch on the home page', v: w.channels.join(', '), url: state.homeUrl, method: 'crawl' });
+  const rows = [];
+  if (home != null) rows.push(['Home page loads', `${(home / 1e3).toFixed(1)} s`]);
+  rows.push(['To the enquiry form', w.reached ? (w.clicks ? `${w.clicks} click${w.clicks === 1 ? '' : 's'}` : 'on the home page') : 'not reached']);
+  rows.push(['Form asks for', w.fields.length ? w.fields.join(', ') : 'not checked']);
+  rows.push(['Other ways in', w.channels.length ? w.channels.join(', ') : 'none seen']);
+  const cap = w.reached ? `Walked to the enquiry form${w.cta ? ` ("${w.cta}")` : ''}. Nothing typed, nothing sent.` : `Stopped early: ${w.steps.find((s) => !s.ok)?.err || 'enquiry form not reached'}. The next refresh walks it again.`;
+  ctx.finding('site', { kind: 'rows', t: 'The path to an enquiry', src: pathOf(state.homeUrl || profile.url), rows, cap, tech: techRows(tech) }, w.reached ? 'Walked to the enquiry form' : undefined);
+  ctx.done('site', w.reached ? `enquiry form in ${w.clicks} click${w.clicks === 1 ? '' : 's'}, asks ${w.fields.length} things` : 'enquiry form not reached', w.reached ? 'done' : 'empty');
 }

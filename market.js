@@ -51,6 +51,17 @@ export function connectedOf(rows = []) {
 /* enough to trust: twenty orders or a hundred visits. Below that a share is one customer's noise */
 const MIN_ORDERS = 20, MIN_SESSIONS = 100, OTHER_SHARE = 0.1;
 
+/* cities and postcode shapes that place a business in one country; the text must name one country clearly (two hits, and
+   twice any other) or it says nothing */
+const PLACES = [['IN', /\b(bengaluru|bangalore|mumbai|new delhi|delhi ncr|hyderabad|chennai|pune|kolkata|gurugram|gurgaon|noida|ahmedabad|karnataka|maharashtra|telangana|tamil nadu|kerala)\b|\b\d{3}\s?\d{3}\b(?=[^\n]{0,20}india)|\b(lakh|crore)s?\b/gi],
+  ['AE', /\b(dubai|abu dhabi|sharjah|u\.?a\.?e\.?)\b/gi], ['GB', /\b(london|manchester|birmingham|edinburgh|glasgow)\b|\b[A-Z]{1,2}\d[A-Z\d]?\s\d[A-Z]{2}\b/g],
+  ['US', /\b(new york|los angeles|san francisco|chicago|austin|seattle|brooklyn)\b|,\s?(CA|NY|TX|FL|WA|IL|MA|CO|GA|NJ)\s\d{5}\b/g], ['AU', /\b(sydney|melbourne|brisbane|perth|nsw|victoria)\b|\b(NSW|VIC|QLD)\s\d{4}\b/g],
+  ['SG', /\bsingapore\s\d{6}\b/gi], ['CA', /\b(toronto|vancouver|montreal|ontario)\b|\b[A-Z]\d[A-Z]\s\d[A-Z]\d\b/g]];
+export function placeOf(text) {
+  const t = String(text || '').slice(0, 200000); const n = PLACES.map(([c, re]) => [c, (t.match(re) || []).length]).sort((a, b) => b[1] - a[1]);
+  return n[0][1] >= 2 && n[0][1] >= 2 * (n[1]?.[1] || 0) ? n[0][0] : null;
+}
+
 /** The verdict from the signals. sig: { brand, registered, currency, shipsTo, hreflang, localePath, tld, lang, phone, orgCountry }
  *  (rivals are never a signal: who a brand competes with says nothing about where its customers are)
  *  and live: connectedOf(rows). Returns { v, primary, others, registered, currency, by, conf, why, signals, scores }. */
@@ -80,7 +91,8 @@ export function sellingMarket(sig = {}, live = {}) {
      so the currency and the site's own language outweigh it */
   hl.forEach((c) => add(c, 1 / hl.length, 'hreflang'));
   const lg = String(sig.lang || '').toLowerCase(), lgC = regionOf(lg) || LANG_COUNTRY[lg.split(/[-_]/)[0]] || (cur === 'EUR' ? LANG_EUR[lg.split(/[-_]/)[0]] : null);
-  if (lgC) add(lgC, 2, `the site is in ${lg}`);
+  /* en-US is most site builders' default (WordPress, Webflow, Next.js): it says little, so a +91 number outweighs it */
+  if (lgC) add(lgC, lg === 'en-us' ? 0.5 : 2, `the site is in ${lg}`);
   const lp = regionOf(sig.localePath); if (lp) add(lp, 1, `locale path /${String(sig.localePath).replace(/^\//, '')}`);
   const tld = TLD_COUNTRY[String(sig.tld || '').toLowerCase()]; if (tld) add(tld, 2, `.${sig.tld} domain`);
   /* the address and the phone say where the business sits, not who buys: weak, and nothing when it doesn't ship there */
@@ -88,6 +100,7 @@ export function sellingMarket(sig = {}, live = {}) {
   if (registered && home) add(registered, 2, 'store address');
   if (CC(sig.orgCountry) && CC(sig.orgCountry) !== registered && (!ships || ships.includes(CC(sig.orgCountry)))) add(sig.orgCountry, 1, 'address in JSON-LD');
   if (CC(sig.phone) && (!ships || ships.includes(CC(sig.phone)))) add(sig.phone, 1, 'phone number format');
+  if (CC(sig.place) && (!ships || ships.includes(CC(sig.place)))) add(sig.place, 1, 'addresses in the page text');
   const ranked = Object.entries(score).sort((a, b) => b[1] - a[1] || (a[0] === curC ? -1 : b[0] === curC ? 1 : 0));
   if (!ranked.length) return { ...base, primary: registered || null, others: [], by: 'site', conf: 'low', scores: {}, why: registered ? `only the store address (${registered}) was found` : 'no market signal on the site' };
   const [primary, top] = ranked[0], gap = top - (ranked[1]?.[1] || 0);

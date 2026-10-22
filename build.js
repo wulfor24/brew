@@ -10,6 +10,8 @@ import { adCall } from './reader/adlib.js';
 import { ADS_V } from './reader/stages/ads.js';
 import { SITE_V, speedOn } from './reader/stages/site.js';
 import { fontName } from './reader/stages/brand.js';
+import { CATALOG_V } from './reader/stages/catalog.js';
+import { REVIEWS_V } from './reader/stages/reviews.js';
 import { namedStale } from './reader/stages/named.js';
 import { wiping } from './retire.js';
 import { sentenceCase } from './text-fit.js';
@@ -32,7 +34,8 @@ import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial,
 import { withLearned, briefView } from './brand-learnings.js';
 import { profileLive, withLive, settleWait, connectTargets } from './on-connect.js'; // what a real connected account corrects in the team's view
 import { briefWithConnected, cleanBrief, renderBrief } from './brief.js'; // what the team told Brew survives a fresh brief; a saved brief heals its "null" cells
-import { aiPaused } from './ai.js'; // a billing pause: the build says so and resumes, never writes a mock
+import { aiPaused } from './ai.js';
+import { createApify } from './apify.js'; // the reader's Myntra and Flipkart ratings (treg has no endpoint for them) // a billing pause: the build says so and resumes, never writes a mock
 import { providerNow, geminiModel } from './gemini-client.js';
 import { KINDS, flagKind, runKind, potOf, potLeft, potAdd, potFit, perMove, capOf as potCapOf, nextWeek } from './rewrite-pot.js'; // one weekly rewrite budget a brand
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
@@ -229,7 +232,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* a newer snapshot (the Shopify app takes one when the merchant opens it while the store is closed) */
   const saveAdmin = async (slug, snap) => { const s = await status(slug); if (!snap?.shop || s?.source?.kind !== 'shopify-admin') return false;
     await packs.put(slug, ADMIN_SNAP, snap); await setStatus(slug, { source: { ...s.source, at: snap.at } }); return true; };
-  const makeReader = (m) => m.reader.createReader({ ai, treg, log, saveAsset: async (sl, name, buf, type) => { const n = String(name).replace(/[^a-zA-Z0-9._-]+/g, '-'); await packs.put(sl, 'assets/' + n, buf, type); return `/b/${sl}/a/${n}`; },
+  /* one Apify client for every read (its cache is shared: apify.js setApifyCache); none in tests or mock runs */
+  let apifyOne; const readerApify = () => (apifyOne ??= process.env.AI_MOCK === '1' || process.env.APIFY_OFF === '1' ? null : createApify({ log }));
+  const makeReader = (m) => m.reader.createReader({ ai, treg, apify: readerApify(), log, saveAsset: async (sl, name, buf, type) => { const n = String(name).replace(/[^a-zA-Z0-9._-]+/g, '-'); await packs.put(sl, 'assets/' + n, buf, type); return `/b/${sl}/a/${n}`; },
     saveRaw: (sl, name, data) => packs.put(sl, `raw/${new Date().toISOString().slice(0, 10)}/${String(name).replace(/[^a-zA-Z0-9._-]+/g, '-')}`, data),
     loadRaw: async (sl, name) => { const f = path.join(packs.dirOf(sl), 'raw', new Date().toISOString().slice(0, 10), String(name).replace(/[^a-zA-Z0-9._-]+/g, '-')); if (!fs.existsSync(f)) return null; const b = fs.readFileSync(f); const t = b.toString('utf8'); try { return JSON.parse(t); } catch { return t; } } });
   /* Demo Mode's tour: read the store again, live, only to show it happening. Nothing is saved over the brand's read
@@ -239,11 +244,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const s = await status(slug); if (!s?.url) throw new Error('unknown brand');
     const m = await load(); if (!m.reader) throw new Error('reader not installed');
     const paidOnly = (name) => /^(treg|ai)\//.test(String(name));
-    const reader = m.reader.createReader({ ai, treg, log,
+    const reader = m.reader.createReader({ ai, treg, apify: readerApify(), log,
       saveAsset: async (sl, name, buf, type) => { const n = String(name).replace(/[^a-zA-Z0-9._-]+/g, '-'); await packs.put(sl, 'assets/' + n, buf, type); return `/b/${sl}/a/${n}`; }, /* photos the cards show */
       saveRaw: (sl, name, data) => (paidOnly(name) ? packs.put(sl, `raw/${new Date().toISOString().slice(0, 10)}/${String(name).replace(/[^a-zA-Z0-9._-]+/g, '-')}`, data) : Promise.resolve()),
       loadRaw: async (sl, name) => (paidOnly(name) ? packs.getJSON(sl, `raw/${new Date().toISOString().slice(0, 10)}/${String(name).replace(/[^a-zA-Z0-9._-]+/g, '-')}`, null) : null) });
-    return reader.read(s.url, { fresh: false, onEvent, signal, admin: await adminFor(slug, s) });
+    return reader.read(s.url, { fresh: false, onEvent, signal, admin: await adminFor(slug, s), slug });
   }
   // the brand's spend survives a restart (cost.json is written as it goes)
   const restoreSpend = async (slug) => { const x = st(slug); if (x.usdLoaded) return; x.usdLoaded = true; const c = await packs.getJSON(slug, 'cost.json', null); x.usd = Math.max(x.usd || 0, +c?.usd || 0); };
@@ -274,7 +279,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await halt(slug); if (await budgetPause(slug, 0)) return;
         await stage(slug, 'read', 'running'); await setStatus(slug, { state: 'Reading the site', error: null }); /* a new run clears the last one's error, or the brand stays hidden */
         const reader = makeReader(m);
-        const out = await reader.read(s.url, { fresh: !!s.freshRead, onEvent: (e) => emit(slug, { type: 'reader', ev: e }), admin: await adminFor(slug, s, null) });
+        const out = await reader.read(s.url, { fresh: !!s.freshRead, onEvent: (e) => emit(slug, { type: 'reader', ev: e }), admin: await adminFor(slug, s, null), slug });
         /* the store did not open: nothing to write a brief or moves from, so stop here without spending more */
         if (!storeOpened(out)) { await packs.put(slug, 'findings.json', out.findings || null).catch(() => {}); await stage(slug, 'read', 'failed');
           await setStatus(slug, { state: out.closed ? `${s.host || 'The store'} is behind Shopify’s password page, so its site can’t be read. Open Brew from your Shopify admin to read it from there.` : `We could not open ${s.host || 'the store'}. Check the address and try again.`, error: 'store did not open', unreadable: true, ...(out.closed ? { closed: true } : {}) }); return; }
@@ -613,7 +618,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await markPdf(slug, move.n, path.basename(out), ver);
     emit(slug, { type: 'pdf', n: move.n, file: path.basename(out) });
   }
-  const heroFile = (slug, p) => { const img = p.catalog?.products?.find((x) => x.img)?.img; const m = img && /^b\/[^/]+\/a\/(.+)$/.exec(String(img).replace(/^\//, '')); const f = m && path.join(packs.dirOf(slug), 'assets', m[1]); return f && fs.existsSync(f) ? f : null; };
+  const heroFile = (slug, p) => { const img = p.catalog?.products?.find((x) => x.img)?.img; const m = img && /^b\/([^/]+)\/a\/(.+)$/.exec(String(img).replace(/^\//, '')); const f = m && [m[1], slug].map((s) => path.join(packs.dirOf(s), 'assets', m[2])).find((x) => fs.existsSync(x)); return f || null; }; /* the photo's own folder, then the brand's */
 
   /* ---------- "Check what we read" ---------- */
   const SUMMARY = [
@@ -730,7 +735,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const p = await packs.getJSON(slug, 'profile.json'); if (!p?.host || !p.slug) return null;
       // healed today: wait a day; a heal that still hit errors tries again after an hour; a read from before a
       // stage changed (older ads version) or with no written one-liner heals now
-      const outdated = (p.ads && p.ads.v !== ADS_V) || (p.site?.checkout && p.site.checkout.v !== SITE_V) || !['claude', 'brand'].includes(p.descriptorBy) || (!!p.host && !p.site?.pagespeed && speedOn()) || namedStale(p);
+      const outdated = (p.ads && p.ads.v !== ADS_V) || (p.site?.checkout && p.site.checkout.v !== SITE_V) || !['claude', 'brand'].includes(p.descriptorBy) || (!!p.host && !p.site?.pagespeed && speedOn()) || namedStale(p)
+        /* reads from before non-Shopify stores were read properly (reader/products.js): an empty or product-page catalog, older reviews, no base name */
+        || ((p.catalog?.v || 0) < CATALOG_V && (!p.catalog?.products?.length || /^jsonld/.test(p.catalog?.source || ''))) || (p.reviews && (p.reviews.v || 0) < REVIEWS_V) || (!!p.name && !p.brandName);
       const stillBroken = !!p.ads?.own?.error || (p.ads?.rivals || []).some((r) => r.error) || (!p.ai?.answers?.length && !!p.meta?.errors?.answers); /* the AI tools step failed in the read: ask again hourly */
       if (!outdated && p.meta?.healedAt && Date.now() - Date.parse(p.meta.healedAt) < (stillBroken ? 36e5 : 864e5)) return null;
       const reader = makeReader(await load()); if (!reader.heal) return null;
@@ -982,7 +989,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function doCheck(slug, { auto, why, max = null, via = null }) {
     const m = await load(); await restoreSpend(slug); const usd0 = spentFor(slug), s0 = await status(slug);
     const old = await packs.getJSON(slug, 'ledger.json', []), oldP = await packs.getJSON(slug, 'profile.json');
-    const out = await makeReader(m).read(s0.url, { fresh: true, prev: oldP, admin: await adminFor(slug, s0, oldP), onEvent: (e) => { if (e.type === 'step' && e.done) emit(slug, { type: 'update-step', k: e.k, text: e.done }); } });
+    const out = await makeReader(m).read(s0.url, { fresh: true, prev: oldP, admin: await adminFor(slug, s0, oldP), slug, onEvent: (e) => { if (e.type === 'step' && e.done) emit(slug, { type: 'update-step', k: e.k, text: e.done }); } });
     /* the store did not open today: nothing is compared or overwritten (the error is kept and the next try waits a day) */
     if (!storeOpened(out)) throw new Error('The store did not open, so nothing was compared. Brew tries again tomorrow.');
     const gone = removedKeys(oldP?.catalog?.removed);

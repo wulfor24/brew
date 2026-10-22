@@ -3,7 +3,7 @@
 // Claude with web search. Per answer: is the brand named, which rivals are, which sources are cited.
 // Also: inferCategory (category, subcategory, category search terms) used by rivals, ads and company.
 import { marketShort } from '../../market.js';
-import { clean, hostOf, registrable, pool } from '../util.js';
+import { clean, hostOf, registrable, pool, brandRe } from '../util.js';
 import { providerNow } from '../../gemini-client.js';
 
 // DataForSEO location codes
@@ -96,7 +96,7 @@ export async function answers(ctx) {
   /* the claude ask runs on Brew's own AI: under Gemini (gemini-client.js) its answer would be Gemini's labelled Claude, so it sits out */
   const tools = Object.keys(ask).filter((k) => (k === 'claude' ? ctx.aiOn && providerNow() === 'anthropic' : ctx.tregOn));
   const jobs = qs.flatMap((q) => tools.map((t) => [q, t]));
-  const own = reName(profile.name); const ownHost = registrable(profile.host);
+  const own = brandRe(profile.name, [profile.brandName], profile.host); const ownHost = registrable(profile.host); /* "PUMA India" is named when an answer says "Puma" */
   let shown = false;
   await pool(jobs, 16, async ([q, tool], i) => {
     if (i % 4 === 0) ctx.tick('answers', `${tool}: ${q.q.slice(0, 40)}`);
@@ -146,4 +146,18 @@ export function templateQuestions(profile) {
     { q: rival ? `${name} vs ${rival}` : `${name} reviews`, branded: true },
     { q: best ? `is ${name} ${String(best).replace(/\s+-\s+.*$/, '').slice(0, 60)} worth it` : `${name} best seller`, branded: true }
   ];
+}
+
+/** Saved answers named again with the brand's every name ("PUMA India" is named when an answer says "Puma"): free, from the
+ *  saved text. Returns the onboarding's answer card when a flag changed (reader/index.js heal), else null. */
+export function rescoreNamed(profile) {
+  const ans = profile.ai?.answers || []; if (!ans.length) return null;
+  const own = brandRe(profile.name, [profile.brandName], profile.host); let moved = false;
+  for (const a of ans) { if (a.error) continue; const named = !!a.named || own.test(a.plain || a.text || '') || (a.entities || []).some((b) => own.test(b));
+    if (named !== !!a.named) { a.named = named; moved = true; } if ((a.entities || []).some((b) => own.test(b))) { a.entities = a.entities.filter((b) => !own.test(b)); moved = true; } }
+  if (!moved) return null;
+  const ok = ans.filter((a) => !a.error), unb = ok.filter((a) => !a.branded), tools = [...new Set(ok.map((a) => a.tool))];
+  profile.ai.score = { ...(profile.ai.score || {}), named: ok.filter((a) => a.named).length, of: ok.length, unbrandedNamed: unb.filter((a) => a.named).length, unbrandedOf: unb.length, byTool: Object.fromEntries(tools.map((t) => [t, { named: ok.filter((a) => a.tool === t && a.named).length, of: ok.filter((a) => a.tool === t).length }])) };
+  const a = ok.find((x) => x.tool === 'chatgpt' && !x.branded) || ok.find((x) => x.tool === 'chatgpt') || ok.find((x) => !x.branded) || ok[0];
+  return a ? answerCard(a, profile, profile.country || 'US') : null;
 }

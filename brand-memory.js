@@ -389,7 +389,7 @@ export function createBrandMemory({ ai = null, packs, embed = null, allow = () =
     return { name, host, at, direct, ev, imgs, readAt: profile?.meta?.readAt || null };
   }
   const imagePart = async (slug, ref) => {
-    try { const m = /\/a\/([\w.-]+)$/.exec(String(ref)); if (!m || !packs.assetFile) return null; const f = await packs.assetFile(slug, m[1]); if (!f || !fs.existsSync(f)) return null;
+    try { const m = /(?:\/b\/([a-z0-9-]+))?\/a\/([\w.-]+)$/.exec(String(ref)); if (!m || !packs.assetFile) return null; const f = (m[1] && m[1] !== slug ? await packs.assetFile(m[1], m[2]).catch(() => null) : null) || await packs.assetFile(slug, m[2]); if (!f || !fs.existsSync(f)) return null;
       const buf = fs.readFileSync(f); if (buf.length > 1.5e6 || buf.length < 2000) return null; const ext = path.extname(f).toLowerCase();
       return { type: 'image', source: { type: 'base64', media_type: ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg', data: buf.toString('base64') } }; } catch { return null; }
   };

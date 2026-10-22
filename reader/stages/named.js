@@ -26,7 +26,7 @@ export async function named(ctx) {
   if (!ok.length) return null;
   const at = new Date().toISOString();
   if (!ctx.aiOn) { ai.named = { v: NAMED_V, at, error: 'AI off for this read' }; return null; }
-  const own = profile.name ? nameKey(profile.name) : '';
+  const owns = new Set([profile.name, profile.brandName].filter(Boolean).map(nameKey)); /* "PUMA India" and "PUMA" are both us */
   try {
     const list = ok.map((a, i) => `#${i}\n${String(a.text).slice(0, 1500)}${(a.entities || []).length ? `\n(brands the tool tagged: ${a.entities.join(', ')})` : ''}`).join('\n\n');
     const r = await withTimeout(ctx.ai({ tag: 'reader-named', model: 'sonnet', max: 4000,
@@ -38,7 +38,7 @@ export async function named(ctx) {
     ok.forEach((a, i) => {
       const said = `${a.text} ${(a.entities || []).join(' | ')}`, seen = new Set();
       a.brandsNamed = [...(by.get(i) || []), ...(a.entities || [])].map((n) => String(n || '').trim()).filter((n) => {
-        const k = nameKey(n); if (!k || k === own || seen.has(k) || !brandLike(n) || !reName(n).test(said)) return false; seen.add(k); return true; }).slice(0, 15);
+        const k = nameKey(n); if (!k || owns.has(k) || seen.has(k) || !brandLike(n) || !reName(n).test(said)) return false; seen.add(k); return true; }).slice(0, 15);
     });
     ai.named = { v: NAMED_V, at };
     return ai.named;

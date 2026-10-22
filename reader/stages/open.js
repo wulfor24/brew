@@ -1,7 +1,7 @@
 // Stage 1 · open: the store's front door. Home page (plain fetch, treg browser fallback), robots.txt, sitemaps
 // (pages per sitemap), key pages (about, FAQ, contact, shipping, returns), platform, and country/currency/locale.
-import { sha, meta, titleOf, links, jsonLd, typeIs, stripTags, clean, pathOf, hostOf, registrable, pool, attr, tags } from '../util.js';
-import { sellingMarket, applyMarket, nameOf } from '../../market.js';
+import { sha, meta, titleOf, links, jsonLd, typeIs, stripTags, clean, pathOf, hostOf, registrable, pool, attr, tags, brandBase } from '../util.js';
+import { placeOf, sellingMarket, applyMarket, nameOf } from '../../market.js';
 import { isPasswordPage, CLOSED_WHY } from '../closed.js';
 
 const KEY_PAGES = {
@@ -82,6 +82,8 @@ export async function open(ctx) {
   const segs = title.split(/\s+[|–—-]\s+|\s*\|\s*/).map(clean).filter(Boolean);
   const name = site || (segs.length > 1 ? segs.sort((a, b) => a.length - b.length)[0] : segs[0]) || registrable(profile.host).split('.')[0];
   profile.name = name.replace(/\s*(official\s+(store|site|website)|online\s+store)$/i, '').trim() || name;
+  /* the brand without its market suffix ("PUMA India" → "PUMA"): what AI answers, marketplaces and reviews call it */
+  profile.brandName = brandBase(profile.name, profile.host);
   const desc = segs.find((s) => s.toLowerCase() !== profile.name.toLowerCase() && !s.toLowerCase().includes(profile.name.toLowerCase() + ' ')) || null;
   profile.descriptor = desc && desc.length <= 60 ? desc : null;
   ledger.add({ key: 'brand.name', label: 'Brand name', v: profile.name, url: final.href, method: 'crawl', note: site ? 'og:site_name / Organization' : 'page title' });
@@ -106,6 +108,8 @@ export async function open(ctx) {
       let kids = [...r.text.matchAll(/<sitemap>[\s\S]*?<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => clean(m[1])).filter((k) => registrable(hostOf(k)) === registrable(hostOf(origin)));
       allSm += kids.length;
       if (loc) { const tag = loc.replace('-', '[_-]'); const mine = kids.filter((k) => new RegExp(`[_/-]${tag}([_./-]|$)`, 'i').test(k)); const neutral = kids.filter((k) => !/[_-][a-z]{2}[_-][a-z]{2}(\.|_|$)/i.test(k.split('/').pop())); kids = [...new Set([...mine, ...neutral])]; }
+      // more files than we read: the product ones first (sitemap_products_1.xml, product-sitemap.xml, pdp_0.xml)
+      kids.sort((a, b) => /product|pdp|catalog|item/i.test(b.split('/').pop()) - /product|pdp|catalog|item/i.test(a.split('/').pop()));
       await pool(kids.slice(0, 25), 6, (k) => readSm(k, depth + 1)); return;
     }
     const locs = [...r.text.matchAll(/<url>[\s\S]*?<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => clean(m[1]));
@@ -162,11 +166,13 @@ export async function open(ctx) {
   const pageText = stripTags(html) + ' ' + Object.values(fetched).map((p) => p.text).join(' ');
   let phone = null; for (const [re, c] of PHONE) if (re.test(pageText)) { phone = c; break; }
   if (/₹|\bRs\.?\s?\d/.test(pageText)) sig.push(['currency', 'INR', 'rupee prices in the page text']);
+  /* where the business's addresses are, read from the page text (a city, a postcode shape): one weak vote, like the phone */
+  const place = placeOf(pageText);
   const vote = (k) => { const m = {}; sig.filter((s) => s[0] === k).forEach((s) => (m[s[1]] = (m[s[1]] || 0) + 1)); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
   const curV = vote('currency'); profile.currency = sm?.currency || curV[0]?.[0] || null; /* the shop's own currency is what products.json prices are in; the served one follows the visitor */
   const addr = org?.address?.addressCountry || org?.address?.[0]?.addressCountry;
   const msig = { registered: sm?.country || null, currency: profile.currency, shipsTo: Array.isArray(sm?.ships_to_countries) ? sm.ships_to_countries.slice(0, 300) : null, hreflang: [...new Set(hreflang.map((x) => String(x).toLowerCase()))].filter((x) => x !== 'x-default').slice(0, 40),
-    localePath: loc && loc.includes('-') ? loc : null, tld: profile.host.split('.').pop(), lang: lang ? String(lang).toLowerCase().slice(0, 12) : null, phone, orgCountry: addr ? String(addr.name || addr).slice(0, 2).toUpperCase() : null, served: shCountry || null };
+    localePath: loc && loc.includes('-') ? loc : null, tld: profile.host.split('.').pop(), lang: lang ? String(lang).toLowerCase().slice(0, 12) : null, phone, place, orgCountry: addr ? String(addr.name || addr).slice(0, 2).toUpperCase() : null, served: shCountry || null };
   const mk = sellingMarket(msig);
   applyMarket(profile, mk);
   if (!mk.primary) { profile.country = null; profile.markets = []; profile.market = { ...mk, at: new Date().toISOString() }; }
