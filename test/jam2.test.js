@@ -128,3 +128,12 @@ test('higgsfield layer: inputs fit each workflow schema, the nearest frame is as
   assert.equal((await hf.estimate('marketing-studio/image/flare', { prompt: 'p', resolution: '2k' })).usd, 0.1);
   assert.equal(hf.pick('product-shot').id, 'marketing-studio/image/flare'); assert.equal(hf.pick('product-motion', 'premium').id, 'kling-video/v3.0/pro/image-to-video');
 });
+
+test('batch cards: public and team statics are both a batch (v1 opens the N ads, v2 one board per ad)', async () => {
+  const { isBatchCard } = await import('../card-plan.js');
+  const imgs = (pre) => [1, 2, 3].map((i) => `${pre}${i}.jpg`);
+  assert.ok(isBatchCard({ images: imgs('b/in-puma-com/statics/s') })); assert.ok(isBatchCard({ images: imgs('/b/in-puma-com/team/statics/s') })); assert.ok(isBatchCard({ images: imgs('assets/statics/s') }));
+  assert.ok(!isBatchCard({ images: imgs('b/in-puma-com/a/p') })); assert.ok(!isBatchCard({ images: imgs('b/x/statics/s').slice(0, 2) }));
+  const app = (await import('node:fs')).readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  assert.match(app, /const isBatchCard = \(p\) => [^\n]*team\\\/\)\?statics/); assert.match(app, /if \(!chId && !isBatchCard\(p\)\)/);
+});

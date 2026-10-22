@@ -1205,14 +1205,14 @@ export function createRemix(o) {
   /* ---------- batch cards: a card that already holds N finished ads ("Queue the 12") ----------
      Each ad becomes its own change you can keep, drop or remix in the studio; the kept ones queue together. */
   const STATIC_TEXT = live((b) => b.staticText); // exact on-image text of the brand's statics
-  const isBatch = (c) => (c?.images || []).length >= 3 && c.images.every((x) => /^(assets\/statics\/|\/?b\/[a-z0-9-]+\/statics\/)/.test(x));
-  const batchItems = (t, c) => {
+  const isBatch = (c) => (c?.images || []).length >= 3 && c.images.every((x) => /^\/?(assets\/statics\/|b\/[a-z0-9-]+\/(team\/)?statics\/)/.test(x));
+  const batchItems = (t, c, text = STATIC_TEXT) => {
     const cv = ensureCardVersion(t, c), r = recipeFor(c), all = changes(t);
     return c.images.map((img, i) => {
       const key = path.basename(img, path.extname(img));
       let ch = Object.values(all).find((x) => x.cardId === c.id && x.batchKey === key);
       if (!ch) {
-        const tx = STATIC_TEXT[key] || {};
+        const tx = text[key] || {};
         const base = mockPkg('meta_ad', 'creative.add_variants', c, 0, '', FACTS);
         ch = build(t, c, cv, r, { action: 'creative.add_variants', fromCard: true, angle: `Ad ${i + 1}`, why: tx.small || '', pkg: { ...base, headline: String(tx.headline || base.headline).slice(0, 240), primaryText: [tx.headline, tx.small].filter(Boolean).join('\n') || base.primaryText, overlay: '', format: '4:5' } }, { intent: '', prompt: '' });
         Object.assign(ch, { batchKey: key, batchIndex: i, pick: 'keep' });
@@ -1224,10 +1224,12 @@ export function createRemix(o) {
       return lead && lead.id !== ch.id ? { ...ch, state: lead.state } : ch;
     });
   };
-  const pubBatch = (t, c) => { const items = batchItems(t, c).map((x) => { const ch = changes(t)[x.id]; evaluate(t, ch); return { ...pubChange(t, ch), state: x.state }; }); return { items, kept: items.filter((x) => x.pick !== 'drop').length }; };
+  const pubBatch = (t, c, text) => { const items = batchItems(t, c, text).map((x) => { const ch = changes(t)[x.id]; evaluate(t, ch); return { ...pubChange(t, ch), state: x.state }; }); return { items, kept: items.filter((x) => x.pick !== 'drop').length }; };
   on('GET', '/api/cards/:cid/batch', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; if (!isBatch(c)) return { batch: false };
-    return { batch: true, ...pubBatch(t, c) };
+    /* the team's set reads its words from the team's private statics.json (the public one never holds them) */
+    const text = c.images.some((x) => /\/team\/statics\//.test(x)) && o.teamStaticText ? (await o.teamStaticText(t).catch(() => null)) || {} : STATIC_TEXT;
+    return { batch: true, ...pubBatch(t, c, text) };
   });
   on('POST', '/api/changes/:chid/pick', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch?.batchKey) return { error: 'not found' };

@@ -3761,7 +3761,8 @@
 
   /* ---------- batch: a card that already holds finished ads ("Queue the 12") ----------
      Every ad is its own tile: keep it, drop it, or remix it in the studio. The kept ones queue together. */
-  const isBatchCard = (p) => (p?.images || []).length >= 3 && p.images.every((x) => /^assets\/statics\//.test(x));
+  /* a card that already holds its finished ads (public set, or the team's private one): the same test as the server's (card-plan.js) */
+  const isBatchCard = (p) => (p?.images || []).length >= 3 && p.images.every((x) => /^\/?(assets\/statics\/|b\/[a-z0-9-]+\/(team\/)?statics\/)/.test(x));
   const BSTATE = {};
   const batchTile = (ch, i) => {
     const drop = ch.pick === 'drop', on = BSTATE[ch.state], fix = !on && ch.verdict && ch.verdict !== 'live';
@@ -4521,14 +4522,17 @@
   };
   const jamWait = () => { $('.jam-wait')?.remove(); document.body.insertAdjacentHTML('beforeend', `<div class="jam-wait" role="status" aria-live="polite"><p><brew-load class="spin"></brew-load>Opening the jam…</p></div>`); return $('.jam-wait'); };
   const openRemix = async (p, chId, o = {}) => {
-    if (window.Jam2?.on() && !String(p?.id || '').startsWith('jam-') && !/^(open (the )?(report|moves|scoreboard|batch)|see what changed|run monday decisions|see it all)/i.test(o.make || cardOf(p).cta?.label || '')) { closeDetail(true); return window.Jam2.open(p, o.make || cardOf(p).cta?.label || '', tapi); } /* Jam v2 (?v=2): the card's button opens the new jam; v1 is untouched */
+    if (window.Jam2?.on() && !String(p?.id || '').startsWith('jam-') && !/^(open (the )?(report|moves|scoreboard)|see what changed|run monday decisions|see it all)/i.test(o.make || cardOf(p).cta?.label || '')) { closeDetail(true); return window.Jam2.open(p, o.make || cardOf(p).cta?.label || '', tapi); } /* Jam v2 (?v=2): the card's button opens the new jam; v1 is untouched */
     // Remix is the jam now: versions and quick turns live on the jam's canvas
     /* the jam page is the studio: one widget on a stage, Chat · Adjust · Details · History, versions. It works on the
        card's own package (made once per jam); a card with no package (a pure decision) keeps the canvas jam */
     const fromCard = !!DP;
     $('#inst')?.remove(); /* the home-screen nudge belongs to the feed, never over the jam's buttons */
     { closePop(); closeModal(); S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save();
-      if (!chId) { let w = p._work || workOfCard(p.id);
+      /* a batch card opens its N finished ads (keep or drop each), never one package made from its first picture; a jam linked to
+         such a package before this fix opens the batch too */
+      if (isBatchCard(p) && chId && (p._work || workOfCard(p.id))?.changeId === chId) chId = null;
+      if (!chId && !isBatchCard(p)) { let w = p._work || workOfCard(p.id);
         /* making the jam's package takes a few seconds the first time: say so at once, never a dead tap */
         const wait = !w?.changeId ? jamWait() : null;
         try {

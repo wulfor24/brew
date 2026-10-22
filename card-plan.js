@@ -18,7 +18,7 @@ const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return 
 const lc = (s) => String(s || '').replace(/^./, (x) => x.toLowerCase());
 const andList = (xs) => xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 /* a batch card already holds the finished ads (remix.js isBatch) */
-export const isBatchCard = (c) => (c?.images || []).length >= 3 && c.images.every((x) => /^(assets\/statics\/|\/?b\/[a-z0-9-]+\/statics\/)/.test(x));
+export const isBatchCard = (c) => (c?.images || []).length >= 3 && c.images.every((x) => /^\/?(assets\/statics\/|b\/[a-z0-9-]+\/(team\/)?statics\/)/.test(x));
 
 // the things a card names (ads, products, pages, segments): its rows' labels, only when a label names a thing (quoted, two
 // capitalised words, or a noun like "ad" or "page" with its name), never a stat label like "Audience" or "Named overall"

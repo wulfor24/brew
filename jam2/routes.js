@@ -1,6 +1,7 @@
 // Jam v2 routes (?v=2 only; v1's /api/work and /api/changes are untouched). Mounted by feed-service.js with its own route
 // table (on), so every request runs as the signed-in viewer of that brand, like the rest of the service. Slow work (a picture,
 // a video) runs in the background; the board shows it as busy and the page polls GET /api/jam2/jams/:jid.
+import { isBatchCard } from '../card-plan.js';
 import { createProfiles } from './profiles.js';
 import { bestSlots } from './slots.js';
 import { createJam2Store } from './store.js';
@@ -9,7 +10,7 @@ import { createEngines } from './engines.js';
 import { createMaker } from './make.js';
 import { createReady, tokenFor, parseToken } from './ready.js';
 import { RECIPES, FAMILIES, SIZES, HOW, HOW_LABEL, recipe, recipeFor, alsoFor, planFor } from './catalogue.js';
-import { newJam, newBoard, boardOf, headOf, bumpConcept, fromV1, jamView, note, uid, OWNERS, BRIEF_STATUS } from './core.js';
+import { newJam, newBoard, boardOf, headOf, bumpConcept, fromV1, jamView, note, uid, addTake, OWNERS, BRIEF_STATUS } from './core.js';
 import { productFor, productTiles } from './ingredients.js';
 import { withBrowser } from '../pdf/render.js';
 import { answerGrounded } from '../jam-answer.js';
@@ -62,6 +63,12 @@ export function mountJam2(d) {
     const slug = slugOfT(t), who = whoOf(t), card = b.cardId ? cardOf(t, b.cardId) : null; if (b.cardId && !card) return { error: 'That card is gone.' };
     const cta = String(b.cta || card?.cta?.label || '').slice(0, 60);
     let jam = card && !b.fresh ? await store.byCard(slug, card.id, who, cta) : null;
+    /* a batch card ("8 ads from your ad plan, ready to review"): one tab per finished ad, the ads it already holds, nothing made again */
+    if (!jam && card && isBatchCard(card)) { const view = bb.view(await bb.load(slug)), team = card.images.some((x) => /\/team\/statics\//.test(x)), text = (await (d.staticTextOf?.(t, team) || {})) || {};
+      jam = newJam({ card, owner: store.ownerOf(who), by: who.me, bb: view, plan: [{ recipe: 'image-ad' }], cta }); jam.batch = true;
+      jam.boards = card.images.slice(0, 12).map((img, i) => { const bd = newBoard('image-ad', { label: `Ad ${i + 1}` }), tx = text[img.split('/').pop().replace(/\.[a-z]+$/i, '')] || {}, sz = SIZES[bd.size] || { w: 1080, h: 1350 };
+        addTake(jam, bd, { op: 'imported', by: who.me, words: { headline: tx.headline || '', sub: tx.small || tx.sub || '' }, file: img, scene: { w: sz.w, h: sz.h, bg: { src: img }, layers: [] }, made: [], cost: { usd: 0, credits: 0 } }); return bd; });
+      await store.put(slug, jam); note(jam, `opened the ${jam.boards.length} ads of a batch card`, who.email); return { jam: out(jam), also: alsoFor('image-ad') }; }
     if (!jam) { const view = bb.view(await bb.load(slug)); jam = newJam({ card, owner: store.ownerOf(who), by: who.me, recipeId: b.recipe && recipe(b.recipe) ? b.recipe : null, bb: view, plan: card ? planFor(card, cta) : null, cta });
       /* a card with a v1 jam brings a copy of what v1 made (read only) */
       const w1 = card ? (t.work || []).find((w) => w.cardId === card.id) : null; if (w1) { const ch = w1.changeId ? t.changes?.[w1.changeId] : null; jam.from = { v1: w1.id, ...fromV1(w1, ch, []) }; }
