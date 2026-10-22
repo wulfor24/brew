@@ -13,7 +13,7 @@
 import { safeFetch, stripTags, links, hostOf, UA, sha as hash, clean } from './reader/util.js';
 import { offersOf, guaranteeOf } from './reader/stages/ads.js';
 
-export const BOOK_V = 1;
+export const BOOK_V = 2; // 2: built with the week's enrichment (posts, reels with plays, TikToks, film words) and the signature that keeps it current
 const FILE = 'brandbook-read.json';
 const tidy = (s, n = 400) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const squash = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[^\p{L}\p{N}']+/gu, ' ').trim();
