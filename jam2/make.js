@@ -46,7 +46,7 @@ const BRIEF_SECTIONS = {
 /* a frame far enough from the shot's that re-fitting would crop away the picture (more than about 12% either way) */
 const ratioNum = (r) => { const m = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(String(r)); return m ? +m[1] / +m[2] : r === 'A5' ? 148 / 210 : 1; };
 const farFrom = (shotRatio, s) => Math.abs(Math.log(ratioNum(shotRatio) / (s.w / s.h))) > 0.12;
-export function createMaker({ engines, brandbook, claudeTool, ai = null, isMock, spend = () => true, spendMany = null, launchBrowser, withBrowser = null, shoot, saveGen, genFile, photoAsync, publicUrl = process.env.PUBLIC_URL || '', log = console }) {
+export function createMaker({ engines, brandbook, claudeTool, ai = null, profileOf = async () => null, isMock, spend = () => true, spendMany = null, launchBrowser, withBrowser = null, shoot, saveGen, genFile, photoAsync, publicUrl = process.env.PUBLIC_URL || '', log = console }) {
   const keep = (buf, ext) => { const name = `j2-${sha(buf)}.${ext}`; saveGen(name, buf); return 'gen/' + name; };
   /* a stored src ('gen/x', '/b/slug/..', 'https://..') → a local file path */
   const fileOf = async (src) => { if (!src) return null; const s = String(src); if (s.startsWith('data:')) return null;
@@ -173,7 +173,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, isMock,
 
   /* ---------- the first take of a board ---------- */
   /* the creative engine (creative.js): statics are shot around the real product, checked, and set in real type */
-  const creative = createCreative({ engines, ai, claudeTool, isMock, spend, fileOf, render: (sc) => render(sc), composeScene: (o) => composeScene(o), log });
+  const creative = createCreative({ engines, ai, claudeTool, isMock, spend, fileOf, profileOf, render: (sc) => render(sc), composeScene: (o) => composeScene(o), log });
   async function first(ctx, board, { ask = '' } = {}) {
     /* an Every product board is remade from its source picture (free), never as a new paid carousel */
     const src = board.allOf ? ctx.jam.boards.find((x) => x.id === board.allOf) : null; if (src) return allProducts(ctx, board, src);

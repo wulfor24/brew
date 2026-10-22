@@ -29,11 +29,16 @@ const CRITIC_SCHEMA = { type: 'object', additionalProperties: false, required: [
   zone: { type: 'string', enum: ZONES, description: 'where a headline can sit without covering the product or a face' },
   why: { type: 'string' } } };
 
-export function createCreative({ engines, ai = null, claudeTool, isMock, spend = () => true, fileOf, render, composeScene, keepLog = null, log = console }) {
+export function createCreative({ engines, ai = null, claudeTool, isMock, spend = () => true, fileOf, render, composeScene, profileOf = async () => null, keepLog = null, log = console }) {
   /* the catalog entry behind the jam's product: its photos (the hero first, then up to two more angles) */
-  const photosOf = (ctx) => { const p = ctx.product; if (!p?.img) return [];
-    const c = (ctx.catalog || []).find((x) => (p.handle && x.handle === p.handle) || (p.name && (x.t || x.title) === p.name));
-    return [...new Set([p.img, ...((c?.images || []).filter(Boolean))])].slice(0, 3); };
+  const entryOf = (ctx) => { const p = ctx.product; return p ? (ctx.catalog || []).find((x) => (p.handle && x.handle === p.handle) || (p.name && (x.t || x.title) === p.name)) || null : null; };
+  /* the product's photos, the profile's cleanest one first (a packshot, never a size chart or a crowded scene) */
+  const photosOf = (ctx, prof = null) => { const p = ctx.product; if (!p?.img) return [];
+    return [...new Set([prof?.best, p.img, ...((entryOf(ctx)?.images || []).filter(Boolean))].filter(Boolean))].slice(0, 3); };
+  /* the product in words, from its profile: what it is, its real colours, each item of a kit, printed words that must stay */
+  const productLine = (prof) => (prof ? [`It is ${prof.what}${prof.colours ? `, in ${prof.colours}` : ''}${prof.materials ? `, ${prof.materials}` : ''}.`,
+    prof.kit && prof.items?.length ? `It is a kit of ${prof.items.length}: ${prof.items.join('; ')}. All ${prof.items.length} items appear, each exactly as photographed.` : '',
+    prof.label ? `Printed on it (keep exact): ${prof.label}.` : '', prof.size ? `Size: ${prof.size}.` : ''].filter(Boolean).join(' ') : '');
 
   /* the Brand Book's rules for a photograph: who may be on camera, the brand's own places and cast, and the taste it has learned */
   const PEOPLE = { none: 'No people at all in the picture.', hands: 'Hands only: no faces or full people.', 'ai-cast': 'People are fine (AI-cast, natural, not models posing).', consented: 'Only the brand\'s own people from its cast may appear.' };
@@ -55,7 +60,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const prompt = [`Art-direct one ad photograph for ${ctx.bbv.name || 'a brand'}${ctx.bbv.category ? ` (${ctx.bbv.category})` : ''}.`,
       `The piece: ${r.label || board.label} for ${size.label || size.ratio} (${size.ratio}).`, `The card: ${tidy(c.spark?.title || ctx.card?.title, 200)}. ${tidy(c.spark?.says, 300)}`,
       `Angle: ${tidy(c.angle, 200)}. Audience: ${tidy(c.audience, 160)}. Headline that will be set over it: "${tidy(words.headline, 120)}".`,
-      p?.img ? `The product: ${tidy(p.name, 140)}. It must be the hero, clearly visible, exactly as in its photos. Never describe its colour, material, pattern or design (you can't see the photos): call it "the product".` : 'There is no product photo: show the moment or the place the brand sells, with people when it helps.',
+      p?.img ? `The product: ${tidy(p.name, 140)}. ${ctx.profile ? productLine(ctx.profile) + ' Describe it only with these facts.' : 'Never describe its colour, material, pattern or design (you can\'t see the photos): call it "the product".'} It must be the hero, clearly visible, exactly as in its photos.${ctx.profile?.use ? ` It is used: ${tidy(ctx.profile.use, 160)}.` : ''}` : 'There is no product photo: show the moment or the place the brand sells, with people when it helps.',
       ...bookLines(ctx.bbv), ctx.notes?.length ? `The team asked: ${tidy(ctx.notes.join(' '), 400)}` : '',
       'Pick the format family that fits the card. Describe one real, specific moment a photographer could shoot (people, place, props, light, lens). Keep one part of the frame calm (real background, never a blank band) for the headline and say which. No words, signs, screens with text or logos in the picture.'].filter(Boolean).join('\n');
     try { const out = await claudeTool(prompt, DIRECT_SCHEMA, 1200, 'jam2_direct'); return { family: out.family || fallback.family, moment: tidy(out.moment, 900) || fallback.moment, zone: ZONES.includes(out.zone) ? out.zone : 'top' }; }
@@ -65,13 +70,13 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
   /* 2. the shoot: n candidates around the real product (or the moment alone without one) */
   const shotPrompt = (d, p, looks = 0) => [p ? `The first image${p.refs > 1 ? `s show` : ' shows'} the real product "${tidy(p.name, 140)}". It is the identity anchor.` : '',
     looks ? `The last ${looks > 1 ? `${looks} images are` : 'image is'} the brand's own published photo${looks > 1 ? 's' : ''}: match their light, colour grade, styling and mood. Copy nothing from ${looks > 1 ? 'them' : 'it'}: no products, people, text or layout.` : '',
-    p ? 'KEEP UNCHANGED: the product\'s exact shape, proportions, colours, materials, details and any labels; the same number of items. Do not redesign, recolour, simplify or add parts.' : '',
+    p?.line ? p.line : '', p ? 'KEEP UNCHANGED: the product\'s exact shape, proportions, colours, materials, details and any labels; the same number of items. Do not redesign, recolour, simplify or add parts.' : '',
     p ? 'CHANGE ONLY: the scene, the people, the light and the camera described below.' : '', d.moment,
     `Leave natural negative space in the ${d.zone} part of the frame for a headline: real background there (wall, sky, floor, soft out-of-focus room), never a blank band, border, panel or frame.`,
     'It must look like a real photograph from a professional shoot, not a render or a collage: physically correct light, contact shadows, reflections and depth of field across product and scene.',
     'No text, no letters, no logos, no watermarks anywhere in the picture.'].filter(Boolean).join('\n');
   async function shoot(ctx, d, ratio, n = 2) {
-    const photos = photosOf(ctx), files = (await Promise.all(photos.map((u) => fileOf(u).catch(() => null)))).filter(Boolean), p = files.length ? { name: ctx.product?.name, refs: files.length } : null;
+    const photos = photosOf(ctx, ctx.profile), files = (await Promise.all(photos.map((u) => fileOf(u).catch(() => null)))).filter(Boolean), p = files.length ? { name: ctx.product?.name, refs: files.length, line: productLine(ctx.profile) } : null;
     /* the Brand Book's look: up to two of the brand's own best posts, after the product photos (never the identity anchor) */
     const lookSrc = (ctx.bbv.styleRefs || []).map((x) => x.src).filter(Boolean).slice(0, 2), looks = (await Promise.all(lookSrc.map((u) => fileOf(u).then((f) => (f ? { u, f } : null)).catch(() => null)))).filter(Boolean);
     const spec = { prompt: shotPrompt(d, p, looks.length), srcFile: files[0] || null, srcUrl: photos[0] || null, refFiles: [...files.slice(1), ...looks.map((x) => x.f)], refUrls: [...photos.slice(1), ...looks.map((x) => x.u)], ratio: GEM_RATIO[ratio] || ratio, slug: ctx.slug, product: p ? ctx.product?.name : false, named: p ? { img: photos[0], t: ctx.product?.name || null } : null };
@@ -118,6 +123,9 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
 
   /* the whole static: direct → shoot → critic → layout. Returns null when no candidate kept the product (the caller composites) */
   async function staticAd(ctx, board, words, size, { n = 2 } = {}) {
+    /* the product's profile first (read once, kept): a product with no usable photo is asked for, never shot blind */
+    if (ctx.product?.img && ctx.profile === undefined) ctx.profile = await profileOf(ctx.slug, entryOf(ctx) || { t: ctx.product.name, img: ctx.product.img, handle: ctx.product.handle }).catch(() => null);
+    if (ctx.profile && ctx.profile.usable === false) return { made: [], fail: `No photo shows ${ctx.profile.name || 'this product'} clearly enough to shoot it (${ctx.profile.why || 'add a clear product photo'}). Add one with + → Product photo.`, needPhoto: true };
     const d = await direct(ctx, board, words, size);
     if (!spend('image', ctx.slug)) throw Object.assign(new Error('Today’s picture budget is used up. It resets tonight.'), { budget: true });
     const { cands, errors, refFile } = await shoot(ctx, d, size.ratio, n);

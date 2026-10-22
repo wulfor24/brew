@@ -1,6 +1,7 @@
 // Jam v2 routes (?v=2 only; v1's /api/work and /api/changes are untouched). Mounted by feed-service.js with its own route
 // table (on), so every request runs as the signed-in viewer of that brand, like the rest of the service. Slow work (a picture,
 // a video) runs in the background; the board shows it as busy and the page polls GET /api/jam2/jams/:jid.
+import { createProfiles } from './profiles.js';
 import { bestSlots } from './slots.js';
 import { createJam2Store } from './store.js';
 import { createBrandbook, COMFORT, NARRATORS, MOODS, VOICES } from './brandbook.js';
@@ -19,7 +20,9 @@ export function mountJam2(d) {
   const { presence = null, teamOf = null, inviteTo = null, jamMail = null, slack = null, memoryOf = null } = d;
   const store = createJam2Store({ packs, log }), bb = createBrandbook({ packs, log });
   const engines = createEngines({ geminiImage: d.geminiImage, vertexVideo: d.vertexVideo, vertexVoice: d.vertexVoice, vertexMusic: d.vertexMusic, finals: d.finals, saveGen: d.saveGen, genFile: d.genFile, photo: d.photoAsync, mock: isMock, log });
-  const maker = createMaker({ engines, brandbook: bb, claudeTool: d.claudeTool, ai: d.ai || null, isMock, spend, spendMany: d.spendMany, launchBrowser: d.launchBrowser, withBrowser, shoot: d.shoot, saveGen: d.saveGen, genFile: d.genFile, photoAsync: d.photoAsync, log });
+  const maker = createMaker({ engines, brandbook: bb, claudeTool: d.claudeTool, ai: d.ai || null, profileOf: (slug, p) => profiles.of(slug, p), isMock, spend, spendMany: d.spendMany, launchBrowser: d.launchBrowser, withBrowser, shoot: d.shoot, saveGen: d.saveGen, genFile: d.genFile, photoAsync: d.photoAsync, log });
+  /* each product read once by vision and kept (profiles.js): the engine's facts about it, and the Brand Book's product check */
+  const profiles = createProfiles({ packs, ai: d.ai || null, fileOf: (u) => maker.fileOf(u), isMock, spend, log });
   const ready = createReady({ maker, zipBuffer: d.zipBuffer, log });
   const busy = new Map(); // `${jid}:${bid}` → { op, at, error? }
   const whoOf = (t) => { const r = reqOf(t), me = meOf(t); return { member: !!r?.member, staff: !!me?.staff, tid: t.id, email: me?.email || null, me }; };

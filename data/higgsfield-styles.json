@@ -1,0 +1,605 @@
+{
+ "at": "2026-10-22T21:25:16.471097",
+ "presets": [
+  {
+   "id": "5f7e5c32-068e-533b-b10e-fca42ca993af",
+   "type": "ads",
+   "name": "Orange Tape Diptych",
+   "group": "Compare & Switch",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/52eebde4-9391-4f96-926c-c2881d3f7b60.webp"
+  },
+  {
+   "id": "09167bcd-de41-5584-b3cb-c53ffdb0a80e",
+   "type": "ads",
+   "name": "Open Palm Ring",
+   "group": "Compare & Switch",
+   "ratio": "2:3",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/6faee411-656c-492b-93be-50adf025643a.webp"
+  },
+  {
+   "id": "c1b9ccb9-4c35-5ae2-88e7-3f77454cbb21",
+   "type": "ads",
+   "name": "Fuel Gauge",
+   "group": "Compare & Switch",
+   "ratio": "2:3",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/55ff44ba-f129-4c20-9d87-2628a8da472b.webp"
+  },
+  {
+   "id": "3b4ade24-de4b-5d8a-a108-899bc4f6a106",
+   "type": "ads",
+   "name": "Clay Cloud Trade-Up",
+   "group": "Compare & Switch",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/54757f81-015e-4e86-af63-f796e187b2ac.webp"
+  },
+  {
+   "id": "22f6661f-17a6-5d82-9e0f-f423084a78d0",
+   "type": "ads",
+   "name": "Dueling Timers",
+   "group": "Compare & Switch",
+   "ratio": "1:1",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/521067eb-8344-47a5-9abd-d9bfb4ecc500.webp"
+  },
+  {
+   "id": "52275a33-248a-5481-9e9d-942afb80deef",
+   "type": "ads",
+   "name": "Old Way New Way",
+   "group": "Compare & Switch",
+   "ratio": "1:1",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/2ed46ff0-7411-419f-a7a9-6472c97d3e5d.webp"
+  },
+  {
+   "id": "c92e46a0-dd73-42a0-bf6a-29b4614c40ca",
+   "type": "ads",
+   "name": "Comparison",
+   "group": "Compare & Switch",
+   "ratio": "1:1",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/2ed46ff0-7411-419f-a7a9-6472c97d3e5d.webp"
+  },
+  {
+   "id": "6405a1ae-3bbd-5435-9066-0b9a8cee4e57",
+   "type": "ads",
+   "name": "Masthead Float",
+   "group": "Hero Spotlight",
+   "ratio": "2:3",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/deac4c82-93ca-4308-8797-f193812dbf72.webp"
+  },
+  {
+   "id": "05d695d1-ea1f-5d1a-92ef-1ed8642558b5",
+   "type": "ads",
+   "name": "Fruit Orbit",
+   "group": "Hero Spotlight",
+   "ratio": "2:3",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/adaf4b80-d8e6-4b17-8a16-c0c791e8e20c.webp"
+  },
+  {
+   "id": "ef84af61-57cd-5f2e-b3ca-209d8038563c",
+   "type": "ads",
+   "name": "Ticket Stack",
+   "group": "Hero Spotlight",
+   "ratio": "2:3",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/14a40118-95ff-458d-832b-0d5de2a487e5.webp"
+  },
+  {
+   "id": "3522467a-502d-5851-9894-917c377f8732",
+   "type": "ads",
+   "name": "Sand Dune Plinth",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/84c43c38-3926-4724-90ed-ef9090f0635f.webp"
+  },
+  {
+   "id": "eb416559-4b92-5985-bb7d-f60fa0bfd05b",
+   "type": "ads",
+   "name": "Prism Streaks",
+   "group": "Hero Spotlight",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/99f58b13-2b94-4cdc-8a74-c17fa65ef2d4.webp"
+  },
+  {
+   "id": "370117b9-097f-50e8-9757-db54bf638a13",
+   "type": "ads",
+   "name": "Blue Scatter",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/b9f41d86-ec16-4445-9d0d-f033ba2d382e.webp"
+  },
+  {
+   "id": "4d31ef3d-1682-5ec7-b744-844105427f7c",
+   "type": "ads",
+   "name": "Green Sash",
+   "group": "Hero Spotlight",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/73327017-c8a1-403e-9209-1c811ae5065a.webp"
+  },
+  {
+   "id": "fb49cf78-7924-5b74-bbb4-13882d12a330",
+   "type": "ads",
+   "name": "Push-Up Pedestal",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/8ad53821-7779-44aa-975f-d094b16d7352.webp"
+  },
+  {
+   "id": "5209b434-ba89-5063-a75b-e47a23f7f975",
+   "type": "ads",
+   "name": "Giant Pack Stage",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/14f80489-e02c-4e30-b0dc-5538f62688fd.webp"
+  },
+  {
+   "id": "a2629953-dca5-5e05-af03-0ba0369b1b78",
+   "type": "ads",
+   "name": "Pink Flat Lay",
+   "group": "Hero Spotlight",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/21977e1f-2ef9-4196-aee9-9b99170f99a4.webp"
+  },
+  {
+   "id": "ba96dc1c-e066-5e84-9b4c-3b20d243f59b",
+   "type": "ads",
+   "name": "Scribble Sunburst",
+   "group": "Hero Spotlight",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/2eac032a-421d-4fd1-b535-2907f9468d8b.webp"
+  },
+  {
+   "id": "0a19bb6f-840a-5d28-b222-765b5004945c",
+   "type": "ads",
+   "name": "Headline Wedge",
+   "group": "Hero Spotlight",
+   "ratio": "2:3",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/4bf9bec3-2a15-47d3-a268-dcb8c68a8a0b.webp"
+  },
+  {
+   "id": "7c1224f9-e02f-503f-931b-dea59cacb186",
+   "type": "ads",
+   "name": "Ghost Word",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/5ebfdf3b-c948-41e9-a64b-aa2f1cce4e7a.webp"
+  },
+  {
+   "id": "c589fb4c-b0a4-5c6c-84e5-a90f4fc392ec",
+   "type": "ads",
+   "name": "Blue Wedge",
+   "group": "Hero Spotlight",
+   "ratio": "2:3",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/657393a7-577b-46ef-bee6-7ff14f2808e5.webp"
+  },
+  {
+   "id": "c35ba22e-039b-566e-8e22-331f7f669397",
+   "type": "ads",
+   "name": "Mascot Lean",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/0ed10856-426e-4dea-acbf-d5a787e5419b.webp"
+  },
+  {
+   "id": "fda410a7-d73e-567e-b9ea-0928a085e1a8",
+   "type": "ads",
+   "name": "Green Grid Menu",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/c7087ffc-7b99-437e-b608-135c48b1e6cd.webp"
+  },
+  {
+   "id": "b7d57707-a4d6-5fca-a90e-59b6ef927046",
+   "type": "ads",
+   "name": "Carton Cascade",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/28426637-9477-47c9-8105-c3c0a535a6a3.webp"
+  },
+  {
+   "id": "4be10b54-588f-5b3e-9011-d463a85771fb",
+   "type": "ads",
+   "name": "Doodle Rocket",
+   "group": "Hero Spotlight",
+   "ratio": "2:3",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/8eb6d2d1-26d4-42db-a582-12cb2f230ebd.webp"
+  },
+  {
+   "id": "8d4eea8b-ba24-57fd-8ba6-7c357f0edff9",
+   "type": "ads",
+   "name": "Ingredient Halo",
+   "group": "Hero Spotlight",
+   "ratio": "2:3",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/9c9ca280-dd3e-4844-b2e8-0ed3bb22807a.webp"
+  },
+  {
+   "id": "f188a40a-098a-5fb3-bffc-eedfeaf9ecd7",
+   "type": "ads",
+   "name": "Circle Punch",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/289053c6-ba57-44a7-bcfb-c57f83aedab3.webp"
+  },
+  {
+   "id": "a8503395-7ac8-5d3b-8ddc-103eda05a298",
+   "type": "ads",
+   "name": "Concentric Rings",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/5d1bd9c2-9726-4a28-854c-9923efaca9bb.webp"
+  },
+  {
+   "id": "0fe66496-7c6f-5de9-a59b-e8e9ffb2de09",
+   "type": "ads",
+   "name": "Stacked Shout",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/0cfd0cc5-9cb0-4484-b1b5-5264dfa94fb4.webp"
+  },
+  {
+   "id": "a6cdbc1d-25dc-5c3c-aff5-97541bb63d4f",
+   "type": "ads",
+   "name": "Balloon Headline Trio",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/e772ed5b-7f6e-4943-9426-04cb3d0ada22.webp"
+  },
+  {
+   "id": "d405f258-cd77-5582-84af-a6ccf6231895",
+   "type": "ads",
+   "name": "Word Wallpaper",
+   "group": "Hero Spotlight",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/52e390b1-e16f-4a29-be1c-d7930103b86b.webp"
+  },
+  {
+   "id": "45535b56-6821-574c-bdbe-0dee87cae1ec",
+   "type": "ads",
+   "name": "Crimson Curve",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/fc6dbcb9-f610-4314-afd0-f70be12c6284.webp"
+  },
+  {
+   "id": "8886e77e-ec91-5386-a950-e52d4d51db78",
+   "type": "ads",
+   "name": "Emerald Cascade",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/8d551005-e19e-4d5f-99d5-08c74e6a53e4.webp"
+  },
+  {
+   "id": "8bd1619b-9d27-5082-a439-6b621b66be58",
+   "type": "ads",
+   "name": "Torn Kraft Window",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/13bd63f2-31b1-444e-8d72-ec0d6d345eb5.webp"
+  },
+  {
+   "id": "c9e4cfd6-a9cf-585e-b6f4-9a8c983be51a",
+   "type": "ads",
+   "name": "Skybound",
+   "group": "Hero Spotlight",
+   "ratio": "1:1",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/666e04d2-bcf8-4034-a94b-12abeb8a8466.webp"
+  },
+  {
+   "id": "d4704f0d-5b0f-5636-abe1-0bf823a4d7ff",
+   "type": "ads",
+   "name": "Clay Dreamscape",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/c54b0455-8bb5-47ac-86f1-0dc949af05b1.webp"
+  },
+  {
+   "id": "79cb3b7d-0aa0-5817-9d71-4663c58d7f32",
+   "type": "ads",
+   "name": "White Archway",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/d60b437b-3b95-4c9e-bd64-cc348411a406.webp"
+  },
+  {
+   "id": "a8acfe3a-8bb8-58a0-8fbd-0746d00a994a",
+   "type": "ads",
+   "name": "Purple Pedestal",
+   "group": "Hero Spotlight",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/caeed24c-cf6f-4c98-90e9-6342fba12068.webp"
+  },
+  {
+   "id": "a7959412-402f-50a6-8388-675b190e4f71",
+   "type": "ads",
+   "name": "Plush Paw",
+   "group": "Hero Spotlight",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/bfb667bd-81ee-464f-badb-3c03eacc6d2d.webp"
+  },
+  {
+   "id": "76936d74-b24f-58ce-9e37-decf9ef0acab",
+   "type": "ads",
+   "name": "Pickup Screen",
+   "group": "Problem Solved",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/e5d50609-b255-4d41-98d9-eacd4736659a.webp"
+  },
+  {
+   "id": "bf37fb11-f6b1-5817-8f0c-12bd57ee5aa8",
+   "type": "ads",
+   "name": "Accept or Decline",
+   "group": "Problem Solved",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/62c8c1ed-e8ed-4300-9e2f-4968c797eb35.webp"
+  },
+  {
+   "id": "383ca3c1-cac8-5cea-aa9a-15d969adfcfb",
+   "type": "ads",
+   "name": "Post Breakout",
+   "group": "Problem Solved",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/6063c8c2-8cb8-4a54-bcb9-67c0a679c136.webp"
+  },
+  {
+   "id": "5d683f40-177e-535f-9be1-ee32b85adf2a",
+   "type": "ads",
+   "name": "Orange Lasso",
+   "group": "Problem Solved",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/30aef910-aef3-4e2e-ac5c-966c82b1c67e.webp"
+  },
+  {
+   "id": "0c26db13-6fb4-5cf4-adae-c816878a918b",
+   "type": "ads",
+   "name": "Frosted Toggles",
+   "group": "Problem Solved",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/ed8b78fe-bf2a-4034-bc0e-dd9a3bbad39d.webp"
+  },
+  {
+   "id": "6d8151ce-1c23-55c8-b464-e4906a96840f",
+   "type": "ads",
+   "name": "In-Hand Detail",
+   "group": "Problem Solved",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/4ca9a573-78f3-491b-87ca-fefcb350fff1.webp"
+  },
+  {
+   "id": "6db32df2-cc32-5d11-9c3e-7df3207281a8",
+   "type": "ads",
+   "name": "Toggle On",
+   "group": "Problem Solved",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/18cc8be8-4241-4fc8-9ade-4a005757386a.webp"
+  },
+  {
+   "id": "b59aab9c-3082-558e-bd85-2b2373283e8c",
+   "type": "ads",
+   "name": "Search Bar Answer",
+   "group": "Problem Solved",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/4586d45b-c987-4674-ac57-27b78adae39c.webp"
+  },
+  {
+   "id": "168dd695-eb07-5d58-b003-68ff745c9556",
+   "type": "ads",
+   "name": "Slide to Answer",
+   "group": "Problem Solved",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/12fe64ad-6791-4132-bad5-c433ce60ab5e.webp"
+  },
+  {
+   "id": "c4b5d2a2-fc98-5543-b9ea-3ed897c5455c",
+   "type": "ads",
+   "name": "Lilac Question",
+   "group": "Problem Solved",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/9c4584c1-c7ea-429d-9f3d-f9563dd07e85.webp"
+  },
+  {
+   "id": "bea538c0-cb41-4cc3-a435-71d65990a938",
+   "type": "ads",
+   "name": "Problem \u2192 Solution",
+   "group": "Problem Solved",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/4dd1bb60-b4d0-4e6d-9a85-19e045dc06a2.webp"
+  },
+  {
+   "id": "adba7f71-12f0-5186-b7d9-0e860c84a44c",
+   "type": "ads",
+   "name": "Weightless Spec Grid",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/c6955057-d74a-4277-8a7b-494d4d0c1fd3.webp"
+  },
+  {
+   "id": "ac0d9078-a0bc-5b20-b5c3-4653c7716acf",
+   "type": "ads",
+   "name": "Brush Notes",
+   "group": "Proof & Specs",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/f4708845-ce4c-46d8-938e-ab297449e8ab.webp"
+  },
+  {
+   "id": "8f02c83f-1c68-5486-9f45-5fa086af4926",
+   "type": "ads",
+   "name": "Pill Callouts",
+   "group": "Proof & Specs",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/a70d31c3-28a9-4fee-bb25-7dd7f28d8528.webp"
+  },
+  {
+   "id": "e9153516-a1a2-50da-80f2-ee2c74020298",
+   "type": "ads",
+   "name": "Zigzag Split",
+   "group": "Proof & Specs",
+   "ratio": "2:3",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/171ab704-7171-4a7b-8abb-6b88ffdd9dff.webp"
+  },
+  {
+   "id": "2c1e55be-1033-5a9d-8a81-e03f91ead02c",
+   "type": "ads",
+   "name": "Gel Drift",
+   "group": "Proof & Specs",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/4d6e9302-0dc7-4ed8-ba04-74299acad68f.webp"
+  },
+  {
+   "id": "23cd146c-6805-5458-95a9-3fd9fd3d509f",
+   "type": "ads",
+   "name": "Benefit Ladder",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/2fc0ac66-b417-45b3-90d5-124f6bcca2f6.webp"
+  },
+  {
+   "id": "f53dec43-8292-53fc-b944-f70e8086b6f0",
+   "type": "ads",
+   "name": "Capsule Ring",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/0ae405cf-8ca8-4089-a9d2-95902347f8ec.webp"
+  },
+  {
+   "id": "7e2815cb-f24c-50de-9b3c-a635ba4ec53e",
+   "type": "ads",
+   "name": "Proof Portrait",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/52a791d8-f59d-4c6f-b283-0558a26596bb.webp"
+  },
+  {
+   "id": "f03dbdcc-e7e9-5d54-8741-f05c163938a8",
+   "type": "ads",
+   "name": "Mid-Air Pour",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/b14273dc-bdc8-4180-a39a-b979f2918e33.webp"
+  },
+  {
+   "id": "7c981542-ce40-5d50-9f80-3f0cd7748593",
+   "type": "ads",
+   "name": "Sunlit Pill Orbit",
+   "group": "Proof & Specs",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/3c522737-4f68-48a8-9d65-22f97a0c3871.webp"
+  },
+  {
+   "id": "f981a25a-f5af-54c7-97d6-c4c086e4024a",
+   "type": "ads",
+   "name": "Beauty Markup",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/1b6702df-10da-4076-b617-b6edb26e0914.webp"
+  },
+  {
+   "id": "e7bd1709-6766-5829-a783-14474ccb6d17",
+   "type": "ads",
+   "name": "Pictogram Spill",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/aad6f8e3-8fa5-4293-bbc9-f6c30b7bf587.webp"
+  },
+  {
+   "id": "2cd3a5d8-44ea-52e6-92a9-dcba7568b5ce",
+   "type": "ads",
+   "name": "Exploded Slices",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/7b9ee166-ba93-4994-89c7-a2d2d7cf47f2.webp"
+  },
+  {
+   "id": "6df282c9-4c03-58d4-b68e-ea798be5b21c",
+   "type": "ads",
+   "name": "Tonal Spill",
+   "group": "Proof & Specs",
+   "ratio": "1:1",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/bc4300d0-1181-4e0f-b3ea-eac7534f06f4.webp"
+  },
+  {
+   "id": "10b9f246-1f52-585c-bf69-03a99861add4",
+   "type": "ads",
+   "name": "Lime Percent",
+   "group": "Proof & Specs",
+   "ratio": "1:1",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/158b52f0-df1f-46d6-9d0a-18868bc04b4d.webp"
+  },
+  {
+   "id": "b11c1246-4c76-5826-a0b5-2bbc76422bb1",
+   "type": "ads",
+   "name": "Ingredient Compass",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/e015fd7c-8342-459e-a1ff-6cf51ad5e3cd.webp"
+  },
+  {
+   "id": "85c23714-fc20-5ed8-ad2e-e249e9e41eb8",
+   "type": "ads",
+   "name": "Quiet Numbers",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/3d831aea-f687-4f6c-9397-3bcdd70af7c0.webp"
+  },
+  {
+   "id": "00f991c0-2b75-5f44-ac8c-821b51f64193",
+   "type": "ads",
+   "name": "Callout Fan",
+   "group": "Proof & Specs",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/5e6314e8-9762-44f7-94df-7297af9556bf.webp"
+  },
+  {
+   "id": "c3a4b019-6088-5dc8-8035-620528c5c825",
+   "type": "ads",
+   "name": "Annotated Tilt",
+   "group": "Proof & Specs",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/53a2e673-e344-4568-9a94-572a358212b4.webp"
+  },
+  {
+   "id": "0fec078b-0e42-5baa-a0e2-ef240405be97",
+   "type": "ads",
+   "name": "Bracketed Review",
+   "group": "Social Proof",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/1fc6f435-9958-483e-8ce3-9904a73df164.webp"
+  },
+  {
+   "id": "6913fcd3-4847-54f1-b002-e0e9f9622d0a",
+   "type": "ads",
+   "name": "Trust Stack",
+   "group": "Social Proof",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/76d14dd1-2933-4cdd-9e86-d43ca652a5b8.webp"
+  },
+  {
+   "id": "da80f461-a27a-57e1-b105-99d8f488fb0f",
+   "type": "ads",
+   "name": "Reminder Toggles",
+   "group": "Social Proof",
+   "ratio": "9:16",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/7477fbd5-013a-43cf-a645-e81632f82fbf.webp"
+  },
+  {
+   "id": "4efc894a-7254-5850-b061-bb690793cb92",
+   "type": "ads",
+   "name": "Five-Star Handoff",
+   "group": "Social Proof",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/26e8b4dc-5dbd-4102-ae38-2e4005040c2c.webp"
+  },
+  {
+   "id": "314fe8f2-d08b-53a9-a6ea-1abfab2cc3dd",
+   "type": "ads",
+   "name": "Cyan Chat Halo",
+   "group": "Social Proof",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/7d82b55a-294f-450c-8908-1c5c0ba34300.webp"
+  },
+  {
+   "id": "1a280b60-8fed-4d26-bc30-0bb6ca5fe3be",
+   "type": "ads",
+   "name": "Social proof",
+   "group": "Social Proof",
+   "ratio": "3:4",
+   "cover": "https://cdn.higgsfield.ai/marketing-studio-v2-ad/7d82b55a-294f-450c-8908-1c5c0ba34300.webp"
+  }
+ ]
+}
