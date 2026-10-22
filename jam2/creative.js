@@ -156,7 +156,8 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const lines = (t, s) => Math.max(1, Math.ceil(t.length / Math.max(6, colW / (s * 0.56))));
     const bs = Math.round(w * 0.026), bp = Math.round(w * 0.013), cs = Math.round(w * 0.03), cp = Math.round(w * 0.02);
     const headH = headline ? Math.round(lines(headline, big) * big * 1.12) : 0, subH = sub ? Math.round(lines(sub, subS) * subS * 1.32) : 0, badgeH = badge ? Math.round(bs * 1.25 + bp * 2) : 0, ctaH = Math.round(cs * 1.25 + cp * 2);
-    const gap = Math.round(u * 0.028), total = headH + (sub ? gap + subH : 0) + (badge ? gap + badgeH : 0) + gap * 1.4 + ctaH;
+    /* a band across the frame (top or bottom) has the width to set the proof badge and the button on one row, keeping the words short of the product */
+    const oneRow = !side && !!badge, gap = Math.round(u * 0.028), total = headH + (sub ? gap + subH : 0) + (badge && !oneRow ? gap + badgeH : 0) + gap * 1.4 + ctaH;
     const safeTop = tall ? Math.round(h * 0.14) : pad, safeBot = tall ? Math.round(h * 0.2) : pad; /* stories and reels keep clear of the platform's own bars */
     /* the logo sits in the free side too (never on the product): first in the column, or at the end of the button row at the bottom */
     const logo = sc.layers.find((l) => l.kind === 'logo');
@@ -167,9 +168,11 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const L = [{ id: 'shade', kind: 'shape', x: zone === 'right' ? Math.round(w * (1 - reach)) : 0, y: zone === 'bottom' ? Math.round(h * (1 - reach)) : 0, w: side ? Math.round(w * reach) : w, h: side ? h : Math.round(h * reach), z: 5, style: { bg: `linear-gradient(${shade},rgba(${tone},${light ? 0.55 : 0.6}),rgba(${tone},0))` } }];
     if (headline) { L.push({ id: 'headline', kind: 'text', role: 'headline', words: headline, x: colX, y, w: colW, z: 6, style: { font: head, size: big, weight: 800, color: ink, shadow: !light, lh: 1.08 } }); y += headH; }
     if (sub) { y += gap; L.push({ id: 'sub', kind: 'text', role: 'sub', words: sub, x: colX, y, w: colW, z: 6, style: { font: body, size: subS, weight: 500, color: ink, shadow: !light, lh: 1.3 } }); y += subH; }
-    if (badge) { y += gap; L.push({ id: 'badge', kind: 'badge', role: 'small', words: badge, x: colX, y, w: Math.min(colW, Math.round(badge.length * bs * 0.58 + bp * 2 + bs)), h: badgeH, z: 7, style: { font: body, size: bs, weight: 700, color: light ? '#fff' : '#111', bg: light ? 'rgba(17,17,17,.88)' : 'rgba(255,255,255,.92)', radius: 999, pad: bp, align: 'center', lh: 1.25 } }); y += badgeH; }
+    const bw = Math.min(colW, Math.round(badge.length * bs * 0.58 + bp * 2 + bs)), badgeStyle = { font: body, size: bs, weight: 700, color: light ? '#fff' : '#111', bg: light ? 'rgba(17,17,17,.88)' : 'rgba(255,255,255,.92)', radius: 999, pad: bp, align: 'center', lh: 1.25 };
+    if (badge && !oneRow) { y += gap; L.push({ id: 'badge', kind: 'badge', role: 'small', words: badge, x: colX, y, w: bw, h: badgeH, z: 7, style: badgeStyle }); y += badgeH; }
     y += Math.round(gap * 1.4);
-    L.push({ id: 'cta', kind: 'badge', role: 'cta', words: cta, x: colX, y, w: Math.min(Math.round(w * 0.62), colW, Math.max(Math.round(w * 0.26), Math.round(cta.length * cs * 0.62 + cp * 2 + cs * 1.4))), h: ctaH, z: 7, style: { font: body, size: cs, weight: 700, color: '#fff', bg: accent, radius: 999, pad: cp, align: 'center', lh: 1.25 } });
+    if (oneRow) L.push({ id: 'badge', kind: 'badge', role: 'small', words: badge, x: colX, y: y + Math.round((ctaH - badgeH) / 2), w: bw, h: badgeH, z: 7, style: badgeStyle });
+    L.push({ id: 'cta', kind: 'badge', role: 'cta', words: cta, x: oneRow ? colX + bw + gap : colX, y, w: Math.min(Math.round(w * 0.62), colW, Math.max(Math.round(w * 0.26), Math.round(cta.length * cs * 0.62 + cp * 2 + cs * 1.4))), h: ctaH, z: 7, style: { font: body, size: cs, weight: 700, color: '#fff', bg: accent, radius: 999, pad: cp, align: 'center', lh: 1.25 } });
     if (logo) { if (zone === 'bottom') { logo.x = w - pad - logo.w; logo.y = y + Math.round((ctaH - logo.h) / 2); } else { logo.x = colX; logo.y = safeTop; }
       /* a plate only when the logo's own colour would vanish on the photo there (dark on dark, light on light) */
       const lt = await logoTone(kit.logo); if (lt != null && lt > 0.5 === light) { const pd = Math.round(w * 0.012); L.push({ id: 'logo-plate', kind: 'shape', x: logo.x - pd, y: logo.y - pd, w: logo.w + pd * 2, h: logo.h + pd * 2, z: (logo.z || 8) - 1, style: { bg: light ? 'rgba(17,17,17,.85)' : 'rgba(255,255,255,.88)', radius: Math.round(w * 0.016) } }); } }
