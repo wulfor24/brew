@@ -478,5 +478,5 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
     /* shot: a re-shoot makes two candidates and keeps the better one */
     return { extend: x.usd ?? null, shot: sh.usd != null ? +(sh.usd * 2).toFixed(2) : null, background: s.usd ?? null, redo: s.usd ?? null, area: e.usd ?? null, blend: hz.usd ?? null, final: f.usd ?? null, finalCredits: f.credits ?? null, providers: { scene: s.provider || null, edit: e.provider || null } };
   }
-  return { reshot, allProducts, priceOf, getLine, setLine, sentencesOf, write, first, edit, render, renderVideo, videoQuote, gate, prices, cutout, composeScene, fileOf, dataUri, BRIEF_SECTIONS };
+  return { reshot, allProducts, priceOf, getLine, setLine, sentencesOf, write, first, edit, render, renderVideo, videoQuote, gate, prices, cutout, composeScene, fileOf, dataUri, creative, BRIEF_SECTIONS };
 }

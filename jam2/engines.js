@@ -145,5 +145,5 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
     return { file: null, provider: 'mock', model: 'mock', usd: 0, cap, mock: true };
   }
   const status = () => Object.values(ADAPTERS).map((a) => ({ id: a.id, label: a.label, live: !!a.live(), caps: Object.keys(a.caps) }));
-  return { quote, run, status, candidates: (cap) => candidates(cap).map((a) => a.id), ADAPTERS, pub };
+  return { quote, run, status, candidates: (cap) => candidates(cap).map((a) => a.id), ADAPTERS, pub, hf: HF, keep };
 }

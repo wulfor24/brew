@@ -54,7 +54,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     return L.map((x) => tidy(x, 400)); }
 
   /* 1. art direction: one moment for this card, this angle and this placement */
-  async function direct(ctx, board, words, size) {
+  async function direct(ctx, board, words, size, style = null) {
     const r = recipe(board.recipe) || {}, c = ctx.jam.concept || {}, p = ctx.product;
     const fallback = { family: p?.img ? 'product in use' : 'lifestyle moment', moment: tidy(words.scene || c.angle || 'a real moment where the product is used', 600), zone: 'top' };
     if (isMock() || !spend('text', ctx.slug)) return fallback;
@@ -63,6 +63,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
       `Angle: ${tidy(c.angle, 200)}. Audience: ${tidy(c.audience, 160)}. Headline that will be set over it: "${tidy(words.headline, 120)}".`,
       p?.img ? `The product: ${tidy(p.name, 140)}. ${ctx.profile ? productLine(ctx.profile) + ' Describe it only with these facts.' : 'Never describe its colour, material, pattern or design (you can\'t see the photos): call it "the product".'} It must be the hero, clearly visible, exactly as in its photos.${ctx.profile?.use ? ` It is used: ${tidy(ctx.profile.use, 160)}.` : ''}` : 'There is no product photo: show the moment or the place the brand sells, with people when it helps.',
       ...bookLines(ctx.bbv), creativeBlock(ctx.bbv, ctx.kind || r.id || ''), ctx.notes?.length ? `The team asked: ${tidy(ctx.notes.join(' '), 400)}` : '',
+      style ? `The look the team picked (follow it exactly): ${tidy(style.look, 400)}${style.people === 'none' ? ' No people.' : style.people === 'hands' ? ' Hands only, no faces.' : ''}` : '',
       'Pick the format family that fits the card. Describe one real, specific moment a photographer could shoot (people, place, props, light, lens). Keep one part of the frame calm (real background, never a blank band) for the headline and say which. No words, signs, screens with text or logos in the picture.'].filter(Boolean).join('\n');
     try { const out = await claudeTool(prompt, DIRECT_SCHEMA, 1200, 'jam2_direct'); return { family: out.family || fallback.family, moment: tidy(out.moment, 900) || fallback.moment, zone: ZONES.includes(out.zone) ? out.zone : 'top' }; }
     catch (e) { log.warn?.('[creative] direct', e.message); return fallback; }
@@ -123,20 +124,25 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
   }
 
   /* the whole static: direct → shoot → critic → layout. Returns null when no candidate kept the product (the caller composites) */
-  async function staticAd(ctx, board, words, size, { n = 2 } = {}) {
+  async function staticAd(ctx, board, words, size, { n = 1, style = null, noWords = false } = {}) {
     /* the product's profile first (read once, kept): a product with no usable photo is asked for, never shot blind */
     if (ctx.product?.img && ctx.profile === undefined) ctx.profile = await profileOf(ctx.slug, entryOf(ctx) || { t: ctx.product.name, img: ctx.product.img, handle: ctx.product.handle }).catch(() => null);
     if (ctx.profile && ctx.profile.usable === false) return { made: [], fail: `No photo shows ${ctx.profile.name || 'this product'} clearly enough to shoot it (${ctx.profile.why || 'add a clear product photo'}). Add one with + → Product photo.`, needPhoto: true };
-    const d = await direct(ctx, board, words, size);
+    const d = await direct(ctx, board, words, size, style);
     if (!spend('image', ctx.slug)) throw Object.assign(new Error('Today’s picture budget is used up. It resets tonight.'), { budget: true });
-    const { cands, errors, refFile } = await shoot(ctx, d, size.ratio, n);
+    let { cands, errors, refFile } = await shoot(ctx, d, size.ratio, n);
+    /* one take, checked; a second only when the critic turned the first down (its reason goes into the retry) */
+    if (cands.length) { const j0 = await critique(ctx, cands, refFile, d); const good = j0.filter((c) => c.same && c.shot + c.ad >= 11);
+      if (!good.length && spend('image', ctx.slug)) { const why = j0.map((c) => c.why).filter(Boolean).join(' ');
+        const r2 = await shoot(ctx, { ...d, moment: `${d.moment}\nThe last attempt was rejected: ${tidy(why, 300)}. Fix that.` }, size.ratio, 1); cands = [...j0, ...r2.cands]; errors = [...errors, ...r2.errors]; }
+      else cands = j0; }
     const made = cands.map((c) => ({ cap: 'still.shot', provider: c.provider, model: c.model, usd: c.usd || 0 }));
     if (!cands.length) { log.warn?.('[creative] no candidate', errors.map((e) => e.message).join('; ')); return { made, direction: d, fail: errors[0]?.message || 'no picture came back' }; }
-    const judged = await critique(ctx, cands, refFile, d), ok = judged.filter((c) => c.same).sort((a, b) => b.shot + b.ad - (a.shot + a.ad));
+    const judged = await critique(ctx, cands.filter((c) => c.same === undefined), refFile, d).then((x) => [...cands.filter((c) => c.same !== undefined), ...x]), ok = judged.filter((c) => c.same).sort((a, b) => b.shot + b.ad - (a.shot + a.ad));
     keepLog?.({ slug: ctx.slug, board: board.id, direction: d, judged: judged.map(({ file, same, shot, ad, zone, why, provider }) => ({ file, same, shot, ad, zone, why, provider })) });
     if (!ok.length) return { made, direction: d, judged, fail: 'the product changed in every picture' };
     const best = ok[0], zone = best.zone || d.zone;
-    const scene = layout(ctx, size, best.file, words, zone, await aspectOf(ctx.bbv.kit?.logo));
+    const scene = noWords ? { w: size.w, h: size.h, bg: { color: '#ffffff', src: best.file }, kit: { fonts: ctx.bbv.kit?.fonts || {}, colors: [] }, layers: [] } : layout(ctx, size, best.file, words, zone, await aspectOf(ctx.bbv.kit?.logo));
     return { made, direction: d, judged, scene, file: await render(scene), shot: { file: best.file, ratio: size.ratio, zone, family: d.family, moment: d.moment, score: { shot: best.shot, ad: best.ad }, why: best.why, provider: best.provider, bgs: { [size.ratio]: best.file } } };
   }
 
@@ -153,5 +159,5 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     return { scene, file: await render(scene), bg, made };
   }
 
-  return { direct, shoot, critique, staticAd, extend, photosOf, presetFor };
+  return { direct, shoot, critique, staticAd, extend, photosOf, presetFor, productLine, entryOf, layout, aspectOf };
 }

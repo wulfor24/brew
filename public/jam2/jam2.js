@@ -208,8 +208,74 @@ function sceneArt(sc, file, { slide = null } = {}) {
   return `<div class="j2-art${sel?.kind === 'bg' ? ' bgsel' : ''}${S.area ? ' area' : ''}" data-art data-w="${sc.w}" data-h="${sc.h}">${body}${S.box ? `<div class="j2-box" style="left:${S.box.x * 100}%;top:${S.box.y * 100}%;width:${S.box.w * 100}%;height:${S.box.h * 100}%"></div>` : ''}${busyHtml()}</div>`;
 }
 const busyHtml = (b = board()) => { const bz = busyOf(b); if (S.working) return '<div class="j2-busy"><brew-load class="spin"></brew-load>Working…</div>'; if (!bz || bz.error) return ''; return `<div class="j2-busy"><brew-load class="spin"></brew-load>${esc({ first: 'Making it…', render: 'Rendering the video…', blend: 'Blending…', background: 'Making the scene…', redo: 'Making a new take…', final: 'Making the final…' }[bz.op] || 'Working…')}</div>`; };
+/* ---------- Brew Studio: the composer (jam2/studio.js on the server) ----------
+   Image or Video, a style (three picked from the card, the rest in a gallery), the product, the size, the length, how many;
+   one line says what will be made and what it costs, and Generate is the yes. Everything starts set up from the card. */
+const SIZE_OPTS = { image: ['ig-portrait', 'ig-square', 'story', 'pinterest', 'youtube', 'fbx', 'email', 'banner', 'pdp'], video: ['story', 'ig-square', 'ig-portrait', 'youtube'] };
+let studioLib = null, planT = null;
+async function studioOpen(bid = null, overlay = false) {
+  const s0 = S, jid = S.jam.id; S.studio = { bid, overlay, loading: true }; render();
+  const [d, L] = await Promise.all([api('GET', `/api/jam2/jams/${jid}/studio${bid ? `?bid=${encodeURIComponent(bid)}` : ''}`), studioLib ? Promise.resolve({ library: studioLib }) : api('GET', '/api/jam2/studio/library')]);
+  if (!live(s0, jid)) return; studioLib = L?.library || studioLib;
+  if (d?.error || !d?.defaults) { S.studio = null; render(); return toast(d?.error || 'The studio couldn’t open just now.'); }
+  S.studio = { bid, overlay, spec: { ...d.defaults, ask: '' }, picks: d.defaults.styles, products: d.products || [], plan: null }; render(); studioPlan();
+}
+const allStyles = () => (studioLib ? [...studioLib.image.map((g) => ({ ...g, kind: 'image' })), ...studioLib.video.map((g) => ({ ...g, kind: 'video' }))] : []);
+const styleById = (id) => { for (const g of allStyles()) { const x = g.styles.find((y) => y.id === id); if (x) return { ...x, group: x.group || g.label, kind: g.kind }; } return null; };
+function studioPlan() { clearTimeout(planT); if (!S.studio?.spec) return; S.studio.plan = null; render(); const s0 = S, jid = S.jam.id, spec = S.studio.spec;
+  planT = setTimeout(async () => { const r = await api('POST', `/api/jam2/jams/${jid}/studio/plan`, { spec }); if (live(s0, jid) && S.studio?.spec === spec) { S.studio.plan = r?.plan || { error: r?.error || 'No price yet.' }; render(); } }, 250); }
+function studioSet(patch) { S.studio.spec = { ...S.studio.spec, ...patch }; studioPlan(); }
+async function studioGo() { const st = S.studio, pl = st?.plan; if (!pl || pl.error || pl.usd == null || S.working) return; const s0 = S, jid = S.jam.id; S.working = true; render();
+  const r = await api('POST', `/api/jam2/jams/${jid}/studio/make`, { spec: st.spec, confirmUsd: pl.usd, bid: st.bid }); if (!live(s0, jid)) return; S.working = false;
+  if (r?.needsConfirm) { S.studio.plan = r.plan; render(); return toast(`The price changed to ${usd(r.plan.usd)}. Tap Generate again.`); }
+  if (r?.error) { render(); return toast(r.error); }
+  S.jam = r.jam; S.studio = null; const i = S.jam.boards.findIndex((x) => x.id === r.boards?.[0]); if (i >= 0) S.tab = i; render(); poll();
+  say('brew', `Making ${r.plan.line} · ${usd(r.plan.usd)}. Each one lands in its own tab; nothing else is spent.`); }
+/* a style with no sample picture shows the brand's own product under its name, so every tile reads as theirs */
+const tileHtml = (x, on, ph = S?.studio?.spec?.product?.img) => `<button class="j2-sti${on ? ' on' : ''}" data-sst="${esc(x.id)}" title="${esc(x.look || x.label)}">${x.cover ? `<img src="${esc(x.cover)}" alt="" loading="lazy">` : ph ? `<span class="j2-sti-ph"><img src="${esc(srcOf(ph))}" alt="" loading="lazy"></span>` : `<span class="j2-sti-art">${esc(x.label)}</span>`}<b>${esc(x.label)}</b><small>${esc(x.group || '')}</small></button>`;
+function studioHtml() {
+  const st = S.studio; if (!st) return ''; if (st.loading || !st.spec) return `<div class="j2-studio"><brew-load class="spin"></brew-load> Setting it up from the card…</div>`;
+  const sp = st.spec, kind = sp.kind, picks = st.picks.map(styleById).filter((x) => x && x.kind === kind), cur = styleById(sp.style), shown = cur && !picks.some((x) => x.id === cur.id) ? [cur, ...picks.slice(0, 2)] : picks.slice(0, 3);
+  const sizes = S.recipes.__sizes || {}, size = sp.sizes?.[0], prod = sp.product, pl = st.plan;
+  const gal = st.gallery ? `<div class="j2-stgal"><div class="j2-stgal-side">${allStyles().filter((g) => g.kind === kind).map((g) => `<button data-sgg="${esc(g.id)}" class="${(st.group || allStyles().find((x) => x.kind === kind)?.id) === g.id ? 'on' : ''}">${esc(g.label)} <small>${g.styles.length}</small></button>`).join('')}</div>
+    <div class="j2-stgal-main"><input id="j2-st-search" placeholder="Search styles" value="${esc(st.q || '')}"><div class="j2-stgrid">${(() => { const g = allStyles().find((x) => x.id === (st.group || allStyles().find((y) => y.kind === kind)?.id)); const q = (st.q || '').toLowerCase();
+      const list = q ? allStyles().filter((x) => x.kind === kind).flatMap((x) => x.styles.map((y) => ({ ...y, group: y.group || x.label }))).filter((y) => `${y.label} ${y.group}`.toLowerCase().includes(q)) : (g?.styles || []).map((y) => ({ ...y, group: y.group || g.label }));
+      return list.map((y) => tileHtml(y, y.id === sp.style)).join('') || '<p>No style matches.</p>'; })()}</div></div><button class="j2-ghost j2-stgal-x" data-sgal-x aria-label="Close">✕</button></div>` : '';
+  const prodPop = st.prodPick ? `<div class="j2-pop j2-picks j2-stprod">${st.products.map((p, i) => `<button data-sprodpick="${i}"><img src="${esc(srcOf(p.img))}" alt="">${esc(p.name || '')}</button>`).join('') || '<p style="padding:8px">No product photos yet.</p>'}</div>` : '';
+  const sizePop = st.sizePick ? `<div class="j2-pop j2-stsize">${SIZE_OPTS[kind].map((k) => `<button data-ssize="${k}" class="${k === size ? 'on' : ''}">${esc(sizes[k]?.label || k)}</button>`).join('')}</div>` : '';
+  return `<div class="j2-studio${st.overlay ? ' over' : ''}">${st.overlay ? '<button class="j2-ghost j2-st-x" data-st-x aria-label="Close">✕</button>' : ''}
+    <div class="j2-st-top"><div class="j2-seg"><button data-sk="image" class="${kind === 'image' ? 'on' : ''}">Image</button><button data-sk="video" class="${kind === 'video' ? 'on' : ''}">Video</button></div><span class="j2-st-hint">Set up from the card · change anything</span></div>
+    <div class="j2-st-styles">${shown.map((x) => tileHtml(x, x.id === sp.style)).join('')}<button class="j2-sti more" data-sgal><span class="j2-sti-art">＋</span><b>More styles</b><small>${allStyles().filter((g) => g.kind === kind).reduce((a, g) => a + g.styles.length, 0)} in all</small></button></div>
+    <div class="j2-st-row">
+      <button class="j2-chip j2-st-prod" data-sprod>${prod?.img ? `<img src="${esc(srcOf(prod.img))}" alt="">` : ''}${esc(prod?.name ? prod.name.slice(0, 34) : 'No product')}</button>${prodPop}
+      <button class="j2-chip" data-ssizes>${esc(sizes[size]?.label || size || 'Size')}</button>${sizePop}
+      ${kind === 'video' ? `<div class="j2-seg">${[5, 10, 15].map((n) => `<button data-ssec="${n}" class="${+sp.seconds === n ? 'on' : ''}">${n} s</button>`).join('')}</div>` : ''}
+      <div class="j2-count"><button data-scount="-1" aria-label="Fewer">−</button><b>${sp.count}</b><button data-scount="1" aria-label="More">+</button></div>
+    </div>
+    <input id="j2-st-ask" placeholder="Anything to add? (optional: a mood, a person, a line to say)" value="${esc(sp.ask || '')}">
+    <div class="j2-st-go"><span>${pl ? esc(pl.error || pl.line) : 'Pricing it…'}</span><button class="j2-pri" data-sgo ${!pl || pl.error || S.working ? 'disabled' : ''}>Generate${pl?.usd != null ? ` · ${usd(pl.usd)}` : ''}</button></div>
+    ${gal}</div>`;
+}
+function studioClick(g) {
+  if (!S.studio) return false; const st = S.studio, sp = st.spec;
+  if (g('[data-st-x]')) { S.studio = null; render(); return true; }
+  const k = g('[data-sk]'); if (k && sp) { const kind = k.dataset.sk; if (kind !== sp.kind) { const first = allStyles().find((x) => x.kind === kind)?.styles?.[0]; studioSet({ kind, style: first?.id || null, sizes: [SIZE_OPTS[kind][0]], seconds: kind === 'video' ? first?.seconds || 10 : null }); S.studio.picks = allStyles().filter((x) => x.kind === kind).flatMap((x) => x.styles.slice(0, 1)).map((x) => x.id).slice(0, 3); } return true; }
+  const sst = g('[data-sst]'); if (sst) { const x = styleById(sst.dataset.sst); S.studio.gallery = false; studioSet({ style: sst.dataset.sst, ...(x?.seconds && sp.kind === 'video' ? { seconds: x.seconds } : {}), ...(x?.ratio === '1:1' ? { sizes: ['ig-square'] } : {}) }); return true; }
+  if (g('[data-sgal]')) { st.gallery = true; render(); return true; } if (g('[data-sgal-x]')) { st.gallery = false; render(); return true; }
+  const gg = g('[data-sgg]'); if (gg) { st.group = gg.dataset.sgg; st.q = ''; render(); return true; }
+  if (g('[data-sprod]')) { st.prodPick = !st.prodPick; st.sizePick = false; render(); return true; }
+  const pp = g('[data-sprodpick]'); if (pp) { const p = st.products[+pp.dataset.sprodpick]; st.prodPick = false; studioSet({ product: { img: p.img, name: p.name || null, handle: p.handle || null } }); return true; }
+  if (g('[data-ssizes]')) { st.sizePick = !st.sizePick; st.prodPick = false; render(); return true; }
+  const sz = g('[data-ssize]'); if (sz) { st.sizePick = false; studioSet({ sizes: [sz.dataset.ssize] }); return true; }
+  const sc = g('[data-ssec]'); if (sc) { studioSet({ seconds: +sc.dataset.ssec }); return true; }
+  const cn = g('[data-scount]'); if (cn) { studioSet({ count: Math.max(1, Math.min(12, (+sp.count || 1) + +cn.dataset.scount)) }); return true; }
+  if (g('[data-sgo]')) { studioGo(); return true; }
+  return false;
+}
 function canvas() {
   const b = board(), t = take(b), bz = busyOf(b); if (!b) return '';
+  /* an empty picture or video board is the Studio composer, set up from the card (nothing is made before the price gets a yes) */
+  if (!t && !bz && ['static', 'video'].includes(b.kind) && !b.allOf) { if (!S.studio || (S.studio.bid !== b.id && !S.studio.overlay)) { setTimeout(() => S && !S.studio?.spec && studioOpen(b.id), 0); } return S.studio && !S.studio.overlay ? studioHtml() : '<div class="j2-studio"><brew-load class="spin"></brew-load> Setting it up from the card…</div>'; }
   if (!t && !bz) return `<div class="j2-doc" style="align-items:center;text-align:center;gap:10px"><b>${esc(b.label)} isn’t made yet.</b><span style="color:var(--fg-3);font-size:13px">${b.how === 'brief' || BRIEF_ONLY.has(b.kind) ? 'Brew writes it from the card and your Brand Book.' : b.allOf ? 'The same picture with each product in your catalog, free.' : ['static', 'carousel'].includes(b.kind) || b.recipe === 'email' ? 'Words first, then the picture with your real product.' : 'Brew writes it from the card, in your voice.'}</span><button class="j2-pri" data-redo-first>Make it</button></div>`;
   if (!t) return bz?.error ? `<div class="j2-doc"><p class="j2-err">${esc(bz.error)}</p><button class="j2-pri" data-redo-first>Try again</button></div>` : `<div class="j2-doc" style="align-items:center;text-align:center;gap:10px"><brew-load class="spin"></brew-load><b>Making ${esc(b.label.toLowerCase())}…</b><span style="color:var(--fg-3);font-size:13px">${b.allOf ? 'Each product in your catalog is cut out and placed in the same scene. A few seconds per product, free.' : 'Words first, then the picture with your real product. About a minute.'}</span></div>`;
   const err = (b.priceAlert ? `<div class="j2-bad" style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${esc(b.priceAlert.name || 'The product')}’s price changed: ${esc(b.priceAlert.was)} → ${esc(b.priceAlert.now)}.<button class="j2-chip" data-price-fix>Update the words (free)</button></div>` : '') + (bz?.error ? `<p class="j2-err">${esc(bz.error)}</p>` : '') + (b.status === 'stale' ? `<div class="j2-bad" style="margin-top:10px;display:flex;gap:10px;align-items:center">The idea changed since this was made.<button class="j2-chip" data-refresh>Remake it on the new idea</button></div>` : '');
@@ -218,6 +284,8 @@ function canvas() {
   if (b.kind === 'carousel' && t.slides?.length) { const i = Math.min(S.slide, t.slides.length - 1), sl = t.slides[i];
     return `<div class="j2-frame"><button class="j2-flab${S.sel?.kind === 'whole' ? ' on' : ''}" data-whole>${esc(b.label)} · slide ${i + 1} of ${t.slides.length}</button>${sl.scene ? sceneArt(sl.scene, sl.file, { slide: i }) : sl.file ? `<img src="${esc(srcOf(sl.file))}" alt="" style="max-height:60vh;border-radius:6px">` : '<p class="j2-err">This slide didn’t come through. Redo the carousel.</p>'}<div class="j2-strip">${t.slides.map((x, n) => `<button class="${n === i ? 'on' : ''}" data-slide="${n}" aria-label="Slide ${n + 1}"><img src="${esc(srcOf(x.file))}" alt=""></button>`).join('')}</div>${err}</div>`; }
   if (t.scene && b.kind !== 'message') return `<div class="j2-frame"><span style="display:flex;gap:4px"><button class="j2-flab${S.sel?.kind === 'whole' ? ' on' : ''}" data-whole>${esc(b.label)} · ${esc(S.recipes.__sizes?.[b.size]?.label || b.size || '')}${t.final ? ' · Final' : ''}</button><button class="j2-flab${S.sel?.kind === 'bg' ? ' on' : ''}" data-scene>Scene</button></span>${sceneArt(t.scene, t.file)}${err}</div>`;
+  /* a Studio video (Higgsfield made the whole clip): the clip itself, what made it, and make another */
+  if (b.kind === 'video' && t.studio && /\.mp4$/i.test(t.file || '')) return `<div class="j2-doc" style="align-items:center;gap:10px"><div class="j2-meta">${esc(b.label)} · ${esc(t.studio.group || '')} · ${esc(t.studio.label || '')}${t.cost?.usd ? ` · ${usd(t.cost.usd)}` : ''}</div><video src="${esc(srcOf(t.file))}" ${t.poster ? `poster="${esc(srcOf(t.poster))}"` : ''} controls playsinline style="max-height:62vh;max-width:100%;border-radius:14px;background:#000"></video><button class="j2-chip" data-studio>Make another</button></div>` + err;
   if (b.kind === 'video') return video(b, t) + err;
   if (b.kind === 'table') return table(w) + err;
   if (b.recipe === 'whatsapp') return `<div class="j2-wa"><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">Your business account · approved template</div><div class="j2-bubble">${sents(w.body)}</div></div>${err}`;
@@ -315,9 +383,9 @@ function renderIn() {
     <input id="j2-in" class="j2-in" aria-label="Tell Brew what to make or change" placeholder="${S.sel ? `Tell Brew what to change in the ${esc(selName().toLowerCase())}…` : 'Tell Brew what to make or change. ? asks about the card'}"></div></section>
   <section class="j2-right"><div class="j2-tabs">${j.boards.map((x, i) => `<button class="j2-tab${i === S.tab ? ' on' : ''}" data-tab="${i}">${esc(x.label)}${isBrief(x) ? `<span class="j2-tag">${esc(x.brief?.status || 'Brief')}</span>` : ''}${busyOf(x) && !busyOf(x).error ? ' <brew-load class="spin" style="width:12px;height:12px"></brew-load>' : ''}</button>`).join('')}
     <button class="j2-ghost" data-add aria-label="Add a piece" style="font-size:17px">+</button><span class="j2-gap"></span><button class="j2-pri" data-finish>${nBrief === j.boards.length ? 'Send the briefs' : nBrief ? 'Finish · post + brief' : 'Ready to post'}</button>
-    </div>${S.add ? `<div class="j2-pop" style="position:absolute;left:14px;top:52px;z-index:40">${[...new Set([...(S.also || []), ...ADD.map((x) => x[0])])].slice(0, 9).map((r) => `<button data-addr="${esc(r)}">${esc(ADD.find((x) => x[0] === r)?.[1] || S.recipes[r]?.label || r)}</button>`).join('')}${(S.recipesList || []).map((x) => `<button data-recipe="${esc(x.id)}">★ ${esc(x.name)}</button>`).join('')}<button data-addr="changes" data-label="Ad test · 4 hooks" data-ask="An ad test for Ads Manager: one row per hook (4 hooks), what changes, which audience. Same picture, one thing changes.">Ad test · 4 hooks</button></div>` : ''}
+    </div>${S.add ? `<div class="j2-pop" style="position:absolute;left:14px;top:52px;z-index:40"><button data-studio style="font-weight:700">＋ Picture or video (Studio)</button>${[...new Set([...(S.also || []), ...ADD.map((x) => x[0])])].slice(0, 9).map((r) => `<button data-addr="${esc(r)}">${esc(ADD.find((x) => x[0] === r)?.[1] || S.recipes[r]?.label || r)}</button>`).join('')}${(S.recipesList || []).map((x) => `<button data-recipe="${esc(x.id)}">★ ${esc(x.name)}</button>`).join('')}<button data-addr="changes" data-label="Ad test · 4 hooks" data-ask="An ad test for Ads Manager: one row per hook (4 hooks), what changes, which audience. Same picture, one thing changes.">Ad test · 4 hooks</button></div>` : ''}
   ${b ? `<div class="j2-sub"><b>${esc(b.label)}</b>${t ? `<span>v${t.n}</span>` : ''}${!ownBrief(b) && recipeOf(b).how?.includes('brief') && recipeOf(b).how.length > 1 ? `<span class="j2-mode"><button class="${!isBrief(b) ? 'on' : ''}" data-mode="make">Make it ready to post</button><button class="${isBrief(b) ? 'on' : ''}" data-mode="brief">Brief a team</button></span>` : ''}<span class="j2-gap"></span><span>${ownBrief(b) ? 'A brief for the people who make it' : isBrief(b) ? 'Your team or partner makes it from this brief' : b.kind === 'table' ? 'You or your team apply it; Brew never changes your accounts' : 'Brew makes it; you post it'}</span>${isBrief(b) ? `<button class="j2-chip" data-send="${S.tab}">${b.brief?.status ? 'Send again' : 'Send brief'}</button>` : ''}</div>` : ''}
-  <div class="j2-stage">${floatHtml()}${canvas()}</div>${pillHtml()}${sheetHtml()}${bookHtml()}
+  <div class="j2-stage">${floatHtml()}${canvas()}${S.studio?.overlay ? studioHtml() : ''}</div>${pillHtml()}${sheetHtml()}${bookHtml()}
   ${S.toast ? `<div class="j2-toast"><span>${esc(S.toast)}</span><button data-toast-no>Close</button></div>` : ''}</section>`;
   fit(); const lg = $('.j2-log', root); if (lg && keepScroll) lg.scrollTop = lg.scrollHeight;
   for (const [id, v] of Object.entries(typed)) { const el = root.querySelector(`#${id}`); if (el && v && !el.value && id !== 'j2-edit') el.value = v; }
@@ -334,6 +402,8 @@ function wire(root) {
   root.addEventListener('click', (e) => {
     const t = e.target; const g = (s) => t.closest(s);
     if (g('[data-close]')) return close();
+    if (S?.studio && t.closest('.j2-studio') && studioClick(g)) return;
+    if (g('[data-studio]')) return studioOpen(null, true);
     if (g('[data-toast-no]')) { S.toast = null; return render(); }
     if (g('[data-why]')) { S.why = !S.why; return render(); }
     if (g('[data-angle]')) return ask('The idea, in one line', S.jam.concept?.angle, (v) => concept({ angle: v }));
@@ -409,7 +479,9 @@ function wire(root) {
     if (e.target.id === 'j2-posted') { e.preventDefault(); const link = e.target.value.trim(); if (!/^https?:\/\//.test(link)) return toast('Paste the link to the post.'); let host = ''; try { host = new URL(link).host; } catch { return toast('That doesn’t look like a link.'); } e.target.value = ''; api('POST', `/api/jam2/jams/${S.jam.id}/posted`, { link, platform: host }).then(() => say('brew', `Saved the link to this jam (${host}).`)); }
   });
   root.addEventListener('change', (e) => { if (e.target.id === 'j2-upload') upload(e.target.files?.[0]); });
-  root.addEventListener('input', (e) => { if (e.target.id === 'j2-edit' && S?.edit) S.edit.val = e.target.value; });
+  root.addEventListener('input', (e) => { if (e.target.id === 'j2-edit' && S?.edit) S.edit.val = e.target.value;
+    if (e.target.id === 'j2-st-ask' && S?.studio?.spec) { S.studio.spec.ask = e.target.value; }
+    if (e.target.id === 'j2-st-search' && S?.studio) { S.studio.q = e.target.value; clearTimeout(studioClick.t); studioClick.t = setTimeout(() => S && render(), 200); } });
   /* select an area: drag a box on the picture */
   const rel = (e, el) => { const r = el.getBoundingClientRect(); return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) }; };
   /* the box is drawn into the picture as the pointer moves; re-rendering here would drop the element the pointer is captured on */
