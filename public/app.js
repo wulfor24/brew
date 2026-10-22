@@ -127,6 +127,7 @@
     grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
     send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
     person: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+    personAdd: '<circle cx="10" cy="8" r="4.5"/><path d="M17 21a7 7 0 0 0-14 0"/><path d="M19 8v6"/><path d="M16 11h6"/>',
     plug: '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>',
     menu: '<path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/>',
     clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
@@ -4506,7 +4507,7 @@
     tapi('POST', `/api/work/${w.id}/doc/sync`, { now: true }).then((r) => { RX.briefSync = false; if (r.work) putWork(r.work); if (view === 'remix' && RX.tab === 'details' && !RX.briefEdit) paintStudio(); }).catch(() => { RX.briefSync = false; }); };
   /* the jam's own controls in the studio's header: Assign / Ask for OK (jam-room.js), who's in it and who's here now */
   const studioJamCtl = () => { const w = RX.p ? workOfCard(RX.p.id) : null, JR = window.JamRoom; if (!w || !JR?.assignHtml || window.BREW_DEMO) return '<span class="st-jamctl"></span>';
-    return `<span class="st-jamctl" data-st-jam>${JR.assignHtml(w)}${JR.peopleHtml?.(w) || ''}</span>`; };
+    return `<span class="st-jamctl" data-st-jam>${JR.crewHtml ? JR.crewHtml(w) : JR.assignHtml(w) + (JR.peopleHtml?.(w) || '')}</span>`; };
   /* the studio's jam moved (jamPoll): a teammate's message or version, an assign, a status. The jam is put in place, the change is
      read again (its versions and chat are the team's), and the studio repaints; presence alone only redraws the header strip */
   const studioJamTick = async (r, changedHere) => {

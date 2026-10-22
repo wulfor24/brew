@@ -139,12 +139,22 @@
   const shoposIn = (text) => /(^|\s)@shopos team(?=$|[\s,.:;!?])/i.test(text);
   const pName = (p) => `${p?.staff ? 'ShopOS team · ' : ''}${p?.name || p?.email || 'Someone'}`; /* a shopos.ai account shows as the ShopOS team */
   /* who has the jam: give it to someone, or ask someone for their OK on this version (they get an email) */
-  const assignHtml = (w) => { if (DEMO || !w) return ''; const a = w.assignee, ppl = realPeople(w);
-    const label = a ? `${pAv(a, 18)}<span>${a.ask === 'approve' ? `Waiting on ${esc(shortName(a))}’s OK` : `${esc(shortName(a))} has it`}</span>` : `${ic('person', 's14')}<span>Assign</span>`;
-    const pop = JM.assign ? `<div class="jm-menu jm-assign-m" role="menu"><div class="jm-seg" role="group"><button data-jm-amode="work" aria-pressed="${JM.assign !== 'approve'}">Give it to</button><button data-jm-amode="approve" aria-pressed="${JM.assign === 'approve'}">Ask for OK on v${esc(w.current || 1)}</button></div>
+  /* the Assign popover: give the jam to someone, or ask for their OK on this version */
+  const assignPop = (w) => { const a = w.assignee, ppl = realPeople(w); return JM.assign ? `<div class="jm-menu jm-assign-m" role="menu"><div class="jm-seg" role="group"><button data-jm-amode="work" aria-pressed="${JM.assign !== 'approve'}">Give it to</button><button data-jm-amode="approve" aria-pressed="${JM.assign === 'approve'}">Ask for OK on v${esc(w.current || 1)}</button></div>
       ${ppl.length ? ppl.map((x) => `<button role="menuitem" data-jm-assignto="${esc(x.email)}">${x.html}<span class="jm-who"><b>${esc(x.name)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</span></button>`).join('') : '<small class="jm-assign-none">Nobody else is on the team yet. Invite them from Team and access.</small>'}
-      ${a ? '<hr><button role="menuitem" data-jm-assignto="">Nobody</button>' : ''}</div>` : '';
-    return `<span class="jm-assign"><button class="jm-assign-b${a ? ' is-on' : ''}" data-jm-assign aria-expanded="${!!JM.assign}">${label}</button>${pop}</span>`; };
+      ${a ? '<hr><button role="menuitem" data-jm-assignto="">Nobody</button>' : ''}</div>` : ''; };
+  /* who has the jam: give it to someone, or ask someone for their OK on this version (they get an email) */
+  const assignHtml = (w) => { if (DEMO || !w) return ''; const a = w.assignee;
+    const label = a ? `${pAv(a, 18)}<span>${a.ask === 'approve' ? `Waiting on ${esc(shortName(a))}’s OK` : `${esc(shortName(a))} has it`}</span>` : `${ic('person', 's14')}<span>Assign</span>`;
+    return `<span class="jm-assign"><button class="jm-assign-b${a ? ' is-on' : ''}" data-jm-assign aria-expanded="${!!JM.assign}">${label}</button>${assignPop(w)}</span>`; };
+  /* the studio header's one people pill: the faces in the jam (the assignee first) and an add-person icon, all one Assign button */
+  const crewHtml = (w) => { if (DEMO || !w) return ''; const a = w.assignee, me = myEmail(), here = new Set((JM.here?.[w.id] || []).map((x) => x.email));
+    const ppl = [...(w.people || [])]; if (a && !ppl.some((x) => x.email === a.email)) ppl.unshift(a);
+    ppl.sort((x, y) => (y.email === a?.email) - (x.email === a?.email) || (y.email === me) - (x.email === me));
+    const tip = a ? (a.ask === 'approve' ? `Waiting on ${shortName(a)}’s OK` : `${shortName(a)} has it`) : 'Assign';
+    const names = ppl.map((x) => `${pName(x)}${x.email === me ? ' (you)' : ''}${here.has(x.email) ? ' · here now' : ''}`).join(', ');
+    const faces = ppl.slice(0, 3).map((x) => `<span class="jm-crew-f${x.email === a?.email ? ' is-has' : ''}">${pAv(x, 28)}${here.has(x.email) && x.email !== me ? '<i class="jm-here"></i>' : ''}</span>`).join('') + (ppl.length > 3 ? `<span class="jm-crew-f jm-crew-n">+${ppl.length - 3}</span>` : '');
+    return `<span class="jm-assign"><button class="jm-crew${a ? ' is-on' : ''}${a?.ask === 'approve' ? ' is-ask' : ''}" data-jm-assign aria-expanded="${!!JM.assign}" aria-label="${esc(tip)}" title="${esc(tip + (names ? ` · ${names}` : ''))}">${faces ? `<span class="jm-crew-s">${faces}</span>` : ''}${ic('personAdd', 's18')}</button>${assignPop(w)}</span>`; };
   const typingHtml = (w) => { const ty = (JM.here?.[w?.id] || []).filter((x) => x.typing); return ty.length ? `<div class="jm-sys jm-typing-who">${esc(ty.map(shortName).join(' and '))} ${ty.length > 1 ? 'are' : 'is'} typing<span class="jm-typing"><i></i><i></i><i></i></span></div>` : ''; };
   const jmLabel = (l) => (!l ? 'Make it' : /^(?:open|see|agree|approve|publish|shift|pause|restart|launch|turn on|queue|start the tests|fix tracking|fix the links|update the prices|review draft|win their|show how|work on this|send|set the watch|ship|apply|run|lock)\b/i.test(l) ? 'Make the draft' : l); /* the button says what it does, never a saved non-making label (QA J-15) */
   const shipHtml = (w, doc) => {
@@ -570,5 +580,5 @@
   /* the studio's own view of the jam: who's in it and here now, and its messages, in the jam pane's own look */
   const peopleHtml = (w) => { if (!w || DEMO) return ''; const ps = people(w).slice(1); if (!ps.length) return '';
     return `<span class="jm-people st-people" title="${esc(ps.map((x) => x.t).join(', '))}">${ps.slice(0, 5).map((x) => `<span class="jm-pp">${x.html}</span>`).join('')}${ps.length > 5 ? `<span class="jm-pp st-pp-more">+${ps.length - 5}</span>` : ''}</span>`; };
-  window.JamRoom = { setHere, open, openFromCtx, close: () => {}, decorateDetail, fromHash, isOpen: () => false, isEditing, paint, addToBrief, send, sendTo, mentionOf, hasTag, changeAsk, assignHtml: (w) => assignHtml(w), peopleHtml, typingHtml: (w) => typingHtml(w), teamMsg: (m, w) => msgHtml(m, w), toHtml: (md) => toHtml(md) };
+  window.JamRoom = { setHere, open, openFromCtx, close: () => {}, decorateDetail, fromHash, isOpen: () => false, isEditing, paint, addToBrief, send, sendTo, mentionOf, hasTag, changeAsk, assignHtml: (w) => assignHtml(w), crewHtml: (w) => crewHtml(w), peopleHtml, typingHtml: (w) => typingHtml(w), teamMsg: (m, w) => msgHtml(m, w), toHtml: (md) => toHtml(md) };
 })();
