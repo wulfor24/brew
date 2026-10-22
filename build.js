@@ -24,7 +24,7 @@ import { marketFor, applyMarket, nameOf } from './market.js'; // the selling mar
 import { realRows, evidenceRows, privId } from './connectors/common.js'; // DUMMY: simulated account rows are never evidence; stale ones stop being evidence
 import { healthFrom, geoOf } from './health.js';
 import { isPlay, playDone, totalOf, numbersFor, healSeedNumbers, withNumbers, reviewsCap } from './pack-numbers.js'; // one number, one source
-import { waitingOnCheck, awaitingCheck } from './confirm-remind.js'; // a brand whose moves wait on "Check what we read"
+import { waitingOnCheck, awaitingCheck, waitingOnFeed } from './confirm-remind.js'; // a brand whose moves wait on "Check what we read"
 import { createStatics, teamStaticCards, teamStaticsDue } from './statics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mergeLedger, diffLedgers, candidates, triage, changeLine, liveMaterial, handleOfItem, productNames, movesNaming, CONNECTED_MOVES } from './refresh.js';
@@ -320,7 +320,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
 
       await halt(slug); await instant;
       /* 4a. a brand's first read writes its moves only once someone opens the feed after onboarding (status.feedGate, feedOpened) */
-      if (await waitsOnFeed(slug)) { await setStatus(slug, { state: 'Your moves start when you open your feed' }); await waitForFeed(slug); await halt(slug);
+      if (await waitsOnFeed(slug)) { await setStatus(slug, { state: 'Your moves start when you open your feed', ...((await status(slug))?.feedWaitSince ? {} : { feedWaitSince: Date.now() }) }); /* stamped once: confirm-remind.js reminds from it */ await waitForFeed(slug); await halt(slug);
         /* corrections made on the check page while it waited: the moves are written from them, and from a brief that has them */
         const p2 = await packs.getJSON(slug, 'profile.json'); if (p2) profile = normalizeProfile(p2); ledger = await packs.getJSON(slug, 'ledger.json', []);
         const s2 = await status(slug); if (s2?.recheck?.at && +s2.stages?.brief?.at < s2.recheck.at) { if (await budgetPause(slug, 0)) return;
@@ -1529,7 +1529,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   }
   async function list() {
     const all = await packs.list();
-    return all.filter((x) => !blocked(x.slug) && !x.status.cancelled && !x.status.error).sort((a, b) => (b.status.updatedAt || 0) - (a.status.updatedAt || 0)).map((x) => ({ slug: x.slug, name: x.status.name, host: x.status.host, logo: x.status.logo ? (/^https?:\/\//.test(x.status.logo) ? x.status.logo : '/' + String(x.status.logo).replace(/^\/+/, '')) : null, /* one leading slash: '//b/..' would be read as another host */ state: x.status.done ? 'Ready' : x.status.ready ? `${x.status.movesDone || 0} of ${totalOf(x.status)} moves` : waitingOnCheck(x.status) ? 'Waiting for you to check the read' : 'Reading' }));
+    return all.filter((x) => !blocked(x.slug) && !x.status.cancelled && !x.status.error).sort((a, b) => (b.status.updatedAt || 0) - (a.status.updatedAt || 0)).map((x) => ({ slug: x.slug, name: x.status.name, host: x.status.host, logo: x.status.logo ? (/^https?:\/\//.test(x.status.logo) ? x.status.logo : '/' + String(x.status.logo).replace(/^\/+/, '')) : null, /* one leading slash: '//b/..' would be read as another host */ state: x.status.done ? 'Ready' : x.status.ready ? `${x.status.movesDone || 0} of ${totalOf(x.status)} moves` : waitingOnCheck(x.status) ? 'Waiting for you to check the read' : waitingOnFeed(x.status) ? 'Open the feed to start the moves' : 'Reading' }));
   }
   // after a restart: carry on with any brand that wasn't finished
   /* a one-off fresh reload (OPS_FRESH_RELOAD=<slug,...>): the pending updates are dropped, the brand's cap lifts (Pro), the build

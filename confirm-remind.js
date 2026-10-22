@@ -7,6 +7,10 @@
 //
 //   private/remind.json   { sent: { '0': at, '1': at }, to: [emails], skipped: { '0': at } }
 //
+// The same goes for a brand's first moves, which wait for the first open of its feed after onboarding (build.js feedGate):
+// once the brief is written and nobody has opened the feed, the same people get the same two emails, with a link that opens
+// the feed (and so starts the moves). Kept apart in private/remind-feed.json.
+//
 // Recipients: private/created.json (who started the read) and the owners in private/members.json. A brand nobody signed
 // in for has no one to remind; it still shows "waiting for you" to whoever opens it.
 import { emailHtml, p as mailP, esc as mailEsc } from './mail-layout.js';
@@ -22,13 +26,19 @@ export const waitingSince = (s) => +s?.waitingSince || +s?.createdAt || 0;
 /* the build went on without the check: the brief or the moves are being (or were) written */
 export const buildStarted = (s) => !!(s?.stages?.brief?.state || s?.stages?.moves?.state || +s?.movesDone > 0);
 
+/* the moves wait on the first open of the feed: the build got past the brief and stopped at the gate (build.js feedGate) */
+export const waitingOnFeed = (s) => !!s && !!s.feedGate && !s.feedOpenAt && !s.done && !s.cancelled && !s.error && s.stages?.brief?.state === 'done' && !(+s.movesDone > 0);
+export const feedWaitSince = (s) => +s?.feedWaitSince || +s?.stages?.brief?.at || 0;
+
+/** the same schedule for any wait: the latest reminder whose time has come and that was not sent, or -1 */
+const dueAt = (t0, sent, now) => { if (!t0) return -1; for (let i = REMIND_AT.length - 1; i >= 0; i--) { if (now - t0 < REMIND_AT[i]) continue; return sent[i] ? -1 : i; } return -1; };
+export const dueFeedReminder = (s, sent = {}, now = Date.now()) => (waitingOnFeed(s) ? dueAt(feedWaitSince(s), sent, now) : -1);
+
 /** which reminder is due now: the latest one whose time has come and that was not sent (an earlier one that was never
     sent is skipped, so a brand found late gets one email, not two at once), or -1 */
 export function dueReminder(s, sent = {}, now = Date.now()) {
   if (!waitingOnCheck(s) || buildStarted(s)) return -1; /* still unconfirmed, and nothing written yet */
-  const t0 = waitingSince(s); if (!t0) return -1;
-  for (let i = REMIND_AT.length - 1; i >= 0; i--) { if (now - t0 < REMIND_AT[i]) continue; return sent[i] ? -1 : i; }
-  return -1;
+  return dueAt(waitingSince(s), sent, now);
 }
 
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/i;
@@ -65,6 +75,18 @@ export function reminderMail({ name, slug, i, base = process.env.PUBLIC_URL || '
   return { subject, html, text: `${subject}\n\n${lead}\n\n${since} ${close}\n\n${when}\n\nCheck what we read: ${link}` };
 }
 
+/** the feed email: same layout, one button that opens the feed, which starts the moves */
+export function feedReminderMail({ name, slug, i, base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', hours }) {
+  const link = `${base}/${slug}?go=feed`;
+  const subject = i === 0 ? `Open your feed to start ${name}’s moves` : `Still waiting: open your feed to start ${name}’s moves`;
+  const lead = `Brew read ${name} and wrote the brand brief. Your moves, the plans every card in your feed comes from, start the moment you open your feed.`;
+  const since = hours >= 24 ? `They have waited ${Math.floor(hours / 24)} day${hours >= 48 ? 's' : ''}.` : `They have waited ${Math.max(1, Math.round(hours))} hours.`;
+  const close = i === 0 ? 'One click opens it. Cards land in the feed as each move is written.' : 'This is the last reminder. Your moves start whenever you open the feed.';
+  const html = emailHtml({ title: subject, eyebrow: name, preheader: `${since} One click opens your feed.`, base,
+    body: mailP(mailEsc(lead)) + mailP(mailEsc(`${since} ${close}`)), cta: { href: link, label: 'Open my feed' } });
+  return { subject, html, text: `${subject}\n\n${lead}\n\n${since} ${close}\n\nOpen my feed: ${link}` };
+}
+
 export function createConfirmRemind({ packs, mail, log = console, now = () => Date.now(), base }) {
   let busy = false;
   async function remindOne(slug, s) {
@@ -85,12 +107,30 @@ export function createConfirmRemind({ packs, mail, log = console, now = () => Da
     log.log?.(`[remind] ${slug}: reminder ${i + 1} to ${ok.join(', ')}`);
     return { i, to: ok };
   }
+  /* the moves waiting on the first open of the feed: the same two emails, kept in their own file */
+  async function remindFeed(slug, s) {
+    const F = 'private/remind-feed.json', R = (await packs.getJSON(slug, F, null).catch(() => null)) || { sent: {} }; R.sent ||= {};
+    if (R.since && R.since !== feedWaitSince(s)) { R.sent = {}; R.skipped = {}; } /* a new wait (a re-read) starts over */
+    const i = dueFeedReminder(s, R.sent, now()); if (i < 0) return null;
+    for (let k = 0; k < i; k++) if (!R.sent[k]) (R.skipped ||= {})[k] = now();
+    R.since = feedWaitSince(s);
+    const to = await recipients(packs, slug);
+    if (!to.length) { R.sent[i] = now(); R.to = []; await packs.put(slug, F, R); log.log?.(`[remind] ${slug}: moves wait on the feed, nobody to email`); return { i, to: [], feed: true }; }
+    const m = feedReminderMail({ name: s.name || s.host || slug, slug, i, base, hours: (now() - feedWaitSince(s)) / 36e5 });
+    const ok = [];
+    for (const e of to) { if (await Promise.resolve(mail(e, m.subject, m.html, m.text)).catch(() => false)) ok.push(e); }
+    if (!ok.length) { log.warn?.(`[remind] ${slug}: no feed reminder went out`); return { i, to: [], failed: true, feed: true }; }
+    R.sent[i] = now(); R.to = ok; await packs.put(slug, F, R);
+    log.log?.(`[remind] ${slug}: feed reminder ${i + 1} to ${ok.join(', ')}`);
+    return { i, to: ok, feed: true };
+  }
   async function tick() {
     if (busy) return []; busy = true; const out = [];
-    try { for (const b of await packs.list().catch(() => [])) { if (!waitingOnCheck(b.status)) continue; try { const r = await remindOne(b.slug, b.status); if (r) out.push({ slug: b.slug, ...r }); } catch (e) { log.warn?.('[remind]', b.slug, e.message); } } }
+    try { for (const b of await packs.list().catch(() => [])) { const one = waitingOnCheck(b.status) ? remindOne : waitingOnFeed(b.status) ? remindFeed : null; if (!one) continue;
+      try { const r = await one(b.slug, b.status); if (r) out.push({ slug: b.slug, ...r }); } catch (e) { log.warn?.('[remind]', b.slug, e.message); } } }
     finally { busy = false; }
     return out;
   }
   const start = ({ every = 15 * 60e3, first = 3 * 60e3 } = {}) => { const a = setTimeout(() => tick().catch(() => {}), first), b = setInterval(() => tick().catch(() => {}), every); a.unref?.(); b.unref?.(); return () => { clearTimeout(a); clearInterval(b); }; };
-  return { tick, start, remindOne };
+  return { tick, start, remindOne, remindFeed };
 }

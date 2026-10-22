@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { REMIND_AT, awaitingCheck, waitingOnCheck, waitingSince, dueReminder, recipients, reminderMail, createConfirmRemind } from '../confirm-remind.js';
+import { REMIND_AT, awaitingCheck, waitingOnCheck, waitingSince, dueReminder, recipients, reminderMail, createConfirmRemind, waitingOnFeed, feedWaitSince, dueFeedReminder, feedReminderMail } from '../confirm-remind.js';
 
 const H = 36e5, T0 = Date.UTC(2026, 9, 15, 9);
 const waiting = (o = {}) => ({ slug: 'gully-com', name: 'Gully', host: 'gully.com', createdAt: T0 - H, waitingSince: T0, done: false, error: null, cancelled: null,
@@ -91,4 +91,40 @@ test('wiring: the build stamps the wait once, the server holds watchers and runs
   assert.match(s, /const held = p\.kind === 'generated' && awaitingCheck\(p\.status\);/);
   assert.match(s, /&& !held(?: && !waitQ)?; \/\/ the default context runs no watchers/);
   assert.match(s, /if \(!DEMO && process\.env\.CONFIRM_REMIND !== '0' && \(process\.env\.K_SERVICE \|\| process\.env\.CONFIRM_REMIND === '1'\)\) createConfirmRemind\(/);
+});
+
+/* a brand's first moves wait on the first open of its feed (build.js feedGate): the same two emails, with a link into the feed */
+const feedWait = (o = {}) => ({ slug: 'gully-com', name: 'Gully', host: 'gully.com', createdAt: T0 - H, feedGate: true, feedWaitSince: T0, done: false, error: null, cancelled: null,
+  stages: { read: { state: 'done' }, confirm: { state: 'done' }, brief: { state: 'done', at: T0 - 60e3 } }, ...o });
+
+test('feed wait: due after a few hours and a day, never once the feed opened, the moves started, or with no gate', () => {
+  assert.ok(waitingOnFeed(feedWait()) && !waitingOnCheck(feedWait()));
+  assert.equal(dueFeedReminder(feedWait(), {}, T0 + 2 * H), -1);
+  assert.equal(dueFeedReminder(feedWait(), {}, T0 + REMIND_AT[0]), 0);
+  assert.equal(dueFeedReminder(feedWait(), { 0: 1 }, T0 + 25 * H), 1);
+  assert.equal(dueFeedReminder(feedWait(), {}, T0 + 25 * H), 1, 'found late: one email, not two');
+  assert.equal(dueFeedReminder(feedWait(), { 0: 1, 1: 1 }, T0 + 50 * H), -1);
+  for (const o of [{ feedOpenAt: T0 + H }, { movesDone: 3 }, { feedGate: null }, { done: true }, { cancelled: true }, { error: 'x' }, { stages: { read: { state: 'done' }, confirm: { state: 'done' }, brief: { state: 'running' } } }])
+    assert.equal(dueFeedReminder(feedWait(o), {}, T0 + 30 * H), -1, JSON.stringify(o));
+  assert.equal(feedWaitSince(feedWait({ feedWaitSince: null })), T0 - 60e3, 'older waits fall back to when the brief was written');
+});
+
+test('feed email: the check layout, one button that opens the feed', () => {
+  const m = feedReminderMail({ name: 'Gully', slug: 'gully-com', i: 0, base: 'https://brew.test', hours: 3.2 });
+  assert.match(m.subject, /Open your feed to start Gully’s moves/);
+  assert.match(m.html, /href="https:\/\/brew\.test\/gully-com\?go=feed"/); assert.match(m.html, /Open my feed/);
+  assert.match(m.text, /They have waited 3 hours\./); assert.doesNotMatch(m.text, /#check/);
+  assert.match(feedReminderMail({ name: 'Gully', slug: 'gully-com', i: 1, hours: 26 }).text, /last reminder[\s\S]*waited 1 day|waited 1 day[\s\S]*last reminder/);
+});
+
+test('feed tick: emails the starter and owners once, keeps its own record, starts over on a new wait', async () => {
+  const P = mem({ 'gully-com/status.json': feedWait(), 'gully-com/private/created.json': { by: 'Ana@Gully.com' }, 'gully-com/private/members.json': { members: [{ email: 'boss@gully.com', role: 'owner' }] } });
+  const sent = []; let t = T0 + 4 * H;
+  const R = createConfirmRemind({ packs: P, mail: async (to, subject) => { sent.push([to, subject]); return true; }, log: { log() {}, warn() {} }, now: () => t, base: 'https://brew.test' });
+  const r = await R.tick(); assert.equal(r.length, 1); assert.ok(r[0].feed);
+  assert.deepEqual(sent.map((x) => x[0]).sort(), ['ana@gully.com', 'boss@gully.com']); assert.match(sent[0][1], /Open your feed/);
+  assert.ok(P.F['gully-com/private/remind-feed.json'].sent[0]); assert.equal(P.F['gully-com/private/remind.json'], undefined, 'the check record is untouched');
+  assert.equal((await R.tick()).length, 0, 'not twice');
+  P.F['gully-com/status.json'] = feedWait({ feedOpenAt: t }); t += 30 * H; assert.equal((await R.tick()).length, 0, 'the feed opened: no more');
+  P.F['gully-com/status.json'] = feedWait({ feedWaitSince: t - 4 * H }); assert.equal((await R.tick()).length, 1, 'a new wait (a re-read) starts over');
 });
