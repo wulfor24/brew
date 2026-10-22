@@ -1342,7 +1342,6 @@
             <button class="icon-btn rb rl" aria-label="Notifications" data-bell>${ic('bell')}<span class="rl-tx" aria-hidden="true">Notifications</span><i data-count="bell"></i></button>
           </div>
           <div class="rl-foot">
-            <button class="icon-btn rl" aria-label="Brand Book" data-nav="brand">${ic('palette')}<span class="rl-tx" aria-hidden="true">Brand Book</span></button>
             <button class="icon-btn rl" aria-label="What Brew learned" data-nav="learned">${ic('book')}<span class="rl-tx" aria-hidden="true">What Brew learned</span></button>
             <button class="icon-btn rl" aria-label="Connectors" data-nav="connectors">${ic('plug')}<span class="rl-tx" aria-hidden="true">Connectors</span></button>
             <button class="icon-btn rl lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}<span class="rl-tx" aria-hidden="true">${window.LIVE?.me ? esc(window.LIVE.me.email) : 'Account'}</span></button>
@@ -1373,7 +1372,7 @@
     if (sv) sv.textContent = S.saved.length || ''; if (wk) { const n = WORK.items.filter(needsMe).length; wk.textContent = n || ''; wk.classList.toggle('hot', !!n); }
     $$('[data-count="bell"]').forEach((b) => { b.textContent = WORK.unread || ''; b.classList.toggle('hot', !!WORK.unread); });
     const vb = $('[data-viewing]'); if (vb) vb.innerHTML = `${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}`;
-    $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes', 'refs'].includes(view) ? 'saved' : ['move', 'moves'].includes(view) ? 'learned' : view)));
+    $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes', 'refs'].includes(view) ? 'saved' : ['move', 'moves', 'brand'].includes(view) ? 'learned' : view)));
     { const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').innerHTML = tp.classList.contains('j1-pill') ? `<b>${n}</b><span class="j1-more">&nbsp;with the team</span>` : `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
     paintTiles(); paintTabbar();
   };
@@ -5181,12 +5180,12 @@
     $$('[data-goto-move]').forEach((b) => b.onclick = () => openMove(+b.dataset.gotoMove));
   };
   const renderLearned = () => renderLearned0();
-  /* the Brand Book (brand-book.js): the brand's whole profile, dressed in its own colours and type; edited in place, shared in one tap */
+  /* the Brand Book (brand-book.js), part of What Brew learned: the brand's whole profile, dressed in its own colours and type; edited in place, shared in one tap */
   const renderBrand = () => {
     view = 'brand'; counts(); document.body.classList.remove('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
     $('#view').innerHTML = '<div class="bb-host" id="bbk"></div>';
     if (!window.BrandBook) { $('#bbk').innerHTML = '<p class="lx-empty">The Brand Book didn’t load. Reload the page.</p>'; return; }
-    window.BrandBook.render($('#bbk'), { slug: mvSlug(), api: tapi, toast });
+    window.BrandBook.render($('#bbk'), { slug: mvSlug(), api: tapi, toast, back: { nav: 'learned', label: 'What Brew learned' } });
   };
   /* ui=1: the big drop box on What Brew learned (the whole page still takes a drop) */
   /* the Brand Book sits at the top of what Brew learned: the brand's voice, look and own best work, in one place (brand-book.js) */

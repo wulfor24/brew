@@ -366,7 +366,8 @@ function wire(root) {
     if (g('[data-when]')) { const v = $('#j2-when')?.value; if (!v) return toast('Pick a date and time first.'); return schedule(board().id, new Date(v).toISOString()); }
     const rc = g('[data-recipe]'); if (rc) return (async () => { S.add = false; const s0 = S, jid = S.jam.id; const r = await api('POST', `/api/jam2/jams/${jid}/boards`, { fromRecipe: rc.dataset.recipe }); if (!live(s0, jid)) return; if (r?.error) return toast(r.error); S.jam = r.jam; S.tab = S.jam.boards.length - 1; S.sel = null; render(); })();
     if (g('[data-revoke]')) return (async () => { const jid = S.jam.id; await api('POST', `/api/jam2/jams/${jid}/revoke`, { kind: 'post' }); await api('POST', `/api/jam2/jams/${jid}/revoke`, { kind: 'brief' }); if (!S) return; S.finUrl = { ...(S.finUrl || {}), post: null, share: null }; toast('Those links are off: anyone opening them now sees “not valid”.'); })();
-    if (g('[data-book]')) return openBook();
+    /* one Brand Book for v1 and v2: the button opens the full book (What Brew learned › Brand Book), the same data this jam reads */
+    if (g('[data-book]')) { if (!document.querySelector('.rail')) return openBook(); close(); const go = document.createElement('button'); go.dataset.nav = 'brand'; go.hidden = true; document.body.appendChild(go); go.click(); go.remove(); return; }
     if (g('[data-book-no]')) { S.book = null; return render(); }
     if (g('[data-goal]')) return ask('Goal: awareness, launch, conversion or community', S.jam.concept?.goal, (v) => concept({ goal: v.toLowerCase().trim() }));
     if (g('[data-audience]')) return ask('Who it’s for', S.jam.concept?.audience, (v) => concept({ audience: v }));

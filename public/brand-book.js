@@ -92,7 +92,7 @@
       const body = shown.map(([id], i) => sec(id, String(i + 1).padStart(2, '0'), chapters[id], subs[id])).join('');
       const ups = (v.uploads || []).filter((u) => !u.applied);
       el.className = 'bb'; el.innerHTML = `
-        <div class="bb-bar">${edit ? `<button class="bb-btn" data-import>Bring your brand book</button>` : `<span class="bb-made">${ctx.readOnly ? 'A brand book by Brew' : 'Your team edits this book. Ask them to add you.'}</span>`}
+        <div class="bb-bar">${ctx.back ? `<button class="bb-back" data-nav="${esc(ctx.back.nav)}">${esc(ctx.back.label)}</button>` : ''}${edit ? `<button class="bb-btn" data-import>Bring your brand book</button>` : `<span class="bb-made">${ctx.readOnly ? 'A brand book by Brew' : 'Your team edits this book. Ask them to add you.'}</span>`}
           <div class="bb-share"><button class="bb-btn is-main" data-share aria-haspopup="menu">Share</button></div></div>
         ${d.building && !ctx.readOnly ? `<p class="bb-building"><brew-load class="spin"></brew-load>Brew is writing the voice, story and look from ${esc(v.host || 'the site')}. The rest is already here.</p>` : ''}
         ${v.book?.error && !d.building && edit ? `<p class="bb-note">${esc(v.book.error)}</p>` : ''}
