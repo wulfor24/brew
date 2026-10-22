@@ -8,6 +8,7 @@
 // When no candidate keeps the product exact, the old way (the real cut-out placed in a made scene) stands in, so the product is
 // never wrong. Phase 0 (23 Oct, Cozy): single products came out really shot; a kit of three changed two items, which this catches.
 import { recipe } from './catalogue.js';
+import { typePreset } from '../public/jam2/scene.js';
 
 const tidy = (s, n = 400) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const ZONES = ['top', 'bottom', 'left', 'right'];
@@ -42,7 +43,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const prompt = [`Art-direct one ad photograph for ${ctx.bbv.name || 'a brand'}${ctx.bbv.category ? ` (${ctx.bbv.category})` : ''}.`,
       `The piece: ${r.label || board.label} for ${size.label || size.ratio} (${size.ratio}).`, `The card: ${tidy(c.spark?.title || ctx.card?.title, 200)}. ${tidy(c.spark?.says, 300)}`,
       `Angle: ${tidy(c.angle, 200)}. Audience: ${tidy(c.audience, 160)}. Headline that will be set over it: "${tidy(words.headline, 120)}".`,
-      p?.img ? `The product: ${tidy(p.name, 140)}. It must be the hero, clearly visible, exactly as in its photos.` : 'There is no product photo: show the moment or the place the brand sells, with people when it helps.',
+      p?.img ? `The product: ${tidy(p.name, 140)}. It must be the hero, clearly visible, exactly as in its photos. Never describe its colour, material, pattern or design (you can't see the photos): call it "the product".` : 'There is no product photo: show the moment or the place the brand sells, with people when it helps.',
       ctx.bbv.look?.notes ? `The brand's look: ${tidy(ctx.bbv.look.notes, 300)}` : '', ctx.notes?.length ? `The team asked: ${tidy(ctx.notes.join(' '), 400)}` : '',
       'Pick the format family that fits the card. Describe one real, specific moment a photographer could shoot (people, place, props, light, lens). Keep one part of the frame calm for the headline and say which. No words, signs, screens with text or logos in the picture.'].filter(Boolean).join('\n');
     try { const out = await claudeTool(prompt, DIRECT_SCHEMA, 1200, 'jam2_direct'); return { family: out.family || fallback.family, moment: tidy(out.moment, 900) || fallback.moment, zone: ZONES.includes(out.zone) ? out.zone : 'top' }; }
@@ -75,6 +76,18 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
       } catch (e) { log.warn?.('[creative] critic', e.message); return { ...c, same: true, shot: 5, ad: 5, zone: d.zone, why: `check didn't run: ${e.message}`, i, unchecked: true }; } }));
   }
 
+  /* the words over a shot: the brand's type preset, the CTA as a button (bottom left, clear of the platform's UI), any proof badge
+     tucked under the words instead of floating over the picture, the logo kept from the scene */
+  function layout(ctx, size, bgFile, words, zone) {
+    const sc = composeScene({ size, bgFile, cut: null, words, kit: ctx.bbv.kit, preset: presetFor(zone) }), { w, h } = size, kit = ctx.bbv.kit || {};
+    const cta = tidy(words.cta, 22) || (ctx.product?.name ? 'Shop now' : 'Learn more'), L = typePreset(presetFor(zone), { w, h, kit, headline: words.headline || '', sub: words.sub || '', cta, badge: '' });
+    if (words.badge) { const head = L.find((l) => l.role === 'headline'), subL = L.find((l) => l.role === 'sub'), u = Math.min(w, h * 1.25), big = head?.style?.size || Math.round(u * 0.07);
+      const below = (subL ? subL.y + Math.round((subL.style?.size || 30) * 2.6) : (head?.y || 0) + Math.round(big * 2.4)), y = zone === 'bottom' ? Math.max(0, (head?.y || h * 0.68) - Math.round(w * 0.075)) : below;
+      L.push({ id: 'badge', kind: 'badge', role: 'small', words: tidy(words.badge, 34), x: head?.x || Math.round(u * 0.065), y, w: Math.round(w * 0.42), z: 7, style: { font: kit.fonts?.body || kit.fonts?.heading || null, size: Math.round(w * 0.026), weight: 700, color: '#111', bg: '#fff', radius: 999, pad: Math.round(w * 0.014), align: 'center' } }); }
+    sc.layers = [...sc.layers.filter((l) => !['text', 'shape', 'badge'].includes(l.kind)), ...L];
+    return sc;
+  }
+
   /* the whole static: direct → shoot → critic → layout. Returns null when no candidate kept the product (the caller composites) */
   async function staticAd(ctx, board, words, size, { n = 2 } = {}) {
     const d = await direct(ctx, board, words, size);
@@ -86,7 +99,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     keepLog?.({ slug: ctx.slug, board: board.id, direction: d, judged: judged.map(({ file, same, shot, ad, zone, why, provider }) => ({ file, same, shot, ad, zone, why, provider })) });
     if (!ok.length) return { made, direction: d, judged, fail: 'the product changed in every picture' };
     const best = ok[0], zone = best.zone || d.zone;
-    const scene = composeScene({ size, bgFile: best.file, cut: null, words, kit: ctx.bbv.kit, preset: presetFor(zone) });
+    const scene = layout(ctx, size, best.file, words, zone);
     return { made, direction: d, judged, scene, file: await render(scene), shot: { file: best.file, ratio: size.ratio, zone, family: d.family, moment: d.moment, score: { shot: best.shot, ad: best.ad }, why: best.why, provider: best.provider, bgs: { [size.ratio]: best.file } } };
   }
 
@@ -99,7 +112,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
       const src = await fileOf(sh.file); const out = await engines.run('still.extend', { srcFile: src, srcUrl: sh.file, ratio: GEM_RATIO[size.ratio] || size.ratio, slug: ctx.slug, product: ctx.product?.name || false,
         prompt: `Extend this exact photograph to a ${size.ratio} frame. Keep every existing part of the photo unchanged (the people, the product, the light, the colours); only continue the scene naturally at the edges so it reads as one real photo shot ${size.w > size.h ? 'wider' : 'taller'}. No text, no logos.` });
       bg = out.file; made.push({ cap: 'still.extend', provider: out.provider, model: out.model, usd: out.usd || 0 }); }
-    const scene = composeScene({ size, bgFile: bg, cut: null, words: take.words || {}, kit: ctx.bbv.kit, preset: presetFor(sh.zone) });
+    const scene = layout(ctx, size, bg, take.words || {}, sh.zone);
     return { scene, file: await render(scene), bg, made };
   }
 
