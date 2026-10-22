@@ -4316,16 +4316,46 @@
      draft in Mail or Outlook with everything attached. Brew sends nothing itself */
   const b64 = async (blob) => { const u8 = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s).replace(/.{76}/g, '$&\r\n'); };
   const utf8b64 = (s) => btoa(unescape(encodeURIComponent(s)));
-  const tbMailText = (b) => { const sec = (k) => b.sections.find((x) => x.k === k)?.t || '';
-    return `Hi,\n\nHere is the brief for ${b.title}. The full brief is in the attached PDF, with the final ${(b.creatives || []).length ? 'creatives attached as files' : 'words in it'}.\n\nWhat to make: ${sec('what')}\n\nWhy: ${sec('why')}\n\nDue: ${b.memo.due || 'to confirm'}\n\nReply here with any questions.\n\nThanks,\n${b.memo.from || `${b.brand} team`}`; };
-  const tbEml = async (b, files) => { const B = `brew-${Math.random().toString(36).slice(2)}`, subj = `Brief: ${b.title}`;
-    const parts = [`--${B}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${utf8b64(tbMailText(b)).replace(/.{76}/g, '$&\r\n')}\r\n`];
+  /* the email that goes with the brief: what to make, why, the strongest evidence, what's attached, when, a backup link. In Gmail
+     (no attachments through a link) it opens with one line for the sender: which downloaded files to attach, then delete it */
+  const tbMailText = (b, o = {}) => { const sec = (k) => String(b.sections.find((x) => x.k === k)?.t || '').trim(), clipT = (t, n) => (t.length > n ? t.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : t);
+    const flat = (t) => t.split('\n').map((l) => l.replace(/^[-•]\s+/, '').trim()).filter(Boolean).join(' ');
+    const pdfName = o.pdf?.name || 'the brief (PDF)', cr = b.creatives || [], files = [pdfName, ...cr.map((c) => c.name)];
+    const L = [];
+    if (o.gmail) L.push(`[Before you send: attach the ${files.length} file${files.length > 1 ? 's' : ''} Brew just saved to your Downloads (${files.join(', ')}), then delete this line.]`, '');
+    L.push('Hi,', '', `We’d like you to make this for ${b.brand || 'us'}: ${clipT(flat(sec('what')), 260)}`, '', `Why: ${clipT(flat(sec('why')), 360)}`);
+    const ev = (b.evidence || []).slice(0, 3); if (ev.length) L.push('', 'What backs it:', ...ev.map((e) => `- ${clipT(e.say, 160)}${e.src ? ` (${e.src})` : ''}`));
+    const who = flat(sec('who')); if (who && !/^to confirm/i.test(who)) L.push('', `Who it’s for: ${clipT(who, 220)}`);
+    L.push('', 'Attached:', `- ${pdfName}: the full brief, with the final words, specs, rules and how we’ll judge it`, ...cr.map((c) => `- ${c.name}: ${c.kind === 'video' ? 'the final video' : 'the final creative'}, use it as it is`));
+    const open = sec('open').split('\n').map((l) => l.replace(/^[-•]\s+/, '').trim()).filter((l) => l && !/^nothing open/i.test(l)).slice(0, 3);
+    if (open.length) L.push('', 'Still to confirm with us:', ...open.map((l) => `- ${clipT(l, 140)}`));
+    L.push('', b.memo.due ? `We need it by ${b.memo.due}. ` + 'Reply here with any questions before you start.' : 'Tell us when you can have it ready, and reply here with any questions before you start.');
+    if (o.link) L.push('', `If an attachment didn’t come through, the brief is here: ${o.link}`);
+    L.push('', 'Thanks,', b.memo.from || `${b.brand} team`); return L.join('\n'); };
+  const tbSubject = (b) => `Brief: ${b.title}${b.brand ? ` · ${b.brand}` : ''}`;
+  const tbEml = async (b, files, pdf) => { const B = `brew-${Math.random().toString(36).slice(2)}`, subj = tbSubject(b);
+    const parts = [`--${B}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${utf8b64(tbMailText(b, { pdf })).replace(/.{76}/g, '$&\r\n')}\r\n`];
     for (const f of files) parts.push(`--${B}\r\nContent-Type: ${f.type || 'application/octet-stream'}; name="${f.name}"\r\nContent-Disposition: attachment; filename="${f.name}"\r\nContent-Transfer-Encoding: base64\r\n\r\n${await b64(f)}\r\n`);
     return new Blob([`To: \r\nSubject: =?UTF-8?B?${utf8b64(subj)}?=\r\nX-Unsent: 1\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="${B}"\r\n\r\n${parts.join('')}--${B}--\r\n`], { type: 'message/rfc822' }); };
+  /* Send PDF asks where: Gmail (the files download, the draft opens written) or a Mail / Outlook draft with everything attached */
+  const tbSendSheet = () => modal(`<div class="sheet pick-sheet tbm-send" role="dialog" aria-label="Send the brief"><header class="sh-h"><b class="sh-t">${ic('send', 's16')}Send the brief</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
+      <p class="sh-p">Brew writes the email; you pick who it goes to and send it. Nothing is sent for you.</p>
+      <button class="tbm-opt" data-tb-gmail><span class="tbm-opt-i tbm-gm" aria-hidden="true">M</span><span><b>Open in Gmail</b><small>The PDF and ${(TBS.brief?.creatives || []).length ? 'the creatives download' : 'downloads'}, and a Gmail draft opens with the email written. Attach the files from Downloads and send.</small></span>${ic('right', 's16')}</button>
+      <button class="tbm-opt" data-tb-mail><span class="tbm-opt-i" aria-hidden="true">${ic('send', 's16')}</span><span><b>Mail or Outlook draft</b><small>Everything already attached. It opens as a draft in Mail or Outlook, or in your share menu.</small></span>${ic('right', 's16')}</button></div>`);
+  const tbGmail = async (btn) => { const win = window.open('', '_blank'); /* opened inside the click, so it is never blocked; filled in when the files are ready */
+    if (win) win.document.write('<!doctype html><title>Opening Gmail…</title><body style="font:15px -apple-system,system-ui,sans-serif;display:grid;place-items:center;height:90vh;color:#555">Writing the email…</body>');
+    const done = busyBtn(btn, 'Getting the files…'); try {
+      const pdf = await tbPdf(); if (!pdf) { win?.close(); return; } const b = TBS.brief, cr = b.creatives || [];
+      dl('/' + pdf.url, pdf.name); cr.forEach((c, i) => setTimeout(() => dl('/' + c.url, c.name), (i + 1) * 350));
+      const body = tbMailText(b, { gmail: true, pdf, link: `${location.origin}/${pdf.url}` });
+      const url = `https://mail.google.com/mail/?view=cm&fs=1&tf=1&su=${encodeURIComponent(tbSubject(b))}&body=${encodeURIComponent(body)}`;
+      if (win && !win.closed) win.location.replace(url); else window.open(url, '_blank', 'noopener');
+      closeModal(); toast(`${ic('check', 's16')}Gmail draft opened. ${cr.length + 1} file${cr.length ? 's' : ''} saved to Downloads: drag ${cr.length ? 'them' : 'it'} into the draft. If your browser asks, allow the downloads.`);
+    } catch (e) { win?.close(); toast(`${ic('info', 's16')}That didn’t go through. Try again.`); } finally { done(); } };
   const tbSend = async (btn) => { const done = busyBtn(btn, 'Getting it ready…'); try {
-      const pdf = await tbPdf(); if (!pdf) return; const files = await tbFiles(pdf), b = TBS.brief;
-      if (navigator.canShare?.({ files }) && navigator.share) { try { await navigator.share({ files, title: `Brief: ${b.title}`, text: tbMailText(b) }); toast(`${ic('check', 's16')}Pick your email app: the PDF and files are attached`); return; } catch (e) { if (e?.name === 'AbortError') return; } }
-      dl(URL.createObjectURL(await tbEml(b, files)), `${asciiName(`Brief - ${b.title}`).slice(0, 80)}.eml`);
+      const pdf = await tbPdf(); if (!pdf) return; const files = await tbFiles(pdf), b = TBS.brief; closeModal();
+      if (navigator.canShare?.({ files }) && navigator.share) { try { await navigator.share({ files, title: tbSubject(b), text: tbMailText(b, { pdf }) }); toast(`${ic('check', 's16')}Pick your email app: the PDF and files are attached`); return; } catch (e) { if (e?.name === 'AbortError') return; } }
+      dl(URL.createObjectURL(await tbEml(b, files, pdf)), `${asciiName(`Brief - ${b.title}`).slice(0, 80)}.eml`);
       toast(`${ic('check', 's16')}Email draft downloaded: open it and it opens in Mail or Outlook, ready to send, with the PDF${files.length > 1 ? ` and ${files.length - 1} file${files.length > 2 ? 's' : ''}` : ''} attached`);
     } finally { done(); } };
   const tbDownload = async (btn) => { const done = busyBtn(btn, 'Making the PDF…'); try { const pdf = await tbPdf(); if (!pdf) return; dl('/' + pdf.url, pdf.name);
@@ -4340,7 +4370,9 @@
       const r = await tapi('POST', `/api/work/${w.id}/team-brief/edit`, { k, t }); if (r.brief) { TBS.brief = r.brief; TBS.pdf = null; tbWarm(); } if (r.error) toast(esc(r.error)); return paintStudio(); }
     const ev = g('[data-tb-evrm]'); if (ev) { const r = await tapi('POST', `/api/work/${tbWork().id}/team-brief/evidence`, { i: +ev.dataset.tbEvrm }); if (r.brief) { TBS.brief = r.brief; TBS.pdf = null; tbWarm(); } return paintStudio(); }
     const pd = g('[data-tb-pdf]'); if (pd) return tbDownload(pd);
-    const sd = g('[data-tb-send]'); if (sd) return tbSend(sd);
+    if (g('[data-tb-send]')) return tbSendSheet();
+    const gm = g('[data-tb-gmail]'); if (gm) return tbGmail(gm);
+    const ml = g('[data-tb-mail]'); if (ml) return tbSend(ml);
     if (g('[data-tb-files]')) { (TBS.brief?.creatives || []).forEach((c, i) => setTimeout(() => dl('/' + c.url, c.name), i * 300)); } });
   addEventListener('keydown', (e) => { if (view !== 'remix' || RX.stage !== 'brief') return; const ed = e.target.closest?.('[data-tb-ed]'); if (ed && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ed.click(); }
     if (e.target.id === 'tbm-ed') { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); e.target.blur(); RX.tbEdit = null; paintStudio(); } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $('[data-tb-save]')?.click(); } } }, true);

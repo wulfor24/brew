@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { saveGen, genFile } from './gen-store.js';
 import { withBrowser } from './pdf/render.js';
 
-export const TB_V = 3; // bump when the brief starts being written differently: every saved one is written again
+export const TB_V = 4; // bump when the brief starts being written differently: every saved one is written again
 export const SECTIONS = [['what', 'What to make'], ['why', 'Why we’re doing it'], ['who', 'Who it’s for'], ['words', 'The words · final'], ['creative', 'The creative'],
   ['specs', 'Specs'], ['rules', 'Must-haves and don’ts'], ['when', 'Budget, timing and owner'], ['measure', 'How we measure it'], ['done', 'Done when'], ['open', 'Still to confirm']];
 const AI_KEYS = ['what', 'why', 'who', 'creative', 'specs', 'rules', 'when', 'done'];
@@ -32,7 +32,9 @@ export function createTeamBrief({ claudeTool, isMock = () => true, spend = () =>
   /* the files that go with it: the package's own pictures and videos (a rival's are never ours: handoff leaves them out) */
   const creativesOf = (x) => { const seen = new Set();
     return (x.pkg?.assets || []).filter((a) => (a.kind === 'image' || a.kind === 'video') && ownPath(a.url)).filter((a) => { const n = ownPath(a.url); if (seen.has(n)) return false; seen.add(n); return true; })
-      .map((a, i) => ({ kind: a.kind, label: a.label || (a.kind === 'video' ? 'Video' : 'Picture'), url: ownPath(a.url), poster: ownPath(a.poster), name: `${String(i + 1).padStart(2, '0')} ${one(a.label || a.kind, 40).replace(/[\/\\:*?"<>|]+/g, ' ')}.${ownPath(a.url).split('.').pop()}` })); };
+      .map((a, i, all) => ({ kind: a.kind, label: a.label || (a.kind === 'video' ? 'Video' : 'Picture'), url: ownPath(a.url), poster: ownPath(a.poster),
+        /* the file name the receiving team sees: the brand and what it is, never Brew's own label ("The card this came from") */
+        name: `${`${x.brand || 'Brand'} ${a.kind === 'video' ? 'video' : 'creative'}${all.length > 1 ? ` ${i + 1}` : ''}`.replace(/[\/\\:*?"<>|]+/g, ' ').trim()}.${ownPath(a.url).split('.').pop().replace('jpeg', 'jpg')}` })); };
   const wordsOf = (x) => (x.pkg?.fields || []).filter((f) => f.pub).map((f) => `${f.label}: ${f.value}`).join('\n') || (x.pkg?.fields || []).slice(0, 6).map((f) => `${f.label}: ${f.value}`).join('\n');
   const keyOf = (w, x) => `${TB_V}|${x.pkg?.id || ''}|${x.pkg?.version || 0}|${w.doc?.rev || 0}`;
 

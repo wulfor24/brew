@@ -957,3 +957,12 @@ body[data-view="remix"] .fab{display:none}
 @container canvas (max-width:600px){.tbm-doc{padding:20px 18px 0}.tbm-f{margin:14px -18px 0;padding:12px 18px;flex-wrap:wrap}.tbm-f .btn{flex:1}.tbm-f .linkbtn{order:3;flex:0 0 100%;text-align:center}.tbm-f .sp{display:none}.tbm-memo{grid-template-columns:repeat(2,minmax(0,1fr))}.tbm-title{font-size:22px}.tbm-files figure{width:calc(50% - 5px)}.tbm-files img,.tbm-files video{width:100%}}
 .tbm-f .btn{white-space:nowrap}
 @media (max-width:860px){.st-top .tbm-switch{order:5;margin:6px 0 0}}
+/* Send the brief: Gmail or a Mail / Outlook draft (app.js tbSendSheet) */
+.tbm-send{max-width:440px}
+.tbm-opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);font:inherit;padding:14px;margin:0 0 10px;cursor:pointer}
+.tbm-opt:hover,.tbm-opt:focus-visible{border-color:var(--fg-3);outline:none}
+.tbm-opt > span:nth-child(2){flex:1;display:grid;gap:3px;min-width:0}.tbm-opt b{font-size:14.5px}.tbm-opt small{font-size:12.5px;line-height:1.45;color:var(--fg-3)}
+.tbm-opt-i{flex:0 0 36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--surface-2);color:var(--fg-2);font-weight:800}
+.tbm-opt-i.tbm-gm{background:#fff;color:#ea4335;border:1px solid var(--line);font-family:Georgia,serif;font-size:19px}
+.tbm-opt.is-wait{opacity:.7;pointer-events:none}
+.tbm-send .sh-p{margin:0 0 14px}
