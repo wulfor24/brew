@@ -13,7 +13,7 @@
 import { safeFetch, stripTags, links, hostOf, UA, sha as hash, clean } from './reader/util.js';
 import { offersOf, guaranteeOf } from './reader/stages/ads.js';
 
-export const BOOK_V = 3; // 3: Instagram pictures from fresh lists (signed links expire); // 2: built with the week's enrichment (posts, reels with plays, TikToks, film words) and the signature that keeps it current
+export const BOOK_V = 4; // 4: a cover tagline is never a search title, one creative listed once; 3: Instagram pictures from fresh lists (signed links expire); // 2: built with the week's enrichment (posts, reels with plays, TikToks, film words) and the signature that keeps it current
 const FILE = 'brandbook-read.json';
 const tidy = (s, n = 400) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const squash = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[^\p{L}\p{N}']+/gu, ' ').trim();
@@ -57,7 +57,8 @@ export function libraryOf(profile = {}, { max = 6, enrich = null } = {}) {
   for (const t of enrich?.tiktok?.videos || profile.socials?.tiktok?.videos || []) if (isAsset(t.thumb)) push('tiktok', { id: `tt:${t.url}`, src: t.thumb, words: tidy(t.caption, 200), url: t.url, score: +t.views || 0, proof: t.views != null ? `${(+t.views).toLocaleString('en-US')} views` : null, kind: 'Their TikTok' });
   const prods = profile.catalog?.products || [], hero = new Set(profile.catalog?.hero || []);
   for (const p of [...prods.filter((x) => hero.has(x.handle)), ...prods.filter((x) => !hero.has(x.handle))]) if (isAsset(p.img)) push('product-photo', { id: `pr:${p.handle}`, src: p.img, words: p.title, url: p.url || null, score: hero.has(p.handle) ? 1 : 0, proof: hero.has(p.handle) ? 'Best seller' : null, kind: 'Their product photo' });
-  for (const f of Object.keys(fam)) fam[f] = fam[f].sort((a, b) => b.score - a.score).slice(0, max);
+  /* one creative under several ad ids (Meta lists each placement or test cell) is one reference: the best-scoring copy stays */
+  for (const f of Object.keys(fam)) { const seen = new Set(); fam[f] = fam[f].sort((a, b) => b.score - a.score).filter((r) => { const k = squash(r.words).slice(0, 120); if (k && seen.has(k)) return false; if (k) seen.add(k); return true; }).slice(0, max); }
   return fam;
 }
 
@@ -70,13 +71,15 @@ export function tiersOf(products = [], cur) {
   const band = (name, lo, hi) => { const xs = ps.filter((x) => x.p >= lo && x.p <= hi); return xs.length ? { name, from: money(xs[0].p, cur), to: money(xs.at(-1).p, cur), n: xs.length, eg: tidy(xs[Math.floor(xs.length / 2)].t, 60) } : null; };
   return [band('Entry', 0, a - 0.01), band('Core', a, b - 0.01), band('Premium', b, Infinity)].filter(Boolean);
 }
+/* a tagline the brand wrote, never a page title written for search ("Explore X's most trusted…", "Buy … online", "Home | X") */
+export const taglineOk = (t) => { const x = String(t || '').trim(); return x.length >= 3 && x.length <= 70 && !/\||\b(buy|shop|explore|discover|order)\b.*\b(online|best|trusted|range|collection|products?|solutions?)\b|\bonline\b|official (site|store|website)|^home\b/i.test(x); };
 export function freeChapters({ profile = {}, brief = {}, ledger = [], homeText = '', config = {} } = {}) {
   const L = (k) => ledger.find((x) => x.key === k);
   const prods = profile.catalog?.products || [], hero = new Set(profile.catalog?.hero || []), cur = profile.currency;
   const id = profile.identity || {};
   const colors = (id.colors || []).map((hex) => ({ hex: String(hex).toLowerCase(), role: null, use: null, light: lum(hex) > 0.7 }));
   return {
-    cover: { name: profile.brandName || profile.name || null, tagline: profile.tagline || null, oneLine: profile.descriptor || brief.oneLine || null, logo: id.logo || null, mark: id.mark || null, url: profile.url || null, category: [profile.category, profile.subcategory].filter(Boolean).join(' · ') || null },
+    cover: { name: profile.brandName || profile.name || null, tagline: taglineOk(profile.tagline) ? profile.tagline : null, oneLine: profile.descriptor || brief.oneLine || null, logo: id.logo || null, mark: id.mark || null, url: profile.url || null, category: [profile.category, profile.subcategory].filter(Boolean).join(' · ') || null },
     story: { about: profile.about || null, aboutUrl: profile.aboutUrl || null, founders: (profile.company?.founders || []).map((f) => ({ name: f.name, url: f.url || null })), founded: profile.company?.founded || null, hq: profile.company?.hq || null,
       press: (profile.company?.press || []).map((p) => ({ name: tidy(p.title || p.name || p.outlet, 120), url: p.url || null, outlet: p.outlet || null })).filter((p) => p.name) },
     kit: { logo: id.logo || null, mark: id.mark || null, colors, fonts: { heading: id.fonts?.heading || null, body: id.fonts?.body || null } },
@@ -257,7 +260,8 @@ export function createBookReader({ packs, ai, treg = null, enricher = null, log 
       for (const x of w.refs) { const id = pics[x.n - 1]?.ref; if (!id) continue; for (const f of Object.values(library)) for (const ref of f) if (ref.id === id) ref.why = x.why; }
       const roles = new Map(w.colors.map((c) => [c.hex, c]));
       const colors = kit.colors.map((c) => ({ ...c, ...(roles.get(c.hex) || {}) }));
-      return { ...base, kit: { ...kit, colors, typeUse: w.typeUse }, story: { ...base.story, ...(w.story || {}) }, voice: w.voice, pillars: w.pillars,
+      const cover = { ...base.cover, tagline: base.cover.tagline || (taglineOk(w.story?.tagline) ? w.story.tagline : null) };
+      return { ...base, cover, kit: { ...kit, colors, typeUse: w.typeUse }, story: { ...base.story, ...(w.story || {}) }, voice: w.voice, pillars: w.pillars,
         words: { ...w.words, customers: base.people.words }, proof: { ...base.proof, claims: w.claims }, look: w.look, naming: w.naming, playbooks: w.playbooks, library, usd: +(+r.usd || 0).toFixed(4) };
     } catch (e) { log.warn?.('[book] write', slug, e.message); return { ...base, error: e.billing ? 'The AI is paused, so the voice, story and look will be written once it’s back.' : 'The voice, story and look couldn’t be written this time; Brew tries again on the next open.' }; }
   }

@@ -222,3 +222,12 @@ test('enrichment: fresh posts with plays, TikToks and film words; pictures saved
   assert.ok(c.capped); assert.ok(c.usd < 1.3, 'stops at the cap');
   void capped;
 });
+
+test('the cover never shows a search title, and one creative listed under many ad ids is one reference', async () => {
+  const { taglineOk } = await import('../brand-book-read.js');
+  for (const t of ["Explore Arata's most trusted & dermat-approved haircare solutions for Indian hair.", 'Buy Protein Powder Online in India', 'Home | Puma', 'Official Store of X']) assert.equal(taglineOk(t), false, t);
+  for (const t of ['Cold feet, fixed.', 'Forever Faster', "Bengaluru's Largest Child-Centric Township"]) assert.equal(taglineOk(t), true, t);
+  const lib = libraryOf({ ads: { own: { items: [{ id: '1', hook: 'Same ad', format: 'image', poster: '/b/x/a/ad-1.jpg', days: 9 }, { id: '2', hook: 'Same ad', format: 'image', poster: '/b/x/a/ad-2.jpg', days: 3 }, { id: '3', hook: 'Other', format: 'image', poster: '/b/x/a/ad-3.jpg', days: 1 }] } } });
+  assert.deepEqual(lib['ad-image'].map((r) => r.id), ['ad:1', 'ad:3']);
+  assert.equal(freeChapters({ profile: { tagline: 'Buy shoes online', name: 'X' } }).cover.tagline, null);
+});
