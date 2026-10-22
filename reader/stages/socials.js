@@ -25,14 +25,15 @@ export async function socials(ctx) {
   // YouTube: top videos by views
   if (s.youtube) {
     const ch = (s.youtube.url.match(NET.youtube) || [])[2];
-    let vids = [];
+    let vids = [], via = null;
     const K = process.env.YOUTUBE_API_KEY;
     try {
-      if (K) vids = await ytApi(ctx, ch, K);
-      else if (ctx.tregOn) { const j = await ctx.treg('crawl4ai.youtube.channel.videos', { body: { channel: s.youtube.url, limit: 30 }, timeout: 45e3 }, ch); vids = (j?.rows || []).map((v) => ({ title: clean(v.title), url: v.url, views: v.views ?? null, published: v.published || null, thumbSrc: v.thumbnail })); }
+      /* Google's API first (free); when it refuses (its daily quota is shared by every brand) or there is no key: treg */
+      if (K) vids = await ytApi(ctx, ch, K).then((v) => (via = 'YouTube Data API', v)).catch((e) => { if (!ctx.tregOn) throw e; return []; });
+      if (!vids.length && ctx.tregOn) { via = 'treg:crawl4ai.youtube.channel.videos'; const j = await ctx.treg('crawl4ai.youtube.channel.videos', { body: { channel: s.youtube.url, limit: 30 }, timeout: 45e3 }, ch); vids = (j?.rows || []).map((v) => ({ title: clean(v.title), url: v.url, views: v.views ?? null, published: v.published || null, thumbSrc: v.thumbnail })); }
     } catch (e) { s.youtube.error = e.message.slice(0, 120); }
     vids.sort((a, b) => (b.views || 0) - (a.views || 0));
-    s.youtube.videos = vids.slice(0, 6); s.youtube.read = vids.length; s.youtube.source = K ? 'YouTube Data API' : 'treg:crawl4ai.youtube.channel.videos';
+    s.youtube.videos = vids.slice(0, 6); s.youtube.read = vids.length; s.youtube.source = via || (K ? 'YouTube Data API' : 'treg:crawl4ai.youtube.channel.videos');
     if (vids.length) ledger.add({ key: 'social.youtube.top', label: `Most-watched of the ${vids.length} latest YouTube videos`, v: `${vids[0].title} · ${vids[0].views != null ? num(vids[0].views) + ' views' : 'views unknown'}`, n: vids[0].views, unit: 'views', url: vids[0].url, method: K ? 'youtube-api' : 'treg:crawl4ai.youtube.channel.videos' });
   }
   // Instagram: recent posts

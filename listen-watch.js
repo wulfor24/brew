@@ -69,6 +69,8 @@ const short = (name) => { const p = String(name || '').trim().replace(/^@|^\/?u\
 const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const wordsRe = (list) => { const xs = [...new Set((list || []).map((x) => String(x).trim().toLowerCase()).filter((x) => x.length >= 2))]; return xs.length ? new RegExp(`(^|[^a-z0-9])(${xs.map((x) => escRe(x).replace(/\\? /g, '[\\s-]?')).join('|')})(?=$|[^a-z0-9])`, 'i') : /(?!)/; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* the day Google's YouTube quota ran out (shared by every brand on this instance) */
+const YT_OUT = { day: null };
 const get = async (url, as = 'json', ms = 20e3) => { const r = await fetch(url, { headers: { 'user-agent': UA, accept: as === 'json' ? 'application/json' : '*/*' }, signal: AbortSignal.timeout(ms) }); if (!r.ok) throw Object.assign(new Error(`${r.status} ${url.split('?')[0]}`), { status: r.status }); return as === 'json' ? r.json() : r.text(); };
 // Reddit and PullPush answer 429 to bursts: wait once, then try again (a second 429 is thrown with its status)
 const getRetry = async (url, as, ms, wait = 3e3) => { try { return await get(url, as, ms); } catch (e) { if (e.status !== 429) throw e; await sleep(wait); return get(url, as, ms); } };
@@ -321,8 +323,17 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
     return out;
   }
 
+  /* Google's YouTube API key has a daily quota shared by every brand: once it answers 403/429 the rest of the day goes
+     through treg (search and comments), never "YouTube: error" for every brand until midnight Pacific */
   async function youtube(c, o, st, have, ex) {
-    const K = process.env.YOUTUBE_API_KEY; if (!K) return youtubeTreg(c, o, st, ex);
+    const day = new Date(now() - 8 * 36e5).toISOString().slice(0, 10); /* the quota resets at midnight Pacific */
+    if (!process.env.YOUTUBE_API_KEY || YT_OUT.day === day) { if (YT_OUT.day === day) st.notes.push('YouTube API quota used up today: read through treg'); return youtubeTreg(c, o, st, ex); }
+    const out = await youtubeApi(c, o, st, have, ex);
+    if (!out.length && st.notes.some((n) => /\b(403|429)\b|quota/i.test(n))) { YT_OUT.day = day; st.notes = st.notes.filter((n) => !/\b(403|429)\b|quota/i.test(n)); st.notes.push('YouTube API quota used up: read through treg'); st.partial = []; return youtubeTreg(c, o, st, ex); }
+    return out;
+  }
+  async function youtubeApi(c, o, st, have, ex) {
+    const K = process.env.YOUTUBE_API_KEY;
     const F = filterOf(c), vids = new Map(), out = (st.partial = []);
     // the brand's searches, then rivals, the category and problems (each video must fit what it was searched for); a light read wants this month's videos
     const after = o.lite ? `&publishedAfter=${new Date(now() - 30 * DAY).toISOString()}` : '';
