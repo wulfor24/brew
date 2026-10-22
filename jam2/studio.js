@@ -106,7 +106,10 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     } else { /* UGC / TikTok: a person with the real product, talking, Seedance with the product photos as references */
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); await ensureProfile(ctx);
       const photos = cr.photosOf(ctx, ctx.profile).map((u) => engines.pub(u)), o = hf.pick('ugc-video'), line = tidy([words.headline, words.sub].filter(Boolean).join(' '), 220);
-      const input = { ...o.input, prompt: tidy([st.look, ctx.product?.name ? `The product (exactly as in the reference photos): ${ctx.product.name}. ${cr.productLine(ctx.profile)}` : '', st.says && line ? `They say: "${line}"` : '', 'Vertical phone video, natural light, real person, no on-screen text.'].filter(Boolean).join(' '), 2400),
+      /* the same art direction as a photo: the brand's market, cast, places and taste decide who is on camera and where (23 Oct, Arata:
+         the look alone gave a Western presenter for an Indian hair brand) */
+      const d = await cr.direct(ctx, board, words, size, { ...st, people: 'person' }, { film: true }).catch(() => null);
+      const input = { ...o.input, prompt: tidy([st.look, d?.moment ? `Who, where and how: ${d.moment}` : '', ctx.product?.name ? `The product (exactly as in the reference photos): ${ctx.product.name}. ${cr.productLine(ctx.profile)}` : '', st.says && line ? `They say: "${line}"` : '', 'Vertical phone video, natural light, real person, no on-screen text.'].filter(Boolean).join(' '), 2400),
         image_urls: photos, duration: spec.seconds || st.seconds || 10, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
       const e = await hf.estimate(o.id, input), out = await hf.run(o.id, input, { maxMs: 25 * 60e3 }); const file = engines.keep(out.buf, 'mp4'); made.push({ cap: 'video.ugc', provider: 'higgsfield', model: o.id, usd: e.usd ?? 3 });
       Object.assign(take, { file });

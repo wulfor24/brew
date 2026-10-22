@@ -53,14 +53,15 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     return L.map((x) => tidy(x, 400)); }
 
   /* 1. art direction: one moment for this card, this angle and this placement */
-  async function direct(ctx, board, words, size, style = null) {
+  async function direct(ctx, board, words, size, style = null, { film = false } = {}) {
     const r = recipe(board.recipe) || {}, c = ctx.jam.concept || {}, p = ctx.product;
     const fallback = { family: p?.img ? 'product in use' : 'lifestyle moment', moment: tidy(words.scene || c.angle || 'a real moment where the product is used', 600), zone: 'top' };
     if (isMock() || !spend('text', ctx.slug)) return fallback;
-    const prompt = [`Art-direct one ad photograph for ${ctx.bbv.name || 'a brand'}${ctx.bbv.category ? ` (${ctx.bbv.category})` : ''}.`,
+    const prompt = [`Art-direct one ${film ? 'vertical phone video (one continuous take)' : 'ad photograph'} for ${ctx.bbv.name || 'a brand'}${ctx.bbv.category ? ` (${ctx.bbv.category})` : ''}.`,
       `The piece: ${r.label || board.label} for ${size.label || size.ratio} (${size.ratio}).`, `The card: ${tidy(c.spark?.title || ctx.card?.title, 200)}. ${tidy(c.spark?.says, 300)}`,
       `Angle: ${tidy(c.angle, 200)}. Audience: ${tidy(c.audience, 160)}. Headline that will be set over it: "${tidy(words.headline, 120)}".`,
       p?.img ? `The product: ${tidy(p.name, 140)}. ${ctx.profile ? productLine(ctx.profile) + ' Describe it only with these facts.' : 'Never describe its colour, material, pattern or design (you can\'t see the photos): call it "the product".'} It must be the hero, clearly visible, exactly as in its photos.${ctx.profile?.use ? ` It is used: ${tidy(ctx.profile.use, 160)}.` : ''}` : 'There is no product photo: show the moment or the place the brand sells, with people when it helps.',
+      ctx.market && !ctx.market.guessed ? `The brand sells in ${ctx.market.name}: any people are its customers there (how they look, dress and live), in places that look like there.` : '',
       ...bookLines(ctx.bbv), creativeBlock(ctx.bbv, ctx.kind || r.id || ''), ctx.notes?.length ? `The team asked: ${tidy(ctx.notes.join(' '), 400)}` : '',
       style ? `The look the team picked (follow it exactly): ${tidy(style.look, 400)}${style.people === 'none' ? ' No people.' : style.people === 'hands' ? ' Hands only, no faces.' : ''}` : '',
       'Pick the format family that fits the card. Describe one real, specific moment a photographer could shoot (people, place, props, light, lens). Keep one part of the frame calm (real background, never a blank band) for the headline and say which. No words, signs, screens with text or logos in the picture.'].filter(Boolean).join('\n');

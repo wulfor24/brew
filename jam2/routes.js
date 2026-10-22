@@ -1,6 +1,7 @@
 // Jam v2 routes (?v=2 only; v1's /api/work and /api/changes are untouched). Mounted by feed-service.js with its own route
 // table (on), so every request runs as the signed-in viewer of that brand, like the rest of the service. Slow work (a picture,
 // a video) runs in the background; the board shows it as busy and the page polls GET /api/jam2/jams/:jid.
+import { askMarket } from '../market.js';
 import { createStudio, library as studioLibrary } from './studio.js';
 import { isBatchCard } from '../card-plan.js';
 import { createProfiles } from './profiles.js';
@@ -36,7 +37,8 @@ export function mountJam2(d) {
     const refs = await refsOf(slug).catch(() => []), catalog = br?.catalog || [];
     const prod = productFor({ card, catalog, refs, pick: pick || jam.product || null, lanePhoto: null });
     let memory = ''; try { memory = memoryOf ? memoryOf(t, card?.agent && card.agent !== 'brew' ? card.agent : 'creative') || '' : ''; } catch { memory = ''; }
-    return { slug, jam, card, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text) };
+    const cfg = br?.config || {}, market = br ? askMarket({ country: cfg.country, locale: cfg.locale, market: cfg.market }, cfg) : null; /* who the people in a picture or film look like */
+    return { slug, jam, card, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text), market };
   }
   /* run slow work in the background; the board says what it is doing and any error in plain words */
   /* a job also leaves a mark on the jam (saved with it): after a restart, a mark with no job running says the job was cut off */

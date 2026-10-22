@@ -150,3 +150,12 @@ test('words over a shot go to the calm side measured on the photo, never the bus
     assert.ok(L.headline.x > size.w / 2, 'headline on the calm right'); assert.ok(L.cta.x === L.headline.x && L.cta.y > L.badge.y && L.badge.y > L.sub.y, 'badge and button stacked under the words');
     assert.equal(L.headline.style.color, '#ffffff'); assert.ok(!sc.layers.some((l) => l.id === 'card'), 'no panel behind the words'); }
 });
+
+test('art direction (photos and UGC films) casts the brand’s own market; a guessed market says nothing', async () => {
+  let seen = ''; const m = createMaker({ engines: { run: async () => { throw new Error('x'); } }, brandbook: { promptBlock: () => '' }, claudeTool: async (p) => { seen = p; return { family: 'product in use', moment: 'm', zone: 'left' }; }, isMock: () => false, saveGen: () => {}, genFile: async () => null, photoAsync: async () => null });
+  const ctx = (market) => ({ slug: 's', jam: { concept: { angle: 'a' } }, bbv: { name: 'Arata', kit: {} }, product: null, market });
+  await m.creative.direct(ctx({ cc: 'IN', name: 'India', guessed: false }), { recipe: 'reel', label: 'Review' }, { headline: 'h' }, { label: '9:16', ratio: '9:16' }, { look: 'talks to camera', people: 'person' }, { film: true });
+  assert.match(seen, /sells in India/); assert.match(seen, /vertical phone video/);
+  await m.creative.direct(ctx({ cc: 'US', name: 'United States', guessed: true }), { recipe: 'image-ad' }, { headline: 'h' }, { label: '4:5', ratio: '4:5' });
+  assert.doesNotMatch(seen, /sells in/);
+});
