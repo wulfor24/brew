@@ -40,7 +40,9 @@ import { buildDraft } from './sloosh-prompt.js'; // one brief for every draft pi
 import { shipLine, oneCard, oneTake } from './text-fit.js';
 import { createDrafts, fakeMakers, createMakers } from './drafts.js';
 import { mountJam2 } from './jam2/routes.js';
-import { createBrandbook } from './jam2/brandbook.js'; // Jam v2 (?v=2): its own routes and data, v1 untouched
+import { createBrandbook } from './jam2/brandbook.js';
+import { mountBrandBook } from './brand-book-routes.js'; // the Brand Book page, its edits and "bring your brand book"
+import { fetcherWith } from './brand-book-read.js'; // Jam v2 (?v=2): its own routes and data, v1 untouched
 import { makeVideo as jam2Video, makeVoice as jam2Voice } from './media.js';
 import { genFile as jam2GenFile } from './gen-store.js';
 import { vertexMusic as jam2Music } from './vertex-media.js';
@@ -1751,6 +1753,7 @@ export function createFeedService(o) {
      unzipped here, text as it is). A photo or MP4 dropped for the brand also joins its References, which the generators work
      from (the team only, like the References page). The text comes back to the sheet, which sends it on with step 2 */
   const teamNo = (t, what) => { const r = reqOf(t); return r?.member || process.env.DEMO_MODE === '1' ? null : { status: r?.email ? 403 : 401, error: `Only this brand’s team can ${what}.`, team: true }; };
+  mountBrandBook({ on, BOOK, GP, reqOf, meOf, isMock, spend: (k) => spend(k), ai: o.ai, builder, refreshPack: async (slug) => builder?.refreshPack?.(slug), render: (u) => fetcherWith(o.treg)(u).then((r) => r.html), log, DEFAULT_BRAND });
   on('POST', '/api/brands/:slug/drop/read', async (b, t, p) => {
     const slug = t.brandId || DEFAULT_BRAND; if (p.slug !== slug) return { status: 400, error: 'This workspace is for another brand.' };
     const forBrand = b.dest === 'memory'; if (forBrand) { const no = teamNo(t, 'add to its memory'); if (no) return no; }
@@ -2322,7 +2325,7 @@ export function createFeedService(o) {
   const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|find-more|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
-    if (!/^\/(h\/|p\/|brief\/|api\/(share|tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$))/.test(u.pathname)) return false;
+    if (!/^\/(h\/|p\/|brief\/|api\/(share|tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh))?$))/.test(u.pathname)) return false;
     let tid = null;
     /* Jam v2's ready-to-post and brief links are signed: the link is the key, so they run before any sign-in, demo or team check (a team that got a brief marks its status without an account) */
     if (/^\/(p|brief)\//.test(u.pathname)) { if (JAM2 && await JAM2.publicHandle(req, res, u)) return true; send(res, 404, { error: 'not found' }); return true; }
@@ -2403,7 +2406,7 @@ export function createFeedService(o) {
       if (email && w && !viewer?.member && jamPrivate(t, w)) { send(res, 403, { error: TEAM_ONLY, teamOnly: true }); return true; }
       if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
       send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
-    if (!/^\/api\/(tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$)/.test(u.pathname)) return false;
+    if (!/^\/api\/(tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh))?$)/.test(u.pathname)) return false;
     for (const r of ROUTES) {
       if (r.method !== req.method) continue; const m = u.pathname.match(r.re); if (!m) continue;
       const params = m.groups || {};

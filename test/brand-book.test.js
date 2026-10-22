@@ -41,7 +41,7 @@ test('a made-up quote, an uncited trait or a colour the site never used never su
 test('the library keeps only saved pictures, by deliverable, best first with proof', () => {
   const lib = libraryOf(profile);
   assert.deepEqual(Object.keys(lib).sort(), ['ad-image', 'ad-video', 'ig-reel', 'product-photo']);
-  assert.equal(lib['ad-image'][0].proof, 'Running 40 days · 3 versions');
+  assert.equal(lib['ad-image'][0].proof, 'Running 40 days, 3 versions');
   assert.equal(lib['ad-video'][0].video, '/b/cozy/a/ad-2-video.mp4');
   assert.equal(lib['ig-reel'][0].proof, '900 likes');
   assert.ok(!JSON.stringify(lib).includes('expired'), 'an expired CDN link is no reference');
@@ -125,4 +125,53 @@ test('the reader skips a store not read yet and keeps the free chapters when the
   assert.equal(await r.stale('cozy'), false, 'a fresh book is not rebuilt');
   const none = await createBookReader({ packs: { getJSON: async (s, n, d) => d, put: async () => assert.fail('nothing saved') }, ai: null }).ensure('nobody');
   assert.equal(none, null);
+});
+
+test('bring your brand book: links become readable exports, private links say how to share, text gives its colours', async () => {
+  const { linkPlan, proposalsOf, hexesIn, mountBrandBook } = await import('../brand-book-routes.js');
+  assert.match(linkPlan('https://docs.google.com/document/d/abc123/edit').url, /export\?format=txt/);
+  assert.equal(linkPlan('https://docs.google.com/presentation/d/xyz/edit#slide=1').as, 'pdf');
+  assert.match(linkPlan('https://drive.google.com/file/d/F1/view').url, /uc\?export=download&id=F1/);
+  assert.match(linkPlan('https://drive.google.com/drive/folders/abc').error, /folder/);
+  assert.equal(linkPlan('https://www.figma.com/file/x').from, 'Figma'); assert.ok(linkPlan('https://www.figma.com/file/x').render);
+  assert.match(linkPlan('not a link').error, /isn’t a link/);
+  assert.deepEqual(hexesIn('plum #3A1F45, blush #f4d6dc and #3a1f45 again'), ['#3a1f45', '#f4d6dc']);
+  const P = proposalsOf({ story: { mission: 'Warm every desk' }, tone: { summary: 'Playful', traits: [{ trait: 'Warm', sounds: 'Toasty toes' }] }, words: { use: ['toasty'] }, claims: ['Warms in 3 minutes'], look: {} });
+  assert.deepEqual(P.map((x) => x.path), ['story.mission', 'tone.summary', 'tone.traits', 'words.use', 'proof.claimsAllowed']);
+  /* the route: the team only; with the AI off, pasted text still gives its colour codes as a proposal */
+  const routes = {}, on = (m, p, fn) => { routes[`${m} ${p}`] = fn; };
+  const files = new Map([['cozy|profile.json', { host: 'cozy.example', name: 'Cozy', identity: {} }]]);
+  const packs = { getJSON: async (s, n, d) => (files.has(`${s}|${n}`) ? structuredClone(files.get(`${s}|${n}`)) : d), put: async (s, n, v) => files.set(`${s}|${n}`, v) };
+  const BOOK = createBrandbook({ packs, log: { warn() {} } }); let member = false;
+  mountBrandBook({ on, BOOK, GP: packs, reqOf: () => ({ member, email: 'a@b.c' }), isMock: () => true, DEFAULT_BRAND: 'brew' });
+  const t = { brandId: 'cozy' }, imp = routes['POST /api/brands/:slug/book/import'];
+  assert.equal((await imp({ text: '#3a1f45' }, t, { slug: 'cozy' })).status, 403);
+  member = true;
+  const r = await imp({ text: 'Palette: #3a1f45 and #f4d6dc', name: 'notes' }, t, { slug: 'cozy' });
+  assert.deepEqual(r.upload.kit.colors.map((c) => c.hex), ['#3a1f45', '#f4d6dc']); assert.equal(r.upload.private, true);
+  const out = await routes['POST /api/brands/:slug/book']({ applyUpload: { id: r.upload.id } }, t, { slug: 'cozy' });
+  assert.deepEqual(out.book.kit.colors, ['#3a1f45', '#f4d6dc']);
+  assert.match((await imp({ text: 'no codes here at all' }, t, { slug: 'cozy' })).error, /needs the AI/);
+  assert.equal((await routes['GET /api/brands/:slug/book']({}, { brandId: 'other' }, { slug: 'cozy' })).status, 400);
+});
+
+test('the kit: an AI-ready brand.md, clean JSON, W3C tokens, an .ase palette and a zip with no private lines', async () => {
+  const { toMarkdown, toJSON, tokens, ase, llmsTxt, createBrandKit } = await import('../brand-kit.js');
+  const { unzip } = await import('../drop-read.js');
+  const bb = bbOf({ edits: { 'story.mission': { value: 'Warm every desk' }, 'tone.summary': { value: 'Secret launch voice', private: true } }, neverSay: ['cheap'] });
+  const v = viewOf(bb, { scope: 'share' });
+  const md = toMarkdown(v, { url: 'https://x/cozy/brand' });
+  assert.match(md, /^# Cozy brand book/); assert.match(md, /Never use these words or claims: cheap/); assert.match(md, /Toasty toes all winter long/);
+  assert.ok(!md.includes('Secret launch voice')); assert.ok(md.length < 10000, 'short enough for any AI chat');
+  const j = toJSON(v, { origin: 'https://brew.example' });
+  assert.equal(j.kit.logo, 'https://brew.example/b/cozy/a/logo.png'); assert.ok(j.library['ad-image'][0].image.startsWith('https://brew.example/'));
+  assert.equal(Object.values(tokens(v))[0].color.primary.$value, '#2e1a33');
+  const a = ase(v); assert.equal(a.toString('latin1', 0, 4), 'ASEF'); assert.equal(a.readUInt32BE(8), 3);
+  assert.match(llmsTxt(v, { base: 'https://x/cozy' }), /\[Brand book for AI\]\(https:\/\/x\/cozy\/brand\.md\)/);
+  const files = new Map([['cozy|profile.json', profile], ['cozy|brief.json', brief], ['cozy|brandbook-read.json', read], ['cozy|private/brandbook.json', { edits: bb.edits, neverSay: ['cheap'] }]]);
+  const packs = { getJSON: async (s, n, d) => (files.has(`${s}|${n}`) ? structuredClone(files.get(`${s}|${n}`)) : d), get: async (s, n) => (/^assets\//.test(n) ? Buffer.from('img') : null) };
+  const z = await createBrandKit({ packs }).zip('cozy', { origin: 'https://brew.example' });
+  const names = [...unzip(z.buf).keys()];
+  for (const f of ['brand.md', 'brand.json', 'tokens.json', 'colors.css', 'palette.ase', 'CLAUDE-PROJECT.md', 'CUSTOM-GPT.md', 'llms.txt', 'logos/logo.png', 'references/ad-image/01.jpg', 'references/ad-image/captions.json']) assert.ok(names.includes(f), f);
+  assert.ok(!unzip(z.buf).get('brand.md').toString().includes('Secret launch voice'));
 });

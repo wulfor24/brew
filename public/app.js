@@ -138,6 +138,7 @@
     sliders: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
     sidebar: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
     film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
+    palette: '<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.55-2.5 5.55-5.55C21.97 6.01 17.46 2 12 2z"/>',
     layers: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
     refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
     done: '<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',
@@ -1341,6 +1342,7 @@
             <button class="icon-btn rb rl" aria-label="Notifications" data-bell>${ic('bell')}<span class="rl-tx" aria-hidden="true">Notifications</span><i data-count="bell"></i></button>
           </div>
           <div class="rl-foot">
+            <button class="icon-btn rl" aria-label="Brand Book" data-nav="brand">${ic('palette')}<span class="rl-tx" aria-hidden="true">Brand Book</span></button>
             <button class="icon-btn rl" aria-label="What Brew learned" data-nav="learned">${ic('book')}<span class="rl-tx" aria-hidden="true">What Brew learned</span></button>
             <button class="icon-btn rl" aria-label="Connectors" data-nav="connectors">${ic('plug')}<span class="rl-tx" aria-hidden="true">Connectors</span></button>
             <button class="icon-btn rl lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}<span class="rl-tx" aria-hidden="true">${window.LIVE?.me ? esc(window.LIVE.me.email) : 'Account'}</span></button>
@@ -1962,7 +1964,7 @@
      so the browser's Back and ours walk the same path. route() makes the screen match the URL. */
   const nav = (hash, push, a, v = view) => { const st = { a, v }; hash = typeof hash === 'string' && hash.startsWith('#') ? location.pathname + hash : hash; if (push) history.pushState(st, '', hash); else history.replaceState(st, '', hash); };
   const VIEWS = () => { const v = VIEWS0(); v.tune = renderTune; return v; };
-  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), refs: (f) => renderReferences(f !== false), done: renderWork, work: renderWork, connectors: renderConnectors, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
+  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), refs: (f) => renderReferences(f !== false), done: renderWork, work: renderWork, connectors: renderConnectors, learned: renderLearned, brand: () => renderBrand(), heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
   const route = () => {
     const hp = hashParams(), rm = location.hash.match(/^#remix=([^/&]+)(?:\/([^&]+))?/);
     if (rm) { const p = byId(decodeURIComponent(rm[1]));
@@ -5154,7 +5156,7 @@
         ppl && t('data-hd-open', ppl.toLocaleString(), 'Things people said', srcs.slice(0, 2).map((x) => x.name).join(', '))].filter(Boolean);
       return tiles.length ? `<div class="lx-ov">${tiles.join('')}</div>` : ''; };
     libShell('What Brew learned', 'From what you pick, edit and ship, and anything you drop on this page. Edit, pause or forget any of it.',
-      `<div class="lx" data-m2-drop>${lxDropBig() + lxOverview()}
+      `<div class="lx" data-m2-drop>${lxBook() + lxDropBig() + lxOverview()}
         ${mvBuilding ? movesHtml : ''}
         
         ${toldHtml}
@@ -5179,7 +5181,16 @@
     $$('[data-goto-move]').forEach((b) => b.onclick = () => openMove(+b.dataset.gotoMove));
   };
   const renderLearned = () => renderLearned0();
+  /* the Brand Book (brand-book.js): the brand's whole profile, dressed in its own colours and type; edited in place, shared in one tap */
+  const renderBrand = () => {
+    view = 'brand'; counts(); document.body.classList.remove('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
+    $('#view').innerHTML = '<div class="bb-host" id="bbk"></div>';
+    if (!window.BrandBook) { $('#bbk').innerHTML = '<p class="lx-empty">The Brand Book didn’t load. Reload the page.</p>'; return; }
+    window.BrandBook.render($('#bbk'), { slug: mvSlug(), api: tapi, toast });
+  };
   /* ui=1: the big drop box on What Brew learned (the whole page still takes a drop) */
+  /* the Brand Book sits at the top of what Brew learned: the brand's voice, look and own best work, in one place (brand-book.js) */
+  const lxBook = () => `<button class="lx-book" data-nav="brand"><span class="lx-book-ic">${ic('palette')}</span><span><b>Brand Book</b><span>Your voice, words, look and best work in one place. Every ad, post and email Brew makes follows it. Add your own guidelines there.</span></span>${ic('right', 's16')}</button>`;
   const lxDropBig = () => `<div class="m2-drop lx-drop" data-m2-drop><span class="m2-up">${ic('upload')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads them and keeps what matters.</span><button class="lx-drop-btn" data-m2-pick>Upload files</button><input type="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.mp4" data-m2-file></div>`;
   /* Drop anything here: pick or drop files, then say where they go (brand memory / my preferences).
      Brand memory reads every file (PDF, Word, PowerPoint, Excel and photos through the server, drop-read.js), shows the learnings

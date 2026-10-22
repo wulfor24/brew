@@ -22,6 +22,7 @@ import { createStore } from './store.js';
 import { B, BN, runIn, liveRe, setDefaultBrand, inBrand } from './brand-ctx.js';
 import { createImageGuard } from './image-guard.js';
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
+import { createBrandKit, toMarkdown, toJSON, llmsTxt } from './brand-kit.js'; // the Brand Book shared: /<slug>/brand, .md, .json, llms.txt, brand-kit.zip
 import { balanceWarm } from './color-cast.js'; // a picture washed yellow is pulled back toward its product photo (QA 13 Oct)
 import { LEGAL, notFoundPage, pageOf } from './legal-pages.js'; // /privacy, /terms and a real 404
 import { createAI, aiPaused, billingError, noteBilling, realNewlines } from './ai.js';
@@ -784,6 +785,33 @@ const brandRoutes = async (req, res, u) => {
   return false;
 };
 // a generated brand's files: its client seed and facts, assets, PDFs
+/* the Brand Book, shared in one tap (brand-kit.js): the read plus the team's edits that aren't private, for anyone with the link and any
+   AI tool. A closed store has no kit; a book not written yet is written on the first visit (free chapters at once, the rest after) */
+const brandKit = createBrandKit({ packs, log: console });
+const BOOK_RE = /^\/([a-z0-9-]+)\/(brand|brand\.md|brand\.json|llms\.txt|brand-kit\.zip)$/;
+const bookPublic = async (req, res, u) => {
+  const m = u.pathname.match(BOOK_RE); if (!m || req.method !== 'GET') return false;
+  const slug = m[1], what = m[2]; if (blocked(slug) || !(await builder.status(slug))) return send(res, 404, notFoundPage(), 'text/html; charset=utf-8'), true;
+  const profile = await packs.getJSON(slug, 'profile.json', null).catch(() => null);
+  if (!profile?.host || profile.closed) return send(res, 404, notFoundPage(), 'text/html; charset=utf-8'), true;
+  if (await builder.book.stale(slug).catch(() => false)) builder.bookAfter(slug);
+  const origin = process.env.PUBLIC_URL || `https://${req.headers.host}`, v = await brandKit.viewOf(slug), base = `${origin}/${slug}`;
+  const cors = { 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' };
+  if (what === 'brand.md') { res.writeHead(200, { 'content-type': 'text/markdown; charset=utf-8', ...cors }); res.end(toMarkdown(v, { url: `${base}/brand` })); return true; }
+  if (what === 'llms.txt') { res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', ...cors }); res.end(llmsTxt(v, { base })); return true; }
+  if (what === 'brand.json') { const page = u.searchParams.get('page') === '1';
+    const body = page ? { book: v, building: await builder.book.stale(slug).catch(() => false), options: { families: (await import('./brand-book-read.js')).REF_FAMILIES }, share: { page: `/${slug}/brand`, md: `/${slug}/brand.md`, json: `/${slug}/brand.json`, llms: `/${slug}/llms.txt`, zip: `/${slug}/brand-kit.zip` } } : toJSON(v, { origin });
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', ...cors }); res.end(JSON.stringify(body, null, page ? 0 : 2)); return true; }
+  if (what === 'brand-kit.zip') { const z = await brandKit.zip(slug, { origin }); if (!z) return send(res, 404, 'no', 'text/plain'), true;
+    res.writeHead(200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${z.name}"`, 'cache-control': 'no-cache' }); res.end(z.buf); return true; }
+  const name = String(v.cover?.name || v.name || profile.name || slug).replace(/[<>"]/g, '');
+  const html = versioned(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${name} brand book</title>
+<meta name="description" content="${name}'s brand book: voice, words, look, colours, type and its own best work. Free to use with any AI tool.">
+<link rel="icon" href="/assets/brew-mark.svg"><link rel="alternate" type="text/markdown" href="/${slug}/brand.md"><link rel="stylesheet" href="feed-system.css"><link rel="stylesheet" href="brand-book.css">
+<style>body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font)}</style></head><body><div id="bbk" class="bb"></div>
+<script src="loader.js"></script><script src="brand-book.js"></script><script>fetch('/${slug}/brand.json?page=1').then(function(r){return r.json()}).then(function(d){window.BrandBook.render(document.getElementById('bbk'),{slug:'${slug}',readOnly:true,data:d,toast:function(m){var t=document.createElement('div');t.className='bb-note';t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},2600)}})})</script></body></html>`).replace('<head>', '<head><base href="/">');
+  send(res, 200, html, 'text/html; charset=utf-8'); return true;
+};
 const brandFiles = async (req, res, u) => {
   const m = u.pathname.match(/^\/b\/([a-z0-9-]+)\/(seed\.js|facts\.js|a\/[\w.-]+|refs\/[\w.-]+|statics\/[\w.-]+|team\/statics\/[\w.-]+|pdf\/[^/]+)$/); if (!m) return false;
   const slug = m[1], what = decodeURIComponent(m[2]);
@@ -900,6 +928,7 @@ async function serve(req, res, u) {
     if (await movesRoutes(req, res, u)) return; // moves on a cadence: refresh, cadence state
     if (await brandRoutes(req, res, u)) return;
     if (await brandFiles(req, res, u)) return;
+    if (await bookPublic(req, res, u)) return;
     /* the mic (OpenAI transcription, paid): signed-in people only */
     if (req.method === 'POST' && u.pathname === '/api/transcribe') { if (auth.signinOn() && process.env.DEMO_MODE !== '1' && !auth.user(req)) return send(res, 401, { error: 'Sign in to use the mic.', signin: true }), true; return await transcribe(req, res); }
     if (await feedSvc.handle(req, res, u)) return;

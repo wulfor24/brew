@@ -23,7 +23,7 @@ export const GUIDE_RE = /brand[-_ ]?(book|guide|guidelines|assets|kit|identity|s
 
 /* ---------------- the creative library: what the brand has put out, by deliverable ---------------- */
 export const REF_FAMILIES = {
-  'ad-image': 'Meta ads · image', 'ad-video': 'Meta ads · video', 'ad-carousel': 'Meta ads · carousel',
+  'ad-image': 'Image ads', 'ad-video': 'Video ads', 'ad-carousel': 'Carousel ads',
   'ig-post': 'Instagram posts', 'ig-reel': 'Instagram reels', 'ig-carousel': 'Instagram carousels',
   'tiktok': 'TikTok', 'youtube': 'YouTube films', 'product-photo': 'Product photos', 'site-photo': 'On their site', 'email': 'Emails'
 };
@@ -44,7 +44,7 @@ export function libraryOf(profile = {}, { max = 6 } = {}) {
     if (!isAsset(a.poster)) continue; /* an expired CDN link is no reference */
     const f = a.format === 'video' ? 'ad-video' : a.format === 'carousel' ? 'ad-carousel' : 'ad-image';
     push(f, { id: `ad:${a.id}`, src: a.poster, video: isAsset(a.video) ? a.video : null, words: tidy([a.hook, a.body].filter(Boolean).join(' — '), 220), cta: a.cta || null, url: a.url || null,
-      score: (+a.days || 0) * (1 + Math.log2(+a.versions || 1)), proof: a.days ? `Running ${a.days} days${a.versions > 1 ? ` · ${a.versions} versions` : ''}` : null, kind: 'Their ad' });
+      score: (+a.days || 0) * (1 + Math.log2(+a.versions || 1)), proof: a.days ? `Running ${a.days} days${a.versions > 1 ? `, ${a.versions} versions` : ''}` : null, kind: 'Their ad' });
   }
   for (const x of profile.socials?.instagram?.posts || []) {
     if (!isAsset(x.img)) continue;
