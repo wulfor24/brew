@@ -9,13 +9,12 @@
 // never wrong. Phase 0 (23 Oct, Cozy): single products came out really shot; a kit of three changed two items, which this catches.
 import { recipe } from './catalogue.js';
 import { refsFor, creativeBlock } from './brandbook.js';
-import { typePreset } from '../public/jam2/scene.js';
 
 const tidy = (s, n = 400) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const ZONES = ['top', 'bottom', 'left', 'right'];
 /* the image models take a fixed set of frames: a banner, Facebook/X or print asks for the nearest one and the layout's cover fit trims it */
 const GEM_RATIO = { '3:1': '21:9', '1.91:1': '16:9', A5: '2:3' };
-/* a typePreset for where the words go: top = headline band over the top; bottom = the bar; left/right = the side card */
+/* the scene's starting preset for where the words go (the layout below moves every layer into the free side) */
 const presetFor = (zone) => (zone === 'bottom' ? 'bottom-bar' : zone === 'left' || zone === 'right' ? 'side-card' : 'top');
 
 const DIRECT_SCHEMA = { type: 'object', additionalProperties: false, required: ['family', 'moment', 'zone'], properties: {
@@ -102,23 +101,58 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
   const aspects = new Map();
   async function aspectOf(src) { if (!src) return null; if (aspects.has(src)) return aspects.get(src);
     let a = null; try { const f = await fileOf(src); if (f) { const sharp = (await import('sharp')).default; const m = await sharp(f).metadata(); if (m.width && m.height) a = m.width / m.height; } } catch {} aspects.set(src, a); return a; }
-  /* the words over a shot: the brand's type preset, the CTA as a button (bottom left, clear of the platform's UI), any proof badge
-     tucked under the words instead of floating over the picture, the logo kept from the scene */
-  function layout(ctx, size, bgFile, words, zone, logoAspect = null) {
+  /* how bright the photo is where the words go (0 dark … 1 light): the ink and the scrim follow it, so type reads on any photo */
+  const SIDE = { top: [0, 0, 1, 0.42], bottom: [0, 0.58, 1, 0.42], left: [0, 0, 0.52, 1], right: [0.48, 0, 0.52, 1] };
+  /* the part of the photo a frame of this size shows (the picture covers the frame, centred), as an extract box */
+  const shown = (m, size) => { const r = size ? size.w / size.h : m.width / m.height, cw = Math.min(m.width, Math.round(m.height * r)), ch = Math.min(m.height, Math.round(m.width / r));
+    return { left: Math.round((m.width - cw) / 2), top: Math.round((m.height - ch) / 2), width: cw, height: ch }; };
+  async function lumaOf(file, zone, size = null) {
+    try { const f = await fileOf(file); if (!f) return 0.3; const sharp = (await import('sharp')).default, m = shown(await sharp(f).metadata(), size), [x, y, ww, hh] = SIDE[zone] || SIDE.top;
+      const { channels } = await sharp(f).extract({ left: m.left + Math.round(m.width * x), top: m.top + Math.round(m.height * y), width: Math.max(1, Math.round(m.width * ww)), height: Math.max(1, Math.round(m.height * hh)) }).greyscale().stats();
+      return channels[0].mean / 255; } catch { return 0.3; } }
+  /* the calm side, measured: edge energy (a Laplacian) of each side of the photo; the critic's pick stands unless another side is
+     clearly calmer (a hand, a face or the product makes edges), so the words never land on the moment that sells. 23 Oct, Arata:
+     the critic said right and the old card went left over the hand; measured right 4.4 vs 11.7-18.4 elsewhere */
+  async function calmest(file, hint, size = null) {
+    try { const f = await fileOf(file); if (!f) return hint; const sharp = (await import('sharp')).default, S = 256;
+      const { data } = await sharp(f).extract(shown(await sharp(f).metadata(), size)).resize(S, S, { fit: 'fill' }).greyscale().convolve({ width: 3, height: 3, kernel: [0, 1, 0, 1, -4, 1, 0, 1, 0], offset: 128 }).raw().toBuffer({ resolveWithObject: true });
+      const e = Object.fromEntries(Object.entries(SIDE).map(([z, [x, y, w, h]]) => { let t = 0, n = 0; for (let j = Math.round(y * S); j < Math.round((y + h) * S); j++) for (let i = Math.round(x * S); i < Math.round((x + w) * S); i++) { t += Math.abs(data[j * S + i] - 128); n++; } return [z, t / n]; }));
+      const min = ZONES.reduce((a, z) => (e[z] < e[a] ? z : a), ZONES[0]); return hint && e[hint] <= e[min] * 1.35 ? hint : min; } catch { return hint; } }
+  /* a see-through logo's own tone (0 dark … 1 light) on mid grey; null for a logo with its own background (it needs no plate) */
+  async function logoTone(src) {
+    try { const f = src && await fileOf(src); if (!f) return null; const sharp = (await import('sharp')).default; if (!(await sharp(f).metadata()).hasAlpha) return null;
+      const { channels } = await sharp(f).flatten({ background: '#808080' }).greyscale().stats(); return channels[0].mean / 255; } catch { return null; } }
+  /* the words over a real photograph, in the calm side the critic found (left, right, top or bottom): never a card or panel (that
+     reads as a paste-up), a soft scrim only on that side, light or dark ink by the measured brightness there, any proof badge and the
+     button stacked under the words so nothing lands on the product or a face, and the logo in a corner the words don't use */
+  async function layout(ctx, size, bgFile, words, zone, logoAspect = null) {
+    zone = await calmest(bgFile, ZONES.includes(zone) ? zone : 'top', size);
     const sc = composeScene({ size, bgFile, cut: null, words, kit: ctx.bbv.kit, preset: presetFor(zone) }), { w, h } = size, kit = ctx.bbv.kit || {};
-    const cta = tidy(words.cta, 22) || (ctx.product?.name ? 'Shop now' : 'Learn more'), L = typePreset(presetFor(zone), { w, h, kit, headline: words.headline || '', sub: words.sub || '', cta, badge: '' });
-    if (words.badge) { const head = L.find((l) => l.role === 'headline'), subL = L.find((l) => l.role === 'sub'), u = Math.min(w, h * 1.25), big = head?.style?.size || Math.round(u * 0.07);
-      const below = (subL ? subL.y + Math.round((subL.style?.size || 30) * 2.6) : (head?.y || 0) + Math.round(big * 2.4)), y = zone === 'bottom' ? Math.max(0, (head?.y || h * 0.68) - Math.round(w * 0.075)) : below;
-      const bs = Math.round(w * 0.026), bp = Math.round(w * 0.013), bt = tidy(words.badge, 34);
-      L.push({ id: 'badge', kind: 'badge', role: 'small', words: bt, x: head?.x || Math.round(u * 0.065), y, w: Math.min(Math.round(w * 0.7), Math.round(bt.length * bs * 0.74 + bp * 2 + bs)), h: Math.round(bs * 1.25 + bp * 2), z: 7, style: { font: kit.fonts?.body || kit.fonts?.heading || null, size: bs, weight: 700, color: '#111', bg: 'rgba(255,255,255,.92)', radius: 999, pad: bp, align: 'center', lh: 1.25 } }); }
-    /* pills are as tall as their words (the preset leaves them at the default box) */
-    for (const l of L) if (l.role === 'cta') { const fs = l.style?.size || Math.round(w * 0.03), pd = l.style?.pad || Math.round(w * 0.02); l.h = Math.round(fs * 1.25 + pd * 2); l.style = { ...l.style, lh: 1.25 };
-      l.w = Math.min(Math.round(w * 0.62), Math.max(Math.round(w * 0.26), Math.round(String(l.words).length * fs * 0.74 + pd * 2 + fs))); }
-    /* the logo on a soft light plate, so it reads on any photo */
+    const light = (await lumaOf(bgFile, zone, size)) > 0.58, ink = light ? '#111111' : '#ffffff', head = kit.fonts?.heading || null, body = kit.fonts?.body || head;
+    const accent = kit.accent || kit.colors?.[0] || '#111111', u = Math.min(w, h * 1.25), pad = Math.round(u * 0.065), tall = h / w > 1.6, side = zone === 'left' || zone === 'right';
+    const headline = tidy(words.headline, 60), sub = tidy(words.sub, 90), badge = tidy(words.badge, 34), cta = tidy(words.cta, 22) || (ctx.product?.name ? 'Shop now' : 'Learn more');
+    const colX = zone === 'right' ? Math.round(w * 0.54) : pad, colW = side ? Math.round(w * 0.46 - pad) : Math.min(w - pad * 2, Math.round(w * 0.82));
+    const big = Math.round(u * (headline.length < 26 ? 0.085 : headline.length < 48 ? 0.068 : 0.056) * (side ? 0.8 : 1)), subS = Math.max(Math.round(w * 0.028), Math.round(big * 0.45));
+    const lines = (t, s) => Math.max(1, Math.ceil(t.length / Math.max(6, colW / (s * 0.56))));
+    const bs = Math.round(w * 0.026), bp = Math.round(w * 0.013), cs = Math.round(w * 0.03), cp = Math.round(w * 0.02);
+    const headH = headline ? Math.round(lines(headline, big) * big * 1.12) : 0, subH = sub ? Math.round(lines(sub, subS) * subS * 1.32) : 0, badgeH = badge ? Math.round(bs * 1.25 + bp * 2) : 0, ctaH = Math.round(cs * 1.25 + cp * 2);
+    const gap = Math.round(u * 0.028), total = headH + (sub ? gap + subH : 0) + (badge ? gap + badgeH : 0) + gap * 1.4 + ctaH;
+    const safeTop = tall ? Math.round(h * 0.14) : pad, safeBot = tall ? Math.round(h * 0.2) : pad; /* stories and reels keep clear of the platform's own bars */
+    /* the logo sits in the free side too (never on the product): first in the column, or at the end of the button row at the bottom */
     const logo = sc.layers.find((l) => l.kind === 'logo');
-    if (logo && logoAspect) { /* the box follows the logo's own shape, right-aligned where the preset put it */
-      const bw = Math.min(logo.w, Math.round(logo.h * logoAspect)), bh = Math.round(bw / logoAspect); logo.x += logo.w - bw; logo.y += logo.h - bh; logo.w = bw; logo.h = bh; }
-    if (logo) { const pd = Math.round(w * 0.012); L.push({ id: 'logo-plate', kind: 'shape', x: logo.x - pd, y: logo.y - pd, w: logo.w + pd * 2, h: logo.h + pd * 2, z: (logo.z || 8) - 1, style: { bg: 'rgba(255,255,255,.88)', radius: Math.round(w * 0.016) } }); }
+    if (logo && logoAspect) { const bw = Math.min(logo.w, Math.round(logo.h * logoAspect)), bh = Math.round(bw / logoAspect); logo.w = bw; logo.h = bh; }
+    const logoTop = logo && zone !== 'bottom' ? logo.h + gap * 1.5 : 0;
+    let y = zone === 'bottom' ? h - safeBot - total : side ? Math.max(safeTop + logoTop, Math.round((h - total) * 0.32)) : safeTop + logoTop;
+    const shade = { left: '90deg', right: '270deg', top: '180deg', bottom: '0deg' }[zone], tone = light ? '255,255,255' : '0,0,0', reach = side ? 0.66 : 0.5;
+    const L = [{ id: 'shade', kind: 'shape', x: zone === 'right' ? Math.round(w * (1 - reach)) : 0, y: zone === 'bottom' ? Math.round(h * (1 - reach)) : 0, w: side ? Math.round(w * reach) : w, h: side ? h : Math.round(h * reach), z: 5, style: { bg: `linear-gradient(${shade},rgba(${tone},${light ? 0.55 : 0.6}),rgba(${tone},0))` } }];
+    if (headline) { L.push({ id: 'headline', kind: 'text', role: 'headline', words: headline, x: colX, y, w: colW, z: 6, style: { font: head, size: big, weight: 800, color: ink, shadow: !light, lh: 1.08 } }); y += headH; }
+    if (sub) { y += gap; L.push({ id: 'sub', kind: 'text', role: 'sub', words: sub, x: colX, y, w: colW, z: 6, style: { font: body, size: subS, weight: 500, color: ink, shadow: !light, lh: 1.3 } }); y += subH; }
+    if (badge) { y += gap; L.push({ id: 'badge', kind: 'badge', role: 'small', words: badge, x: colX, y, w: Math.min(colW, Math.round(badge.length * bs * 0.58 + bp * 2 + bs)), h: badgeH, z: 7, style: { font: body, size: bs, weight: 700, color: light ? '#fff' : '#111', bg: light ? 'rgba(17,17,17,.88)' : 'rgba(255,255,255,.92)', radius: 999, pad: bp, align: 'center', lh: 1.25 } }); y += badgeH; }
+    y += Math.round(gap * 1.4);
+    L.push({ id: 'cta', kind: 'badge', role: 'cta', words: cta, x: colX, y, w: Math.min(Math.round(w * 0.62), colW, Math.max(Math.round(w * 0.26), Math.round(cta.length * cs * 0.62 + cp * 2 + cs * 1.4))), h: ctaH, z: 7, style: { font: body, size: cs, weight: 700, color: '#fff', bg: accent, radius: 999, pad: cp, align: 'center', lh: 1.25 } });
+    if (logo) { if (zone === 'bottom') { logo.x = w - pad - logo.w; logo.y = y + Math.round((ctaH - logo.h) / 2); } else { logo.x = colX; logo.y = safeTop; }
+      /* a plate only when the logo's own colour would vanish on the photo there (dark on dark, light on light) */
+      const lt = await logoTone(kit.logo); if (lt != null && lt > 0.5 === light) { const pd = Math.round(w * 0.012); L.push({ id: 'logo-plate', kind: 'shape', x: logo.x - pd, y: logo.y - pd, w: logo.w + pd * 2, h: logo.h + pd * 2, z: (logo.z || 8) - 1, style: { bg: light ? 'rgba(17,17,17,.85)' : 'rgba(255,255,255,.88)', radius: Math.round(w * 0.016) } }); } }
     sc.layers = [...sc.layers.filter((l) => !['text', 'shape', 'badge'].includes(l.kind)), ...L];
     return sc;
   }
@@ -142,7 +176,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     keepLog?.({ slug: ctx.slug, board: board.id, direction: d, judged: judged.map(({ file, same, shot, ad, zone, why, provider }) => ({ file, same, shot, ad, zone, why, provider })) });
     if (!ok.length) return { made, direction: d, judged, fail: 'the product changed in every picture' };
     const best = ok[0], zone = best.zone || d.zone;
-    const scene = noWords ? { w: size.w, h: size.h, bg: { color: '#ffffff', src: best.file }, kit: { fonts: ctx.bbv.kit?.fonts || {}, colors: [] }, layers: [] } : layout(ctx, size, best.file, words, zone, await aspectOf(ctx.bbv.kit?.logo));
+    const scene = noWords ? { w: size.w, h: size.h, bg: { color: '#ffffff', src: best.file }, kit: { fonts: ctx.bbv.kit?.fonts || {}, colors: [] }, layers: [] } : await layout(ctx, size, best.file, words, zone, await aspectOf(ctx.bbv.kit?.logo));
     return { made, direction: d, judged, scene, file: await render(scene), shot: { file: best.file, ratio: size.ratio, zone, family: d.family, moment: d.moment, score: { shot: best.shot, ad: best.ad }, why: best.why, provider: best.provider, bgs: { [size.ratio]: best.file } } };
   }
 
@@ -155,7 +189,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
       const src = await fileOf(sh.file); const out = await engines.run('still.extend', { srcFile: src, srcUrl: sh.file, ratio: GEM_RATIO[size.ratio] || size.ratio, slug: ctx.slug, product: ctx.product?.name || false,
         prompt: `Extend this exact photograph to a ${size.ratio} frame. Keep every existing part of the photo unchanged (the people, the product, the light, the colours); only continue the scene naturally at the edges so it reads as one real photo shot ${size.w > size.h ? 'wider' : 'taller'}. No text, no logos.` });
       bg = out.file; made.push({ cap: 'still.extend', provider: out.provider, model: out.model, usd: out.usd || 0 }); }
-    const scene = layout(ctx, size, bg, take.words || {}, sh.zone, await aspectOf(ctx.bbv.kit?.logo));
+    const scene = await layout(ctx, size, bg, take.words || {}, sh.zone, await aspectOf(ctx.bbv.kit?.logo));
     return { scene, file: await render(scene), bg, made };
   }
 
