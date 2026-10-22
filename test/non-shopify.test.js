@@ -142,3 +142,9 @@ test('AI questions are asked from the brand\'s market and language, never a sile
   assert.doesNotMatch(q, /actually works|worth buying/); assert.match(q, /best residential apartments in India/);
   assert.match(templateQuestions({ name: 'PUMA India', brandName: 'PUMA', subcategory: 'sneakers', country: 'IN', host: 'in.puma.com' }).find((x) => x.branded).q, /^is PUMA good$/);
 });
+
+test('listening starts once the read is done, before the moves; ideas wait for the moves', () => {
+  const cfg = socialConfig({ SOCIAL_BG: '1' }), now = Date.now();
+  const d = dueFor({ lastOpen: now }, cfg, { now, ready: false, readDone: true }); assert.equal(d.listen, true); assert.equal(d.ideas, false); assert.match(d.why.join(), /ideas wait for the moves/);
+  assert.equal(dueFor({}, cfg, { now, ready: false, readDone: false }).listen, false, 'nothing before the read');
+});

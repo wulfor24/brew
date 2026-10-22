@@ -280,11 +280,13 @@ export function socialConfig(env = process.env) {
 const today = (now) => new Date(now).toISOString().slice(0, 10);
 export const spentToday = (st, now) => (st?.spend?.day === today(now) ? st.spend.usd || 0 : 0);
 // what is due for one brand right now, and why not when it isn't
-export function dueFor(st = {}, cfg, { now = Date.now(), aiLive = true, ready = true } = {}) {
+/* readDone: the brand's read finished (its name, market, rivals and category are known): listening needs only that, so it
+   starts while the moves are written; ready: the moves are written, which the ideas build on */
+export function dueFor(st = {}, cfg, { now = Date.now(), aiLive = true, ready = true, readDone = ready } = {}) {
   const why = [], left = cfg.dayCapUsd - spentToday(st, now);
   if (cfg.off) return { listen: false, ideas: false, why: ['background work is off here (SOCIAL_BG / RESEARCH_OFF / LIVE_OFF)'] };
   if (cfg.mock || !aiLive) return { listen: false, ideas: false, why: ['AI is on mock: nothing runs, nothing is spent'] };
-  if (!ready) return { listen: false, ideas: false, why: ['the brand is not built yet'] };
+  if (!ready && !readDone) return { listen: false, ideas: false, why: ['the brand is not read yet'] };
   /* a run that started and never finished (the instance was replaced by a deploy, or it crashed) did not listen: it is due
      again, with the same depth it started with, instead of waiting out the 8 hours its start stamped (Nutrova, 22 Oct) */
   const killed = st.listen?.state === 'running' && (!!st.listen.killed || now - (st.listen.startedAt || 0) > (cfg.runStaleMin || 20) * 60e3)
@@ -295,8 +297,8 @@ export function dueFor(st = {}, cfg, { now = Date.now(), aiLive = true, ready = 
   // the full paid sweep once a day; the runs between are light (a run before this field existed counts as not full)
   const listenFull = (killed && st.listen?.full !== false) || now - (st.lastFullListen || 0) >= cfg.listenFullEveryH * H, listenEst = listenFull ? cfg.listenEstUsd : cfg.listenLiteEstUsd;
   const opened = st.lastOpen && now - st.lastOpen <= cfg.openDays * DAY;
-  let ideas = !cfg.ideasOff && opened && now - (st.lastIdeas || 0) >= cfg.ideasEveryH * H && today(st.lastIdeas || 0) !== today(now);
-  if (cfg.ideasOff) why.push('IDEAS_OFF'); else if (!opened) why.push(`nobody opened it in the last ${cfg.openDays} days`); else if (!ideas) why.push('ideas already made today');
+  let ideas = ready && !cfg.ideasOff && opened && now - (st.lastIdeas || 0) >= cfg.ideasEveryH * H && today(st.lastIdeas || 0) !== today(now);
+  if (cfg.ideasOff) why.push('IDEAS_OFF'); else if (!ready) why.push('ideas wait for the moves'); else if (!opened) why.push(`nobody opened it in the last ${cfg.openDays} days`); else if (!ideas) why.push('ideas already made today');
   if (listen && left < listenEst) { listen = false; why.push(`daily cap $${cfg.dayCapUsd} (spent $${(cfg.dayCapUsd - left).toFixed(2)})`); }
   if (ideas && left - (listen ? listenEst : 0) < cfg.ideasEstUsd) { ideas = false; why.push(`daily cap $${cfg.dayCapUsd} leaves too little for ideas`); }
   return { listen, listenFull, ideas, left: +left.toFixed(4), why };
@@ -363,7 +365,7 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
       const brands = [...all.filter((b, i) => never[i]), ...all.filter((b, i) => !never[i])];
       for (const b of brands) {
         const s = await stateOf(b.slug); if (opens.get(b.slug) > (s.lastOpen || 0)) s.lastOpen = opens.get(b.slug);
-        const due = dueFor(s, cfg, { now: now(), aiLive: ai?.live !== false, ready: !!b.status.ready });
+        const due = dueFor(s, cfg, { now: now(), aiLive: ai?.live !== false, ready: !!b.status.ready, readDone: !!b.status.ready || b.status.stages?.read?.state === 'done' });
         // the feed's rotation turns over once a day for brands people look at, even when nothing new was made
         const opened = s.lastOpen && now() - s.lastOpen <= cfg.openDays * DAY;
         if (!due.listen && !due.ideas) { if (opened && rotDay.has(b.slug) && rotDay.get(b.slug) !== dayIndex(now())) await onFresh(b.slug).catch(() => {}); rotDay.set(b.slug, dayIndex(now())); continue; }
