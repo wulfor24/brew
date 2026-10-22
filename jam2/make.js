@@ -200,6 +200,9 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     const r = recipe(board.recipe), cap = r.caps.includes('video.ugc') ? 'video.ugc' : 'video.shot'; let usd = 0, credits = 0, provider = null;
     for (const s of take.timeline?.shots || []) { const q = await engines.quote(cap, { seconds: Math.max(4, s.sec || 4), slug: ctx.slug }); /* Veo bills at least 4 s a clip */ if (q.error) return { error: q.error }; usd += q.usd || 0; credits += q.credits || 0; provider = q.provider; }
     const stills = (take.timeline?.shots || []).length; const sq = await engines.quote('still.scene', { slug: ctx.slug }); usd += (sq.usd || 0) * stills;
+    /* the voice and the music are part of the price shown (the quote is the ceiling a render may spend) */
+    if ((take.timeline?.shots || []).some((s) => s.vo)) usd += (await engines.quote('voice.tts', {}).catch(() => ({}))).usd || 0;
+    if (take.timeline?.music && !/^no music$/i.test(take.timeline.music)) usd += (await engines.quote('music.gen', {}).catch(() => ({}))).usd || 0;
     return { cap, usd: +usd.toFixed(2), credits, provider, seconds: (take.timeline?.shots || []).reduce((a, s) => a + s.sec, 0), at: Date.now() };
   }
   async function renderVideo(ctx, board, { confirmUsd } = {}) {
