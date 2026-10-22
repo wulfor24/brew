@@ -52,12 +52,15 @@ A small toolbar appears over the canvas; free changes land at once as a new vers
 | | Product | Swap product (catalog + References) · Bigger · Smaller · ⋯ Move · Blend into the light (priced) | Product stays your real photo; Blend asks for the price |
 | | Scene button (or empty area) | New scene (priced) · Change an area | Price first |
 | | Select an area (pill) → drag a box | type what goes there → Make it (priced) | Only that box changes |
-| | Frame label ("Image ad · …") | Redo it (priced) · New words · Make the final (priced) · ⋯ Make it a reel / carousel · Brief a team | Make the final shows its price and only runs on your yes |
+| | Frame label ("Image ad · …") | Redo it (priced) · New words · Make the final (priced) · ⋯ Do it for every product · Save as a recipe · Make it a reel / carousel · Brief a team | Make the final shows its price and only runs on your yes |
+| | ⋯ Do it for every product | — | New "Every product" tab: up to 12 slides, each catalog product cut out into the same scene, free (about 75 s). A line with the first product's price or name becomes each product's own name and catalog price; free shipping lines stay. The site stays fast while it runs |
+| | ⋯ Save as a recipe | name it | It shows with a ★ in the + menu of every jam; picking it starts that piece |
 | | Size pill 4:5 · 1:1 · 9:16 … | — | Same take re-laid out, free |
 | Carousel | Slide thumbnails, slide words, product | Type over / Shorter / Bigger | Only that slide changes; whole-carousel: New words (re-renders every slide), Redo the carousel (priced) |
 | Reel / video | A shot card | What we see · Voiceover · On-screen words · Voiceover shorter · ⋯ Longer / Shorter / Remove | Storyboard edits are free |
-| | Voice / Music / Captions tracks | pick a narrator / mood / on-off | Free; music is a mood for the editor, captions come as an SRT |
-| | Render the video | — | Shows the price; only renders on your yes; editing after a render shows "Render again with the changes" |
+| | Voice / Music / Captions tracks | pick a narrator / mood / on-off | Free to change. On render: captions are burnt in (brand type) and also come as an SRT; music is made for the video (Lyria, instrumental) and mixed under the voice |
+| | Render the video | — | Shows the price (about $2.50 for 15 s); only renders on your yes; editing after a render shows "Render again with the changes" |
+| | A shot of a rendered video | Change this shot | Price for one shot first; Brew edits that shot's first frame, animates it again and keeps every other shot |
 | Reddit / Quora reply, email, WhatsApp, page, FAQ | Any sentence (or the email subject) | Type over · Shorter · Warmer · Another way · ⋯ In Hindi · Remove | Only that sentence changes; line breaks stay |
 | | Copy and open the thread (replies) | — | Text copied; the thread opens if the card had a link |
 | Change lists (pause, prices, budget, titles, offers, team plan, timing, checklist) | A row | Change it · Change the action · Remove · ⋯ Add a row | Only that row changes |
@@ -74,8 +77,12 @@ Keyboard: Tab reaches every part of a picture; Enter selects it; Escape closes t
 | "brief a team instead" / "make it myself instead" | The tab switches mode |
 | "send brief" | The brief link is made and copied |
 | "render it" on a reel | Price first |
-| Ends with "?" | Shows what the card says (labelled: Brew doesn’t answer new questions here yet) |
-| Starts with "@name" | Saved in the jam thread; says mentions don’t notify anyone yet |
+| Ends with or starts with "?" | Brew answers from the card's evidence and your store facts (checked; it says when it doesn't know) |
+| Starts with "@name" or "@email" | That person gets an email with a link straight into this jam (someone not on the team is invited first) |
+| Header: who's here | Teammates with the jam open show as faces; "typing…" while they type |
+| Header: Memory: on / off | Off: this jam is written without what Brew learned about the brand; On: it uses it |
+| + Drop anything | A file or notes. "Use in this jam only": every piece made here follows it. "Teach Brew": goes to the brand's learnings |
+| Swap product → Upload a photo | Your photo lands in References and can be used as the product |
 | Type, wait while something is being made | Your typing is not wiped |
 | Why this? (top card) | Proof with where it came from, "View the original (theirs, for reference only)" for rival/viral, the idea, Goal / For / Offer you can change. Changing them marks older pieces with "Remake it on the new idea" |
 
@@ -106,7 +113,16 @@ Keyboard: Tab reaches every part of a picture; Enter selects it; Escape closes t
 - Product picks are only your catalog photos or References.
 - Back closes the jam; reloading the page reopens it.
 
-## Not in v2 yet (say so if a tester asks)
-Live presence and @mentions that notify, Slack two-way and Approve from Slack, Ask Brew answering new questions,
-Drop anything / learnings, Memory toggle, upload a photo, do it for all N products, save as recipe, stale price
-alert, pick a day, burnt-in captions and mixed music, re-animating from a frame inside a shot.
+## 7. Team, Slack and timing (in Finish, per piece)
+| Try | Expect |
+|---|---|
+| **Ask for an OK** | Pick a teammate: they get an email; when they approve, you get one back. With no teammates it says to invite them from Account → Team |
+| **Slack** | Posts the piece with an **Approve** button to the channel the brand connected. A reply in that thread shows in the jam chat (within 15 s on an open jam); lines typed in the jam go to the thread; Approve in Slack marks the piece approved |
+| **Pick a day → Show my best times** | From the brand's own dated Instagram posts, in the brand's time zone. Posts read with dates only give best days, not hours. Fewer than 8 dated posts: it says so and lets you pick |
+| A date + **Set a reminder** | A calendar file (.ics) downloads; Brew never posts |
+| A piece made with a product whose catalog price changed since | Says so, with a free "Update the words" |
+| A sent brief | Its status (received → in progress → delivered) shows on the open jam within 15 s |
+
+## Costs seen on live (22 Oct, Cozy)
+Words and changes: free to you (they count toward the daily writing budget). Image ad first take: about $0.04 (scene) + free cut-out.
+Do it for every product: free. Video storyboard: free; render: about $2.56 for 15 s with voice, captions and music.

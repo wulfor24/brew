@@ -387,13 +387,15 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     const FIG = /[$₹€£]\s?\d|\d[\d,.]*\s?(usd|inr|rs\.?|eur|gbp)\b|\b\d+\s?%\s?off/i, SHIP = /shipping|delivery/i;
     const srcWords = srcName.split(/\s+[–—|-]\s+/)[0].split(/\s+/).filter((w) => w.length > 3);
     const names = (t) => srcWords.length && srcWords.filter((w) => String(t).toLowerCase().includes(w)).length >= Math.min(2, srcWords.length);
-    function fitWords(l, p) { if (l.kind !== 'text' && l.kind !== 'badge') return; const t = String(l.words || ''); if (!t || (SHIP.test(t) && !names(t))) return; if (!FIG.test(t) && !names(t)) return;
+    /* the headline goes first: once it carries the product's name, the line under it is just the price */
+    function fitWords(l, p, named) { if (l.kind !== 'text' && l.kind !== 'badge') return; const t = String(l.words || ''); if (!t || (SHIP.test(t) && !names(t))) return; if (!FIG.test(t) && !names(t)) return;
       if (l.kind === 'badge') { l.hidden = true; return; }
-      l.words = l.role === 'headline' ? short(p) : `${short(p)}${p.price != null ? ` · ${money(p, p.price)}` : ''}${p.mrp > p.price ? ` (was ${money(p, p.mrp)})` : ''}`; }
+      const price = `${p.price != null ? money(p, p.price) : ''}${p.mrp > p.price ? ` (was ${money(p, p.mrp)})` : ''}`;
+      if (l.role === 'headline') { l.words = short(p); named.v = true; } else l.words = named.v ? (price ? `Now ${price}` : '') : `${short(p)}${price ? ` · ${price}` : ''}`; if (!l.words) l.hidden = true; }
     for (const p of tiles) { const c2 = { ...ctx, product: { img: p.img || p.images[0], name: p.t || p.title || null, handle: p.handle || null }, cuts: ctx.cuts };
       const cut = await cutout(c2); if (!cut || cut.raw) continue; if (cut.usd) made.push({ cap: 'cutout', provider: cut.provider, model: cut.model, usd: cut.usd });
       const sc = JSON.parse(JSON.stringify(h.scene)); for (const l of sc.layers) if (l.kind === 'product') { l.src = cut.file; l.hidden = false; }
-      if (!same(p)) for (const l of sc.layers) fitWords(l, p);
+      if (!same(p)) { const named = { v: false }; for (const l of [...sc.layers].sort((a, b) => (a.role === 'headline' ? -1 : 0) - (b.role === 'headline' ? -1 : 0))) fitWords(l, p, named); }
       slides.push({ scene: sc, file: await render(sc), product: c2.product.name }); }
     if (!slides.length) throw new Error('None of the product photos could be cut out.');
     const take = { op: 'all-products', by: ctx.by, words: { ...h.words, slides: slides.map((x) => ({ onSlide: x.product || '', small: '' })) }, slides, scene: slides[0].scene, file: slides[0].file, made, how: board.how,
