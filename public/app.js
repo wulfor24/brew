@@ -588,14 +588,13 @@
     const showDone = async (q = {}) => {
       if (skipped || failed || $('#su-done')) return; $$('#su-ask,#su-wait').forEach((x) => x.remove());
       const n = $$('#scr .scr').length, posted = !!q.posted;
-      document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><span class="su-ok">${ic('check', 's18')}</span><div><b>${esc(B.brand.name)} is read.</b><span>${steps.length} sources, ${n} findings. Your feed starts from these.</span></div>${posted ? '<button class="linkbtn" id="su-check">Check everything we read</button>' : ''}<button class="btn btn-primary lg" id="su-next">Set up my feed ${ic('right', 's18')}</button></div>`);
-      // a brand whose facts were already confirmed goes straight to the seat picker (confirming again would rewrite its moves)
-      const confirmed = GEN ? (await api(`/api/brands/${B.slug || BR}/status`).catch(() => null))?.stages?.confirm?.state === 'done' : false;
+      /* every read leads to "Is this right?"; the feed is a quiet skip. Saving with nothing changed rewrites nothing (recheckIfLate needs checkTouched) */
+      document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><span class="su-ok">${ic('check', 's18')}</span><div><b>${esc(B.brand.name)} is read.</b><span>${steps.length} sources, ${n} findings. Your feed starts from these.</span></div>${GEN ? '<button class="linkbtn" id="su-skip">Skip to my feed</button>' : ''}<button class="btn btn-primary lg" id="su-next">${GEN ? 'Check what we read' : 'Set up my feed'} ${ic('right', 's18')}</button></div>`);
       if (skipped) return;
       /* the questions confirmed the read: a reload, so the feed opens with the real logo, products and cards (as after the check page) */
-      $('#su-next').onclick = (e) => { if (signWall(GEN && !confirmed ? 'check' : 'who')) return; const b = e.currentTarget; if (posted) { b.disabled = true; return continueToFeed(); } if (GEN && !confirmed) { b.disabled = true; b.innerHTML = '<brew-load class="spin"></brew-load>Opening'; checkRead().finally(() => $('#su-done')?.remove()); return; } $('#su-done').remove(); afterRead(); }; $('#su-next').focus();
-      $('#su-check')?.addEventListener('click', () => { if (signWall('check')) return; checkRead().finally(() => $('#su-done')?.remove()); });
-      if (GEN && !confirmed && !posted) $('#su-next').innerHTML = `Check what we read ${ic('right', 's18')}`;
+      const toFeed = (b) => { if (signWall('who')) return; if (posted) { b.disabled = true; return continueToFeed(); } $('#su-done').remove(); afterRead(); };
+      $('#su-next').onclick = (e) => { const b = e.currentTarget; if (!GEN) return toFeed(b); if (signWall('check')) return; b.disabled = true; b.innerHTML = '<brew-load class="spin"></brew-load>Opening'; checkRead().finally(() => $('#su-done')?.remove()); }; $('#su-next').focus();
+      $('#su-skip')?.addEventListener('click', (e) => toFeed(e.currentTarget));
     };
     Promise.all([readP, qP]).then(([, q]) => showDone(q));
     /* the stream drops (a restart): while questions are open, the status poll says when the read is in; otherwise on to the seat, as before */
