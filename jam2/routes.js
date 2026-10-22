@@ -115,7 +115,7 @@ export function mountJam2(d) {
   /* the same picture for every product in the catalog: a new board, one slide per product (scene and words kept) */
   on('POST', '/api/jam2/jams/:jid/boards/:bid/all', wrap(async (b, t, p) => { const j = await load(t, p.jid), src = boardOf(j, p.bid); if (!headOf(src)?.scene) return { error: 'Make the picture first.' };
     if (j.boards.length >= 12) return { error: 'This jam has 12 boards. Start a new jam for more.' };
-    const nb = newBoard('carousel-ad', { label: 'Every product', conceptRev: j.concept.rev }); j.boards.push(nb); await store.put(slugOfT(t), j);
+    const nb = newBoard('carousel-ad', { label: 'Every product', conceptRev: j.concept.rev }); nb.allOf = src.id; j.boards.push(nb); await store.put(slugOfT(t), j);
     runBg(t, j, nb.id, 'all', async () => maker.allProducts(await ctxOf(t, j), nb, src)); return { jam: out(j) }; }));
   /* recipes: a board's look and layout saved by name, to start the next one from */
   on('POST', '/api/jam2/recipes', wrap(async (b, t) => { const w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can save recipes.' };

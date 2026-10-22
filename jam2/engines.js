@@ -74,12 +74,20 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
       'cast.create': { quote: () => ({ usd: H.usd.cast }), run: async (s) => { const out = await hfCall(H.models['cast.create'], { tier: 'normal', brief: s.prompt || '', image_url: s.srcUrl ? pub(s.srcUrl) : null, selection: {}, item_image_urls: [], variation_index: 0 }); return { file: keep(out.buf, 'png'), model: H.models['cast.create'], usd: H.usd.cast, provider: 'higgsfield' }; } } } };
 
   /* ---------- local (free) ---------- */
-  let imgly = null, imglyTried = false;
-  const loadImgly = async () => { if (imglyTried) return imgly; imglyTried = true; try { imgly = await import('@imgly/background-removal-node'); } catch { imgly = null; } return imgly; };
+  /* the cut-out runs in one worker thread (jam2/cutout-worker.js), one photo at a time, so a batch never stalls the server;
+     a photo that takes over 90 s fails on its own and the worker is replaced */
+  let imglyP = null, worker = null, wseq = 0; const wait = new Map(); let lane = Promise.resolve();
+  /* one shared load: calls that arrive while it loads wait for it (they used to read 'not installed' and fail) */
+  const loadImgly = () => (imglyP ||= import('@imgly/background-removal-node').catch(() => null));
+  const spawnWorker = async () => { const { Worker } = await import('node:worker_threads'); const w = new Worker(new URL('./cutout-worker.js', import.meta.url)); w.unref();
+    w.on('message', (m) => { const p = wait.get(m.id); if (!p) return; wait.delete(m.id); clearTimeout(p.t); m.ok ? p.ok(Buffer.from(m.buf)) : p.no(new Error(m.error)); });
+    const dead = (e) => { if (worker === w) worker = null; for (const [id, p] of wait) { clearTimeout(p.t); p.no(e instanceof Error ? e : new Error('the cut-out stopped')); wait.delete(id); } };
+    w.on('error', dead); w.on('exit', () => dead(new Error('the cut-out stopped'))); return w; };
+  const cutInWorker = (buf) => (lane = lane.catch(() => {}).then(async () => { worker ||= await spawnWorker(); const w = worker, id = ++wseq;
+    return new Promise((ok, no) => { const t = setTimeout(() => { wait.delete(id); no(new Error('the cut-out took too long')); if (worker === w) { worker = null; w.terminate().catch(() => {}); } }, 90e3); wait.set(id, { ok, no, t }); w.postMessage({ id, buf }); }); }));
   const local = { id: 'local', label: 'Brew (on our server, free)', live: () => true,
-    caps: { cutout: { available: async () => !!(await loadImgly()), quote: () => ({ usd: 0 }), run: async (s) => { const m = await loadImgly(); if (!m) throw Object.assign(new Error('the local cut-out is not installed'), { skip: true });
-      /* a typed Blob: given bare bytes the library sees no format and refuses every photo; octet-stream lets sharp read any format */
-      const blob = await m.removeBackground(new Blob([fs.readFileSync(s.srcFile)], { type: 'application/octet-stream' }), { output: { format: 'image/png' } }); const buf = Buffer.from(await blob.arrayBuffer()); return { file: keep(buf, 'png'), model: 'imgly-isnet', usd: 0, alpha: true }; } } } };
+    caps: { cutout: { available: async () => !!(await loadImgly()), quote: () => ({ usd: 0 }), run: async (s) => { if (!(await loadImgly())) throw Object.assign(new Error('the local cut-out is not installed'), { skip: true });
+      const buf = await cutInWorker(fs.readFileSync(s.srcFile)); return { file: keep(buf, 'png'), model: 'imgly-isnet', usd: 0, alpha: true }; } } } };
 
   /* not connected yet: listed so the routing table reads true, skipped until their keys exist */
   const off = (id, label, caps, key) => ({ id, label, live: () => !!env[key], caps: Object.fromEntries(caps.map((c) => [c, { quote: () => ({ error: `${label} is not connected yet` }), run: async () => { throw Object.assign(new Error(`${label} is not connected yet`), { skip: true }); } }])) });

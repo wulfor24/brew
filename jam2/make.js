@@ -169,6 +169,8 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
 
   /* ---------- the first take of a board ---------- */
   async function first(ctx, board, { ask = '' } = {}) {
+    /* an Every product board is remade from its source picture (free), never as a new paid carousel */
+    const src = board.allOf ? ctx.jam.boards.find((x) => x.id === board.allOf) : null; if (src) return allProducts(ctx, board, src);
     const r = recipe(board.recipe), size = sizeOf(board), made = [];
     const words = await write(ctx, board, { ask });
     if (!ctx.jam.concept.by || ctx.jam.concept.by === 'card') Object.assign(ctx.jam.concept, { angle: words.angle || ctx.jam.concept.angle, goal: words.goal || ctx.jam.concept.goal, audience: words.audience || ctx.jam.concept.audience, offer: words.offer || '', proof: (words.proof || []).map((t) => ({ kind: 'proof', text: t })), by: 'brew' });
