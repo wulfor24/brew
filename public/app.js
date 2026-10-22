@@ -271,7 +271,7 @@
     /* signed in, but not with an email at the brand (and not invited): the read is theirs to look at, the moves wait for the team */
     /* on any path (feed, onboarding, check): their feed would be empty, so the demo stores are the way in. A shared jam's guest
        (a share token, or a jam link) is let through: feed-service guestOk decides what they see */
-    const A0 = window.LIVE?.access, guestLink = !!SHARE || /^#(jam|work)=/.test(location.hash);
+    const A0 = window.LIVE?.access, guestLink = !!SHARE || /^#(jam|work)=/.test(location.hash) || ls.get(`${LSP()}guest`) === '1'; /* a guest back without the link */
     if (GEN && window.LIVE?.me && A0 && !A0.gen && !A0.full && !guestLink) {
       view = 'signin'; $('#su-done')?.remove(); $('#buddy')?.remove(); window.scrollTo(0, 0);
       const me = window.LIVE.me.email, h = A0.host || B.brand.host, n = esc(B.brand.name), free = FREE_MAIL.test(String(me).split('@')[1] || '');
@@ -417,7 +417,7 @@
         urlErr(''); going(true, 'Opening your store…');
         const r = await api('/api/brands', { url }).then((j) => (j?.fallback ? null : j)).catch(() => null); /* a dropped network is the plain line below, never "TypeError: Failed to fetch" (QA 19 Oct) */
         if (r?.signin) { going(true, 'Taking you to sign in…'); location.href = `/auth/google?next=${encodeURIComponent('/?build=' + encodeURIComponent(url))}`; return; }
-        if (!r?.slug) { going(false); urlErr(r?.error || 'That address did not open. Check it and try again.'); return $('#url-in').focus(); }
+        if (!r?.slug) { going(false); urlErr(r?.error || 'That address did not open. Check it and try again.'); if (r?.demoStores) $('#url-err')?.insertAdjacentHTML('beforeend', ` <a class="linkbtn" href="${DEMO_STORES}">See demo stores</a>`); return $('#url-in').focus(); }
         location.href = '/' + r.slug; return; }
       $('#go').disabled = true; await ensureTenant(true); setup(); };
     if (DEMO_LAND) { // the demo site: only the brands that are ready, and a click starts that brand's tour
@@ -5547,6 +5547,7 @@
     S.onboarded = true; if (r.viewer) S.viewer = { ...S.viewer, ...r.viewer }; S.conn = { ...(r.conn || {}) }; S.pro = !!r.pro; S.decided = { ...(r.decided || {}) };
     lastSync = stateKey(); ls.set(KEY, JSON.stringify(S));
     /* anyone can look; signing in makes them a guest of this one jam (never the whole team) */
+    if (r.guest) ls.set(`${LSP()}guest`, '1'); /* the team wall lets them back in later without the link (signWall) */
     setTimeout(() => toast(r.guest ? `${ic('person', 's16')}You’re in this jam as a guest. You can chat, edit the brief and make drafts.` : r.signedIn ? `${ic('person', 's16')}You’re viewing ${esc(B.brand.name)}’s shared jam` : `${ic('person', 's16')}You’re viewing a shared jam. Sign in to take part.`), 900); };
   // real connected accounts (live.js) replace the demo numbers before anything renders
   if (window.BREW_DEMO && !LANDING) { document.body.insertAdjacentHTML('beforeend', `<button class="demo-pill" type="button" title="Demo controls (press .)" aria-label="Demo controls">${ic('sliders', 's14')}<span>Demo</span></button>`); $('.demo-pill').onclick = () => openDemo(); }

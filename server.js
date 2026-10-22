@@ -39,7 +39,7 @@ import { buildFinal } from './sloosh-prompt.js'; // the ops page's free check qu
 import { createBuilder, blocked, clientIp } from './build.js';
 import { createRetire } from './retire.js'; // older revisions stop and exit; brands being reset are hidden
 import { createFactsDesk } from './facts-desk.js';
-import { createAuth } from './auth.js';
+import { createAuth, officialFor } from './auth.js';
 import { createConnectors } from './connectors/index.js';
 import { createShopifyApp } from './shopify-app.js';
 import { createSlackRoutes } from './slack-routes.js';
@@ -610,7 +610,7 @@ const MEMO = new Map();
 const VIS = { m: null, dirty: false, t: null }, VIS_FILE = 'private/visitors.json';
 const visLoad = () => (VIS.m ||= packs.getJSON('_brew', VIS_FILE, {}).then((x) => x || {}).catch(() => ({})));
 const visFlush = async () => { clearTimeout(VIS.t); VIS.t = null; if (!VIS.dirty) return; VIS.dirty = false; await packs.put('_brew', VIS_FILE, await visLoad()).catch((e) => console.warn('[visitors]', e.message)); };
-const visSeen = (slug, me, v, a) => { const email = String(me?.email || '').toLowerCase(); if (!email || !slug || slug === DEFAULT || process.env.DEMO_MODE === '1') return;
+const visSeen = (slug, me, v, a) => { const email = String(me?.email || '').toLowerCase(); if (!email || !slug || slug === DEFAULT || !a?.host || process.env.DEMO_MODE === '1') return; /* no host: no such brand */
   visLoad().then((m) => { const k = `${slug}|${email}`, r = (m[k] ||= { slug, email, first: Date.now(), n: 0 });
     r.last = Date.now(); r.n++; if (me.name) r.name = me.name;
     r.access = a.full ? 'brew' : v.member ? 'team' : v.gen ? 'official' : 'blocked'; /* brew: SquareUp; official: the brand's own email, unclaimed */
@@ -674,6 +674,10 @@ const brandRoutes = async (req, res, u) => {
        gets BUILD_PER_USER_DAY new brands a day. The page sends them to Google and starts the read when they come back (?build=).
        The demo site answers this route itself (demo-routes.js) */
     if (!me && auth.signinOn() && process.env.BUILD_SIGNIN !== '0') return send(res, 200, { error: b.fresh ? 'Sign in with Google to read this brand again.' : 'Sign in with Google to read your store.', signin: true }), true;
+    /* a new brand is read only for its own people (Param, 23 Oct): a Gmail or another company's email would spend a read (~$6)
+       on a brand it can never open, so it is pointed at the demo stores. A brand already read just opens (its page has the wall) */
+    if (me && auth.signinOn() && !DEMO && !auth.isAdmin(me)) { const host = String(b.url || '').trim().replace(/^[a-z]+:\/\//i, '').replace(/[/?#].*$/, '').replace(/^www\./i, '').toLowerCase(), sl = slugOf(String(b.url || '').trim());
+      if (host && sl && !officialFor(me.email, host) && !(await packs.getJSON(sl, 'status.json', null).catch(() => null))) return send(res, 200, { error: `Brew reads a brand for its own team. Sign in with your work email at ${host} to read it.`, demoStores: true, host }), true; }
     return send(res, 200, await builder.start(b.url, { ip, user: me, fresh: !!b.fresh && !!me && (await viewerOf(req, slugOf(b.url))).gen })), true; }
   if (req.method === 'GET' && u.pathname === '/api/brands') { const all = await builder.list(), me = auth.user(req); if (process.env.DEMO_MODE === '1' || !auth.signinOn() || auth.isAdmin(me)) return send(res, 200, { brands: all }), true;
     const mine = []; if (me) for (const b of all) if ((await viewerOf(req, b.slug).catch(() => ({}))).member) mine.push(b); return send(res, 200, { brands: mine }), true; } // the brands this person is on: never other clients or prospects mid-read
@@ -763,6 +767,8 @@ const brandRoutes = async (req, res, u) => {
        same switch the jam emails' footer sets (private/mail-prefs.json), read by the moves emails and the weekly digest */
     if (typeof b.mute === 'boolean') { if (!me) return send(res, 401, { error: 'Sign in first.', signin: true }), true;
       const x = await jamMail.setPref(slug, me.email, { mail: b.mute ? 'off' : 'all' }); return send(res, 200, { ok: true, muted: x.mail === 'off', email: me.email }), true; }
+    /* the moves emails name the moves: only for the brand's own people, never someone it keeps out (Param, 23 Oct) */
+    if (me && !v.gen) return send(res, 403, { error: 'The moves emails are for the brand’s team. Ask them to invite you.', team: true }), true;
     const want = String(b.email || '').trim().toLowerCase();
     if (me && want !== String(me.email).toLowerCase()) { /* a member may add a teammate or someone already invited; nobody adds a stranger */
       const tm = v.member ? await auth.getMembers(slug).catch(() => null) : null, team = new Set([...(tm?.members || []).map((x) => String(x.email).toLowerCase()), ...(tm?.invites || []).map((x) => String(x.email).toLowerCase())]);

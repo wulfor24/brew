@@ -45,6 +45,10 @@ test('the live site’s gate never says “Demo mode”, and sign-in can’t be 
   const gate = s.split('\n').find((l) => l.includes("if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403"));
   assert.ok(gate && !/Demo mode/.test(gate)); assert.match(gate, /ask the owner for an invite/); assert.ok(!/you used to start this read/.test(s), 'starting a read is never a way in');
   assert.match(s, /const demoErr = \(host\) => \(\{ error: DEMO \?/);
+  /* outsiders spend nothing and hear nothing (23 Oct): a new brand is read only for its own email; the moves emails only for the team */
+  assert.match(s, /!officialFor\(me\.email, host\) && !\(await packs\.getJSON\(sl, 'status\.json', null\)/);
+  assert.match(s, /if \(me && !v\.gen\) return send\(res, 403, \{ error: 'The moves emails are for the brand’s team/);
+  assert.match(s, /const visSeen = [^\n]*!a\?\.host/);
   assert.match(s, /process\.env\.K_SERVICE && !auth\.signinOn\(\) && process\.env\.OPEN_SITE !== '1'\) throw/);
   assert.match(s, /budget\.flush\(\), tregLedger\.flush\(\), visFlush\(\), jamMail\.drain\(\), closed/, 'SIGTERM flushes everything');
 });
