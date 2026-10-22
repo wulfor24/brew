@@ -65,6 +65,7 @@
 .j2-art{position:relative;overflow:hidden;border-radius:6px;box-shadow:0 18px 40px rgba(0,0,0,.14);background:#d9d6cf;flex:0 0 auto}
 .j2-art .j2-scene{transform-origin:0 0;position:absolute;left:0;top:0}
 .j2-art .j2-l{cursor:pointer}
+.j2-art .j2-l:focus-visible{outline:4px solid #2563eb;outline-offset:6px}
 .j2-art .j2-l:hover{outline:3px dashed rgba(37,99,235,.7);outline-offset:4px}
 .j2-art .j2-l.sel{outline:4px solid #2563eb;outline-offset:6px}
 .j2-art .j2-shape{pointer-events:none}

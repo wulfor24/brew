@@ -16,21 +16,25 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
   const box = (slug) => {
     let b = BR.get(slug); if (b) return b;
     b = { slug, work: [], changes: {}, vg: {}, last: null, loaded: false };
-    b.ready = (packs?.getJSON ? packs.getJSON(slug, FILE, null) : Promise.resolve(null)).then((j) => {
+    /* a read that fails (bucket down, broken file) never counts as "no jams": the brand stays unloaded, so the flush can't write an
+       empty list over the saved one; the next load tries again */
+    const read = packs?.readJSON ? packs.readJSON(slug, FILE).then((r) => { if (!r.ok) throw new Error(r.error || 'read failed'); return r.data; }) : (packs?.getJSON ? packs.getJSON(slug, FILE, null) : Promise.resolve(null));
+    b.ready = read.then((j) => {
       if (j) { const have = new Set(b.work.map((w) => w.id)); b.work.push(...(j.work || []).filter((w) => !have.has(w.id))); b.changes = { ...(j.changes || {}), ...b.changes };
         for (const [id, list] of Object.entries(j.vg || {})) b.vg[id] = b.vg[id] ? mergeVersions(list, b.vg[id]) : list; }
       b.loaded = true; b.last = JSON.stringify({ work: b.work, changes: b.changes, vg: b.vg });
-    }).catch((e) => { log.warn?.('[jams] load', slug, e.message); b.loaded = true; });
+    }).catch((e) => { log.warn?.('[jams] load', slug, e.message); b.failed = true; });
     BR.set(slug, b); return b;
   };
-  const load = async (slug) => { const b = box(slug); await b.ready; return b; };
+  const load = async (slug) => { let b = box(slug); await b.ready; if (b.failed && !b.loaded) { BR.delete(slug); const kept = b; b = box(slug); await b.ready;
+    if (b.loaded) { const have = new Set(b.work.map((w) => w.id)); b.work.push(...kept.work.filter((w) => !have.has(w.id))); b.changes = { ...kept.changes, ...b.changes }; } else BR.set(slug, b); } return b; };
   /* any change to a brand's jams, from a request or a background timer, is written within a few seconds */
   const flush = async (only) => {
     for (const b of BR.values()) {
       if (!b.loaded || (only && b.slug !== only)) continue;
       let s; try { s = JSON.stringify({ work: b.work, changes: b.changes, vg: b.vg }); } catch (e) { log.warn?.('[jams] serialise', e.message); continue; }
       if (s === b.last) continue; b.last = s;
-      await packs.put(b.slug, FILE, { at: Date.now(), work: b.work, changes: b.changes, vg: b.vg }).catch((e) => { b.last = null; log.warn?.('[jams] save', b.slug, e.message); });
+      await (packs.putStrict || packs.put)(b.slug, FILE, { at: Date.now(), work: b.work, changes: b.changes, vg: b.vg }).catch((e) => { b.last = null; log.warn?.('[jams] save', b.slug, e.message); });
     }
   };
   const timer = packs?.put && everyMs ? setInterval(() => flush().catch(() => {}), everyMs) : null; timer?.unref?.();

@@ -67,3 +67,14 @@ test('more button wordings land on the right board; navigation-only buttons make
   assert.equal(planFor({}, 'Draft the replies')[0].recipe, 'community-post'); assert.equal(planFor({}, 'Draft the pitch')[0].recipe, 'creator-dm');
   assert.equal(planFor({}, 'Pause those ads')[0].recipe, 'changes'); assert.equal(planFor({}, 'Add the photos')[0].recipe, 'listing');
 });
+test('a jam list that couldn’t be read is never written over; a failed write is tried again', async () => {
+  const { createJam2Store } = await import('../jam2/store.js');
+  let reads = 0; const writes = []; let failWrite = true;
+  const packs = { readJSON: async () => (++reads === 1 ? { ok: false, error: 'gcs 503' } : { ok: true, data: { jams: { j_old: { id: 'j_old', owner: 'team' } } } }),
+    putStrict: async (s, f, d) => { if (failWrite) { failWrite = false; throw new Error('gcs 503'); } writes.push(d); } };
+  const st = createJam2Store({ packs, everyMs: 0, log: { warn() {} } });
+  await st.flush(); assert.equal(writes.length, 0);
+  await st.put('s', { id: 'j_new', owner: 'team' }); const all = await st.list('s', { member: true });
+  assert.deepEqual(all.map((j) => j.id).sort(), ['j_new', 'j_old']);
+  await st.flush(); assert.equal(writes.length, 0, 'first write failed'); await st.flush(); assert.equal(writes.length, 1); assert.ok(writes[0].jams.j_old && writes[0].jams.j_new);
+});

@@ -33,7 +33,8 @@ const imgHtml = (l, srcOf) => { const src = srcOf(l.src); if (!src) return ''; c
 export function sceneBody(scene, { srcOf = (s) => s, editable = false } = {}) {
   const bg = scene.bg || {}, layers = [...(scene.layers || [])].sort((a, b) => num(a.z, 1) - num(b.z, 1));
   const bgImg = bg.src ? `<img class="j2-bgimg" src="${esc(srcOf(bg.src))}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:${pick(bg.fit, ['cover', 'contain', 'fill'], 'cover')};${css(bg.filter) ? `filter:${css(bg.filter)};` : ''}" draggable="false" alt="">` : '';
-  const ls = layers.map((l) => { const id = editable ? ` data-id="${esc(l.id)}" data-kind="${esc(l.kind)}"` : '';
+  const NAME = { text: 'Words', product: 'Product', logo: 'Logo', badge: 'Badge', image: 'Picture', person: 'Person' };
+  const ls = layers.map((l) => { const id = editable ? ` data-id="${esc(l.id)}" data-kind="${esc(l.kind)}"${NAME[l.kind] && !l.hidden ? ` tabindex="0" role="button" aria-label="${esc(NAME[l.kind])}${l.words ? `: ${esc(String(l.words).slice(0, 60))}` : ''}"` : ''}` : '';
     const inner = l.kind === 'text' || l.kind === 'badge' ? esc(l.words || '') : l.kind === 'shape' ? '' : imgHtml(l, srcOf);
     return `<div class="j2-l j2-${esc(l.kind)}${l.locked ? ' j2-locked' : ''}"${id} style="position:absolute;${layerStyle(l)}">${inner}</div>`; }).join('');
   return `<div class="j2-scene" style="position:relative;width:${num(scene.w, 1080)}px;height:${num(scene.h, 1350)}px;overflow:hidden;background:${css(bg.color, '#eee')}">${bgImg}${ls}</div>`;

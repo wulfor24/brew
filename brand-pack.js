@@ -166,6 +166,19 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     if (b) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, b); }
     return brewFile(name, b);
   };
+  /* a file whose loss would hurt (the jams): { ok: false } when it couldn't be read (bucket down, broken file), so the caller
+     never mistakes "couldn't read" for "empty" and writes an empty list over it; { ok: true, data: null } when it really isn't there */
+  const readJSON = async (slug, name0) => {
+    await retireReady(); const name = sandboxName(name0) || name0; /* Demo Mode: a session's own copy */ if (wiping(slug) || !inside(slug, name)) return { ok: true, data: null };
+    const f = fileOf(slug, name);
+    try { if (fs.existsSync(f)) return { ok: true, data: JSON.parse(fs.readFileSync(f, 'utf8')) };
+      if (!remote) return { ok: true, data: null };
+      const b = await gcsGet(`brands/${slug}/${name}`); if (b == null) return { ok: true, data: null };
+      const data = JSON.parse(b.toString('utf8')); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, b); return { ok: true, data };
+    } catch (e) { log.warn('[packs] read', slug, name, e.message); return { ok: false, error: e.message }; } };
+  /* the same file written so a failed bucket write throws (the caller keeps it dirty and tries again) */
+  const putStrict = async (slug, name0, data) => { await retireReady(); const name = sandboxName(name0) || name0; if (wiping(slug)) return null; const f = fileOf(slug, name); fs.mkdirSync(path.dirname(f), { recursive: true });
+    const buf = Buffer.from(JSON.stringify(data, null, 1)); fs.writeFileSync(f, buf); bump(slug); if (remote) await gcsPut(`brands/${slug}/${name}`, buf, 'application/json'); return f; };
   const getJSON = async (slug, name, d = null) => { const b = await get(slug, name); if (!b) return d; try { return JSON.parse(b.toString('utf8')); } catch { return d; } };
   /* a file other instances write while this one runs (first drafts, made by whichever instance's background job ran): the
      bucket's copy first, kept on disk; this instance's disk only when the bucket can't be reached. get() serves the disk
@@ -388,5 +401,5 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   }
   /* the first drafts of every loaded brand, re-read from the bucket: a draft made on another instance shows here too, the same on every refresh */
   const refreshDrafts = async () => { for (const [slug, p] of cache) { if (p?.kind !== 'generated') continue; const d = await getFreshJSON(slug, 'drafts/cards.json', null).catch(() => null); if (d && typeof d === 'object') p.firstDrafts = d; } };
-  return { load, peek, put, get, getJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => { bump(slug); for (const k of freshP.keys()) if (k.startsWith(`${slug}|`)) freshP.delete(k); return cache.delete(slug); }, version: ver, remote };
+  return { load, peek, put, putStrict, get, getJSON, readJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => { bump(slug); for (const k of freshP.keys()) if (k.startsWith(`${slug}|`)) freshP.delete(k); return cache.delete(slug); }, version: ver, remote };
 }

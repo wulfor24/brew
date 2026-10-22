@@ -55,7 +55,7 @@ function patchLayer(fn, label) { const t = take(), b = board(); const slide = b.
   op(slide != null ? { patch: { slide, slideScene: sc } } : { patch: { scene: sc } }, label); }
 function tools() {
   const s = S.sel, b = board(), P = S.prices || {}; if (!s || !b) return null;
-  const line = (target, label) => [['Shorter', () => op({ op: 'line', target, ask: 'shorter' }, `${label} shorter`)], ['Warmer', () => op({ op: 'line', target, ask: 'warmer' }, `${label} warmer`)], ['Another way', () => op({ op: 'line', target, ask: 'rewrite' }, `${label} rewritten`)], ['In Hindi', () => op({ op: 'line', target, ask: 'hindi' }, `${label} in Hindi`)]];
+  const line = (target, label) => [['Shorter', () => op({ op: 'line', target, ask: 'shorter' }, `${label} shorter · free`)], ['Warmer', () => op({ op: 'line', target, ask: 'warmer' }, `${label} warmer · free`)], ['Another way', () => op({ op: 'line', target, ask: 'rewrite' }, `${label} rewritten · free`)], ['In Hindi', () => op({ op: 'line', target, ask: 'hindi' }, `${label} in Hindi · free`)]];
   const typeOver = (label, val, save) => ['Type over it', () => ask(label, val, save)];
   if (s.kind === 'text') { const l = layerOf(s.id), role = l?.role || 'headline';
     if (b.kind === 'carousel') return { label: `Slide ${S.slide + 1} · words`, main: [typeOver('Slide words', l?.words, (v) => op({ patch: { slide: S.slide, slideWords: { [role]: v } } }, 'Slide words changed')), ...line({ kind: 'slide', i: S.slide }, 'Slide words').slice(0, 3)], more: [] };
@@ -158,7 +158,7 @@ function canvas() {
   const w = t.words || {};
   if (b.kind === 'carousel' && t.slides?.length) { const i = Math.min(S.slide, t.slides.length - 1), sl = t.slides[i];
     return `<div class="j2-frame"><button class="j2-flab${S.sel?.kind === 'whole' ? ' on' : ''}" data-whole>${esc(b.label)} · slide ${i + 1} of ${t.slides.length}</button>${sceneArt(sl.scene, sl.file, { slide: i })}<div class="j2-strip">${t.slides.map((x, n) => `<button class="${n === i ? 'on' : ''}" data-slide="${n}" aria-label="Slide ${n + 1}"><img src="${esc(srcOf(x.file))}" alt=""></button>`).join('')}</div>${err}</div>`; }
-  if (t.scene && b.kind !== 'message') return `<div class="j2-frame"><button class="j2-flab${S.sel?.kind === 'whole' ? ' on' : ''}" data-whole>${esc(b.label)} · ${esc(S.recipes.__sizes?.[b.size]?.label || b.size || '')}${t.final ? ' · Final' : ''}</button>${sceneArt(t.scene, t.file)}${err}</div>`;
+  if (t.scene && b.kind !== 'message') return `<div class="j2-frame"><span style="display:flex;gap:4px"><button class="j2-flab${S.sel?.kind === 'whole' ? ' on' : ''}" data-whole>${esc(b.label)} · ${esc(S.recipes.__sizes?.[b.size]?.label || b.size || '')}${t.final ? ' · Final' : ''}</button><button class="j2-flab${S.sel?.kind === 'bg' ? ' on' : ''}" data-scene>Scene</button></span>${sceneArt(t.scene, t.file)}${err}</div>`;
   if (b.kind === 'video') return video(b, t) + err;
   if (b.kind === 'table') return table(w) + err;
   if (b.recipe === 'whatsapp') return `<div class="j2-wa"><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">Your business account · approved template</div><div class="j2-bubble">${sents(w.body)}</div></div>${err}`;
@@ -279,6 +279,7 @@ function wire(root) {
     if (g('[data-copyopen]')) { const body = words().body || ''; navigator.clipboard?.writeText(body).catch(() => {}); const link = /^https?:\/\//.test(S.jam.concept?.spark?.link || '') ? S.jam.concept.spark.link : null; if (link) window.open(link, '_blank', 'noopener'); return toast(link ? 'Copied. The thread opened in a new tab: paste it as your reply.' : 'Copied. Paste it where the question was asked.'); }
     const sl = g('[data-slide]'); if (sl) { S.slide = +sl.dataset.slide; S.sel = null; return render(); }
     if (g('[data-whole]')) { S.sel = { kind: 'whole' }; return render(); }
+    if (g('[data-scene]')) { S.sel = { kind: 'bg' }; return render(); }
     const sn = g('[data-sent]'); if (sn) { S.sel = { kind: 'sent', i: +sn.dataset.sent }; return render(); }
     if (g('[data-subject]')) { S.sel = { kind: 'subject' }; return render(); }
     const bk = g('[data-block]'); if (bk) { S.sel = { kind: 'block', i: +bk.dataset.block }; return render(); }
@@ -290,6 +291,8 @@ function wire(root) {
       S.sel = l && kind !== 'shape' && kind !== 'bg' ? { kind, id: l.dataset.id, slide: board().kind === 'carousel' ? S.slide : null } : { kind: 'bg' }; return render(); }
   });
   root.addEventListener('keydown', (e) => {
+    /* every part of the picture is reachable with Tab; Enter or Space selects it, like a click */
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.j2-l[data-id][tabindex]')) { e.preventDefault(); e.target.click(); return; }
     if (e.key === 'Escape') { if (S.pend || S.edit || S.sel || S.fin || S.add) { S.pend = null; S.edit = null; S.sel = null; S.fin = false; S.add = false; S.area = false; return render(); } return close(); }
     if (e.key !== 'Enter') return;
     if (e.target.id === 'j2-in') { e.preventDefault(); return send(e.target.value); }

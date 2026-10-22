@@ -9,19 +9,23 @@ export function createJam2Store({ packs, log = console, everyMs = 4000, enabled 
   const box = (slug) => {
     let b = BR.get(slug); if (b) return b;
     b = { slug, jams: {}, loaded: false, last: null };
-    b.ready = (packs?.getJSON ? packs.getJSON(slug, FILE, null) : Promise.resolve(null)).then((j) => {
-      if (j?.jams) for (const [id, x] of Object.entries(j.jams)) if (!b.jams[id]) b.jams[id] = x;
-      b.loaded = true; b.last = JSON.stringify(b.jams);
-    }).catch((e) => { log.warn?.('[jam2] load', slug, e.message); b.loaded = true; });
+    /* a read that fails leaves the list unloaded: nothing is written over the file until a read goes through (the next request tries again) */
+    const read = packs?.readJSON ? packs.readJSON(slug, FILE) : (packs?.getJSON ? packs.getJSON(slug, FILE, null) : Promise.resolve(null)).then((data) => ({ ok: true, data }));
+    b.ready = read.then((r) => {
+      if (!r.ok) { b.failed = r.error || 'read failed'; return; }
+      if (r.data?.jams) for (const [id, x] of Object.entries(r.data.jams)) if (!b.jams[id]) b.jams[id] = x;
+      b.loaded = true; b.failed = null; b.last = JSON.stringify(b.jams);
+    }).catch((e) => { log.warn?.('[jam2] load', slug, e.message); b.failed = e.message; });
     BR.set(slug, b); return b;
   };
-  const load = async (slug) => { const b = box(slug); await b.ready; return b; };
+  const load = async (slug) => { let b = box(slug); await b.ready; if (!b.loaded) { BR.delete(slug); const kept = b.jams; b = box(slug); await b.ready; if (b.loaded) Object.assign(b.jams, kept);
+    else { BR.set(slug, b); throw Object.assign(new Error('Your jams couldn’t be loaded just now. Try again in a moment; nothing was lost.'), { status: 503 }); } } return b; };
   const flush = async (only) => {
     for (const b of BR.values()) {
       if (!b.loaded || (only && b.slug !== only)) continue;
       let s; try { s = JSON.stringify(b.jams); } catch (e) { log.warn?.('[jam2] serialise', e.message); continue; }
       if (s === b.last) continue; b.last = s;
-      await packs.put(b.slug, FILE, { at: Date.now(), jams: b.jams }).catch((e) => { b.last = null; log.warn?.('[jam2] save', b.slug, e.message); });
+      await (packs.putStrict || packs.put)(b.slug, FILE, { at: Date.now(), jams: b.jams }).catch((e) => { b.last = null; log.warn?.('[jam2] save', b.slug, e.message); }); /* failed: stays dirty, the next flush writes it again */
     }
   };
   const timer = packs?.put && everyMs && enabled() ? setInterval(() => flush().catch(() => {}), everyMs) : null; timer?.unref?.();
