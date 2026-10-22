@@ -30,21 +30,22 @@ const words = (b = board()) => take(b)?.words || {};
 /* a reply is used only if the same jam is still open: a late answer for a jam the person left never lands in the next one */
 const live = (s0, jid) => S && S === s0 && S.jam?.id === jid;
 async function load() { const s0 = S, jid = S.jam.id; const r = await api('GET', `/api/jam2/jams/${jid}`); if (live(s0, jid) && r?.jam && !S.working) { S.jam = r.jam; render(); } }
-function poll() { clearInterval(pollT); pollT = setInterval(() => { if (!$('#j2')) return clearInterval(pollT); const wait = S.jam?.boards?.some((b) => (S.jam.busy?.[b.id] && !S.jam.busy[b.id].error) || !b.takes?.length); if (wait && !S.working) load(); }, 2500); }
-const toast = (t) => { S.toast = t; render(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = null; render(); }, 5200); };
+function poll() { clearInterval(pollT); pollT = setInterval(() => { if (!$('#j2')) return clearInterval(pollT); const wait = S.jam?.boards?.some((b) => S.jam.busy?.[b.id] && !S.jam.busy[b.id].error); if (wait && !S.working) load(); }, 2500); }
+const toast = (t) => { S.toast = t; render(); clearTimeout(toast.t); toast.t = setTimeout(() => { if (S) { S.toast = null; render(); } }, 5200); };
 const say = (from, t, sel = null) => { const s0 = S, jid = S.jam.id; return api('POST', `/api/jam2/jams/${jid}/say`, { from, t, sel }).then((r) => { if (live(s0, jid) && r?.jam) { S.jam = r.jam; render(); } }); };
 
 /* one change on the current board: the reply carries the jam; slow ones come back through the poll */
-async function op(body, done = '') {
-  const b = board(); if (!b || S.working) return; const s0 = S, jid = S.jam.id; S.working = true; S.pend = null; S.more = false; render();
+async function op(body, done = '', bid = null) {
+  const b = (bid && S.jam.boards.find((x) => x.id === bid)) || board(); if (!b || S.working) return; const s0 = S, jid = S.jam.id; S.working = true; S.pend = null; S.more = false; render();
   const r = await api('POST', `/api/jam2/jams/${jid}/boards/${b.id}/op`, body); if (!live(s0, jid)) return; S.working = false;
   if (r?.jam) S.jam = r.jam; if (r?.error) { toast(r.error); return; }
   /* a slow change comes back later through the poll: its message says so instead of naming a version it isn't yet */
-  const bg = !!S.jam.busy?.[b.id] && !S.jam.busy[b.id].error; render(); if (done) say('brew', bg ? `${done}: on it, it lands here as the next version.` : `${done} · v${(take()?.n) || ''}`.replace(/ · v$/, ''));
+  const bg = !!S.jam.busy?.[b.id] && !S.jam.busy[b.id].error, nb = S.jam.boards.find((x) => x.id === b.id); render(); if (done) say('brew', bg ? `${done}: on it, it lands here as the next version.` : `${done} · v${take(nb)?.n || ''}`.replace(/ · v$/, ''));
 }
 /* a priced step always shows its price before it runs: while prices are still loading it waits for them */
 const priced = async (label, cost, run) => { S.more = false; if (!cost || /\$NaN|^\$?$/.test(cost)) { S.pend = { label, cost: 'checking the price…', run: null }; render(); const s0 = S, jid = S.jam.id;
-  const p = await api('GET', `/api/jam2/jams/${jid}/prices`); if (!live(s0, jid)) return; if (p?.prices) S.prices = p.prices; S.pend = null; render(); return toast('Prices are in. Tap it again to see what it costs.'); }
+  const p = await api('GET', `/api/jam2/jams/${jid}/prices`); if (!live(s0, jid)) return; if (p?.prices) S.prices = p.prices; S.pend = null; render();
+  return toast(p?.prices && Object.values(p.prices).some((x) => typeof x === 'number') ? 'Prices are in. Tap it again to see what it costs.' : 'This can’t be priced right now (the partner that makes it isn’t connected), so it won’t run. Try again later.'); }
   S.pend = { label, cost, run }; render(); };
 const ask = (label, val, save) => { S.edit = { label, val: val || '', save }; S.more = false; render(); setTimeout(() => $('#j2-edit')?.focus(), 30); };
 
@@ -57,6 +58,8 @@ function tools() {
   const s = S.sel, b = board(), P = S.prices || {}; if (!s || !b) return null;
   const line = (target, label) => [['Shorter', () => op({ op: 'line', target, ask: 'shorter' }, `${label} shorter · free`)], ['Warmer', () => op({ op: 'line', target, ask: 'warmer' }, `${label} warmer · free`)], ['Another way', () => op({ op: 'line', target, ask: 'rewrite' }, `${label} rewritten · free`)], ['In Hindi', () => op({ op: 'line', target, ask: 'hindi' }, `${label} in Hindi · free`)]];
   const typeOver = (label, val, save) => ['Type over it', () => ask(label, val, save)];
+  if (b.kind === 'carousel' && ['bg', 'whole', 'area'].includes(s.kind)) return { label: `Slide ${S.slide + 1}`, main: [['New words for every slide', () => op({ op: 'redo-words' }, 'New words')], ['Redo the carousel', () => priced(`Redo the carousel: ${take()?.slides?.length || 4} new slides, same idea`, S.prices.redo != null ? usd(S.prices.redo * (take()?.slides?.length || 4)) : '', () => op({ op: 'first' }, 'New carousel'))]], more: [] };
+  if (b.kind === 'carousel' && s.kind === 'product') return { label: `Slide ${S.slide + 1} · product`, main: [['Bigger', () => patchLayer((x) => { const k = 1.12; x.x -= x.w * (k - 1) / 2; x.y -= x.h * (k - 1) / 2; x.w *= k; x.h *= k; }, 'Product bigger')], ['Smaller', () => patchLayer((x) => { const k = 0.88; x.x += x.w * (1 - k) / 2; x.y += x.h * (1 - k) / 2; x.w *= k; x.h *= k; }, 'Product smaller')]], more: [] };
   if (s.kind === 'text') { const l = layerOf(s.id), role = l?.role || 'headline';
     if (b.kind === 'carousel') return { label: `Slide ${S.slide + 1} · words`, main: [typeOver('Slide words', l?.words, (v) => op({ patch: { slide: S.slide, slideWords: { [role]: v } } }, 'Slide words changed')), ...line({ kind: 'slide', i: S.slide }, 'Slide words').slice(0, 3)], more: [] };
     return { label: role === 'headline' ? 'Headline' : role === 'sub' ? 'Line under it' : 'Words', main: [typeOver('New words', l?.words, (v) => op({ patch: { words: { [role]: v } } }, `${role === 'headline' ? 'Headline' : 'Words'} changed`)), ...line({ kind: 'role', role }, role === 'headline' ? 'Headline' : 'Line').slice(0, 3)],
@@ -64,10 +67,8 @@ function tools() {
   if (s.kind === 'product') return { label: 'Product · your real photo, locked', main: [['Swap product', () => openPicker()], ['Bigger', () => patchLayer((x) => { const k = 1.12; x.x -= x.w * (k - 1) / 2; x.y -= x.h * (k - 1) / 2; x.w *= k; x.h *= k; }, 'Product bigger')], ['Smaller', () => patchLayer((x) => { const k = 0.88; x.x += x.w * (1 - k) / 2; x.y += x.h * (1 - k) / 2; x.w *= k; x.h *= k; }, 'Product smaller')], ['Blend into the light', () => priced('Blend the product into the scene’s light (the label stays exact)', usd(P.blend), () => op({ op: 'blend' }, 'Blended into the scene')), usd(P.blend)]],
     more: [['Move left', () => patchLayer((x) => { x.x -= x.w * 0.15; }, 'Product moved')], ['Move right', () => patchLayer((x) => { x.x += x.w * 0.15; }, 'Product moved')], ['Move up', () => patchLayer((x) => { x.y -= x.h * 0.12; }, 'Product moved')], ['Move down', () => patchLayer((x) => { x.y += x.h * 0.12; }, 'Product moved')]] };
   if (s.kind === 'logo' || s.kind === 'badge' || s.kind === 'image') return { label: s.kind === 'logo' ? 'Logo' : 'Badge', main: [['Hide it', () => patchLayer((x) => { x.hidden = true; }, `${s.kind} hidden`)], ['Bigger', () => patchLayer((x) => { x.w *= 1.15; x.h *= 1.15; if (x.style?.size) x.style.size *= 1.15; }, `${s.kind} bigger`)], ['Smaller', () => patchLayer((x) => { x.w *= 0.87; x.h *= 0.87; if (x.style?.size) x.style.size *= 0.87; }, `${s.kind} smaller`)]], more: [] };
-  if (b.kind === 'carousel' && ['bg', 'whole', 'area'].includes(s.kind)) return { label: `Slide ${S.slide + 1}`, main: [['New words for every slide', () => op({ op: 'redo-words' }, 'New words')], ['Redo the carousel', () => priced(`Redo the carousel: ${take()?.slides?.length || 4} new slides, same idea`, S.prices.redo != null ? usd(S.prices.redo * (take()?.slides?.length || 4)) : '', () => op({ op: 'first' }, 'New carousel'))]], more: [] };
-  if (b.kind === 'carousel' && s.kind === 'product') return { label: `Slide ${S.slide + 1} · product`, main: [['Bigger', () => patchLayer((x) => { const k = 1.12; x.x -= x.w * (k - 1) / 2; x.y -= x.h * (k - 1) / 2; x.w *= k; x.h *= k; }, 'Product bigger')], ['Smaller', () => patchLayer((x) => { const k = 0.88; x.x += x.w * (1 - k) / 2; x.y += x.h * (1 - k) / 2; x.w *= k; x.h *= k; }, 'Product smaller')]], more: [] };
   if (s.kind === 'bg') return { label: 'Scene', main: [['New scene', () => ask('What scene? (or leave it to Brew)', '', (v) => priced('A new scene behind the product, same words', usd(P.background), () => op({ op: 'background', ask: v }, 'New scene'))), usd(P.background)], ['Change an area', () => { S.area = true; S.sel = null; render(); }]], more: [] };
-  if (s.kind === 'whole') return { label: `${b.label} · whole picture`, main: [['Redo it', () => priced('One new take: a new scene, same words and product', usd(P.redo), () => op({ op: 'redo' }, 'New take')), usd(P.redo)], ['New words', () => op({ op: 'redo-words' }, 'New words')], ['Make the final', () => priced('Make the final: premium finish, same layout and words', P.final != null ? usd(P.final) : P.finalCredits ? `${P.finalCredits} credits` : 'priced first', () => op({ op: 'final' }, 'Final made')), P.final != null ? usd(P.final) : P.finalCredits ? `${P.finalCredits} credits` : '']],
+  if (s.kind === 'whole') return { label: `${b.label} · whole picture`, main: [['Redo it', () => priced('One new take: a new scene, same words and product', usd(P.redo), () => op({ op: 'redo' }, 'New take')), usd(P.redo)], ['New words', () => op({ op: 'redo-words' }, 'New words')], ['Make the final', () => priced('Make the final: premium finish, same layout and words', P.final != null ? usd(P.final) : P.finalCredits ? `${P.finalCredits} credits` : 'priced first', () => op({ op: 'final', confirmUsd: P.final ?? null, confirmCredits: P.finalCredits ?? null }, 'Final made')), P.final != null ? usd(P.final) : P.finalCredits ? `${P.finalCredits} credits` : '']],
     more: [['Make it a reel', () => addBoard('reel')], ['Make it a carousel', () => addBoard('carousel-ad')], ['Brief a team instead', () => setMode('brief')]] };
   if (s.kind === 'area') return { label: 'Selected area', main: [], more: [] };
   if (s.kind === 'shot') { const sh = take()?.timeline?.shots?.[s.i] || {}; const set = (f) => (v) => { const tl = JSON.parse(JSON.stringify(take().timeline)); tl.shots[s.i][f] = v; op({ patch: { timeline: tl } }, `Shot ${s.i + 1} changed`); };
@@ -93,27 +94,37 @@ async function brief(body, done = '', bid = board()?.id) { const s0 = S, jid = S
 async function setMode(m) { S.sel = null; await brief({ mode: m }); toast(m === 'brief' ? 'Now a brief for a team: the words are locked as final, with specs, references, who and when. Tap any part to change it.' : 'Back to making it here, ready to post.'); }
 /* boards are found by id: the jam object is replaced after every reply */
 async function sendBrief(b = board()) { const r = await brief({ send: true, mode: ownBrief(b) ? undefined : 'brief' }, '', b.id);
-  if (r?.url) { const nb = r.jam.boards.find((x) => x.id === b.id); S.finUrl = { ...(S.finUrl || {}), brief: location.origin + r.url }; say('brew', `Brief for ${b.label} sent to ${nb?.brief?.owner || OWNERS[0]}. They open it at ${location.origin + r.url} and mark it received, in progress, delivered; you see each step here.`); } }
-async function addBoard(recipe, label = null) { S.add = false; S.more = false; const s0 = S, jid = S.jam.id; const r = await api('POST', `/api/jam2/jams/${jid}/boards`, { recipe, label }); if (!live(s0, jid)) return; if (r?.error) return toast(r.error); S.jam = r.jam; S.tab = S.jam.boards.length - 1; S.sel = null; render(); say('brew', `Making ${(S.recipes[recipe]?.label || recipe).toLowerCase()} on the same idea.`); }
-async function openPicker() { const r = await api('GET', '/api/jam2/products'); S.pick = { products: (r?.products || []).slice(0, 12) }; render(); }
+  if (r?.url) { const nb = r.jam.boards.find((x) => x.id === b.id), url = location.origin + r.url; S.finUrl = { ...(S.finUrl || {}), brief: url }; let copied = false; try { await navigator.clipboard.writeText(url); copied = true; } catch {}
+    say('brew', `Brief link for ${b.label} is ready${copied ? ' and copied' : ''}: ${url}\nSend it to ${nb?.brief?.owner || OWNERS[0]}. Brew doesn’t send it for you. They mark it received, in progress and delivered on that page, and each step shows here.`); } }
+async function addBoard(recipe, label = null, askLine = '') { S.add = false; S.more = false; const s0 = S, jid = S.jam.id; const r = await api('POST', `/api/jam2/jams/${jid}/boards`, { recipe, label, ask: askLine }); if (!live(s0, jid)) return; if (r?.error) return toast(r.error); S.jam = r.jam; S.tab = S.jam.boards.length - 1; S.sel = null; render(); say('brew', `Making ${(S.recipes[recipe]?.label || recipe).toLowerCase()} on the same idea.`); }
+async function openPicker() { const bid = board()?.id; const r = await api('GET', '/api/jam2/products'); if (!S || board()?.id !== bid) return; if (r?.error) return toast(r.error);
+  S.pick = { bid, products: [...(r?.products || []).slice(0, 12), ...(r?.refs || []).filter((x) => x.job === 'product' || x.kind === 'photo' || x.kind === 'image').slice(0, 6).map((x) => ({ img: x.url || x.file, name: x.label || 'From your References' }))] }; render(); }
 async function render2(confirmUsd) { const b = board(); if (S.working) return; const s0 = S, jid = S.jam.id; S.working = true; render(); const r = await api('POST', `/api/jam2/jams/${jid}/boards/${b.id}/render`, confirmUsd != null ? { confirmUsd } : {}); if (!live(s0, jid)) return; S.working = false;
   if (r?.error) return toast(r.error); if (r?.needsConfirm) return priced(`Render the ${r.quote.seconds} s video: ${(take()?.timeline?.shots || []).length} shots, voice and captions${r.quote.provider ? ` (${r.quote.provider})` : ''}`, r.quote.usd != null ? usd(r.quote.usd) : `${r.quote.credits} credits`, () => render2(r.quote.usd));
   if (r?.jam) S.jam = r.jam; render(); say('brew', 'Rendering the video. It lands here as the next version; you can keep working.'); }
 function redo() { const b = board(); if (b.kind === 'carousel' && take()?.slides?.length) return priced(`Redo the carousel: ${take().slides.length} new slides, same idea`, S.prices.redo != null ? usd(S.prices.redo * take().slides.length) : '', () => op({ op: 'first' }, 'New carousel')); if (isBrief(b) && !ownBrief(b)) return op({ op: 'redo-words' }, 'New words'); if (take()?.scene) return priced('Redo it: one new take, a new scene with the same words and product', usd(S.prices.redo), () => op({ op: 'redo' }, 'New take')); op({ op: 'redo-words' }, 'New take'); }
 
+/* the idea's settings change every piece made on it: those pieces are marked and offer a remake */
+async function concept(patch) { const s0 = S, jid = S.jam.id; const r = await api('POST', `/api/jam2/jams/${jid}/concept`, patch); if (!live(s0, jid)) return; if (r?.jam) S.jam = r.jam; if (r?.error) return toast(r.error); render();
+  if (r?.changed) say('brew', 'The idea changed. Pieces made on the old idea are marked on their tab, with a button to remake them.'); }
+/* a read-only link to the jam's briefs for the team, which can be turned off */
+async function share() { const s0 = S, jid = S.jam.id; const r = await api('POST', `/api/jam2/jams/${jid}/handoff`, {}); if (!live(s0, jid)) return; if (r?.error) return toast(r.error);
+  const url = location.origin + r.url; S.finUrl = { ...(S.finUrl || {}), share: url }; try { await navigator.clipboard.writeText(url); } catch {} render(); toast('Read-only link copied. Anyone with it sees the briefs; turn it off under Finish.'); }
+async function openBook() { const r = await api('GET', '/api/jam2/brandbook'); if (!S) return; if (r?.error) return toast(r.error === 'This is for the brand’s team.' ? 'The Brand Book is for the brand’s team.' : r.error); S.book = r; render(); }
 /* Finish: check every piece; made pieces get one ready-to-post link, briefs go to their team */
 async function finish() {
   S.fin = true; S.sel = null; render();
 }
-async function readyLink() { const made = S.jam.boards.filter((b) => !isBrief(b) && take(b)); for (const b of made) if (!b.approved && take(b)?.gate?.pass !== false) await api('POST', `/api/jam2/jams/${S.jam.id}/boards/${b.id}/approve`, {});
-  const r = await api('POST', `/api/jam2/jams/${S.jam.id}/ready`, {}); if (r?.error) return toast(r.error); S.jam = r.jam; S.finUrl = { ...(S.finUrl || {}), post: location.origin + r.url }; try { await navigator.clipboard.writeText(location.origin + r.url); } catch {} render(); say('brew', `Ready to post: ${location.origin + r.url} (copied). Every size, the files and the captions to copy. Brew never posts for you.`); }
+async function approve(b, anyway = false) { const s0 = S, jid = S.jam.id; const r = await api('POST', `/api/jam2/jams/${jid}/boards/${b.id}/${b.approved ? 'unapprove' : 'approve'}`, anyway ? { anyway: true } : {}); if (!live(s0, jid)) return; if (r?.jam) S.jam = r.jam; if (r?.error) return toast(r.error); render(); }
+async function readyLink() { const s0 = S, jid = S.jam.id; if (!S.jam.boards.some((b) => b.approved)) return toast('Mark at least one piece “Looks good” first.');
+  const r = await api('POST', `/api/jam2/jams/${jid}/ready`, {}); if (!live(s0, jid)) return; if (r?.error) return toast(r.error); S.jam = r.jam; S.finUrl = { ...(S.finUrl || {}), post: location.origin + r.url }; try { await navigator.clipboard.writeText(location.origin + r.url); } catch {} render(); say('brew', `Ready to post: ${location.origin + r.url} (copied). Every size, the files and the captions to copy. Brew never posts for you.`); }
 
 /* ---------- chat ---------- */
 async function send(text) {
   const t = String(text || '').trim(); if (!t) return; const b = board(), s = S.sel; $('#j2-in') && ($('#j2-in').value = '');
   await say('you', t, s ? selName() : null); const low = t.toLowerCase(), c = S.jam.concept || {};
-  if (t[0] === '@') return say('brew', 'Saved in this jam for the team: everyone on it sees the thread.');
-  if (/\?$/.test(t)) return say('brew', [c.spark?.title && `From the card: ${c.spark.title}.`, c.spark?.says, ...(c.spark?.why || []), ...(c.proof || []).map((p) => `Proof: ${p.text}`)].filter(Boolean).join('\n') || 'The card didn’t carry more than its title.');
+  if (t[0] === '@') return say('brew', 'Saved in this jam’s thread; everyone who opens the jam sees it. Mentions don’t notify anyone in v2 yet: send them the jam link.');
+  if (/\?$/.test(t)) return say('brew', ['What the card says (Brew doesn’t answer new questions here yet):', c.spark?.title && `From the card: ${c.spark.title}.`, c.spark?.says, ...(c.spark?.why || []), ...(c.proof || []).map((p) => `Proof: ${p.text}`)].filter(Boolean).join('\n') || 'The card didn’t carry more than its title.');
   if (/send( the)? brief/.test(low)) return sendBrief(b);
   if (/brief (a|the|my)? ?(team|agency|creator)|brief it|brief instead/.test(low) && !ownBrief(b)) return setMode('brief');
   if (/make it (myself|here|instead|ready)/.test(low)) return setMode('make');
@@ -135,12 +146,12 @@ function chips() {
   if (s?.kind === 'shot') return ['Make the voiceover warmer', 'Shorter'];
   if (s?.kind === 'brief') return ['Send brief', 'Give it to your agency'];
   if (isBrief(b)) return ['Send brief', 'Make it myself instead', 'Why this?'];
-  if (b.kind === 'video') return ['Render it', 'Brief a team instead', 'Why this?'];
+  if (b.kind === 'video') return ['Render it', 'Make an image ad from it', 'Brief a team instead', 'Why this?'];
   if (take(b)?.scene) return ['Make the headline shorter', 'Show me 9:16', 'Brief a team instead', 'Why this?'];
   if (b.kind === 'table') return ['Brief a team instead', 'Why this?'];
   return ['Shorter', 'Friendlier', 'Why this?'];
 }
-const chipSay = (c) => { if (c === 'Give it to your agency') return brief({ owner: 'Your agency' }, 'Now with your agency'); if (c === 'Make the headline shorter') return op({ op: 'line', target: { kind: 'role', role: 'headline' }, ask: 'shorter' }, 'Headline shorter'); return send(c); };
+const chipSay = (c) => { if (c === 'Make an image ad from it') return addBoard('image-ad'); if (c === 'Give it to your agency') return brief({ owner: 'Your agency' }, 'Now with your agency'); if (c === 'Make the headline shorter') return op({ op: 'line', target: { kind: 'role', role: 'headline' }, ask: 'shorter' }, 'Headline shorter'); return send(c); };
 
 /* ---------- the canvas ---------- */
 function sceneArt(sc, file, { slide = null } = {}) {
@@ -157,7 +168,7 @@ function canvas() {
   if (isBrief(b) && !ownBrief(b)) return briefDoc(b, t) + err;
   const w = t.words || {};
   if (b.kind === 'carousel' && t.slides?.length) { const i = Math.min(S.slide, t.slides.length - 1), sl = t.slides[i];
-    return `<div class="j2-frame"><button class="j2-flab${S.sel?.kind === 'whole' ? ' on' : ''}" data-whole>${esc(b.label)} · slide ${i + 1} of ${t.slides.length}</button>${sceneArt(sl.scene, sl.file, { slide: i })}<div class="j2-strip">${t.slides.map((x, n) => `<button class="${n === i ? 'on' : ''}" data-slide="${n}" aria-label="Slide ${n + 1}"><img src="${esc(srcOf(x.file))}" alt=""></button>`).join('')}</div>${err}</div>`; }
+    return `<div class="j2-frame"><button class="j2-flab${S.sel?.kind === 'whole' ? ' on' : ''}" data-whole>${esc(b.label)} · slide ${i + 1} of ${t.slides.length}</button>${sl.scene ? sceneArt(sl.scene, sl.file, { slide: i }) : sl.file ? `<img src="${esc(srcOf(sl.file))}" alt="" style="max-height:60vh;border-radius:6px">` : '<p class="j2-err">This slide didn’t come through. Redo the carousel.</p>'}<div class="j2-strip">${t.slides.map((x, n) => `<button class="${n === i ? 'on' : ''}" data-slide="${n}" aria-label="Slide ${n + 1}"><img src="${esc(srcOf(x.file))}" alt=""></button>`).join('')}</div>${err}</div>`; }
   if (t.scene && b.kind !== 'message') return `<div class="j2-frame"><span style="display:flex;gap:4px"><button class="j2-flab${S.sel?.kind === 'whole' ? ' on' : ''}" data-whole>${esc(b.label)} · ${esc(S.recipes.__sizes?.[b.size]?.label || b.size || '')}${t.final ? ' · Final' : ''}</button><button class="j2-flab${S.sel?.kind === 'bg' ? ' on' : ''}" data-scene>Scene</button></span>${sceneArt(t.scene, t.file)}${err}</div>`;
   if (b.kind === 'video') return video(b, t) + err;
   if (b.kind === 'table') return table(w) + err;
@@ -166,21 +177,22 @@ function canvas() {
   if (b.recipe === 'community-post' || b.recipe === 'reply') { const c = S.jam.concept?.spark || {};
     return `<div class="j2-doc"><div class="j2-meta">${esc(c.kind || 'thread')}${/^https?:\/\//.test(c.link || '') ? ` · ${esc(c.link.replace(/^https?:\/\/(www\.)?/, '').split('/')[0])}` : ''}</div><h3>${esc(c.title || S.jam.title)}</h3><div class="j2-meta" style="margin-top:8px">Your reply · tap any sentence</div><div style="font-size:15px">${sents(w.body)}</div><div style="margin-top:12px"><button class="j2-chip" data-copyopen>Copy and open the thread</button></div></div>${err}`; }
   if (['creator', 'script', 'shoot', 'act'].includes(b.kind)) return blocksDoc(b, w) + err;
-  return `<div class="j2-doc"><div class="j2-meta">${esc(b.label)} · tap any sentence</div>${w.headline && b.kind === 'page' ? `<h3>${esc(w.headline)}</h3>` : ''}<div style="font-size:15px">${sents(w.body || w.caption)}</div>${(w.blocks || []).length ? blocks(w) : ''}</div>${err}`;
+  return `<div class="j2-doc"><div class="j2-meta">${esc(b.label)} · tap any sentence</div>${w.headline && b.kind === 'page' ? `<h3>${esc(w.headline)}</h3>` : ''}<div style="font-size:15px">${(w.body || w.caption) ? sents(w.body || w.caption) : '<span class="j2-err">No text came back. Tap Redo it.</span>'}</div>${(w.blocks || []).length ? blocks(w) : ''}</div>${err}`;
 }
 const sents = (body) => sentencesOf(body).map((p, n) => (n % 2 ? (/\n/.test(p) ? '<br>'.repeat(Math.min(2, (p.match(/\n/g) || []).length)) : ' ') : p ? `<button class="j2-s${S.sel?.kind === 'sent' && S.sel.i === n / 2 ? ' sel' : ''}" data-sent="${n / 2}">${esc(p)}</button>` : '')).join('');
 const blocks = (w) => (w.blocks || []).map((x, i) => `<button class="j2-blk${S.sel?.kind === 'block' && S.sel.i === i ? ' sel' : ''}" data-block="${i}"><small>${esc(x.title)}</small>${esc(x.text)}</button>`).join('');
 const blocksDoc = (b, w) => `<div class="j2-doc"><div class="j2-meta" style="display:flex;gap:8px;align-items:center"><span style="flex:1">${esc(b.label)} · a brief for the people who make it · tap any section</span>${stChips(b)}</div>${blocks(w)}</div>`;
 function table(w) { const cols = w.cols?.length ? w.cols : ['What', 'Where', 'Change'];
   return `<div class="j2-tbl"><div style="padding:12px 16px"><b>${esc(board().label)}</b> <span style="color:var(--fg-3);font-size:12.5px">· tap a row</span></div><div class="j2-th">${cols.map((c) => `<span>${esc(c)}</span>`).join('')}</div>${(w.rows || []).map((r, i) => `<button class="j2-tr${S.sel?.kind === 'row' && S.sel.i === i ? ' sel' : ''}" data-row="${i}"><span>${esc(r.a)}</span><span>${esc(r.b)}</span><b>${esc(r.c)}</b></button>`).join('')}<div class="j2-note">Brew never changes your accounts. Apply it yourself, or give it to someone: the steps are below.</div>${(w.blocks || []).length ? `<div style="padding:4px 8px 10px">${blocks(w)}</div>` : ''}</div>`; }
-function video(b, t) { const tl = t.timeline || { shots: [] }, sel = S.sel;
-  return `<div class="j2-vid">${t.file && /\.mp4$/.test(t.file) ? `<video src="${esc(srcOf(t.file))}" controls playsinline style="height:min(46vh,420px);border-radius:10px;background:#000"></video>` : ''}
-  <div class="j2-shots">${tl.shots.map((s, i) => `<button class="j2-shot${sel?.kind === 'shot' && sel.i === i ? ' sel' : ''}" data-shot="${i}"><div class="j2-pic" style="${s.still ? `background-image:url('${esc(srcOf(s.still))}');background-size:cover` : t.cut ? `background-image:url('${esc(srcOf(t.cut))}')` : ''}"></div><i>${esc(s.sec)} s · ${esc(s.camera || '')}</i>${esc(s.see || '')}${s.vo ? `<i>VO: “${esc(s.vo)}”</i>` : ''}${s.words ? `<i>On screen: ${esc(s.words)}</i>` : ''}</button>`).join('')}</div>
-  <div class="j2-tracks"><button class="j2-track${sel?.kind === 'track' && sel.which === 'voice' ? ' sel' : ''}" data-track="voice"><span>Voice</span>${esc(tl.voice || 'Kore')}</button><button class="j2-track${sel?.kind === 'track' && sel.which === 'music' ? ' sel' : ''}" data-track="music"><span>Music</span>${esc(tl.music || 'no music')}</button><button class="j2-track${sel?.kind === 'track' && sel.which === 'caps' ? ' sel' : ''}" data-track="caps"><span>Captions</span>${tl.captions ? 'On, timed to the voice' : 'Off'}</button></div>
-  ${!t.file ? `<button class="j2-pri" data-render>Render the video${t.quote?.usd != null ? ` · ≈ ${usd(t.quote.usd)}` : ''}</button>` : ''}${busyHtml()}</div>`; }
+const isVid = (f) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(String(f || ''));
+function video(b, t) { const tl = { shots: [], ...(t.timeline || {}) }, sel = S.sel; if (!Array.isArray(tl.shots)) tl.shots = [];
+  return `<div class="j2-vid">${!tl.shots.length ? '<p class="j2-err">The storyboard came back empty. Tap Redo it for a new one.</p>' : ''}${t.file && isVid(t.file) ? `<video src="${esc(srcOf(t.file))}" controls playsinline style="height:min(46vh,420px);border-radius:10px;background:#000"></video>` : ''}
+  <div class="j2-shots">${tl.shots.map((s, i) => `<button class="j2-shot${sel?.kind === 'shot' && sel.i === i ? ' sel' : ''}" data-shot="${i}"><div class="j2-pic" style="${s.still ? `background-image:url('${esc(srcOf(s.still)).replace(/['()\\]/g, (c) => encodeURIComponent(c))}');background-size:cover` : t.cut ? `background-image:url('${esc(srcOf(t.cut)).replace(/['()\\]/g, (c) => encodeURIComponent(c))}')` : ''}"></div><i>${esc(s.sec)} s · ${esc(s.camera || '')}</i>${esc(s.see || '')}${s.vo ? `<i>VO: “${esc(s.vo)}”</i>` : ''}${s.words ? `<i>On screen: ${esc(s.words)}</i>` : ''}</button>`).join('')}</div>
+  <div class="j2-tracks"><button class="j2-track${sel?.kind === 'track' && sel.which === 'voice' ? ' sel' : ''}" data-track="voice"><span>Voice</span>${esc(tl.voice || 'Kore')}</button><button class="j2-track${sel?.kind === 'track' && sel.which === 'music' ? ' sel' : ''}" data-track="music"><span>Music</span>${esc(tl.music || 'no music')} <small style="color:var(--fg-3)">· the mood for your editor; not mixed in yet</small></button><button class="j2-track${sel?.kind === 'track' && sel.which === 'caps' ? ' sel' : ''}" data-track="caps"><span>Captions</span>${tl.captions ? 'On: a captions file (SRT) from the voiceover comes with the video' : 'Off'}</button></div>
+  ${!isVid(t.file) || t.op === 'timeline' ? `<button class="j2-pri" data-render>${isVid(t.file) ? 'Render again with the changes' : 'Render the video'}${t.quote?.usd != null ? ` · ≈ ${usd(t.quote.usd)}` : ''}</button>` : ''}${busyHtml()}</div>`; }
 const stChips = (b) => (b.brief?.status ? `<span class="j2-st">${STATUS.map((x, n) => `<span class="${n <= STATUS.indexOf(b.brief.status) ? 'on' : ''}">${esc(x)}</span>`).join('')}</span>` : '');
-function briefDoc(b, t) { const img = t.file && !/\.mp4$/.test(t.file) ? t.file : t.slides?.[0]?.file || t.timeline?.shots?.find((s) => s.still)?.still || t.cut || null;
-  return `<div class="j2-doc" style="flex-direction:row;gap:18px;width:min(720px,100%)"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><b style="flex:1;font-size:16px">Brief · ${esc(b.label)}</b>${b.brief?.status ? stChips(b) : '<span class="j2-st"><span>Not sent yet</span></span>'}</div>
+function briefDoc(b, t) { const img = t.file && !isVid(t.file) ? t.file : t.slides?.[0]?.file || t.timeline?.shots?.find((s) => s.still)?.still || t.cut || null;
+  return `<div class="j2-doc j2-briefdoc" style="width:min(720px,100%)"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><b style="flex:1;font-size:16px">Brief · ${esc(b.label)}</b>${b.brief?.status ? stChips(b) : '<span class="j2-st"><span>Not sent yet</span></span>'}</div>
   ${(b.briefView || []).map((x, i) => `<button class="j2-blk${S.sel?.kind === 'brief' && S.sel.i === i ? ' sel' : ''}" data-brief="${i}"><small>${esc(x.h)}</small>${esc(x.t)}</button>`).join('')}</div>${img ? `<div style="flex:0 0 150px"><img src="${esc(srcOf(img))}" alt="" style="width:150px;border-radius:8px;display:block"><span style="font-size:11.5px;color:var(--fg-3)">Brew’s draft, attached as the reference</span></div>` : ''}</div>`; }
 
 /* ---------- the toolbar, popovers, pill, sheet ---------- */
@@ -196,32 +208,51 @@ function floatHtml() {
   return `<div class="j2-float">${out.join('')}</div>`;
 }
 function pillHtml() { const b = board(), t = take(b); if (!b || !t) return '';
-  const art = !!t.scene && !isBrief(b) && b.kind !== 'message', sizes = art ? (recipeOf(b).sizes || []) : [];
+  const art = !!t.scene && !isBrief(b) && b.kind !== 'message', sizes = art && b.kind !== 'carousel' ? (recipeOf(b).sizes || []) : [];
   return `<div class="j2-pill"><div>${art && b.kind !== 'carousel' ? `<button class="${S.area ? 'on' : ''}" data-area>${S.area ? 'Drag a box…' : 'Select an area'}</button>` : ''}${sizes.length > 1 ? `<span class="j2-sep"></span>${sizes.map((z) => `<button class="${b.size === z ? 'on' : ''}" data-size="${esc(z)}">${esc(S.recipes.__sizes?.[z]?.ratio || z)}</button>`).join('')}<span class="j2-sep"></span>` : ''}<button data-hist>History</button><button data-redo>Redo it</button></div></div>
   ${S.hist ? `<div class="j2-hist j2-pop">${b.takes.slice().reverse().map((x) => `<button data-head="${esc(x.id)}" style="${x.id === t.id ? 'font-weight:700' : ''}">v${x.n} · ${esc(x.op)}${x.cost?.usd ? `<span class="j2-cost">${usd(x.cost.usd)}</span>` : ''}</button>`).join('')}</div>` : ''}`; }
+function bookHtml() { const r = S.book; if (!r) return ''; const v = r.book || {}, k = v.kit || {};
+  const row = (h, x) => (x ? `<div class="j2-row"><b style="font-size:12px;color:var(--fg-3);text-transform:uppercase;letter-spacing:.04em">${esc(h)}</b><div style="font-size:13.5px">${x}</div></div>` : '');
+  return `<aside class="j2-sheet"><div style="display:flex;align-items:center"><b style="font-size:16px;flex:1">Brand Book</b><button class="j2-ghost" data-book-no aria-label="Close">✕</button></div>
+  <div style="font-size:12.5px;color:var(--fg-3)">Everything in this jam is made from this. It starts from Brew’s read of your store; ${r.canEdit ? 'your team can change it.' : 'the brand’s team can change it.'}</div>
+  ${row('Colours', (k.colors || []).map((c) => `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px"><span style="width:14px;height:14px;border-radius:4px;background:${/^#[0-9a-f]{3,8}$/i.test(c.hex || c) ? (c.hex || c) : '#ccc'};display:inline-block;border:1px solid var(--line)"></span>${esc(c.hex || c)}${c.role ? ` · ${esc(c.role)}` : ''}</span>`).join(''))}
+  ${row('Type', esc([k.fonts?.heading, k.fonts?.body].filter(Boolean).join(' / ') || 'Not set: words use a safe font until you add yours'))}
+  ${row('Voice', esc([v.voice?.written, v.voice?.narrator && `narrator ${v.voice.narrator}`].filter(Boolean).join(' · ')))}
+  ${row('How much AI', esc(Object.entries(v.comfort || {}).map(([a, b]) => `${a}: ${b}`).join(' · ')))}
+  ${row('Claims you may make', (v.claims || []).slice(0, 6).map((c) => `<div>${esc(c.text || c)}</div>`).join(''))}
+  ${row('Never say', esc((v.never || []).slice(0, 20).join(', ')))}
+  ${row('Ready', esc(r.readiness?.line || ''))}</aside>`; }
 function sheetHtml() { if (!S.fin) return ''; const bs = S.jam.boards;
   const fails = bs.filter((b) => !isBrief(b) && take(b)?.gate && !take(b).gate.pass);
   return `<aside class="j2-sheet"><div style="display:flex;align-items:center"><b style="font-size:16px;flex:1">Finish</b><button class="j2-ghost" data-fin-no aria-label="Close">✕</button></div>
-  ${fails.length ? `<div class="j2-bad">${fails.map((b) => `<b>${esc(b.label)}:</b> ${esc(take(b).gate.checks.filter((c) => !c.ok && !c.soft).map((c) => c.why).join(' '))}`).join('<br>')}</div>` : '<div class="j2-ok">Checked: the real product, words set as type, claims only from your store, words inside the safe area. Briefs carry final words, specs, references, who and when.</div>'}
+  ${fails.length ? `<div class="j2-bad">${fails.map((b) => `<b>${esc(b.label)}:</b> ${esc(take(b).gate.checks.filter((c) => !c.ok && !c.soft).map((c) => c.why).join(' '))}`).join('<br>')}</div>` : (bs.some((b) => take(b)?.gate) ? '<div class="j2-ok">Each made piece shows what its check found: the real product, words set as type, claims only from your store, words inside the safe area.</div>' : '')}
   ${bs.map((b, i) => { const t = take(b), r = recipeOf(b), br = isBrief(b);
     const files = br ? `brief link · ${t?.file ? 'the draft attached' : 'words and steps'}` : t?.scene ? (r.sizes || []).map((z) => S.recipes.__sizes?.[z]?.label || z).join(' · ') : b.kind === 'video' ? (t?.file ? 'the video · captions · the script' : 'not rendered yet') : b.kind === 'table' ? 'the sheet (CSV) and the steps' : 'the text to copy';
     return `<div class="j2-row"><div style="display:flex;gap:8px;align-items:center"><b style="flex:1">${esc(b.label)}</b><span style="font-size:11.5px;color:var(--fg-3)">${br ? `Brief → ${esc(b.brief?.owner || OWNERS[0])}` : b.kind === 'table' ? 'You apply it' : 'Ready to post'}</span></div><div class="j2-files">${esc(files)}</div>
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${br ? `<button class="j2-chip" data-send="${i}">${b.brief?.status ? 'Send again' : 'Send brief'}</button>${stChips(b)}` : !t ? '<span style="font-size:12px;color:var(--fg-3)">Still being made</span>' : `<span style="font-size:12px;color:${t.gate?.pass === false ? 'var(--bad)' : 'var(--ok)'}">${t.gate?.pass === false ? 'Fix first' : '✓ checked'}</span><button class="j2-ghost" data-totab="${i}">Open</button>`}</div></div>`; }).join('')}
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${br ? `<button class="j2-chip" data-send="${i}">${b.brief?.status ? 'Copy the link again' : 'Get the brief link'}</button>${stChips(b)}` : !t ? '<span style="font-size:12px;color:var(--fg-3)">Not made yet</span>' : `${t.gate ? `<span style="font-size:12px;color:${t.gate.pass === false ? 'var(--bad)' : 'var(--ok)'}">${t.gate.pass === false ? 'Needs a fix' : '✓ checked'}</span>` : ''}<button class="j2-chip" data-approve="${i}" style="${b.approved ? 'background:var(--ok-bg);color:var(--ok)' : ''}">${b.approved ? 'Looks good ✓' : t.gate?.pass === false ? 'Use it anyway' : 'Looks good'}</button><button class="j2-ghost" data-totab="${i}">Open</button>`}</div></div>`; }).join('')}
   ${bs.some((b) => !isBrief(b) && take(b)) ? `<button class="j2-pri" data-ready style="border-radius:12px;padding:12px">${S.finUrl?.post ? 'Copy the link again' : 'Get the ready-to-post link'}</button>${S.finUrl?.post ? `<a href="${esc(S.finUrl.post)}" target="_blank" rel="noopener" style="font-size:13px;color:var(--info);word-break:break-all">${esc(S.finUrl.post)}</a>` : ''}` : ''}
   ${S.finUrl?.brief ? `<div style="font-size:12.5px;color:var(--fg-2)">Brief link: <a href="${esc(S.finUrl.brief)}" target="_blank" rel="noopener" style="color:var(--info);word-break:break-all">${esc(S.finUrl.brief)}</a></div>` : ''}
-  <label style="font-size:12.5px;color:var(--fg-2);display:flex;flex-direction:column;gap:4px">Posted it? Paste the link and Brew reads how it did.<input id="j2-posted" class="j2-in" placeholder="https://www.instagram.com/p/…" style="padding:9px 12px"></label>
+  ${S.finUrl?.post || S.finUrl?.share ? '<button class="j2-ghost" data-revoke style="align-self:flex-start">Turn off the ready and team links</button>' : ''}
+  <button class="j2-chip" data-share style="align-self:flex-start">${S.finUrl?.share ? 'Copy the team link again' : 'Share with my team (read-only link)'}</button>
+  <label style="font-size:12.5px;color:var(--fg-2);display:flex;flex-direction:column;gap:4px">Posted it? Paste the link: it’s kept with this jam. <span class="j2-soon">Reading how it did comes later; nothing reads it yet.</span><input id="j2-posted" class="j2-in" placeholder="https://www.instagram.com/p/…" style="padding:9px 12px"></label>
   <div style="font-size:12px;color:var(--fg-3)">Brew never posts or changes your accounts.</div></aside>`; }
 
 /* ---------- the page ---------- */
-function render() {
+function render() { try { renderIn(); } catch (e) { console.error('[jam2]', e); const root = $('#j2'); if (root && !root.querySelector('.j2-crash')) root.insertAdjacentHTML('beforeend', `<div class="j2-toast j2-crash">Something on this page didn’t draw (${esc(e.message)}). Your work is saved; reload to carry on.</div>`); } }
+function renderIn() {
   const root = $('#j2'); if (!root || !S) return; const j = S.jam;
   if (!j) { root.innerHTML = `<div class="j2-chat"><div class="j2-head"><button class="j2-back" data-close>← Feed</button><b>Jam</b></div><div class="j2-log">${S.err ? `<p class="j2-err">${esc(S.err)}</p>` : '<brew-load class="spin"></brew-load>'}</div></div><div class="j2-right"></div>`; return; }
+  /* what someone is typing survives every redraw (the poll redraws while Brew works): the text in each box, and the cursor in the focused one */
+  const typed = {}; for (const el of root.querySelectorAll('input[id]')) typed[el.id] = el.value; const act = document.activeElement?.id && root.contains(document.activeElement) ? { id: document.activeElement.id, a: document.activeElement.selectionStart, z: document.activeElement.selectionEnd } : null;
   const b = board(), t = take(b), c = j.concept || {}, log = $('.j2-log', root), keepScroll = log ? log.scrollHeight - log.scrollTop - log.clientHeight < 40 : true;
   const first = j.boards.find((x) => take(x)?.file || take(x)?.slides?.length);
   const nBrief = j.boards.filter((x) => isBrief(x)).length;
-  root.innerHTML = `<section class="j2-chat"><div class="j2-head"><button class="j2-back" data-close>← Feed</button><b>Jam · ${esc(j.title)}</b></div>
+  root.innerHTML = `<section class="j2-chat"><div class="j2-head"><button class="j2-back" data-close>← Feed</button><b>Jam · ${esc(j.title)}</b><button class="j2-ghost" data-book>Brand Book</button></div>
   <div class="j2-log"><div class="j2-spark"><div><b>From your feed:</b> ${esc(c.spark?.title || j.title)}${c.spark?.says ? ` · ${esc(c.spark.says)}` : ''} <button class="j2-why" data-why>${S.why ? 'Hide' : 'Why this?'}</button></div>
-    ${S.why ? `${(c.spark?.why || []).length || (c.proof || []).length ? `<ul>${[...(c.spark?.why || []), ...(c.proof || []).map((p) => p.text)].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}<button class="j2-angle" data-angle><b>The idea:</b> ${esc(c.angle || 'tap to set it')}${c.goal ? ` · ${esc(c.goal)}` : ''}</button>` : ''}</div>
+    ${S.why ? `${(c.spark?.why || []).length || (c.proof || []).length ? `<ul>${(c.spark?.why || []).map((x) => `<li>${esc(x)}</li>`).join('')}${(c.proof || []).map((p) => `<li>${esc(p.text)} <span style="color:var(--fg-3)">· ${esc(p.kind === 'review' ? 'a customer review' : p.kind === 'proof' ? 'from the card' : p.kind || 'note')}</span></li>`).join('')}</ul>` : '<span style="color:var(--fg-3)">The card carried no more proof than its title.</span>'}
+      ${/^https?:\/\//.test(c.spark?.link || '') ? `<a href="${esc(c.spark.link)}" target="_blank" rel="noopener noreferrer" style="color:var(--info);font-size:12.5px">${/rival|viral/.test(c.spark?.kind || '') ? 'View the original (theirs, for reference only: never copied)' : 'Open the source'}</a>` : ''}
+      <button class="j2-angle" data-angle><b>The idea:</b> ${esc(c.angle || 'tap to set it')}</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="j2-chip" data-goal>Goal: ${esc(c.goal || 'set it')}</button><button class="j2-chip" data-audience>For: ${esc((c.audience || 'set it').slice(0, 40))}</button><button class="j2-chip" data-offer>Offer: ${esc((c.offer || 'none').slice(0, 30))}</button></div>` : ''}</div>
     <div class="j2-msg">From “${esc(j.cta || 'this card')}” I’m making <b>${j.boards.map((x) => esc(x.label)).join(' + ')}</b>. Tap any part on the right to change just that, or tell me here. Each piece can be made ready to post, or turned into a brief for a team.</div>
     ${first ? `<button class="j2-made" data-totab="${j.boards.indexOf(first)}"><img src="${esc(srcOf(take(first).file || take(first).slides?.[0]?.file))}" alt=""><div><b>${esc(first.label)} · v${take(first).n}</b><br><span>${take(first).gate?.pass === false ? 'Needs a fix before it’s ready' : '✓ real product · ✓ your type · ✓ only your claims'}</span></div></button>` : ''}
     ${(j.chat || []).map((m) => `<div class="j2-msg${m.from === 'you' ? ' you' : ''}">${m.from === 'you' && m.sel ? `<small>${esc(m.sel)}</small>` : m.from === 'you' && m.name ? `<small>${esc(m.name)}</small>` : ''}${esc(m.t)}</div>`).join('')}</div>
@@ -229,15 +260,17 @@ function render() {
     <input id="j2-in" class="j2-in" aria-label="Tell Brew what to make or change" placeholder="${S.sel ? `Tell Brew what to change in the ${esc(selName().toLowerCase())}…` : 'Tell Brew what to make or change. ? asks about the card'}"></div></section>
   <section class="j2-right"><div class="j2-tabs">${j.boards.map((x, i) => `<button class="j2-tab${i === S.tab ? ' on' : ''}" data-tab="${i}">${esc(x.label)}${isBrief(x) ? `<span class="j2-tag">${esc(x.brief?.status || 'Brief')}</span>` : ''}${busyOf(x) && !busyOf(x).error ? ' <brew-load class="spin" style="width:12px;height:12px"></brew-load>' : ''}</button>`).join('')}
     <button class="j2-ghost" data-add aria-label="Add a piece" style="font-size:17px">+</button><span class="j2-gap"></span><button class="j2-pri" data-finish>${nBrief === j.boards.length ? 'Send the briefs' : nBrief ? 'Finish · post + brief' : 'Ready to post'}</button>
-    ${S.add ? `<div class="j2-pop" style="position:absolute;left:14px;top:50px">${[...new Set([...(S.also || []), ...ADD.map((x) => x[0])])].slice(0, 8).map((r) => `<button data-addr="${esc(r)}">${esc(ADD.find((x) => x[0] === r)?.[1] || S.recipes[r]?.label || r)}</button>`).join('')}</div>` : ''}</div>
+    </div>${S.add ? `<div class="j2-pop" style="position:absolute;left:14px;top:52px;z-index:40">${[...new Set([...(S.also || []), ...ADD.map((x) => x[0])])].slice(0, 9).map((r) => `<button data-addr="${esc(r)}">${esc(ADD.find((x) => x[0] === r)?.[1] || S.recipes[r]?.label || r)}</button>`).join('')}<button data-addr="changes" data-label="Ad test · 4 hooks" data-ask="An ad test for Ads Manager: one row per hook (4 hooks), what changes, which audience. Same picture, one thing changes.">Ad test · 4 hooks</button></div>` : ''}
   ${b ? `<div class="j2-sub"><b>${esc(b.label)}</b>${t ? `<span>v${t.n}</span>` : ''}${!ownBrief(b) && recipeOf(b).how?.includes('brief') && recipeOf(b).how.length > 1 ? `<span class="j2-mode"><button class="${!isBrief(b) ? 'on' : ''}" data-mode="make">Make it ready to post</button><button class="${isBrief(b) ? 'on' : ''}" data-mode="brief">Brief a team</button></span>` : ''}<span class="j2-gap"></span><span>${ownBrief(b) ? 'A brief for the people who make it' : isBrief(b) ? 'Your team or partner makes it from this brief' : b.kind === 'table' ? 'You or your team apply it; Brew never changes your accounts' : 'Brew makes it; you post it'}</span>${isBrief(b) ? `<button class="j2-chip" data-send="${S.tab}">${b.brief?.status ? 'Send again' : 'Send brief'}</button>` : ''}</div>` : ''}
-  <div class="j2-stage">${floatHtml()}${canvas()}</div>${pillHtml()}${sheetHtml()}
+  <div class="j2-stage">${floatHtml()}${canvas()}</div>${pillHtml()}${sheetHtml()}${bookHtml()}
   ${S.toast ? `<div class="j2-toast"><span>${esc(S.toast)}</span><button data-toast-no>Close</button></div>` : ''}</section>`;
   fit(); const lg = $('.j2-log', root); if (lg && keepScroll) lg.scrollTop = lg.scrollHeight;
+  for (const [id, v] of Object.entries(typed)) { const el = root.querySelector(`#${id}`); if (el && v && !el.value && id !== 'j2-edit') el.value = v; }
+  if (act) { const el = root.querySelector(`#${act.id}`); if (el) { el.focus(); try { el.setSelectionRange(act.a, act.z); } catch {} } }
 }
 /* the scene is drawn at its real size (1080 px wide…) and scaled to fit the stage */
 function fit() { const st = $('#j2 .j2-stage'), art = $('#j2 [data-art]'); if (!st || !art) return; const w = +art.dataset.w, h = +art.dataset.h;
-  const maxW = Math.max(200, st.clientWidth - 48), maxH = Math.max(200, st.clientHeight - 170), k = Math.min(maxW / w, maxH / h, 1);
+  const maxW = Math.max(160, st.clientWidth - (innerWidth < 820 ? 20 : 48)), maxH = Math.max(220, st.clientHeight - (innerWidth < 820 ? 120 : 170)), k = Math.min(maxW / w, maxH / h, 1);
   art.style.width = `${Math.round(w * k)}px`; art.style.height = `${Math.round(h * k)}px`; const sc = $('.j2-scene', art); if (sc) sc.style.transform = `scale(${k})`;
   $('[data-sel]', art)?.classList.add('sel'); }
 
@@ -248,11 +281,11 @@ function wire(root) {
     if (g('[data-close]')) return close();
     if (g('[data-toast-no]')) { S.toast = null; return render(); }
     if (g('[data-why]')) { S.why = !S.why; return render(); }
-    if (g('[data-angle]')) return ask('The idea, in one line', S.jam.concept?.angle, async (v) => { const r = await api('POST', `/api/jam2/jams/${S.jam.id}/concept`, { angle: v }); if (r?.jam) S.jam = r.jam; render(); if (r?.changed) say('brew', 'The idea changed. Pieces made on the old idea are marked; refresh them from their tab.'); });
-    const tab = g('[data-tab]'); if (tab) { S.tab = +tab.dataset.tab; S.sel = null; S.area = false; S.box = null; S.pend = null; S.edit = null; S.hist = false; S.slide = 0; return render(); }
+    if (g('[data-angle]')) return ask('The idea, in one line', S.jam.concept?.angle, (v) => concept({ angle: v }));
+    const tab = g('[data-tab]'); if (tab) { S.tab = +tab.dataset.tab; S.sel = null; S.area = false; S.box = null; S.pend = null; S.edit = null; S.hist = false; S.slide = 0; S.pick = null; S.more = false; S.add = false; return render(); }
     const tt = g('[data-totab]'); if (tt) { S.tab = +tt.dataset.totab; S.fin = false; S.sel = null; S.area = false; S.box = null; S.pend = null; S.edit = null; S.hist = false; S.slide = 0; S.pick = null; return render(); }
     if (g('[data-add]')) { S.add = !S.add; return render(); }
-    const ar = g('[data-addr]'); if (ar) return addBoard(ar.dataset.addr);
+    const ar = g('[data-addr]'); if (ar) return addBoard(ar.dataset.addr, ar.dataset.label || null, ar.dataset.ask || '');
     if (g('[data-finish]')) return finish(); if (g('[data-fin-no]')) { S.fin = false; return render(); }
     if (g('[data-ready]')) return readyLink();
     const sd = g('[data-send]'); if (sd) return sendBrief(S.jam.boards[+sd.dataset.send]);
@@ -264,8 +297,16 @@ function wire(root) {
     const mt = g('[data-mtool]'); if (mt) return tools().more.filter(Boolean)[+mt.dataset.mtool][1]();
     if (g('[data-pend-no]')) { S.pend = null; return render(); } if (g('[data-pend-yes]')) { const p = S.pend; S.pend = null; return p.run(); }
     if (g('[data-edit-no]')) { S.edit = null; return render(); } if (g('[data-edit-ok]')) { const v = $('#j2-edit').value, ed = S.edit; S.edit = null; render(); return ed.save(v); }
-    const pr = g('[data-prod]'); if (pr) { const p = S.pick.products[+pr.dataset.prod]; S.pick = null; return op({ op: 'swap-product', patch: { product: { img: p.img, name: p.name } } }, `Now the ${p.name || 'other product'}`); }
+    const pr = g('[data-prod]'); if (pr) { const p = S.pick.products[+pr.dataset.prod], bid = S.pick.bid; S.pick = null; return op({ op: 'swap-product', patch: { product: { img: p.img, name: p.name } } }, `Now the ${p.name || 'other product'}`, bid); }
     if (g('[data-pick-no]')) { S.pick = null; return render(); }
+    const ap = g('[data-approve]'); if (ap) { const b = S.jam.boards[+ap.dataset.approve]; return approve(b, take(b)?.gate?.pass === false); }
+    if (g('[data-share]')) return share();
+    if (g('[data-revoke]')) return (async () => { const jid = S.jam.id; await api('POST', `/api/jam2/jams/${jid}/revoke`, { kind: 'post' }); await api('POST', `/api/jam2/jams/${jid}/revoke`, { kind: 'brief' }); if (!S) return; S.finUrl = { ...(S.finUrl || {}), post: null, share: null }; toast('Those links are off: anyone opening them now sees “not valid”.'); })();
+    if (g('[data-book]')) return openBook();
+    if (g('[data-book-no]')) { S.book = null; return render(); }
+    if (g('[data-goal]')) return ask('Goal: awareness, launch, conversion or community', S.jam.concept?.goal, (v) => concept({ goal: v.toLowerCase().trim() }));
+    if (g('[data-audience]')) return ask('Who it’s for', S.jam.concept?.audience, (v) => concept({ audience: v }));
+    if (g('[data-offer]')) return ask('The offer (only a real one)', S.jam.concept?.offer, (v) => concept({ offer: v }));
     const ow = g('[data-owner]'); if (ow) { S.pick = null; return brief({ owner: ow.dataset.owner }, `Now with ${ow.dataset.owner}`); }
     if (g('[data-area-go]')) { const v = $('#j2-area').value.trim(); if (!v) return toast('Say what goes in the box.'); const region = S.sel.region; return priced(`Change only that area: “${v}”`, usd(S.prices.area), () => { S.box = null; op({ op: 'background', target: 'bg', region, ask: v }, 'Area changed'); }); }
     if (g('[data-area]')) { S.area = !S.area; S.box = null; S.sel = null; return render(); }
@@ -293,14 +334,15 @@ function wire(root) {
   root.addEventListener('keydown', (e) => {
     /* every part of the picture is reachable with Tab; Enter or Space selects it, like a click */
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.j2-l[data-id][tabindex]')) { e.preventDefault(); e.target.click(); return; }
-    if (e.key === 'Escape') { if (S.pend || S.edit || S.sel || S.fin || S.add) { S.pend = null; S.edit = null; S.sel = null; S.fin = false; S.add = false; S.area = false; return render(); } return close(); }
+    if (e.key === 'Escape') { if (S.pend || S.edit || S.sel || S.fin || S.add || S.book || S.pick || S.area) { S.pend = null; S.edit = null; S.sel = null; S.fin = false; S.add = false; S.area = false; S.book = null; S.pick = null; return render(); } if ($('#j2-in')?.value.trim()) return toast('You have something typed. Send it or clear it, then press Escape to close.'); return close(); }
     if (e.key !== 'Enter') return;
     if (e.target.id === 'j2-in') { e.preventDefault(); return send(e.target.value); }
     if (e.target.id === 'j2-desc') { e.preventDefault(); return send(e.target.value); }
     if (e.target.id === 'j2-edit') { e.preventDefault(); const v = e.target.value, ed = S.edit; S.edit = null; render(); return ed.save(v); }
     if (e.target.id === 'j2-area') { e.preventDefault(); $('[data-area-go]')?.click(); }
-    if (e.target.id === 'j2-posted') { e.preventDefault(); const link = e.target.value.trim(); if (!/^https?:\/\//.test(link)) return toast('Paste the link to the post.'); api('POST', `/api/jam2/jams/${S.jam.id}/posted`, { link, platform: new URL(link).host }).then(() => say('brew', 'Got it. Brew reads how it does and brings it back to your feed.')); }
+    if (e.target.id === 'j2-posted') { e.preventDefault(); const link = e.target.value.trim(); if (!/^https?:\/\//.test(link)) return toast('Paste the link to the post.'); let host = ''; try { host = new URL(link).host; } catch { return toast('That doesn’t look like a link.'); } e.target.value = ''; api('POST', `/api/jam2/jams/${S.jam.id}/posted`, { link, platform: host }).then(() => say('brew', `Saved the link to this jam (${host}).`)); }
   });
+  root.addEventListener('input', (e) => { if (e.target.id === 'j2-edit' && S?.edit) S.edit.val = e.target.value; });
   /* select an area: drag a box on the picture */
   const rel = (e, el) => { const r = el.getBoundingClientRect(); return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) }; };
   /* the box is drawn into the picture as the pointer moves; re-rendering here would drop the element the pointer is captured on */
@@ -308,21 +350,27 @@ function wire(root) {
     $('.j2-box', art)?.remove(); const bx = document.createElement('div'); bx.className = 'j2-box'; Object.assign(bx.style, { left: `${p.x * 100}%`, top: `${p.y * 100}%`, width: '0', height: '0' }); art.appendChild(bx); });
   root.addEventListener('pointermove', (e) => { if (!S.area || !S.start) return; const art = $('#j2 [data-art]'); if (!art) return; const p = rel(e, art); S.box = { x: Math.min(p.x, S.start.x), y: Math.min(p.y, S.start.y), w: Math.abs(p.x - S.start.x), h: Math.abs(p.y - S.start.y) }; const bx = $('.j2-box', art); if (bx) Object.assign(bx.style, { left: `${S.box.x * 100}%`, top: `${S.box.y * 100}%`, width: `${S.box.w * 100}%`, height: `${S.box.h * 100}%` }); });
   root.addEventListener('pointerup', () => { if (!S.area || !S.start) return; S.start = null; if (!S.box || S.box.w < 0.04 || S.box.h < 0.04) { S.box = null; return render(); } S.area = false; S.sel = { kind: 'area', region: S.box }; render(); setTimeout(() => $('#j2-area')?.focus(), 30); });
-  window.addEventListener('resize', fit);
 }
+/* once per page: these live on window/document, so focus loss after a redraw never stops Escape, and Back closes the jam */
+let wired = false;
+function wireOnce() { if (wired) return; wired = true; window.addEventListener('resize', () => S && fit());
+  document.addEventListener('keydown', (e) => { if (!S || e.key !== 'Escape' || $('#j2')?.contains(e.target)) return; $('#j2')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  window.addEventListener('popstate', () => { if (S && !/^#jam2=/.test(location.hash)) close(true); }); }
 
-function close() { clearInterval(pollT); $('#j2')?.remove(); document.body.classList.remove('j2-open'); S = null; if (/^#jam2=/.test(location.hash)) history.replaceState(null, '', location.pathname); }
+function close(fromHistory = false) { clearInterval(pollT); $('#j2')?.remove(); document.body.classList.remove('j2-open'); S = null; if (!fromHistory && /^#jam2=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); }
 
 /* open a feed card's jam: the card's button decides what gets made */
-async function open(card, cta, tapi) {
-  api = tapi; $('#j2')?.remove(); S = fresh(); const s0 = S; const root = document.createElement('div'); root.id = 'j2'; root.tabIndex = -1; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Jam'); document.body.appendChild(root); document.body.classList.add('j2-open'); wire(root); render(); root.focus();
-  const [r, cat] = await Promise.all([api('POST', '/api/jam2/open', { cardId: card?.id || null, cta: cta || null }), api('GET', '/api/jam2/catalogue')]);
+async function open(card, cta, tapi, jid0 = null) {
+  api = tapi; wireOnce(); $('#j2')?.remove(); S = fresh(); const s0 = S; const root = document.createElement('div'); root.id = 'j2'; root.tabIndex = -1; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Jam'); document.body.appendChild(root); document.body.classList.add('j2-open'); wire(root); render(); root.focus();
+  const [r, cat] = await Promise.all([jid0 ? api('GET', `/api/jam2/jams/${encodeURIComponent(jid0)}`) : api('POST', '/api/jam2/open', { cardId: card?.id || null, cta: cta || null }), api('GET', '/api/jam2/catalogue')]);
   if (S !== s0) return; if (!r?.jam) { S.err = r?.error || 'This jam couldn’t open. Try again in a moment.'; return render(); }
   S.jam = r.jam; S.also = r.also || []; S.recipes = Object.fromEntries((cat?.recipes || []).map((x) => [x.id, x])); S.recipes.__sizes = cat?.sizes || {};
-  history.replaceState(history.state, '', `${location.pathname}${location.search}#jam2=${S.jam.id}`);
+  /* the jam gets its own history entry: Back closes it, and a reload (or a shared address) reopens it */
+  const h = `${location.pathname}${location.search}#jam2=${S.jam.id}`; if (location.hash === `#jam2=${S.jam.id}`) history.replaceState(history.state, '', h); else history.pushState({ jam2: S.jam.id }, '', h);
   render(); poll(); const jid = S.jam.id; api('GET', `/api/jam2/jams/${jid}/prices`).then((p) => { if (live(s0, jid) && p?.prices) { S.prices = p.prices; render(); } });
 }
 /* ?v=2 turns Jam v2 on for this tab (it stays on while the tab is open); ?v=1 turns it off */
 const on = () => { try { const v = new URLSearchParams(location.search).get('v'); if (v === '2') sessionStorage.setItem('brew-jam-v', '2'); if (v === '1') sessionStorage.removeItem('brew-jam-v'); return sessionStorage.getItem('brew-jam-v') === '2'; } catch { return false; } };
-window.Jam2 = { on, open, close };
+const openId = (jid, tapi) => open(null, null, tapi, jid);
+window.Jam2 = { on, open, openId, close };
 on();

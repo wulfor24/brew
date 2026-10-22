@@ -5,13 +5,14 @@
 //   layer: { id, kind: 'bg'|'product'|'person'|'image'|'text'|'logo'|'badge'|'shape', x, y, w, h, rot, z, hidden, locked,
 //            src, fit, shadow, words, role: 'headline'|'sub'|'cta'|'small', style: { font, size, weight, color, align, bg, radius, pad, upper, lh } }
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const num = (x, d = 0) => (Number.isFinite(+x) ? +x : d);
+const num = (x, d = 0) => (Number.isFinite(+x) ? Math.max(-20000, Math.min(20000, +x)) : d);
+const clamp = (x, lo, hi, d) => (Number.isFinite(+x) ? Math.max(lo, Math.min(hi, +x)) : d);
 /* single quotes: the stack goes inside a style="…" attribute, where a double quote would end it (and drop the size after it) */
 const SAFE_FONTS = "'Helvetica Neue',Helvetica,Inter,Arial,sans-serif";
 export const fontStack = (name) => { const n = String(name || '').replace(/[^\w \-]/g, '').trim().slice(0, 40); return n ? `'${n}',${SAFE_FONTS}` : SAFE_FONTS; };
 /* Google Fonts link for the kit's fonts (a font that isn't on Google Fonts falls back to the safe stack, which the gate notes) */
 export const fontLink = (kit = {}) => { const fs = [kit.fonts?.heading, kit.fonts?.body].filter(Boolean).map((f) => String(f).replace(/["<>&]/g, '').trim()).filter((f) => /^[\w ]{2,40}$/.test(f));
-  return fs.length ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${[...new Set(fs)].map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;600;700;800`).join('&')}&display=block">` : ''; };
+  return [...new Set(fs)].map((f) => `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;600;700;800&display=swap">`).join(''); };
 
 /* a style value goes inside style="…": only plain CSS words, numbers, colours and gradients (no quotes, ; < > or url()) */
 const css = (v, d = '') => { const x = String(v ?? '').trim(); return x && x.length < 200 && /^[#\w\s.,%()+-]+$/.test(x) && !/url\s*\(|expression/i.test(x) ? x : d; };
@@ -19,8 +20,9 @@ const pick = (v, ok, d) => (ok.includes(v) ? v : d);
 export function layerStyle(l) {
   const s = l.style || {}, rot = num(l.rot);
   const base = [`left:${num(l.x)}px`, `top:${num(l.y)}px`, `width:${num(l.w, 100)}px`, l.kind === 'text' ? '' : `height:${num(l.h, 100)}px`, `z-index:${num(l.z, 1)}`, rot ? `transform:rotate(${rot}deg)` : '', l.hidden ? 'display:none' : ''];
-  if (l.kind === 'text' || l.kind === 'badge') base.push(`font-family:${fontStack(s.font)}`, `font-size:${num(s.size, 48)}px`, `font-weight:${num(s.weight, 700)}`, `color:${css(s.color, '#fff')}`, `text-align:${pick(s.align, ['left', 'center', 'right'], 'left')}`, `line-height:${num(s.lh, 1.12)}`,
-    css(s.bg) ? `background:${css(s.bg)}` : '', s.pad ? `padding:${num(s.pad)}px` : '', s.radius ? `border-radius:${num(s.radius)}px` : '', s.upper ? 'text-transform:uppercase' : '', s.shadow ? 'text-shadow:0 2px 18px rgba(0,0,0,.35)' : '', 'white-space:pre-wrap', 'overflow-wrap:break-word', 'letter-spacing:-.01em');
+  if (l.kind === 'text' || l.kind === 'badge') base.push(`font-family:${fontStack(s.font)}`, `font-size:${clamp(s.size, 6, 600, 48)}px`, `font-weight:${clamp(s.weight, 100, 900, 700)}`, `color:${css(s.color, '#fff')}`, `text-align:${pick(s.align, ['left', 'center', 'right'], 'left')}`, `line-height:${clamp(s.lh, 0.6, 3, 1.12)}`,
+    css(s.bg) ? `background:${css(s.bg)}` : '', s.pad ? `padding:${clamp(s.pad, 0, 400, 0)}px` : '', s.radius ? `border-radius:${clamp(s.radius, 0, 2000, 0)}px` : '', s.upper ? 'text-transform:uppercase' : '', s.shadow ? 'text-shadow:0 2px 18px rgba(0,0,0,.35)' : '', 'white-space:pre-wrap', 'overflow-wrap:break-word', 'letter-spacing:-.01em');
+  if (l.blend === 'multiply') base.push('mix-blend-mode:multiply');
   if (l.kind === 'shape') base.push(`background:${css(s.bg, 'rgba(0,0,0,.4)')}`, s.radius ? `border-radius:${num(s.radius)}px` : '');
   return base.filter(Boolean).join(';');
 }
@@ -63,8 +65,8 @@ export function reflow(scene, w, h) {
 
 /* the type presets every static starts from: the brand's heading font and colours, words always real type, never drawn */
 export function typePreset(name, { w, h, kit = {}, headline = '', sub = '', cta = '', badge = '' }) {
-  const head = kit.fonts?.heading || null, body = kit.fonts?.body || head, ink = kit.ink || '#ffffff', accent = kit.accent || kit.colors?.[0] || '#111111', pad = Math.round(w * 0.065);
-  const tall = h / w > 1.6, top = tall ? Math.round(h * 0.16) : pad, big = Math.round(w * (headline.length < 26 ? 0.085 : headline.length < 48 ? 0.068 : 0.056));
+  const head = kit.fonts?.heading || null, body = kit.fonts?.body || head, ink = kit.ink || '#ffffff', accent = kit.accent || kit.colors?.[0] || '#111111', u = Math.min(w, h * 1.25), pad = Math.round(u * 0.065); /* sized from the shorter side: a wide banner's headline can't cover the product */
+  const tall = h / w > 1.6, top = tall ? Math.round(h * 0.16) : pad, big = Math.round(u * (headline.length < 26 ? 0.085 : headline.length < 48 ? 0.068 : 0.056));
   const L = [];
   if (name === 'bottom-bar') {
     L.push({ id: 'shade', kind: 'shape', x: 0, y: Math.round(h * (tall ? 0.6 : 0.62)), w, h: Math.round(h * (tall ? 0.4 : 0.38)), z: 5, style: { bg: 'linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.72))' } });

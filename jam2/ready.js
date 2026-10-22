@@ -28,7 +28,7 @@ export function createReady({ maker, zipBuffer, log = console }) {
           files.push({ label: s.label, file: t.sizes[sz], size: sz, key }); } }
       else if (t.file) files.push({ label: r.label, file: t.file });
       const w = t.words || {};
-      out.push({ board: b.id, label: b.label || r.label, kind: r.kind, recipe: r.id, files, caption: [w.caption, (w.hashtags || []).join(' ')].filter(Boolean).join('\n\n'), body: w.body || '', subject: w.subject || '', alt: w.alt || w.headline || '', hashtags: w.hashtags || [], blocks: w.blocks || [], shots: t.timeline?.shots || [] });
+      out.push({ board: b.id, label: b.label || r.label, kind: r.kind, recipe: r.id, files, rows: w.rows || [], cols: w.cols || [], caption: [w.caption, (w.hashtags || []).join(' ')].filter(Boolean).join('\n\n'), body: w.body || '', subject: w.subject || '', alt: w.alt || w.headline || '', hashtags: w.hashtags || [], blocks: w.blocks || [], shots: t.timeline?.shots || [] });
     }
     return out;
   }
@@ -36,6 +36,12 @@ export function createReady({ maker, zipBuffer, log = console }) {
     const items = await packOf(jam), files = [];
     for (const it of items) { const dir = it.label.replace(/[^\w -]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || it.board;
       for (const f of it.files) { const p = await maker.fileOf(f.file); if (!p) continue; const ext = String(f.file).split('.').pop(); files.push({ name: `${dir}/${(f.size || f.label).replace(/[^\w-]+/g, '-')}.${ext}`, data: (await import('node:fs')).readFileSync(p) }); }
+      /* a change list goes as the sheet its tool takes; a video's voiceover as a captions file; an email as HTML */
+      const csv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`, H = (v) => String(v ?? '').replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'));
+      if (it.rows?.length) files.push({ name: `${dir}/sheet.csv`, data: Buffer.from([(it.cols?.length ? it.cols : ['What', 'Where', 'Change']).map(csv).join(','), ...it.rows.map((r) => [r.a, r.b, r.c].map(csv).join(','))].join('\n'), 'utf8') });
+      if (it.shots?.length && it.shots.some((x) => x.vo)) { let t0 = 0; const ts = (x) => `${String(Math.floor(x / 3600)).padStart(2, '0')}:${String(Math.floor(x / 60) % 60).padStart(2, '0')}:${String(Math.floor(x % 60)).padStart(2, '0')},000`;
+        files.push({ name: `${dir}/captions.srt`, data: Buffer.from(it.shots.map((x, i) => { const a = t0; t0 += +x.sec || 4; return x.vo ? `${i + 1}\n${ts(a)} --> ${ts(t0)}\n${x.vo}\n` : ''; }).filter(Boolean).join('\n'), 'utf8') }); }
+      if (it.kind === 'message' && it.body && it.subject) files.push({ name: `${dir}/email.html`, data: Buffer.from(`<!doctype html><html><body style="font-family:Arial,sans-serif;max-width:600px;margin:auto"><h2>${H(it.subject)}</h2>${String(it.body).split(/\n+/).map((x) => `<p>${H(x)}</p>`).join('')}</body></html>`, 'utf8') });
       const txt = [it.subject && `Subject: ${it.subject}`, it.caption, it.body, it.alt && `Alt text: ${it.alt}`, ...it.blocks.map((b) => `## ${b.title}\n${b.text}`)].filter(Boolean).join('\n\n');
       if (txt) files.push({ name: `${dir}/caption.txt`, data: Buffer.from(txt, 'utf8') }); }
     return zipBuffer(files);
@@ -48,6 +54,7 @@ export function createReady({ maker, zipBuffer, log = console }) {
       ${it.caption ? `<div class="copy"><b>Caption</b><p>${esc(it.caption).replace(/\n/g, '<br>')}</p><button data-copy="${esc(it.caption)}">Copy caption</button></div>` : ''}
       ${it.body ? `<div class="copy"><b>Post text</b><p>${esc(it.body).replace(/\n/g, '<br>')}</p><button data-copy="${esc(it.body)}">Copy text</button></div>` : ''}
       ${it.alt ? `<div class="copy small"><b>Alt text</b><p>${esc(it.alt)}</p><button data-copy="${esc(it.alt)}">Copy</button></div>` : ''}
+      ${it.rows?.length ? `<table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px"><tr>${(it.cols?.length ? it.cols : ['What', 'Where', 'Change']).map((c) => `<th style="text-align:left;border-bottom:1px solid var(--line);padding:6px">${esc(c)}</th>`).join('')}</tr>${it.rows.map((r) => `<tr>${[r.a, r.b, r.c].map((c) => `<td style="border-bottom:1px solid var(--line);padding:6px">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>` : ''}
       ${it.blocks.length ? `<div class="doc">${it.blocks.map((b) => `<h3>${esc(b.title)}</h3><p>${esc(b.text).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
       ${it.shots.length && !it.files.length ? `<ol class="shots">${it.shots.map((s) => `<li><b>${esc(s.sec)} s</b> ${esc(s.see)}${s.vo ? `<br><i>VO: ${esc(s.vo)}</i>` : ''}${s.words ? `<br>On screen: ${esc(s.words)}` : ''}</li>`).join('')}</ol>` : ''}</section>`;
     return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(kind === 'brief' ? 'Brief' : 'Ready to post')}: ${esc(jam.title)}</title>

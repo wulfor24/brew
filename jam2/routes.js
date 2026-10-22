@@ -9,12 +9,13 @@ import { createReady, tokenFor, parseToken } from './ready.js';
 import { RECIPES, FAMILIES, SIZES, HOW, HOW_LABEL, recipe, recipeFor, alsoFor, planFor } from './catalogue.js';
 import { newJam, newBoard, boardOf, headOf, bumpConcept, fromV1, jamView, note, uid, OWNERS, BRIEF_STATUS } from './core.js';
 import { productFor, productTiles } from './ingredients.js';
+import { withBrowser } from '../pdf/render.js';
 
 export function mountJam2(d) {
   const { on, packs, slugOfT, brandOfT, meOf, reqOf, cardOf, sourceOf, refsOf, isMock, spend, log = console } = d;
   const store = createJam2Store({ packs, log }), bb = createBrandbook({ packs, log });
   const engines = createEngines({ geminiImage: d.geminiImage, vertexVideo: d.vertexVideo, vertexVoice: d.vertexVoice, finals: d.finals, saveGen: d.saveGen, genFile: d.genFile, photo: d.photoAsync, mock: isMock, log });
-  const maker = createMaker({ engines, brandbook: bb, claudeTool: d.claudeTool, isMock, spend, launchBrowser: d.launchBrowser, shoot: d.shoot, saveGen: d.saveGen, genFile: d.genFile, photoAsync: d.photoAsync, log });
+  const maker = createMaker({ engines, brandbook: bb, claudeTool: d.claudeTool, isMock, spend, launchBrowser: d.launchBrowser, withBrowser, shoot: d.shoot, saveGen: d.saveGen, genFile: d.genFile, photoAsync: d.photoAsync, log });
   const ready = createReady({ maker, zipBuffer: d.zipBuffer, log });
   const busy = new Map(); // `${jid}:${bid}` → { op, at, error? }
   const whoOf = (t) => { const r = reqOf(t), me = meOf(t); return { member: !!r?.member, staff: !!me?.staff, tid: t.id, email: me?.email || null, me }; };
@@ -28,7 +29,7 @@ export function mountJam2(d) {
   /* run slow work in the background; the board says what it is doing and any error in plain words */
   const runBg = (t, jam, bid, op, fn) => { const k = `${jam.id}:${bid}`; if (busy.get(k)?.op && !busy.get(k).error) return false; busy.set(k, { op, at: Date.now() });
     Promise.resolve().then(fn).then(() => busy.delete(k)).catch((e) => { log.warn?.('[jam2]', op, e.message); busy.set(k, { op, at: Date.now(), error: e.budget ? e.message : e.open ? e.message : `${e.message}`.slice(0, 240) }); })
-      .finally(async () => { jam.updatedAt = Date.now(); await store.put(slugOfT(t), jam); }); return true; };
+      .finally(() => { jam.updatedAt = Date.now(); return store.put(slugOfT(t), jam); }).catch((e) => log.warn?.('[jam2] save after', op, e.message)); return true; };
   const out = (jam) => { const v = jamView(jam); v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || null])); delete v.cuts; return v; };
   const load = async (t, jid) => { const j = await store.get(slugOfT(t), jid, whoOf(t)); if (!j) throw Object.assign(new Error('not found'), { status: 404 }); return j; };
   const wrap = (fn) => async (b, t, p, q) => { try { return await fn(b, t, p, q); } catch (e) { return { error: e.message, status: e.status || 200 }; } };
@@ -70,8 +71,14 @@ export function mountJam2(d) {
     const free = !!b.patch?.scene || !!b.patch?.words || !!b.patch?.timeline || b.patch?.slide != null || b.op === 'resize' || b.op === 'line' || b.op === 'redo-words' && isMock();
     if (bd.status === 'stale' && b.op === 'refresh') { runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd)); return { jam: out(j) }; }
     if (b.op === 'first' || (!bd.takes.length && !free)) { runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd, { ask: b.ask || '' })); return { jam: out(j) }; }
+    /* Make the final runs on a partner's paid credits: only with the brand's yes on the price it was shown */
+    if (b.op === 'final' && !isMock() && b.confirmUsd == null && b.confirmCredits == null) return { error: 'Confirm the price first.', jam: out(j) };
     if (free && busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`).error) return { error: 'Brew is still working on this board. Your change can go in when it lands.', jam: out(j) };
     if (free) { const ctx = await ctxOf(t, j); await maker.edit(ctx, bd, b); await store.put(slugOfT(t), j); return { jam: out(j) }; }
+    /* a product pick from the page is only ever one of the brand's own catalog photos or References (never a URL of anyone's choosing) */
+    if (b.patch?.product) { const want = String(b.patch.product.img || ''), refs = await refsOf(slugOfT(t)).catch(() => []);
+      const own = productTiles(brandOfT(t)?.catalog || []).find((x) => x.img === want) || refs.filter((r) => r.kind !== 'video').map((r) => ({ img: r.url || r.file, name: r.label || null })).find((x) => x.img === want);
+      if (!own) return { error: 'Pick a product from your catalog or References.', jam: out(j) }; b.patch.product = { img: own.img, name: own.name || null, handle: own.handle || null }; }
     const started = runBg(t, j, bd.id, b.op || 'edit', async () => { const ctx = await ctxOf(t, j, { pick: b.patch?.product || null }); if (b.op === 'swap-product' && b.patch?.product) j.product = b.patch.product; await maker.edit(ctx, bd, b);
       if (b.why && ['redo', 'redo-words'].includes(b.op)) await bb.taste(slugOfT(t), { kind: 'dont', what: String(b.why).toLowerCase().slice(0, 60), text: b.why }).catch(() => {}); });
     return started ? { jam: out(j) } : { error: 'Brew is still working on this board.', jam: out(j) }; }));
@@ -89,17 +96,17 @@ export function mountJam2(d) {
 
   /* the jam's chat: the team's lines and Brew's replies, kept with the jam (Slack and @mentions arrive here too) */
   on('POST', '/api/jam2/jams/:jid/say', wrap(async (b, t, p) => { const j = await load(t, p.jid), w = whoOf(t), text = String(b.t || '').trim().slice(0, 1200); if (!text) return { error: 'Say something first.' };
-    (j.chat ||= []).push({ id: uid('m'), from: b.from === 'brew' && text.length <= 600 ? 'brew' : 'you', by: w.email, name: w.me?.name || null, t: text, sel: b.sel ? String(b.sel).slice(0, 60) : null, at: Date.now() }); if (j.chat.length > 300) j.chat.splice(0, j.chat.length - 300);
+    (j.chat ||= []).push({ id: uid('m'), from: b.from === 'brew' ? 'brew' : 'you', by: w.email, name: w.me?.name || null, t: text, sel: b.sel ? String(b.sel).slice(0, 60) : null, at: Date.now() }); if (j.chat.length > 300) j.chat.splice(0, j.chat.length - 300);
     await store.put(slugOfT(t), j); return { jam: out(j) }; }));
   /* a board as a brief for a team: who makes it, by when, section edits; send = the brief link goes out and the status starts */
   on('POST', '/api/jam2/jams/:jid/boards/:bid/brief', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const w = whoOf(t);
     const br = bd.brief ||= { owner: OWNERS[0], due: null, edits: {}, status: null, log: [] };
     if (b.owner) br.owner = String(b.owner).slice(0, 60); if (b.due !== undefined) br.due = b.due ? String(b.due).slice(0, 30) : null;
-    if (b.edit && Number.isInteger(b.edit.i)) br.edits[b.edit.i] = String(b.edit.t || '').slice(0, 1200);
+    if (b.edit && Number.isInteger(b.edit.i) && b.edit.i >= 0 && b.edit.i < 8) br.edits[b.edit.i] = String(b.edit.t || '').slice(0, 1200); if (br.log?.length > 50) br.log.splice(0, br.log.length - 50);
     if (b.mode) { const r = recipe(bd.recipe); const how = b.mode === 'brief' ? 'brief' : r.how.find((h) => h !== 'brief') || r.how[0]; if (r.how.includes(how)) bd.how = how; }
     let url = null;
     /* each board's brief has its own link: the team that gets one sees and moves only that brief */
-    if (b.send) { br.nonce ||= uid('b').slice(2); br.revoked = false; if (!br.status) br.status = 'sent'; br.sentAt = Date.now(); br.log.push({ status: 'sent', at: Date.now(), by: w.email });
+    if (b.send) { if (!br.nonce) { br.nonce = uid('b').slice(2); br.revoked = false; } if (!br.status) br.status = 'sent'; br.sentAt = Date.now(); br.log.push({ status: 'sent', at: Date.now(), by: w.email });
       note(j, `sent the ${bd.label} brief to ${br.owner}`, w.email); url = `/brief/${tokenFor('brief', slugOfT(t), j.id, br.nonce)}`; }
     await store.put(slugOfT(t), j); return { jam: out(j), url }; }));
 
@@ -110,8 +117,9 @@ export function mountJam2(d) {
   on('POST', '/api/jam2/jams/:jid/handoff', wrap(async (b, t, p) => { const j = await load(t, p.jid);
     j.brief = j.brief && !j.brief.revoked ? j.brief : { nonce: uid('b').slice(2), at: Date.now(), by: whoOf(t).email, revoked: false, to: b.to || null }; await store.put(slugOfT(t), j);
     return { url: `/brief/${tokenFor('brief', slugOfT(t), j.id, j.brief.nonce)}`, jam: out(j) }; }));
-  on('POST', '/api/jam2/jams/:jid/revoke', wrap(async (b, t, p) => { const j = await load(t, p.jid); if (b.kind === 'brief' && j.brief) j.brief.revoked = true; else if (j.post) j.post.revoked = true; await store.put(slugOfT(t), j); return { jam: out(j) }; }));
-  on('POST', '/api/jam2/jams/:jid/posted', wrap(async (b, t, p) => { const j = await load(t, p.jid); (j.posted ||= []).push({ platform: String(b.platform || '').slice(0, 30), link: String(b.link || '').slice(0, 300), at: Date.now(), by: whoOf(t).email });
+  on('POST', '/api/jam2/jams/:jid/revoke', wrap(async (b, t, p) => { const j = await load(t, p.jid); const bd = b.board ? boardOf(j, b.board) : null;
+    if (bd?.brief) { bd.brief.revoked = true; bd.brief.nonce = null; } else if (b.kind === 'brief' && j.brief) j.brief.revoked = true; else if (j.post) j.post.revoked = true; await store.put(slugOfT(t), j); return { jam: out(j) }; }));
+  on('POST', '/api/jam2/jams/:jid/posted', wrap(async (b, t, p) => { const j = await load(t, p.jid); if ((j.posted ||= []).length >= 50) j.posted.shift(); j.posted.push({ platform: String(b.platform || '').slice(0, 30), link: String(b.link || '').slice(0, 300), at: Date.now(), by: whoOf(t).email });
     await bb.taste(slugOfT(t), { kind: 'do', what: `posted:${j.boards.find((x) => x.approved)?.recipe || 'board'}`, text: `posted a ${j.boards.find((x) => x.approved)?.label?.toLowerCase() || 'board'}` }).catch(() => {}); await store.put(slugOfT(t), j); return { jam: out(j) }; }));
 
   /* the public pages (/p/<token>, /brief/<token>), answered before the API routes; a revoked link is gone */
@@ -119,7 +127,7 @@ export function mountJam2(d) {
     /* the team that got a brief moves its status: received → in progress → delivered (no sign-in: the link is the key) */
     const sm = /^\/brief\/([\w~-]+)\/status$/.exec(u.pathname);
     if (sm && req.method === 'POST') { const tok = parseToken('brief', sm[1]), j = tok ? await store.getAny(tok.slug, tok.jid) : null; let body = ''; for await (const ch of req) { body += ch; if (body.length > 4000) break; }
-      const q = (() => { try { return JSON.parse(body || '{}'); } catch { return {}; } })(), bd = j ? j.boards.find((x) => x.brief?.nonce === tok.nonce && !x.brief.revoked) || null : null;
+      const q = (() => { try { return JSON.parse(body || '{}'); } catch { return {}; } })(), bd = !j ? null : j.boards.find((x) => x.brief?.nonce === tok.nonce && !x.brief.revoked) || (j.brief && !j.brief.revoked && j.brief.nonce === tok.nonce ? boardOf(j, q.board) : null);
       if (!bd?.brief || !BRIEF_STATUS.includes(q.status) || BRIEF_STATUS.indexOf(q.status) <= BRIEF_STATUS.indexOf(bd.brief.status)) { res.writeHead(400, { 'content-type': 'application/json' }); res.end('{"error":"not found"}'); return true; }
       bd.brief.status = q.status; (bd.brief.log ||= []).push({ status: q.status, at: Date.now(), by: 'brief link' }); note(j, `${bd.label} brief: ${q.status}`, 'brief link'); await store.put(tok.slug, j);
       res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ ok: true, status: q.status })); return true; }
@@ -128,7 +136,7 @@ export function mountJam2(d) {
     const one = kind === 'brief' && j ? j.boards.find((x) => x.brief?.nonce === tok.nonce && !x.brief.revoked) : null, link = one ? one.brief : j?.[kind === 'post' ? 'post' : 'brief'];
     if (!j || !link || link.revoked || link.nonce !== tok.nonce) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('This link is not valid any more.'); return true; }
     if (kind === 'post' && u.searchParams.get('zip') === '1') { const buf = await ready.zip(j); await store.put(tok.slug, j); res.writeHead(200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${j.title.replace(/[^\w -]+/g, '').slice(0, 60) || 'brew'}.zip"`, 'cache-control': 'no-store' }); res.end(buf); return true; }
-    let items = await ready.packOf(j); await store.put(tok.slug, j);
+    let items = kind === 'post' ? await ready.packOf(j) : []; if (kind === 'post') await store.put(tok.slug, j);
     if (kind === 'brief') { const sent = one ? [one] : j.boards.filter((bd) => bd.brief?.status); items = (sent.length ? sent : j.boards).map((bd) => { const h = bd.approved ? bd.takes.find((x) => x.id === bd.approved.takeId) : headOf(bd); return h ? { board: bd.id, label: bd.label, status: bd.brief?.status || null, files: h.file ? [{ label: 'Brew’s draft (reference)', file: h.file }] : [], caption: '', body: '', subject: '', alt: '', hashtags: [], blocks: jamView(j).boards.find((x) => x.id === bd.id).briefView.map((x) => ({ title: x.h, text: x.t })), shots: [] } : null; }).filter(Boolean); }
     const name = (await bb.load(tok.slug).catch(() => null))?.read?.name || '';
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(ready.page(j, items, { kind, brand: name })); return true;

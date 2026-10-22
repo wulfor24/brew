@@ -11,7 +11,7 @@ import { sceneHtml, typePreset, reflow, sentencesOf } from '../public/jam2/scene
 import { recipe, SIZES } from './catalogue.js';
 import { productFor } from './ingredients.js';
 import { addTake, headOf, sizeOf, uid, note } from './core.js';
-import { claimFlags } from '../claims.js';
+import { claimFlags, bannedHits } from '../claims.js';
 
 const tidy = (s, n = 240) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const sha = (b) => crypto.createHash('sha1').update(b).digest('hex').slice(0, 16);
@@ -42,12 +42,12 @@ const BRIEF_SECTIONS = {
   act: ['What to change', 'Owner', 'Steps (exactly where in your tools)', 'Assets', 'Done when']
 };
 
-export function createMaker({ engines, brandbook, claudeTool, isMock, spend = () => true, launchBrowser, shoot, saveGen, genFile, photoAsync, publicUrl = process.env.PUBLIC_URL || '', log = console }) {
+export function createMaker({ engines, brandbook, claudeTool, isMock, spend = () => true, launchBrowser, withBrowser = null, shoot, saveGen, genFile, photoAsync, publicUrl = process.env.PUBLIC_URL || '', log = console }) {
   const keep = (buf, ext) => { const name = `j2-${sha(buf)}.${ext}`; saveGen(name, buf); return 'gen/' + name; };
   /* a stored src ('gen/x', '/b/slug/..', 'https://..') → a local file path */
   const fileOf = async (src) => { if (!src) return null; const s = String(src); if (s.startsWith('data:')) return null;
     if (/^\/?gen\//.test(s)) return (await genFile(s.replace(/^\/?gen\//, ''))) || null; return (await photoAsync(s).catch(() => null)) || null; };
-  const dataUri = async (src) => { if (!src) return null; if (String(src).startsWith('data:')) return src; const f = await fileOf(src); if (!f || !fs.existsSync(f)) return null; const b = fs.readFileSync(f), ext = path.extname(f).slice(1).toLowerCase(); return `data:${MIME[ext] || (b[0] === 0x89 ? 'image/png' : 'image/jpeg')};base64,${b.toString('base64')}`; };
+  const dataUri = async (src) => { if (!src) return null; if (String(src).startsWith('data:')) return src; const f = await fileOf(src); if (!f || !fs.existsSync(f)) return null; const b = fs.readFileSync(f), ext = path.extname(f).slice(1).toLowerCase(); const head = b.slice(0, 200).toString('utf8').trimStart(); return `data:${/^<(\?xml|svg)/i.test(head) || ext === 'svg' ? 'image/svg+xml' : MIME[ext] || (b[0] === 0x89 ? 'image/png' : 'image/jpeg')};base64,${b.toString('base64')}`; };
 
   /* ---------- the idea and the words ---------- */
   async function write(ctx, board, { ask = '' } = {}) {
@@ -59,22 +59,31 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
       `The spark (${c.spark?.kind || 'idea'}): ${c.spark?.title || ''}. ${c.spark?.says || ''} ${(c.spark?.why || []).join(' ')}`.trim(),
       c.angle ? `The idea so far: ${c.angle}. Goal: ${c.goal}.${c.audience ? ` For: ${c.audience}.` : ''}${c.offer ? ` Offer: ${c.offer}.` : ''}` : '',
       ctx.product?.name ? `The product: ${ctx.product.name}. It appears as its real photo; describe only the setting around it.` : '',
+      ctx.source ? `Facts you may use (nothing else): ${tidy(ctx.source, 2500)}` : '',
+      (ctx.catalog || []).length ? `Products and prices: ${(ctx.catalog || []).slice(0, 14).map((p) => `${tidy(p.t || p.title, 70)}${p.price ? ` · ${p.price}` : ''}`).join('; ')}` : '',
+      ctx.bbv.currency ? `Prices are in ${ctx.bbv.currency}; never use another currency.` : '',
       brandbook.promptBlock(bbv, { recipe: r.id }),
       ['creator', 'script', 'shoot', 'act'].includes(r.kind) ? `Write the sections as blocks, in this order: ${BRIEF_SECTIONS[r.kind].join(' · ')}. Concrete, specific to this brand, ready to hand over; nothing generic.` : '',
       r.kind === 'video' ? `Write ${Math.max(3, Math.round((r.seconds || 15) / 4))} shots that add up to about ${r.seconds || 15} seconds. Hook in the first 2 seconds. VO reads at about 2.5 words a second.` : '',
       ['carousel'].includes(r.kind) ? 'Write 4–6 slides: one idea each, a cover line first, a buy line last.' : '',
       ['post', 'message', 'page'].includes(r.kind) ? `Write the full text in body${r.id === 'email' ? ' and a subject' : ''}. Native to where it runs; never salesy in a community.` : '',
+      r.id === 'pdp-set' || r.id === 'listing' ? 'Slides are the marketplace gallery in order: 1 hero on plain white, then lifestyle, benefits, size or how-to; each onSlide a short label. For a listing also put the title (≤ 200 characters) and 5 bullets in blocks.' : '',
+      r.id === 'pmax' ? 'Write blocks "Headlines" (15 lines, each ≤ 30 characters) and "Descriptions" (4 lines, each ≤ 90 characters), one per line, for Google Ads.' : '',
       r.id === 'ai-faq' ? 'Write body as 3–5 questions people ask AI apps about this product, each on its own line ending in "?", each followed by a two-sentence answer on the next line. Then blocks: "Product schema" (JSON-LD, real price only) and "llms.txt line".' : '',
       r.kind === 'table' ? 'This is a change list someone applies by hand in their own tool. Fill cols (3 short names) and rows (one change per row, 3–8 rows). Use only names, prices and places from the facts given; where a fact is missing write [YOURS]. Put the steps to apply it in blocks: "Where", "Steps", "Done when".' : '',
       board.ask ? `This board: ${board.label}. ${board.ask}` : '',
       ask ? `The team asked: ${ask}` : '',
       'Never invent numbers, discounts, codes, guarantees or reviews. Quote reviews only word for word from the lines given. One version only.'
     ].filter(Boolean).join('\n\n');
-    const out = await claudeTool(brief, SCHEMA, 3000, 'jam2_write');
+    if (!spend('text', ctx.slug)) throw Object.assign(new Error('Today’s writing budget is used up. It resets tonight.'), { budget: true });
+    const need = { carousel: ['slides'], video: ['shots'], table: ['rows', 'cols'], post: ['body'], message: ['body'], page: ['body'], creator: ['blocks'], script: ['blocks'], shoot: ['blocks'], act: ['blocks'] }[r.kind] || [];
+    const base = ['static', 'carousel', 'video'].includes(r.kind) ? ['angle', 'goal', 'headline', 'caption'] : ['angle', 'goal'];
+    const schema = { ...SCHEMA, required: [...new Set([...base, ...need])] }, long = ['creator', 'script', 'shoot', 'act', 'carousel', 'video', 'table'].includes(r.kind);
+    let out; try { out = await claudeTool(brief, schema, long ? 6000 : 3000, 'jam2_write'); } catch (e) { if (!/max_tokens|length|JSON|parse|truncat/i.test(e.message)) throw e; out = await claudeTool(brief + '\n\nBe brief: every field short.', schema, 8000, 'jam2_write'); }
     return clean(out, r);
   }
   const clean = (o = {}, r) => ({ ...o, headline: tidy(o.headline, 60), sub: tidy(o.sub, 90), badge: tidy(o.badge, 34), cta: tidy(o.cta, 22), caption: tidy(o.caption, 2200), scene: tidy(o.scene, 400), hashtags: (o.hashtags || []).slice(0, 8).map((h) => `#${String(h).replace(/^#/, '').replace(/\s+/g, '')}`),
-    slides: (o.slides || []).slice(0, 6), cols: (o.cols || []).slice(0, 3).map((x) => tidy(x, 24)), rows: (o.rows || []).slice(0, 10).map((x) => ({ a: tidy(x.a, 120), b: tidy(x.b, 160), c: tidy(x.c, 80) })), shots: (o.shots || []).slice(0, 6), blocks: (o.blocks || []).slice(0, 16), proof: (o.proof || []).slice(0, 3) });
+    slides: (o.slides || []).slice(0, 6).map((x) => ({ onSlide: tidy(x?.onSlide, 60), small: tidy(x?.small, 90), scene: tidy(x?.scene, 300) })).filter((x) => x.onSlide), cols: (o.cols || []).slice(0, 3).map((x) => tidy(x, 24)), rows: (o.rows || []).slice(0, 10).map((x) => ({ a: tidy(x.a, 120), b: tidy(x.b, 160), c: tidy(x.c, 80) })), shots: (o.shots || []).slice(0, 6).map((x) => ({ sec: x?.sec, see: tidy(x?.see, 200), vo: tidy(x?.vo, 200), words: tidy(x?.words, 60), camera: tidy(x?.camera, 40) })).filter((x) => x.see || x.vo), blocks: (o.blocks || []).slice(0, 16).map((x) => ({ title: tidy(x?.title, 60), text: tidy(x?.text, 1500) })).filter((x) => x.title || x.text), proof: (o.proof || []).slice(0, 3) });
   const mockWords = (card = {}, r, bbv) => { const t = tidy(card.title || r.label, 60), h = t.split(/\s+/).slice(0, 6).join(' ');
     return { angle: t, goal: 'conversion', audience: '', offer: '', proof: (bbv.reviews || []).slice(0, 1).map((x) => x.text), headline: h, sub: tidy(card.sub, 80), badge: '', cta: 'Shop now', caption: `${tidy(card.sub || card.title, 200)}`, hashtags: [], alt: t,
       scene: 'a sunlit bathroom shelf with soft morning light, a folded towel, clean tiles', body: `${tidy(card.sub || card.title, 400)}`, subject: h,
@@ -93,7 +102,9 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
   }
 
   /* ---------- a scene with room for the product ---------- */
-  async function scene(ctx, { describe, ratio, place = null, styleRefs = [] }) {
+  /* the image models take a fixed set of frames: a banner (3:1), Facebook/X (1.91:1) or print (A5) asks for the nearest one and the scene is cropped to size */
+  const GEM_RATIO = { '3:1': '21:9', '1.91:1': '16:9', A5: '2:3', '2:3': '2:3' };
+  async function scene(ctx, { describe, ratio: ratio0, place = null, styleRefs = [] }) { const ratio = GEM_RATIO[ratio0] || ratio0;
     if (!spend('image', ctx.slug)) throw Object.assign(new Error('Today’s picture budget is used up. It resets tonight.'), { budget: true });
     const look = (ctx.bbv.styleRefs || []).slice(0, 2), refFiles = (await Promise.all([...styleRefs, ...look.map((x) => x.src)].slice(0, 2).map((s) => fileOf(s).catch(() => null)))).filter(Boolean);
     const prompt = [`A real photograph for an ad, ${ratio} frame: ${place?.describe || describe}.`,
@@ -116,27 +127,41 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
   }
 
   /* ---------- render a scene to the file people download ---------- */
+  /* one shared Chromium for every render, at most two pages at a time (a burst of drags or a ready link opened by many people
+     can't start a browser each); the brand's fonts are in place before the shot */
+  let slots = 0; const waiting = [];
+  const slot = async (fn) => { if (slots >= 2) await new Promise((ok) => waiting.push(ok)); slots++; try { return await fn(); } finally { slots--; waiting.shift()?.(); } };
   async function render(sc, { ext = 'jpg' } = {}) {
     const srcs = {}; for (const s of [sc.bg?.src, ...(sc.layers || []).map((l) => l.src)].filter(Boolean)) srcs[s] = await dataUri(s);
-    const html = sceneHtml(sc, { srcOf: (s) => srcs[s] || '' }); const browser = await launchBrowser();
-    try { const buf = await shoot(browser, html, [sc.w, sc.h]); return keep(buf, ext); } finally { await browser.close?.().catch?.(() => {}); }
+    const html = sceneHtml(sc, { srcOf: (s) => srcs[s] || '' }), w = Math.min(4000, Math.max(50, +sc.w || 1080)), h = Math.min(4000, Math.max(50, +sc.h || 1350));
+    return slot(() => (withBrowser || (async (fn) => { const b = await launchBrowser(); try { return await fn(b); } finally { await b.close?.().catch?.(() => {}); } }))(async (browser) => {
+      const page = await browser.newPage();
+      try { await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 }); await page.setContent(html, { waitUntil: 'load', timeout: 30e3 }); await page.evaluate(() => document.fonts?.ready).catch(() => {});
+        return keep(await page.screenshot({ type: ext === 'png' ? 'png' : 'jpeg', ...(ext === 'png' ? {} : { quality: 88 }) }), ext); }
+      finally { await page.close().catch(() => {}); } }));
   }
 
   /* ---------- the gate: before the brand sees "Ready to post" ---------- */
   function gate(ctx, take, board) {
-    const checks = [], r = recipe(board.recipe), text = [take.words?.headline, take.words?.sub, take.words?.badge, take.words?.caption, take.words?.body, ...(take.words?.slides || []).map((s) => s.onSlide), ...(take.words?.shots || []).map((s) => `${s.vo || ''} ${s.words || ''}`), ...(take.words?.blocks || []).map((b) => b.text)].filter(Boolean).join('\n');
+    const checks = [], r = recipe(board.recipe), text = [take.words?.headline, take.words?.sub, take.words?.badge, take.words?.caption, take.words?.body, ...(take.words?.slides || []).map((s) => s.onSlide), ...(take.timeline?.shots || take.words?.shots || []).map((s) => `${s.vo || ''} ${s.words || ''}`), ...(take.words?.blocks || []).filter((b) => !/never say|claims you may/i.test(b.title || '')).map((b) => b.text), ...(take.words?.rows || []).map((x) => `${x.a} ${x.b} ${x.c}`)].filter(Boolean).join('\n');
     const src = ctx.source || '';
     const flags = claimFlags(text, src); checks.push({ k: 'claims', ok: !flags.length, why: flags.length ? flags.slice(0, 2).map((f) => f.why).join('; ') : 'No invented codes, guarantees or timed results.' });
-    const never = (ctx.bbv.never || []).filter((w) => w && new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text)); checks.push({ k: 'never', ok: !never.length, why: never.length ? `Uses words the brand never uses: ${never.join(', ')}` : 'None of the brand’s never-say words.' });
+    let reHits = []; try { reHits = ctx.bbv.neverRe ? bannedHits(text, new RegExp(ctx.bbv.neverRe, 'i'), src) : []; } catch { reHits = []; }
+    const never = [...new Set([...reHits, ...(ctx.bbv.neverSay || []).filter((w) => w && new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text))])]; checks.push({ k: 'never', ok: !never.length, why: never.length ? `Uses words the brand never uses: ${never.join(', ')}` : 'None of the brand’s never-say words.' });
     if (take.scene) {
-      const prod = take.scene.layers.find((l) => l.kind === 'product'); checks.push({ k: 'product', ok: !!prod || !!take.harmonized, why: prod ? 'The real product photo, cut out: its pixels are untouched.' : take.harmonized ? (take.guard?.same === false ? 'The blended picture may have changed the product.' : 'Blended into the scene; checked against the real photo.') : 'No product in this picture.' });
+      const prod = take.scene.layers.find((l) => l.kind === 'product'); checks.push({ k: 'product', soft: !ctx.product, ok: !!prod || !!take.harmonized, why: prod ? 'The real product photo, cut out: its pixels are untouched.' : take.harmonized ? (take.guard?.same === false ? 'The blended picture may have changed the product.' : 'Blended into the scene; checked against the real photo.') : !ctx.product ? 'No product photo yet: add one in References and swap it in.' : 'No product in this picture.' });
       const tall = take.scene.h / take.scene.w > 1.6; const outside = take.scene.layers.filter((l) => (l.kind === 'text' || l.kind === 'badge') && !l.hidden && (l.x < 0 || l.x + l.w > take.scene.w + 2 || (tall && (l.y < take.scene.h * 0.14 || l.y > take.scene.h * 0.84))));
       checks.push({ k: 'safe', ok: !outside.length, why: outside.length ? 'Some words sit where the app draws its own bars or off the edge.' : 'Words inside the safe area.' });
       const fonts = ctx.bbv.kit?.fonts || {}; checks.push({ k: 'kit', ok: !!(fonts.heading || fonts.body) && !!ctx.bbv.kit?.colors?.length, why: fonts.heading ? `In ${fonts.heading}${ctx.bbv.kit?.colors?.length ? ' and your colours' : ''}.` : 'Your brand font isn’t set yet: add it in the Brand Book.', soft: true });
       checks.push({ k: 'spelling', ok: true, why: 'Words are set as real type from the approved text, never drawn by the model.' });
     }
-    if (['creator', 'script', 'shoot', 'act'].includes(r.kind)) { const want = BRIEF_SECTIONS[r.kind] || [], have = new Set((take.words?.blocks || []).filter((b) => b.text?.trim()).map((b) => b.title)); const miss = want.filter((x) => !have.has(x));
+    if (['creator', 'script', 'shoot', 'act'].includes(r.kind)) { const norm = (x) => String(x || '').toLowerCase().replace(/[‘’'"“”]/g, '').replace(/[–—-]/g, ' ').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+      const want = BRIEF_SECTIONS[r.kind] || [], have = new Set((take.words?.blocks || []).filter((b) => b.text?.trim()).map((b) => norm(b.title))); const miss = want.filter((x) => !have.has(norm(x)));
       checks.push({ k: 'complete', ok: miss.length <= 1, why: miss.length ? `Still to fill: ${miss.join(', ')}` : 'Every section is there.' }); }
+    /* the board has its content: a reply with a missing field never passes as checked */
+    const w = take.words || {}, miss = r.kind === 'carousel' ? ((take.slides || []).length < 3 ? 'fewer than 3 slides came back' : '') : r.kind === 'video' ? (!(take.timeline?.shots || []).length ? 'the storyboard has no shots' : !take.file ? 'the video isn’t rendered yet' : '')
+      : r.kind === 'table' ? (!(w.rows || []).length ? 'the list has no rows' : '') : ['post', 'message', 'page'].includes(r.kind) ? (!String(w.body || '').trim() ? 'no text came back' : '') : ['static'].includes(r.kind) ? (!take.file ? 'the picture didn’t render' : '') : '';
+    checks.push({ k: 'content', ok: !miss, why: miss ? `Not ready: ${miss}.` : 'Everything it needs is there.' });
     const hard = checks.filter((c) => !c.ok && !c.soft); return { pass: !hard.length, checks, at: Date.now() };
   }
 
@@ -169,7 +194,7 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
   /* ---------- video: price first, then render shots, voice, captions, stitch ---------- */
   async function videoQuote(ctx, board, take) {
     const r = recipe(board.recipe), cap = r.caps.includes('video.ugc') ? 'video.ugc' : 'video.shot'; let usd = 0, credits = 0, provider = null;
-    for (const s of take.timeline?.shots || []) { const q = await engines.quote(cap, { seconds: s.sec, slug: ctx.slug }); if (q.error) return { error: q.error }; usd += q.usd || 0; credits += q.credits || 0; provider = q.provider; }
+    for (const s of take.timeline?.shots || []) { const q = await engines.quote(cap, { seconds: Math.max(4, s.sec || 4), slug: ctx.slug }); /* Veo bills at least 4 s a clip */ if (q.error) return { error: q.error }; usd += q.usd || 0; credits += q.credits || 0; provider = q.provider; }
     const stills = (take.timeline?.shots || []).length; const sq = await engines.quote('still.scene', { slug: ctx.slug }); usd += (sq.usd || 0) * stills;
     return { cap, usd: +usd.toFixed(2), credits, provider, seconds: (take.timeline?.shots || []).reduce((a, s) => a + s.sec, 0), at: Date.now() };
   }
@@ -178,13 +203,17 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     const q = await videoQuote(ctx, board, t0); if (q.error) throw new Error(q.error);
     if (!isMock() && (confirmUsd == null || +confirmUsd + 0.01 < q.usd)) return { needsConfirm: true, quote: q };
     const size = sizeOf(board), cut = t0.cut ? { file: t0.cut } : await cutout(ctx), made = [], shots = [];
-    for (const s of t0.timeline.shots) {
+    /* each shot on its own: a shot whose clip fails (or whose budget is used up) keeps its still, so nothing already paid for is lost */
+    let lost = 0;
+    for (const s of t0.timeline.shots) { try {
       const bg = await scene(ctx, { describe: s.see, ratio: '9:16' }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
       const sc = composeScene({ size: { ...size, w: 1080, h: 1920 }, bgFile: bg.file, cut, words: { headline: '' }, kit: ctx.bbv.kit }); sc.layers = sc.layers.filter((l) => l.kind !== 'text' && l.kind !== 'shape' && l.kind !== 'badge');
       const still = await render(sc); const sf = await fileOf(still);
+      if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true });
       const clip = await engines.run(q.cap, { srcFile: sf, srcUrl: still, prompt: `${s.camera || 'static'} camera. ${s.see}. The product stays exactly as in the first frame: same shape, label and colours. Natural motion, no text, no logos added.`, seconds: s.sec, ratio: '9:16', slug: ctx.slug, by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
       made.push({ cap: q.cap, provider: clip.provider, model: clip.model, usd: clip.usd || 0, credits: clip.credits || 0 }); shots.push({ ...s, still, clip: clip.file });
-    }
+    } catch (e) { lost++; log.warn?.('[jam2] shot', e.message); const prev = shots[shots.length - 1]; shots.push({ ...s, still: prev?.still || null, clip: null, failed: tidy(e.message, 120) }); if (e.budget || /budget/i.test(e.message)) break; } }
+    if (!shots.some((x) => x.still || x.clip)) throw new Error('No shot came through. Nothing else was made; try again later.');
     const vo = t0.timeline.shots.map((s) => s.vo).filter(Boolean).join(' ');
     const voice = vo && ctx.bbv.comfort?.aiVoice !== 'no' ? await engines.run('voice.tts', { text: vo, voice: t0.timeline.voice, slug: ctx.slug }).catch((e) => { log.warn?.('[jam2] voice', e.message); return null; }) : null;
     if (voice) made.push({ cap: 'voice.tts', provider: voice.provider, model: voice.model, usd: voice.usd || 0 });
@@ -230,24 +259,31 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     if (patch?.scene && base.scene) { base.scene = safeScene(patch.scene, base); base.op = 'arrange'; base.file = await render(base.scene); base.words = { ...base.words, ...(patch.words || {}) }; }
     else if (patch?.words) { base.words = { ...base.words, ...patch.words }; base.op = 'words';
       if (base.scene) for (const l of base.scene.layers) if (l.role && patch.words[l.role] !== undefined) l.words = patch.words[l.role]; if (base.scene) base.file = await render(base.scene); }
-    else if (patch?.timeline && base.timeline) { base.timeline = patch.timeline; base.op = 'timeline'; base.quote = await videoQuote(ctx, board, base); }
+    else if (patch?.timeline && base.timeline) { const t0 = patch.timeline, old = base.timeline;
+      base.timeline = { voice: ['Kore', 'Puck', 'Aoede', 'Charon', 'Fenrir', 'Leda'].includes(t0.voice) ? t0.voice : old.voice, music: tidy(t0.music || old.music, 40), captions: t0.captions !== undefined ? !!t0.captions : old.captions,
+        shots: (Array.isArray(t0.shots) ? t0.shots : old.shots).slice(0, 6).map((x, i) => ({ id: tidy(x?.id || old.shots?.[i]?.id || uid('sh'), 30), sec: Math.max(2, Math.min(10, Math.round(+x?.sec || 4))), see: tidy(x?.see, 200), vo: tidy(x?.vo, 200), words: tidy(x?.words, 60), camera: tidy(x?.camera || 'static', 40), still: old.shots?.find((o) => o.id === x?.id)?.still || null, clip: null })) }; base.op = 'timeline'; if (/\.(mp4|webm|mov)$/i.test(String(base.file || ''))) base.file = null; /* the old cut no longer matches: render again */ base.quote = await videoQuote(ctx, board, base); }
     else if (patch?.slide != null && base.slides?.[patch.slide]) { const sl = base.slides[patch.slide]; if (patch.slideScene) sl.scene = safeScene(patch.slideScene, base);
       for (const l of sl.scene.layers) if (l.role && patch.slideWords?.[l.role] !== undefined) l.words = patch.slideWords[l.role];
       if (patch.slideWords?.headline !== undefined && base.words?.slides?.[patch.slide]) base.words.slides[patch.slide].onSlide = patch.slideWords.headline;
       sl.file = await render(sl.scene); if (patch.slide === 0) { base.scene = sl.scene; base.file = sl.file; } base.op = 'slide'; }
-    else if (op === 'line') { const now = getLine(base, target); if (now == null) throw new Error('Pick a line first.'); const nx = await rewriteLine(ctx, board, now, ask || 'rewrite'); setLine(base, target, nx); base.op = 'line';
+    else if (op === 'line') { const now = getLine(base, target); if (now == null) throw new Error('Pick a line first.'); const nx = await rewriteLine(ctx, board, now, ask || 'rewrite', target); setLine(base, target, nx); base.op = 'line';
       if (base.scene) { for (const l of base.scene.layers) if (l.role && base.words[l.role] !== undefined) l.words = base.words[l.role]; base.file = await render(base.scene); }
       if (target?.kind === 'slide' && base.slides?.[target.i]) { const sl = base.slides[target.i]; for (const l of sl.scene.layers) if (l.role === 'headline') l.words = nx; sl.file = await render(sl.scene); if (target.i === 0) { base.scene = sl.scene; base.file = sl.file; } } }
     else if (op === 'final' && base.scene) { const sc = JSON.parse(JSON.stringify(base.scene)); const comp = await render(sc), cf = await fileOf(comp);
       if (!spend('image', ctx.slug)) throw new Error('Today’s picture budget is used up.');
+      const fq = await engines.quote('still.full', { slug: ctx.slug }); if (fq.credits && !spend('credits', ctx.slug, fq.credits)) throw new Error('This brand’s Sloosh credits for today are used up.');
       const out = await engines.run('still.full', { srcFile: cf, srcUrl: comp, prompt: `Finish this ad as a premium photograph: keep the layout, the product, its label and every word exactly as they are; lift the light, depth and detail. ${ask || ''}`.trim(), ratio: sizeOf(board).ratio, slug: ctx.slug, product: ctx.product?.name || null, words: [base.words?.headline, base.words?.sub].filter(Boolean), by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
       base.made.push({ cap: 'still.full', provider: out.provider, model: out.model, usd: out.usd || 0, credits: out.credits || 0 }); base.file = out.file; base.final = true; base.op = 'final'; }
-    else if (op === 'resize' && base.scene) { const s = SIZES[patch?.size || ask]; if (!s) throw new Error('Pick a size.'); board.size = patch?.size || ask; base.scene = reflow(base.scene, s.w, s.h); base.op = 'resize'; base.file = await render(base.scene); }
+    else if (op === 'resize' && base.scene) { const sk = String(patch?.size || ask || ''), s = Object.hasOwn(SIZES, sk) ? SIZES[sk] : null; if (!s) throw new Error('Pick a size.'); board.size = sk; base.scene = reflow(base.scene, s.w, s.h); base.op = 'resize'; base.file = await render(base.scene); }
     else if (op === 'swap-product') { ctx.product = productFor({ pick: patch?.product, catalog: ctx.catalog }); ctx.cuts = {}; const cut = await cutout(ctx); if (!cut) throw new Error('That product has no photo.');
       for (const l of base.scene?.layers || []) if (l.kind === 'product') l.src = cut.file; base.op = 'swap-product'; base.file = await render(base.scene); }
     else if (op === 'redo-words') { const w = await write(ctx, board, { ask: ask || 'A different angle and new words; same product.' }); base.words = w; base.op = 'redo-words';
+      if (base.slides?.length) { for (const [i, sl] of base.slides.entries()) { const ws = w.slides?.[i]; if (!ws || !sl.scene) continue; for (const l of sl.scene.layers) { if (l.role === 'headline') l.words = ws.onSlide; if (l.role === 'sub') l.words = ws.small || ''; } sl.file = await render(sl.scene); }
+        base.scene = base.slides[0].scene; base.file = base.slides[0].file; }
       if (base.scene) { for (const l of base.scene.layers) if (l.role && w[l.role] !== undefined) l.words = w[l.role]; base.file = await render(base.scene); } }
     /* priced: the background only (the product is its own layer and never goes to the model), or a brushed area of it */
+    else if ((op === 'background' || op === 'place' || op === 'redo' || op === 'blend' || op === 'final') && !base.scene) throw new Error('This piece has no picture to change.');
+    else if (base.slides?.length && ['background', 'place', 'blend', 'final', 'swap-product', 'redo', 'resize'].includes(op)) throw new Error('On a carousel, change one slide at a time, or redo the carousel.');
     else if (op === 'background' || op === 'place' || (target === 'bg' && ask)) {
       const place = op === 'place' ? (ctx.bbv.places || []).find((p) => p.id === patch?.place) : null, size = sizeOf(board);
       let bg;
@@ -286,10 +322,12 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     else if (g.kind === 'block' && w.blocks?.[g.i]) w.blocks[g.i].text = v; else if (g.kind === 'row' && w.rows?.[g.i]) w.rows[g.i][g.col || 'b'] = v;
     else if (g.kind === 'slide' && w.slides?.[g.i]) w.slides[g.i].onSlide = v; else if (g.kind === 'shot' && t.timeline?.shots?.[g.i]) t.timeline.shots[g.i][g.field || 'vo'] = v; }
   const HOWS = { shorter: 'Make it shorter: keep the meaning, cut words.', warmer: 'Make it warmer and more human.', friendlier: 'Make it friendlier, like a person talking.', hindi: 'Write it in natural Hindi (Devanagari), same meaning.', rewrite: 'Say it a different, better way.' };
-  async function rewriteLine(ctx, board, text, how) {
+  async function rewriteLine(ctx, board, text, how, ctxLine = null) {
     if (isMock()) return how === 'shorter' ? tidy(String(text).split(/[,;:–—]/)[0].replace(/[.!?]?$/, '.'), 120) : how === 'hindi' ? `(हिंदी) ${text}` : how === 'warmer' || how === 'friendlier' ? `Honestly, ${String(text).charAt(0).toLowerCase()}${String(text).slice(1)}` : `${text} `.trim();
+    if (!spend('text', ctx.slug)) throw Object.assign(new Error('Today’s writing budget is used up. It resets tonight.'), { budget: true });
     const out = await claudeTool([`Rewrite one line for ${ctx.bbv.name || 'the brand'} (${recipe(board.recipe).label}).`, `The line: ${text}`, HOWS[how] || `The team asked: ${how}`, brandbook.promptBlock(ctx.bbv, { recipe: board.recipe }), 'Same facts only: never invent numbers, discounts, codes, guarantees or reviews. Return just the new line.'].join('\n\n'), { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] }, 400, 'jam2_line');
-    return tidy(out?.text || text, 600); }
+    const cap = { role: 70, subject: 90, slide: 60, shot: 200, row: 160, block: 1500, sent: 400 }[ctxLine?.kind] || 400;
+    return tidy(String(out?.text || text).trim().replace(/^["“”'‘’]+|["“”'‘’]+$/g, ''), cap); }
 
   /* what each priced action would cost right now, for the buttons */
   async function prices(ctx) {

@@ -33,7 +33,7 @@ test('a jam opens with the plan’s boards, labelled', () => {
 test('sentences split and join back exactly', () => { const t = 'Fair worry. Mesh stays wet!\n\nOurs dries fast? Yes'; assert.equal(sentencesOf(t).join(''), t); assert.equal(sentencesOf(t)[2], 'Mesh stays wet!'); });
 
 const maker = () => createMaker({ engines: { run: async () => { throw new Error('no paid calls in tests'); }, quote: async () => ({ usd: 0.04 }) }, brandbook: { promptBlock: () => '' }, claudeTool: async () => { throw new Error('no AI'); }, isMock: () => true,
-  saveGen: () => {}, genFile: async () => null, photoAsync: async () => null, launchBrowser: async () => ({ close: async () => {} }), shoot: async () => Buffer.from('x') });
+  saveGen: () => {}, genFile: async () => null, photoAsync: async () => null, launchBrowser: async () => ({ close: async () => {}, newPage: async () => ({ setViewport: async () => {}, setContent: async () => {}, evaluate: async () => {}, screenshot: async () => Buffer.from('x'), close: async () => {} }) }), shoot: async () => Buffer.from('x') });
 const ctxOf = (jam) => ({ slug: 's', jam, card: { title: 'Are loofahs bacteria sponges', sub: 'People ask. Ours dries fast.' }, bbv: { kit: {}, never: [] }, product: null, by: { email: 'a@b.c' }, source: '', cuts: {} });
 
 test('a change list board is written as rows, edited one line at a time, and briefs from its take', async () => {

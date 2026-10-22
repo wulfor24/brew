@@ -94,7 +94,12 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, finals = 
   async function run(cap, spec = {}, o = {}) {
     if (mock()) return mockRun(cap, spec);
     let last = null;
+    /* a fallback never costs more than the price the brand was shown: the first partner sets the ceiling, a dearer one (or one
+       paid in credits when the first wasn't) is skipped, so a refusal can't quietly move the job to a more expensive partner */
+    let ceiling = null, first = true;
     for (const a of candidates(cap, o)) { const c = a.caps[cap]; if (c.available && !(await c.available())) continue;
+      if (!first) { const q = await Promise.resolve(c.quote(spec)).catch(() => null); if (!q || q.error || (q.credits && !(ceiling?.credits)) || (q.usd != null && ceiling?.usd != null && q.usd > ceiling.usd + 1e-6)) { log.warn?.('[engines] skip dearer fallback', a.id, cap); continue; } }
+      else { ceiling = o.quote || await Promise.resolve(c.quote(spec)).catch(() => null); first = false; }
       try { const r = await c.run(spec, o.quote?.provider === a.id ? o.quote : null); return { ...r, provider: r.provider || a.id, cap }; }
       catch (e) { last = e; if (e.open) throw e; log.warn?.('[engines] run', a.id, cap, e.message); } }
     throw last || new Error(`No partner can do ${cap} right now.`);

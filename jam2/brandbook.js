@@ -36,10 +36,14 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
       ...ads.filter((x) => x.poster).sort((a, b) => (b.days || 0) - (a.days || 0)).slice(0, 2).map((x) => ({ src: x.poster, label: `Own ad, running ${x.days || '?'} days`, from: 'read' }))].slice(0, 6);
     const golden = ig.filter((x) => x.caption && x.caption.length > 30).sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 3).map((x) => ({ text: tidy(x.caption, 400), from: 'read', likes: x.likes || null }));
     if (golden.length < 3) ads.filter((x) => x.body || x.hook).sort((a, b) => (b.days || 0) - (a.days || 0)).slice(0, 3 - golden.length).forEach((x) => golden.push({ text: tidy([x.hook, x.body].filter(Boolean).join(' — '), 400), from: 'read', days: x.days || null }));
-    const banned = String(config?.banned || '').replace(/\[[^\]]*\]\??/g, '').replace(/\\b|\\w\*|[()?]/g, '').split('|').map((x) => x.trim()).filter(Boolean).slice(0, 20);
+    /* config.banned is a regex: the gate runs it as one (claims.js bannedHits), and the writer gets its top-level alternatives in words.
+       Splitting inside groups turned "heal(?:your|their|the)…" into the words "the", "their" (QA 22 Oct) */
+    const neverRe = String(config?.banned || '').trim() || null;
+    const top = []; { let d = 0, cur = ''; for (const ch of String(neverRe || '')) { if (ch === '(' || ch === '[') d++; if (ch === ')' || ch === ']') d = Math.max(0, d - 1); if (ch === '|' && d === 0) { top.push(cur); cur = ''; } else cur += ch; } if (cur) top.push(cur); }
+    const banned = top.map((x) => x.replace(/\(\?:/g, '(').replace(/\\[bsdw]\*?|\\[bsdw]\+?|[\^$]/g, ' ').replace(/\[([^\]]*)\]\??/g, '').replace(/\(([^()|]*)\|[^()]*\)\??/g, '$1').replace(/[()?*+\\]/g, '').replace(/\s+/g, ' ').trim()).filter((x) => x.length >= 4).slice(0, 20);
     const claims = (brief?.claims || []).slice(0, 8).map((x) => ({ text: tidy(x.claim, 140), basis: tidy(x.basis, 80), product: x.product || null, from: 'read' }));
     const reviews = (profile?.reviews?.quotes || []).slice(0, 8).map((q) => ({ text: tidy(q.text, 220), rating: q.rating || null, product: q.product || null, src: q.src || 'review' }));
-    return { name: profile?.name || brief?.name || slug, host: profile?.host || null, category: profile?.category || null, kit, styleRefs, golden, claims, never: banned, reviews,
+    return { name: profile?.name || brief?.name || slug, host: profile?.host || null, category: profile?.category || null, kit, styleRefs, golden, claims, never: banned, neverRe, reviews,
       personas: (brief?.personas || []).slice(0, 4).map((p) => ({ name: p.name, who: tidy(p.who, 120), job: tidy(p.job, 100) })), language: (brief?.language || []).slice(0, 10), currency: profile?.currency || null };
   }
 
@@ -49,11 +53,13 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
 
   async function load(slug, { fresh = false } = {}) {
     if (!fresh && cache.has(slug)) return cache.get(slug);
-    const [saved, read] = await Promise.all([P(slug, FILE, null), fromRead(slug)]);
-    const bb = { ...blank(), ...(saved || {}), read };
+    /* a saved Brand Book that couldn't be read is never replaced by a blank one: the error goes to the page and nothing is cached or saved */
+    const [got, read] = await Promise.all([packs.readJSON ? packs.readJSON(slug, FILE) : P(slug, FILE, null).then((data) => ({ ok: true, data })), fromRead(slug)]);
+    if (!got.ok) throw Object.assign(new Error('The Brand Book couldn’t be read just now. Try again in a moment; nothing was changed.'), { status: 503 });
+    const saved = got.data; const bb = { ...blank(), ...(saved || {}), read };
     cache.set(slug, bb); return bb;
   }
-  async function save(slug, bb) { const { read, ...keep } = bb; keep.updatedAt = now(); cache.set(slug, bb); await packs.put(slug, FILE, keep).catch((e) => log.warn?.('[brandbook] save', slug, e.message)); return bb; }
+  async function save(slug, bb) { const { read, ...keep } = bb; keep.updatedAt = now(); cache.set(slug, bb); await (packs.putStrict || packs.put)(slug, FILE, keep).catch((e) => log.warn?.('[brandbook] save', slug, e.message)); return bb; }
 
   /* the Brand Book as the page and every maker read it: confirmed edits over the read */
   function view(bb) {
@@ -63,7 +69,7 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
     const styleRefs = [...bb.pinned.styleRefs, ...(r.styleRefs || [])].filter((x) => !bb.removed.styleRefs.includes(x.src)).slice(0, 6);
     const golden = [...bb.pinned.golden, ...(r.golden || [])].filter((x) => !bb.removed.golden.includes(x.text)).slice(0, 6);
     return { name: r.name, host: r.host, category: r.category, kit: { ...k, colors, accent, roles: k.colors || [] }, styleRefs, golden,
-      claims: [...bb.claimsAllowed, ...(r.claims || [])], never: [...new Set([...(r.never || []), ...bb.neverSay])], reviews: r.reviews || [], personas: r.personas || [], language: r.language || [],
+      claims: [...bb.claimsAllowed, ...(r.claims || [])], never: [...new Set([...(r.never || []), ...bb.neverSay])], neverRe: r.neverRe || null, neverSay: bb.neverSay || [], reviews: r.reviews || [], personas: r.personas || [], language: r.language || [],
       voice: bb.voice, music: bb.music, comfort: bb.comfort, cast: bb.cast, places: bb.places, taste: bb.taste, confirmed: bb.confirmed, currency: r.currency };
   }
 

@@ -18,9 +18,13 @@ export function createJam2Store({ packs, log = console, everyMs = 4000, enabled 
     }).catch((e) => { log.warn?.('[jam2] load', slug, e.message); b.failed = e.message; });
     BR.set(slug, b); return b;
   };
-  const load = async (slug) => { let b = box(slug); await b.ready; if (!b.loaded) { BR.delete(slug); const kept = b.jams; b = box(slug); await b.ready; if (b.loaded) Object.assign(b.jams, kept);
-    else { BR.set(slug, b); throw Object.assign(new Error('Your jams couldn’t be loaded just now. Try again in a moment; nothing was lost.'), { status: 503 }); } } return b; };
-  const flush = async (only) => {
+  /* one retry per brand at a time: requests that arrive together share it, so nothing is written into a box nobody saves */
+  const load = async (slug) => { let b = box(slug); await b.ready; if (b.loaded) return b;
+    b.retry ||= (async () => { BR.delete(slug); const nb = box(slug); await nb.ready; if (nb.loaded) Object.assign(nb.jams, b.jams, nb.jams); else BR.set(slug, nb); return nb; })();
+    const nb = await b.retry; if (!nb.loaded) { b.retry = null; throw Object.assign(new Error('Your jams couldn’t be loaded just now. Try again in a moment; nothing was lost.'), { status: 503 }); } return nb; };
+  /* saves run one after another, so an older copy can never land after a newer one */
+  let chain = Promise.resolve(); const flush = (only) => (chain = chain.then(() => flushNow(only)).catch(() => {}));
+  const flushNow = async (only) => {
     for (const b of BR.values()) {
       if (!b.loaded || (only && b.slug !== only)) continue;
       let s; try { s = JSON.stringify(b.jams); } catch (e) { log.warn?.('[jam2] serialise', e.message); continue; }

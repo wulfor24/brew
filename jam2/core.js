@@ -35,12 +35,16 @@ export function newJam({ card = null, owner, by = null, recipeId = null, bb = {}
 }
 export const boardOf = (j, bid) => (j.boards || []).find((b) => b.id === bid) || null;
 export const headOf = (b) => (b?.takes || []).find((t) => t.id === b.head) || (b?.takes || [])[b.takes.length - 1] || null;
-export function addTake(j, b, take) { const n = (b.takes.length ? Math.max(...b.takes.map((t) => t.n || 0)) : 0) + 1; const t = { id: uid('tk'), n, at: Date.now(), ...take }; b.takes.push(t); b.head = t.id; b.status = 'draft'; b.approved = null; j.updatedAt = Date.now(); return t; }
+export function addTake(j, b, take) { const n = (b.takes.length ? Math.max(...b.takes.map((t) => t.n || 0)) : 0) + 1; const t = { id: uid('tk'), n, at: Date.now(), ...take }; b.takes.push(t);
+  if (b.approved) note(j, `${b.label}: a new version landed, so it needs a new OK`); b.head = t.id; b.status = 'draft'; b.approved = null; j.updatedAt = Date.now();
+  /* history keeps the newest 40 versions (and any approved one): every drag is a version, and the jam is saved whole every few seconds */
+  if (b.takes.length > 40) { const keep = new Set([b.head, b.approved?.takeId].filter(Boolean)); const drop = b.takes.length - 40; let k = 0; b.takes = b.takes.filter((x) => keep.has(x.id) || ++k > drop); }
+  return t; }
 export const note = (j, line, by = null) => { (j.log ||= []).push({ at: Date.now(), by, line: tidy(line, 200) }); if (j.log.length > 200) j.log.splice(0, j.log.length - 200); };
 /* the idea changed: every board made on an older idea says so (words refresh free; pictures show a price) */
 export function bumpConcept(j, patch = {}, by = null) {
   const c = j.concept, keys = ['angle', 'goal', 'audience', 'offer']; let changed = false;
-  for (const k of keys) if (patch[k] !== undefined && tidy(patch[k], 300) !== c[k]) { c[k] = k === 'goal' && !GOALS.includes(patch[k]) ? c[k] : tidy(patch[k], 300); changed = true; }
+  for (const k of keys) { if (patch[k] === undefined || (k === 'goal' && !GOALS.includes(patch[k]))) continue; if (tidy(patch[k], 300) !== c[k]) { c[k] = tidy(patch[k], 300); changed = true; } }
   if (Array.isArray(patch.proof)) { c.proof = patch.proof.slice(0, 6).map((p) => ({ kind: p.kind || 'note', text: tidy(p.text, 240) })); changed = true; }
   if (!changed) return false; c.rev = (c.rev || 1) + 1; c.by = by?.email || 'team';
   for (const b of j.boards) if (b.takes.length && b.conceptRev < c.rev) b.status = 'stale';
@@ -66,7 +70,7 @@ export function briefOf(j, b) {
     : r.kind === 'static' ? [w.headline && `On the picture: ${w.headline}`, w.sub, w.badge && `Badge: ${w.badge}`, w.caption && `Caption: ${w.caption}`].filter(Boolean).join('\n')
     : [w.subject && `Subject: ${w.subject}`, w.body || w.caption, w.cta && `Button: ${w.cta}`].filter(Boolean).join('\n');
   const sizes = (r.sizes || []).map((k) => SIZES[k]?.label).filter(Boolean);
-  const spec = r.kind === 'video' ? `${r.seconds || 15} s · 9:16 MP4 · captions burnt in · voice and licensed music${sizes.length ? ` · also ${sizes.join(', ')}` : ''}`
+  const spec = r.kind === 'video' ? `${r.seconds || 15} s · 9:16 MP4 · voiceover · captions from the voiceover (SRT attached; burn them in) · music: the mood in the storyboard, licensed${sizes.length ? ` · also ${sizes.join(', ')}` : ''}`
     : r.kind === 'table' ? 'Apply each row by hand in the tool it names; the sheet is attached.' : sizes.length ? `${sizes.join(' · ')} · JPG at least 1080 px · words clear of the app’s own bars` : 'Plain text, pasted as it is where it runs.';
   const done = r.kind === 'table' ? 'Every row is applied; reply “done” and Brew checks the account.' : r.kind === 'video' ? 'The cut is back in this jam; Brew checks it against this brief.' : sizes.length ? 'Every size is back in this jam and approved.' : 'It’s posted or scheduled; paste the link in the jam.';
   const base = [['What to make', `${b.label}${r.looks ? `: ${r.looks}` : ''}`], ['Why', [c.spark?.title, c.spark?.says].filter(Boolean).join(' · ') || c.angle || ''], ['The words · final', words || 'Brew is still writing them.'],
