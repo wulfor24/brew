@@ -12,7 +12,7 @@ import { open } from './stages/open.js';
 import { brand, whoOf } from './stages/brand.js';
 import { catalog, CATALOG_V } from './stages/catalog.js';
 import { reviews, REVIEWS_V } from './stages/reviews.js';
-import { ads, findRivals, ADS_V } from './stages/ads.js';
+import { ads, findRivals, ADS_V, crawlRival } from './stages/ads.js';
 import { site, SITE_V, speedOn } from './stages/site.js';
 import { pageSpeed, keepSpeed } from '../health.js';
 import { answers, inferCategory, writeLine, rescoreNamed } from './stages/answers.js';
@@ -199,13 +199,15 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
     const reviewsStale = !!profile.host && !profile.closed && (rv.v || 0) < REVIEWS_V && due('reviews') && (!rv.platforms?.length || /bazaarvoice|powerreviews|trustpilot|yotpo/i.test(rv.app || '') || (profile.country === 'IN' && !rv.checks));
     /* the brand's name without its market ("PUMA India" → "PUMA"), and saved AI answers named again with it (free) */
     const nameMissing = !!profile.name && !profile.brandName;
+    /* rivals whose prices couldn't be read (timed out, blocked, a platform the reader learned since) are read again, once a day */
+    const rivalPricesStale = !!profile.host && !profile.closed && (profile.rivals || []).some((r) => r.host && !(r.prices || []).length) && due('rivalPrices');
     /* a stage the read recorded as failed or timed out (meta.errors: reviews, socials, company) is run again from the saved
        profile and the home page, once a day per stage (meta.healTried), so "No reviews found" never stands for a failed check */
     const tried = profile.meta?.healTried || {};
     const failedStages = Object.keys(profile.meta?.errors || {}).filter((k) => RERUN[k] && !!profile.host && (!tried[k] || Date.now() - Date.parse(tried[k]) >= 864e5));
     /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
     const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.triedAt || ps.at || 0) >= 864e5)); /* triedAt: a kept reading's last failed try */
-    if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length && !catalogStale && !reviewsStale && !nameMissing) return null;
+    if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length && !catalogStale && !reviewsStale && !nameMissing && !rivalPricesStale) return null;
     const added = [], cards = [], stepsDone = {}, healPicks = {};
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
     const ctx = { config: config || {}, sourced: config?.questionsV ? config.questions || [] : [], url: new URL(profile.url), slug, http, profile, state: { homeUrl: profile.url, ...(profile.closed ? { closed: profile.closed, home: '' } : {}) }, log: lg, tregOn, aiOn, saveAsset, saveRaw, today: today(),
@@ -241,6 +243,9 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
       try { await withTimeout(named(ctx), LIMIT.named, 'named'); changed.push('named'); } catch (e) { lg.warn?.('[reader] heal named', slug, e.message); changed.push('named:failed'); }
     }
     // the checkout walk from an older walker, or one that never reached checkout, is walked again
+    if (rivalPricesStale) { stamp('rivalPrices'); let got = 0;
+      await pool((profile.rivals || []).filter((r) => r.host && !(r.prices || []).length), 3, async (r) => { try { await withTimeout(crawlRival(ctx, r), 45e3, 'rival'); if ((r.prices || []).length) { got++; delete r.pricesError; } } catch (e) { r.pricesError ||= e.message.slice(0, 80); } });
+      if (got) { changed.push('rival-prices'); if (profile.meta?.errors?.rivals) delete profile.meta.errors.rivals; } }
     if (siteBroken || (changed.includes('catalog') && siteFailed(profile))) { try { await withTimeout(site(ctx), LIMIT.site, 'site'); changed.push('site'); } catch (e) { lg.warn?.('[reader] heal site', slug, e.message); } }
     if (speedMissing) { profile.site = { ...(profile.site || {}), pagespeed: keepSpeed(profile.site?.pagespeed, await pageSpeed(profile.url, { log: lg })) }; changed.push('pagespeed'); }
     if (failedStages.length) {

@@ -7,7 +7,7 @@ import { CLOSED_WHY } from '../closed.js';
 import { adLibrary, adCall } from '../adlib.js';
 import { numbersOf, adsStepLine } from '../../pack-numbers.js';
 import { meta, titleOf, jsonLd, typeIs, clean, stripTags, pathOf, hostOf, money, pool, registrable, today, links, withTimeout } from '../util.js';
-import { findProductUrls, productFromPage, sitemapUrls } from '../products.js';
+import { findProductUrls, productFromPage, sitemapUrls, offeringUrls, offeringFromPage, spread } from '../products.js';
 
 const NOT_BRANDS = /(^|\.)(amazon|flipkart|nykaa|myntra|ajio|meesho|tatacliq|jiomart|bigbasket|blinkit|zepto|swiggy|purplle|1mg|netmeds|pharmeasy|apollopharmacy|healthkart|walmart|target|ulta|sephora|cvs|walgreens|costco|ebay|etsy|aliexpress|temu|shein|boots|superdrug|lookfantastic|feelunique|cultbeauty|youtube|facebook|instagram|reddit|quora|wikipedia|pinterest|tiktok|twitter|x|linkedin|medium|healthline|webmd|mayoclinic|clevelandclinic|byrdie|allure|vogue|elle|cosmopolitan|refinery29|nytimes|wirecutter|forbes|buzzfeed|economictimes|indiatimes|timesofindia|ndtv|hindustantimes|livemint|news18|thehindu|indianexpress|vogue|femina|nykaa|google|bing|gov|nih|ncbi|sciencedirect|researchgate|practo|lybrate|justdial|indiamart|glamour|goodhousekeeping|harpersbazaar|womenshealthmag|menshealth|gq|businessinsider|cnn|bbc|theguardian|telegraph|dailymail|independent|which|trustpilot|sitejabber|bestproducts|thestrategist|nymag|verywellhealth|everydayhealth|medicalnewstoday|drugs|rxlist|skinkraft|stylecraze|bebeautiful|missmalini|popxo|pinkvilla|scoopwhoop|thebetterindia|yourstory|inc42|entrackr|vccircle|crunchbase|tracxn)\./i;
 
@@ -123,7 +123,7 @@ async function rivalSearch(ctx) {
   noteRivals(ctx);
 }
 
-async function crawlRival(ctx, r) {
+export async function crawlRival(ctx, r) {
   const { http, ledger } = ctx; const key = r.host.replace(/\./g, '-');
   const cc = ctx.profile.country;
   // read the rival in our market (Shopify stores price by the visitor's country)
@@ -159,6 +159,12 @@ async function crawlRival(ctx, r) {
     /* any other platform: learn the rival's product links from its home page (reader/products.js), then read a few */
     const page = async (u, k) => { const pr = await http.get(u, { key: `rival-${key}-${k}` }).catch(() => null); return pr?.ok ? pr.text : null; };
     const ro = new URL(base).origin;
+    /* a brand that sells by enquiry compares with rivals that do too: their offerings (projects, services) and the prices
+       written on them, the way catalog.js reads the brand itself */
+    if (ctx.profile.storeKind === 'enquiry') { const sm = await sitemapUrls((u) => http.get(u, { key: `rival-${key}-sm-${u.split('/').pop().slice(0, 40)}` }), ro, { cap: 1500, files: 2 }).catch(() => []);
+      const off = offeringUrls(sm.length ? sm : links(html, base).map((l) => l.url).filter((u) => hostOf(u) === hostOf(ro)));
+      for (const [i, u] of spread(off.urls, 6).entries()) { if (r.prices.length >= 4) break; const h = await page(u, 'off-' + i); const it = h && offeringFromPage(h, u); if (it?.price > 0) r.prices.push({ title: clean(it.title).slice(0, 70), price: it.price, label: it.priceText || null, currency: it.currency || cur, url: u }); }
+      r.offerings = off.group || null; if (!r.prices.length) r.pricesError = off.urls.length ? 'no prices written on their pages' : 'no offering pages could be read'; return; }
     let found = await findProductUrls({ urls: [], homeLinks: links(html, base), origin: ro, fetchPage: page, max: 6, groups: 4, perGroup: 1 }).catch(() => ({ urls: [] }));
     // a home page drawn by script, or blocked: the rival's own sitemap (product files first)
     if (!found.urls.length) { const sm = await sitemapUrls((u) => http.get(u, { key: `rival-${key}-sm-${u.split('/').pop().slice(0, 40)}` }), ro, { cap: 1500, files: 1 }).catch(() => []);

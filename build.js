@@ -742,7 +742,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       // stage changed (older ads version) or with no written one-liner heals now
       const outdated = (p.ads && p.ads.v !== ADS_V) || (p.site?.checkout && p.site.checkout.v !== SITE_V) || !['claude', 'brand'].includes(p.descriptorBy) || (!!p.host && !p.site?.pagespeed && speedOn()) || namedStale(p)
         /* reads from before non-Shopify stores were read properly (reader/products.js): an empty or product-page catalog, older reviews, no base name */
-        || ((p.catalog?.v || 0) < CATALOG_V && (!p.catalog?.products?.length || /^jsonld/.test(p.catalog?.source || ''))) || (p.reviews && (p.reviews.v || 0) < REVIEWS_V) || (!!p.name && !p.brandName);
+        || ((p.catalog?.v || 0) < CATALOG_V && (!p.catalog?.products?.length || /^jsonld/.test(p.catalog?.source || ''))) || (p.reviews && (p.reviews.v || 0) < REVIEWS_V) || (!!p.name && !p.brandName)
+        || ((p.rivals || []).some((r) => r.host && !(r.prices || []).length) && !p.meta?.healTried?.rivalPrices);
       const stillBroken = !!p.ads?.own?.error || (p.ads?.rivals || []).some((r) => r.error) || (!p.ai?.answers?.length && !!p.meta?.errors?.answers); /* the AI tools step failed in the read: ask again hourly */
       if (!outdated && p.meta?.healedAt && Date.now() - Date.parse(p.meta.healedAt) < (stillBroken ? 36e5 : 864e5)) return null;
       const reader = makeReader(await load()); if (!reader.heal) return null;
