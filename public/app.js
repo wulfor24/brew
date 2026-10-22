@@ -4286,6 +4286,8 @@
   const tbWarm = async () => { if (TBS.warming) return; TBS.warming = true; try { const w = tbWork(); if (!w) return; const r = await tapi('POST', `/api/work/${w.id}/team-brief/pdf`, {}).catch(() => ({}));
       if (r.pdf && TBS.for === w.id) { TBS.pdf = r.pdf; if (r.brief) TBS.brief = r.brief; await tbFiles(r.pdf).catch(() => {}); } } finally { TBS.warming = false; } };
   const tbOpen = () => { if (!tbWork()) return toast('Open the jam first, then share its brief.'); RX.stage = 'brief'; RX.tbEdit = null; paintStudio(); $('.tbm-scroll')?.scrollTo?.(0, 0); if (!TBS.brief || TBS.for !== tbWork().id || TBS.brief.stale) tbLoad(); };
+  /* the brief starts writing the moment the jam opens (Param, 23 Oct), so Brief is ready when it's tapped; once the first draft is in */
+  const tbAuto = (ch) => { const w = tbWork(); if (!w || ch.copyPending || TBS.busy) return; if (TBS.for !== w.id || (!TBS.brief && !TBS.err)) tbLoad(); };
   const tbText = (s) => { const L = String(s || '').split('\n').map((l) => l.trim()).filter(Boolean); if (!L.length) return '<p class="tbm-none">To confirm.</p>';
     return L.map((l) => /^[-•]\s+/.test(l) ? `<li>${esc(l.replace(/^[-•]\s+/, ''))}</li>` : `<p>${esc(l)}</p>`).join('').replace(/(<li>.*?<\/li>)+/g, (m) => `<ul>${m}</ul>`); };
   const tbStage = (ch) => { const b = TBS.for === tbWork()?.id ? TBS.brief : null;
@@ -4403,9 +4405,12 @@
     { const at = $('.st-atools'), ph = $('.st-asset .sv-phone'), mk = $('.st-asset .sv-make.is-row'); if (ph) { if (at) { ph.after(at); if (mk) { at.append(...mk.children); mk.remove(); } } } }
     if (keepOpen.size) pg.querySelectorAll('details[data-keep]').forEach((d) => { if (keepOpen.has(d.dataset.keep)) d.open = true; });
     if (typingAt) { const box = $('#st-in'); if (box) { box.focus(); try { box.setSelectionRange(typingAt[0], typingAt[1]); } catch {} } }
+    /* a share in flight keeps its spinner through the jam's repaints */
+    if (RX.busyRx) { const b = pg.querySelector(`[data-rx="${RX.busyRx.act}"]`); if (b) { b.disabled = true; b.classList.add('is-wait'); b.setAttribute('aria-busy', 'true'); b.innerHTML = `<brew-load class="spin"></brew-load>${esc(RX.busyRx.lbl)}`; } }
     fitAd(); bfMark(); { const ts = $('.tbm-scroll'); if (ts && tbmScroll) ts.scrollTop = tbmScroll; }
     const pb = $('.st-panel-b'); const nT = (ch.thread || []).length + (RX.sending ? 1 : 0) + Object.keys(J2.imp).length + Object.keys(J2.pack).length;
     if (tab === 'iterate') pb.scrollTop = (ch.thread || []).length || RX.sending || j2Extra(ch) ? pb.scrollHeight : 0; /* the case stays first in the chat and scrolls up as it grows; a fresh chat is read from its top */ else if (logScroll && !RX.resetScroll) pb.scrollTop = logScroll; RX.resetScroll = false;
+    tbAuto(ch);
     pollJob(ch);
   };
   /* the headline in place (hlHtml): click → type → Enter or click away saves a version; Esc cancels */
@@ -4605,7 +4610,7 @@
       return toast(ok ? `${ic('check', 's16')}${esc(window.PostOpen.said(po))}` : `${ic('info', 's16')}The new tab is open, but copying didn’t work. Copy the post from the stage.`); }
     if (btn) { btn.disabled = true; btn.classList.add('is-busy'); }
     /* the jam's one exit: Share the brief (share.js). share-shopos / share-team copy it straight away; share asks which */
-    if (/^share/.test(act)) { if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); } window.__shareDone = () => { pullWork(true); if (view === 'remix' && RX.ch?.id === id) paintStudio(); }; const to = act === 'share-shopos' ? 'shopos' : act === 'share-team' ? 'team' : null; const done = to ? busyBtn(btn, to === 'shopos' ? 'Sending…' : 'Copying…') : () => {}; /* Send brief spins until the email is out */ return Promise.resolve(window.Share.open(RX.p, to)).finally(done); }
+    if (/^share/.test(act)) { if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); } window.__shareDone = () => { pullWork(true); if (view === 'remix' && RX.ch?.id === id) paintStudio(); }; const to = act === 'share-shopos' ? 'shopos' : act === 'share-team' ? 'team' : null; const lbl = to === 'shopos' ? 'Sending…' : 'Copying…', done0 = to ? busyBtn(btn, lbl) : () => {}; if (to) RX.busyRx = { act, lbl }; const done = () => { done0(); if (!to) return; RX.busyRx = null; if (btn && !btn.isConnected && view === 'remix') paintStudio(); }; /* Send brief spins until the email is out */ return Promise.resolve(window.Share.open(RX.p, to)).finally(done); }
     if (act === 'jam') { const r = await tapi('POST', `/api/changes/${id}/jam`, ch._scope ? { scope: ch._scope } : {}); if (r.error) return toast(esc(r.error)); putCh(r.change); putWork(r.work); paintRemix(); showLearned(r.learned); openDetail({ ...RX.p, _work: r.work }, { jam: true }); toast(`${ic('hand', 's16')}Jam opened: ${r.work.plan?.questions.filter((q) => !q.answer).length || 0} questions to answer, then it ships.`); return; }
   };
   document.addEventListener('click', async (e) => {

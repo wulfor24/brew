@@ -359,6 +359,9 @@ export function createJamBrief(o) {
       const w = get(t, p.wid); if (!w) return { error: 'not found' };
       /* the brief that goes is the version on the stage: if the studio moved on since the brief last followed it, it catches up
          first (one AI pass), so the frozen brief, the email and the handoff carry the same version, its reel and its slides */
+      /* what's still missing is asked first, at once: the catch-up pass runs once they say send anyway (Param, 23 Oct: the ask
+         came up late, after the AI pass) */
+      if (w.doc.missing.length && !b.force) return { needs: w.doc.missing, work: w };
       if (behind(t, w)) await syncHead(t, w).catch((e) => log.warn('[brief sync at send]', e.message));
       if (w.doc.missing.length && !b.force) return { needs: w.doc.missing, work: w };
       if (b.decided !== undefined) w.decided = b.decided || null;
