@@ -269,7 +269,7 @@ export function createFeedService(o) {
   const cardBrief = (c, role) => `${o.cardBrief(c, role)}${planPrompt(planOfCard(c))}`;
   /* demo mode: a request from someone who may not make fresh work runs every AI path as mock (nothing spent, the plain
      version shown); the background clock and the team's requests are unchanged */
-  const isMock = () => !!o.isMock?.() || demoReq(), spend = (k) => !demoReq() && (o.spend ? o.spend(k) : true);
+  const isMock = () => !!o.isMock?.() || demoReq(), spend = (k, n) => !demoReq() && (o.spend ? o.spend(k, undefined, n) : true);
   // real connected accounts (connectors/index.js): who is on the brand's team, and the live cards they get
   const viewerOf = o.viewerOf || (async () => ({ member: false, claimed: false })), liveFor = o.liveFor || (async () => ({ cards: [], on: {}, privMoves: [] }));
   const photoFile = o.photoFile || ((rel) => { const f = path.resolve(PUB, String(rel || '')); return /\.\./.test(String(rel || '')) || !f.startsWith(PUB + path.sep) ? null : f; });
@@ -2228,7 +2228,7 @@ export function createFeedService(o) {
   /* Jam v2 (?v=2): the new jam lives beside v1 in jam2/, with its own routes (/api/jam2/*), data (jams-v2.json, brandbook.json) and
      public pages (/p/<token>, /brief/<token>); nothing in v1 calls it */
   /* Jam v2 is not on the demo site (its jams would be shared across visitors there); on live a card outside the viewer's seats can't be opened */
-  if (process.env.DEMO_MODE !== '1') JAM2 = mountJam2({ on, packs: o.globalPacks || packs, slugOfT, brandOfT, meOf, reqOf, cardOf: (t, id) => { const c = t.cards.get(id); return c && seatOk(t, c) ? fillCard(c, t) : null; }, sourceOf: (t, c) => packSource(brandOfT(t), c), refsOf: (slug) => REFS.list(slug), isMock, spend: (k) => spend(k),
+  if (process.env.DEMO_MODE !== '1') JAM2 = mountJam2({ on, packs: o.globalPacks || packs, slugOfT, brandOfT, meOf, reqOf, cardOf: (t, id) => { const c = t.cards.get(id); return c && seatOk(t, c) ? fillCard(c, t) : null; }, sourceOf: (t, c) => packSource(brandOfT(t), c), refsOf: (slug) => REFS.list(slug), isMock, spend: (k) => spend(k), spendMany: (k, n) => spend(k, n),
     geminiImage, vertexVideo: (frame, prompt, x) => jam2Video(frame, prompt, { ...x, priced: true }, log), vertexVoice: (text, v) => jam2Voice(text, v, {}, log), vertexMusic: (prompt) => jam2Music(prompt), presence: { beat: (id, u, typing) => JAMS.beat(id, u, typing), here: (id) => JAMS.here(id) }, teamOf: o.teamOf || null, inviteTo: o.inviteTo || null, jamMail: o.jamMail || null, slack: o.slack || null, memoryOf: (t, agent) => promptBlock(t, agent), finals: o.finals || null, saveGen, genFile: jam2GenFile, photoAsync: o.photoAsync, claudeTool, launchBrowser: o.launchBrowser, shoot: createMakers({ geminiImage, launchBrowser: o.launchBrowser, zipBuffer: o.zipBuffer, log }).shoot, zipBuffer: o.zipBuffer, log });
   // tenants survive restarts (store.js); a tenant not in memory is read back from disk or GCS before we give up on it
   const getTenant = async (id) => {

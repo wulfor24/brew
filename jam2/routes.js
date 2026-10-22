@@ -19,7 +19,7 @@ export function mountJam2(d) {
   const { presence = null, teamOf = null, inviteTo = null, jamMail = null, slack = null, memoryOf = null } = d;
   const store = createJam2Store({ packs, log }), bb = createBrandbook({ packs, log });
   const engines = createEngines({ geminiImage: d.geminiImage, vertexVideo: d.vertexVideo, vertexVoice: d.vertexVoice, vertexMusic: d.vertexMusic, finals: d.finals, saveGen: d.saveGen, genFile: d.genFile, photo: d.photoAsync, mock: isMock, log });
-  const maker = createMaker({ engines, brandbook: bb, claudeTool: d.claudeTool, isMock, spend, launchBrowser: d.launchBrowser, withBrowser, shoot: d.shoot, saveGen: d.saveGen, genFile: d.genFile, photoAsync: d.photoAsync, log });
+  const maker = createMaker({ engines, brandbook: bb, claudeTool: d.claudeTool, isMock, spend, spendMany: d.spendMany, launchBrowser: d.launchBrowser, withBrowser, shoot: d.shoot, saveGen: d.saveGen, genFile: d.genFile, photoAsync: d.photoAsync, log });
   const ready = createReady({ maker, zipBuffer: d.zipBuffer, log });
   const busy = new Map(); // `${jid}:${bid}` → { op, at, error? }
   const whoOf = (t) => { const r = reqOf(t), me = meOf(t); return { member: !!r?.member, staff: !!me?.staff, tid: t.id, email: me?.email || null, me }; };
@@ -34,7 +34,7 @@ export function mountJam2(d) {
   /* run slow work in the background; the board says what it is doing and any error in plain words */
   /* a job also leaves a mark on the jam (saved with it): after a restart, a mark with no job running says the job was cut off */
   const runBg = (t, jam, bid, op, fn, mark = {}) => { const k = `${jam.id}:${bid}`; if (busy.get(k)?.op && !busy.get(k).error) return false; busy.set(k, { op, at: Date.now() }); (jam.running ||= {})[bid] = { ...mark, op, at: Date.now() };
-    Promise.resolve().then(fn).then(() => busy.delete(k)).finally(() => { if (jam.running) delete jam.running[bid]; }).catch((e) => { log.warn?.('[jam2]', op, e.message); busy.set(k, { op, at: Date.now(), error: e.budget ? e.message : e.open ? e.message : `${e.message}`.slice(0, 240) }); })
+    Promise.resolve().then(fn).then(() => { busy.delete(k); if (jam.running) delete jam.running[bid]; }).catch((e) => { log.warn?.('[jam2]', op, e.message); const error = e.budget ? e.message : e.open ? e.message : `${e.message}`.slice(0, 240); busy.set(k, { op, at: Date.now(), error }); if (jam.running?.[bid]) jam.running[bid] = { op, at: Date.now(), error }; /* the error outlives a restart */ })
       .finally(() => { jam.updatedAt = Date.now(); return store.put(slugOfT(t), jam); }).catch((e) => log.warn?.('[jam2] save after', op, e.message)); return true; };
   /* a board made with a product whose catalog price has changed since says so (words can follow free) */
   const priceAlerts = (t, jam) => { const cat = brandOfT(t)?.catalog || []; for (const b of jam.boards) { const m = headOf(b)?.made4; b.priceAlert = null; if (!m?.price) continue;

@@ -42,7 +42,7 @@ const BRIEF_SECTIONS = {
   act: ['What to change', 'Owner', 'Steps (exactly where in your tools)', 'Assets', 'Done when']
 };
 
-export function createMaker({ engines, brandbook, claudeTool, isMock, spend = () => true, launchBrowser, withBrowser = null, shoot, saveGen, genFile, photoAsync, publicUrl = process.env.PUBLIC_URL || '', log = console }) {
+export function createMaker({ engines, brandbook, claudeTool, isMock, spend = () => true, spendMany = null, launchBrowser, withBrowser = null, shoot, saveGen, genFile, photoAsync, publicUrl = process.env.PUBLIC_URL || '', log = console }) {
   const keep = (buf, ext) => { const name = `j2-${sha(buf)}.${ext}`; saveGen(name, buf); return 'gen/' + name; };
   /* a stored src ('gen/x', '/b/slug/..', 'https://..') → a local file path */
   const fileOf = async (src) => { if (!src) return null; const s = String(src); if (s.startsWith('data:')) return null;
@@ -234,12 +234,15 @@ export function createMaker({ engines, brandbook, claudeTool, isMock, spend = ()
     /* shots already paid for in a render a restart cut off are kept on the board (board.inflight) and used again, free */
     const key = sha(Buffer.from(JSON.stringify([t0.id, cut?.file, t0.timeline.shots.map((x) => [x.see, x.sec, x.camera])])));
     if (board.inflight?.key !== key) board.inflight = { key, shots: {} };
+    /* the day's video budget is checked for every shot still to make before anything is spent: a render never pays for half a video */
+    const toMake = t0.timeline.shots.filter((x, n) => !board.inflight.shots[n]?.clip).length, reserved = !!spendMany && !isMock();
+    if (reserved && toMake && !spendMany('video', toMake)) throw Object.assign(new Error(`Today’s video budget doesn’t cover the ${toMake} shots this needs. It resets at midnight UTC; nothing was spent.`), { budget: true });
     let lost = 0; const places = await placesOf(ctx, t0.timeline.shots);
     for (const s of t0.timeline.shots) { const kept = board.inflight.shots[t0.timeline.shots.indexOf(s)]; if (kept?.clip) { shots.push({ ...s, still: kept.still, clip: kept.clip, bg: kept.bg || null }); made.push(...(kept.made || [])); continue; } /* paid before the restart: counted in this take's cost */ try {
       /* the scene is only the place: the shot line names products, and an image model asked for them draws its own versions */
       const bg = await scene(ctx, { describe: places[t0.timeline.shots.indexOf(s)] || placeOf(s.see), ratio: '9:16' }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
       const still = await shotStill(ctx, size, bg.file, cut); const sf = await fileOf(still);
-      if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true });
+      if (!reserved && !spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true });
       const clip = await engines.run(q.cap, { srcFile: sf, srcUrl: still, prompt: q.cap === 'video.shot' ? motionOf(s) : `${s.camera || 'static'} camera. ${s.see}. The product stays exactly as in the first frame: same shape, label and colours. Natural motion, no text, no logos added.`, seconds: s.sec, ratio: '9:16', slug: ctx.slug, by: ctx.by?.email, jamId: ctx.jam.id, boardId: board.id });
       made.push({ cap: q.cap, provider: clip.provider, model: clip.model, usd: clip.usd || 0, credits: clip.credits || 0 }); shots.push({ ...s, still, clip: clip.file, bg: bg.file }); board.inflight.shots[t0.timeline.shots.indexOf(s)] = { still, clip: clip.file, bg: bg.file, made: made.slice(-2) };
     } catch (e) { lost++; log.warn?.('[jam2] shot', e.message); const prev = shots[shots.length - 1]; shots.push({ ...s, still: prev?.still || null, clip: null, failed: tidy(e.message, 120) }); if (e.budget || /budget/i.test(e.message)) break; } }

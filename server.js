@@ -102,7 +102,7 @@ let MOCK = process.env.AI_MOCK === '1' || (PROVIDER === 'anthropic' && !ANTHROPI
    kept in the bucket with treg's day total and loaded before the first call (await budget.load() below) */
 const budget = createBudget({ store: { get: () => packs.getJSON('_brew', 'usage-day.json', null), put: (x) => packs.put('_brew', 'usage-day.json', { ...x, treg: { day: treg.meter.day, usd: treg.meter.dayUsd } }) }, log: console });
 const CAPS = budget.caps.all;
-const spend = (k, slug) => budget.spend(k, slug);
+const spend = (k, slug, n) => budget.spend(k, slug, n);
 // the system prompt is the active brand's brief (the generated brief.md)
 const SYSTEM = () => B()?.system || '';
 
