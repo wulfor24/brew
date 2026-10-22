@@ -33,3 +33,11 @@ test('a clean brief is left as it is', () => {
   const JB = make(JAM), t = tOf(), w = work();
   assert.equal(JB.seed(t, w).md, JAM);
 });
+
+test('a saved brief is cleaned even when no fact sheet is at hand', () => {
+  const JB = createJamBrief({ cardOf: (t, id) => t.cards.get(id), isMock: () => true, spend: () => false, now: () => 1, clean: (x) => x, seatLine: () => '', cardBrief: () => '' });
+  const t = tOf(), w = work(); w.doc.md = LEAKED;
+  const md = JB.seed(t, w).md;
+  assert.doesNotMatch(md, /Acme brand brief|Catalogue and prices|Claims ledger|Company facts|\[k:/);
+  assert.match(md, /^# Launch the warm-up ad/);
+});

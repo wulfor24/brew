@@ -116,7 +116,9 @@ export function createJamBrief(o) {
   const factOf = () => { try { return String(cardBrief({ title: '', sub: '', agent: '' }, '') || '').split('\n\nCard (by the ')[0]; } catch { return ''; } };
   const headsOf = (md) => new Set((String(md || '').match(/^#{1,3}[ \t]+.+$/gm) || []).map((h) => h.replace(/^#+[ \t]+/, '').trim().toLowerCase()));
   const KTAG = /\[k:[^\]\n]{1,120}\]/g;
-  const unleak = (md, before, title) => { const fh = headsOf(factOf()), had = headsOf(before); if (!fh.size) return md;
+  /* the fact sheet's own sections (brief.js), so a brief loaded outside a prompt is cleaned too */
+  const FACT_HEADS = ['catalogue and prices', 'claims ledger (exact claims printed by the brand)', 'reviews and customer language', 'channels seen', 'company facts', 'goal', 'personas (inferred, not researched)', 'objections (inferred from reviews, faq and rivals)', 'rivals', 'known gaps', 'to confirm'];
+  const unleak = (md, before, title) => { const fh = new Set([...headsOf(factOf()), ...FACT_HEADS, ...[...headsOf(md)].filter((h) => /\bbrand brief$/.test(h))]), had = headsOf(before);
     const keep = []; let skip = false;
     for (const line of String(md).split('\n')) { const m = /^(#{1,3})[ \t]+(.+)$/.exec(line); if (m) { const h = m[2].trim().toLowerCase(); skip = fh.has(h) && !had.has(h); } if (!skip) keep.push(line); }
     let out = keep.join('\n'); if (!KTAG.test(before || '')) out = out.replace(KTAG, ''); KTAG.lastIndex = 0;
