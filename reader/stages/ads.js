@@ -15,7 +15,7 @@ const NOT_BRANDS = /(^|\.)(amazon|flipkart|nykaa|myntra|ajio|meesho|tatacliq|jio
 const adq = (ctx, id, query, cacheKey) => adCall(ctx.tregOn ? { call: (i, o) => ctx.treg(i, o, cacheKey) } : null, id, { query });
 
 // bump when the ads stage starts reading differently: saved reads with an older version are healed once
-export const ADS_V = 4; // 3: link-preview page titles are not hooks; 4: the ledger says how ads and rivals were really found
+export const ADS_V = 5; // 3: link-preview page titles are not hooks; 4: the ledger says how ads and rivals were really found; 5: every own poster saved, own videos kept, carousels named (the Brand Book's library)
 
 // every rival in the ledger, saying how it was really found
 function noteRivals(ctx) {
@@ -123,6 +123,9 @@ async function rivalSearch(ctx) {
   noteRivals(ctx);
 }
 
+/* a store's offers and guarantee line from its page text: rivals here, the brand's own pages in the Brand Book */
+export const offersOf = (txt) => [...new Set((String(txt || '').match(/[^\n.]{0,60}(\d{1,2}\s?% off|flat \d+|buy \d+ get \d+|bogo|free (shipping|delivery|gift)[^\n.]{0,40}|use code [A-Z0-9]+)[^\n.]{0,40}/gi) || []).map(clean))].slice(0, 4);
+export const guaranteeOf = (txt) => clean((String(txt || '').match(/[^\n.]{0,80}(money[- ]back|satisfaction guarantee|\d+[- ]day (?:return|refund|guarantee)|full refund)[^\n.]{0,80}/i) || [])[0] || '') || null;
 export async function crawlRival(ctx, r) {
   const { http, ledger } = ctx; const key = r.host.replace(/\./g, '-');
   const cc = ctx.profile.country;
@@ -137,8 +140,7 @@ export async function crawlRival(ctx, r) {
   r.url = base;
   const txt = stripTags(html);
   r.claims = [meta(html, 'description'), ...[...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map((m) => clean(stripTags(m[1])))].filter((x) => x && x.length > 8 && x.length < 200).slice(0, 3);
-  r.offers = [...new Set((txt.match(/[^\n.]{0,60}(\d{1,2}\s?% off|flat \d+|buy \d+ get \d+|bogo|free (shipping|delivery|gift)[^\n.]{0,40}|use code [A-Z0-9]+)[^\n.]{0,40}/gi) || []).map(clean))].slice(0, 4);
-  r.guarantee = clean((txt.match(/[^\n.]{0,80}(money[- ]back|satisfaction guarantee|\d+[- ]day (?:return|refund|guarantee)|full refund)[^\n.]{0,80}/i) || [])[0] || '') || null;
+  r.offers = offersOf(txt); r.guarantee = guaranteeOf(txt);
   r.prices = [];
   // Shopify rivals: their own catalog; others: JSON-LD on 1–2 product pages linked from the home page
   const pj = await http.get(`${new URL(base).origin}/products.json?limit=250${cc ? `&country=${cc}` : ''}`, { as: 'json', key: `rival-${key}-products` });
@@ -209,7 +211,7 @@ export async function ads(ctx) {
     const real = (x) => /[\p{L}\p{N}]{2,}/u.test(x || '') && !preview(x) ? x : '';
     const hook = real(!named && ttl) || real(strip(s.body?.text || c.body).split(/(?<=[.!?])\s|\n/)[0].slice(0, 120)) || real(ttl);
     return { id: a.ad_archive_id, brand: brandName, page: String(a.page_name || '').trim(), hook, body: strip(s.body?.text || c.body).slice(0, 500), cta: s.cta_text || c.cta_text || null, link: s.link_url || c.link_url || null,
-      posterSrc: v?.video_preview_image_url || im?.original_image_url || im?.resized_image_url || null, videoSrc: v?.video_sd_url || v?.video_hd_url || null, format: v ? 'video' : 'image',
+      posterSrc: v?.video_preview_image_url || im?.original_image_url || im?.resized_image_url || null, videoSrc: v?.video_sd_url || v?.video_hd_url || null, format: v ? 'video' : (s.cards || []).length > 1 ? 'carousel' : 'image', cards: (s.cards || []).length || null,
       days: start ? Math.max(1, Math.round((Date.now() - start) / 864e5)) : null, since: start ? new Date(start).toISOString().slice(0, 10) : null, versions: Math.max(1, a.collation_count || 1), url: `https://www.facebook.com/ads/library/?id=${a.ad_archive_id}` };
   };
   const targets = [{ name: profile.name, own: true }, ...(profile.rivals || []).map((r) => ({ name: r.name, own: false, host: r.host }))];
@@ -242,10 +244,13 @@ export async function ads(ctx) {
     const key = r.own ? 'ads.own.live' : `rival.${(r.host || r.name).replace(/\./g, '-')}.ads.live`;
     ledger.add({ key, label: `${r.name}: live Meta ads in ${country}`, v: String(r.live), n: r.live, unit: 'ads', url: `https://www.facebook.com/ads/library/?active_status=active&country=${country}&q=${encodeURIComponent(r.name)}`, method: r.via === 'adlib' ? 'adlib:page-reader' : 'treg:scrapecreators.x.v1-facebook-adlibrary-company-ads', note: r.page ? `page "${r.page}"; ${r.live === r.rows.length ? 'ads matched on the first result page' : `Ad Library total for the query (${r.rows.length} read)`}` : 'no ads from a page with this name' });
   }
-  // download posters: own top 3, each rival's top 2
+  // download posters: every own ad we keep (the Brand Book's library of what the brand publishes), each rival's top 2;
+  // the brand's own top 3 videos too, since their CDN links expire within days
   const posters = [];
-  for (const r of results.filter((x) => x && x.items)) for (const a of r.items.slice(0, r.own ? 3 : 2)) posters.push(a);
+  for (const r of results.filter((x) => x && x.items)) for (const a of r.items.slice(0, r.own ? 8 : 2)) posters.push(a);
   await pool(posters, 6, async (a) => { if (a.posterSrc) a.poster = await ctx.asset(a.posterSrc, `ad-${a.id}`, { max: 8e6 }); });
+  const ownVids = (results.find((r) => r && r.own)?.items || []).filter((a) => a.videoSrc).slice(0, 3);
+  await pool(ownVids, 3, async (a) => { a.video = await ctx.asset(a.videoSrc, `ad-${a.id}-video`, { max: 30e6 }).catch(() => null); });
   const own = results.find((r) => r && r.own);
   profile.ads = { own: own && !own.error ? { page: own.page, pageId: own.pageId, live: own.live, items: own.items.map(cleanAd) } : { page: null, live: null, items: [], error: own?.error || null },
     rivals: results.filter((r) => r && !r.own).map((r) => ({ name: r.name, host: r.host, live: r.error ? null : r.live, page: r.page || null, items: (r.items || []).map(cleanAd), ...(r.error ? { error: r.error } : {}) })), country, at: day, v: ADS_V };
@@ -271,6 +276,6 @@ export async function ads(ctx) {
   const partial = !!notChecked || (names.length > 0 && failed === profile.ads.rivals.length) || !!profile.ads.own.error;
   ctx.done('ads', adsStepLine(N, profile.name), N.ownAds.n || N.rivalAds.n ? 'done' : 'empty', { partial });
 }
-const cleanAd = ({ posterSrc, videoSrc, ...a }) => ({ ...a, poster: a.poster || null, video: null, posterSrc });
+const cleanAd = ({ posterSrc, videoSrc, ...a }) => ({ ...a, poster: a.poster || null, video: a.video || null, posterSrc });
 const trim = (s, n) => (String(s || '').length > n ? String(s).slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : String(s || ''));
 const fmt = (d) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });

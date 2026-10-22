@@ -3,6 +3,8 @@
 import { clean, pathOf, num, pool } from '../util.js';
 import { CLOSED_WHY } from '../closed.js';
 
+export const SOCIALS_V = 2; // 2: every Instagram picture and YouTube thumbnail saved with the read (they expire on the CDN)
+
 const NET = {
   instagram: /^https?:\/\/(www\.)?instagram\.com\/([A-Za-z0-9._]+)\/?(\?|$)/i,
   youtube: /^https?:\/\/(www\.|m\.)?youtube\.com\/(@[\w.-]+|channel\/UC[\w-]+|c\/[\w.-]+|user\/[\w.-]+)/i,
@@ -34,13 +36,17 @@ export async function socials(ctx) {
     } catch (e) { s.youtube.error = e.message.slice(0, 120); }
     vids.sort((a, b) => (b.views || 0) - (a.views || 0));
     s.youtube.videos = vids.slice(0, 6); s.youtube.read = vids.length; s.youtube.source = via || (K ? 'YouTube Data API' : 'treg:crawl4ai.youtube.channel.videos');
+    await pool(s.youtube.videos.filter((v) => v.thumbSrc), 6, async (v) => { v.thumb = await ctx.asset(v.thumbSrc, 'yt-' + (v.url.match(/v=([\w-]+)/) || [])[1], { max: 3e6 }); });
     if (vids.length) ledger.add({ key: 'social.youtube.top', label: `Most-watched of the ${vids.length} latest YouTube videos`, v: `${vids[0].title} · ${vids[0].views != null ? num(vids[0].views) + ' views' : 'views unknown'}`, n: vids[0].views, unit: 'views', url: vids[0].url, method: K ? 'youtube-api' : 'treg:crawl4ai.youtube.channel.videos' });
   }
   // Instagram: recent posts
   if (s.instagram?.handle && ctx.tregOn) {
     try { const j = await ctx.treg('crawl4ai.instagram.user.posts', { body: { username: s.instagram.handle, limit: 12 }, timeout: 45e3 }, s.instagram.handle);
       const posts = (j?.rows || []).map((p) => ({ url: p.url, caption: clean(p.caption).slice(0, 200), likes: p.likes ?? null, comments: p.comments ?? null, at: p.taken_at ? String(p.taken_at).slice(0, 10) : null, kind: p.kind, imageSrc: p.image }));
-      s.instagram.posts = posts;
+      /* every kept picture is saved now: Instagram's CDN links expire in days, and the Brand Book's library and the makers'
+         references need them later (the most-liked one is also the Films card's) */
+      await pool(posts.filter((p) => p.imageSrc), 6, async (p) => { p.img = await ctx.asset(p.imageSrc, 'ig-' + ((p.url || '').match(/\/(p|reel|tv)\/([\w-]+)/) || [])[2], { max: 4e6 }); });
+      s.instagram.posts = posts; s.instagram.v = SOCIALS_V;
       if (posts.length) { const avg = Math.round(posts.reduce((a, p) => a + (p.likes || 0), 0) / posts.length); ledger.add({ key: 'social.instagram.avg_likes', label: `Average likes on the last ${posts.length} Instagram posts`, v: num(avg), n: avg, unit: 'likes', url: s.instagram.url, method: 'treg:crawl4ai.instagram.user.posts', note: `latest post ${posts[0].at || ''}` }); }
     } catch (e) { s.instagram.error = e.message.slice(0, 120); }
   }
@@ -48,11 +54,11 @@ export async function socials(ctx) {
   // the Films card: the most-watched video, else the most-liked reel/post
   const v = s.youtube?.videos?.[0];
   if (v) {
-    const thumb = v.thumbSrc ? await ctx.asset(v.thumbSrc, 'yt-' + (v.url.match(/v=([\w-]+)/) || [])[1], { max: 3e6 }) : null; v.thumb = thumb;
+    const thumb = v.thumb || null;
     ctx.finding('answers', { kind: 'film', t: 'Films', src: pathOf(s.youtube.url), img: thumb, url: v.url, cap: `Most watched of the latest ${s.youtube.read}: "${v.title.slice(0, 70)}"${v.views != null ? `, ${num(v.views)} views` : ''}${v.published ? ` (${v.published})` : ''}.` }, 'Watched the films');
   } else {
     const p = (s.instagram?.posts || []).filter((x) => x.imageSrc).sort((a, b) => (b.likes || 0) - (a.likes || 0))[0];
-    if (p) { const img = await ctx.asset(p.imageSrc, 'ig-' + (p.url.match(/\/(p|reel)\/([\w-]+)/) || [])[2], { max: 4e6 }); p.img = img;
+    if (p) { const img = p.img || null;
       ctx.finding('answers', { kind: 'film', t: 'Films', src: `instagram.com/${s.instagram.handle}`, img, url: p.url, cap: `Most liked of the last ${s.instagram.posts.length} posts: ${p.likes != null ? num(p.likes) + ' likes' : ''}${p.at ? `, ${p.at}` : ''}. "${p.caption.slice(0, 80)}"` }); }
     else if (!s.youtube && !s.instagram) ctx.finding('answers', { kind: 'film', t: 'Films', src: pathOf(state.homeUrl), img: null, cap: state.closed ? `Social links not read: ${CLOSED_WHY}, and its password page links none. Brew looks again once the store opens.` : 'No YouTube or Instagram link found on the site.' });
   }
