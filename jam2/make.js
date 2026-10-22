@@ -87,8 +87,15 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
     const base = ['static', 'carousel', 'video'].includes(r.kind) ? ['angle', 'goal', 'headline', 'caption'] : ['angle', 'goal'];
     const schema = { ...SCHEMA, required: [...new Set([...base, ...need])] }, long = ['creator', 'script', 'shoot', 'act', 'carousel', 'video', 'table'].includes(r.kind);
     let out; try { out = await claudeTool(brief, schema, long ? 6000 : 3000, 'jam2_write'); } catch (e) { if (!/max_tokens|length|JSON|parse|truncat/i.test(e.message)) throw e; out = await claudeTool(brief + '\n\nBe brief: every field short.', schema, 8000, 'jam2_write'); }
-    return clean(out, r);
+    const w = clean(out, r);
+    /* a picture or film never goes out with no headline: a model that left it empty (it happens on a long caption) writes just that */
+    if (['static', 'carousel', 'video'].includes(r.kind) && !w.headline) {
+      const h = await claudeTool([`Write the headline set on the picture of this ${r.label} for ${bbv.name || 'the brand'}: at most 7 words, plain, about the reader. And an optional sub line of at most 12 words.`,
+        `The idea: ${tidy(w.angle || c.angle, 300)}`, `The caption: ${tidy(w.caption, 900)}`, (w.proof || []).length ? `A real review you may quote word for word: ${tidy(w.proof[0], 300)}` : '', 'Never invent numbers, discounts or claims.'].filter(Boolean).join('\n'), HEAD_SCHEMA, 600, 'jam2_headline').catch(() => null);
+      w.headline = tidy(h?.headline, 60) || tidy(String(w.angle || '').split(/[.,:;—–-]\s/)[0].split(/\s+/).slice(0, 7).join(' '), 60); if (!w.sub && h?.sub) w.sub = tidy(h.sub, 90); }
+    return w;
   }
+  const HEAD_SCHEMA = { type: 'object', additionalProperties: false, required: ['headline'], properties: { headline: { type: 'string' }, sub: { type: 'string' } } };
   const clean = (o = {}, r) => ({ ...o, headline: tidy(o.headline, 60), sub: tidy(o.sub, 90), badge: tidy(o.badge, 34), cta: tidy(o.cta, 22), caption: tidy(o.caption, 2200), scene: tidy(o.scene, 400), hashtags: (o.hashtags || []).slice(0, 8).map((h) => `#${String(h).replace(/^#/, '').replace(/\s+/g, '')}`),
     slides: (o.slides || []).slice(0, 6).map((x) => ({ onSlide: tidy(x?.onSlide, 60), small: tidy(x?.small, 90), scene: tidy(x?.scene, 300) })).filter((x) => x.onSlide), cols: (o.cols || []).slice(0, 3).map((x) => tidy(x, 24)), rows: (o.rows || []).slice(0, 10).map((x) => ({ a: tidy(x.a, 120), b: tidy(x.b, 160), c: tidy(x.c, 80) })), shots: (o.shots || []).slice(0, 6).map((x) => ({ sec: x?.sec, see: tidy(x?.see, 200), vo: tidy(x?.vo, 200), words: tidy(x?.words, 60), camera: tidy(x?.camera, 40) })).filter((x) => x.see || x.vo), blocks: (o.blocks || []).slice(0, 16).map((x) => ({ title: tidy(x?.title, 60), text: tidy(x?.text, 1500) })).filter((x) => x.title || x.text), proof: (o.proof || []).slice(0, 3) });
   const mockWords = (card = {}, r, bbv) => { const t = tidy(card.title || r.label, 60), h = t.split(/\s+/).slice(0, 6).join(' ');

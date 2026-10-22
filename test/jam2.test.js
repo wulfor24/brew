@@ -137,3 +137,16 @@ test('batch cards: public and team statics are both a batch (v1 opens the N ads,
   const app = (await import('node:fs')).readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
   assert.match(app, /const isBatchCard = \(p\) => [^\n]*team\\\/\)\?statics/); assert.match(app, /if \(!chId && !isBatchCard\(p\)\)/);
 });
+
+test('words over a shot go to the calm side measured on the photo, never the busy side the hint named; button and logo follow', async () => {
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path'), sharp = (await import('sharp')).default;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'calm-')), W = 400, H = 500, px = Buffer.alloc(W * H * 3);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const v = x < W / 2 ? (((x >> 3) + (y >> 3)) % 2 ? 230 : 20) : 30; px.set([v, v, v], (y * W + x) * 3); } /* left: a checker of edges; right: flat dark */
+  fs.writeFileSync(path.join(dir, 'bg.png'), await sharp(px, { raw: { width: W, height: H, channels: 3 } }).png().toBuffer());
+  const m = createMaker({ engines: { run: async () => { throw new Error('x'); } }, brandbook: { promptBlock: () => '' }, claudeTool: async () => { throw new Error('x'); }, isMock: () => true, saveGen: () => {}, genFile: async (n) => path.join(dir, n), photoAsync: async () => null });
+  for (const size of [{ w: 1080, h: 1350 }, { w: 1080, h: 1920 }]) {
+    const sc = await m.creative.layout({ bbv: { kit: { colors: ['#3366ff'] } }, product: { name: 'Serum' } }, size, 'gen/bg.png', { headline: 'Steady drop in hairfall', sub: 'Within a month', badge: '51,419 reviews', cta: 'Shop now' }, 'left');
+    const L = Object.fromEntries(sc.layers.map((l) => [l.id, l]));
+    assert.ok(L.headline.x > size.w / 2, 'headline on the calm right'); assert.ok(L.cta.x === L.headline.x && L.cta.y > L.badge.y && L.badge.y > L.sub.y, 'badge and button stacked under the words');
+    assert.equal(L.headline.style.color, '#ffffff'); assert.ok(!sc.layers.some((l) => l.id === 'card'), 'no panel behind the words'); }
+});
