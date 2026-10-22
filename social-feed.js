@@ -380,7 +380,9 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
   const start = () => { if (timer || cfg.off || cfg.mock) { log.log?.(`[social] background listening and ideas ${cfg.off ? 'off here' : cfg.mock ? 'off (AI mock)' : 'already on'}`); return false; }
     timer = setTimeout(function go() { tick().catch((e) => log.warn?.('[social] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.(); return true; };
   /* a brand just became ready (its moves landed): listen now rather than on the next half-hour tick; at most once in 5 minutes */
-  let kickedAt = 0;
-  const kick = () => { if (cfg.off || cfg.mock || now() - kickedAt < 5 * 60e3) return false; kickedAt = now(); const t = setTimeout(() => tick().catch((e) => log.warn?.('[social] kick', e.message)), 10e3); t.unref?.(); return true; };
+  let kickedAt = 0, kickTimer = null;
+  /* a nudge inside the 5 minutes is kept for when they end, never dropped (the read's last update came 2 minutes after its first) */
+  const kick = () => { if (cfg.off || cfg.mock || kickTimer) return false; const wait = Math.max(10e3, kickedAt + 5 * 60e3 - now());
+    kickTimer = setTimeout(() => { kickTimer = null; kickedAt = now(); tick().catch((e) => log.warn?.('[social] kick', e.message)); }, wait); kickTimer.unref?.(); return true; };
   return { cfg, tick, start, kick, opened, runOne, stateOf, due: async (slug, ready = true) => dueFor(await stateOf(slug), cfg, { now: now(), aiLive: ai?.live !== false, ready }) };
 }

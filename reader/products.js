@@ -70,7 +70,7 @@ export function isProductPage(html) {
  * returns html or null (plain fetch, then a rendered page). Returns { urls (to read, spread across the list), total
  * (product URLs known), shapes + prefix (the learned URL shapes, saved so later readers know a product link), probed }.
  */
-export async function findProductUrls({ urls = [], homeLinks = [], origin, fetchPage, max = 30, market = null, tick = () => {} }) {
+export async function findProductUrls({ urls = [], homeLinks = [], origin, fetchPage, max = 30, market = null, tick = () => {}, groups: nGroups = 8, perGroup = 2 }) {
   const host = hostOf(origin);
   let own = [...new Set(urls.concat(homeLinks.map((l) => l.url || l)).map((u) => String(u).split(/[?#]/)[0]).filter((u) => hostOf(u) === host))];
   /* a sitemap of many markets: read the shopper's market (its code first in the path), or the biggest one */
@@ -85,11 +85,11 @@ export async function findProductUrls({ urls = [], homeLinks = [], origin, fetch
   if (groups.size > 3) for (const [k, g] of groups) if (g.length < 3 && !k.startsWith('~')) groups.delete(k);
   // the common paths go first, then the biggest groups
   const known = (s) => groups.get(s).some((u) => isProductUrl(u));
-  const order = [...groups.keys()].filter((s) => !NOT_PRODUCT_PATH.test('/' + s.split('/')[0] + '/')).sort((a, b) => (known(b) - known(a)) || groups.get(b).length - groups.get(a).length).slice(0, 8);
+  const order = [...groups.keys()].filter((s) => !NOT_PRODUCT_PATH.test('/' + s.split('/')[0] + '/')).sort((a, b) => (known(b) - known(a)) || groups.get(b).length - groups.get(a).length).slice(0, nGroups);
   // 2 · open two pages of each shape: the shapes whose pages carry a product are the store's product URLs
   const shapes = [], probed = {};
   await pool(order, 4, async (s, gi) => {
-    const g = groups.get(s); const picks = [g[0], g[Math.floor(g.length / 2)]].filter((x, i, a) => x && a.indexOf(x) === i);
+    const g = groups.get(s); const picks = [g[0], g[Math.floor(g.length / 2)]].filter((x, i, a) => x && a.indexOf(x) === i).slice(0, perGroup);
     tick(s.split('/')[0]);
     let hits = 0;
     for (const [i, u] of picks.entries()) { const html = await fetchPage(u, `shape-${gi}-${i}`).catch(() => null); if (isProductPage(html)) hits++; }

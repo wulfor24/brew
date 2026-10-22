@@ -32,7 +32,7 @@ export const STEPS = [
   { k: 'answers', t: 'Ask the AI tools', agent: 'visibility' }
 ];
 // per-stage deadlines (ms)
-const LIMIT = { open: 45e3, brand: 40e3, catalog: 60e3, reviews: 75e3, category: 40e3, rivals: 70e3, ads: 240e3, site: 200e3, answers: 170e3, named: 100e3, socials: 120e3, company: 150e3 };
+const LIMIT = { open: 45e3, brand: 40e3, catalog: 60e3, reviews: 75e3, category: 40e3, rivals: 110e3, /* each rival's price read has 30 s of its own (ads.js crawlRival) */ ads: 240e3, site: 200e3, answers: 170e3, named: 100e3, socials: 120e3, company: 150e3 };
 
 /* stages heal() can run again from a saved profile plus the home page (a failed or timed-out one is recorded in meta.errors) */
 const RERUN = { reviews, socials, company };
