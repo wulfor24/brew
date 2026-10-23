@@ -239,8 +239,13 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
       for (const x of u.proposed) if (take.has(x.path) && x.path === 'proof.claimsAllowed') { bb.claimsAllowed = [...(x.value || []).map((c) => ({ text: tidy(c, 140), from: `upload:${u.name}` })), ...bb.claimsAllowed].slice(0, 20); n++; }
       else if (take.has(x.path) && EDITABLE.test(x.path) && !(bb.confirmed?.[x.path] && !patch.applyUpload.overrideConfirmed)) { bb.edits = { ...bb.edits, [x.path]: { value: cleanVal(x.value), by: by?.email || null, at: now(), src: `upload:${u.name}`, private: !!u.private } }; n++; }
       const skip = new Set(patch.applyUpload.skipKit || []);
-      if (u.kit) { if (u.kit.colors?.length && !skip.has('colors')) bb.kitEdits = { ...bb.kitEdits, colors: u.kit.colors.filter((c) => hexOk(c.hex)).slice(0, 8) }; if (u.kit.fonts && !skip.has('fonts')) bb.kitEdits = { ...bb.kitEdits, fonts: { ...(bb.kitEdits?.fonts || {}), ...u.kit.fonts } }; if (u.kit.logo && !skip.has('logo')) bb.kitEdits = { ...bb.kitEdits, logo: u.kit.logo }; if (u.kit.fontFiles?.length) bb.kitEdits = { ...bb.kitEdits, fontFiles: [...u.kit.fontFiles, ...(bb.kitEdits?.fontFiles || [])].slice(0, 8) }; }
-      if (u.neverSay?.length && !skip.has('never')) bb.neverSay = [...new Set([...bb.neverSay, ...u.neverSay.map((x) => tidy(x, 40))])].slice(0, 40);
+      /* a kit change counts as applied too (a font, logo or colours alone used to leave the upload "waiting" for ever); a font
+         file added again replaces its family's older file instead of piling up */
+      if (u.kit) { if (u.kit.colors?.length && !skip.has('colors')) { bb.kitEdits = { ...bb.kitEdits, colors: u.kit.colors.filter((c) => hexOk(c.hex)).slice(0, 8) }; n++; }
+        if (u.kit.fonts && Object.keys(u.kit.fonts).length && !skip.has('fonts')) { bb.kitEdits = { ...bb.kitEdits, fonts: { ...(bb.kitEdits?.fonts || {}), ...u.kit.fonts } }; n++; }
+        if (u.kit.logo && !skip.has('logo')) { bb.kitEdits = { ...bb.kitEdits, logo: u.kit.logo }; n++; }
+        if (u.kit.fontFiles?.length && !skip.has('fonts')) { const fams = new Set(u.kit.fontFiles.map((f) => String(f.family || '').toLowerCase())); bb.kitEdits = { ...bb.kitEdits, fontFiles: [...u.kit.fontFiles, ...(bb.kitEdits?.fontFiles || []).filter((f) => !fams.has(String(f.family || '').toLowerCase()))].slice(0, 8) }; n++; } }
+      if (u.neverSay?.length && !skip.has('never')) { bb.neverSay = [...new Set([...bb.neverSay, ...u.neverSay.map((x) => tidy(x, 40))])].slice(0, 40); n++; }
       u.applied = n; u.appliedAt = now(); }
     if (patch.upload) bb.uploads = [{ ...patch.upload, at: now(), by: by?.email || null }, ...(bb.uploads || []).filter((x) => x.id !== patch.upload.id)].slice(0, 30);
     if (patch.removeUpload) bb.uploads = (bb.uploads || []).filter((x) => x.id !== patch.removeUpload);

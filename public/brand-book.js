@@ -10,11 +10,11 @@
   const SRC = { team: 'Your team', read: 'From your site', shopify: 'From your Shopify settings' };
   const srcLabel = (s) => !s ? null : s.startsWith('upload:') ? `From ${s.slice(7)}` : SRC[s] || s;
   const fontsLoaded = new Set();
+  /* a face loads once per file: an uploaded file for a name that first loaded from Google still takes over (names match in any case) */
   const loadFont = (name, files = []) => {
-    if (!name || fontsLoaded.has(name)) return; fontsLoaded.add(name);
-    const own = files.find((f) => f.family === name);
-    if (own) { const st = document.createElement('style'); st.textContent = `@font-face{font-family:"${name.replace(/"/g, '')}";src:url("${own.src}");font-display:swap}`; document.head.appendChild(st); return; }
-    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name).replace(/%20/g, '+')}:wght@400;600;700&display=swap`; document.head.appendChild(l);
+    if (!name) return; const own = (files || []).find((f) => String(f.family || '').toLowerCase() === String(name).toLowerCase()), key = `${name}|${own?.src || 'google'}`; if (fontsLoaded.has(key)) return; fontsLoaded.add(key);
+    if (own && /^\/b\/[a-z0-9-]+\/a\/font-[\w.-]+$/.test(own.src)) { const st = document.createElement('style'); st.textContent = `@font-face{font-family:"${name.replace(/["\\<>]/g, '')}";src:url("${own.src}");font-display:swap}`; document.head.appendChild(st); return; }
+    const fam = encodeURIComponent(name).replace(/%20/g, '+'); for (const href of [`https://fonts.googleapis.com/css2?family=${fam}&display=swap`, `https://fonts.googleapis.com/css2?family=${fam}:wght@400;600;700&display=swap`]) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
   };
 
   const CHAPTERS = [
@@ -69,7 +69,7 @@
             .filter((c) => c[2]?.length || edit).map(([h, path, xs, label, cls]) => `<div><h3>${h}</h3>${list(path, xs, label, cls)}</div>`).join('')}</div>`,
           `${(v.neverSay || []).length || (v.never || []).length || edit ? `<div class="bb-line"><h3>Never say</h3>` : ''}${(v.neverSay || []).length || (v.never || []).length ? `<ul class="bb-chips is-never">${[...new Set([...(v.neverSay || []), ...(v.never || [])])].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${edit ? '<form class="bb-neverf" data-never><input name="w" placeholder="Add a word or claim they never use" aria-label="Add a never-say word"><button>Add</button></form>' : ''}${(v.neverSay || []).length || (v.never || []).length || edit ? '</div>' : ''}`].join(''),
         products: [pr.heroes?.length ? `<div class="bb-prods">${pr.heroes.map((p) => { const own = (S.refs || []).filter((r) => r.job === 'product' && r.product && r.product.toLowerCase() === String(p.title || '').toLowerCase());
-          return `<article class="bb-prod">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : ''}<h3>${link(p.url, p.title)}</h3><p class="bb-price">${esc(p.price || '')}${p.mrp ? ` <s>${esc(p.mrp)}</s>` : ''}</p>${p.about ? `<p>${esc(p.about)}</p>` : ''}${edit ? `<p class="bb-prod-more">${own.length ? `<span class="bb-thumbs">${own.slice(0, 4).map((r) => `<img src="${esc(r.url)}" alt="${esc(r.label)}" loading="lazy">`).join('')}</span>` : ''}<button class="bb-link" data-prodphoto="${esc(p.title || '')}">${own.length ? 'Add more photos' : 'Add photos: back, side, close-up'}</button></p>` : ''}</article>`; }).join('')}</div>` : '',
+          return `<article class="bb-prod">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : ''}<h3>${link(p.url, p.title)}</h3><p class="bb-price">${esc(p.price || '')}${p.mrp ? ` <s>${esc(p.mrp)}</s>` : ''}</p>${p.about ? `<p>${esc(p.about)}</p>` : ''}${edit ? `<p class="bb-prod-more">${own.length ? `<span class="bb-thumbs">${own.slice(0, 4).map((r) => `<img src="${esc(r.url)}" alt="${esc(r.label)}" loading="lazy">`).join('')}</span>` : ''}<button class="bb-link" data-prodphoto="${esc(p.title || '')}" title="Its back, a side or a close-up: every picture and video Brew makes of it uses them">${own.length ? `${own.length} photo${own.length > 1 ? 's' : ''} · add more` : '＋ Add photos'}</button></p>` : ''}</article>`; }).join('')}</div>` : '',
           pr.tiers?.length ? `<div class="bb-tiers">${pr.tiers.map((t) => `<div class="bb-tier"><b>${esc(t.name)}</b><span>${esc(t.from === t.to ? t.from : `${t.from} to ${t.to}`)}</span><small>${t.n} product${t.n === 1 ? '' : 's'}${t.eg ? `, like ${esc(t.eg)}` : ''}</small></div>`).join('')}</div>` : '',
           (pr.offers?.length || pr.guarantee || pr.returns) ? `<dl class="bb-facts">${pr.offers?.length ? `<div><dt>Offers on the site</dt><dd>${pr.offers.map(esc).join('<br>')}</dd></div>` : ''}${pr.guarantee ? `<div><dt>Promise</dt><dd>${esc(pr.guarantee)}</dd></div>` : ''}${pr.returns ? `<div><dt>Returns</dt><dd>${esc(pr.returns)}</dd></div>` : ''}${pr.sells === 'by enquiry' ? '<div><dt>How it sells</dt><dd>By enquiry</dd></div>' : ''}</dl>` : '',
           v.naming?.pattern ? `<div class="bb-line"><h3>How they name things</h3><p>${esc(v.naming.pattern)}</p>${v.naming.examples?.length ? `<ul class="bb-chips">${v.naming.examples.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>` : ''].join(''),
@@ -123,13 +123,14 @@
       $$('[data-import]', el).forEach((b) => b.onclick = openImport);
       /* a product's own extra photos (its back, a side, a close-up): every picture and video Brew makes of it uses them, so no side is guessed */
       $$('[data-prodphoto]', el).forEach((b) => b.onclick = () => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp'; inp.multiple = true;
-        inp.onchange = async () => { const files = [...inp.files].slice(0, 6); if (!files.length) return; b.disabled = true; b.textContent = 'Adding…'; let ok = 0, err = null;
-          for (const f of files) { const data = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(f); });
-            const x = data ? await api('POST', `/api/brands/${encodeURIComponent(ctx.slug)}/references`, { data, label: `${b.dataset.prodphoto} · ${f.name}`.slice(0, 80), job: 'product', product: b.dataset.prodphoto }) : { error: 'That file couldn’t be read.' };
-            if (x?.ok) ok++; else err = x?.error || 'That photo didn’t upload.'; }
-          await loadRefs(); paint(); toast(ok ? `${ok} photo${ok > 1 ? 's' : ''} added. Every picture and video of ${b.dataset.prodphoto} now uses ${ok > 1 ? 'them' : 'it'}.` : err); };
+        inp.onchange = async () => { const files = [...inp.files].slice(0, 6); if (!files.length) return; b.disabled = true; b.textContent = 'Adding…'; let ok = 0; const bad = [];
+          for (const f of files) { if (f.size > 8e6) { bad.push(`${f.name} is over 8 MB`); continue; } const data = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(f); });
+            const x = data ? await api('POST', `/api/brands/${encodeURIComponent(ctx.slug)}/references`, { data, label: `${b.dataset.prodphoto} · ${f.name}`.slice(0, 80), job: 'product', product: b.dataset.prodphoto }) : { error: 'it couldn’t be read' };
+            if (x?.ok) ok++; else bad.push(`${f.name}: ${x?.error || 'it didn’t upload'}`); }
+          await loadRefs(); paint(); const name = esc(b.dataset.prodphoto);
+          toast([ok ? `${ok} photo${ok > 1 ? 's' : ''} added. Every picture and video of ${name} now uses ${ok > 1 ? 'them' : 'it'}.` : '', bad.length ? `Not added: ${esc(bad.join('; '))}.` : ''].filter(Boolean).join(' ')); };
         inp.click(); });
-      if (edit && !S.refs) loadRefs().then(() => S.refs.length && paint());
+      if (S.data?.canEdit && !ctx.readOnly && !S.refs && !S.refsLoading) { /* the team's own view only (wire() has no `edit` of its own) */ S.refsLoading = true; loadRefs().then(() => { S.refsLoading = false; if (S.refs.length) paint(); }); }
       $('[data-share]', el).onclick = (e) => openShare(e.currentTarget);
       /* the index follows the chapter on screen */
       const toc = $$('[data-toc]', el); if ('IntersectionObserver' in window && toc.length) { const io = new IntersectionObserver((es) => es.forEach((x) => { if (x.isIntersecting) toc.forEach((a) => a.classList.toggle('on', a.dataset.toc === x.target.dataset.ch)); }), { rootMargin: '-20% 0px -70% 0px' }); $$('.bb-ch', el).forEach((s) => io.observe(s)); }

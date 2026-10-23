@@ -34,13 +34,15 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
   const entryOf = (ctx) => { const p = ctx.product; return p ? (ctx.catalog || []).find((x) => (p.handle && x.handle === p.handle) || (p.name && (x.t || x.title) === p.name)) || null : null; };
   /* the product's photos, the profile's cleanest one first (a packshot, never a size chart or a crowded scene) */
   /* the photos the brand added for this product in its Brand Book (back of the pack, a side, a close-up): references.js `product` */
-  const refPhotos = (ctx) => { const p = ctx.product; if (!p) return []; const keys = [p.handle, p.name].filter(Boolean).map((x) => String(x).toLowerCase());
-    return (ctx.refs || []).filter((r) => r.kind === 'image' && r.job === 'product' && r.product && keys.includes(String(r.product).toLowerCase())).map((r) => r.url); };
+  /* a photo added for "Serum - 30 ml" also serves "Serum - 30 ml - Pack of 3" (the same item in a pack); ™, ® and spacing don't count */
+  const norm = (x) => String(x || '').toLowerCase().replace(/[™®©]/g, '').replace(/\s+/g, ' ').trim();
+  const refPhotos = (ctx) => { const p = ctx.product; if (!p) return []; const keys = [p.handle, p.name].filter(Boolean).map(norm);
+    return (ctx.refs || []).filter((r) => r.kind === 'image' && r.job === 'product' && r.product && keys.some((k) => { const q = norm(r.product); return q.length >= 4 && (k === q || k.startsWith(`${q} `) || k.startsWith(`${q}-`)); })).map((r) => r.url); };
   /* the catalog entry the product profile is read from, with the brand's own extra photos of it first after the main one */
   const productEntry = (ctx) => { const e = entryOf(ctx) || { t: ctx.product?.name, img: ctx.product?.img, handle: ctx.product?.handle }; const extra = refPhotos(ctx);
-    return extra.length ? { ...e, images: [...extra, ...(e.images || [])] } : e; };
+    const own = Array.isArray(e.imgs) ? e.imgs : e.images || []; return { ...e, images: [...extra, ...own] }; }; /* the read keeps a product's photos as imgs; the profile reads images */
   const photosOf = (ctx, prof = null) => { const p = ctx.product; if (!p?.img) return [];
-    return [...new Set([prof?.best, p.img, ...refPhotos(ctx), ...((entryOf(ctx)?.images || []).filter(Boolean))].filter(Boolean))].slice(0, 4); };
+    const e = entryOf(ctx); return [...new Set([prof?.best, p.img, ...refPhotos(ctx), ...((Array.isArray(e?.imgs) ? e.imgs : e?.images || []).filter(Boolean))].filter(Boolean))].slice(0, 4); };
   /* the product in words, from its profile: what it is, its real colours, each item of a kit, printed words that must stay */
   const productLine = (prof) => (prof ? [`It is ${prof.what}${prof.colours ? `, in ${prof.colours}` : ''}${prof.materials ? `, ${prof.materials}` : ''}.`,
     prof.kit && prof.items?.length ? `It is a kit of ${prof.items.length}: ${prof.items.join('; ')}. All ${prof.items.length} items appear, each exactly as photographed.` : '',
@@ -67,7 +69,8 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
       `The piece: ${r.label || board.label} for ${size.label || size.ratio} (${size.ratio}).`, `The card: ${tidy(c.spark?.title || ctx.card?.title, 200)}. ${tidy(c.spark?.says, 300)}`,
       `Angle: ${tidy(c.angle, 200)}. Audience: ${tidy(c.audience, 160)}. Headline that will be set over it: "${tidy(words.headline, 120)}".`,
       p?.img ? `The product: ${tidy(p.name, 140)}. ${ctx.profile ? productLine(ctx.profile) + ' Describe it only with these facts.' : 'Never describe its colour, material, pattern or design (you can\'t see the photos): call it "the product".'} It must be the hero, clearly visible, exactly as in its photos.${ctx.profile?.use ? ` It is used: ${tidy(ctx.profile.use, 160)}.` : ''}` : 'There is no product photo: show the moment or the place the brand sells, with people when it helps.',
-      ctx.market && !ctx.market.guessed ? `The brand sells in ${ctx.market.name}: any people are its customers there (how they look, dress and live), in places that look like there.` : '',
+      ctx.market && !ctx.market.guessed ? `The brand sells in ${ctx.market.name}: any people are its customers there (how they look, dress and live), in places that look like there.` : ctx.market?.name && ctx.market.cc !== 'US' ? `The brand most likely sells in ${ctx.market.name} (not confirmed yet): cast and set it there unless the card says otherwise.` : 'Where the brand sells isn\'t known yet: keep people and places neutral, with nothing that names a country.',
+      ctx.storeKind === 'enquiry' ? 'The brand sells by enquiry (a service or a place to visit), not a shop: show the place, the moment or the people it serves; nobody holds a product to buy.' : '',
       ...bookLines(ctx.bbv), creativeBlock(ctx.bbv, ctx.kind || r.id || ''), ctx.notes?.length ? `The team asked: ${tidy(ctx.notes.join(' '), 400)}` : '',
       style ? `The look the team picked (follow it exactly): ${tidy(style.look, 400)}${style.people === 'none' ? ' No people.' : style.people === 'hands' ? ' Hands only, no faces.' : ''}` : '',
       'Pick the format family that fits the card. Describe one real, specific moment a photographer could shoot (people, place, props, light, lens). Keep one part of the frame calm (real background, never a blank band) for the headline and say which. No words, signs, screens with text or logos in the picture.'].filter(Boolean).join('\n');
@@ -118,7 +121,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const img = (x) => { const b = fs.readFileSync(x); return { type: 'image', source: { type: 'base64', media_type: b[0] === 0x89 ? 'image/png' : 'image/jpeg', data: b.toString('base64') } }; };
     const refSrc = photosOf(ctx, ctx.profile)[0], ref = refSrc ? await fileOf(refSrc).catch(() => null) : null, e = entryOf(ctx);
     const known = [`Brand: ${ctx.bbv?.name || ''}`, ctx.product?.name ? `Product: ${ctx.product.name}${e?.price ? ` · ${e.price}` : ''}` : '', ctx.profile ? `What it is: ${ctx.profile.what}; label: ${ctx.profile.label || ''}; size: ${ctx.profile.size || ''}` : '',
-      `Our words: ${[facts.headline, facts.sub, facts.badge, facts.cta].filter(Boolean).join(' / ')}`, (facts.proof || []).length ? `Real customer reviews (word for word): ${facts.proof.map((q) => `"${tidy(q, 300)}"`).join(' ')}` : 'There are no customer reviews to quote.'].filter(Boolean).join('\n');
+      `Our words: ${[facts.headline, facts.sub, facts.badge, facts.cta].filter(Boolean).join(' / ')}`, (facts.claims || []).length ? `Claims the brand may make, as written: ${facts.claims.map((c) => `"${tidy(c, 80)}"`).join(' ')}` : '', (facts.proof || []).length ? `Real customer reviews (word for word): ${facts.proof.map((q) => `"${tidy(q, 300)}"`).join(' ')}` : 'There are no customer reviews to quote.'].filter(Boolean).join('\n');
     try { const r = await ai.call({ model: 'sonnet', tag: 'jam2_made_check', max: 1500, effort: 'low', schema: MADE_SCHEMA, messages: [{ role: 'user', content: [...(ref ? [img(ref)] : []), img(f), { type: 'text', text: `${ref ? 'Image 1 is the real product. Image 2 is an ad made for it.' : 'This is an ad.'} The facts we can back up:\n${known}\nThe product's own printed label is fine. Read every text on the ad and list what is not backed by these facts.` }] }] });
       const j = r.json || {}; return { same: ref ? !!j.same : true, invented: (j.invented || []).map((x) => tidy(x, 120)).filter(Boolean).slice(0, 6), words: (j.words || []).slice(0, 20), usd: r.usd || 0 };
     } catch (err) { log.warn?.('[creative] made check', err.message); return { same: true, invented: [], words: [], unchecked: true }; } }
@@ -156,20 +159,29 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const sc = composeScene({ size, bgFile, cut: null, words, kit: ctx.bbv.kit, preset: presetFor(zone) }), { w, h } = size, kit = ctx.bbv.kit || {};
     const light = (await lumaOf(bgFile, zone, size)) > 0.58, ink = light ? '#111111' : '#ffffff', head = kit.fonts?.heading || null, body = kit.fonts?.body || head;
     const accent = kit.accent || kit.colors?.[0] || '#111111', u = Math.min(w, h * 1.25), pad = Math.round(u * 0.065), tall = h / w > 1.6, side = zone === 'left' || zone === 'right';
-    const headline = tidy(words.headline, 60), sub = tidy(words.sub, 90), badge = tidy(words.badge, 34), cta = tidy(words.cta, 22) || (ctx.product?.name ? 'Shop now' : 'Learn more');
+    const headline = tidy(words.headline, 60), badge = tidy(words.badge, 34), cta = tidy(words.cta, 22) || (ctx.storeKind === 'enquiry' ? 'Enquire now' : ctx.product?.name ? 'Shop now' : 'Learn more');
+    let sub = tidy(words.sub, 90);
     const colX = zone === 'right' ? Math.round(w * 0.54) : pad, colW = side ? Math.round(w * 0.46 - pad) : Math.min(w - pad * 2, Math.round(w * 0.82));
-    const big = Math.round(u * (headline.length < 26 ? 0.085 : headline.length < 48 ? 0.068 : 0.056) * (side ? 0.8 : 1)), subS = Math.max(Math.round(w * 0.028), Math.round(big * 0.45));
-    const lines = (t, s) => Math.max(1, Math.ceil(t.length / Math.max(6, colW / (s * 0.56))));
-    const bs = Math.round(w * 0.026), bp = Math.round(w * 0.013), cs = Math.round(w * 0.03), cp = Math.round(w * 0.02);
-    const headH = headline ? Math.round(lines(headline, big) * big * 1.12) : 0, subH = sub ? Math.round(lines(sub, subS) * subS * 1.32) : 0, badgeH = badge ? Math.round(bs * 1.25 + bp * 2) : 0, ctaH = Math.round(cs * 1.25 + cp * 2);
-    /* a band across the frame (top or bottom) has the width to set the proof badge and the button on one row, keeping the words short of the product */
-    const oneRow = !side && !!badge, gap = Math.round(u * 0.028), total = headH + (sub ? gap + subH : 0) + (badge && !oneRow ? gap + badgeH : 0) + gap * 1.4 + ctaH;
+    /* the button's words in the colour that reads on the brand's own colour (a white or pastel brand colour gets dark words) */
+    const lumOf = (hex) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return 0.2; const n = parseInt(m[1], 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+    const ctaInk = lumOf(accent) > 0.45 ? '#111111' : '#ffffff';
     const safeTop = tall ? Math.round(h * 0.14) : pad, safeBot = tall ? Math.round(h * 0.2) : pad; /* stories and reels keep clear of the platform's own bars */
-    /* the logo sits in the free side too (never on the product): first in the column, or at the end of the button row at the bottom */
+    /* the logo leads the words in the free side (never on the product, never on the button row) */
     const logo = sc.layers.find((l) => l.kind === 'logo');
-    if (logo && logoAspect) { const bw = Math.min(logo.w, Math.round(logo.h * logoAspect)), bh = Math.round(bw / logoAspect); logo.w = bw; logo.h = bh; }
-    const logoTop = logo && zone !== 'bottom' ? logo.h + gap * 1.5 : 0;
-    let y = zone === 'bottom' ? h - safeBot - total : side ? Math.max(safeTop + logoTop, Math.round((h - total) * 0.32)) : safeTop + logoTop;
+    if (logo && logoAspect) { const lw = Math.min(logo.w, Math.round(logo.h * logoAspect)), lh = Math.round(lw / logoAspect); logo.w = lw; logo.h = lh; }
+    /* every size from the frame's short side, then shrunk until the words fit the free space (a 3:1 banner or a 16:9 frame never
+       pushes the button off the bottom); a sub that still doesn't fit is left out */
+    const space = zone === 'bottom' || zone === 'top' ? Math.round(h * (tall ? 0.5 : 0.56)) - (zone === 'top' ? safeTop : safeBot) : h - safeTop - safeBot;
+    const lines = (t, sz) => Math.max(1, Math.ceil(t.length / Math.max(6, colW / (sz * 0.56))));
+    const measure = (k) => { const big = Math.round(u * (headline.length < 26 ? 0.085 : headline.length < 48 ? 0.068 : 0.056) * (side ? 0.8 : 1) * k), subS = Math.max(Math.round(u * 0.026 * k), Math.round(big * 0.45));
+      const bs = Math.round(u * 0.026 * Math.max(k, 0.8)), bp = Math.round(u * 0.013 * Math.max(k, 0.8)), cs = Math.round(u * 0.03 * Math.max(k, 0.8)), cp = Math.round(u * 0.02 * Math.max(k, 0.8)), gap = Math.round(u * 0.028 * k);
+      const headH = headline ? Math.round(lines(headline, big) * big * 1.12) : 0, subH = sub ? Math.round(lines(sub, subS) * subS * 1.32) : 0, badgeH = badge ? Math.round(bs * 1.25 + bp * 2) : 0, ctaH = Math.round(cs * 1.25 + cp * 2);
+      const oneRow = !side && !!badge, logoTop = logo ? logo.h + gap * 1.5 : 0, total = logoTop + headH + (sub ? gap + subH : 0) + (badge && !oneRow ? gap + badgeH : 0) + gap * 1.4 + ctaH;
+      return { big, subS, bs, bp, cs, cp, gap, headH, subH, badgeH, ctaH, oneRow, logoTop, total }; };
+    let k = 1, M = measure(k); while (M.total > space && k > 0.56) { k -= 0.06; M = measure(k); } if (M.total > space && sub) { sub = ''; M = measure(k); }
+    const { big, subS, bs, bp, cs, cp, gap, headH, subH, badgeH, ctaH, oneRow, logoTop, total } = M;
+    let y = zone === 'bottom' ? h - safeBot - total : side ? Math.max(safeTop, Math.round((h - total) * 0.32)) : safeTop;
+    if (logo) { logo.x = colX; logo.y = y; } y += logoTop;
     const shade = { left: '90deg', right: '270deg', top: '180deg', bottom: '0deg' }[zone], tone = light ? '255,255,255' : '0,0,0', reach = side ? 0.66 : 0.5;
     const L = [{ id: 'shade', kind: 'shape', x: zone === 'right' ? Math.round(w * (1 - reach)) : 0, y: zone === 'bottom' ? Math.round(h * (1 - reach)) : 0, w: side ? Math.round(w * reach) : w, h: side ? h : Math.round(h * reach), z: 5, style: { bg: `linear-gradient(${shade},rgba(${tone},${light ? 0.55 : 0.6}),rgba(${tone},0))` } }];
     if (headline) { L.push({ id: 'headline', kind: 'text', role: 'headline', words: headline, x: colX, y, w: colW, z: 6, style: { font: head, size: big, weight: 800, color: ink, shadow: !light, lh: 1.08 } }); y += headH; }
@@ -178,10 +190,9 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     if (badge && !oneRow) { y += gap; L.push({ id: 'badge', kind: 'badge', role: 'small', words: badge, x: colX, y, w: bw, h: badgeH, z: 7, style: badgeStyle }); y += badgeH; }
     y += Math.round(gap * 1.4);
     if (oneRow) L.push({ id: 'badge', kind: 'badge', role: 'small', words: badge, x: colX, y: y + Math.round((ctaH - badgeH) / 2), w: bw, h: badgeH, z: 7, style: badgeStyle });
-    L.push({ id: 'cta', kind: 'badge', role: 'cta', words: cta, x: oneRow ? colX + bw + gap : colX, y, w: Math.min(Math.round(w * 0.62), colW, Math.max(Math.round(w * 0.26), Math.round(cta.length * cs * 0.62 + cp * 2 + cs * 1.4))), h: ctaH, z: 7, style: { font: body, size: cs, weight: 700, color: '#fff', bg: accent, radius: 999, pad: cp, align: 'center', lh: 1.25 } });
-    if (logo) { if (zone === 'bottom') { logo.x = w - pad - logo.w; logo.y = y + Math.round((ctaH - logo.h) / 2); } else { logo.x = colX; logo.y = safeTop; }
-      /* a plate only when the logo's own colour would vanish on the photo there (dark on dark, light on light) */
-      const lt = await logoTone(kit.logo); if (lt != null && lt > 0.5 === light) { const pd = Math.round(w * 0.012); L.push({ id: 'logo-plate', kind: 'shape', x: logo.x - pd, y: logo.y - pd, w: logo.w + pd * 2, h: logo.h + pd * 2, z: (logo.z || 8) - 1, style: { bg: light ? 'rgba(17,17,17,.85)' : 'rgba(255,255,255,.88)', radius: Math.round(w * 0.016) } }); } }
+    L.push({ id: 'cta', kind: 'badge', role: 'cta', words: cta, x: oneRow ? colX + bw + gap : colX, y, w: Math.min(Math.round(w * 0.62), colW - (oneRow ? bw + gap : 0), Math.max(Math.round(u * 0.26), Math.round(cta.length * cs * 0.62 + cp * 2 + cs * 1.4))), h: ctaH, z: 7, style: { font: body, size: cs, weight: 700, color: ctaInk, bg: accent, radius: 999, pad: cp, align: 'center', lh: 1.25 } });
+    if (logo) { /* a plate only when the logo's own colour would vanish on the photo there (dark on dark, light on light) */
+      const lt = await logoTone(kit.logo); if (lt != null && lt > 0.5 === light) { const pd = Math.round(u * 0.012); L.push({ id: 'logo-plate', kind: 'shape', x: logo.x - pd, y: logo.y - pd, w: logo.w + pd * 2, h: logo.h + pd * 2, z: (logo.z || 8) - 1, style: { bg: light ? 'rgba(17,17,17,.85)' : 'rgba(255,255,255,.88)', radius: Math.round(u * 0.016) } }); } }
     sc.layers = [...sc.layers.filter((l) => !['text', 'shape', 'badge'].includes(l.kind)), ...L];
     return sc;
   }

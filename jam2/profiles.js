@@ -22,10 +22,13 @@ const SCHEMA = { type: 'object', additionalProperties: false, required: ['what',
 export function createProfiles({ packs, ai = null, fileOf, isMock = () => false, spend = () => true, log = console }) {
   const mem = new Map();
   const load = async (slug) => { if (mem.has(slug)) return mem.get(slug); const x = (await packs.getJSON(slug, FILE, null).catch(() => null)) || {}; mem.set(slug, x); return x; };
-  const keyOf = (p) => String(p?.handle || p?.t || p?.title || p?.name || '').toLowerCase().slice(0, 120);
+  const keyOf = (p) => String(p?.handle || p?.t || p?.title || p?.name || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 300); /* long variant names stay apart */
   const photosOf = (p) => [...new Set([p?.img, ...((p?.images) || [])].filter(Boolean))].slice(0, 6); /* the main photo, the brand's own extra views, then the catalog's */
   /* the profile of one catalog product: from the store when read before (and its photos haven't changed), else read now */
-  async function of(slug, p, { force = false } = {}) {
+  /* several takes started together read a product once: the first read is shared by the others */
+  const flight = new Map();
+  function of(slug, p, o = {}) { const k = `${slug}|${keyOf(p)}|${photosOf(p).join('|')}`; if (!o.force && flight.has(k)) return flight.get(k); const pr = read(slug, p, o).finally(() => flight.delete(k)); flight.set(k, pr); return pr; }
+  async function read(slug, p, { force = false } = {}) {
     if (!p) return null; const key = keyOf(p), photos = photosOf(p); if (!key || !photos.length) return null;
     const all = await load(slug), have = all[key];
     if (!force && have && have.photos?.join('|') === photos.join('|')) return have;
