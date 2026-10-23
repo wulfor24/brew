@@ -115,20 +115,50 @@
 .wx-more { margin-top: 16px; } .wx-more > summary { cursor: pointer; font: 600 14px var(--font); padding: 8px 0; }
 .wx-foot { color: var(--fg-3); font-size: 13px; text-align: center; margin-top: 28px; }
 
-/* the two entries on What Brew learned (Brand Book, What Brew watches): matching tiles side by side, stacked on a phone */
-.lx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 16px; }
+/* the two entries on What Brew learned: small posters of the pages they open. Brand Book is a cover in the brand's own colours and
+   type (lxBook sets --bk-*), What Brew watches is a paper board of tilted source stickers. Side by side, stacked on a phone */
+.lx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 18px; }
 @media (max-width: 760px) { .lx-pair { grid-template-columns: 1fr; } }
-.lx-tile { appearance: none; display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; text-align: left; padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; cursor: pointer; transition: border-color .15s, transform .15s; }
-.lx-tile:hover { border-color: var(--fg-3); transform: translateY(-1px); }
-.lx-tile-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.lx-tile-top > .ic { color: var(--fg-3); }
-.lx-tile-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--surface); flex: none; }
-.lx-tile-ic > .ic { width: 20px; height: 20px; }
-.lx-tile-ic.lx-marks { grid-template-columns: repeat(2, 13px); gap: 4px; place-content: center; }
-.lx-tile-ic.lx-marks .hd-lg { flex: none; width: 13px; height: 13px; border-radius: 3px; box-shadow: none; font-size: 8px; }
-.lx-tile-ic.lx-marks .hd-lg img { width: 13px; height: 13px; object-fit: contain; }
-.lx-tile b { font-size: 15px; font-weight: 600; line-height: 1.3; }
-.lx-tile-sub { color: var(--fg-2); font-size: 13px; line-height: 1.45; }
+.lx-tile { appearance: none; position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 12px; min-width: 0; min-height: 176px; text-align: left; padding: 22px; border: 0; border-radius: 24px; font: inherit; cursor: pointer; transition: transform .25s cubic-bezier(.2,.9,.3,1.3), box-shadow .25s; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.lx-tile:hover { transform: translateY(-3px) rotate(-.4deg); box-shadow: 0 16px 34px rgba(0,0,0,.14); }
+.lx-tile:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
+.lx-tile-txt { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.lx-tile b { font-size: 24px; font-weight: 800; line-height: 1.05; letter-spacing: -.02em; text-wrap: balance; }
+.lx-tile-sub { font-size: 13px; line-height: 1.45; opacity: .78; max-width: 30ch; }
+.lx-go { margin-top: auto; padding-top: 10px; display: inline-flex; align-items: center; gap: 4px; font: 600 13px var(--font); }
+.lx-go .ic { transition: transform .2s; } .lx-tile:hover .lx-go .ic { transform: translateX(3px); }
+
+/* Brand Book: the cover */
+.lx-book { background: var(--bk-bg); color: var(--bk-on); }
+.lx-book::before { content: ""; position: absolute; right: -18%; top: -40%; width: 75%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, color-mix(in oklab, var(--bk-glow) 75%, transparent), transparent 68%); opacity: .55; transition: transform .5s; }
+.lx-book::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 9px; background: linear-gradient(90deg, rgba(0,0,0,.28), rgba(255,255,255,.08) 70%, transparent); }
+.lx-book:hover::before { transform: scale(1.12) translate(-4%, 4%); }
+.lx-book b { font-family: var(--bk-face); font-size: 30px; }
+.lx-kick { display: inline-flex; align-items: center; gap: 7px; font: 700 11px var(--font); letter-spacing: .07em; text-transform: uppercase; opacity: .85; }
+.lx-kick img { width: 20px; height: 20px; border-radius: 50%; object-fit: contain; background: #fff; padding: 2px; }
+.lx-cover { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; }
+.lx-aa { font: 800 64px/0.9 var(--bk-face); letter-spacing: -.04em; opacity: .9; }
+.lx-sw { display: flex; }
+.lx-sw i { width: 30px; height: 30px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px var(--bk-bg), 0 4px 10px rgba(0,0,0,.25); margin-left: -9px; transition: margin .25s cubic-bezier(.2,.9,.3,1.3), transform .25s; transform: translateY(calc(var(--i) * -2px)); }
+.lx-book:hover .lx-sw i { margin-left: 4px; transform: translateY(-4px); }
+
+/* What Brew watches: a paper board of stickers */
+.lx-watch { background: #f6f3ee radial-gradient(rgba(0,0,0,.09) 1px, transparent 1.4px) 0 0 / 14px 14px; color: #141414; }
+.lx-watch b { font-family: Georgia, 'Times New Roman', serif; }
+.lx-live { display: inline-flex; align-items: center; gap: 7px; font: 700 11px var(--font); letter-spacing: .07em; text-transform: uppercase; opacity: .7; }
+.lx-live i { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 0 rgba(34,197,94,.5); animation: lxPulse 2s infinite; }
+@keyframes lxPulse { 70% { box-shadow: 0 0 0 7px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
+.lx-stks { position: relative; z-index: 1; width: 128px; align-self: center; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 6px; }
+.lx-stk { --r: 0deg; display: grid; place-items: center; width: 50px; height: 50px; background: #fff; border-radius: 14px; box-shadow: 0 8px 18px rgba(0,0,0,.14), inset 0 0 0 1px rgba(0,0,0,.04); transform: rotate(var(--r)); transition: transform .3s cubic-bezier(.2,.9,.3,1.6); }
+.lx-stk:nth-child(1) { --r: -8deg; } .lx-stk:nth-child(2) { --r: 6deg; } .lx-stk:nth-child(3) { --r: 4deg; } .lx-stk:nth-child(4) { --r: -6deg; } .lx-stk:nth-child(5) { --r: 9deg; }
+.lx-watch:hover .lx-stk { transform: rotate(calc(var(--r) * -1)) scale(1.08); }
+.lx-watch:hover .lx-stk:nth-child(2n) { transition-delay: .05s; }
+.lx-stk .hd-lg { width: 30px; height: 30px; flex: none; border-radius: 8px; box-shadow: none; background: transparent; font-size: 15px; }
+.lx-stk .hd-lg.is-mk { background: var(--mk); }
+.lx-stk .hd-lg img { width: 28px; height: 28px; object-fit: contain; }
+.lx-stk > .ic { width: 22px; height: 22px; }
+@media (max-width: 420px) { .lx-tile { padding: 18px; min-height: 160px; } .lx-tile b { font-size: 21px; } .lx-book b { font-size: 26px; } .lx-aa { font-size: 50px; } .lx-stks { width: 104px; } .lx-stk { width: 42px; height: 42px; } .lx-stk .hd-lg, .lx-stk .hd-lg img { width: 24px; height: 24px; } }
+@media (prefers-reduced-motion: reduce) { .lx-tile, .lx-tile *, .lx-tile::before { transition: none !important; animation: none !important; } }
 
 @media (max-width: 760px) {
   .wx-cover { grid-template-columns: 1fr; min-height: 0; }
