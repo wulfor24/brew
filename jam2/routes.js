@@ -2,7 +2,7 @@
 // table (on), so every request runs as the signed-in viewer of that brand, like the rest of the service. Slow work (a picture,
 // a video) runs in the background; the board shows it as busy and the page polls GET /api/jam2/jams/:jid.
 import { askMarket } from '../market.js';
-import { createStudio, library as studioLibrary } from './studio.js';
+import { createStudio, library as studioLibrary, inStudio } from './studio.js';
 import { isBatchCard } from '../card-plan.js';
 import { createProfiles } from './profiles.js';
 import { bestSlots } from './slots.js';
@@ -83,9 +83,13 @@ export function mountJam2(d) {
       await store.put(slug, jam); note(jam, `opened from ${card ? 'a card' : 'Make'}`, who.email);
       /* only the button's own board starts now; the others are made when someone opens their tab and taps Make it (nothing is spent unseen) */
       /* words start at once (cheap); a picture or a video waits on the Studio composer, set up from the card, until the price gets a yes */
-      const bd = jam.boards[0]; if (!['static', 'video'].includes(bd.kind) || isMock() && process.env.STUDIO_AUTO === '1') runBg(t, jam, bd.id, 'first', async () => { const ctx = await ctxOf(t, jam); await maker.first(ctx, bd); }); else jam.studio = true; }
+      const bd = jam.boards[0]; if (!inStudio(bd) || isMock() && process.env.STUDIO_AUTO === '1') runBg(t, jam, bd.id, 'first', async () => { const ctx = await ctxOf(t, jam); await maker.first(ctx, bd); }); else jam.studio = true; }
     return { jam: out(jam), also: alsoFor(jam.boards[0]?.recipe) };
   }));
+  /* v1 asks this when a card's button is pressed: does it make a picture, a set or a video? Then Studio makes it (v1's own Make
+     keeps the words, messages, briefs and batches) */
+  on('POST', '/api/jam2/studio-for', wrap(async (b, t) => { const card = b.cardId ? cardOf(t, b.cardId) : null; if (!card || isBatchCard(card)) return { studio: false };
+    const r = recipe(planFor(card, String(b.cta || card.cta?.label || '').slice(0, 60))[0]?.recipe); return { studio: inStudio(r ? { kind: r.kind, recipe: r.id } : null), recipe: r?.id || null }; }));
   /* a paid render (already said yes to, at that price) or a free every-product run that a restart cut off picks up again the next
      time the jam is opened, keeping the shots already made; three tries within 3 hours, then it says so and waits for a press */
   const resumeCut = async (t, j) => { for (const bd of j.boards) { const m = j.running?.[bd.id]; if (!m || m.error || busy.get(`${j.id}:${bd.id}`)) continue;
@@ -94,7 +98,7 @@ export function mountJam2(d) {
     if (m.op === 'render') runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: m.confirmUsd, tries });
     /* a shot change resumes only on the video it was asked for (a newer take means someone moved on) */
     else if (m.op === 'reshot' && headOf(bd)?.id === m.head) runBg(t, j, bd.id, 'reshot', async () => { const r = await maker.reshot(ctx, bd, { i: m.i, ask: m.ask, region: m.region, confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { ...m, tries });
-    else if (m.op === 'studio' && m.spec) runBg(t, j, bd.id, 'studio', async () => { const take = await studio.make(ctx, bd, m.spec, m.i || 0); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); }, { ...m, tries });
+    else if (m.op === 'studio' && m.spec) runBg(t, j, bd.id, 'studio', async () => { const take = m.spec.set ? await studio.makeSet(ctx, bd, m.spec) : await studio.make(ctx, bd, m.spec, m.i || 0); take.studio.spec = specOf(m.spec); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); }, { ...m, tries });
     else if (m.op === 'all' && boardOf(j, bd.allOf)) runBg(t, j, bd.id, 'all', async () => maker.allProducts(ctx, bd, boardOf(j, bd.allOf)), { resume: true, tries });
     else m.error = 'Brew restarted while this was being made. Press it again.'; } };
   /* ---------- Brew Studio ---------- */
@@ -103,15 +107,22 @@ export function mountJam2(d) {
     const tiles = productTiles(brandOfT(t)?.catalog || []).slice(0, 60); return { defaults: studio.defaults(ctx, bd), products: tiles }; }));
   on('POST', '/api/jam2/jams/:jid/studio/plan', wrap(async (b, t, p) => { const j = await load(t, p.jid), ctx = await ctxOf(t, j); return { plan: await studio.plan(ctx, b.spec || {}) }; }));
   /* make: only with the brand's yes on the price it was shown; one board per take (the empty board the composer sat on first) */
+  /* what a Studio take keeps of its set-up, so Redo makes it again the same way */
+  const specOf = (sp) => ({ kind: sp.kind || null, style: sp.style || null, set: sp.set || null, product: sp.product || null, sizes: sp.sizes || null, seconds: sp.seconds || null, ask: sp.ask || '', count: 1 });
   on('POST', '/api/jam2/jams/:jid/studio/make', wrap(async (b, t, p) => { const j = await load(t, p.jid), ctx0 = await ctxOf(t, j), spec = b.spec || {};
     const pl = await studio.plan(ctx0, spec); if (pl.error) return { error: pl.error };
     if (!isMock() && !(+b.confirmUsd + 0.01 >= pl.usd)) return { needsConfirm: true, plan: pl };
     if (spec.product?.img) { const own = productTiles(brandOfT(t)?.catalog || []).find((x) => x.img === spec.product.img); if (!own) return { error: 'Pick a product from your catalog.' }; spec.product = { img: own.img, name: own.name || null, handle: own.handle || null }; }
+    /* a set is one board of slides: the carousel board it was opened on, else a new carousel */
+    if (pl.set) { spec.set = pl.set; let host = boardOf(j, b.bid); if (!host || (host.takes.length && !b.redo) || host.kind !== 'carousel') { if (j.boards.length >= 12) return { error: 'This jam has 12 boards. Start a new jam for more.' }; host = newBoard('ig-carousel', { label: 'Carousel', size: spec.sizes?.[0] || null, conceptRev: j.concept.rev }); j.boards.push(host); }
+      await store.put(slugOfT(t), j); runBg(t, j, host.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.makeSet(ctx, host, spec); take.studio.spec = specOf(spec); const tk = addTake(j, host, take); tk.gate = maker.gate(ctx, tk, host); }, { resume: true, spec, i: 0, confirmUsd: pl.usd });
+      note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); return { jam: out(j), plan: pl, boards: [host.id] }; }
     const recipeId = pl.kind === 'video' ? 'reel' : 'image-ad', st = studio.styleOf(spec.style), boards = [];
-    const host = boardOf(j, b.bid); if (host && !host.takes.length) boards.push(Object.assign(host, { label: tidyLabel(st?.label || host.label) }));
+    /* the empty board the composer sat on takes the first one; Redo puts its take on the same board as the next version */
+    const host = boardOf(j, b.bid); if (host && b.redo && host.takes.length) boards.push(host); else if (host && !host.takes.length) boards.push(Object.assign(host, { label: tidyLabel(st?.label || host.label) }));
     while (boards.length < pl.count && j.boards.length < 12) { const nb = newBoard(recipeId, { label: tidyLabel(`${st?.label || 'Take'} ${boards.length + 1}`), size: spec.sizes?.[0] || null, conceptRev: j.concept.rev }); j.boards.push(nb); boards.push(nb); }
     await store.put(slugOfT(t), j);
-    boards.forEach((bd, i) => runBg(t, j, bd.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); }, { resume: true, spec, i, confirmUsd: pl.per }));
+    boards.forEach((bd, i) => runBg(t, j, bd.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i); take.studio.spec = specOf(spec); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); }, { resume: true, spec, i, confirmUsd: pl.per }));
     note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); return { jam: out(j), plan: pl, boards: boards.map((x) => x.id) }; }));
   on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); await resumeCut(t, j).catch((e) => log.warn?.('[jam2] resume', e.message)); return { jam: out(j, t), also: alsoFor(j.boards[0]?.recipe) }; }));
   on('POST', '/api/jam2/jams/:jid/concept', wrap(async (b, t, p) => { const j = await load(t, p.jid); const changed = bumpConcept(j, b || {}, whoOf(t).me); await store.put(slugOfT(t), j); return { jam: out(j), changed }; }));
