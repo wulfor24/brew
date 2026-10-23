@@ -147,10 +147,16 @@ const META = {
       for (const x of rows.filter((r) => mine.has(String(r.ad_id)))) { m.spend += +x.spend || 0; m.buys += pick(x.actions, PURCHASE) || 0; const v = pick(x.action_values, PURCHASE); if (v != null) { m.value += v; m.valued = true; } }
     }
     const keep = (x) => !shared || mine.has(String(x.ad_id));
+    const adWeek = await ins({ date_preset: 'last_7d', level: 'ad', fields: 'ad_id,ad_name,campaign_id,campaign_name,frequency,spend,ctr,actions,action_values' }).catch((e) => (notes.push(`Campaigns (${m.name}): ${e.message.slice(0, 100)}`), []));
     /* the brand's winning ads over 30 days, by real return (then purchases, then spend), among ads that spent 2% or more: the
        Brand Book's best references for any new ad (their pictures are saved by connectors/index.js; the numbers stay private) */
     try {
-      const rows = (await ins({ date_preset: 'last_30d', level: 'ad', fields: 'ad_id,ad_name,spend,ctr,actions,action_values' })).filter(keep);
+      /* Meta sometimes refuses the 30-day ad report ("Service temporarily unavailable"): once more, then 14 days, then the 7-day ad rows already read */
+      const F = 'ad_id,ad_name,spend,ctr,actions,action_values', wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      let rows = await ins({ date_preset: 'last_30d', level: 'ad', fields: F }).catch(async () => { await wait(4000); return ins({ date_preset: 'last_30d', level: 'ad', fields: F }); })
+        .catch(() => ins({ date_preset: 'last_14d', level: 'ad', fields: F })).catch(() => (adWeek.length ? adWeek : null));
+      if (!rows) throw new Error('Meta didn’t answer the ad report this time');
+      rows = rows.filter(keep);
       const tot = rows.reduce((s, x) => s + (+x.spend || 0), 0), floor = Math.max(tot * 0.02, 1);
       const top = rows.map((x) => { const spend = +x.spend || 0, value = pick(x.action_values, PURCHASE), buys = pick(x.actions, PURCHASE); return { id: String(x.ad_id), name: x.ad_name || null, spend, ctr: x.ctr != null ? +(+x.ctr).toFixed(2) : null, buys, roas: value != null && spend ? +(value / spend).toFixed(2) : null }; })
         .filter((x) => x.spend >= floor).sort((p, q) => (q.roas ?? -1) - (p.roas ?? -1) || (q.buys || 0) - (p.buys || 0) || q.spend - p.spend).slice(0, 6);
@@ -162,7 +168,6 @@ const META = {
         Object.assign(x, { image: big || cr.image_url || cr.thumbnail_url || null, body: cr.body || null, title: cr.title || null, video: !!cr.video_id, cta: cr.call_to_action_type || null }); }));
       m.winners = top.filter((x) => x.image).map((x) => ({ ...x, currency: m.currency, account: m.name }));
     } catch (e) { m.winnersError = String(e.message).slice(0, 120); }
-    const adWeek = await ins({ date_preset: 'last_7d', level: 'ad', fields: 'ad_id,ad_name,campaign_id,campaign_name,frequency,spend,ctr,actions,action_values' }).catch((e) => (notes.push(`Campaigns (${m.name}): ${e.message.slice(0, 100)}`), []));
     const byCamp = new Map();
     for (const x of adWeek.filter(keep)) { const k2 = x.campaign_id || x.campaign_name, c2 = byCamp.get(k2) || { name: x.campaign_name, s: 0, v: 0, valued: false, fw: 0 };
       const s = +x.spend || 0, v = pick(x.action_values, PURCHASE); c2.s += s; if (v != null) { c2.v += v; c2.valued = true; } c2.fw += s * (+x.frequency || 0); byCamp.set(k2, c2); }
