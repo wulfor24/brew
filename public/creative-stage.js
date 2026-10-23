@@ -117,6 +117,8 @@
     if (S.error) return `<div class="j2-studio cs"><p class="j2-err">${H.esc(S.error)}</p><button class="j2-pri" data-cs-retry>Try again</button></div>`;
     if (S.making || anyBusy()) { const m = S.making; return `<div class="j2-studio cs cs-making"><p><brew-load class="spin"></brew-load><b>Making ${H.esc(m?.line || 'it')}</b>${m?.usd != null ? ` · ${usd(m.usd)}` : ''}</p><p class="cs-why">You can leave this page: it lands here and in Work when it’s ready, and Brew tells you.</p><div class="cs-acts"><button class="j2-chip" data-cs-feed>Back to the feed</button>${window.BrewGame ? '<button class="j2-chip" data-cs-game>Play while it brews</button>' : ''}</div></div>`; }
     const sl = slidesOf(ch);
+    /* Redo the set makes the set as it is now (after a drop or an add), so its price follows the slides on the stage */
+    if (sl?.length > 1 && Array.isArray(S.spec?.set) && sl.map((x) => x.style).join() !== S.spec.set.join() && !S.making) { S.spec = { ...S.spec, set: sl.map((x) => x.style) }; S.sel = Math.min(S.sel || 0, sl.length - 1); setTimeout(price, 0); }
     if (!S.open && sl?.length > 1) { const i = Math.min(S.sel || 0, sl.length - 1), cur = sl[i], st = styleById(cur.style); slidePrice(cur.style); const sp = S.slidePlan?.[cur.style];
       return `<div class="cs-line cs-set">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}${S.gallery && S.adding ? `<div class="j2-studio cs cs-addgal">${gallery()}</div>` : ''}
         <div class="cs-strip">${sl.map((x, k) => `<button class="${k === i ? 'on' : ''}" data-cs-sel="${k}" title="${H.esc(styleById(x.style)?.label || '')}"><img src="${H.esc(srcOf(x.file))}" alt=""><span>${k + 1}</span></button>`).join('')}<button class="cs-add" data-cs-addslide title="Add a slide">＋</button></div>
@@ -133,7 +135,8 @@
     if (g('[data-cs-game]')) { window.BrewGame?.open?.({ progress: () => S?.making }); return true; }
     if (g('[data-cs-open]')) { S.open = true; paint(); setTimeout(() => document.querySelector('.cs-stage .cs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); return true; }
     if (g('[data-cs-redo]')) { go(true); return true; }
-    const sel = g('[data-cs-sel]'); if (sel) { S.sel = +sel.dataset.csSel; paint(); return true; }
+    const sel = g('[data-cs-sel]'); if (sel) { S.sel = +sel.dataset.csSel; paint(); /* the frame swipes to the slide picked */
+      requestAnimationFrame(() => { const sw = document.querySelector('.cs-frame .as-swipe'), it = sw?.children?.[S.sel]; if (sw && it) sw.scrollTo({ left: it.offsetLeft - sw.offsetLeft, behavior: 'smooth' }); }); return true; }
     if (g('[data-cs-addslide]')) { S.adding = true; S.gallery = true; paint(); return true; }
     const so = g('[data-cs-slide]'); if (so) { const sl = slidesOf(H.ch?.() || {}) || []; const i = Math.min(S.sel || 0, sl.length - 1); slideOp(so.dataset.csSlide, i, sl[i]?.style); return true; }
     if (g('[data-cs-go]')) { go(false); return true; }

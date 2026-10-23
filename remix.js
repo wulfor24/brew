@@ -687,7 +687,7 @@ export function createRemix(o) {
     const head = headOf(t, ch), sv = head?.studio || null, card = t.cards.get(ch.cardId) || {}, cat = catalogOf(t) || [];
     const name = sv?.product?.name || null, pe = name ? cat.find((x) => x.t === name) || cat.find((x) => sv.product.img && (x.img === sv.product.img || (x.imgs || []).includes(sv.product.img))) : null;
     const cp = (() => { try { return cardProduct(card, cat); } catch { return null; } })();
-    return { made: !!sv, ...readyOf({ family: ch.family, action: ch.action, pkg: ch.pkg, card, product: name ? { name, url: pe?.url || null } : cp ? { name: cp.t, url: cp.url || null } : null, cardProduct: cp ? { name: cp.t } : null, catalog: cat, brand: BN(), host: BH(), source: brandSource(t, card), words: sv?.words || [], wordsRead: Array.isArray(sv?.words), style: sv ? { id: sv.style, label: sv.label } : null, version: head?.n || 1 }) };
+    return { made: !!sv, ...readyOf({ family: ch.family, action: ch.action, pkg: ch.pkg, card, product: name ? { name, url: pe?.url || null } : cp ? { name: cp.t, url: cp.url || null } : null, cardProduct: cp ? { name: cp.t } : null, catalog: cat, brand: BN(), host: BH(), source: brandSource(t, card), words: sv?.words || [], wordsRead: Array.isArray(sv?.words), style: sv ? (sv.slides?.length > 1 ? { id: 'set', label: `${sv.slides.length} ${ch.family === 'meta_ad' ? 'carousel cards' : ch.family === 'listing' ? 'listing images' : 'slides'}`, look: `${sv.slides.length} ${ch.family === 'meta_ad' ? 'carousel cards' : ch.family === 'listing' ? 'listing images' : 'slides'}` } : { id: sv.style, label: sv.label }) : null, version: head?.n || 1 }) };
   } catch (e) { log.warn('[publish]', e.message); return null; } };
   const pubChange = (t, ch) => {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
@@ -2068,7 +2068,7 @@ export function createRemix(o) {
      set (a listing's photo set), or a film with its poster. The words stay; History says what Studio made and what it cost */
   const tidyL = (x, n) => String(x ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
   const landStudio = (t, chId, take) => { const ch = C(t, chId); if (!ch || !take?.file) return null; ensurePkg(t, ch);
-    const st = take.studio || {}, label = cleanLabel(st.label || 'Studio') || 'Studio', slides = (take.slides || []).filter((x) => x?.file);
+    const slides = (take.slides || []).filter((x) => x?.file), st = take.studio || {}, label = slides.length > 1 ? `${slides.every((x) => /^aplus-/.test(x.style || '')) ? 'A+' : ch.family === 'listing' ? 'Listing images' : 'Carousel'} · ${slides.length} ${ch.family === 'listing' && !slides.every((x) => /^aplus-/.test(x.style || '')) ? 'images' : slides.every((x) => /^aplus-/.test(x.style || '')) ? 'modules' : 'slides'}` : cleanLabel(st.label || 'Studio') || 'Studio';
     /* a set lands whole: an A+ set as its modules (header, tiles, wide image, each with its own words), a listing as its photo
        set, a carousel or stories set as its cards or slides, the rows following the slides one for one */
     const aplus = slides.length && slides.every((x) => /^aplus-/.test(x.style || '')), wd = (x) => x.words || {};
