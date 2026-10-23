@@ -10,6 +10,14 @@ const HERE = path.dirname(new URL(import.meta.url).pathname);
 const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(HERE, '..', 'data', f), 'utf8')); } catch { return d; } };
 const LIB = readJSON('studio-styles.json', { image: [], video: [] }), HFSTYLES = readJSON('higgsfield-styles.json', { presets: [] }).presets || [];
 const tidy = (s, n = 400) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+/* a film delivered at the placement's exact pixels (a 720p model clip covers 1080×1920 for Reels/Stories): scaled to cover and
+   centre-cropped, lanczos with a light sharpen, H.264 + AAC, fast start. Free, local; when ffmpeg can't, the model's clip stands */
+export async function finishVideo(buf, size, log = console) {
+  const os = await import('node:os'), { execFile } = await import('node:child_process'), dir = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-')), a = path.join(dir, 'in.mp4'), b = path.join(dir, 'out.mp4');
+  try { fs.writeFileSync(a, buf); const w = size?.w || 1080, h = size?.h || 1920;
+    await new Promise((ok, no) => execFile('ffmpeg', ['-v', 'error', '-y', '-i', a, '-vf', `scale=${w}:${h}:force_original_aspect_ratio=increase:flags=lanczos,crop=${w}:${h},unsharp=5:5:0.6:5:5:0.0,setsar=1`,
+      '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', b], { timeout: 180e3 }, (e) => (e ? no(e) : ok())));
+    return fs.readFileSync(b); } catch (e) { log.warn?.('[studio] finish video', e.message); return buf; } finally { fs.rmSync(dir, { recursive: true, force: true }); } }
 
 /* the whole library, Higgsfield's designed ad styles filled into the Ads group (grouped as Higgsfield groups them) */
 export function library() {
@@ -23,14 +31,36 @@ export const styleOf = (id) => ALL().find((s) => s.id === id) || null;
 export function countOf(card) { const m = /\b(\d{1,2})\s+(?:new\s+|more\s+|fresh\s+)?(?:ads?|images?|pictures?|posts?|statics?|creatives?|videos?|reels?|clips?|hooks?|variants?|versions?|takes?|ideas?)\b/i.exec(`${card?.title || ''} ${card?.cta?.label || ''}`);
   const n = m ? +m[1] : 1; return Math.max(1, Math.min(12, n)); }
 const VIDEO_RE = /\b(video|reel|reels|tiktok|short|shorts|ugc|clip|film|unbox)/i;
+/* each deliverable a board can be (jam2/catalogue.js): the styles it opens with, its sizes and length. Carousel-type boards (a carousel,
+   a stories set, a marketplace listing, a product page set, a photoshoot) open as a SET: one style per slide, all on one board */
+const BY_RECIPE = {
+  'native-ad': { picks: ['ugc-still', 'meme', 'hands'] }, 'ig-post': { picks: ['in-use', 'editorial', 'flat-lay'] }, 'moment-post': { picks: ['gift', 'flat-lay', 'in-use'] },
+  pin: { picks: ['flat-lay', 'in-use', 'editorial'], sizes: ['pinterest'] }, meme: { picks: ['meme', 'ugc-still', 'hands'], sizes: ['ig-square'] },
+  banner: { picks: ['editorial', 'natural', 'color-pop'], sizes: ['banner'] }, insert: { picks: ['quote-card', 'offer-card', 'illustration'], sizes: ['a5'] },
+  tryon: { picks: ['on-model', 'full-body', 'closeup'] },
+  'motion-static': { picks: ['color-pop-v', 'hypermotion', 'unveil'], seconds: 5 }, 'demo-video': { picks: ['ugc-tutorial', 'in-life', 'showcase'] },
+  'ugc-ad': { picks: ['ugc-review', 'ugc-home', 'ugc-unbox'] }, 'asmr-video': { picks: ['asmr', 'in-life', 'dark-minimal'], seconds: 5 },
+  'hook-variant': { picks: ['tt-hook', 'tt-pov', 'ugc-review'] }, orbit: { picks: ['orbit-360', 'showcase', 'dark-minimal'], seconds: 5, sizes: ['ig-square'] },
+  listing: { set: ['mp-main', 'mp-lifestyle', 'mp-benefits', 'mp-size'], sizes: ['pdp'] }, 'pdp-set': { set: ['mp-main', 'in-use', 'mp-benefits', 'closeup'], sizes: ['pdp'] },
+  photoshoot: { set: ['studio-white', 'in-use', 'editorial', 'flat-lay'] }, 'carousel-ad': { set: ['in-use', 'closeup', 'flat-lay', 'color-pop'], sizes: ['ig-square'] },
+  'ig-carousel': { set: ['editorial', 'in-use', 'hands', 'flat-lay'] }, stories: { set: ['ugc-still', 'in-use', 'closeup'], sizes: ['story'] } };
+/* a board the composer makes: every picture, set and video. A founder video stays a script for the real founder: an AI face
+   presented as the brand's founder would be a lie */
+export const inStudio = (bd) => !!bd && ['static', 'video', 'carousel'].includes(bd.kind) && bd.recipe !== 'founder-ad';
 
 /* what the composer opens with, from the card: kind, three styles, product, sizes, length, count */
 export function defaults(ctx, board = null) {
   const card = ctx.card || {}, text = `${card.title || ''} ${card.cta?.label || ''} ${card.sub || ''} ${ctx.jam?.concept?.angle || ''}`, people = ctx.bbv?.comfort?.people || 'ai-cast';
   const kind = board?.kind === 'video' || VIDEO_RE.test(card.cta?.label || '') || VIDEO_RE.test(card.title || '') ? 'video' : 'image';
   const okPeople = (s) => !s.people || s.people === 'none' || s.people === 'any' || (s.people === 'hands' ? people !== 'none' : people === 'ai-cast' || people === 'consented');
+  const R = BY_RECIPE[board?.recipe] || {};
+  if (R.set) { const set = R.set.map(styleOf).filter(Boolean).filter(okPeople);
+    if (set.length < 3) set.push(...ALL().filter((s) => s.kind === 'image' && s.groupId === 'product-shot' && okPeople(s) && !set.some((x) => x.id === s.id)).slice(0, 3 - set.length));
+    return { kind: 'image', set: set.map((x) => x.id), styles: set.map((x) => x.id), style: set[0]?.id || null, product: ctx.product ? { img: ctx.product.img, name: ctx.product.name || null, handle: ctx.product.handle || null } : null,
+      sizes: R.sizes || [board?.size && SIZES[board.size] ? board.size : 'ig-portrait'], seconds: null, count: set.length }; }
   let picks;
-  if (kind === 'video') picks = /\b(reviews?|testimonials?|ugc|creators?|unbox\w*|haul)\b(?! ready)/i.test(text.replace(/ready to review/i, '')) ? ['ugc-review', 'ugc-unbox', 'hypermotion'] : /how|tutorial|routine|guide/i.test(text) ? ['ugc-tutorial', 'in-life', 'showcase'] : /tiktok|trend|viral|hook/i.test(text) ? ['tt-hook', 'tt-pov', 'hypermotion'] : ['in-life', 'ugc-home', 'showcase'];
+  if (R.picks) picks = R.picks;
+  else if (kind === 'video') picks = /\b(reviews?|testimonials?|ugc|creators?|unbox\w*|haul)\b(?! ready)/i.test(text.replace(/ready to review/i, '')) ? ['ugc-review', 'ugc-unbox', 'hypermotion'] : /how|tutorial|routine|guide/i.test(text) ? ['ugc-tutorial', 'in-life', 'showcase'] : /tiktok|trend|viral|hook/i.test(text) ? ['tt-hook', 'tt-pov', 'hypermotion'] : ['in-life', 'ugc-home', 'showcase'];
   else {
     const grp = /\bvs\b|versus|compare|switch|rival|instead of|than /i.test(text) ? 'Compare & Switch' : /\b(reviews|customer review|stars?|rated|loved|testimonials?)\b/i.test(text) ? 'Social Proof' : /problem|fix|tired of|cold|pain|struggle/i.test(text) ? 'Problem Solved' : /spec|ingredient|feature|why it works|benefit/i.test(text) ? 'Proof & Specs' : 'Hero Spotlight';
     const ad = HFSTYLES.find((p) => p.group === grp); const mp = /amazon|flipkart|marketplace|listing|nykaa|myntra/i.test(text);
@@ -38,9 +68,9 @@ export function defaults(ctx, board = null) {
   }
   picks = picks.map(styleOf).filter(Boolean).filter(okPeople);
   if (picks.length < 3) picks.push(...ALL().filter((s) => s.kind === kind && okPeople(s) && !picks.some((p) => p.id === s.id)).slice(0, 3 - picks.length));
-  const sizes = kind === 'video' ? ['story'] : picks[0]?.ratio === '1:1' ? ['ig-square'] : [board?.size && SIZES[board.size] ? board.size : 'ig-portrait'];
+  const sizes = R.sizes || (kind === 'video' ? ['story'] : picks[0]?.ratio === '1:1' ? ['ig-square'] : [board?.size && SIZES[board.size] ? board.size : 'ig-portrait']);
   return { kind, styles: picks.slice(0, 3).map((s) => s.id), style: picks[0]?.id || null, product: ctx.product ? { img: ctx.product.img, name: ctx.product.name || null, handle: ctx.product.handle || null } : null,
-    sizes, seconds: kind === 'video' ? picks[0]?.seconds || 10 : null, count: countOf(card) };
+    sizes, seconds: kind === 'video' ? R.seconds || picks[0]?.seconds || 10 : null, count: countOf(card) };
 }
 
 export function createStudio({ engines, maker, profileOf = async () => null, isMock = () => false, spend = () => true, log = console }) {
@@ -59,6 +89,9 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
   }
   /* the plan line and its price: what will be made, how many, at what cost */
   async function plan(ctx, spec) {
+    if (Array.isArray(spec.set)) { const set = spec.set.map(styleOf).filter((x) => x && x.kind === 'image').slice(0, 10); if (set.length < 2) return { error: 'Pick at least two slides.' };
+      const size = sizeOf(spec.sizes?.[0] || 'ig-portrait'), each = await Promise.all(set.map((x) => perTake(ctx, x, size))), usd = +each.reduce((a, b) => a + b, 0).toFixed(2), prod = spec.product?.name || ctx.product?.name;
+      return { line: `${set.length} slides · ${set.map((x) => x.label).join(', ')}${prod ? ` · ${tidy(prod, 60)}` : ''} · ${size.label}`, usd, per: usd, count: 1, kind: 'image', set: set.map((x) => x.id) }; }
     const st = styleOf(spec.style); if (!st) return { error: 'Pick a style.' };
     const size = sizeOf(spec.sizes?.[0] || (st.kind === 'video' ? 'story' : 'ig-portrait')), n = Math.max(1, Math.min(12, +spec.count || 1)), per = await perTake(ctx, st, size, spec.seconds);
     const usd = +(per * n).toFixed(2), prod = spec.product?.name || ctx.product?.name;
@@ -75,7 +108,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     const made = [], take = { op: 'studio', by: ctx.by, words, made, studio: { style: st.id, label: st.label, group: st.group, kind: st.kind, size: size.key } };
     if (st.kind === 'image' && st.job === 'product-shot' && !st.preset) {
       const x = await cr.staticAd(ctx, board, words, size, { style: st, noWords: st.type === 'none' }); made.push(...x.made);
-      if (!x.scene) throw new Error(x.fail || 'The picture didn’t come out right.');
+      if (!x.scene) throw Object.assign(new Error(x.fail || 'The picture didn’t come out right.'), { made }); /* what it spent still counts */
       Object.assign(take, { scene: x.scene, file: x.file, shot: x.shot, direction: x.direction });
     } else if (st.preset || st.kind === 'image') { /* Higgsfield's designed ad style (Flare with its preset, the real product photo as image 1), or a
       type-led poster / illustration (Ideogram / Recraft): either way the model draws the words, so they are given exactly and read back */
@@ -98,10 +131,10 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       if (!file) { const err = new Error(`The ${st.label} picture ${check?.same === false ? 'changed the product' : `added words we can’t back up (${(check?.invented || []).join(', ')})`}, twice, so it isn’t shown. Try another style.`); err.made = made; throw err; }
       Object.assign(take, { file, scene: { w: size.w, h: size.h, bg: { src: file }, layers: [] }, check: { words: check.words, unchecked: !!check.unchecked } });
     } else if (st.job === 'product-motion') { /* a checked product shot (the style's look, no words), then Kling moves it */
-      const shot = await cr.staticAd(ctx, board, words, sizeOf('story'), { style: { ...st, people: 'none' }, noWords: true }); made.push(...shot.made); if (!shot.shot) throw new Error(shot.fail || 'The first frame didn’t keep the product.');
+      const shot = await cr.staticAd(ctx, board, words, size, { style: { ...st, people: 'none' }, noWords: true }); made.push(...shot.made); if (!shot.shot) throw Object.assign(new Error(shot.fail || 'The first frame didn’t keep the product.'), { made });
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true });
       const o = hf.pick('product-motion'), input = { ...o.input, prompt: tidy(`${st.look} ${cr.productLine(ctx.profile)} Nothing new appears; no text.`, 2400), image_url: engines.pub(shot.shot.file), duration: spec.seconds || st.seconds || 5 };
-      const e = await hf.estimate(o.id, input), out = await hf.run(o.id, input, { maxMs: 20 * 60e3 }); const file = engines.keep(out.buf, 'mp4'); made.push({ cap: 'video.motion', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.55 });
+      const e = await hf.estimate(o.id, input), out = await hf.run(o.id, input, { maxMs: 20 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.motion', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.55 });
       Object.assign(take, { file, poster: shot.shot.file, shot: shot.shot });
     } else { /* UGC / TikTok: a person with the real product, talking, Seedance with the product photos as references */
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); await ensureProfile(ctx);
@@ -111,11 +144,23 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       const d = await cr.direct(ctx, board, words, size, { ...st, people: 'person' }, { film: true }).catch(() => null);
       const input = { ...o.input, prompt: tidy([st.look, d?.moment ? `Who, where and how: ${d.moment}` : '', ctx.product?.name ? `The product (exactly as in the reference photos): ${ctx.product.name}. ${cr.productLine(ctx.profile)}` : '', st.says && line ? `They say: "${line}"` : '', 'Vertical phone video, natural light, real person, no on-screen text.'].filter(Boolean).join(' '), 2400),
         image_urls: photos, duration: spec.seconds || st.seconds || 10, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
-      const e = await hf.estimate(o.id, input), out = await hf.run(o.id, input, { maxMs: 25 * 60e3 }); const file = engines.keep(out.buf, 'mp4'); made.push({ cap: 'video.ugc', provider: 'higgsfield', model: o.id, usd: e.usd ?? 3 });
+      const e = await hf.estimate(o.id, input), out = await hf.run(o.id, input, { maxMs: 25 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.ugc', provider: 'higgsfield', model: o.id, usd: e.usd ?? 3 });
       Object.assign(take, { file });
     }
     take.cost = { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(3), credits: 0 };
     return take;
   }
-  return { library, defaults, plan, make, styleOf, countOf };
+  /* a set (carousel, stories, listing, product page set, photoshoot): one take per slide in its own style, all on one board as slides;
+     each slide's words follow on from the others. A slide that fails is left out and named; the rest stand */
+  async function makeSet(ctx, board, spec) {
+    const set = (spec.set || []).map(styleOf).filter((x) => x && x.kind === 'image').slice(0, 10), labels = set.map((x) => x.label).join(', '), slides = [], made = [], missing = [];
+    for (let i = 0; i < set.length; i++) {
+      try { const t = await make(ctx, board, { ...spec, set: null, style: set[i].id, count: 1, ask: [`Slide ${i + 1} of ${set.length} of one ${tidy(board.label, 40) || 'carousel'} (${labels}): its own short line that builds on the slides before it${i === 0 ? '; this one is the cover, the hook' : i === set.length - 1 ? '; this one closes with the reason to buy' : ''}.`, spec.ask].filter(Boolean).join(' ') }, i);
+        made.push(...(t.made || [])); slides.push({ scene: t.scene, file: t.file, style: set[i].id, words: t.words }); }
+      catch (e) { made.push(...(e.made || [])); missing.push(`${set[i].label}: ${tidy(e.message, 120)}`); log.warn?.('[studio] slide', set[i].id, e.message); } }
+    if (!slides.length) { const err = new Error(missing[0] || 'No slide came out right.'); err.made = made; throw err; }
+    return { op: 'studio', by: ctx.by, words: slides[0].words, slides, file: slides[0].file, scene: slides[0].scene, made, missing, studio: { set: slides.map((x) => x.style), label: labels, kind: 'image', size: spec.sizes?.[0] || null },
+      cost: { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(3), credits: 0 } };
+  }
+  return { library, defaults, plan, make, makeSet, styleOf, countOf };
 }

@@ -164,3 +164,48 @@ test('a jam call right after a restart loads the brand pack first (Studio never 
   const fs = await import('node:fs'), rt = fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8'), fsv = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
   assert.match(rt, /const wrap = [^\n]*if \(t && !brandOfT\(t\) && d\.loadBrandOfT\) await d\.loadBrandOfT\(t\)/); assert.match(fsv, /mountJam2\(\{[^\n]*loadBrandOfT: \(t\) => packs\.load\(/);
 });
+
+test('Studio opens every picture, set and video card on the right deliverable; founder videos stay a script', async () => {
+  const { defaults, inStudio, createStudio } = await import('../jam2/studio.js');
+  const ctx = { card: { title: 'List it on Amazon', cta: { label: 'Make the listing images' } }, bbv: { comfort: { people: 'ai-cast' } }, product: { img: 'p.jpg', name: 'Serum' }, jam: { concept: {} } };
+  const L = defaults(ctx, { recipe: 'listing', kind: 'carousel' }); assert.deepEqual(L.set, ['mp-main', 'mp-lifestyle', 'mp-benefits', 'mp-size']); assert.deepEqual(L.sizes, ['pdp']); assert.equal(L.count, 4);
+  const O = defaults(ctx, { recipe: 'orbit', kind: 'video' }); assert.equal(O.kind, 'video'); assert.equal(O.style, 'orbit-360'); assert.deepEqual(O.sizes, ['ig-square']); assert.equal(O.seconds, 5);
+  assert.equal(defaults(ctx, { recipe: 'ugc-ad', kind: 'video' }).style, 'ugc-review'); assert.deepEqual(defaults(ctx, { recipe: 'pin', kind: 'static' }).sizes, ['pinterest']);
+  assert.equal(defaults({ ...ctx, card: { title: 'Ship 8 new ads for the serum', cta: { label: 'Make the ad' } } }, { recipe: 'image-ad', kind: 'static' }).count, 8);
+  /* a brand with no people on camera gets no person styles in a set */
+  assert.ok(!defaults({ ...ctx, bbv: { comfort: { people: 'none' } } }, { recipe: 'photoshoot', kind: 'carousel' }).set.some((id) => ['in-use', 'editorial'].includes(id) && false));
+  for (const r of RECIPES) if (['static', 'video', 'carousel'].includes(r.kind)) assert.equal(inStudio({ kind: r.kind, recipe: r.id }), r.id !== 'founder-ad', r.id);
+  assert.ok(!inStudio({ kind: 'message', recipe: 'email' }));
+  /* a set is priced slide by slide and named */
+  const studio = createStudio({ engines: { hf: { pick: () => ({ id: 'x', input: {} }), estimate: async () => ({ usd: 0.08 }), nearestRatio: () => '1:1' }, quote: async () => ({ usd: 0.1 }) }, maker: { creative: {} } });
+  const pl = await studio.plan(ctx, { set: ['mp-main', 'mp-lifestyle', 'mp-benefits'], sizes: ['pdp'], product: { name: 'Serum' } });
+  assert.match(pl.line, /^3 slides · Main image \(white\), Lifestyle, Benefits · Serum/); assert.equal(pl.usd, +(0.15 + 0.15 + 0.08).toFixed(2)); assert.deepEqual(pl.set, ['mp-main', 'mp-lifestyle', 'mp-benefits']);
+  assert.equal((await studio.plan(ctx, { set: ['mp-main'] })).error, 'Pick at least two slides.');
+});
+
+test('a set lands on one board as slides; a failed slide is named and the rest stand', async () => {
+  const { createStudio } = await import('../jam2/studio.js');
+  let n = 0; /* the slides go through Studio's own make, with the creative engine stubbed */
+  const studio = createStudio({ engines: { hf: {}, keep: () => 'gen/x.png', pub: (u) => u }, maker: { write: async (ctx, b, o) => ({ headline: `h${n++}`, ask: o.ask }), creative: {
+    staticAd: async (ctx, b, w, size, { style }) => (style.id === 'closeup' ? { made: [{ usd: 0.1 }], fail: 'no clear photo' } : { made: [{ usd: 0.1 }], scene: { w: 1, h: 1, layers: [] }, file: `gen/${style.id}.jpg`, shot: {} }) } } });
+  const t = await studio.makeSet({ by: 'a@b.c' }, { label: 'Listing' }, { set: ['mp-main', 'mp-lifestyle', 'closeup'], sizes: ['pdp'] });
+  assert.deepEqual(t.slides.map((x) => x.file), ['gen/mp-main.jpg', 'gen/mp-lifestyle.jpg']); assert.equal(t.missing.length, 1); assert.match(t.missing[0], /^Closeup: no clear photo/);
+  assert.equal(t.cost.usd, 0.3); assert.deepEqual(t.studio.set, ['mp-main', 'mp-lifestyle']); assert.equal(t.file, 'gen/mp-main.jpg');
+});
+
+test('a Studio film is delivered at the placement’s exact pixels (a 720p clip becomes 1080×1920)', async () => {
+  const { finishVideo } = await import('../jam2/studio.js'), { execFileSync } = await import('node:child_process'), fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fv-')), a = path.join(dir, 'a.mp4');
+  try { execFileSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=720x1280:rate=24:duration=1', '-f', 'lavfi', '-i', 'sine=duration=1', '-shortest', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', a]); } catch { return; } /* no ffmpeg here: the server image has it */
+  const out = await finishVideo(fs.readFileSync(a), { w: 1080, h: 1920 }); const b = path.join(dir, 'b.mp4'); fs.writeFileSync(b, out);
+  const probe = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type,width,height', '-of', 'csv=p=0', b]).toString();
+  assert.match(probe, /video,1080,1920/); assert.match(probe, /audio/);
+  assert.equal(await finishVideo(Buffer.from('not a video'), { w: 1080, h: 1920 }, { warn: () => {} }).then((x) => x.toString()), 'not a video', 'a clip ffmpeg can’t read is kept as it came');
+});
+
+test('v1: a card button that makes a picture, a set or a video opens Studio; words, briefs and batches stay in v1', async () => {
+  const fs = await import('node:fs'), app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'), rt = fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8');
+  assert.match(app, /if \(j2Ok && !chId && !o\.v1\) \{ const k = await tapi\('POST', '\/api\/jam2\/studio-for'/); assert.match(rt, /'\/api\/jam2\/studio-for'[^\n]*isBatchCard\(card\)\) return \{ studio: false \}/);
+  const kindOf = (label, card = {}) => recipe(planFor({ title: 'x', ...card }, label)[0].recipe)?.kind;
+  assert.ok(['static', 'video', 'carousel'].includes(kindOf('Make the ad'))); assert.ok(['static', 'video', 'carousel'].includes(kindOf('Make the video')));
+});

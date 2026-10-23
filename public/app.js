@@ -4521,7 +4521,11 @@
   };
   const jamWait = () => { $('.jam-wait')?.remove(); document.body.insertAdjacentHTML('beforeend', `<div class="jam-wait" role="status" aria-live="polite"><p><brew-load class="spin"></brew-load>Opening the jam…</p></div>`); return $('.jam-wait'); };
   const openRemix = async (p, chId, o = {}) => {
-    if (window.Jam2?.on() && !String(p?.id || '').startsWith('jam-') && !/^(open (the )?(report|moves|scoreboard)|see what changed|run monday decisions|see it all)/i.test(o.make || cardOf(p).cta?.label || '')) { closeDetail(true); return window.Jam2.open(p, o.make || cardOf(p).cta?.label || '', tapi); } /* Jam v2 (?v=2): the card's button opens the new jam; v1 is untouched */
+    const j2Label = o.make || cardOf(p).cta?.label || '', j2Ok = window.Jam2 && !String(p?.id || '').startsWith('jam-') && !/^(open (the )?(report|moves|scoreboard)|see what changed|run monday decisions|see it all)/i.test(j2Label);
+    if (j2Ok && window.Jam2.on()) { closeDetail(true); return window.Jam2.open(p, j2Label, tapi); } /* Jam v2 (?v=2): the card's button opens the new jam */
+    /* v1: a button that makes a picture, a set or a video opens Brew Studio (set up from the card, priced before anything is made);
+       words, messages, briefs and batch cards stay in v1's own jam */
+    if (j2Ok && !chId && !o.v1) { const k = await tapi('POST', '/api/jam2/studio-for', { cardId: p.id, cta: j2Label }).catch(() => null); if (k?.studio) { closeDetail(true); return window.Jam2.open(p, j2Label, tapi); } }
     // Remix is the jam now: versions and quick turns live on the jam's canvas
     /* the jam page is the studio: one widget on a stage, Chat · Adjust · Details · History, versions. It works on the
        card's own package (made once per jam); a card with no package (a pure decision) keeps the canvas jam */
