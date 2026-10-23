@@ -31,26 +31,26 @@
   ],
   "video": [
     { "id": "ugc", "label": "UGC", "styles": [
-      { "id": "ugc-review", "label": "Review", "job": "ugc-video", "seconds": 10, "look": "A real customer talks to their phone camera about why they love the product, holding it up, natural home light, honest and warm.", "says": true},
-      { "id": "ugc-home", "label": "At home", "job": "ugc-video", "seconds": 10, "look": "Someone at home uses the product in their routine, talking casually to camera.", "says": true},
-      { "id": "ugc-unbox", "label": "Unboxing", "job": "ugc-video", "seconds": 10, "look": "Someone opens the delivery box and reacts to the product, phone filmed, real excitement.", "says": true},
-      { "id": "ugc-shopping", "label": "Shopping", "job": "ugc-video", "seconds": 10, "look": "Someone shows the product they just bought, walking and talking to camera.", "says": true},
-      { "id": "ugc-tutorial", "label": "How to", "job": "ugc-video", "seconds": 12, "look": "Someone shows how to use the product step by step, talking to camera.", "says": true},
-      { "id": "ugc-tryon", "label": "Try-on", "job": "ugc-video", "seconds": 10, "look": "Someone tries the product on in front of a mirror and reacts, phone filmed.", "says": true}
+      { "id": "ugc-review", "label": "Review", "people": "person", "job": "ugc-video", "seconds": 10, "look": "A real customer talks to their phone camera about why they love the product, holding it up, natural home light, honest and warm.", "says": true},
+      { "id": "ugc-home", "label": "At home", "people": "person", "job": "ugc-video", "seconds": 10, "look": "Someone at home uses the product in their routine, talking casually to camera.", "says": true},
+      { "id": "ugc-unbox", "label": "Unboxing", "people": "person", "job": "ugc-video", "seconds": 10, "look": "Someone opens the delivery box and reacts to the product, phone filmed, real excitement.", "says": true},
+      { "id": "ugc-shopping", "label": "Shopping", "people": "person", "job": "ugc-video", "seconds": 10, "look": "Someone shows the product they just bought, walking and talking to camera.", "says": true},
+      { "id": "ugc-tutorial", "label": "How to", "people": "person", "job": "ugc-video", "seconds": 12, "look": "Someone shows how to use the product step by step, talking to camera.", "says": true},
+      { "id": "ugc-tryon", "label": "Try-on", "people": "person", "job": "ugc-video", "seconds": 10, "look": "Someone tries the product on in front of a mirror and reacts, phone filmed.", "says": true}
     ]},
     { "id": "motion", "label": "Motion", "styles": [
-      { "id": "hypermotion", "label": "Hypermotion", "job": "product-motion", "seconds": 5, "look": "A fast, energetic camera move around the product with dynamic light streaks; the product stays exactly as it is." },
-      { "id": "showcase", "label": "Product showcase", "job": "product-motion", "seconds": 5, "look": "A slow, premium turn around the product on a plinth, soft moving light, dark elegant backdrop." },
-      { "id": "color-pop-v", "label": "Color pop", "job": "product-motion", "seconds": 5, "look": "The product on a bold colour backdrop with playful bounces and a crisp shadow." },
-      { "id": "in-life", "label": "In life", "job": "product-motion", "seconds": 5, "look": "Gentle natural motion in a real setting where the product is used: steam, light, fabric moving." },
-      { "id": "dark-minimal", "label": "Dark minimal", "job": "product-motion", "seconds": 5, "look": "A minimal dark scene, a single moving light reveals the product." },
-      { "id": "orbit-360", "label": "360° turn", "job": "product-motion", "allSides": true, "seconds": 5, "look": "The product turns a full slow 360 degrees on a turntable, even studio light, a clean plain backdrop; every side of the product stays exactly as it is." },
-      { "id": "asmr", "label": "Texture / ASMR", "job": "product-motion", "seconds": 5, "look": "An extreme macro close-up of the product's texture and surface in slow motion, soft raking light, tactile and calm." },
-      { "id": "unveil", "label": "Unveil", "job": "product-motion", "seconds": 5, "look": "A soft fabric or shadow slides away to reveal the product, slow and premium, one moving light." }
+      { "id": "hypermotion", "label": "Hypermotion", "people": "none", "job": "product-motion", "seconds": 5, "look": "A fast, energetic camera move around the product with dynamic light streaks; the product stays exactly as it is." },
+      { "id": "showcase", "label": "Product showcase", "people": "none", "job": "product-motion", "seconds": 5, "look": "A slow, premium turn around the product on a plinth, soft moving light, dark elegant backdrop." },
+      { "id": "color-pop-v", "label": "Color pop", "people": "none", "job": "product-motion", "seconds": 5, "look": "The product on a bold colour backdrop with playful bounces and a crisp shadow." },
+      { "id": "in-life", "label": "In life", "people": "any", "job": "product-motion", "seconds": 5, "look": "Gentle natural motion in a real setting where the product is used: steam, light, fabric moving." },
+      { "id": "dark-minimal", "label": "Dark minimal", "people": "none", "job": "product-motion", "seconds": 5, "look": "A minimal dark scene, a single moving light reveals the product." },
+      { "id": "orbit-360", "label": "360° turn", "people": "none", "job": "product-motion", "allSides": true, "seconds": 5, "look": "The product turns a full slow 360 degrees on a turntable, even studio light, a clean plain backdrop; every side of the product stays exactly as it is." },
+      { "id": "asmr", "label": "Texture / ASMR", "people": "none", "job": "product-motion", "seconds": 5, "look": "An extreme macro close-up of the product's texture and surface in slow motion, soft raking light, tactile and calm." },
+      { "id": "unveil", "label": "Unveil", "people": "none", "job": "product-motion", "seconds": 5, "look": "A soft fabric or shadow slides away to reveal the product, slow and premium, one moving light." }
     ]},
     { "id": "tiktok", "label": "TikTok", "styles": [
-      { "id": "tt-hook", "label": "Hook + demo", "job": "ugc-video", "seconds": 12, "look": "A TikTok: a strong first-second hook to camera, then a quick demo of the product, vertical, fast cuts, natural sound.", "says": true},
-      { "id": "tt-pov", "label": "POV", "job": "ugc-video", "seconds": 10, "look": "A POV TikTok showing the product in a relatable moment, phone filmed, natural sound.", "says": true}
+      { "id": "tt-hook", "label": "Hook + demo", "people": "person", "job": "ugc-video", "seconds": 12, "look": "A TikTok: a strong first-second hook to camera, then a quick demo of the product, vertical, fast cuts, natural sound.", "says": true},
+      { "id": "tt-pov", "label": "POV", "people": "person", "job": "ugc-video", "seconds": 10, "look": "A POV TikTok showing the product in a relatable moment, phone filmed, natural sound.", "says": true}
     ]}
   ]
 }

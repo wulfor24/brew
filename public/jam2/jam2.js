@@ -39,6 +39,7 @@ const say = (from, t, sel = null) => { const s0 = S, jid = S.jam.id; return api(
 /* one change on the current board: the reply carries the jam; slow ones come back through the poll */
 async function op(body, done = '', bid = null) {
   const b = (bid && S.jam.boards.find((x) => x.id === bid)) || board(); if (!b || S.working) return; const s0 = S, jid = S.jam.id; S.working = true; S.pend = null; S.more = false; render();
+  if (S.yesUsd != null && body.confirmUsd == null) body = { ...body, confirmUsd: S.yesUsd }; S.yesUsd = null;
   const r = await api('POST', `/api/jam2/jams/${jid}/boards/${b.id}/op`, body); if (!live(s0, jid)) return; S.working = false;
   if (r?.jam) S.jam = r.jam;
   /* a shot in another frame is the same photo extended: priced, so it asks first, then the size follows */
@@ -61,6 +62,8 @@ function patchLayer(fn, label) { const t = take(), b = board(); const slide = b.
   op(slide != null ? { patch: { slide, slideScene: sc } } : { patch: { scene: sc } }, label); }
 function tools() {
   const s = S.sel, b = board(); let P = S.prices || {}; if (!s || !b) return null;
+  /* a Studio piece is made again through Studio (priced, same set-up); its words can change only when they are real type */
+  const tk0 = take(); if (tk0?.studio?.spec && ['bg', 'whole', 'area'].includes(s.kind)) return { label: `${b.label} · ${tk0.studio.label || 'Studio'}`, main: [['Redo it', () => studioRedo(tk0.studio.spec)], ...((tk0.scene?.layers || []).some((l) => l.kind === 'text') ? [['New words', () => op({ op: 'redo-words' }, 'New words')]] : [])], more: [['Brief a team instead', () => setMode('brief')]] };
   if (take()?.shot) P = { ...P, redo: P.shot, background: P.shot }; /* a shot is re-shot (two candidates), not a new backdrop */
   const line = (target, label) => [['Shorter', () => op({ op: 'line', target, ask: 'shorter' }, `${label} shorter · free`)], ['Warmer', () => op({ op: 'line', target, ask: 'warmer' }, `${label} warmer · free`)], ['Another way', () => op({ op: 'line', target, ask: 'rewrite' }, `${label} rewritten · free`)], ['In Hindi', () => op({ op: 'line', target, ask: 'hindi' }, `${label} in Hindi · free`)]];
   const typeOver = (label, val, save) => ['Type over it', () => ask(label, val, save)];
@@ -114,7 +117,7 @@ async function render2(confirmUsd) { const b = board(); if (S.working) return; c
    the new take lands on this board as the next version */
 async function studioRedo(spec) { const s0 = S, jid = S.jam.id, b = board(); const r = await api('POST', `/api/jam2/jams/${jid}/studio/plan`, { spec }); if (!live(s0, jid)) return; const pl = r?.plan;
   if (!pl || pl.error) return toast(pl?.error || r?.error || 'This can’t be priced right now.');
-  priced(`Redo it: ${pl.line}`, usd(pl.usd), async () => { S.working = true; render(); const x = await api('POST', `/api/jam2/jams/${jid}/studio/make`, { spec, confirmUsd: pl.usd, bid: b.id, redo: true }); if (!live(s0, jid)) return; S.working = false;
+  priced(`${spec.fill ? 'Make the missing slides' : 'Redo it'}: ${pl.line}`, usd(pl.usd), async () => { S.working = true; render(); const x = await api('POST', `/api/jam2/jams/${jid}/studio/make`, { spec, confirmUsd: pl.usd, bid: b.id, redo: true }); if (!live(s0, jid)) return; S.working = false;
     if (x?.error) { render(); return toast(x.error); } if (x?.needsConfirm) { render(); return toast(`The price changed to ${usd(x.plan.usd)}. Tap Redo again.`); } S.jam = x.jam; render(); poll(); }); }
 function redo() { const b = board(); if (take()?.studio?.spec) return studioRedo(take().studio.spec); if (b.kind === 'carousel' && take()?.slides?.length) return priced(`Redo the carousel: ${take().slides.length} new slides, same idea`, S.prices.redo != null ? usd(S.prices.redo * take().slides.length) : '', () => op({ op: 'first' }, 'New carousel')); if (isBrief(b) && !ownBrief(b)) return op({ op: 'redo-words' }, 'New words'); if (take()?.scene) return priced(take()?.shot ? 'Redo it: shoot it again, same words and product' : 'Redo it: one new take, a new scene with the same words and product', usd(take()?.shot ? S.prices.shot : S.prices.redo), () => op({ op: 'redo' }, 'New take')); op({ op: 'redo-words' }, 'New take'); }
 
@@ -201,7 +204,8 @@ function chips() {
   if (s?.kind === 'brief') return ['Send brief', 'Give it to your agency'];
   if (isBrief(b)) return ['Send brief', 'Make it myself instead', 'Why this?'];
   /* a finished Studio piece: a video, or a designed picture whose words are drawn in, has nothing to render or retype here */
-  const tk = take(b); if (tk?.studio && (tk.studio.kind === 'video' || !(tk.scene?.layers || []).length)) return ['Brief a team instead', 'Why this?'];
+  const tk = take(b); if (tk?.studio && (tk.studio.kind === 'video' || isVid(tk.file) || !(tk.scene?.layers || []).length)) return ['Brief a team instead', 'Why this?'];
+  if (tk?.studio) return ['Make the headline shorter', 'Show me 9:16', 'Brief a team instead', 'Why this?'];
   if (b.kind === 'video') return ['Render it', 'Make an image ad from it', 'Brief a team instead', 'Why this?'];
   if (take(b)?.scene) return ['Make the headline shorter', 'Show me 9:16', 'Brief a team instead', 'Why this?'];
   if (b.kind === 'table') return ['Brief a team instead', 'Why this?'];
@@ -227,12 +231,14 @@ const busyHtml = (b = board()) => { const bz = busyOf(b); if (S.working) return 
 const inStudio = (b) => !!b && ['static', 'video', 'carousel'].includes(b.kind) && b.recipe !== 'founder-ad';
 const SIZE_OPTS = { image: ['ig-portrait', 'ig-square', 'story', 'pinterest', 'youtube', 'fbx', 'email', 'banner', 'pdp', 'a5'], video: ['story', 'ig-square', 'ig-portrait', 'youtube'] };
 let studioLib = null, planT = null;
-async function studioOpen(bid = null, overlay = false) {
-  const s0 = S, jid = S.jam.id; S.studio = { bid, overlay, loading: true }; render();
-  const [d, L] = await Promise.all([api('GET', `/api/jam2/jams/${jid}/studio${bid ? `?bid=${encodeURIComponent(bid)}` : ''}`), studioLib ? Promise.resolve({ library: studioLib }) : api('GET', '/api/jam2/studio/library')]);
-  if (!live(s0, jid)) return; studioLib = L?.library || studioLib;
-  if (d?.error || !d?.defaults) { S.studio = null; render(); return toast(d?.error || 'The studio couldn’t open just now.'); }
-  S.studio = { bid, overlay, spec: { ...d.defaults, ask: '' }, picks: d.defaults.styles, products: d.products || [], plan: null }; render(); studioPlan();
+/* bid: the board it makes on (null for "new boards"); from: the board whose card and kind set it up (the current one) */
+async function studioOpen(bid = null, overlay = false, from = bid) {
+  const s0 = S, jid = S.jam.id, mine = { bid, overlay, loading: true }; S.studio = mine; S.studioFail = null; S.add = false; render();
+  const [d, L] = await Promise.all([api('GET', `/api/jam2/jams/${jid}/studio${from ? `?bid=${encodeURIComponent(from)}` : ''}`), studioLib ? Promise.resolve({ library: studioLib }) : api('GET', '/api/jam2/studio/library')]);
+  if (!live(s0, jid) || S.studio !== mine) return; studioLib = L?.library || studioLib; /* closed while it loaded: stays closed */
+  /* a composer that can't open says so once, with Try again (never re-asks in a loop) */
+  if (d?.error || !d?.defaults) { S.studio = null; S.studioFail = { bid: bid || from, error: d?.error || 'The studio couldn’t open just now.' }; return render(); }
+  const D = d.defaults; S.studio = { bid, overlay, spec: { ...D, ask: '' }, picks: D.styles, products: d.products || [], plan: null, blocked: D.blocked || {}, byKind: { [D.kind]: { picks: D.styles, style: D.style, sizes: D.sizes, seconds: D.seconds } } }; render(); studioPlan();
 }
 const allStyles = () => (studioLib ? [...studioLib.image.map((g) => ({ ...g, kind: 'image' })), ...studioLib.video.map((g) => ({ ...g, kind: 'video' }))] : []);
 const styleById = (id) => { for (const g of allStyles()) { const x = g.styles.find((y) => y.id === id); if (x) return { ...x, group: x.group || g.label, kind: g.kind }; } return null; };
@@ -244,9 +250,9 @@ async function studioGo() { const st = S.studio, pl = st?.plan; if (!pl || pl.er
   if (r?.needsConfirm) { S.studio.plan = r.plan; render(); return toast(`The price changed to ${usd(r.plan.usd)}. Tap Generate again.`); }
   if (r?.error) { render(); return toast(r.error); }
   S.jam = r.jam; S.studio = null; const i = S.jam.boards.findIndex((x) => x.id === r.boards?.[0]); if (i >= 0) S.tab = i; render(); poll();
-  say('brew', `Making ${r.plan.line} · ${usd(r.plan.usd)}. ${r.plan.set ? 'The slides land together in one tab' : r.plan.count > 1 ? 'Each one lands in its own tab' : 'It lands in this tab'}; nothing else is spent.`); }
+  say('brew', `Making ${r.plan.line} · ${usd(r.plan.usd)}. ${r.plan.set ? 'The slides land together in one tab' : (r.boards || []).length > 1 ? `Each of the ${(r.boards || []).length} lands in its own tab` : 'It lands in this tab'}; nothing else is spent.`); }
 /* a style with no sample picture shows the brand's own product under its name, so every tile reads as theirs */
-const tileHtml = (x, on, ph = S?.studio?.spec?.product?.img) => `<button class="j2-sti${on ? ' on' : ''}" data-sst="${esc(x.id)}" title="${esc(x.look || x.label)}">${x.cover ? `<img src="${esc(x.cover)}" alt="" loading="lazy">` : ph ? `<span class="j2-sti-ph"><img src="${esc(srcOf(ph))}" alt="" loading="lazy"></span>` : `<span class="j2-sti-art">${esc(x.label)}</span>`}<b>${esc(x.label)}</b><small>${esc(x.group || '')}</small></button>`;
+const tileHtml = (x, on, ph = S?.studio?.spec?.product?.img, no = S?.studio?.blocked?.[x.id]) => `<button class="j2-sti${on ? ' on' : ''}${no ? ' no' : ''}" data-sst="${esc(x.id)}" title="${esc(no || x.look || x.label)}">${x.cover ? `<img src="${esc(x.cover)}" alt="" loading="lazy">` : ph ? `<span class="j2-sti-ph"><img src="${esc(srcOf(ph))}" alt="" loading="lazy"></span>` : `<span class="j2-sti-art">${esc(x.label)}</span>`}<b>${esc(x.label)}</b><small>${esc(x.group || '')}</small></button>`;
 function studioHtml() {
   const st = S.studio; if (!st) return ''; if (st.loading || !st.spec) return `<div class="j2-studio"><brew-load class="spin"></brew-load> Setting it up from the card…</div>`;
   const sp = st.spec, kind = sp.kind, set = Array.isArray(sp.set) ? sp.set : null, picks = st.picks.map(styleById).filter((x) => x && x.kind === kind), cur = styleById(sp.style);
@@ -275,10 +281,17 @@ function studioHtml() {
 function studioClick(g) {
   if (!S.studio) return false; const st = S.studio, sp = st.spec;
   if (g('[data-st-x]')) { S.studio = null; render(); return true; }
-  const k = g('[data-sk]'); if (k && sp) { const kind = k.dataset.sk; if (kind !== sp.kind) { const first = allStyles().find((x) => x.kind === kind)?.styles?.[0]; studioSet({ kind, style: first?.id || null, sizes: [SIZE_OPTS[kind][0]], seconds: kind === 'video' ? first?.seconds || 10 : null }); S.studio.picks = allStyles().filter((x) => x.kind === kind).flatMap((x) => x.styles.slice(0, 1)).map((x) => x.id).slice(0, 3); } return true; }
-  const sst = g('[data-sst]'); if (sst && Array.isArray(sp.set)) { const id = sst.dataset.sst, has = sp.set.includes(id); if (has && sp.set.length <= 2) { toast('A set needs at least two slides.'); return true; } if (!has && sp.set.length >= 10) { toast('Ten slides at most.'); return true; }
-    if (!has && styleById(id)?.kind !== 'image') return true; S.studio.gallery = false; studioSet({ set: has ? sp.set.filter((x) => x !== id) : [...sp.set, id] }); return true; }
-  if (sst) { const x = styleById(sst.dataset.sst); S.studio.gallery = false; studioSet({ style: sst.dataset.sst, ...(x?.seconds && sp.kind === 'video' ? { seconds: x.seconds } : {}), ...(x?.ratio === '1:1' ? { sizes: ['ig-square'] } : {}) }); return true; }
+  /* Image ⇄ Video keeps each side's own set-up (the card's three picks, its size and length); a style this brand can't use is never chosen */
+  const k = g('[data-sk]'); if (k && sp) { const kind = k.dataset.sk; if (kind !== sp.kind) { st.byKind = { ...(st.byKind || {}), [sp.kind]: { picks: st.picks, style: sp.style, sizes: sp.sizes, seconds: sp.seconds } };
+      const ok = (x) => !st.blocked?.[x.id], back = st.byKind[kind], all = allStyles().filter((x) => x.kind === kind).flatMap((x) => x.styles).filter(ok);
+      const picks = back?.picks?.length ? back.picks : all.slice(0, 3).map((x) => x.id), style = back?.style && !st.blocked?.[back.style] ? back.style : picks.find((id) => !st.blocked?.[id]) || null;
+      S.studio.picks = picks; studioSet({ kind, style, sizes: back?.sizes || [SIZE_OPTS[kind][0]], seconds: kind === 'video' ? back?.seconds || styleById(style)?.seconds || 10 : null }); } return true; }
+  const sst = g('[data-sst]'); if (sst) { st.prodPick = false; st.sizePick = false; const no = st.blocked?.[sst.dataset.sst]; if (no) { toast(no); render(); return true; } }
+  if (sst && Array.isArray(sp.set)) { const id = sst.dataset.sst, has = sp.set.includes(id); if (has && sp.set.length <= 2) { toast('A set needs at least two slides.'); return true; } if (!has && sp.set.length >= 10) { toast('Ten slides at most.'); return true; }
+    if (!has && styleById(id)?.kind !== 'image') { toast('A set is pictures only: pick a picture style for each slide.'); return true; } studioSet({ set: has ? sp.set.filter((x) => x !== id) : [...sp.set, id] }); return true; } /* the gallery stays open while a set is built */
+  /* a square-only style makes the size square; the next style that isn't puts the size back */
+  if (sst) { const x = styleById(sst.dataset.sst); S.studio.gallery = false; const sq = x?.ratio === '1:1', sizes = sq ? ['ig-square'] : st.sizeBefore || sp.sizes; st.sizeBefore = sq ? st.sizeBefore || sp.sizes : null;
+    studioSet({ style: sst.dataset.sst, sizes, ...(x?.seconds && sp.kind === 'video' ? { seconds: x.seconds } : {}) }); return true; }
   if (g('[data-sgal]')) { st.gallery = true; render(); return true; } if (g('[data-sgal-x]')) { st.gallery = false; render(); return true; }
   const gg = g('[data-sgg]'); if (gg) { st.group = gg.dataset.sgg; st.q = ''; render(); return true; }
   if (g('[data-sprod]')) { st.prodPick = !st.prodPick; st.sizePick = false; render(); return true; }
@@ -295,17 +308,20 @@ function canvas() {
   /* an empty picture or video board is the Studio composer, set up from the card (nothing is made before the price gets a yes) */
   /* an empty picture, set or video board is the Studio composer, set up from the card (nothing is made before the price gets a yes);
      a Studio run that failed says why above it, and the composer is the way to try again (never the old maker) */
-  if (!t && (!bz || bz.error) && inStudio(b) && !b.allOf) { if (!S.studio || (S.studio.bid !== b.id && !S.studio.overlay)) { setTimeout(() => S && !S.studio?.spec && studioOpen(b.id), 0); } return (bz?.error ? `<p class="j2-err">${esc(bz.error)}</p>` : '') + (S.studio && !S.studio.overlay ? studioHtml() : '<div class="j2-studio"><brew-load class="spin"></brew-load> Setting it up from the card…</div>'); }
+  if (!t && (!bz || bz.error) && inStudio(b) && !b.allOf) { const fail = S.studioFail?.bid === b.id ? S.studioFail : null;
+    if (!fail && (!S.studio || (!S.studio.overlay && S.studio.bid !== b.id))) { if (S.studio && !S.studio.overlay) S.studio = null; setTimeout(() => S && board()?.id === b.id && !S.studio && !S.studioFail && studioOpen(b.id), 0); }
+    const body = fail ? `<div class="j2-studio"><p class="j2-err">${esc(fail.error)}</p><button class="j2-pri" data-st-retry>Try again</button></div>` : S.studio && !S.studio.overlay && S.studio.bid === b.id ? studioHtml() : '<div class="j2-studio"><brew-load class="spin"></brew-load> Setting it up from the card…</div>';
+    return `<div class="j2-stcol">${bz?.error ? `<p class="j2-err">${esc(bz.error)}</p>` : ''}${body}</div>`; }
   if (!t && !bz) return `<div class="j2-doc" style="align-items:center;text-align:center;gap:10px"><b>${esc(b.label)} isn’t made yet.</b><span style="color:var(--fg-3);font-size:13px">${b.how === 'brief' || BRIEF_ONLY.has(b.kind) ? 'Brew writes it from the card and your Brand Book.' : b.allOf ? 'The same picture with each product in your catalog, free.' : ['static', 'carousel'].includes(b.kind) || b.recipe === 'email' ? 'Words first, then the picture with your real product.' : 'Brew writes it from the card, in your voice.'}</span><button class="j2-pri" data-redo-first>Make it</button></div>`;
   if (!t) return bz?.error ? `<div class="j2-doc"><p class="j2-err">${esc(bz.error)}</p><button class="j2-pri" data-redo-first>Try again</button></div>` : `<div class="j2-doc" style="align-items:center;text-align:center;gap:10px"><brew-load class="spin"></brew-load><b>Making ${esc(b.label.toLowerCase())}…</b><span style="color:var(--fg-3);font-size:13px">${b.allOf ? 'Each product in your catalog is cut out and placed in the same scene. A few seconds per product, free.' : 'Words first, then the picture with your real product. About a minute.'}</span></div>`;
-  const err = (t.missing?.length ? `<p class="j2-bad" style="margin-top:10px">Left out: ${esc(t.missing.join(' · '))}. Redo it to try again.</p>` : '') + (b.priceAlert ? `<div class="j2-bad" style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${esc(b.priceAlert.name || 'The product')}’s price changed: ${esc(b.priceAlert.was)} → ${esc(b.priceAlert.now)}.<button class="j2-chip" data-price-fix>Update the words (free)</button></div>` : '') + (bz?.error ? `<p class="j2-err">${esc(bz.error)}</p>` : '') + (b.status === 'stale' ? `<div class="j2-bad" style="margin-top:10px;display:flex;gap:10px;align-items:center">The idea changed since this was made.<button class="j2-chip" data-refresh>Remake it on the new idea</button></div>` : '');
+  const err = (t.missing?.length ? `<p class="j2-bad" style="margin-top:10px">Left out: ${esc(t.missing.join(' · '))}. ${t.missingIds?.length && t.studio?.spec ? '<button class="j2-chip" data-st-fill>Make the missing slides</button>' : 'Redo it to try again.'}</p>` : '') + (b.priceAlert ? `<div class="j2-bad" style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${esc(b.priceAlert.name || 'The product')}’s price changed: ${esc(b.priceAlert.was)} → ${esc(b.priceAlert.now)}.<button class="j2-chip" data-price-fix>Update the words (free)</button></div>` : '') + (bz?.error ? `<p class="j2-err">${esc(bz.error)}</p>` : '') + (b.status === 'stale' ? `<div class="j2-bad" style="margin-top:10px;display:flex;gap:10px;align-items:center">The idea changed since this was made.<button class="j2-chip" data-refresh>Remake it on the new idea</button></div>` : '');
   if (isBrief(b) && !ownBrief(b)) return briefDoc(b, t) + err;
   const w = t.words || {};
   if (b.kind === 'carousel' && t.slides?.length) { const i = Math.min(S.slide, t.slides.length - 1), sl = t.slides[i];
     return `<div class="j2-frame"><button class="j2-flab${S.sel?.kind === 'whole' ? ' on' : ''}" data-whole>${esc(b.label)} · slide ${i + 1} of ${t.slides.length}</button>${sl.scene ? sceneArt(sl.scene, sl.file, { slide: i }) : sl.file ? `<img src="${esc(srcOf(sl.file))}" alt="" style="max-height:60vh;border-radius:6px">` : '<p class="j2-err">This slide didn’t come through. Redo the carousel.</p>'}<div class="j2-strip">${t.slides.map((x, n) => `<button class="${n === i ? 'on' : ''}" data-slide="${n}" aria-label="Slide ${n + 1}"><img src="${esc(srcOf(x.file))}" alt=""></button>`).join('')}</div>${err}</div>`; }
   if (t.scene && b.kind !== 'message') return `<div class="j2-frame"><span style="display:flex;gap:4px"><button class="j2-flab${S.sel?.kind === 'whole' ? ' on' : ''}" data-whole>${esc(b.label)} · ${esc(S.recipes.__sizes?.[b.size]?.label || b.size || '')}${t.final ? ' · Final' : ''}</button><button class="j2-flab${S.sel?.kind === 'bg' ? ' on' : ''}" data-scene>Scene</button></span>${sceneArt(t.scene, t.file)}${err}</div>`;
   /* a Studio video (Higgsfield made the whole clip): the clip itself, what made it, and make another */
-  if (b.kind === 'video' && t.studio && /\.mp4$/i.test(t.file || '')) return `<div class="j2-doc" style="align-items:center;gap:10px"><div class="j2-meta">${esc(b.label)} · ${esc(t.studio.group || '')} · ${esc(t.studio.label || '')}${t.cost?.usd ? ` · ${usd(t.cost.usd)}` : ''}</div><video src="${esc(srcOf(t.file))}" ${t.poster ? `poster="${esc(srcOf(t.poster))}"` : ''} controls playsinline style="max-height:62vh;max-width:100%;border-radius:14px;background:#000"></video><button class="j2-chip" data-studio>Make another</button></div>` + err;
+  if (t.studio && isVid(t.file)) return `<div class="j2-doc" style="align-items:center;gap:10px"><div class="j2-meta">${esc(b.label)} · ${esc(t.studio.group || '')} · ${esc(t.studio.label || '')}${t.cost?.usd ? ` · ${usd(t.cost.usd)}` : ''}</div><video src="${esc(srcOf(t.file))}" ${t.poster ? `poster="${esc(srcOf(t.poster))}"` : ''} controls playsinline style="max-height:62vh;max-width:100%;border-radius:14px;background:#000"></video><button class="j2-chip" data-studio-from="${esc(b.id)}">Make another</button></div>` + err;
   if (b.kind === 'video') return video(b, t) + err;
   if (b.kind === 'table') return table(w) + err;
   if (b.recipe === 'whatsapp') return `<div class="j2-wa"><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">Your business account · approved template</div><div class="j2-bubble">${sents(w.body)}</div></div>${err}`;
@@ -378,7 +394,10 @@ function sheetHtml() { if (!S.fin) return ''; const bs = S.jam.boards;
   <div style="font-size:12px;color:var(--fg-3)">Brew never posts or changes your accounts.</div></aside>`; }
 
 /* ---------- the page ---------- */
-function render() { try { renderIn(); } catch (e) { console.error('[jam2]', e); const root = $('#j2'); if (root && !root.querySelector('.j2-crash')) root.insertAdjacentHTML('beforeend', `<div class="j2-toast j2-crash">Something on this page didn’t draw (${esc(e.message)}). Your work is saved; reload to carry on.</div>`); } }
+/* a redraw (the poll, someone typing, presence) never stops a video someone is watching: its place and play state carry over */
+function render() { const was = [...($('#j2')?.querySelectorAll('video') || [])].map((v) => ({ src: v.getAttribute('src'), t: v.currentTime, on: !v.paused && !v.ended, m: v.muted }));
+  try { renderGuarded(); } finally { if (was.length) for (const v of $('#j2')?.querySelectorAll('video') || []) { const o = was.find((x) => x.src === v.getAttribute('src')); if (o && o.t) { try { v.currentTime = o.t; v.muted = o.m; if (o.on) v.play().catch(() => {}); } catch {} } } } }
+function renderGuarded() { try { renderIn(); } catch (e) { console.error('[jam2]', e); const root = $('#j2'); if (root && !root.querySelector('.j2-crash')) root.insertAdjacentHTML('beforeend', `<div class="j2-toast j2-crash">Something on this page didn’t draw (${esc(e.message)}). Your work is saved; reload to carry on.</div>`); } }
 function renderIn() {
   const root = $('#j2'); if (!root || !S) return; const j = S.jam;
   if (!j) { root.innerHTML = `<div class="j2-chat"><div class="j2-head"><button class="j2-back" data-close>← Feed</button><b>Jam</b></div><div class="j2-log">${S.err ? `<p class="j2-err">${esc(S.err)}</p>` : '<brew-load class="spin"></brew-load>'}</div></div><div class="j2-right"></div>`; return; }
@@ -423,12 +442,15 @@ function wire(root) {
     const t = e.target; const g = (s) => t.closest(s);
     if (g('[data-close]')) return close();
     if (S?.studio && t.closest('.j2-studio') && studioClick(g)) return;
-    if (g('[data-studio]')) return studioOpen(null, true);
+    if (g('[data-studio]')) return studioOpen(null, true, board()?.id || null);
+    const sfrom = g('[data-studio-from]'); if (sfrom) return studioOpen(null, true, sfrom.dataset.studioFrom);
+    if (g('[data-st-fill]')) { const tk = take(); if (tk?.missingIds?.length && tk.studio?.spec) return studioRedo({ ...tk.studio.spec, set: tk.missingIds, fill: true }); }
+    if (g('[data-st-retry]')) { S.studioFail = null; return studioOpen(board()?.id || null); }
     if (g('[data-toast-no]')) { S.toast = null; return render(); }
     if (g('[data-why]')) { S.why = !S.why; return render(); }
     if (g('[data-angle]')) return ask('The idea, in one line', S.jam.concept?.angle, (v) => concept({ angle: v }));
-    const tab = g('[data-tab]'); if (tab) { S.tab = +tab.dataset.tab; S.sel = null; S.area = false; S.box = null; S.pend = null; S.edit = null; S.hist = false; S.slide = 0; S.pick = null; S.more = false; S.add = false; return render(); }
-    const tt = g('[data-totab]'); if (tt) { S.tab = +tt.dataset.totab; S.fin = false; S.sel = null; S.area = false; S.box = null; S.pend = null; S.edit = null; S.hist = false; S.slide = 0; S.pick = null; return render(); }
+    const tab = g('[data-tab]'); if (tab) { if (S.studio && !S.studio.overlay) S.studio = null; S.studioFail = null; S.tab = +tab.dataset.tab; S.sel = null; S.area = false; S.box = null; S.pend = null; S.edit = null; S.hist = false; S.slide = 0; S.pick = null; S.more = false; S.add = false; return render(); }
+    const tt = g('[data-totab]'); if (tt) { if (S.studio && !S.studio.overlay) S.studio = null; S.studioFail = null; S.tab = +tt.dataset.totab; S.fin = false; S.sel = null; S.area = false; S.box = null; S.pend = null; S.edit = null; S.hist = false; S.slide = 0; S.pick = null; return render(); }
     if (g('[data-add]')) { S.add = !S.add; if (S.add && !S.recipesList) api('GET', '/api/jam2/recipes').then((r) => { if (S && r?.recipes) { S.recipesList = r.recipes; render(); } }); return render(); }
     const ar = g('[data-addr]'); if (ar) return addBoard(ar.dataset.addr, ar.dataset.label || null, ar.dataset.ask || '');
     if (g('[data-finish]')) return finish(); if (g('[data-fin-no]')) { S.fin = false; return render(); }
@@ -440,7 +462,7 @@ function wire(root) {
     if (g('[data-more]')) { S.more = !S.more; return render(); }
     const tl = g('[data-tool]'); if (tl) return tools().main[+tl.dataset.tool][1]();
     const mt = g('[data-mtool]'); if (mt) return tools().more.filter(Boolean)[+mt.dataset.mtool][1]();
-    if (g('[data-pend-no]')) { S.pend = null; return render(); } if (g('[data-pend-yes]')) { const p = S.pend; S.pend = null; return p.run(); }
+    if (g('[data-pend-no]')) { S.pend = null; return render(); } if (g('[data-pend-yes]')) { const p = S.pend; S.pend = null; const y = parseFloat(String(p.cost || '').replace(/[^0-9.]/g, '')); S.yesUsd = Number.isFinite(y) ? y : null; return p.run(); } /* the price the person said yes to goes with the request */
     if (g('[data-edit-no]')) { S.edit = null; return render(); } if (g('[data-edit-ok]')) { const v = $('#j2-edit').value, ed = S.edit; S.edit = null; render(); return ed.save(v); }
     const pr = g('[data-prod]'); if (pr) { const p = S.pick.products[+pr.dataset.prod], bid = S.pick.bid; S.pick = null; const go = () => op({ op: 'swap-product', patch: { product: { img: p.img, name: p.name } } }, `Now the ${p.name || 'other product'}`, bid); return take()?.shot ? priced(`Shoot it again with the ${p.name || 'other product'}`, usd(S.prices.shot), go) : go(); }
     if (g('[data-pick-no]')) { S.pick = null; return render(); }
@@ -471,7 +493,7 @@ function wire(root) {
     if (g('[data-redo]')) return redo();
     if (g('[data-redo-first]')) return op({ op: 'first' });
     if (g('[data-price-fix]')) { const pa = board().priceAlert; return op({ ask: `The price of ${pa.name || 'the product'} is now ${pa.now} (it was ${pa.was}). Change only the price wherever it appears; keep every other word.` }, 'Price updated'); }
-    if (g('[data-refresh]')) return take()?.scene ? priced('Remake it on the new idea: new words and a new picture', usd(S.prices.redo), () => op({ op: 'refresh' }, 'Remade on the new idea')) : op({ op: 'refresh' }, 'Remade on the new idea');
+    if (g('[data-refresh]')) return take()?.studio?.spec ? studioRedo(take().studio.spec) : take()?.scene ? priced('Remake it on the new idea: new words and a new picture', usd(S.prices.redo), () => op({ op: 'refresh' }, 'Remade on the new idea')) : op({ op: 'refresh' }, 'Remade on the new idea');
     if (g('[data-render]')) return render2();
     if (g('[data-copyopen]')) { const body = words().body || ''; navigator.clipboard?.writeText(body).catch(() => {}); const link = /^https?:\/\//.test(S.jam.concept?.spark?.link || '') ? S.jam.concept.spark.link : null; if (link) window.open(link, '_blank', 'noopener'); return toast(link ? 'Copied. The thread opened in a new tab: paste it as your reply.' : 'Copied. Paste it where the question was asked.'); }
     const sl = g('[data-slide]'); if (sl) { S.slide = +sl.dataset.slide; S.sel = null; return render(); }
@@ -490,6 +512,8 @@ function wire(root) {
   root.addEventListener('keydown', (e) => {
     /* every part of the picture is reachable with Tab; Enter or Space selects it, like a click */
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.j2-l[data-id][tabindex]')) { e.preventDefault(); e.target.click(); return; }
+    if (e.key === 'Escape' && S.studio && (S.studio.gallery || S.studio.prodPick || S.studio.sizePick)) { S.studio.gallery = false; S.studio.prodPick = false; S.studio.sizePick = false; e.preventDefault(); return render(); }
+    if (e.key === 'Escape' && S.studio?.overlay) { S.studio = null; e.preventDefault(); return render(); }
     if (e.key === 'Escape') { if (S.pend || S.edit || S.sel || S.fin || S.add || S.book || S.pick || S.area) { S.pend = null; S.edit = null; S.sel = null; S.fin = false; S.add = false; S.area = false; S.book = null; S.pick = null; return render(); } if ($('#j2-in')?.value.trim()) return toast('You have something typed. Send it or clear it, then press Escape to close.'); return close(); }
     if (e.key !== 'Enter') return;
     if (e.target.id === 'j2-in') { e.preventDefault(); return send(e.target.value); }

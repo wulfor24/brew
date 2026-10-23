@@ -19,7 +19,10 @@ export const fontLink = (kit = {}, srcOf = (x) => x) => { const fs = [...new Set
   const own = new Map((Array.isArray(kit.files) ? kit.files : []).filter((x) => x?.family && x.src).map((x) => [fontName(x.family).toLowerCase(), x.src]));
   return fs.map((f) => { const src = own.has(f.toLowerCase()) ? srcOf(own.get(f.toLowerCase())) : null;
     if (src && FONT_SRC.test(src)) return `<style>@font-face{font-family:'${f}';src:url("${src}");font-display:block}</style>`;
-    return `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;600;700;800&display=swap">`; }).join(''); };
+    /* the plain family first (a one-weight face like Anton loads), then its bolder weights where it has them (Google refuses a
+       weight list a family can't serve, and only that link fails) */
+    const fam = encodeURIComponent(f).replace(/%20/g, '+');
+    return `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${fam}&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${fam}:wght@400;600;700;800&display=swap">`; }).join(''); };
 
 /* a style value goes inside style="…": only plain CSS words, numbers, colours and gradients (no quotes, ; < > or url()) */
 const css = (v, d = '') => { const x = String(v ?? '').trim(); return x && x.length < 200 && /^[#\w\s.,%()+-]+$/.test(x) && !/url\s*\(|expression/i.test(x) ? x : d; };
@@ -71,6 +74,8 @@ export function reflow(scene, w, h) {
 }
 
 /* the type presets every static starts from: the brand's heading font and colours, words always real type, never drawn */
+/* words that read on a colour: dark on a light or pastel brand colour, white on a dark one */
+export const inkOn = (hex) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return '#ffffff'; const n = parseInt(m[1], 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] > 0.45 ? '#111111' : '#ffffff'; };
 export function typePreset(name, { w, h, kit = {}, headline = '', sub = '', cta = '', badge = '' }) {
   const head = kit.fonts?.heading || null, body = kit.fonts?.body || head, ink = kit.ink || '#ffffff', accent = kit.accent || kit.colors?.[0] || '#111111', u = Math.min(w, h * 1.25), pad = Math.round(u * 0.065); /* sized from the shorter side: a wide banner's headline can't cover the product */
   const tall = h / w > 1.6, top = tall ? Math.round(h * 0.16) : pad, big = Math.round(u * (headline.length < 26 ? 0.085 : headline.length < 48 ? 0.068 : 0.056));
@@ -89,7 +94,7 @@ export function typePreset(name, { w, h, kit = {}, headline = '', sub = '', cta 
     if (sub) L.push({ id: 'sub', kind: 'text', role: 'sub', words: sub, x: pad, y: top + Math.round(big * 2.4), w: w - pad * 2, z: 6, style: { font: body, size: Math.round(big * 0.45), weight: 500, color: ink, shadow: true } });
   }
   if (badge) L.push({ id: 'badge', kind: 'badge', role: 'small', words: badge, x: w - pad - Math.round(w * 0.32), y: tall ? Math.round(h * 0.5) : Math.round(h * 0.52), w: Math.round(w * 0.32), z: 7, style: { font: body, size: Math.round(w * 0.028), weight: 700, color: '#111', bg: '#fff', radius: 999, pad: Math.round(w * 0.016), align: 'center' } });
-  if (cta) L.push({ id: 'cta', kind: 'badge', role: 'cta', words: cta, x: pad, y: h - pad - Math.round(w * 0.075) - (tall ? Math.round(h * 0.16) : 0), w: Math.round(w * 0.36), z: 7, style: { font: body, size: Math.round(w * 0.03), weight: 700, color: '#fff', bg: accent, radius: 999, pad: Math.round(w * 0.02), align: 'center' } });
+  if (cta) L.push({ id: 'cta', kind: 'badge', role: 'cta', words: cta, x: pad, y: h - pad - Math.round(w * 0.075) - (tall ? Math.round(h * 0.16) : 0), w: Math.round(w * 0.36), z: 7, style: { font: body, size: Math.round(w * 0.03), weight: 700, color: inkOn(accent), bg: accent, radius: 999, pad: Math.round(w * 0.02), align: 'center' } });
   return L;
 }
 export const PRESETS = ['top', 'bottom-bar', 'side-card'];

@@ -2,7 +2,10 @@
 // Words are weighted by how rare they are across the catalog: "Hukum" (one product line) outweighs "sneaker" (every
 // product), and the brand's own name counts for nothing. Works for any catalog; returns null when nothing is named.
 
-const JUNK = /sold.?out|size.?chart|logo|wordmark|favicon|banner|icon|placeholder|gift.?card|screen.?shot|screen_?capture|\bscr_\d/i; // screenshots and brand marks are never product photos
+/* screenshots and brand marks are never product photos; whole words only, so "Silicone", "Iconic" and "Logo Cap" stay products */
+const JUNK = /sold.?out|size.?chart|(?<![a-z])(?:logo|wordmark|favicon|banner|icon|placeholder)(?![a-z])|gift.?card|screen.?shot|screen_?capture|\bscr_\d/i;
+/* a title is junk only when it names a non-product listing, never because it says "logo" or "banner" (a Logo Cap, a Banner Stand) */
+const JUNK_TITLE = /^(?:gift.?card|e-?gift|size.?chart)\b|\bplaceholder\b/i;
 // everyday words that are product names only by accident ("Astra DAY DREAM" is not what "every day" means)
 const COMMON = new Set('day days every all new best top more life love time way made make one two our your you the and for with that this from just last lasts wear feel feels look looks fit fits shop buy get comfort comfortable classic everyday collection edition pair pairs shoe shoes sneaker sneakers product products pack packs combo combos kit kits'.split(' '));
 const words = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s-]/gu, ' ').split(/[\s-]+/).filter((w) => w.length > 2);
@@ -17,7 +20,7 @@ const NOT_FOR_SALE = /\b(?:test|dummy|sample|placeholder)\s+(?:product|listing|i
 export const sellable = (x) => !!x && !NOT_FOR_SALE.test(String(x.title || x.t || '')) && !/-copy(?:-\d+)?\/?$/i.test(String(x.handle || x.url || '').split('?')[0]);
 export const catalogOf = (profile, max = 400) => (profile?.catalog?.products || []).filter(sellable)
   .map((x) => ({ t: String(x.title || ''), img: [x.img, ...(x.images || [])].find((u) => u && !JUNK.test(u)) || null, ...(priceOf(x) ? { price: priceOf(x) } : {}), ...(x.inStock === false ? { out: true } : {}), ...(x.url ? { url: String(x.url) } : {}), ...((x.claims || [])[0] ? { claim: String(x.claims[0]) } : {}), imgs: [...new Set([x.img, ...(x.images || [])].filter((u) => u && typeof u === 'string' && !JUNK.test(u)))].slice(0, 8) /* every photo of it: a listing's photo set where no photo can be made (remix listingFromCatalog) */ })) /* skip a "sold out" placeholder, keep the product; price and stock for a product grid (draft-mocks.js); its page and first claim for the jam's product line (studio productFor) */
-  .filter((x) => x.t && x.img && !JUNK.test(x.t)).slice(0, max);
+  .filter((x) => x.t && x.img && !JUNK_TITLE.test(x.t)).slice(0, max);
 
 export function matchProduct(text, catalog, { brand = '', byNameOnly = false } = {}) {
   if (!catalog?.length || !text) return null;

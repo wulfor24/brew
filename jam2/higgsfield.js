@@ -21,7 +21,7 @@ export function fitInput(id, input = {}) {
     if (s.enum && !s.enum.includes(v)) { problems.push(`${k}=${v} not one of ${s.enum.join('/')}`); continue; }
     if ((s.type === 'integer' || s.type === 'number') && typeof v === 'number') { let x = v; if (s.minimum != null) x = Math.max(s.minimum, x); if (s.maximum != null) x = Math.min(s.maximum, x); out[k] = s.type === 'integer' ? Math.round(x) : x; continue; }
     if (s.type === 'string' && typeof v === 'string') { out[k] = s.maxLength ? v.slice(0, s.maxLength) : v; continue; }
-    if (s.type === 'array' && Array.isArray(v)) { out[k] = s.maxItems ? v.slice(0, s.maxItems) : v; continue; }
+    if (s.type === 'array' && Array.isArray(v)) { out[k] = s.maxItems ? v.slice(0, s.maxItems) : v; if (s.minItems && out[k].length < s.minItems) problems.push(`${k} needs at least ${s.minItems}`); continue; }
     out[k] = v;
   }
   for (const r of w.schema.required || []) if (out[r] == null) problems.push(`${r} is required`);
@@ -31,7 +31,7 @@ export function fitInput(id, input = {}) {
 /* the nearest frame a workflow takes (Marketing Studio has no 4:5: 3:4 is asked for and the layout's cover fit trims it) */
 export function nearestRatio(id, want) {
   const opts = workflow(id)?.schema?.properties?.aspect_ratio?.enum; if (!opts || opts.includes(want)) return want;
-  const num = (r) => { const m = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(r); return m ? +m[1] / +m[2] : null; }, t = num(want);
+  const num = (r) => { if (r === 'A5') return 148 / 210; const m = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(r); return m ? +m[1] / +m[2] : null; }, t = num(want); /* A5 is portrait print, 148:210 */
   return t == null ? opts[0] : opts.filter((o) => num(o)).sort((a, b) => Math.abs(Math.log(num(a) / t)) - Math.abs(Math.log(num(b) / t)))[0] || opts[0];
 }
 
@@ -62,21 +62,28 @@ export function createHiggsfield({ env = process.env, fetchImpl = fetch, log = c
       } catch (e) { log.warn?.('[higgsfield] estimate', id, e.message); } }
     cache.set(k, { at: Date.now(), v }); return v;
   }
-  /* run one request to completion: submit, poll, fetch the file. Failed and moderated requests are refunded by Higgsfield */
-  async function run(id, input, { maxMs = 15 * 60e3, idem = null } = {}) {
+  /* run one request to completion: submit, poll, fetch the file. Failed and moderated requests are refunded by Higgsfield.
+     onSubmit(job) is told the request the moment Higgsfield takes it (and charges), so a restart can pick the same request up
+     again with resume = that job (poll only, never a second purchase). A poll that hiccups is retried; a request still running at
+     maxMs throws { open: job } so nobody presses again and pays twice; a result link that doesn't give the file is an error */
+  async function run(id, input, { maxMs = 15 * 60e3, idem = null, onSubmit = null, resume = null } = {}) {
     if (!live()) throw Object.assign(new Error('Higgsfield is not connected yet'), { skip: true });
-    const { input: inp, problems } = fitInput(id, input); if (problems.length) throw new Error(`Higgsfield ${id}: ${problems.join('; ')}`);
-    const r = await fetchImpl(`${base()}/${id}`, { method: 'POST', headers: { authorization: auth(), 'content-type': 'application/json', ...(idem ? { 'idempotency-key': idem } : {}) }, body: JSON.stringify(inp) });
-    const j = await r.json().catch(() => ({})); if (!r.ok || !j.status_url) throw new Error(`Higgsfield ${id} ${r.status}: ${String(j.detail || j.error || JSON.stringify(j)).slice(0, 200)}`);
-    const t0 = Date.now();
+    let j = resume && resume.status_url ? resume : null;
+    if (!j) { const { input: inp, problems } = fitInput(id, input); if (problems.length) throw new Error(`Higgsfield ${id}: ${problems.join('; ')}`);
+      const r = await fetchImpl(`${base()}/${id}`, { method: 'POST', headers: { authorization: auth(), 'content-type': 'application/json', ...(idem ? { 'idempotency-key': idem } : {}) }, body: JSON.stringify(inp) });
+      const x = await r.json().catch(() => ({})); if (!r.ok || !x.status_url) throw new Error(`Higgsfield ${id} ${r.status}: ${String(x.detail || x.error || JSON.stringify(x)).slice(0, 200)}`);
+      j = { id, request_id: x.request_id || null, status_url: x.status_url, at: Date.now() }; await Promise.resolve(onSubmit?.(j)).catch((e) => log.warn?.('[higgsfield] onSubmit', e.message)); }
+    const t0 = Date.now(); let misses = 0;
     for (let wait = 3000; Date.now() - t0 < maxMs; wait = Math.min(wait * 1.4, 10e3)) {
       await new Promise((ok) => setTimeout(ok, wait));
-      const s = await (await fetchImpl(j.status_url, { headers: { authorization: auth() } })).json().catch(() => ({}));
+      let s; try { const pr = await fetchImpl(j.status_url, { headers: { authorization: auth() } }); s = await pr.json(); misses = 0; } catch (e) { if (++misses >= 8) throw Object.assign(new Error(`Higgsfield ${id}: can't reach it to check the result (${e.message}); it is still being made`), { open: j }); continue; }
       if (s.status === 'completed') { const url = s.video?.url || s.images?.[0]?.url || s.audio?.url || s.output?.url; if (!url) throw new Error(`Higgsfield ${id}: completed with no file`);
-        const fr = await fetchImpl(url); return { buf: Buffer.from(await fr.arrayBuffer()), type: fr.headers.get('content-type') || '', url, requestId: j.request_id }; }
+        const fr = await fetchImpl(url), type = fr.headers.get('content-type') || ''; if (!fr.ok || /text\/html|application\/json|xml/.test(type)) throw Object.assign(new Error(`Higgsfield ${id}: the finished file couldn't be fetched (${fr.status})`), { open: j });
+        const buf = Buffer.from(await fr.arrayBuffer()); if (buf.length < 512) throw Object.assign(new Error(`Higgsfield ${id}: the finished file came back empty`), { open: j });
+        return { buf, type, url, requestId: j.request_id }; }
       if (['failed', 'nsfw', 'canceled', 'cancelled', 'error'].includes(s.status)) throw Object.assign(new Error(`Higgsfield ${id} ${s.status}${s.error ? `: ${String(s.error).slice(0, 160)}` : ''}`), { refunded: true, moderated: s.status === 'nsfw' });
     }
-    throw new Error(`Higgsfield ${id}: no result after ${Math.round(maxMs / 60e3)} min`);
+    throw Object.assign(new Error(`Higgsfield ${id}: still being made after ${Math.round(maxMs / 60e3)} min; it will be picked up, not paid for again`), { open: j });
   }
   /* the offering for a job (data/higgsfield-routes.json): { id, input defaults, why } */
   const pick = (job, tier = 'default') => { const j = ROUTES.jobs?.[job]; if (!j) return null; const o = j[tier] || j.default; return o && workflow(o.id) ? { ...o, job, label: j.label } : null; };

@@ -205,7 +205,7 @@ test('a Studio film is delivered at the placement’s exact pixels (a 720p clip 
 
 test('v1: a card button that makes a picture, a set or a video opens Studio; words, briefs and batches stay in v1', async () => {
   const fs = await import('node:fs'), app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'), rt = fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8');
-  assert.match(app, /if \(j2Ok && !chId && !o\.v1\) \{ const k = await tapi\('POST', '\/api\/jam2\/studio-for'/); assert.match(rt, /'\/api\/jam2\/studio-for'[^\n]*isBatchCard\(card\)\) return \{ studio: false \}/);
+  assert.match(app, /if \(j2Ok && !chId && !o\.v1 && !window\.BREW_DEMO\) \{ if \(openRemix\.asking\) return;/); assert.match(app, /tapi\('POST', '\/api\/jam2\/studio-for'/); assert.match(rt, /'\/api\/jam2\/studio-for'[^\n]*isBatchCard\(card\)\) return \{ studio: false \}/);
   const kindOf = (label, card = {}) => recipe(planFor({ title: 'x', ...card }, label)[0].recipe)?.kind;
   assert.ok(['static', 'video', 'carousel'].includes(kindOf('Make the ad'))); assert.ok(['static', 'video', 'carousel'].includes(kindOf('Make the video')));
 });
@@ -258,4 +258,58 @@ test('a reference added for a product is a product photo tied to it; the same by
   const R = createReferences({ packs, log: { info() {} } }), png = 'data:image/png;base64,' + Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da6364f8ffbf1e000502027f3c64a8a80000000049454e44ae426082', 'hex').toString('base64');
   const a = await R.add('s', { data: png, label: 'Back', product: 'MitoActive Serum' }); assert.equal(a.item.job, 'product'); assert.equal(a.item.product, 'MitoActive Serum');
   const b = await R.add('s', { data: png, label: 'Back', product: 'Super Shampoo' }); assert.ok(b.same); assert.equal((await R.list('s'))[0].product, 'Super Shampoo');
+});
+
+test('audit 23 Oct: what a brand allows (people, product, reviews) decides every Studio style, in the defaults, the price and the make', async () => {
+  const { blockOf, defaults, styleOf, createStudio } = await import('../jam2/studio.js');
+  const base = { bbv: { comfort: { people: 'none' }, reviews: [] }, product: { img: 'p.jpg', name: 'Serum' }, card: { title: 'Show it in a video', cta: { label: 'Make the video' } }, jam: { concept: {} } };
+  assert.match(blockOf(styleOf('ugc-review'), base), /no people on camera/); assert.equal(blockOf(styleOf('showcase'), base), null);
+  assert.match(blockOf(styleOf('hands'), base), /no people/); assert.match(blockOf(styleOf('closeup'), { ...base, bbv: { comfort: { people: 'hands' } } }), /hands only/);
+  assert.match(blockOf(styleOf('ugc-home'), { ...base, bbv: { comfort: { people: 'consented' } } }), /only your own people/);
+  assert.match(blockOf(styleOf('mp-benefits'), { ...base, product: null }), /shows your product/); assert.match(blockOf(styleOf('ugc-tutorial'), { ...base, bbv: { comfort: { people: 'ai-cast' } }, product: null }), /shows your product/);
+  assert.match(blockOf(styleOf('quote-card'), base), /real customer review/); assert.equal(blockOf(styleOf('quote-card'), { ...base, bbv: { ...base.bbv, reviews: [{ text: 'Love it' }] } }), null);
+  const d = defaults(base, { recipe: 'ugc-ad', kind: 'video' }); assert.ok(!d.styles.some((id) => /^(ugc|tt)-/.test(id)), d.styles.join()); assert.ok(d.blocked['ugc-review']);
+  const st = createStudio({ engines: { hf: { pick: () => ({ id: 'x', input: {} }), estimate: async () => ({ usd: 3 }), nearestRatio: () => '9:16' }, quote: async () => ({ usd: 0.1 }) }, maker: { creative: {} } });
+  assert.match((await st.plan(base, { style: 'ugc-review', sizes: ['story'] })).error, /no people on camera/);
+  await assert.rejects(st.make(base, {}, { style: 'ugc-review', sizes: ['story'] }), /no people on camera/);
+  /* a picture board stays a picture whatever the card says ("running shorts" is a product, not a video) */
+  assert.equal(defaults({ ...base, bbv: { comfort: {} }, card: { title: 'New running shorts', cta: { label: 'Make the reel' } } }, { recipe: 'ig-post', kind: 'static' }).kind, 'image');
+  assert.equal(defaults({ ...base, bbv: { comfort: {} }, card: { title: 'New running shorts in stock', cta: { label: 'Make the ad' } } }, null).kind, 'image');
+  /* an enquiry brand opens on places and moments, never marketplace sets */
+  assert.deepEqual(defaults({ ...base, bbv: { comfort: {} }, storeKind: 'enquiry' }, { recipe: 'listing', kind: 'carousel' }).set, ['in-use', 'editorial', 'natural', 'flat-lay']);
+  /* counts are whole */
+  assert.equal((await st.plan({ ...base, bbv: { comfort: {} } }, { style: 'showcase', sizes: ['story'], count: 2.5 })).count, 2);
+});
+
+test('audit 23 Oct: catalog photos are read from imgs; product words like "Silicone" or "Logo Cap" never hide a product', async () => {
+  const m = maker(), ctx = { product: { img: 'a.jpg', name: 'Tee' }, catalog: [{ t: 'Tee', img: 'a.jpg', imgs: ['a.jpg', 'pack.jpg', 'side.jpg'] }] };
+  assert.deepEqual(m.creative.photosOf(ctx, null), ['a.jpg', 'pack.jpg', 'side.jpg']); assert.deepEqual(m.creative.productEntry(ctx).images, ['a.jpg', 'pack.jpg', 'side.jpg']);
+  const { catalogOf } = await import('../product-match.js');
+  const t = catalogOf({ catalog: { products: ['Silicone Baby Bottle', 'Iconic Matte Lipstick', 'Logo Cap', 'Banner Stand', 'Gift Card'].map((title, i) => ({ title, img: `https://x/p${i}.jpg` })) } }).map((x) => x.t);
+  assert.deepEqual(t, ['Silicone Baby Bottle', 'Iconic Matte Lipstick', 'Logo Cap', 'Banner Stand']);
+});
+
+test('audit 23 Oct: the words fit any frame (a 3:1 banner keeps the button inside), and a light brand colour gets dark button words', async () => {
+  const sharp = (await import('sharp')).default, fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fit-')); fs.writeFileSync(path.join(dir, 'bg.png'), await sharp({ create: { width: 300, height: 100, channels: 3, background: '#203040' } }).png().toBuffer());
+  const m = createMaker({ engines: { run: async () => { throw new Error('x'); } }, brandbook: { promptBlock: () => '' }, claudeTool: async () => { throw new Error('x'); }, isMock: () => true, saveGen: () => {}, genFile: async (n) => path.join(dir, n), photoAsync: async () => null });
+  for (const zone of ['left', 'right', 'top', 'bottom']) { const sc = await m.creative.layout({ bbv: { kit: { colors: ['#ffe14d'], accent: '#ffe14d' } }, product: { name: 'Serum' } }, { w: 2400, h: 800 }, 'gen/bg.png',
+    { headline: 'A sixty character headline that goes on for quite a long way', sub: 'And a ninety character sub line that also goes on and on and on for a long long way here', badge: '51,419 reviews', cta: 'Shop now' }, zone);
+    const cta = sc.layers.find((l) => l.id === 'cta'); assert.ok(cta.y + cta.h <= 800, `${zone}: button at ${cta.y}+${cta.h}`); assert.equal(cta.style.color, '#111111'); }
+});
+
+test('audit 23 Oct: a Studio piece passes its gate (no product layer is needed); a check that never ran does not', async () => {
+  const m = maker(), b = { recipe: 'image-ad' }, ctx = { ...ctxOf({ concept: {} }), product: { img: 'p.jpg', name: 'Serum' } };
+  const g1 = m.gate(ctx, { studio: { kind: 'image', style: 'mp-main' }, file: 'gen/a.jpg', made: [{ cap: 'cutout' }], scene: { w: 2000, h: 2000, layers: [] }, words: {} }, b); assert.ok(g1.pass, JSON.stringify(g1.checks));
+  const g2 = m.gate(ctx, { studio: { kind: 'video' }, file: 'gen/v.mp4', words: {} }, { recipe: 'reel' }); assert.ok(g2.pass, JSON.stringify(g2.checks));
+  const g3 = m.gate(ctx, { studio: { kind: 'image' }, file: 'gen/a.jpg', shot: { why: "check didn't run: timeout" }, scene: { w: 1080, h: 1350, layers: [] }, words: {} }, b); assert.ok(!g3.pass);
+});
+
+test('audit 23 Oct: a Higgsfield request bought before a restart is polled again, never bought twice', async () => {
+  const { createHiggsfield } = await import('../jam2/higgsfield.js'); const calls = [];
+  const fetchImpl = async (url, o = {}) => { calls.push([o.method || 'GET', url]); if (/status/.test(url)) return { ok: true, json: async () => ({ status: 'completed', video: { url: 'https://cdn/x.mp4' } }) };
+    if (/cdn/.test(url)) return { ok: true, headers: { get: () => 'video/mp4' }, arrayBuffer: async () => new ArrayBuffer(4096) }; return { ok: true, json: async () => ({ status_url: 'https://api/status/1', request_id: 'r1' }) }; };
+  const hf = createHiggsfield({ env: { HF_API_KEY_ID: 'a', HF_API_KEY_SECRET: 'b' }, fetchImpl, log: { warn() {} } }); const t0 = setTimeout; globalThis.setTimeout = (f) => t0(f, 0);
+  try { const out = await hf.run('kling-video/v3.0/pro/image-to-video', {}, { resume: { id: 'k', status_url: 'https://api/status/1' } }); assert.equal(out.buf.length, 4096); assert.ok(!calls.some(([m]) => m === 'POST'), 'no second purchase'); }
+  finally { globalThis.setTimeout = t0; }
 });

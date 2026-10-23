@@ -167,3 +167,13 @@
 .j2-stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
 .j2-stgal-x{position:absolute;right:10px;top:10px}
 @media (max-width:820px){.j2-st-styles{grid-template-columns:repeat(2,minmax(0,1fr))}.j2-stgal{flex-direction:column}.j2-stgal-side{width:auto;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line,#eee)}}
+
+/* Studio audit fixes: a style the brand can't use is dimmed (its reason is the tooltip and a tap's toast); the composer scrolls
+   inside the stage on phones; a failed run's note sits above the composer */
+.j2-sti.no{opacity:.4;filter:grayscale(1)}
+.j2-stage{align-items:safe center}
+.j2-stcol{display:flex;flex-direction:column;gap:10px;align-items:stretch;width:min(760px,100%);max-height:100%}
+.j2-stcol>.j2-studio{width:100%}
+.j2-studio:not(.over){max-height:100%;overflow:auto}
+.j2-studio{border-color:var(--line-2,var(--line,#e6e6e6));box-shadow:0 0 0 1px var(--line,rgba(0,0,0,.06)),0 10px 30px rgba(0,0,0,.08)}
+@media (max-width:820px){.j2-stsize{left:0;right:0;min-width:0}}

@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { sceneHtml, typePreset, reflow, sentencesOf } from '../public/jam2/scene.js';
+import { imgsOf } from './ingredients.js';
 import { recipe, SIZES } from './catalogue.js';
 import { productFor } from './ingredients.js';
 import { addTake, headOf, sizeOf, uid, note } from './core.js';
@@ -64,6 +65,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
       `The spark (${c.spark?.kind || 'idea'}): ${c.spark?.title || ''}. ${c.spark?.says || ''} ${(c.spark?.why || []).join(' ')}`.trim(),
       c.angle ? `The idea so far: ${c.angle}. Goal: ${c.goal}.${c.audience ? ` For: ${c.audience}.` : ''}${c.offer ? ` Offer: ${c.offer}.` : ''}` : '',
       ctx.product?.name ? `The product: ${ctx.product.name}. It appears as its real photo; describe only the setting around it.` : '',
+      ctx.storeKind === 'enquiry' ? 'The brand sells by enquiry (a service, a place to visit), not a cart: the button invites an enquiry or a visit ("Enquire now", "Book a visit"), never "Shop now" or "Buy".' : '',
       ctx.source ? `Facts you may use (nothing else): ${tidy(ctx.source, 2500)}` : '',
       (ctx.catalog || []).length ? `Products and prices: ${(ctx.catalog || []).slice(0, 14).map((p) => `${tidy(p.t || p.title, 70)}${p.price ? ` · ${p.price}` : ''}`).join('; ')}` : '',
       ctx.bbv.currency ? `Prices are in ${ctx.bbv.currency}; never use another currency.` : '',
@@ -176,6 +178,20 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
     const flags = claimFlags(text, src); checks.push({ k: 'claims', ok: !flags.length, why: flags.length ? flags.slice(0, 2).map((f) => f.why).join('; ') : 'No invented codes, guarantees or timed results.' });
     let reHits = []; try { reHits = ctx.bbv.neverRe ? bannedHits(text, new RegExp(ctx.bbv.neverRe, 'i'), src) : []; } catch { reHits = []; }
     const never = [...new Set([...reHits, ...(ctx.bbv.neverSay || []).filter((w) => w && new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text))])]; checks.push({ k: 'never', ok: !never.length, why: never.length ? `Uses words the brand never uses: ${never.join(', ')}` : 'None of the brand’s never-say words.' });
+    /* a Studio piece is judged by how it was made: shot around the real product photos and checked, cut out of the real photo,
+       or drawn by the model and read back; a video is its finished file. A check that didn't run is never a pass */
+    if (take.studio) {
+      const st = take.studio, sc = take.scene, shots = [take.shot, ...(take.slides || []).map((x) => x.shot)].filter(Boolean), unchecked = shots.some((x) => /check didn.t run/.test(x.why || ''));
+      const how = take.made?.some((m) => m.cap === 'cutout') ? 'The real product photo, cut out: its pixels are untouched.' : take.drawn ? 'Drawn by the model and read back: the same product, no words we can’t back up.' : shots.length ? 'Shot around the real product photos and checked against them.' : st.kind === 'video' ? 'Made from a checked first frame or the real product photos.' : 'No product photo was used.';
+      checks.push({ k: 'product', soft: !ctx.product, ok: !unchecked, why: unchecked ? 'The product check couldn’t run on this one: look closely before you approve it.' : how });
+      if (sc?.layers?.length) { const tall = sc.h / sc.w > 1.6, foot = tall ? sc.h * 0.84 : sc.h - 4, est = (l) => l.y + (l.h || Math.round((l.style?.size || 40) * 1.3));
+        const outside = sc.layers.filter((l) => (l.kind === 'text' || l.kind === 'badge') && !l.hidden && (l.x < 0 || l.x + (l.w || 0) > sc.w + 2 || (tall && l.y < sc.h * 0.14) || est(l) > foot));
+        checks.push({ k: 'safe', ok: !outside.length, why: outside.length ? 'Some words sit where the app draws its own bars or off the edge.' : 'Words inside the safe area.' }); }
+      const fonts = ctx.bbv.kit?.fonts || {}; checks.push({ k: 'kit', ok: !!(fonts.heading || fonts.body) && !!ctx.bbv.kit?.colors?.length, why: fonts.heading ? `In ${fonts.heading}${ctx.bbv.kit?.colors?.length ? ' and your colours' : ''}.` : 'Your brand font isn’t set yet: add it in the Brand Book.', soft: true });
+      checks.push({ k: 'spelling', ok: true, why: sc?.layers?.some((l) => l.kind === 'text') ? 'Words are set as real type from the approved text, never drawn by the model.' : take.drawn ? 'The words were drawn by the model, then read back against the approved words.' : 'No words on it.' });
+      const miss = st.kind === 'video' ? (!/\.mp4$/i.test(take.file || '') ? 'the video didn’t come back' : '') : st.set ? ((take.slides || []).length < 2 ? 'fewer than 2 slides came back' : '') : !take.file ? 'the picture didn’t render' : '';
+      checks.push({ k: 'content', ok: !miss, why: miss ? `Not ready: ${miss}.` : 'Everything it needs is there.' });
+      const hard = checks.filter((c) => !c.ok && !c.soft); return { pass: !hard.length, checks, at: Date.now() }; }
     if (take.scene) {
       const prod = take.scene.layers.find((l) => l.kind === 'product'); checks.push({ k: 'product', soft: !ctx.product, ok: !!prod || !!take.harmonized, why: prod ? 'The real product photo, cut out: its pixels are untouched.' : take.harmonized ? (take.guard?.same === false ? 'The blended picture may have changed the product.' : 'Blended into the scene; checked against the real photo.') : !ctx.product ? 'No product photo yet: add one in References and swap it in.' : 'No product in this picture.' });
       const tall = take.scene.h / take.scene.w > 1.6; const outside = take.scene.layers.filter((l) => (l.kind === 'text' || l.kind === 'badge') && !l.hidden && (l.x < 0 || l.x + l.w > take.scene.w + 2 || (tall && (l.y < take.scene.h * 0.14 || l.y > take.scene.h * 0.84))));
@@ -465,16 +481,21 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
 
   /* the same picture for every product: the scene and words stay, each real product is cut out and placed in turn (free with
      the local cut-out; a product whose cut-out falls back to the paid one says so in the take's cost) */
+  const p0cur = (ctx) => ctx.currency || ctx.bbv?.currency || '';
+  /* a price in any currency: a symbol, a real ISO code (AED 99, 99 SAR; never "SPF 50"), Rs, or a % off */
+  const ISO = (() => { try { return Intl.supportedValuesOf('currency').join('|'); } catch { return 'USD|INR|EUR|GBP|AED|SAR|AUD|CAD|SGD|JPY|ZAR'; } })();
+  const priceRe = (cur) => new RegExp(`[$₹€£¥₩₦₱฿₫₪₺₽]\\s?\\d|\\b(?:${ISO}|Rs\\.?|RS\\.?)\\s?\\d|\\d[\\d,.]*\\s?(?:(?:${ISO})\\b|[Rr]s\\.?|\\/-)|\\b\\d+\\s?%\\s?(?:off|OFF|Off)${/^[A-Za-z]{1,3}$/.test(cur || '') && !/^[A-Z]{3}$/.test(cur) ? `|\\b${cur}\\s?\\d` : ''}`); /* codes in capitals only: "Top 10" is not Tongan paʻanga */
   async function allProducts(ctx, board, src, { max = 12 } = {}) {
     const h = headOf(src); if (!h?.scene) throw new Error('Make the picture first.');
-    const tiles = (ctx.catalog || []).filter((p) => p.img || p.images?.[0]).slice(0, max); if (tiles.length < 2) throw new Error('Your catalog has fewer than two products with photos.');
+    const tiles = (ctx.catalog || []).filter((p) => p.img || imgsOf(p)[0]).slice(0, max); if (tiles.length < 2) throw new Error('Your catalog has fewer than two products with photos.');
     const made = [], slides = [];
     /* the words were written for the source product: on every other product, a line with a price or that product's name would
        be a false claim, so it becomes this product's own name and catalog price; store-wide lines (free shipping) stay */
     const srcName = String(ctx.product?.name || h.product || '').toLowerCase(), same = (p) => !!srcName && String(p.t || p.title || '').toLowerCase() === srcName;
     const short = (p) => tidy(String(p.t || p.title || '').split(/\s+[–—|-]\s+/)[0], 40), sym = (c) => ({ USD: '$', INR: '₹', EUR: '€', GBP: '£', AUD: 'A$', CAD: 'C$' }[String(c || '').toUpperCase()] || '');
     const money = (p, v) => (v == null ? '' : `${sym(p.currency || ctx.currency) || ''}${v}${sym(p.currency || ctx.currency) ? '' : ` ${p.currency || ctx.currency || ''}`.trimEnd()}`);
-    const FIG = /[$₹€£]\s?\d|\d[\d,.]*\s?(usd|inr|rs\.?|eur|gbp)\b|\b\d+\s?%\s?off/i, SHIP = /shipping|delivery/i;
+    /* a price in any currency: a symbol, a 3-letter code (AED 99, 99 SAR), Rs or the brand's own code; or a % off */
+    const FIG = priceRe(p0cur(ctx)), SHIP = /shipping|delivery/i;
     const srcWords = srcName.split(/\s+[–—|-]\s+/)[0].split(/\s+/).filter((w) => w.length > 3);
     const names = (t) => srcWords.length && srcWords.filter((w) => String(t).toLowerCase().includes(w)).length >= Math.min(2, srcWords.length);
     /* the headline goes first: once it carries the product's name, the line under it is just the price */
@@ -482,7 +503,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
       if (l.kind === 'badge') { l.hidden = true; return; }
       const price = `${p.price != null ? money(p, p.price) : ''}${p.mrp > p.price ? ` (was ${money(p, p.mrp)})` : ''}`;
       if (l.role === 'headline') { l.words = short(p); named.v = true; } else l.words = named.v ? (price ? `Now ${price}` : '') : `${short(p)}${price ? ` · ${price}` : ''}`; if (!l.words) l.hidden = true; }
-    for (const p of tiles) { const c2 = { ...ctx, product: { img: p.img || p.images[0], name: p.t || p.title || null, handle: p.handle || null }, cuts: ctx.cuts };
+    for (const p of tiles) { const c2 = { ...ctx, product: { img: p.img || imgsOf(p)[0], name: p.t || p.title || null, handle: p.handle || null }, cuts: ctx.cuts };
       const cut = await cutout(c2); if (!cut || cut.raw) continue; if (cut.usd) made.push({ cap: 'cutout', provider: cut.provider, model: cut.model, usd: cut.usd });
       const sc = JSON.parse(JSON.stringify(h.scene)); for (const l of sc.layers) if (l.kind === 'product') { l.src = cut.file; l.hidden = false; }
       if (!same(p)) { const named = { v: false }; for (const l of [...sc.layers].sort((a, b) => (a.role === 'headline' ? -1 : 0) - (b.role === 'headline' ? -1 : 0))) fitWords(l, p, named); }

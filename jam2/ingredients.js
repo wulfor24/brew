@@ -4,10 +4,13 @@
 import { cardProduct } from '../product-match.js';
 import { isRivalCard, isResearchImage } from '../rival-ad.js';
 
-const imgOf = (p) => p?.img || p?.images?.[0] || null;
+/* a catalog entry's photos: the read keeps them as imgs (product-match.js catalogOf), older reads as images */
+export const imgsOf = (p) => (Array.isArray(p?.imgs) ? p.imgs : Array.isArray(p?.images) ? p.images : []);
+const imgOf = (p) => p?.img || imgsOf(p)[0] || null;
 export function productFor({ card = null, catalog = [], refs = [], pick = null, lanePhoto = null }) {
   if (pick?.img) return { img: pick.img, name: pick.name || pick.t || null, from: pick.from || 'picked' };
-  const ref = (refs || []).find((r) => r.job === 'product' && r.kind !== 'video' && r.file);
+  /* a photo the brand added for one product (its back, a side) belongs to that product only, never the default for every card */
+  const ref = (refs || []).find((r) => r.job === 'product' && r.kind !== 'video' && r.file && !r.product);
   const named = card ? cardProduct(card, catalog) : null;
   if (named && imgOf(named)) return { img: imgOf(named), name: named.t || named.title || null, handle: named.handle || null, from: 'card' };
   if (ref) return { img: ref.url || ref.file, name: ref.label || null, from: 'references' };

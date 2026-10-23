@@ -15,7 +15,7 @@ import { parseDrop, IMAGE_MAX } from './drop.js';
 export const JOBS = ['product', 'scene', 'style', 'person', 'logo', 'other'];
 export const VIDEO_MAX = 25e6;
 export const FILE = 'private/references.json';
-export const LABEL_MAX = 80, KEEP_MAX = 160, PRODUCT_MAX = 160;
+export const LABEL_MAX = 80, KEEP_MAX = 160, PRODUCT_MAX = 300; /* long product titles still match whole */
 const MIME = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', mp4: 'video/mp4' };
 export const mimeOf = (file) => MIME[String(file || '').split('.').pop().toLowerCase()] || 'application/octet-stream';
 
