@@ -67,3 +67,9 @@ test('a set a restart cut off picks up where it stopped: the slides it already m
   assert.equal(head.slides[0].file, 'gen/kept-0.jpg', 'the slide made before the restart is the one used'); assert.equal(head.slides.length, 3);
   assert.deepEqual(B.landed.at(-1), ['mp-lifestyle', 'in-use', 'closeup']);
 });
+
+test('a review count in the picture is checked too: "from 226 reviews" passes only when the brand’s own reviews say 226', () => {
+  const base = { family: 'social', pkg: { caption: 'Curls, sorted.', hashtags: ['#a', '#b', '#c'] }, brand: 'Acme', host: 'acme.com', words: ['4.5★ from 226 reviews'] };
+  assert.match(readyOf({ ...base, source: 'customers rate it 4.5 stars' }).checks.find((c) => c.k === 'rating').t, /226 reviews/);
+  assert.equal(readyOf({ ...base, source: 'Judge.me: 4.5 stars from 226 reviews' }).checks.find((c) => c.k === 'rating').ok, true);
+});

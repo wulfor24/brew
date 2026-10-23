@@ -41,6 +41,10 @@ function ratingsOk(text, src) {
   for (const m of String(text).matchAll(RATING)) { const n = m[1] || m[2]; let ok = false; let i = s.indexOf(n);
     while (i >= 0 && !ok) { const near = s.slice(Math.max(0, i - 60), i + n.length + 60); if (/rat|★|⭐|star|review/.test(near)) ok = true; i = s.indexOf(n, i + 1); }
     if (!ok) bad.push(m[0].trim()); }
+  /* a review count ("from 226 reviews", "2,100+ ratings") is the brand's own only when that number is in its reviews too */
+  for (const m of String(text).matchAll(/(\d[\d,]{1,})\+?\s*(?:verified\s+)?(reviews?|ratings?|happy customers|customers)\b/gi)) { const n = m[1].replace(/,/g, ''); let ok = false;
+    for (const v of [m[1], n]) { let i = s.indexOf(v.toLowerCase()); while (i >= 0 && !ok) { const near = s.slice(Math.max(0, i - 60), i + v.length + 60); if (/review|rating|customer|★|star/.test(near)) ok = true; i = s.indexOf(v.toLowerCase(), i + 1); } }
+    if (!ok) bad.push(m[0].trim()); }
   return [...new Set(bad)];
 }
 
