@@ -81,7 +81,7 @@ function baseSeed({ slug, host, name, tagline, colors, logo, mark, face, typeNam
     health: { score: 0, delta: 0, rings: [{ k: 'Creative', v: 0, what: 'How much of the work has a number' }, { k: 'Storefront', v: 0, what: 'How often a visit becomes a first order' }, { k: 'AI answers', v: 0, what: 'How often AI tools name you' }], moves: [] },
     geo: { score: 0, band: 'Not read yet' },
     connectors: {
-      shopify: { name: 'Shopify', /* what connecting does, whatever the store runs on: never "Custom" (QA 19 Oct; the Shopify-only note says the rest) */ color: '#5E8E3E', glyph: 'S', account: host, kind: 'Orders, customers, carts and pages', perms: ['Read orders and customers', 'Read abandoned checkouts'], log: ['Reading 12 months of orders', 'Reading abandoned checkouts', 'Matching opt-ins'], changed: ['Cards show your real orders', 'Checkout cards show your real drop-off'], health: {} },
+      shopify: shopifyConnector(host),
       meta: { name: 'Meta Ads', color: '#0866FF', glyph: 'f', account: `${name} ad account`, kind: 'Campaigns, spend, return and ad fatigue', perms: ['Read campaigns, ad sets and ads', 'Read the last 30 days of results'], log: ['Reading campaigns and live ads', 'Reading 30 days of results', 'Checking frequency and return per campaign'], changed: ['Ad cards measure against your real cost per purchase', 'Budget and fatigue cards from your own campaigns'], health: {} },
       ga4: { name: 'Google Analytics', color: '#E37400', glyph: 'A', account: `${name} · GA4`, kind: 'Visits, funnel and site events (GA4)', perms: ['Read GA4 reports'], log: ['Reading 30 days of sessions', 'Checking the funnel'], changed: ['Storefront cards show your real funnel', 'Tracking card shows the live gap'], health: {} },
       google: { name: 'Google Ads', color: '#4285F4', glyph: 'G', account: `${name} · Google Ads`, kind: 'Search and Shopping campaigns', perms: ['Read campaigns and searches'], log: ['Reading campaigns and searches'], changed: ['Search cards show real searches', 'Ad cards show search spend and return'], health: {} },
@@ -172,9 +172,16 @@ export function prototypeConnectors(conns = {}) {
 
 /* connectors that fit how the brand sells (store-facts.js): Shopify only for a Shopify store (connecting does nothing for a
    Salesforce Commerce or WordPress site), a review app only when the site shows reviews. Healed on load (brand-pack.js) */
-export function storeConnectors(seed, p) {
+/* a store whose orders live in Shopify: a Shopify storefront, or a headless one (Hydrogen, Next.js on the Storefront API) the read
+   saw talking to Shopify (profile.shopifyBackend, stages/open.js), or a store read from its Shopify admin */
+export const shopifyBacked = (p) => !!(p && (p.platform === 'shopify' || p.shopifyBackend || p.source?.kind === 'shopify-admin' || p.closed?.shop));
+export const shopifyConnector = (host) => ({ name: 'Shopify', /* what connecting does, whatever the store runs on: never "Custom" (QA 19 Oct; the Shopify-only note says the rest) */ color: '#5E8E3E', glyph: 'S', account: host, kind: 'Orders, customers, carts and pages', perms: ['Read orders and customers', 'Read abandoned checkouts'], log: ['Reading 12 months of orders', 'Reading abandoned checkouts', 'Matching opt-ins'], changed: ['Cards show your real orders', 'Checkout cards show your real drop-off'], health: {} });
+/* keepShopify: the brand has a Shopify account connected, whatever a re-read thinks its storefront runs on */
+export function storeConnectors(seed, p, { keepShopify = false } = {}) {
   if (!seed?.connectors || !p) return false; let changed = false;
-  if (p.platform && p.platform !== 'shopify' && seed.connectors.shopify) { delete seed.connectors.shopify; changed = true; }
+  if (p.platform && !shopifyBacked(p) && !keepShopify && seed.connectors.shopify) { delete seed.connectors.shopify; changed = true; }
+  /* a seed that lost it to an earlier read (headless Shopify read as custom) gets it back */
+  if ((shopifyBacked(p) || keepShopify) && !seed.connectors.shopify) { seed.connectors = { shopify: shopifyConnector(p.host), ...seed.connectors }; changed = true; }
   if ((p.reviews?.onSite === 'off' || p.storeKind === 'enquiry') && seed.connectors.reviews) { delete seed.connectors.reviews; changed = true; }
   if (p.storeKind === 'enquiry' && seed.connectors.marketplaces) { delete seed.connectors.marketplaces; changed = true; }
   if (p.storeKind === 'enquiry' && seed.vocab?.item === 'product') { seed.vocab = { ...seed.vocab, buyer: 'buyer', buyers: 'buyers' }; changed = true; }

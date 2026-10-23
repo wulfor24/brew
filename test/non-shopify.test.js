@@ -148,3 +148,16 @@ test('listening starts once the read is done, before the moves; ideas wait for t
   const d = dueFor({ lastOpen: now }, cfg, { now, ready: false, readDone: true }); assert.equal(d.listen, true); assert.equal(d.ideas, false); assert.match(d.why.join(), /ideas wait for the moves/);
   assert.equal(dueFor({}, cfg, { now, ready: false, readDone: false }).listen, false, 'nothing before the read');
 });
+
+test('headless Shopify keeps its Shopify connector; a connected store never loses it to a re-read; a lost one comes back', async () => {
+  const { shopifyBackendOf } = await import('../reader/stages/open.js');
+  assert.equal(shopifyBackendOf('<script>fetch("https://acme.myshopify.com/api/2026-04/graphql.json")</script>', 'custom', null), true, 'Next.js on the Storefront API');
+  assert.equal(shopifyBackendOf('<meta name="generator" content="Shopify-Hydrogen">', 'custom', null), true, 'Hydrogen');
+  assert.equal(shopifyBackendOf('<html>a Salesforce store</html>', 'salesforce-commerce', null), false);
+  const seed = () => ({ connectors: { shopify: { name: 'Shopify' }, ga4: { name: 'Google Analytics' } }, vocab: { item: 'product' } });
+  const a = seed(); storeConnectors(a, { platform: 'custom', shopifyBackend: true }); assert.ok(a.connectors.shopify, 'headless: kept');
+  const b = seed(); storeConnectors(b, { platform: 'custom' }, { keepShopify: true }); assert.ok(b.connectors.shopify, 'connected: kept');
+  const c = { connectors: { ga4: { name: 'Google Analytics' } } }; assert.equal(storeConnectors(c, { platform: 'custom', shopifyBackend: true, host: 'acme.com' }), true);
+  assert.equal(c.connectors.shopify?.name, 'Shopify'); assert.equal(c.connectors.shopify.account, 'acme.com');
+  const d = seed(); storeConnectors(d, { platform: 'custom' }); assert.ok(!d.connectors.shopify, 'a custom store with no Shopify sign still has none');
+});

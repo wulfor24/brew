@@ -49,6 +49,9 @@ export async function open(ctx) {
     if (pj.ok && Array.isArray(pj.json?.products)) platform = 'shopify';
   }
   if (platform === 'unknown') platform = 'custom';
+  /* headless Shopify (Hydrogen on Oxygen, Next.js on the Storefront API): the storefront isn't Shopify's, the orders are. Its
+     pages name the shop's myshopify domain, Shopify's checkout, the Storefront API or Hydrogen */
+  profile.shopifyBackend = shopifyBackendOf(html, platform, shopifyShop);
   profile.platform = platform; ctx.state.shopifyShop = shopifyShop;
 
   // Shopify's public /meta.json: the shop's own country, currency (products.json prices are in it) and city
@@ -250,3 +253,7 @@ function freeShip(text) {
   const m = String(text).match(/free (?:standard )?(?:shipping|delivery)[^.\n]{0,40}?(?:on|above|over|for) (?:all )?(?:orders?|purchases?)?\s*(?:of|above|over)?\s*((?:₹|Rs\.?|INR|\$|£|€|A\$|C\$)\s?[\d,]+(?:\.\d+)?|[\d,]+\s?(?:INR|USD|GBP|EUR))/i);
   return m ? clean(m[0]).slice(0, 120) : null;
 }
+
+/* headless Shopify: the storefront is Next.js or Hydrogen, the orders are Shopify's (the connector stays: seed-template shopifyBacked) */
+export const shopifyBackendOf = (html, platform, shopifyShop) => platform === 'shopify' || !!shopifyShop
+  || /[a-z0-9-]+\.myshopify\.com|checkout\.shopify\.com|shopify-checkout|\/api\/\d{4}-\d{2}\/graphql\.json|Shopify-Hydrogen|hydrogen-ui|storefrontAccessToken|PUBLIC_STOREFRONT_API_TOKEN/i.test(String(html || ''));

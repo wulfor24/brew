@@ -23,7 +23,8 @@ function shop({ pages, count = 9000, cancelled = 100, products, throttleOnce = f
     if (/orders\(first:250/.test(query) && /paymentGatewayNames/.test(query)) return ok({ data: { orders: { nodes: [...Array(30)].map((_, k) => ({ ...order(15 + k % 20, true), cancelledAt: k < 6 ? ago(12) : null, displayFinancialStatus: k < 6 ? 'PENDING' : 'PAID' })), pageInfo: { hasNextPage: false } } } });
     if (/shippingAddress/.test(query)) return ok({ data: { orders: { nodes: [], pageInfo: { hasNextPage: false } } } });
     if (/abandonedCheckoutsCount/.test(query)) return ok({ data: { abandonedCheckoutsCount: { count: 50 } } });
-    if (/productsCount/.test(query)) return ok({ data: { productsCount: { count: products.length }, products: { nodes: products } } });
+    if (/productsCount/.test(query)) return ok({ data: { productsCount: { count: products.length }, products: { nodes: products.map((p) => ({ ...p, variants: p.many ? { nodes: p.many.slice(0, 5) } : p.variants })) } } });
+    if (/product\(id:\$id\)/.test(query)) { const p = products.find((x) => x.id === variables.id); return ok({ data: { product: { variants: { nodes: p.many } } } }); }
     if (/description/.test(query)) return ok({ errors: [{ message: 'description failed' }] });
     return ok({ data: { shop: { currencyCode: 'INR' } } });
   };
@@ -116,4 +117,14 @@ test('orders through a checkout app (GoKwik): Shopify’s checkouts left is only
   assert.equal(r.metrics.checkoutApp.name, 'Gokwik New'); assert.equal(r.metrics.started, undefined);
   const c = r.cards.find((x) => /carts/.test(x.id));
   assert.match(c.title, /Shopify’s own checkout/); assert.match(c.sub, /100% of your orders come through Gokwik New/);
+});
+
+test('a product with more than 5 variants is read whole before it counts as sold out', async (t) => {
+  const many = [...Array(5)].map(() => ({ inventoryPolicy: 'DENY' })).concat([{ inventoryPolicy: 'CONTINUE' }]);
+  const products = [{ id: 'gid://shopify/Product/1', title: 'Six shades', totalInventory: 0, tracksInventory: true, onlineStoreUrl: 'https://a', variantsCount: { count: 6 }, many },
+    { id: 'gid://shopify/Product/2', title: 'Plain', totalInventory: 0, tracksInventory: true, onlineStoreUrl: 'https://b', variantsCount: { count: 1 }, variants: { nodes: [{ inventoryPolicy: 'DENY' }] } }];
+  const s = shop({ pages: [[order(1)]], products });
+  t.mock.method(globalThis, 'fetch', s.fetch);
+  const r = await shopify.sync(conn, ctx);
+  assert.equal(r.metrics.oos, 1); assert.deepEqual(r.metrics.low.map((x) => x.title), ['Plain'], 'the 6th variant keeps selling: not sold out');
 });

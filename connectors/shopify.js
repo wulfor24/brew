@@ -164,7 +164,10 @@ export default {
     } catch (e) { if (!e.denied) notes.push(`Order countries: ${e.message.slice(0, 100)}`); }
     try { const d = await gql(c, 'query($q:String){ abandonedCheckoutsCount(query:$q){ count } }', { q: `created_at:>=${dayISO(30 * 864e5)}` }); m.left = d.abandonedCheckoutsCount?.count ?? null; if (has(m.left, m.orders) && !m.checkoutApp) m.started = m.left + m.orders; }
     catch (e) { if (!e.denied) notes.push(`Checkouts: ${e.message.slice(0, 100)}`); }
-    try { const d = await gql(c, '{ productsCount(query:"status:active"){ count } products(first:100, sortKey:INVENTORY_TOTAL, query:"status:active"){ nodes{ title totalInventory tracksInventory onlineStoreUrl variants(first:5){ nodes{ inventoryPolicy } } } } }');
+    try { const d = await gql(c, '{ productsCount(query:"status:active"){ count } products(first:100, sortKey:INVENTORY_TOTAL, query:"status:active"){ nodes{ id title totalInventory tracksInventory onlineStoreUrl variantsCount{ count } variants(first:5){ nodes{ inventoryPolicy } } } } }');
+      /* a low-stock product with more than 5 variants: read all of them, so a 6th that keeps selling at zero isn't missed */
+      for (const p of d.products.nodes.filter((x) => x.totalInventory <= 5 && (x.variantsCount?.count || 0) > 5).slice(0, 20))
+        p.variants = await gql(c, 'query($id:ID!){ product(id:$id){ variants(first:250){ nodes{ inventoryPolicy } } } }', { id: p.id }).then((x) => x.product?.variants || p.variants).catch(() => p.variants);
       /* only what a shopper can't buy: on the online store (onlineStoreUrl), tracked, and no variant that keeps selling at zero (CONTINUE) */
       const shown = (p) => p.tracksInventory && p.onlineStoreUrl !== null && !(p.variants?.nodes || []).some((v) => v.inventoryPolicy === 'CONTINUE');
       m.products = d.productsCount?.count ?? null; m.low = d.products.nodes.filter((p) => shown(p) && p.totalInventory <= 5).map((p) => ({ title: p.title, left: p.totalInventory }));

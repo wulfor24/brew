@@ -150,3 +150,16 @@ test('a hand rewrite of moves waiting for next week’s pot takes them off the q
   assert.deepEqual(u.queue.map((q) => q.ns), [[6]], 'move 4 left the queue; 6 still waits for Monday');
   assert.deepEqual(u.pot.waits, { 6: 'live' });
 });
+
+test('a rewrite a restart cuts off keeps its whole record: the history names every move it wrote and the full cost', async () => {
+  const { b, P, slug, runs } = await brand();
+  const T = Date.now() - 60e3, all = await P.getJSON(slug, 'moves.json');
+  for (const n of [1, 2]) all[n] = { ...all[n], title: `Rewritten ${n}`, meta: { ...all[n].meta, rewrittenAt: new Date(T + 1000).toISOString() } };
+  await P.put(slug, 'moves.json', all);
+  /* the run wrote 1 and 2 (saved on the run, $0.2), then the instance went */
+  await P.put(slug, 'updates.json', { rewriting: { ns: [1, 2, 3], auto: false, via: null, tries: 0, at: T, prev: 'Ready', written: [{ n: 1, title: 'Rewritten 1' }, { n: 2, title: 'Rewritten 2' }], usd: 0.2 } });
+  await b.resumeAll(); await settle(); await settle();
+  assert.deepEqual(runs.at(-1).filter((n) => n), [3], 'only the move left is written again');
+  const h = (await P.getJSON(slug, 'updates.json')).history[0];
+  assert.deepEqual(h.moves.map((m) => m.n).sort(), [1, 2, 3]); assert.ok(Math.abs(h.usd - 0.3) < 1e-9, `usd ${h.usd}`); assert.equal(h.resumed, true);
+});

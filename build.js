@@ -1097,7 +1097,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     buildCtx.run(slug, () => rewriteNow(slug, ns, o)).catch((e) => log.error('[rewrite]', slug, e.message));
     return { ok: true, n: ns.length, est };
   }
-  async function rewriteNow(slug, ns, { auto = false, via = null, tries = 0, noIndex = false } = {}) {
+  /* carry: a run a restart cut off (resumeRewrite): its whole set, start, the moves it already wrote and what they cost, so the
+     history and the resumed run's record cover the whole rewrite, not only what was left */
+  async function rewriteNow(slug, ns, { auto = false, via = null, tries = 0, noIndex = false, carry = null } = {}) {
     ns = [...new Set((ns || []).map(Number))].filter((n) => n >= 1 && n < 1000); if (!ns.length) return;
     const x = st(slug); if (x.running) return enqueue(slug, ns, { via: via || (auto ? 'weekly' : 'manual'), auto }); x.running = true; x.rewriting = new Set(ns);
     const m = await load(); await restoreSpend(slug); await loadDay(); const usd0 = spentFor(slug), cap0 = via === 'connected' ? CONNECT_CAP : via === 'live' ? LIVE_CAP : via === 'learnings' ? LEARN_CAP : auto ? AUTO_CAP : Math.max(REFRESH_CAP, ns.length * 2.5);
@@ -1129,7 +1131,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const stockMd = outNow.length ? `\n\n## Right now on the site\nThese products can't be bought today. Don't build a move on them, feature them or spend on them; pick an in-stock product instead.\n${outNow.slice(0, 40).join('\n')}` : '';
       prevState = (await status(slug)).state;
       /* kept in updates.json while it runs: a restart or deploy mid-rewrite carries on with the moves not yet written (resumeAll) */
-      await editUpd(slug, (u) => { u.rewriting = { ns, auto, via, tries, at: Date.now(), prev: u.rewriting?.prev || prevState, ...(noIndex ? { indexDone: true } : {}) }; });
+      const carried = carry?.written || [], usdCarried = +carry?.usd || 0;
+      await editUpd(slug, (u) => { u.rewriting = { ns: carry?.ns || ns, auto, via, tries, at: carry?.at || Date.now(), prev: u.rewriting?.prev || prevState, written: carried, usd: usdCarried, ...(noIndex ? { indexDone: true } : {}) }; });
       await setStatus(slug, { state: `Rewriting ${ns.length} move${ns.length === 1 ? '' : 's'} with the latest` });
       emit(slug, { type: 'rewrite-start', ns, auto });
       const eng = m.moves.createMovesEngine({ ai, treg, log });
@@ -1145,7 +1148,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         if (n === 0) await editUpd(slug, (u) => { if (u.rewriting) u.rewriting.indexDone = true; }); /* a restart does not write the index again */
         const all = await packs.getJSON(slug, `${P}moves.json`, {}); all[n] = move; await packs.put(slug, `${P}moves.json`, all);
         emit(slug, { type: 'move', n, title: move.title, stat: move.stat, gives: move.gives, verified: !!move.meta?.verified, rewritten: true });
-        if (n !== 0) { written.push({ n, title: move.title }); /* cardsDue: a restart between the move and its cards writes the cards at boot (healCards) */ await editUpd(slug, (u) => { u.cardsDue = { ...(u.cardsDue || {}), [n]: priv ? 'p' : 1 }; }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; if (u.cardsDue) delete u.cardsDue[n]; if (kind) { u.pot = potAdd(potOf(u), kind, book()); delete u.pot.waits[n]; } }); }
+        if (n !== 0) { written.push({ n, title: move.title }); /* cardsDue: a restart between the move and its cards writes the cards at boot (healCards) */ await editUpd(slug, (u) => { u.cardsDue = { ...(u.cardsDue || {}), [n]: priv ? 'p' : 1 };
+          if (u.rewriting) { u.rewriting.written = [...carried, ...written]; u.rewriting.usd = +(usdCarried + spentFor(slug) - usd0).toFixed(2); } }); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] cards', n, e.message)); await editUpd(slug, (u) => { delete u.stale[n]; if (u.cardsDue) delete u.cardsDue[n]; if (kind) { u.pot = potAdd(potOf(u), kind, book()); delete u.pot.waits[n]; } }); }
         if (n === 21 && !priv && staticsUnset((await status(slug))?.statics)) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] statics card', e.message))));
         /* the team's rewrite of Move 21 makes the team's own set (once), kept private */
         if (n === 21 && priv && staticsDue(await packs.getJSON(slug, 'private/statics-state.json', null))) staticsJob = makeStatics(slug, move, profile, (fn) => (lock = lock.then(fn).catch((e) => log.warn('[rewrite] team statics card', e.message))), { priv: true });
@@ -1163,9 +1167,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         onFail: (n, e) => { x.inflight.delete(n); x.failed.set(n, { msg: String(e?.message || e).slice(0, 160), at: Date.now() }); emit(slug, { type: 'move-failed', n, msg: String(e?.message || e).slice(0, 160) }); } };
       await eng.runAll(ctx, { only: ns.length >= 3 && !noIndex ? [...ns, 0] : ns, concurrency: Math.min(6, ns.length), waveA: WAVE_A });
       await lock; await staticsJob; await pdfQ;
-      const usd = +(spentFor(slug) - usd0).toFixed(2), at = Date.now();
+      const usd = +(usdCarried + spentFor(slug) - usd0).toFixed(2), at = Date.now(), all = [...carried.filter((c) => !written.some((w) => w.n === c.n)), ...written];
       await potSpend(slug, kind, book());
-      await editUpd(slug, (u) => { u.history = [{ at, auto, ...(kind ? { kind } : {}), ...(priv ? { private: true } : {}), moves: written, usd, because: written.map((w) => stale[w.n]?.why).filter(Boolean)[0] || null }, ...(u.history || [])].slice(0, 30); });
+      await editUpd(slug, (u) => { u.history = [{ at, auto, ...(kind ? { kind } : {}), ...(priv ? { private: true } : {}), moves: all, usd, ...(carry ? { resumed: true } : {}), because: all.map((w) => stale[w.n]?.why).filter(Boolean)[0] || null }, ...(u.history || [])].slice(0, 30); });
       await setStatus(slug, { state: (await status(slug)).done ? 'Ready' : prevState });
       emit(slug, { type: 'rewrite-done', n: written.length, usd });
       /* a move this run wrote no longer needs a rewrite queued before it started (a hand rewrite of moves waiting for next week's
@@ -1209,7 +1213,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await setStatus(slug, { state: s0?.done ? 'Ready' : r.prev && !/^Rewriting/.test(r.prev) ? r.prev : s0?.state });
     if (!left.length) { await editUpd(slug, (v) => { delete v.rewriting; }); return; }
     log.log(`[rewrite] ${slug}: carrying on after a restart with ${left.join(', ')}`);
-    buildCtx.run(slug, () => rewriteNow(slug, left, { auto: !!r.auto, via: r.via || null, tries: r.tries || 0, noIndex: !!r.indexDone })).catch((e) => log.error('[rewrite] resume', slug, e.message));
+    /* what it wrote before the restart stays in the record: from the saved run (r.written), else read off the moves themselves */
+    const titleOf = (n) => priv?.[n]?.title || pub[n]?.title || `Move ${n}`, wrote = (r.ns || []).filter((n) => !left.includes(n) && doneAt(n) >= (r.at || 0));
+    const carry = { ns: r.ns, at: r.at, usd: r.usd || 0, written: r.written?.length ? r.written : wrote.map((n) => ({ n, title: titleOf(n) })) };
+    buildCtx.run(slug, () => rewriteNow(slug, left, { auto: !!r.auto, via: r.via || null, tries: r.tries || 0, noIndex: !!r.indexDone, carry })).catch((e) => log.error('[rewrite] resume', slug, e.message));
   }
   async function updates(slug, { member = true } = {}) {
     const u = await upd(slug), x = st(slug), s0 = await status(slug), moves = await packs.getJSON(slug, 'moves.json', {});
