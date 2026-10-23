@@ -23,7 +23,7 @@
   ];
 
   function render(el, ctx) {
-    const S = { data: ctx.data || null, fam: null, busy: false };
+    const S = { data: ctx.data || null, fam: null, busy: false, cards: [], pending: [], draft: '' };
     const api = ctx.api || (async (m, p, b) => (await fetch(p, { method: m, headers: { 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined })).json());
     const toast = ctx.toast || ((m) => console.log(m));
     const base = `/api/brands/${encodeURIComponent(ctx.slug)}/book`;
@@ -176,22 +176,28 @@
         u.neverSay?.length || u.dropNever?.length ? `<li><label><input type="checkbox" checked data-kit="never"><span class="bb-ch-l">Never say</span></label><div class="bb-diff">${(u.neverSay || []).map((w) => `<b class="bb-tag is-add">+ ${esc(w)}</b>`).join('')}${(u.dropNever || []).map((w) => `<b class="bb-tag is-drop">− ${esc(w)}</b>`).join('')}</div></li>` : ''].join('');
       c.innerHTML = `<header><span class="bb-from">${u.kind === 'ask' ? 'You asked' : `From ${esc(u.from ? `${u.from}: ` : '')}${esc(u.name)}`}</span>${u.kind === 'ask' ? `<b>${esc(u.name)}</b>` : ''}${reply ? `<p>${esc(reply)}</p>` : ''}</header>
         <ul>${rows}</ul><footer><button type="button" class="bb-btn" data-skip>Not now</button><button type="button" class="bb-btn is-brand" data-use>Use these</button></footer>`;
-      $('[data-skip]', c).onclick = () => c.remove();
+      const drop = () => { S.cards = S.cards.filter((x) => x.u.id !== u.id); (S.gone ||= new Set()).add(u.id); c.remove(); };
+      $('[data-skip]', c).onclick = drop;
       $('[data-use]', c).onclick = async () => { const paths = $$('[data-path]', c).filter((x) => x.checked).map((x) => x.dataset.path), kitOff = $$('[data-kit]', c).filter((x) => !x.checked).map((x) => x.dataset.kit);
         const ok = await save({ applyUpload: { id: u.id, paths, ...(kitOff.length ? { skipKit: kitOff } : {}), overrideConfirmed: $$('[data-path]', c).some((x) => x.checked && x.closest('li').querySelector('em')) } }, 'Done. Brew writes and makes things this way from now on.');
-        if (ok) c.remove(); };
+        if (ok) drop(); };
       return c;
     }
     function thinking(label) { const c = document.createElement('div'); c.className = 'bb-change is-busy'; c.innerHTML = `<header><span class="bb-from">${esc(label)}</span><p><brew-load class="spin"></brew-load> Reading it and working out the changes…</p></header>`; return c; }
     function wireDock() {
       const dock = $('[data-dock]', el); if (!dock) return; const cards = $('[data-cards]', dock), form = $('[data-ask]', dock), q = form.q, files = $('[data-files]', dock);
-      for (const u of (S.data.book?.uploads || []).filter((x) => !x.applied && (x.proposed?.length || x.kit || x.neverSay?.length))) cards.appendChild(changeCard(u));
-      const send = async (body, label) => { const w = thinking(label); cards.appendChild(w); w.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        const r = await api('POST', `${base}/${body.url || body.data || body.text && body.name ? 'import' : 'ask'}`, body); w.remove();
-        if (!r || r.error) { const e = document.createElement('div'); e.className = 'bb-change is-err'; e.innerHTML = `<header><p>${esc(r?.error || 'That didn’t go through. Try again.')}</p></header>`; cards.appendChild(e); setTimeout(() => e.remove(), 9000); return; }
+      /* the cards and the half-typed ask live in S, so a repaint (the book being written, an edit) never loses them */
+      for (const u of (S.data.book?.uploads || []).filter((x) => !x.applied && (x.proposed?.length || x.kit || x.neverSay?.length || x.dropNever?.length))) if (!S.cards.some((c) => c.u.id === u.id) && !S.gone?.has(u.id)) S.cards.push({ u });
+      for (const c of S.cards) cards.appendChild(changeCard(c.u, c.reply));
+      for (const l of S.pending) cards.appendChild(thinking(l));
+      q.value = S.draft || ''; q.oninput = () => { S.draft = q.value; };
+      const send = async (body, label) => { S.pending.push(label); const w = thinking(label); cards.appendChild(w); w.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        const r = await api('POST', `${base}/${body.url || body.data || body.text && body.name ? 'import' : 'ask'}`, body); S.pending = S.pending.filter((x) => x !== label);
+        const live = $('[data-cards]', el) || cards; live.querySelectorAll('.bb-change.is-busy').forEach((x) => { if (x.textContent.includes(label)) x.remove(); });
+        if (!r || r.error) { const e = document.createElement('div'); e.className = 'bb-change is-err'; e.innerHTML = `<header><p>${esc(r?.error || 'That didn’t go through. Try again.')}</p></header>`; live.appendChild(e); setTimeout(() => e.remove(), 9000); return; }
         if (!r.upload) { toast(r.reply || 'Nothing to change there.'); return; }
-        cards.appendChild(changeCard(r.upload, r.reply)); };
-      form.onsubmit = (e) => { e.preventDefault(); const x = q.value.trim(); if (!x) return; q.value = '';
+        S.cards.push({ u: r.upload, reply: r.reply }); live.appendChild(changeCard(r.upload, r.reply)); };
+      form.onsubmit = (e) => { e.preventDefault(); const x = q.value.trim(); if (!x) return; q.value = ''; S.draft = '';
         if (/^https?:\/\/\S+$/i.test(x)) send({ url: x, private: false }, 'Reading the link'); else send({ text: x }, `You asked: “${x.slice(0, 80)}”`); };
       $$('[data-idea]', dock).forEach((b) => b.onclick = () => { q.value = b.dataset.idea.replace(/ …|“…”/, ''); q.focus(); });
       const upload = async (list) => { for (const f of list) { if (f.size > 25e6) { toast(`${f.name} is over 25 MB. Upload it as a smaller PDF.`); continue; }

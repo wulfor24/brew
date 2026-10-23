@@ -128,6 +128,12 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
       }
       proposed.push({ path: c.path, label: tidy(c.label, 60) || c.path, value: val, before: short(getPath(v, c.path)), after: short(val) });
     }
+    /* the writer sometimes hands the kit back as it is: only a real change is proposed */
+    const sameSet = (a, b2) => JSON.stringify([...a].sort()) === JSON.stringify([...b2].sort());
+    if ((j.colors || []).length && sameSet(j.colors.map((c) => String(c.hex).toLowerCase()), (v.kit?.roles || []).map((c) => String(c.hex).toLowerCase()))) j.colors = [];
+    if (j.fonts && (j.fonts.heading || null) === (v.kit?.fonts?.heading || null) && (j.fonts.body || null) === (v.kit?.fonts?.body || null)) j.fonts = null;
+    j.neverAdd = (j.neverAdd || []).filter((w) => !(v.neverSay || []).some((x) => x.toLowerCase() === String(w).toLowerCase()));
+    j.neverRemove = (j.neverRemove || []).filter((w) => (v.neverSay || []).some((x) => x.toLowerCase() === String(w).toLowerCase()));
     const upload = { id: `up_${crypto.randomBytes(4).toString('hex')}`, name: tidy(`“${text}”`, 80), kind: 'ask', private: false, proposed,
       neverSay: (j.neverAdd || []).map((x) => tidy(x, 40)).filter(Boolean).slice(0, 20), dropNever: (j.neverRemove || []).map((x) => tidy(x, 40)).filter(Boolean),
       kit: { ...((j.colors || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c.hex || '')).length ? { colors: j.colors.filter((c) => /^#[0-9a-f]{6}$/i.test(c.hex)).map((c) => ({ hex: c.hex.toLowerCase(), role: c.role || 'accent' })) } : {}),

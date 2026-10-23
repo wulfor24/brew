@@ -319,7 +319,8 @@
 .bb-ais a, .bb-ais button { appearance: none; border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; background: var(--card); color: var(--fg); font: 600 14px var(--font); text-decoration: none; cursor: pointer; }
 .bb-ais a:hover, .bb-ais button:hover { border-color: var(--bb-1); }
 .bb-ais .is-done { background: var(--bb-1); color: var(--bb-on); border-color: var(--bb-1); }
-@media (max-width: 560px) { .bb-tiles { grid-template-columns: 1fr 1fr; } .bb-dock { bottom: 74px; } }
+@media (max-width: 700px) { .bb-dock { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); } } /* above the app's tab bar */
+@media (max-width: 560px) { .bb-tiles { grid-template-columns: 1fr 1fr; } }
 @media (prefers-reduced-motion: reduce) { .bb-change { animation: none; } .bb-ss, .bb-share-sheet { transition: none; } }
 
 /* printed (the PDF and the kit's brand-book.pdf): a real book, one chapter a page, no app chrome, the brand's colours kept */
