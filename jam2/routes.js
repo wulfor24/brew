@@ -4,6 +4,8 @@
 import { askMarket } from '../market.js';
 import { createStudio, library as studioLibrary, inStudio } from './studio.js';
 import { contextOf } from './context.js';
+import { createVideoFinish, vertexTranscribe } from '../video-finish.js';
+import { gToken } from '../vertex-media.js';
 import { isBatchCard } from '../card-plan.js';
 import { createProfiles } from './profiles.js';
 import { bestSlots } from './slots.js';
@@ -28,7 +30,9 @@ export function mountJam2(d) {
   /* each product read once by vision and kept (profiles.js): the engine's facts about it, and the Brand Book's product check */
   const profiles = createProfiles({ packs, ai: d.ai || null, fileOf: (u) => maker.fileOf(u), isMock, spend, log });
   /* Brew Studio (studio.js): every image and video deliverable through Higgsfield, set up from the card, priced, made on a yes */
-  const studio = createStudio({ engines, maker, profileOf: (slug, p) => profiles.of(slug, p), isMock, spend, log });
+  /* a Studio film made ready to post: captions from a speech read (Vertex; none in mock), the cover and the GIF drawn here */
+  const finish = createVideoFinish({ launchBrowser: d.launchBrowser || null, transcribe: isMock() ? null : vertexTranscribe({ gToken: d.gToken || gToken, spend: () => spend('text') }), log });
+  const studio = createStudio({ engines, maker, profileOf: (slug, p) => profiles.of(slug, p), isMock, spend, finish, log });
   const ready = createReady({ maker, zipBuffer: d.zipBuffer, log });
   const busy = new Map(); // `${jid}:${bid}` → { op, at, error? }
   const whoOf = (t) => { const r = reqOf(t), me = meOf(t); return { member: !!r?.member, staff: !!me?.staff, tid: t.id, email: me?.email || null, me }; };

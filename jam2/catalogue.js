@@ -34,6 +34,7 @@ export const RECIPES = [
   R('image-ad', { family: 'Ads', kind: 'static', label: 'Image ad', looks: 'Your real product in a scene, the headline in your type, a proof badge.', caps: ['still.scene', 'still.harmonize'], sizes: ['ig-portrait', 'ig-square', 'story'] }),
   R('native-ad', { family: 'Ads', kind: 'static', label: 'Native-style ad', looks: 'A chat, a note or a review card with your product inset: reads like a post, not an ad.', est: 'free', caps: [], how: ['ai', 'brief'], sizes: ['ig-portrait', 'story'], template: 'native' }),
   R('carousel-ad', { family: 'Ads', kind: 'carousel', label: 'Carousel ad', looks: '3 to 6 cards, one product, proof or step each, ending on a buy card.', caps: ['still.scene'], sizes: ['ig-square', 'ig-portrait'] }),
+  R('gif', { family: 'Ads', kind: 'video', label: 'GIF (looping)', looks: 'The product in one gentle loop, as a GIF under 2 MB and an MP4.', est: '$', caps: ['video.shot'], sizes: ['ig-square', 'story'], seconds: 5 }),
   R('motion-static', { family: 'Ads', kind: 'video', label: 'Motion ad (6 s)', looks: 'Your still, gently moving, the words animated in.', est: '$$', caps: ['video.shot'], sizes: ['story', 'ig-portrait'], seconds: 6 }),
   R('demo-video', { family: 'Ads', kind: 'video', label: 'Product demo video', looks: 'Problem → product → proof → offer in 15–30 s, from your real product.', est: '$$', caps: ['video.shot', 'voice.tts'], sizes: ['story', 'ig-portrait', 'ig-square'], seconds: 15 }),
   R('ugc-ad', { family: 'Ads', kind: 'video', label: 'UGC ad', looks: 'A creator on camera: selfie testimonial, unboxing, in-hand demo or "3 reasons".', est: '$$$', caps: ['video.ugc', 'voice.tts'], needs: ['product photo', 'cast'], sizes: ['story'], seconds: 15 }),
@@ -91,7 +92,7 @@ export function recipeFor(c = {}) {
   const rules = [
     [/\bugc|creator video|selfie|testimonial video|unboxing/, 'ugc-ad'], [/influencer|creator brief|seeding/, 'creator-brief'], [/script/, 'video-script'], [/shoot|photographer/, 'shoot-brief'],
     [/reddit|quora|facebook group|\bgroup post|forum|community/, 'community-post'], [/reply|respond|comment/, 'reply'], [/linkedin|\bx post|thread|tweet/, 'linkedin-post'],
-    [/carousel ad/, 'carousel-ad'], [/carousel|slides|swipe/, 'ig-carousel'], [/stor(y|ies)/, 'stories'], [/reel|short|tiktok/, 'reel'], [/video|clip/, 'demo-video'],
+    [/\bgif\b|animated loop/, 'gif'], [/carousel ad/, 'carousel-ad'], [/carousel|slides|swipe/, 'ig-carousel'], [/stor(y|ies)/, 'stories'], [/reel|short|tiktok/, 'reel'], [/video|clip/, 'demo-video'],
     [/email|newsletter|klaviyo|flow/, 'email'], [/whatsapp|sms|message/, 'whatsapp'], [/landing|page section|pdp copy|faq|section/, 'page-section'],
     [/listing|amazon|flipkart|nykaa|myntra|marketplace/, 'listing'], [/product photos|photo set|image set|pdp/, 'pdp-set'], [/banner|hero/, 'banner'],
     [/google|rsa|search ad|performance max|pmax/, 'pmax'], [/insert|print|card in the box|thank-you/, 'insert'], [/pin(terest)?\b/, 'pin'],

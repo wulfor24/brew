@@ -5,6 +5,7 @@
 // made without the price shown and a yes (the route checks it), and a take that fails its checks is retried once, never more.
 import fs from 'node:fs'; import path from 'node:path';
 import { SIZES } from './catalogue.js';
+import { srtOf } from '../video-finish.js';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(HERE, '..', 'data', f), 'utf8')); } catch { return d; } };
@@ -39,7 +40,7 @@ const BY_RECIPE = {
   pin: { picks: ['flat-lay', 'in-use', 'editorial'], sizes: ['pinterest'] }, meme: { picks: ['meme', 'ugc-still', 'hands'], sizes: ['ig-square'] },
   banner: { picks: ['editorial', 'natural', 'color-pop'], sizes: ['banner'] }, insert: { picks: ['quote-card', 'offer-card', 'illustration'], sizes: ['a5'] },
   tryon: { picks: ['on-model', 'full-body', 'closeup'] },
-  'motion-static': { picks: ['color-pop-v', 'hypermotion', 'unveil'], seconds: 5 }, 'demo-video': { picks: ['ugc-tutorial', 'in-life', 'showcase'] },
+  'motion-static': { picks: ['color-pop-v', 'hypermotion', 'unveil'], seconds: 5 }, gif: { picks: ['gif-loop', 'showcase', 'color-pop-v'], seconds: 5, sizes: ['ig-square'] }, 'demo-video': { picks: ['ugc-tutorial', 'in-life', 'showcase'] },
   'ugc-ad': { picks: ['ugc-review', 'ugc-home', 'ugc-unbox'] }, 'asmr-video': { picks: ['asmr', 'in-life', 'dark-minimal'], seconds: 5 },
   'hook-variant': { picks: ['tt-hook', 'tt-pov', 'ugc-review'] }, orbit: { picks: ['orbit-360', 'showcase', 'dark-minimal'], seconds: 5, sizes: ['ig-square'] },
   listing: { set: ['mp-main', 'mp-lifestyle', 'mp-benefits', 'mp-size'], sizes: ['pdp'] }, 'pdp-set': { set: ['mp-main', 'in-use', 'mp-benefits', 'closeup'], sizes: ['pdp'] },
@@ -97,7 +98,17 @@ export function defaults(ctx, board = null) {
     sizes, seconds: kind === 'video' ? R.seconds || picks[0]?.seconds || 10 : null, count: countOf(card), blocked: blockedFor(ctx) };
 }
 
-export function createStudio({ engines, maker, profileOf = async () => null, isMock = () => false, spend = () => true, log = console }) {
+export function createStudio({ engines, maker, profileOf = async () => null, isMock = () => false, spend = () => true, finish = null, log = console }) {
+  /* a film made ready to post (video-finish.js): spoken words as captions (an .srt, and burned in for muted feeds), a cover with the
+     headline, a looping GIF for a short silent clip. Local and nearly free; a step that can't run leaves the film as it is and says why */
+  async function finishFilm(take, { words = {}, line = '', spoken = false, loop = false } = {}) {
+    if (!finish || !take.file) return; const f = await maker.fileOf(take.file).catch(() => null); if (!f || !fs.existsSync(f)) return; const buf = fs.readFileSync(f), out = {};
+    if (spoken) { const c = await finish.captions(buf, { script: line }).catch((e) => ({ segs: [], error: e.message }));
+      out.captions = { n: c.segs.length, approx: !!c.approx, none: c.none || null, error: c.error || null, segs: c.segs.slice(0, 40) };
+      if (c.segs.length) { out.srt = engines.keep(Buffer.from(srtOf(c.segs)), 'srt'); const burned = await finish.burn(buf, c.segs).catch(() => null); if (burned) { out.raw = take.file; out.file = engines.keep(burned, 'mp4'); } else out.captions.error = 'The captions couldn’t be set in the film; the .srt has them.'; } }
+    const cv = await finish.cover(buf, { headline: words.headline || '' }).catch(() => null); if (cv) { out.cover = engines.keep(cv.cover, 'jpg'); out.poster = take.poster || engines.keep(cv.frame, 'jpg'); }
+    if (loop) { const g = await finish.gif(buf, { seconds: 3 }).catch(() => null); if (g) out.gif = engines.keep(g.gif, 'gif'); }
+    Object.assign(take, out); }
   const hf = engines.hf, cr = maker.creative;
   /* the product's profile (read once, kept): the facts every prompt carries */
   const ensureProfile = async (ctx) => { if (ctx.product?.img && ctx.profile === undefined) ctx.profile = await profileOf(ctx.slug, cr.productEntry(ctx)).catch(() => null); return ctx.profile || null; };
@@ -208,6 +219,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       const o = hf.pick('product-motion', ctx.tier || 'default'), input = { ...o.input, prompt: tidy(`${st.look} ${cr.productLine(ctx.profile)} Nothing new appears; no text.`, 2400), image_url: engines.pub(shot.shot.file), duration: +spec.seconds || st.seconds || 5 };
       const e = await hf.estimate(o.id, input), out = await runHF('motion', o.id, input, { maxMs: 20 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.motion', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.55 });
       Object.assign(take, { file, poster: shot.shot.file, shot: shot.shot });
+      await finishFilm(take, { words, loop: true }).catch((e) => log.warn?.('[studio] finish', e.message)); /* silent: a cover and a GIF */
     } else { /* UGC / TikTok: a person with the real product, talking, Seedance with the product photos as references */
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); await ensureProfile(ctx);
       const photos = cr.photosOf(ctx, ctx.profile).map((u) => engines.pub(u)), o = hf.pick('ugc-video', ctx.tier || 'default'), line = tidy([words.headline, words.sub].filter(Boolean).join(' '), 220);
@@ -218,6 +230,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
         image_urls: photos, duration: +spec.seconds || st.seconds || 10, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
       const e = await hf.estimate(o.id, input), out = await runHF('ugc', o.id, input, { maxMs: 25 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.ugc', provider: 'higgsfield', model: o.id, usd: e.usd ?? 3 });
       Object.assign(take, { file });
+      await finishFilm(take, { words, line: st.says ? line : '', spoken: true }).catch((e) => log.warn?.('[studio] finish', e.message)); /* captions from what is really said, a cover */
     }
     take.cost = { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(3), credits: 0 };
     return take;

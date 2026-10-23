@@ -46,6 +46,7 @@
       { "id": "ugc-tryon", "label": "Try-on", "people": "person", "job": "ugc-video", "seconds": 10, "look": "Someone tries the product on in front of a mirror and reacts, phone filmed.", "says": true}
     ]},
     { "id": "motion", "label": "Motion", "styles": [
+      { "id": "gif-loop", "label": "GIF loop", "people": "none", "job": "product-motion", "seconds": 5, "gif": true, "look": "A seamless loop: one gentle, continuous motion around the product that ends exactly where it starts, plain calm background, no text." },
       { "id": "hypermotion", "label": "Hypermotion", "people": "none", "job": "product-motion", "seconds": 5, "look": "A fast, energetic camera move around the product with dynamic light streaks; the product stays exactly as it is." },
       { "id": "showcase", "label": "Product showcase", "people": "none", "job": "product-motion", "seconds": 5, "look": "A slow, premium turn around the product on a plinth, soft moving light, dark elegant backdrop." },
       { "id": "color-pop-v", "label": "Color pop", "people": "none", "job": "product-motion", "seconds": 5, "look": "The product on a bold colour backdrop with playful bounces and a crisp shadow." },

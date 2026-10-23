@@ -125,3 +125,11 @@ test('a set lands whole: a carousel’s cards follow its slides, an A+ set lands
   S.RMX.landStudio(t, id, { file: 'gen/j2-h.jpg', slides: [{ file: 'gen/j2-h.jpg', style: 'aplus-hero', words: { headline: 'Acme' } }, { file: 'gen/j2-t.jpg', style: 'aplus-use', words: { headline: 'Soft hands', sub: 'Every morning.' } }, { file: 'gen/j2-w.jpg', style: 'aplus-wide', words: {} }], studio: { kind: 'image', label: 'A+' } });
   assert.deepEqual(ch.pkg.aplus.map((m) => m.kind), ['header', 'tile', 'wide']); assert.equal(ch.pkg.aplus[1].body, 'Every morning.');
 });
+
+test('a Studio film lands with its cover as the poster, its clean cut, its .srt and GIF, and the spoken words go to the check', async () => {
+  const S = studio(), t = tenant(card({ cta: { label: 'Make the video' }, make: { format: 'reel' } }));
+  const { id, ch } = await press(S, t, 'Make the video'); await settle(ch);
+  S.RMX.landStudio(t, id, { file: 'gen/j2-cap.mp4', raw: 'gen/j2-raw.mp4', srt: 'gen/j2-a.srt', cover: 'gen/j2-cover.jpg', poster: 'gen/j2-frame.jpg', gif: 'gen/j2-l.gif', captions: { n: 2, segs: [{ from: 0, to: 1, text: 'Rated 4.9 stars' }] }, studio: { kind: 'video', label: 'UGC review' } });
+  assert.equal(ch.pkg.video, 'gen/j2-cap.mp4'); assert.equal(ch.pkg.poster, 'gen/j2-cover.jpg'); assert.deepEqual([ch.pkg.film.raw, ch.pkg.film.srt, ch.pkg.film.gif], ['gen/j2-raw.mp4', 'gen/j2-a.srt', 'gen/j2-l.gif']);
+  assert.ok(versionsOf(t, id).at(-1).studio.words.includes('Rated 4.9 stars'), 'what is said is checked like what is written');
+});

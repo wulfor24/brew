@@ -110,9 +110,13 @@ export function readyOf({ family, action = '', pkg = {}, card = {}, product = nu
   const br = ratingsOk(seen, source); checks.push({ k: 'rating', ok: !br.length, t: br.length ? `“${br.join('”, “')}” isn’t from your own reviews` : 'No rating that isn’t yours', fix: br.length ? 'redo' : null });
   /* a picture whose words Brew didn't keep (made before it kept them) was never read: say so, never "no problems" */
   if (!wordsRead) { const i = checks.findIndex((c) => c.k === 'price'); for (const c of checks) if (['price', 'rating', 'claims'].includes(c.k) && c.ok) c.t = `${c.t} in the words above`; checks.splice(i, 0, { k: 'picture', ok: false, soft: true, t: 'The words in the picture weren’t read for this version: check its prices, ratings and claims yourself, or Redo it' }); }
+  /* a film: its spoken words are captioned (most feeds play muted), and an approximate timing is said */
+  if (p.video && p.film) { const c = p.film.captions || {};
+    checks.push(c.none ? { k: 'captions', ok: true, t: c.none } : c.n && p.film.srt ? { k: 'captions', ok: !c.approx, soft: !!c.approx, t: c.approx ? 'Captions are set from the script, timed by estimate: watch it once before it goes up' : `Captions on (${c.n} lines), and an .srt for the platform’s own captions` } : { k: 'captions', ok: false, t: c.error || 'No captions: muted feeds will play it without words' });
+    if (!p.film.cover) checks.push({ k: 'cover', ok: false, soft: true, t: 'No cover picked: the platform will take a frame' }); }
   if (cardProduct?.name && product?.name && cardProduct.name !== product.name) checks.push({ k: 'product', ok: false, soft: true, t: `It shows ${tidy(product.name, 50)}; the card is about ${tidy(cardProduct.name, 50)}` });
   else if (product?.name) checks.push({ k: 'product', ok: true, t: `Shows ${tidy(product.name, 60)}, the card’s product` });
-  const places = (PLACES[Array.isArray(p.aplus) && p.aplus.length ? 'aplus' : family] || []).map(([shape, where]) => ({ shape, where }));
+  const places = p.video ? [] /* a film runs in the shape it was made; its cover and GIF are listed with it */ : (PLACES[Array.isArray(p.aplus) && p.aplus.length ? 'aplus' : family] || []).map(([shape, where]) => ({ shape, where }));
   const bad = parts.filter((x) => !x.ok).length + checks.filter((x) => !x.ok && !x.soft).length, warn = parts.reduce((a, x) => a + x.warn.length, 0) + checks.filter((x) => !x.ok && x.soft).length;
   return { parts, checks, places, ready: bad === 0, bad, warn };
 }

@@ -239,7 +239,7 @@ const mockVariants = (c) => { const sub = String(c.sub || '').trim(), first = su
   ].filter((v) => v.title); };
 
 // ---------- http ----------
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.json': 'application/json', '.ico': 'image/x-icon', '.mp4': 'video/mp4', '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.zip': 'application/zip', '.pdf': 'application/pdf', '.webp': 'image/webp', '.webmanifest': 'application/manifest+json' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.json': 'application/json', '.ico': 'image/x-icon', '.mp4': 'video/mp4', '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.zip': 'application/zip', '.pdf': 'application/pdf', '.webp': 'image/webp', '.webmanifest': 'application/manifest+json', '.gif': 'image/gif', '.srt': 'application/x-subrip; charset=utf-8' };
 // files, with byte ranges so story videos can seek and play on Safari.
 // Text files (js, css, html, svg, json) are compressed once per version and kept in memory, with an ETag so a reload
 // gets a 304; the page asks for them as name?v=<hash> (pageFor), and those answers are cached for a year.

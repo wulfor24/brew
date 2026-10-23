@@ -66,7 +66,10 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
     }
     return got;
   };
-  const video = async () => { if (p.video) { const v = await addFile(p.video, 'media/video'); if (v) where.push(`media/${path.basename(v.name)}: the video, vertical`); else todo.push('The video: download it from the studio'); } };
+  const video = async () => { if (p.video) { const v = await addFile(p.video, 'media/video'); if (v) where.push(`media/${path.basename(v.name)}: the video${p.film?.raw ? ', captions burned in for muted feeds' : ''}`); else todo.push('The video: download it from the studio'); }
+    /* a Studio film's ready-to-post parts: the clean cut, its captions file, the cover, a looping GIF */
+    const fm = p.film || {}; for (const [rel, as, says] of [[fm.raw, 'media/video-no-captions', 'the same film without captions (for a platform that adds its own from captions.srt)'], [fm.cover, 'media/cover', 'the cover (set it as the reel’s cover)'], [fm.gif, 'media/loop', 'a looping GIF of it (email, WhatsApp, banners)']]) { if (!rel) continue; const x = await addFile(rel, as); if (x) where.push(`${x.name}: ${says}`); }
+    if (fm.srt) { const sf = await read(fm.srt); if (sf) { put('captions.srt', fs.readFileSync(sf)); where.push(`captions.srt: the words said, timed${fm.captions?.approx ? ' (by estimate: check them once)' : ''}; upload it as the video’s captions`); } } };
 
   switch (family) {
     case 'meta_ad': case 'social': {
