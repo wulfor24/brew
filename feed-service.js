@@ -555,6 +555,7 @@ export function createFeedService(o) {
     for (const p of L.cards) { const have = t.cards.get(p.id);
       if (!have) t.cards.set(p.id, { ...clone(p), family: p.family || FAMILY[p.type] || 'idea', state: 'ready', origin: 'live', createdAt: t0, expiresAt: null, history: [['ready', t0]], shownCount: 0 });
       else if (have.title !== p.title || JSON.stringify(have.rows) !== JSON.stringify(p.rows)) Object.assign(have, { title: p.title, sub: p.sub, rows: clone(p.rows), badge: p.badge, detail: clone(p.detail) });
+      if (have && (have.sector !== p.sector || have.agent !== p.agent || JSON.stringify(have.roles) !== JSON.stringify(p.roles))) Object.assign(have, { sector: p.sector, agent: p.agent, roles: clone(p.roles) }); /* a saved copy follows the card's section and seats (the COD card moved to Signals, 23 Oct) */
       if (have) { /* a saved copy heals: the photo, asset and button as the card's words now call for (never over a picture made in the jam) */
         if (p.images && !(have.images || []).some((u) => /^\/?gen\//.test(u)) && JSON.stringify(have.images) !== JSON.stringify(p.images)) have.images = clone(p.images);
         if (p.make && JSON.stringify(have.make) !== JSON.stringify(p.make)) have.make = clone(p.make);

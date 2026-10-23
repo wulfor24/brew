@@ -128,3 +128,12 @@ test('a product with more than 5 variants is read whole before it counts as sold
   const r = await shopify.sync(conn, ctx);
   assert.equal(r.metrics.oos, 1); assert.deepEqual(r.metrics.low.map((x) => x.title), ['Plain'], 'the 6th variant keeps selling: not sold out');
 });
+
+test('the COD card sits in Signals, next to the checkout card (storefront cards are off)', async (t) => {
+  const pages = [...Array(41)].map(() => [...Array(250)].map(() => order(2, true)));
+  const s = shop({ pages, products: [] });
+  t.mock.method(globalThis, 'fetch', s.fetch);
+  const r = await shopify.sync(conn, { ...ctx, profile: { currency: 'INR', country: 'IN', locale: 'en-IN' } });
+  const c = r.cards.find((x) => /cod/.test(x.id)); assert.ok(c, r.cards.map((x) => x.id).join(','));
+  assert.equal(c.sector, 'signals'); assert.equal(r.cards.find((x) => /carts/.test(x.id)).sector, 'signals');
+});
