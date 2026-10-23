@@ -221,3 +221,12 @@ test('a marketplace main image is the real product cut out on pure white at 85% 
   const bad = createStudio({ engines: { hf: {} }, maker: { write: async () => ({}), creative: { entryOf: () => null }, cutout: async () => ({ file: 'p.jpg', raw: true }) } });
   await assert.rejects(bad.make({ by: 'a', product: { img: 'p.jpg' }, profile: { best: 'p.jpg' } }, {}, { style: 'mp-main', sizes: ['pdp'] }), /couldn’t be cut out/);
 });
+
+test('a catalog photo that is already cut out (see-through PNG) is used as the cut-out, never cut again (no black fringes)', async () => {
+  const sharp = (await import('sharp')).default, fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cut-')), src = path.join(dir, 'p.png'); let ran = false, kept = null;
+  fs.writeFileSync(src, await sharp({ create: { width: 300, height: 300, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: await sharp({ create: { width: 100, height: 200, channels: 4, background: { r: 180, g: 180, b: 190, alpha: 1 } } }).png().toBuffer(), left: 100, top: 50 }]).png().toBuffer());
+  const m = createMaker({ engines: { run: async () => { ran = true; throw new Error('should not cut'); } }, brandbook: { promptBlock: () => '' }, claudeTool: async () => ({}), isMock: () => true, saveGen: (n, b) => { kept = b; }, genFile: async () => null, photoAsync: async () => src });
+  const c = await m.cutout({ slug: 's', product: { img: 'https://cdn/p.png', name: 'Serum' }, cuts: {} });
+  assert.equal(ran, false); assert.equal(c.provider, 'own'); assert.equal(c.usd, 0); const k = await sharp(kept).metadata(); assert.equal(k.width, 100); assert.equal(k.height, 200);
+});

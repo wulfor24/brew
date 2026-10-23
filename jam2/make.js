@@ -80,7 +80,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
       ctx.notes?.length ? `The team added for this jam (follow these):\n${ctx.notes.slice(-6).map((n) => `- ${tidy(n, 600)}`).join('\n')}` : '',
       ctx.memory ? `What Brew has learned about this brand (memory is on):\n${tidy(ctx.memory, 2500)}` : '',
       ask ? `The team asked: ${ask}` : '',
-      'Never invent numbers, discounts, codes, guarantees or reviews. Quote reviews only word for word from the lines given. One version only.'
+      'Never invent numbers, discounts, codes, guarantees or reviews. Quote reviews only word for word from the lines given, and only as a customer\'s words (in quotes, said by a customer): a result a customer describes is never the brand\'s own headline or claim. One version only.'
     ].filter(Boolean).join('\n\n');
     if (!spend('text', ctx.slug)) throw Object.assign(new Error('Today’s writing budget is used up. It resets tonight.'), { budget: true });
     const need = { carousel: ['slides'], video: ['shots'], table: ['rows', 'cols'], post: ['body'], message: ['body'], page: ['body'], creator: ['blocks'], script: ['blocks'], shoot: ['blocks'], act: ['blocks'] }[r.kind] || [];
@@ -109,6 +109,12 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
   async function cutout(ctx) {
     const p = ctx.product; if (!p?.img) return null; const src = await fileOf(p.img); if (!src) return null;
     const key = sha(Buffer.from(String(p.img))); ctx.cuts ||= {}; if (ctx.cuts[key]) return ctx.cuts[key];
+    /* a catalog photo that is already cut out (a PNG whose corners are see-through) is the cut-out: cutting it again flattens the
+       see-through parts to black (23 Oct, Arata's MitoActive pack). Trimmed and used as it is, free */
+    try { const sharp = (await import('sharp')).default, m = await sharp(src).metadata();
+      if (m.hasAlpha) { const corner = async (left, top) => (await sharp(src).ensureAlpha().extract({ left, top, width: 1, height: 1 }).raw().toBuffer())[3];
+        if ((await Promise.all([corner(0, 0), corner(m.width - 1, 0), corner(0, m.height - 1), corner(m.width - 1, m.height - 1)])).every((a) => a < 8)) {
+          const out = { file: keep(await sharp(src).trim({ threshold: 2 }).png().toBuffer(), 'png'), provider: 'own', model: 'already cut out', usd: 0, white: false }; ctx.cuts[key] = out; return out; } } } catch (e) { log.warn?.('[jam2] alpha check', e.message); }
     let r; try { r = await engines.run('cutout', { srcFile: src, slug: ctx.slug, product: p.name }); } catch (e) { log.warn?.('[jam2] cutout', e.message); return { file: p.img, raw: true, provider: 'none' }; }
     let file = r.file; /* trim the empty edges so the product fills its box */
     try { const sharp = (await import('sharp')).default; const f = await fileOf(file); if (f) { const t = await sharp(fs.readFileSync(f)).trim({ threshold: 2 }).png().toBuffer(); file = keep(t, 'png'); } } catch (e) { log.warn?.('[jam2] trim', e.message); }
