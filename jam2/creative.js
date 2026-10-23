@@ -164,7 +164,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const colX = zone === 'right' ? Math.round(w * 0.54) : pad, colW = side ? Math.round(w * 0.46 - pad) : Math.min(w - pad * 2, Math.round(w * 0.82));
     /* the button's words in the colour that reads on the brand's own colour (a white or pastel brand colour gets dark words) */
     const lumOf = (hex) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return 0.2; const n = parseInt(m[1], 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
-    const ctaInk = lumOf(accent) > 0.45 ? '#111111' : '#ffffff';
+    const L0 = lumOf(accent), ctaInk = (L0 + 0.05) / 0.0556 > 1.05 / (L0 + 0.05) ? '#111111' : '#ffffff'; /* whichever has more contrast (WCAG): a mid blue gets dark words */
     const safeTop = tall ? Math.round(h * 0.14) : pad, safeBot = tall ? Math.round(h * 0.2) : pad; /* stories and reels keep clear of the platform's own bars */
     /* the logo leads the words in the free side (never on the product, never on the button row) */
     const logo = sc.layers.find((l) => l.kind === 'logo');
