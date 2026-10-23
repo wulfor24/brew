@@ -5,7 +5,7 @@
 .cs-stage .cs-line{width:min(760px,100%)}
 .cs-frame{position:relative;width:min(600px,100%);display:flex;justify-content:center}
 .cs-frame>.as{width:min(600px,100%)}
-.cs-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:3;display:inline-flex;align-items:center;gap:6px;background:var(--bg,#fff);border:1px solid var(--line,#e6e6e6);border-radius:999px;padding:4px 12px;font-size:12px;color:var(--fg-2,#444);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.cs-badge{align-self:center;margin:0 0 10px;display:inline-flex;align-items:center;gap:6px;background:var(--bg,#fff);border:1px solid var(--line,#e6e6e6);border-radius:999px;padding:4px 12px;font-size:12px;color:var(--fg-2,#444);box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .cs-frame.is-preview .as-img img,.cs-frame.is-preview img.as-photo{opacity:.92}
 .cs-frame.is-making::after{content:'';position:absolute;inset:0;z-index:2;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.35) 50%,transparent 80%);background-size:200% 100%;animation:cs-sheen 1.6s linear infinite;pointer-events:none;border-radius:inherit}
 @keyframes cs-sheen{from{background-position:120% 0}to{background-position:-80% 0}}

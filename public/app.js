@@ -4424,7 +4424,9 @@
     if (cs && !st) cs.mount(ch, RX.p);
     const making = !!st?.making;
     /* the frame and the composer scroll together in the stage's one scrolling row (brew.css .st-canvas grid) */
-    return `<div class="st-asset cs-stage"><div class="cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}${assetHtml(pkgCh, 'lg')}</div>
+    /* before anything is made the frame shows the composer's product photo in the picture's place, never an empty grey box */
+    const pv = !made && !viewing && st?.productImg && !/^gen\//.test(pkgCh.pkg?.image || '') ? { ...pkgCh, pkg: { ...pkgCh.pkg, image: st.productImg } } : pkgCh;
+    return `<div class="st-asset cs-stage">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${assetHtml(pv, 'lg')}</div>
       ${cs ? cs.html(ch) : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
   window.CreativeStage?.init({ tapi, esc, toast, ic,
     paint: () => { if (view === 'remix' && RX.ch?.studio) paintStudio(); },
