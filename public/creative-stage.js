@@ -90,7 +90,8 @@
     const sp = S.spec, X = S.slots || {}, setIds = Array.isArray(sp.set) ? sp.set : null, kind = sp.kind === 'video' ? 'video' : 'image';
     const shown = setIds ? setIds.map(styleById).filter(Boolean) : (() => { const picks = S.picks.map(styleById).filter((x) => x && x.kind === kind), cur = styleById(sp.style); return cur && !picks.some((x) => x.id === cur.id) ? [cur, ...picks.slice(0, 2)] : picks.slice(0, 3); })();
     const total = groups().filter((g) => g.kind === kind).reduce((a, g) => a + g.styles.length, 0), pl = S.plan, st = styleById(sp.style);
-    const castOn = X.cast?.shown || kind === 'video' || /ugc|tt-|on-model|full-body|hands/.test(sp.style || '');
+    /* who is on camera: only for a style that shows people (a motion clip or a packshot has none) */
+    const castOn = setIds ? (setIds.map(styleById).some((x) => x && x.people && !['none'].includes(x.people))) : !!st && !!st.people && st.people !== 'none';
     return `<div class="j2-studio cs">${S.gallery ? gallery() : ''}${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}
       <div class="j2-st-top">${setIds && LISTING.has(S.recipe) ? `<div class="j2-seg"><button data-cs-mk="listing" class="${isAplus(setIds) ? '' : 'on'}">Listing images</button><button data-cs-mk="aplus" class="${isAplus(setIds) ? 'on' : ''}">Amazon A+</button></div><b>${setIds.length} ${isAplus(setIds) ? 'modules' : 'images'}</b>` : setIds ? `<b>${setIds.length} slides</b>` : `<div class="j2-seg"><button data-cs-kind="image" class="${kind === 'image' ? 'on' : ''}">Image</button><button data-cs-kind="video" class="${kind === 'video' ? 'on' : ''}">Video</button></div>`}<span class="j2-st-hint">${H.ic?.('sparkles', 's14') || ''}Filled in by Brew from the card and your Brand Book · change anything</span></div>
       <p class="cs-why cs-why-top">${H.esc(why('style'))}</p>
