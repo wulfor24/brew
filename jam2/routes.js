@@ -12,7 +12,7 @@ import { createEngines } from './engines.js';
 import { createMaker } from './make.js';
 import { createReady, tokenFor, parseToken } from './ready.js';
 import { RECIPES, FAMILIES, SIZES, HOW, HOW_LABEL, recipe, recipeFor, alsoFor, planFor } from './catalogue.js';
-import { newJam, newBoard, boardOf, headOf, bumpConcept, fromV1, jamView, note, uid, addTake, OWNERS, BRIEF_STATUS } from './core.js';
+import { newJam, newBoard, boardOf, headOf, bumpConcept, fromV1, jamView, note, uid, addTake, OWNERS, BRIEF_STATUS, publicView } from './core.js';
 import { productFor, productTiles } from './ingredients.js';
 import { withBrowser } from '../pdf/render.js';
 import { answerGrounded } from '../jam-answer.js';
@@ -318,11 +318,12 @@ export function mountJam2(d) {
     const kind = m[1] === 'p' ? 'post' : 'brief', tok = parseToken(kind, m[2]), j = tok ? await store.getAny(tok.slug, tok.jid) : null;
     const one = kind === 'brief' && j ? j.boards.find((x) => x.brief?.nonce === tok.nonce && !x.brief.revoked) : null, link = one ? one.brief : j?.[kind === 'post' ? 'post' : 'brief'];
     if (!j || !link || link.revoked || link.nonce !== tok.nonce) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('This link is not valid any more.'); return true; }
-    if (kind === 'post' && u.searchParams.get('zip') === '1') { const buf = await ready.zip(j); await store.put(tok.slug, j); res.writeHead(200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${j.title.replace(/[^\w -]+/g, '').slice(0, 60) || 'brew'}.zip"`, 'cache-control': 'no-store' }); res.end(buf); return true; }
+    const jp = publicView(j); /* a jam from a team-only card shows no account numbers to whoever holds the link */
+    if (kind === 'post' && u.searchParams.get('zip') === '1') { const buf = await ready.zip(j); await store.put(tok.slug, j); res.writeHead(200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${jp.title.replace(/[^\w -]+/g, '').slice(0, 60) || 'brew'}.zip"`, 'cache-control': 'no-store' }); res.end(buf); return true; }
     let items = kind === 'post' ? await ready.packOf(j) : []; if (kind === 'post') await store.put(tok.slug, j);
-    if (kind === 'brief') { const sent = one ? [one] : j.boards.filter((bd) => bd.brief?.status); items = (sent.length ? sent : j.boards).map((bd) => { const h = bd.approved ? bd.takes.find((x) => x.id === bd.approved.takeId) : headOf(bd); return h ? { board: bd.id, label: bd.label, status: bd.brief?.status || null, files: h.file ? [{ label: 'Brew’s draft (reference)', file: h.file }] : [], caption: '', body: '', subject: '', alt: '', hashtags: [], blocks: jamView(j).boards.find((x) => x.id === bd.id).briefView.map((x) => ({ title: x.h, text: x.t })), shots: [] } : null; }).filter(Boolean); }
+    if (kind === 'brief') { const sent = one ? [one] : j.boards.filter((bd) => bd.brief?.status); items = (sent.length ? sent : j.boards).map((bd) => { const h = bd.approved ? bd.takes.find((x) => x.id === bd.approved.takeId) : headOf(bd); return h ? { board: bd.id, label: bd.label, status: bd.brief?.status || null, files: h.file ? [{ label: 'Brew’s draft (reference)', file: h.file }] : [], caption: '', body: '', subject: '', alt: '', hashtags: [], blocks: jamView(jp).boards.find((x) => x.id === bd.id).briefView.map((x) => ({ title: x.h, text: x.t })), shots: [] } : null; }).filter(Boolean); }
     const name = (await bb.load(tok.slug).catch(() => null))?.read?.name || '';
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(ready.page(j, items, { kind, brand: name })); return true;
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(ready.page(jp, items, { kind, brand: name })); return true;
   }
   /* a reply in a v2 jam's Slack thread, or its Approve pressed (slack-routes.js → feed slackIn, only when no v1 jam has that thread) */
   async function slackIn({ slug, kind, thread, ts, user = {}, text = '', n = null }) {

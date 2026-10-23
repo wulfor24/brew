@@ -40,6 +40,7 @@ test('a store with more orders than one read: Shopify counts the 30 days, the ne
   assert.equal(r.metrics.orders, 8900, 'Shopify’s own count, cancelled ones left out');
   assert.equal(r.metrics.aov, 1000); assert.equal(r.metrics.revenue, 8900 * 1000);
   assert.equal(r.metrics.sampled, true);
+  assert.match(r.ledger.find((e) => e.key === 'shopify.revenue.30d').label, /estimated/);
   assert.ok(r.notes.some((n) => /newest 10,000 orders/.test(n)), r.notes.join(' | '));
   /* COD 10 to 40 days old came from its own read: 6 of 30 cancelled */
   assert.equal(Math.round(r.metrics.codFail), 20);

@@ -298,6 +298,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     if (member) freshen(slug);
     const L = await liveOf(slug), cards = [], on = {};
     for (const [id, d] of Object.entries(L.live)) { if (d.gone) continue; if (!member && !PUBLIC.has(id)) continue; on[id] = true;
+      /* an account that stopped reading (stale, or its sign-in ran out) keeps its cards out: "this week" would be weeks old. The
+         connectors page and Signals say to connect it again */
+      if (L.conns[id]?.stale || L.conns[id]?.needsReconnect) continue;
       cards.push(...(d.cards || []).map((c) => ({ ...c, time: agoShort(d.at), ...(simOnly(id) || d.sim ? { dummy: true } : {}), ...(PUBLIC.has(id) ? { liveOnly: false, publicLive: true } : {}) }))); }
     /* DUMMY: a simulated account's rows never reach the team's numbers (they lose their demo flag once copied, so they stay out here) */
     /* a stale account (connections.json stale) is never quoted: its numbers wait for a good read */

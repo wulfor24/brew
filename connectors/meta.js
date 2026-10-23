@@ -30,7 +30,10 @@ export async function freshMeta(c, { now = Date.now(), getJSONImpl = getJSON } =
   if (!out.exp && !out.expChecked && a.id && a.secret && !(out.expTriedAt && now - out.expTriedAt < DAY)) {
     const d = await getJSONImpl(`${G}/debug_token?${form({ input_token: out.token, access_token: `${a.id}|${a.secret}` })}`, {}, 'meta debug_token').catch(() => null);
     /* a lookup that didn't answer is tried again the next day, never left unknown for good */
-    const at = +d?.data?.expires_at; out = d ? { ...out, expChecked: now, ...(at > 0 ? { exp: at * 1e3 } : at === 0 ? { exp: null, never: true } : {}) } : { ...out, expTriedAt: now };
+    /* the sign-in's end, or Meta's 90-day data-access end, whichever comes first: a token that "never" expires still loses data
+       access at 90 days, and the admins should hear a week ahead, not from a failed read */
+    const ex = +d?.data?.expires_at, da = +d?.data?.data_access_expires_at, at = [ex, da].filter((x) => x > 0).length ? Math.min(...[ex, da].filter((x) => x > 0)) : ex;
+    out = d ? { ...out, expChecked: now, ...(at > 0 ? { exp: at * 1e3, ...(da > 0 && da === at ? { expWhy: 'data-access' } : {}) } : at === 0 ? { exp: null, never: true } : {}) } : { ...out, expTriedAt: now };
   }
   if (out.exp && out.exp > now && out.exp - now < REFRESH_DAYS * DAY && a.id && a.secret && !(out.refreshTriedAt && now - out.refreshTriedAt < DAY)) {
     const long = await getJSONImpl(`${G}/oauth/access_token?${form({ grant_type: 'fb_exchange_token', client_id: a.id, client_secret: a.secret, fb_exchange_token: out.token })}`, {}, 'meta refresh').catch(() => null);
@@ -179,15 +182,21 @@ const META = {
       const s = +x.spend || 0, v = pick(x.action_values, PURCHASE); c2.s += s; if (v != null) { c2.v += v; c2.valued = true; } c2.fw += s * (+x.frequency || 0); byCamp.set(k2, c2); }
     /* a campaign's frequency here is its ads' frequency weighted by spend: close to Meta's own, and the same for a shared account */
     m.camp = [...byCamp.entries()].map(([id, c2]) => ({ id: String(id), name: c2.name, spendDay: c2.s / 7, freq: c2.s ? c2.fw / c2.s : 0, roas: c2.valued && c2.s ? c2.v / c2.s : null, account: m.name })).filter((x) => x.spendDay > 0);
+    /* a campaign's own frequency (impressions over its unique reach), not its ads' average: the same people see several ads of one
+       campaign, so the average reads low. A shared account keeps the ads' average (only this brand's ads), and says so */
+    if (!shared && m.camp.length) { const cf = await ins({ date_preset: 'last_7d', level: 'campaign', fields: 'campaign_id,frequency' }).catch(() => null);
+      const fq = new Map((cf || []).map((x) => [String(x.campaign_id), +x.frequency])); for (const x of m.camp) if (fq.get(x.id) > 0) x.freq = fq.get(x.id); m.campFreq = !!cf; }
     /* each campaign's status and start: a campaign that is paused now (it spent earlier in the week) or started under LEARN_DAYS
        ago (still in Meta's learning phase) is never judged for a budget move. A lookup that fails leaves them judged, as before */
     const cids = m.camp.map((x) => x.id).filter((x) => /^\d+$/.test(x)).slice(0, 100);
     if (cids.length) { const st = await all(`${A}/campaigns`, c.token, { fields: 'id,effective_status,start_time,created_time', filtering: JSON.stringify([{ field: 'id', operator: 'IN', value: cids }]), limit: 100 }, 2).catch(() => null);
+      /* a lookup that failed leaves every campaign's status unknown: no budget move is built on it (a paused one could be "To") */
+      if (!st) { m.statusUnknown = true; notes.push(`${m.name}: campaign status couldn’t be read this time, so the budget card waits for the next read.`); }
       const by = new Map((st || []).map((x) => [String(x.id), x]));
       for (const x of m.camp) { const y = by.get(x.id); if (!y) continue; const t = Date.parse(y.start_time || y.created_time || ''); if (Number.isFinite(t)) x.start = t; x.status = y.effective_status || null; } }
     /* the windows Meta counts purchases over: "multiple" when campaigns differ, so their returns are a guide, not like for like */
     m.attr = await get(`${A}/insights`, c.token, { date_preset: 'last_30d', fields: 'attribution_setting' }).then((j) => j?.data?.[0]?.attribution_setting || null).catch(() => null);
-    m.live = ads ? ads.filter((x) => x.effective_status === 'ACTIVE' && (!shared || mine.has(x.id))).length : null; m.adsFailed = !ads;
+    m.live = ads ? ads.filter((x) => x.effective_status === 'ACTIVE' && (!shared || mine.has(x.id))).length : null; m.adsFailed = !ads; m.adsCapped = !!ads?.capped;
     /* a tired ad is one still running: an ad paused since (it spent earlier in the week) needs no fresh version */
     const running = ads ? new Set(ads.filter((x) => x.effective_status === 'ACTIVE').map((x) => String(x.id))) : null;
     m.tired = adWeek.filter(keep).filter((x) => +x.frequency >= 3.5 && +x.spend > 0 && (!running || running.has(String(x.ad_id)))).map((x) => ({ name: x.ad_name, freq: +x.frequency }));
@@ -207,7 +216,9 @@ const META = {
     const F = fmt({ ...ctx.profile, currency: cur !== '?' ? cur : ctx.profile?.currency, ...(cur === 'INR' ? { country: 'IN', locale: 'en-IN' } : cur !== '?' && ctx.profile?.country === 'IN' ? { country: 'XX', locale: 'en-US' } : {}) });
     const m = { spend: inCur.reduce((s, x) => s + x.spend, 0), purchases: null, cpa: null, roas: null, reach: null, live: null, camp: [], tired: [] };
     const buys = inCur.reduce((s, x) => s + x.buys, 0), value = inCur.reduce((s, x) => s + x.value, 0), valued = inCur.some((x) => x.valued);
-    if (buys) { m.purchases = buys; m.cpa = m.spend / buys; } if (valued && m.spend) m.roas = value / m.spend;
+    /* return on ad spend over the accounts that report purchase value: one that tracks purchases without value would only drag it down */
+    const vSpend = inCur.filter((x) => x.valued).reduce((s, x) => s + x.spend, 0);
+    if (buys) { m.purchases = buys; m.cpa = m.spend / buys; } if (valued && vSpend) m.roas = value / vSpend;
     if (per.some((x) => x.reach != null)) m.reach = per.reduce((s, x) => s + (x.reach || 0), 0);
     if (per.some((x) => x.live != null)) m.live = per.reduce((s, x) => s + (x.live || 0), 0);
     m.campAll = inCur.flatMap((x) => x.camp).sort((p, q) => q.spendDay - p.spendDay); m.tired = per.flatMap((x) => x.tired).sort((p, q) => q.freq - p.freq);
@@ -219,7 +230,9 @@ const META = {
     const account = { id: xs.map((a) => `act_${a.id}`).join(' '), name: sumLabel(accounts.filter((a) => a.ok).length ? accounts : xs), currency: cur !== '?' ? cur : null };
 
     const k = 'meta', name = 'Meta Ads', lane = ctx.lane, src = `Meta Ads · ${many ? `${per.length} ad accounts` : per[0].name}${!many && per[0].shared ? ` · ${per[0].ownName} ads only` : ''}`, out = [];
-    const hot = m.camp.filter((x) => x.freq >= 3.5).sort((p, q) => q.freq - p.freq)[0], top = [...m.camp].sort((p, q) => q.freq - p.freq)[0];
+    const young = (x) => x.start && Date.now() - x.start < LEARN_DAYS * 864e5, off = (x) => x.status && x.status !== 'ACTIVE';
+    /* fatigue is about campaigns still running: one paused since (it spent earlier in the week) gets no "rotate creative" card */
+    const runningC = m.camp.filter((x) => !off(x)), hot = runningC.filter((x) => x.freq >= 3.5).sort((p, q) => q.freq - p.freq)[0], top = [...runningC].sort((p, q) => q.freq - p.freq)[0];
     /* fatigue: a campaign over 3.5 a week, or single ads over it (the ones the team would make fresh versions of) */
     if (hot || m.tired.length) { const t0 = m.tired[0];
       out.push(card(k, name, lane, 'freq', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder', 'brand'], badge: [`Frequency ${(hot || t0).freq.toFixed(1)}`, 'warn'], cta: 'Rotate creative',
@@ -228,14 +241,13 @@ const META = {
         rows: [...(hot ? [['Campaign', hot.name], ...(many ? [['Ad account', hot.account]] : []), ['Frequency, 7 days', hot.freq.toFixed(1)], ['Spend a day', F.money(hot.spendDay)]] : []),
           ...m.tired.slice(0, 3).map((x, i) => [m.tired.length === 1 ? 'Tired ad' : `Tired ad ${i + 1}`, `${x.name} · ${x.freq.toFixed(1)} a week`]), ...(m.tired.length > 3 ? [['More tired ads', n0(m.tired.length - 3)]] : [])],
         detail: { why: ['Above 3.5 a week, clicks fall and cost rises.'], how: ['Pick the 3 best ads by cost per order', 'Make 2 new versions of each', 'Pause the tired ones as the new ones go live'] } })); }
-    const young = (x) => x.start && Date.now() - x.start < LEARN_DAYS * 864e5, off = (x) => x.status && x.status !== 'ACTIVE';
     const learning = m.camp.filter((x) => x.roas != null && young(x) && !off(x)), stopped = m.camp.filter((x) => x.roas != null && off(x));
     const ranked = m.camp.filter((x) => x.roas != null && x.spendDay > 0 && !young(x) && !off(x)); let shiftRow = null;
     const mixed = per.some((x) => x.attr === 'multiple') || new Set(per.map((x) => x.attr).filter(Boolean)).size > 1;
     const caveats = [learning.length && `${learning.length === 1 ? `${learning[0].name} started` : `${learning.length} campaigns started`} under ${LEARN_DAYS} days ago and ${learning.length === 1 ? 'is' : 'are'} still learning, so ${learning.length === 1 ? 'it is' : 'they are'} left out.`,
       stopped.length && `${stopped.length === 1 ? '1 campaign that spent this week is' : `${stopped.length} campaigns that spent this week are`} paused now and left out.`,
       mixed && 'Your campaigns count purchases over different windows, so these returns are a guide, not like for like.'].filter(Boolean).join(' ');
-    if (ranked.length >= 2) { const best = [...ranked].filter((x) => x.freq < 3.5).sort((p, q) => q.roas - p.roas)[0], worst = [...ranked].sort((p, q) => p.roas - q.roas)[0];
+    if (ranked.length >= 2 && !per.some((x) => x.statusUnknown)) { const best = [...ranked].filter((x) => x.freq < 3.5).sort((p, q) => q.roas - p.roas)[0], worst = [...ranked].sort((p, q) => p.roas - q.roas)[0];
       if (best && best !== worst && best.roas > worst.roas * 1.3) shiftRow = { perDay: Math.round(worst.spendDay * 0.2) };
       if (shiftRow) out.push(card(k, name, lane, 'shift', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder'], badge: [roasX(best.roas), 'ok'], cta: 'Shift budget',
         title: `Move ${F.money(worst.spendDay * 0.2)} a day to ${best.name}`, sub: `This week ${best.name} returned ${roasX(best.roas)} and ${worst.name} ${roasX(worst.roas)}. Moving a fifth of the weaker budget in one step keeps learning intact.${caveats ? ` ${caveats}` : ''}`,
@@ -251,8 +263,8 @@ const META = {
     const changed = [has(m.cpa) && `Ad and creative cards measure against your cost per purchase (${F.money(m.cpa)})`,
       has2('freq') && (m.tired.length ? `${plural(m.tired.length, 'tired ad')} flagged for fresh versions` : `${hot.name} flagged for fresh creative`),
       nc && (has2('shift') ? `Budget card compares your ${plural(nc, 'campaign')} that spent this week${many ? ` across ${per.length} ad accounts` : ''}` : `Watching your ${plural(nc, 'campaign')} that spent this week${many ? ` across ${per.length} ad accounts` : ''}`)].filter(Boolean);
-    const ledger = [has(m.spend) && L('meta.spend.30d', whole ? 'Meta spend, whole ad account (several Pages), last 30 days' : many ? `Meta spend, ${inCur.length} ad accounts, last 30 days` : 'Meta spend, last 30 days', F.big(m.spend), m.spend, src), has(m.roas) && L('meta.roas', 'Meta return on ad spend, 30 days', roasX(m.roas), m.roas, src), has(m.cpa) && L('meta.cpa', 'Meta cost per purchase, 30 days', F.money(m.cpa), m.cpa, src),
-      has(m.live) && L('meta.ads.live', 'Live Meta ads', n0(m.live), m.live, src), top && L('meta.frequency.max', 'Highest campaign frequency, 7 days', top.freq.toFixed(1), top.freq, src),
+    const ledger = [has(m.spend) && L('meta.spend.30d', whole ? 'Meta spend, whole ad account (several Pages), last 30 days' : many ? `Meta spend, ${inCur.length} ad accounts, last 30 days` : 'Meta spend, last 30 days', F.big(m.spend), m.spend, src), has(m.roas) && L('meta.roas', `Meta return on ad spend, 30 days${mixed ? ' (campaigns count purchases over different windows)' : ''}`, roasX(m.roas), m.roas, src), has(m.cpa) && L('meta.cpa', `Meta cost per purchase, 30 days${mixed ? ' (campaigns count purchases over different windows)' : ''}`, F.money(m.cpa), m.cpa, src),
+      has(m.live) && L('meta.ads.live', per.some((x) => x.adsCapped || x.adsFailed) ? 'Live Meta ads (at least: the ad list was cut short)' : 'Live Meta ads', n0(m.live), m.live, src), top && L('meta.frequency.max', per.every((x) => x.campFreq) ? 'Highest campaign frequency, 7 days' : 'Highest campaign frequency, 7 days (average of its ads’ frequency)', top.freq.toFixed(1), top.freq, src),
       many && L('meta.accounts', 'Meta ad accounts read', accounts.filter((a) => a.ok).map((a) => `${a.name} (${a.currency || ''} ${a.spend})`).join('; '), accounts.filter((a) => a.ok).length, src),
       /* the campaigns the budget and fatigue cards quote, so every name, return and daily figure on them traces to the account */
       m.camp.length && L('meta.campaigns.7d', 'Meta campaigns that spent this week (return, spend a day, frequency)', m.camp.map((x) => `${x.name}: ${roasX(x.roas) || 'no purchases tracked'}, ${F.money(x.spendDay)} a day, frequency ${x.freq.toFixed(1)}`).join('; '), m.campAll.length, src),

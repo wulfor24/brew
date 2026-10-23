@@ -79,7 +79,8 @@ export async function getJSON(url, opts = {}, what = url.split('?')[0]) {
        revoked sign-in; 1 asks for less data (the caller reads again with smaller pages); 2 and a 5xx are a passing fault */
     const limited = r.status === 429 || [4, 17, 32, 341, 613].includes(code) || (code >= 80000 && code <= 80014);
     const ra = r.status === 429 ? retryAfterMs(r.headers?.get?.('retry-after')) : limited ? metaWait(r.headers?.get?.('x-business-use-case-usage')) : null;
-    if (r.status === 429 && i < retries && (ra == null || ra <= 20e3)) { await wait(ra ?? Math.round(2e3 * 2 ** i * (0.8 + Math.random() * 0.4))); continue; }
+    /* Meta throttles with a 400 and a rate-limit code, not 429: a short wait is waited out too, a long one fails at once */
+    if ((r.status === 429 || limited) && i < retries && (ra == null || ra <= 20e3)) { await wait(ra ?? Math.round(2e3 * 2 ** i * (0.8 + Math.random() * 0.4))); continue; }
     if ((code === 2 || (r.status >= 500 && code !== 1) || j?.error?.is_transient === true) && !limited && i < retries) { await wait(Math.round(2e3 * 2 ** i * (0.8 + Math.random() * 0.4))); continue; }
     const msg = j?.error?.message || (typeof j?.error === 'string' && j.error) || j?.error_description || j?.errors?.[0]?.detail || j?.errors?.[0]?.message || j?.message || j?.errors || t.slice(0, 160);
     const e = new Error(`${what} ${r.status}: ${typeof msg === 'string' ? msg : JSON.stringify(msg).slice(0, 160)}`); e.status = r.status;

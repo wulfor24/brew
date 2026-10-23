@@ -146,5 +146,38 @@ test('Meta: the budget card never moves money from a paused campaign or one stil
   assert.match(s.sub, /1 campaign that spent this week is paused now and left out/); assert.match(s.sub, /New one started under 14 days ago and is still learning/);
   assert.match(s.sub, /count purchases over different windows/);
   const fail = await withFetch(async (url) => (/\/campaigns\?/.test(url) ? resErr(500, { error: { code: 1, message: 'unknown' } }) : f(url)), () => meta.sync(C, CTX));
-  assert.equal(fail.cards.find((c) => c.id === 'live-meta-shift').shift.from, 'Paused one', 'a lookup that fails leaves every campaign judged, as before');
+  assert.equal(fail.cards.find((c) => c.id === 'live-meta-shift'), undefined, 'a status lookup that fails builds no budget move (a paused campaign could be "To")');
+  assert.ok(fail.notes.some((n) => /campaign status couldn’t be read/.test(n)));
+});
+
+test('Meta audit 23 Oct: campaign frequency is the campaign’s own; paused campaigns get no fatigue card; ROAS only over valued accounts; mixed windows on the labels; throttles waited out', async () => {
+  const camp = [['201', 'Paused tired', 9000, 2.0, 'PAUSED'], ['202', 'Running', 8000, 2.2, 'ACTIVE'], ['203', 'Other', 7000, 1.5, 'ACTIVE']];
+  let throttled = false;
+  const f = async (url) => { const u = new URL(url), p = u.pathname.replace(/^\/v[\d.]+\//, '');
+    if (p === 'act_1') return res200({ name: 'Acct', currency: 'INR' });
+    if (p === 'act_1/promote_pages') return res200({ data: [] });
+    if (p === 'act_1/ads') return res200({ data: camp.map(([id, , , , st]) => ({ id: `a${id}`, campaign_id: id, effective_status: st, creative: { object_story_spec: { page_id: OWN } } })) });
+    if (p === 'act_1/campaigns') { if (!throttled) { throttled = true; return resErr(400, { error: { code: 17, message: 'User request limit reached' } }); }
+      return res200({ data: camp.map(([id, , , , st]) => ({ id, effective_status: st, start_time: new Date(Date.now() - 60 * 864e5).toISOString() })) }); }
+    if (p === 'act_1/insights') { const lv = u.searchParams.get('level');
+      if (u.searchParams.get('fields') === 'attribution_setting') return res200({ data: [{ attribution_setting: 'multiple' }] });
+      if (lv === 'campaign') return res200({ data: camp.map(([id], i) => ({ campaign_id: id, frequency: i === 0 ? '6.2' : '2.1' })) });
+      if (lv === 'ad') return res200({ data: camp.map(([id, name, s, r]) => ({ ad_id: `a${id}`, ad_name: `Ad ${id}`, campaign_id: id, campaign_name: name, frequency: '1.2', spend: String(s * 7), action_values: [{ action_type: 'purchase', value: String(s * 7 * r) }] })) });
+      return res200({ data: [{ spend: '168000', actions: [{ action_type: 'purchase', value: '200' }], action_values: [{ action_type: 'purchase', value: '336000' }] }] }); }
+    return resErr(404, { error: { message: 'no' } }); };
+  const r = await withFetch(f, () => meta.sync(C, CTX)), L = ledgerOf(r);
+  assert.equal(r.metrics.camp.find((x) => x.name === 'Running').freq, 2.1, 'the campaign’s own frequency, not its ads’ 1.2');
+  assert.ok(!r.cards.some((c) => c.id === 'live-meta-freq'), 'the only campaign over 3.5 is paused: no rotate-creative card');
+  assert.equal(L['meta.frequency.max'].v, '2.1');
+  assert.match(L['meta.roas'].label, /different windows/); assert.match(L['meta.cpa'].label, /different windows/);
+  assert.ok(r.cards.some((c) => c.id === 'live-meta-shift'), 'the throttled status lookup was waited out, so the budget card stands');
+});
+
+test('a jam from a team-only card: its public link shows no account words', async () => {
+  const { newJam, publicView } = await import('../jam2/core.js');
+  const j = newJam({ card: { id: 'live-meta-shift', title: 'Move ₹2,084 a day to Nitin Joshi video', liveOnly: true, sub: 'returned 2.3x' }, owner: 'a@b.c' });
+  assert.equal(j.priv, true); const v = publicView(j);
+  assert.doesNotMatch(JSON.stringify({ t: v.title, c: v.concept }), /2,084|2\.3x|Nitin/);
+  const old = { ...j, priv: undefined }; assert.doesNotMatch(publicView(old).title, /2,084/, 'a jam saved before priv is judged by its card id');
+  const pub = newJam({ card: { id: 'm12-1', title: 'A public idea' }, owner: 'a@b.c' }); assert.equal(publicView(pub).title, 'A public idea');
 });

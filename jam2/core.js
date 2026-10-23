@@ -6,6 +6,7 @@
 //   take  { id, n, parent, by, at, op, scene, timeline, doc, text, assets, gate, made: [{ cap, provider, model, usd, credits }], cost }
 import crypto from 'node:crypto';
 import { recipe, recipeFor, SIZES } from './catalogue.js';
+import { isPrivateCard } from '../connectors/common.js';
 
 export const uid = (p) => `${p}_${crypto.randomBytes(5).toString('hex')}`;
 export const GOALS = ['awareness', 'launch', 'conversion', 'community'];
@@ -31,7 +32,8 @@ export function newJam({ card = null, owner, by = null, recipeId = null, bb = {}
   const rid = recipeId || (card ? recipeFor(card) : 'image-ad'), concept = card ? seedConcept(card, bb) : { rev: 1, spark: { kind: 'idea', title: '', says: '' }, angle: '', goal: 'conversion', audience: '', proof: [], offer: '', by: 'blank' };
   const pref = bb.comfort?.how, list = plan?.length && !recipeId ? plan : [{ recipe: rid }];
   const boards = list.slice(0, 4).map((p) => { const r = recipe(p.recipe); return newBoard(p.recipe, { how: how || (pref && r?.how.includes(pref) ? pref : null), label: p.label, ask: p.ask }); });
-  return { id: uid('j2'), v: 2, cardId: card?.id || null, cta: tidy(cta, 60) || null, owner, title: tidy(card?.title || recipe(list[0].recipe)?.label || 'New jam', 90), concept, boards, post: null, brief: null, chat: [], by, createdAt: Date.now(), updatedAt: Date.now(), log: [] };
+  /* priv: made from a team-only card (a connected account's numbers): its public links never show the card's words (publicView) */
+  return { id: uid('j2'), v: 2, cardId: card?.id || null, ...(card && isPrivateCard(card) ? { priv: true } : {}), cta: tidy(cta, 60) || null, owner, title: tidy(card?.title || recipe(list[0].recipe)?.label || 'New jam', 90), concept, boards, post: null, brief: null, chat: [], by, createdAt: Date.now(), updatedAt: Date.now(), log: [] };
 }
 export const boardOf = (j, bid) => (j.boards || []).find((b) => b.id === bid) || null;
 export const headOf = (b) => (b?.takes || []).find((t) => t.id === b.head) || (b?.takes || [])[b.takes.length - 1] || null;
@@ -80,3 +82,12 @@ export function briefOf(j, b) {
 }
 /* what the client sees: the jam with each board's head take first and its brief */
 export const jamView = (j) => ({ ...j, boards: j.boards.map((b) => ({ ...b, headTake: headOf(b), briefView: briefOf(j, b) })) });
+
+/* what a public link (/p/, /brief/) may show of a jam: one made from a team-only card (a connected account's numbers: ROAS, spend,
+   orders) keeps its title and "Why" to the team; jams saved before priv existed are judged by their card id */
+export function publicView(j) {
+  if (!j || !(j.priv || isPrivateCard({ id: j.cardId || '' }))) return j;
+  const label = recipe(j.boards?.[0]?.recipe)?.label || j.boards?.[0]?.label || 'Brew brief';
+  const boards = (j.boards || []).map((b) => (b.brief?.edits?.[1] != null ? { ...b, brief: { ...b.brief, edits: Object.assign([...b.brief.edits], { 1: null }) } } : b)); /* a team edit of the Why row stays with the team too */
+  return { ...j, title: label, boards, concept: { ...(j.concept || {}), spark: { kind: j.concept?.spark?.kind || 'idea', title: '', says: '' }, angle: 'From the brand’s own accounts (kept with the team).', proof: [] } };
+}
