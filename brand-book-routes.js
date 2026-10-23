@@ -48,6 +48,17 @@ const MAP_SCHEMA = { type: 'object', properties: {
   look: { type: 'object', properties: { notes: S, light: S, people: S, wordsOnImage: S, logoUse: S, colourUse: S, packaging: S } },
   logoRules: S
 } };
+/* only what the file really says: a proposed line is kept when most of its words are in the file (a light stem match, so
+   "playful" finds "playfulness"); a list keeps only its grounded items. Stops a model filling a mission, founder story or claim
+   the document never had (QA 23 Oct: a three-line guide came back with twenty fields). */
+const STOP = new Set('that this with from your their they them have will into about which when what where while than then also very more most just only such each other over under make made makes brand'.split(' '));
+const stems = (t) => (String(t).toLowerCase().match(/#[0-9a-f]{3,8}|[a-z0-9%]{4,}/g) || []).filter((w) => !STOP.has(w)).map((w) => (w.startsWith('#') ? w : w.slice(0, 5)));
+export function groundedIn(value, text, min = 0.7) {
+  const have = new Set(stems(text)), ok = (v) => { const ws = stems(typeof v === 'object' && v ? Object.values(v).flat().join(' ') : v); return !ws.length || ws.filter((w) => have.has(w)).length / ws.length >= min; };
+  if (Array.isArray(value)) { const kept = value.filter(ok); return kept.length ? kept : null; }
+  return ok(value) ? value : null;
+}
+export const groundProposals = (P = [], text = '') => P.map((x) => ({ ...x, value: groundedIn(x.value, text, x.path === 'proof.claimsAllowed' ? 0.85 : 0.7) })).filter((x) => x.value != null);
 export function proposalsOf(j = {}) {
   const P = [], add = (path, value, label) => { const empty = value == null || value === '' || (Array.isArray(value) && !value.length) || (typeof value === 'object' && !Array.isArray(value) && !Object.values(value).some((x) => x != null && x !== '' && !(Array.isArray(x) && !x.length))); if (!empty && EDITABLE.test(path)) P.push({ path, value, label }); };
   const st = j.story || {}; add('story.positioning', tidy(st.positioning, 200), 'Positioning'); add('story.mission', tidy(st.mission, 240), 'Mission'); add('story.values', (st.values || []).map((x) => tidy(x, 40)).filter(Boolean).slice(0, 6), 'Values');
@@ -211,9 +222,12 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
     const text = texts.join('\n\n').slice(0, 150000);
     if (live && text.trim().length > 20) {
       try { const r = await ai.call({ model: 'sonnet', tag: 'brandbook-import', max: 6000, effort: 'low', schema: MAP_SCHEMA,
-          prompt: `A brand's team gave Brew this document about their brand (${upload.name}). Copy out what it says about the brand's colours (hex codes as written), fonts, story, voice, words, claims they may make, words they must never use, photo style and logo rules. Copy their own wording; leave out anything the document doesn't say. Never invent.\n\n${text}` });
-        const j = r.json || {}; upload.proposed = proposalsOf(j); const k = kitOf(j); upload.kit = { ...(upload.kit || {}), ...(k.colors.length ? { colors: k.colors } : {}), ...(Object.keys(k.fonts).length ? { fonts: k.fonts } : {}) };
-        upload.neverSay = (j.neverSay || []).map((x) => tidy(x, 40)).filter(Boolean).slice(0, 30); upload.usd = +(+r.usd || 0).toFixed(4);
+          prompt: `A brand's team gave Brew this document about their brand (${upload.name}). Copy out what it says about the brand's colours (hex codes as written), fonts, story, voice, words, claims they may make, words they must never use, photo style and logo rules. Copy their own wording; leave out anything the document doesn't say (a field with nothing in the document stays empty: no mission, story, claim or rule unless it is written there). Never invent.\n\n${text}` });
+        const j = r.json || {}; upload.proposed = groundProposals(proposalsOf(j), text); const k = kitOf(j), low = text.toLowerCase();
+        k.colors = k.colors.filter((c) => low.includes(c.hex.toLowerCase()) || low.includes(c.hex.toLowerCase().replace('#', ''))); /* a colour code the file printed, never one guessed */
+        k.fonts = Object.fromEntries(Object.entries(k.fonts).filter(([, f]) => low.includes(String(f).toLowerCase().split(/\s+/)[0])));
+        upload.kit = { ...(upload.kit || {}), ...(k.colors.length ? { colors: k.colors } : {}), ...(Object.keys(k.fonts).length ? { fonts: k.fonts } : {}) };
+        upload.neverSay = (j.neverSay || []).map((x) => tidy(x, 40)).filter((x) => x && low.includes(x.toLowerCase())).slice(0, 30); upload.usd = +(+r.usd || 0).toFixed(4);
       } catch (e) { log.warn?.('[book] import map', slug, e.message); return { error: e.billing ? 'The AI is paused, so Brew can’t read the brand book right now. Try again once it’s back.' : 'Brew read the file but couldn’t sort it into the Brand Book. Try again.' }; }
     } else { const hx = hexesIn(text); if (hx.length) upload.kit = { ...(upload.kit || {}), colors: hx.map((hex, i) => ({ hex, role: i ? 'accent' : 'primary' })) };
       if (!live && !hx.length && !upload.kit) return { error: 'Reading a brand book needs the AI, which is off on this server.' }; }

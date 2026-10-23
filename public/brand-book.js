@@ -296,7 +296,8 @@
       for (const l of S.pending) cards.appendChild(thinking(l));
       q.value = S.draft || ''; q.oninput = () => { S.draft = q.value; };
       const send = async (body, label) => { S.pending.push(label); const w = thinking(label); cards.appendChild(w); w.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        const r = await api('POST', `${base}/${body.url || body.data || body.text && body.name ? 'import' : 'ask'}`, body); S.pending = S.pending.filter((x) => x !== label);
+        /* a request lost on a bad connection never leaves the card on "Reading…" for good: after 3 minutes it says so */
+        const r = await Promise.race([api('POST', `${base}/${body.url || body.data || body.text && body.name ? 'import' : 'ask'}`, body), new Promise((res) => setTimeout(() => res({ error: 'That took too long, so the connection may have dropped. Try it again.' }), 180e3))]); S.pending = S.pending.filter((x) => x !== label);
         const live = $('[data-cards]', el) || cards; live.querySelectorAll('.bb-change.is-busy').forEach((x) => { if (x.textContent.includes(label)) x.remove(); });
         if (!r || r.error) { const e = document.createElement('div'); e.className = 'bb-change is-err'; e.innerHTML = `<header><p>${esc(r?.error || 'That didn’t go through. Try again.')}</p></header>`; live.appendChild(e); setTimeout(() => e.remove(), 9000); return; }
         if (!r.upload) { toast(r.reply || 'Nothing to change there.'); return; }

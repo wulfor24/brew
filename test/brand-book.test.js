@@ -286,3 +286,14 @@ test('the book keeps the whole catalogue for its All products page, heroes first
   assert.ok(f.products.all[0].hero);
   for (const t of f.products.tiers) { assert.equal(typeof t.lo, 'number'); assert.equal(f.products.all.filter((p) => p.p >= t.lo && p.p <= t.hi).length, t.n); }
 });
+
+test('an upload only proposes what the file says: invented missions, stories and claims are dropped', async () => {
+  const { groundProposals, groundedIn } = await import('../brand-book-routes.js');
+  const T = "Cozy brand guide. Voice: warm, playful, cosy. We say 'snuggle up' and 'toasty'. Never say 'cheap'. Primary colour #E8A0B4.";
+  const P = [['story.mission', 'To provide warmth and comfort to every home.'], ['tone.summary', 'Warm, playful and cosy.'], ['words.use', ['snuggle up', 'toasty', 'hygge']],
+    ['proof.claimsAllowed', ['Clinically proven to keep you warm.']], ['look.colourUse', 'Primary #E8A0B4.']].map(([path, value]) => ({ path, value, label: path }));
+  const kept = Object.fromEntries(groundProposals(P, T).map((x) => [x.path, x.value]));
+  assert.deepEqual(Object.keys(kept).sort(), ['look.colourUse', 'tone.summary', 'words.use']);
+  assert.deepEqual(kept['words.use'], ['snuggle up', 'toasty']);
+  assert.equal(groundedIn('Playfulness first', 'we are playful'), 'Playfulness first', 'a light stem match');
+});
