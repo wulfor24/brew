@@ -75,7 +75,7 @@ export function reflow(scene, w, h) {
 
 /* the type presets every static starts from: the brand's heading font and colours, words always real type, never drawn */
 /* words that read on a colour: dark on a light or pastel brand colour, white on a dark one */
-export const inkOn = (hex) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return '#ffffff'; const n = parseInt(m[1], 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] > 0.45 ? '#111111' : '#ffffff'; };
+export const inkOn = (hex) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return '#ffffff'; const n = parseInt(m[1], 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); const L = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; return (L + 0.05) / 0.0556 > 1.05 / (L + 0.05) ? '#111111' : '#ffffff'; }; /* the higher-contrast of the two (WCAG) */
 export function typePreset(name, { w, h, kit = {}, headline = '', sub = '', cta = '', badge = '' }) {
   const head = kit.fonts?.heading || null, body = kit.fonts?.body || head, ink = kit.ink || '#ffffff', accent = kit.accent || kit.colors?.[0] || '#111111', u = Math.min(w, h * 1.25), pad = Math.round(u * 0.065); /* sized from the shorter side: a wide banner's headline can't cover the product */
   const tall = h / w > 1.6, top = tall ? Math.round(h * 0.16) : pad, big = Math.round(u * (headline.length < 26 ? 0.085 : headline.length < 48 ? 0.068 : 0.056));

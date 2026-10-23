@@ -296,6 +296,7 @@ test('audit 23 Oct: the words fit any frame (a 3:1 banner keeps the button insid
   for (const zone of ['left', 'right', 'top', 'bottom']) { const sc = await m.creative.layout({ bbv: { kit: { colors: ['#ffe14d'], accent: '#ffe14d' } }, product: { name: 'Serum' } }, { w: 2400, h: 800 }, 'gen/bg.png',
     { headline: 'A sixty character headline that goes on for quite a long way', sub: 'And a ninety character sub line that also goes on and on and on for a long long way here', badge: '51,419 reviews', cta: 'Shop now' }, zone);
     const cta = sc.layers.find((l) => l.id === 'cta'); assert.ok(cta.y + cta.h <= 800, `${zone}: button at ${cta.y}+${cta.h}`); assert.equal(cta.style.color, '#111111'); }
+  const { inkOn } = await import('../public/jam2/scene.js'); assert.equal(inkOn('#82b1ff'), '#111111', 'Arata light blue: dark words'); assert.equal(inkOn('#1d4ed8'), '#ffffff'); assert.equal(inkOn('#ab8c52'), '#111111');
 });
 
 test('audit 23 Oct: a Studio piece passes its gate (no product layer is needed); a check that never ran does not', async () => {
