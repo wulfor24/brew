@@ -7,6 +7,7 @@
 // evidence (no cards, no ledger). Simulated rows are marked demo and are never evidence.
 // Connecting is also the easiest way to claim a brand: the first work email at its domain to connect becomes its admin.
 import crypto from 'node:crypto';
+import { safeFetch } from '../reader/util.js'; // a Meta winner's picture, saved once for the Brand Book
 import shopify from './shopify.js';
 import meta from './meta.js';
 import google, { ga4 } from './google.js';
@@ -196,6 +197,22 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       if (p) await editC(slug, (c) => { if (c[id]) c[id] = { ...c[id], verified: !!p.ok, why: p.why || '', ...(p.accounts ? { accounts: p.accounts } : {}) }; }); }
     try { const d = await C.sync(creds, ctx, deps); return exp ? { ...d, exp } : d; } catch (e) { dead(e); }
   }
+  /* what a connected account adds to the Brand Book, kept private (members only): Shopify's own brand settings, and Meta's
+     winning ads with their returns. A winner's picture is saved once under its content name in refs/ (Meta's links expire) */
+  async function brandExtras(slug, id, d) {
+    if (id === 'shopify' && d.brand) await packs.put(slug, 'private/shop-brand.json', { at: Date.now(), ...d.brand });
+    if (id === 'meta' && (d.winners || d.winnersError)) {
+      const prev = await packs.getJSON(slug, 'private/meta-winners.json', null).catch(() => null), had = new Map((prev?.ads || []).map((x) => [x.id, x.src]));
+      const ads = [];
+      for (const x of d.winners || []) {
+        let src = had.get(x.id) || null;
+        if (!src && x.image) { try { const r = await safeFetch(x.image, { signal: AbortSignal.timeout(20e3) }); const buf = r.ok ? Buffer.from(await r.arrayBuffer()) : null;
+          if (buf?.length && buf.length < 8e6) { const f = `refs/${crypto.createHash('sha256').update(buf).digest('hex').slice(0, 16)}.jpg`; await packs.put(slug, f, buf, 'image/jpeg'); src = `/b/${slug}/${f}`; } } catch (e) { log.info?.('[connect] winner picture', x.id, e.message); } }
+        if (src) { const { image, ...rest } = x; ads.push({ ...rest, src }); }
+      }
+      await packs.put(slug, 'private/meta-winners.json', { at: Date.now(), ads: ads.length ? ads : prev?.ads || [], error: d.winnersError || null });
+    }
+  }
   const sync = (slug, id) => perBrand(slug, () => sync0(slug, id));
   async function sync0(slug, id) {
     await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'syncing', syncAt: Date.now() }; });
@@ -203,6 +220,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       const d = await read(slug, id);
       const data = { at: Date.now(), account: d.account || (await conns(slug))[id]?.account || null, ...(Array.isArray(d.accounts) ? { accounts: d.accounts } : {}), stats: d.stats || [], changed: d.changed || [], cards: d.cards || [], ledger: d.ledger || [], notes: d.notes || [], ...(d.ownPageId ? { ownPageId: d.ownPageId } : {}), ...(d.sim ? { sim: true } : {}) };
       await packs.put(slug, liveName(id), data);
+      if (!d.sim && !simOnly(id)) await brandExtras(slug, id, d).catch((e) => log.warn('[connect] brand book', slug, id, e.message)); /* the Brand Book's Shopify settings and Meta winners */
       /* an account's `ok` and `why` are the ownership check's verdict (owns); the read's own per-account result never overwrites them */
       const merged = (x) => data.accounts.map((a) => { const prev = (x.accounts || []).find((y) => String(y.id) === String(a.id)) || {}, { ok: readOk, error: readErr, ...rest } = a;
         return { ...prev, ...rest, ...(readOk === false ? { readError: readErr || 'not read' } : { readError: null }) }; });

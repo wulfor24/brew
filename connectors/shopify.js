@@ -137,6 +137,12 @@ export default {
       m.top?.length && L('shopify.top.30d', 'Best sellers by units, 30 days', m.top.map((x) => `${x.title} (${x.units})`).join('; '), null, src)].filter(Boolean);
     if (cur) ledger.push(L('shopify.currency', 'Shop currency (Shopify admin)', cur, null, src)); /* beats the site's /meta.json currency on the fact sheet */
     if (cur) for (const r of ledger) r.cur = cur;
-    return { metrics: m, stats, changed, cards: out, ledger, notes };
+    /* the store's own brand settings (Settings › Brand): the logo, colours, slogan and short description the merchant set on
+       purpose. The Brand Book ranks them above anything read off the site; a store that set none (or a refusal) changes nothing */
+    const brand = await gql(c, '{ shop{ brand{ slogan shortDescription logo{ image{ url } } squareLogo{ image{ url } } coverImage{ image{ url } } colors{ primary{ background foreground } secondary{ background foreground } } } } }')
+      .then((d) => { const b = d?.shop?.brand; if (!b) return null; const col = (xs, role) => (xs || []).flatMap((x) => [x.background && { hex: String(x.background).toLowerCase(), role }, x.foreground && { hex: String(x.foreground).toLowerCase(), role: 'ink' }]).filter(Boolean);
+        const out = { slogan: b.slogan || null, about: b.shortDescription || null, logo: b.logo?.image?.url || null, squareLogo: b.squareLogo?.image?.url || null, cover: b.coverImage?.image?.url || null, colors: [...col(b.colors?.primary, 'primary'), ...col(b.colors?.secondary, 'accent')] };
+        return out.slogan || out.about || out.logo || out.colors.length ? out : null; }).catch(() => null);
+    return { metrics: m, stats, changed, cards: out, ledger, notes, brand };
   }
 };

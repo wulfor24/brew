@@ -147,6 +147,17 @@ const META = {
       for (const x of rows.filter((r) => mine.has(String(r.ad_id)))) { m.spend += +x.spend || 0; m.buys += pick(x.actions, PURCHASE) || 0; const v = pick(x.action_values, PURCHASE); if (v != null) { m.value += v; m.valued = true; } }
     }
     const keep = (x) => !shared || mine.has(String(x.ad_id));
+    /* the brand's winning ads over 30 days, by real return (then purchases, then spend), among ads that spent 2% or more: the
+       Brand Book's best references for any new ad (their pictures are saved by connectors/index.js; the numbers stay private) */
+    try {
+      const rows = (await ins({ date_preset: 'last_30d', level: 'ad', fields: 'ad_id,ad_name,spend,ctr,actions,action_values' })).filter(keep);
+      const tot = rows.reduce((s, x) => s + (+x.spend || 0), 0), floor = Math.max(tot * 0.02, 1);
+      const top = rows.map((x) => { const spend = +x.spend || 0, value = pick(x.action_values, PURCHASE), buys = pick(x.actions, PURCHASE); return { id: String(x.ad_id), name: x.ad_name || null, spend, ctr: x.ctr != null ? +(+x.ctr).toFixed(2) : null, buys, roas: value != null && spend ? +(value / spend).toFixed(2) : null }; })
+        .filter((x) => x.spend >= floor).sort((p, q) => (q.roas ?? -1) - (p.roas ?? -1) || (q.buys || 0) - (p.buys || 0) || q.spend - p.spend).slice(0, 6);
+      if (top.length) { const j = await get('', c.token, { ids: top.map((x) => x.id).join(','), fields: 'creative{image_url,thumbnail_url,body,title,video_id,call_to_action_type}', thumbnail_width: 600, thumbnail_height: 600 });
+        for (const x of top) { const cr = j?.[x.id]?.creative || {}; Object.assign(x, { image: cr.image_url || cr.thumbnail_url || null, body: cr.body || null, title: cr.title || null, video: !!cr.video_id, cta: cr.call_to_action_type || null }); } }
+      m.winners = top.filter((x) => x.image).map((x) => ({ ...x, currency: m.currency, account: m.name }));
+    } catch (e) { m.winnersError = String(e.message).slice(0, 120); }
     const adWeek = await ins({ date_preset: 'last_7d', level: 'ad', fields: 'ad_id,ad_name,campaign_id,campaign_name,frequency,spend,ctr,actions,action_values' }).catch((e) => (notes.push(`Campaigns (${m.name}): ${e.message.slice(0, 100)}`), []));
     const byCamp = new Map();
     for (const x of adWeek.filter(keep)) { const k2 = x.campaign_id || x.campaign_name, c2 = byCamp.get(k2) || { name: x.campaign_name, s: 0, v: 0, valued: false, fw: 0 };
@@ -232,7 +243,8 @@ const META = {
       m.camp.length && L('meta.campaigns.7d', 'Meta campaigns that spent this week (return, spend a day, frequency)', m.camp.map((x) => `${x.name}: ${roasX(x.roas) || 'no purchases tracked'}, ${F.money(x.spendDay)} a day, frequency ${x.freq.toFixed(1)}`).join('; '), m.campAll.length, src),
       shiftRow && L('meta.shift.day', 'A fifth of the weaker campaign’s daily spend', F.money(shiftRow.perDay), shiftRow.perDay, src)].filter(Boolean);
     for (const r of ledger) r.cur = cur !== '?' ? cur : null;
-    return { metrics: m, stats, changed, cards: out, ledger, notes, account, accounts, ownPageId: per.find((x) => x.ownPageId)?.ownPageId || null };
+    const winners = per.flatMap((x) => x.winners || []).sort((p, q) => (q.roas ?? -1) - (p.roas ?? -1) || q.spend - p.spend).slice(0, 8);
+    return { metrics: m, stats, changed, cards: out, ledger, notes, account, accounts, ownPageId: per.find((x) => x.ownPageId)?.ownPageId || null, winners, winnersError: per.find((x) => x.winnersError)?.winnersError || null };
   }
 };
 export default META;

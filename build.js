@@ -41,7 +41,8 @@ import { createApify } from './apify.js'; // the reader's Myntra and Flipkart ra
 import { providerNow, geminiModel } from './gemini-client.js';
 import { KINDS, flagKind, runKind, potOf, potLeft, potAdd, potFit, perMove, capOf as potCapOf, nextWeek } from './rewrite-pot.js'; // one weekly rewrite budget a brand
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
-import { createBookReader } from './brand-book-read.js'; // the Brand Book as the read finds it: built after the brief, healed on open
+import { createBookReader } from './brand-book-read.js';
+import { createEnricher } from './brand-enrich.js'; // the Brand Book's fresh posts, reels, TikToks and film words (paid, capped, saved once) // the Brand Book as the read finds it: built after the brief, healed on open
 import { markMoveClaims, sourceText } from './claims.js'; // move PDFs mark a claim the store never made, like the page
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
@@ -417,7 +418,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     return brief;
   }
   /* the Brand Book's read layer: never blocks a build; a new one drops the brand's cached book so makers read it at once */
-  const book = createBookReader({ packs, ai, treg, log });
+  const book = createBookReader({ packs, ai, treg, log, enricher: process.env.ENRICH_OFF === '1' ? null : createEnricher({ packs, treg, log }) });
   const bookListeners = [];
   const bookAfter = (slug, opts = {}) => { if (process.env.BOOK_OFF === '1') return null; return book.ensure(slug, opts).then(async (b) => { if (b && !b.skip) { bookListeners.forEach((f) => { try { f(slug, b); } catch {} }); packs.drop(slug); await onPack(slug); } return b; }); };
   /* the feed gate: set on a brand's first read, lifted by the first open of its feed (feedOpenAt); a feed opened before the brief is done counts */

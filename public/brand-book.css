@@ -245,3 +245,20 @@
 .bb-pillars li { padding: 16px 18px; border-radius: 18px; background: var(--bb-1); color: var(--bb-on); display: grid; gap: 6px; }
 .bb-pillars b { font: 700 19px/1.2 var(--bb-head); }
 .bb-pillars span { font-size: 13px; opacity: .85; }
+
+/* printed (the PDF and the kit's brand-book.pdf): a real book, one chapter a page, no app chrome, the brand's colours kept */
+@media print {
+  .bb { max-width: none; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bb-bar, .bb-toc, .bb-pen, .bb-undo, .bb-addbtn, .bb-add, .bb-back, .bb-building, .bb-note, .bb-neverf, .bb-tabs, .bb-foot a, .bb-ref figcaption a { display: none !important; }
+  .bb-cover { min-height: 250mm; border-radius: 0; break-after: page; }
+  .bb-body { display: block; margin: 0; }
+  .bb-main { max-width: none; }
+  html, body { background: #fff !important; }
+  .bb-ch { break-before: auto; padding: 18px 0 28px; }
+  .bb-chh { break-after: avoid; }
+  #bb-library { break-before: page; }
+  .bb-trait, .bb-prod, .bb-persona, .bb-ref, .bb-play, .bb-swatch, .bb-quotes blockquote, .bb-pair, .bb-tier, .bb-spec, .bb-logo { break-inside: avoid; }
+  .bb-wall { columns: 3; }
+  .bb-swatch:hover { transform: none; }
+  .bb-line > .bb-pen { opacity: 0; }
+}

@@ -76,7 +76,7 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
     const building = !!builder?.book?.running?.(slug), stale = builder?.book ? await builder.book.stale(slug).catch(() => false) : false;
     if (stale && !building && !isMock()) builder.bookAfter?.(slug); /* a missing or older read layer is written now, in the background */
     return { book: v, building: building || stale, canEdit: member(t), readiness: BOOK.readiness(v, { products: (v.products?.heroes || []).length }),
-      options: { comfort: COMFORT, narrators: NARRATORS, moods: MOODS, voices: VOICES, families: REF_FAMILIES }, share: { page: `/${slug}/brand`, md: `/${slug}/brand.md`, json: `/${slug}/brand.json`, llms: `/${slug}/llms.txt`, zip: `/${slug}/brand-kit.zip` } };
+      options: { comfort: COMFORT, narrators: NARRATORS, moods: MOODS, voices: VOICES, families: REF_FAMILIES }, share: { page: `/${slug}/brand`, md: `/${slug}/brand.md`, json: `/${slug}/brand.json`, llms: `/${slug}/llms.txt`, zip: `/${slug}/brand-kit.zip`, pdf: `/${slug}/brand.pdf` } };
   };
   on('GET', '/api/brands/:slug/book', async (b, t, p) => { const slug = slugOf(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' };
     try { return await out(slug, t); } catch (e) { return { status: e.status || 500, error: e.message }; } });

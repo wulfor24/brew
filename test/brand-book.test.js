@@ -47,7 +47,7 @@ test('the library keeps only saved pictures, by deliverable, best first with pro
   assert.ok(!JSON.stringify(lib).includes('expired'), 'an expired CDN link is no reference');
   assert.deepEqual(lib['product-photo'].map((x) => x.words), ['Paw Warmer']);
   assert.equal(familiesFor('reel')[0], 'ad-video');
-  assert.equal(familiesFor('meta-static')[0], 'ad-image');
+  assert.equal(familiesFor('meta-static')[0], 'ad-winners'); assert.equal(familiesFor('meta-static')[1], 'ad-image');
   assert.equal(familiesFor('carousel')[0], 'ad-carousel');
 });
 
@@ -174,4 +174,74 @@ test('the kit: an AI-ready brand.md, clean JSON, W3C tokens, an .ase palette and
   const names = [...unzip(z.buf).keys()];
   for (const f of ['brand.md', 'brand.json', 'tokens.json', 'colors.css', 'palette.ase', 'CLAUDE-PROJECT.md', 'CUSTOM-GPT.md', 'llms.txt', 'logos/logo.png', 'references/ad-image/01.jpg', 'references/ad-image/captions.json']) assert.ok(names.includes(f), f);
   assert.ok(!unzip(z.buf).get('brand.md').toString().includes('Secret launch voice'));
+});
+
+test('the book keeps itself current: what it is made from changes → rebuilt (not more than every 6 hours), and at least every week', async () => {
+  const { bookSig } = await import('../brand-book-read.js');
+  let t = Date.parse('2026-10-23T00:00:00Z');
+  const p = structuredClone(profile), files = new Map([['cozy|profile.json', p], ['cozy|brief.json', brief]]);
+  const packs = { getJSON: async (s, n, d) => (files.has(`${s}|${n}`) ? files.get(`${s}|${n}`) : d), get: async () => null, put: async (s, n, v) => files.set(`${s}|${n}`, v) };
+  const r = createBookReader({ packs, ai: null, now: () => t, fetchText: async () => ({ html: '<p>home</p>' }) });
+  const b = await r.ensure('cozy'); files.set('cozy|brandbook-read.json', { ...b, error: null });
+  assert.equal(await r.stale('cozy'), false);
+  p.ads.own.items.unshift({ id: '9', poster: '/b/cozy/a/ad-9.jpg', format: 'image', days: 2 });
+  assert.notEqual(bookSig(p, brief), b.sig);
+  t += 2 * 36e5; assert.equal(await r.stale('cozy'), false, 'not twice in six hours');
+  t += 5 * 36e5; assert.equal(await r.stale('cozy'), true, 'a new ad rewrites it');
+  p.ads.own.items.shift(); assert.equal(await r.stale('cozy'), false, 'nothing changed');
+  t += 8 * 864e5; assert.equal(await r.stale('cozy'), true, 'a week on, it is refreshed anyway');
+  p.meta.readAt = '2026-11-01T00:00:00Z'; t = Date.parse(b.at) + 1000; assert.equal(await r.stale('cozy'), true, 'a re-read rewrites it at once');
+});
+
+test('enrichment: fresh posts with plays, TikToks and film words; pictures saved once; a failure kept as an error; weekly; capped', async () => {
+  const { createEnricher } = await import('../brand-enrich.js');
+  const p = { host: 'cozy.example', socials: { instagram: { url: 'https://instagram.com/cozy', handle: 'cozy' }, tiktok: { url: 'https://www.tiktok.com/@cozy' }, youtube: { videos: [{ url: 'https://www.youtube.com/watch?v=abcdefghijk', title: 'Meet Cozy' }] } } };
+  const files = new Map([['cozy|profile.json', p]]), calls = [], fetched = [];
+  const packs = { getJSON: async (s, n, d) => (files.has(`${s}|${n}`) ? files.get(`${s}|${n}`) : d), get: async (s, n) => files.get(`${s}|${n}`) || null, put: async (s, n, v) => files.set(`${s}|${n}`, v) };
+  let t = Date.parse('2026-10-23T00:00:00Z');
+  const treg = { live: true, meter: { usd: 0 }, call: async (id, o) => { calls.push(id); treg.meter.usd += 0.002;
+    if (id === 'crawl4ai.instagram.user.posts') return { rows: [{ url: 'https://instagram.com/p/R1/', code: 'R1', caption: 'Toasty toes', likes: 90, kind: 'reel', image: 'https://cdn/r1.jpg', video_url: 'https://cdn/r1.mp4' }] };
+    if (id === 'anyapi.instagram.user.reels') return { output: { data: { reels: [{ shortcode: 'R1', views: 12000 }] } } };
+    if (id === 'crawl4ai.tiktok.user.videos') throw new Error('HTTP 502');
+    if (id === 'crawl4ai.youtube.video.captions') return { rows: [{ text: 'Hi, I am the founder and my feet were always cold.' }] }; } };
+  const e = createEnricher({ packs, treg, now: () => t, log: { info() {}, warn() {} }, fetchFile: async (u) => { fetched.push(u); return { buf: Buffer.from('x'), type: 'image/jpeg' }; } });
+  const a = await e.run('cozy');
+  assert.equal(a.ig.posts[0].views, 12000); assert.equal(a.ig.posts[0].img, '/b/cozy/a/ig-R1.jpg'); assert.equal(a.ig.posts[0].video, '/b/cozy/a/ig-R1-video.mp4');
+  assert.match(a.errors.tiktok, /502/); assert.equal(a.tiktok, null, 'a failed source is an error, never an empty list');
+  assert.match(a.yt.abcdefghijk.text, /feet were always cold/);
+  const n = calls.length; await e.run('cozy'); assert.equal(calls.length, n, 'not again within the week');
+  t += 8 * 864e5; fetched.length = 0; const b = await e.run('cozy');
+  assert.ok(!fetched.length, 'saved pictures and videos are never fetched again'); assert.ok(!calls.slice(n).includes('crawl4ai.youtube.video.captions'), 'a film is transcribed once');
+  assert.ok(b.ig.posts.length);
+  const lib = libraryOf({ ...profile, socials: {} }, { enrich: b });
+  assert.equal(lib['ig-reel'][0].proof, '12,000 plays'); assert.equal(lib['ig-reel'][0].video, '/b/cozy/a/ig-R1-video.mp4');
+  const ev = evidenceOf({ profile: {}, brief: {}, enrich: b }); assert.ok(ev.some((x) => x.kind === 'film-words'));
+  const capped = createEnricher({ packs: { ...packs, getJSON: async (s, n, d) => (n === 'profile.json' ? p : d) }, treg: { live: true, meter: { usd: 0 }, call: async () => { throw new Error('x'); } }, now: () => t, log: { info() {} } });
+  treg.meter.usd = 0; const cTreg = { live: true, meter: { usd: 0 }, call: async (id) => { cTreg.meter.usd += 0.6; return { rows: [] }; } };
+  const c = await createEnricher({ packs: { ...packs, getJSON: async (s, n, d) => (n === 'profile.json' ? p : d), put: async () => {} }, treg: cTreg, now: () => t, log: { info() {} } }).run('cozy');
+  assert.ok(c.capped); assert.ok(c.usd < 1.3, 'stops at the cap');
+  void capped;
+});
+
+test('the cover never shows a search title, and one creative listed under many ad ids is one reference', async () => {
+  const { taglineOk } = await import('../brand-book-read.js');
+  for (const t of ["Explore Arata's most trusted & dermat-approved haircare solutions for Indian hair.", 'Buy Protein Powder Online in India', 'Home | Puma', 'Official Store of X']) assert.equal(taglineOk(t), false, t);
+  for (const t of ['Cold feet, fixed.', 'Forever Faster', "Bengaluru's Largest Child-Centric Township"]) assert.equal(taglineOk(t), true, t);
+  const lib = libraryOf({ ads: { own: { items: [{ id: '1', hook: 'Same ad', format: 'image', poster: '/b/x/a/ad-1.jpg', days: 9 }, { id: '2', hook: 'Same ad', format: 'image', poster: '/b/x/a/ad-2.jpg', days: 3 }, { id: '3', hook: 'Other', format: 'image', poster: '/b/x/a/ad-3.jpg', days: 1 }] } } });
+  assert.deepEqual(lib['ad-image'].map((r) => r.id), ['ad:1', 'ad:3']);
+  assert.equal(freeChapters({ profile: { tagline: 'Buy shoes online', name: 'X' } }).cover.tagline, null);
+});
+
+test('Shopify brand settings lead the kit and cover for the team (never the public kit); Meta winners are members-only and lead any new ad', () => {
+  const shop = { slogan: 'Warm toes, always', about: 'Heated comfort for cold days', logo: 'https://cdn.shopify.com/logo.png', colors: [{ hex: '#ff5a5f', role: 'primary' }, { hex: '#ffffff', role: 'ink' }] };
+  const winners = { ads: [{ id: '77', src: '/b/cozy/refs/abc.jpg', title: 'Cold feet, fixed', roas: 4.2, buys: 31, spend: 12000, currency: 'INR' }] };
+  const bb = { ...bbOf(), shop, winners };
+  const m = viewOf(bb), sh = viewOf(bb, { scope: 'share' }), pub = viewOf(bb, { scope: 'public' });
+  assert.equal(m.kit.accent, '#ff5a5f'); assert.equal(m.kit.logo, shop.logo); assert.equal(m.cover.tagline, 'Warm toes, always'); assert.equal(m.src['kit.colors'], 'shopify');
+  assert.equal(sh.cover.tagline, 'Warm toes, always'); assert.notEqual(pub.kit.logo, shop.logo); assert.notEqual(pub.cover?.tagline, 'Warm toes, always');
+  assert.equal(m.library['ad-winners'][0].proof, '4.2× return, 31 purchases, 12,000 INR spent in 30 days');
+  assert.ok(!sh.library['ad-winners'] && !pub.library['ad-winners'], 'returns never leave the team');
+  assert.equal(refsFor(m, 'meta-static', 1)[0].family, 'ad-winners');
+  assert.equal(refsFor(sh, 'meta-static', 1)[0].family, 'ad-image');
+  const edited = viewOf({ ...bb, kitEdits: { colors: [{ hex: '#000000', role: 'primary' }] } }); assert.equal(edited.kit.accent, '#000000', 'the team’s own edit beats Shopify');
 });

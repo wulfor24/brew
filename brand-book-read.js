@@ -13,7 +13,7 @@
 import { safeFetch, stripTags, links, hostOf, UA, sha as hash, clean } from './reader/util.js';
 import { offersOf, guaranteeOf } from './reader/stages/ads.js';
 
-export const BOOK_V = 1;
+export const BOOK_V = 4; // 4: a cover tagline is never a search title, one creative listed once; 3: Instagram pictures from fresh lists (signed links expire); // 2: built with the week's enrichment (posts, reels with plays, TikToks, film words) and the signature that keeps it current
 const FILE = 'brandbook-read.json';
 const tidy = (s, n = 400) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const squash = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[^\p{L}\p{N}']+/gu, ' ').trim();
@@ -23,22 +23,22 @@ export const GUIDE_RE = /brand[-_ ]?(book|guide|guidelines|assets|kit|identity|s
 
 /* ---------------- the creative library: what the brand has put out, by deliverable ---------------- */
 export const REF_FAMILIES = {
-  'ad-image': 'Image ads', 'ad-video': 'Video ads', 'ad-carousel': 'Carousel ads',
+  'ad-winners': 'Your best ads', 'ad-image': 'Image ads', 'ad-video': 'Video ads', 'ad-carousel': 'Carousel ads',
   'ig-post': 'Instagram posts', 'ig-reel': 'Instagram reels', 'ig-carousel': 'Instagram carousels',
   'tiktok': 'TikTok', 'youtube': 'YouTube films', 'product-photo': 'Product photos', 'site-photo': 'On their site', 'email': 'Emails'
 };
 /* which families a deliverable (a jam2 recipe, a v1 asset kind) should look at, nearest first */
 export function familiesFor(kind = '') {
   const k = String(kind).toLowerCase();
-  if (/reel|video|ugc|founder|story|tiktok|short|film/.test(k)) return ['ad-video', 'ig-reel', 'tiktok', 'youtube', 'ad-image', 'ig-post'];
-  if (/carousel|slides/.test(k)) return ['ad-carousel', 'ig-carousel', 'ad-image', 'ig-post'];
+  if (/reel|video|ugc|founder|story|tiktok|short|film/.test(k)) return ['ad-video', 'ad-winners', 'ig-reel', 'tiktok', 'youtube', 'ad-image', 'ig-post'];
+  if (/carousel|slides/.test(k)) return ['ad-carousel', 'ad-winners', 'ig-carousel', 'ad-image', 'ig-post'];
   if (/email|newsletter|klaviyo/.test(k)) return ['email', 'ad-image', 'product-photo', 'site-photo'];
   if (/listing|product|pdp|packshot|photo-set|catalog/.test(k)) return ['product-photo', 'site-photo', 'ad-image'];
-  if (/post|social|instagram|static-post/.test(k)) return ['ig-post', 'ig-carousel', 'ad-image', 'product-photo'];
-  return ['ad-image', 'ig-post', 'ad-carousel', 'product-photo', 'site-photo'];
+  if (/post|social|instagram|static-post/.test(k)) return ['ig-post', 'ig-carousel', 'ad-winners', 'ad-image', 'product-photo'];
+  return ['ad-winners', 'ad-image', 'ig-post', 'ad-carousel', 'product-photo', 'site-photo']; /* their own winners (Meta, members only) lead any ad */
 }
 const isAsset = (p) => /^\/b\/[^/]+\/a\//.test(String(p || ''));
-export function libraryOf(profile = {}, { max = 6 } = {}) {
+export function libraryOf(profile = {}, { max = 6, enrich = null } = {}) {
   const fam = {}, push = (f, r) => { if (r.src) (fam[f] ||= []).push(r); };
   for (const a of profile.ads?.own?.items || []) {
     if (!isAsset(a.poster)) continue; /* an expired CDN link is no reference */
@@ -46,16 +46,19 @@ export function libraryOf(profile = {}, { max = 6 } = {}) {
     push(f, { id: `ad:${a.id}`, src: a.poster, video: isAsset(a.video) ? a.video : null, words: tidy([a.hook, a.body].filter(Boolean).join(' — '), 220), cta: a.cta || null, url: a.url || null,
       score: (+a.days || 0) * (1 + Math.log2(+a.versions || 1)), proof: a.days ? `Running ${a.days} days${a.versions > 1 ? `, ${a.versions} versions` : ''}` : null, kind: 'Their ad' });
   }
-  for (const x of profile.socials?.instagram?.posts || []) {
+  /* Instagram from this week's enrichment when there is one (fresh, with plays and saved reel videos), else the read's */
+  for (const x of (enrich?.ig?.posts?.length ? enrich.ig.posts : profile.socials?.instagram?.posts) || []) {
     if (!isAsset(x.img)) continue;
     const f = /reel|video|clip|igtv/i.test(x.kind) ? 'ig-reel' : /carousel|album|sidecar/i.test(x.kind) ? 'ig-carousel' : 'ig-post';
-    push(f, { id: `ig:${x.url}`, src: x.img, words: tidy(x.caption, 220), url: x.url || null, score: +x.likes || 0, proof: x.likes != null ? `${(+x.likes).toLocaleString('en-US')} likes` : null, kind: 'Their Instagram' });
+    push(f, { id: `ig:${x.url}`, src: x.img, video: isAsset(x.video) ? x.video : null, words: tidy(x.caption, 220), url: x.url || null, score: (+x.views || 0) / 20 + (+x.likes || 0),
+      proof: x.views != null ? `${(+x.views).toLocaleString('en-US')} plays` : x.likes != null ? `${(+x.likes).toLocaleString('en-US')} likes` : null, kind: 'Their Instagram' });
   }
   for (const v of profile.socials?.youtube?.videos || []) if (isAsset(v.thumb)) push('youtube', { id: `yt:${v.url}`, src: v.thumb, words: tidy(v.title, 160), url: v.url, score: +v.views || 0, proof: v.views != null ? `${(+v.views).toLocaleString('en-US')} views` : null, kind: 'Their film' });
-  for (const t of profile.socials?.tiktok?.videos || []) if (isAsset(t.thumb)) push('tiktok', { id: `tt:${t.url}`, src: t.thumb, words: tidy(t.caption, 200), url: t.url, score: +t.views || 0, proof: t.views != null ? `${(+t.views).toLocaleString('en-US')} views` : null, kind: 'Their TikTok' });
+  for (const t of enrich?.tiktok?.videos || profile.socials?.tiktok?.videos || []) if (isAsset(t.thumb)) push('tiktok', { id: `tt:${t.url}`, src: t.thumb, words: tidy(t.caption, 200), url: t.url, score: +t.views || 0, proof: t.views != null ? `${(+t.views).toLocaleString('en-US')} views` : null, kind: 'Their TikTok' });
   const prods = profile.catalog?.products || [], hero = new Set(profile.catalog?.hero || []);
   for (const p of [...prods.filter((x) => hero.has(x.handle)), ...prods.filter((x) => !hero.has(x.handle))]) if (isAsset(p.img)) push('product-photo', { id: `pr:${p.handle}`, src: p.img, words: p.title, url: p.url || null, score: hero.has(p.handle) ? 1 : 0, proof: hero.has(p.handle) ? 'Best seller' : null, kind: 'Their product photo' });
-  for (const f of Object.keys(fam)) fam[f] = fam[f].sort((a, b) => b.score - a.score).slice(0, max);
+  /* one creative under several ad ids (Meta lists each placement or test cell) is one reference: the best-scoring copy stays */
+  for (const f of Object.keys(fam)) { const seen = new Set(); fam[f] = fam[f].sort((a, b) => b.score - a.score).filter((r) => { const k = squash(r.words).slice(0, 120); if (k && seen.has(k)) return false; if (k) seen.add(k); return true; }).slice(0, max); }
   return fam;
 }
 
@@ -68,13 +71,15 @@ export function tiersOf(products = [], cur) {
   const band = (name, lo, hi) => { const xs = ps.filter((x) => x.p >= lo && x.p <= hi); return xs.length ? { name, from: money(xs[0].p, cur), to: money(xs.at(-1).p, cur), n: xs.length, eg: tidy(xs[Math.floor(xs.length / 2)].t, 60) } : null; };
   return [band('Entry', 0, a - 0.01), band('Core', a, b - 0.01), band('Premium', b, Infinity)].filter(Boolean);
 }
+/* a tagline the brand wrote, never a page title written for search ("Explore X's most trusted…", "Buy … online", "Home | X") */
+export const taglineOk = (t) => { const x = String(t || '').trim(); return x.length >= 3 && x.length <= 70 && !/\||\b(buy|shop|explore|discover|order)\b.*\b(online|best|trusted|range|collection|products?|solutions?)\b|\bonline\b|official (site|store|website)|^home\b/i.test(x); };
 export function freeChapters({ profile = {}, brief = {}, ledger = [], homeText = '', config = {} } = {}) {
   const L = (k) => ledger.find((x) => x.key === k);
   const prods = profile.catalog?.products || [], hero = new Set(profile.catalog?.hero || []), cur = profile.currency;
   const id = profile.identity || {};
   const colors = (id.colors || []).map((hex) => ({ hex: String(hex).toLowerCase(), role: null, use: null, light: lum(hex) > 0.7 }));
   return {
-    cover: { name: profile.brandName || profile.name || null, tagline: profile.tagline || null, oneLine: profile.descriptor || brief.oneLine || null, logo: id.logo || null, mark: id.mark || null, url: profile.url || null, category: [profile.category, profile.subcategory].filter(Boolean).join(' · ') || null },
+    cover: { name: profile.brandName || profile.name || null, tagline: taglineOk(profile.tagline) ? profile.tagline : null, oneLine: profile.descriptor || brief.oneLine || null, logo: id.logo || null, mark: id.mark || null, url: profile.url || null, category: [profile.category, profile.subcategory].filter(Boolean).join(' · ') || null },
     story: { about: profile.about || null, aboutUrl: profile.aboutUrl || null, founders: (profile.company?.founders || []).map((f) => ({ name: f.name, url: f.url || null })), founded: profile.company?.founded || null, hq: profile.company?.hq || null,
       press: (profile.company?.press || []).map((p) => ({ name: tidy(p.title || p.name || p.outlet, 120), url: p.url || null, outlet: p.outlet || null })).filter((p) => p.name) },
     kit: { logo: id.logo || null, mark: id.mark || null, colors, fonts: { heading: id.fonts?.heading || null, body: id.fonts?.body || null } },
@@ -99,17 +104,20 @@ export function freeChapters({ profile = {}, brief = {}, ledger = [], homeText =
 }
 
 /* ---------------- the evidence the writer reads, numbered so every line can say where it came from ---------------- */
-export function evidenceOf({ profile = {}, brief = {}, pages = [] } = {}) {
+export function evidenceOf({ profile = {}, brief = {}, pages = [], enrich = null } = {}) {
   const E = []; const add = (kind, text, src) => { const t = tidy(text, kind === 'page' ? 6000 : 600); if (t.length > 12) E.push({ id: `E${E.length + 1}`, kind, text: t, src: src || null }); };
   if (profile.tagline) add('tagline', profile.tagline, profile.url);
   if (profile.descriptor) add('descriptor', profile.descriptor, profile.url);
   if (profile.about) add('about', profile.about, profile.aboutUrl || profile.url);
   for (const p of pages) add(p.guide ? 'brand-guide' : 'page', p.text, p.url);
   for (const pr of (profile.catalog?.products || []).slice(0, 12)) add('product', [pr.title, pr.type, pr.about, ...(pr.claims || []).slice(0, 3)].filter(Boolean).join(' · '), pr.url);
-  const ig = [...(profile.socials?.instagram?.posts || [])].filter((x) => x.caption).sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 8);
+  const ig = [...((enrich?.ig?.posts?.length ? enrich.ig.posts : profile.socials?.instagram?.posts) || [])].filter((x) => x.caption).sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 8);
   for (const x of ig) add('instagram', x.caption, x.url);
   for (const a of (profile.ads?.own?.items || []).slice(0, 8)) add('ad', [a.hook, a.body, a.cta && `CTA: ${a.cta}`].filter(Boolean).join(' — '), a.url);
   for (const v of (profile.socials?.youtube?.videos || []).slice(0, 4)) add('youtube', v.title, v.url);
+  for (const t of (enrich?.tiktok?.videos || []).filter((x) => x.caption).sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)) add('tiktok', t.caption, t.url);
+  /* what the brand says out loud in its own films: the spoken voice, for scripts and voiceovers */
+  for (const f of Object.values(enrich?.yt || {}).filter((x) => x.text)) E.push({ id: `E${E.length + 1}`, kind: 'film-words', text: tidy(f.text, 2500), src: f.url || null });
   for (const q of (profile.reviews?.quotes || []).slice(0, 8)) add('review', q.text, q.url || null);
   if (brief?.language?.length) add('customer-words', brief.language.join(', '), null);
   for (const c of (brief?.claims || []).slice(0, 8)) add('claim', `${c.claim}${c.basis ? ` (${c.basis})` : ''}`, null);
@@ -208,19 +216,30 @@ async function pictures(slug, profile, library, { packs }) {
   return out;
 }
 
-export function createBookReader({ packs, ai, treg = null, log = console, fetchText = null, now = () => Date.now() }) {
+/* what the book is made from, as one short hash: when it changes, the book is written again */
+export function bookSig(profile = {}, brief = {}, enrich = null) {
+  const id = profile.identity || {};
+  return hash(JSON.stringify([profile.tagline, profile.descriptor, profile.about, id.logo, id.colors, id.fonts,
+    (profile.ads?.own?.items || []).map((a) => [a.id, a.poster, a.video]), (profile.socials?.instagram?.posts || []).map((x) => [x.url, x.img]),
+    (profile.socials?.youtube?.videos || []).map((v) => v.url), (profile.socials?.tiktok?.videos || []).map((v) => v.url),
+    profile.catalog?.hero, (profile.catalog?.products || []).length, (profile.reviews?.quotes || []).map((q) => q.text?.slice(0, 40)), brief?.at, (brief?.claims || []).length, enrich?.at || null]));
+}
+
+export function createBookReader({ packs, ai, treg = null, enricher = null, log = console, fetchText = null, now = () => Date.now() }) {
   const running = new Map(), fetch1 = fetchText || fetcherWith(treg);
   async function build(slug, { why = 'read' } = {}) {
     const P = (n, d) => packs.getJSON(slug, n, d).catch(() => d);
     const [profile, brief, ledger, config] = await Promise.all([P('profile.json', null), P('brief.json', null), P('ledger.json', []), P('config.json', {})]);
     if (!profile?.host) return { error: 'The store hasn’t been read yet.', skip: true };
     if (profile.closed) return { error: 'This store isn’t open yet, so there is nothing to build a brand book from.', skip: true };
+    /* this week's fresh posts, reels, TikToks and film words (paid, capped, saved once); else what was saved last time */
+    const enrich = enricher ? await enricher.run(slug).catch((e) => (log.warn?.('[book] enrich', slug, e.message), null)) : await P('enrich.json', null);
     const { pages, guides, errors } = await fetchPages(profile, { fetchText: fetch1, log });
     const home = pages.find((p) => p.home)?.text || '';
     const free = freeChapters({ profile, brief: brief || {}, ledger: Array.isArray(ledger) ? ledger : [], homeText: home, config: config || {} });
-    const library = libraryOf(profile);
-    const E = evidenceOf({ profile, brief: brief || {}, pages });
-    const base = { v: BOOK_V, at: new Date(now()).toISOString(), readAt: profile.meta?.readAt || null, why, guides, pageErrors: errors, ...free, library,
+    const library = libraryOf(profile, { enrich });
+    const E = evidenceOf({ profile, brief: brief || {}, pages, enrich });
+    const base = { v: BOOK_V, sig: bookSig(profile, brief, enrich), enrichErrors: enrich?.errors && Object.keys(enrich.errors).length ? enrich.errors : null, at: new Date(now()).toISOString(), readAt: profile.meta?.readAt || null, why, guides, pageErrors: errors, ...free, library,
       evidence: E.map(({ id, kind, src, text }) => ({ id, kind, url: src, text: tidy(text, 240) })) };
     if (!ai?.call) return { ...base, error: 'The AI is off on this server, so the voice, story and look weren’t written.' };
     const pics = await pictures(slug, profile, library, { packs });
@@ -241,17 +260,23 @@ export function createBookReader({ packs, ai, treg = null, log = console, fetchT
       for (const x of w.refs) { const id = pics[x.n - 1]?.ref; if (!id) continue; for (const f of Object.values(library)) for (const ref of f) if (ref.id === id) ref.why = x.why; }
       const roles = new Map(w.colors.map((c) => [c.hex, c]));
       const colors = kit.colors.map((c) => ({ ...c, ...(roles.get(c.hex) || {}) }));
-      return { ...base, kit: { ...kit, colors, typeUse: w.typeUse }, story: { ...base.story, ...(w.story || {}) }, voice: w.voice, pillars: w.pillars,
+      const cover = { ...base.cover, tagline: base.cover.tagline || (taglineOk(w.story?.tagline) ? w.story.tagline : null) };
+      return { ...base, cover, kit: { ...kit, colors, typeUse: w.typeUse }, story: { ...base.story, ...(w.story || {}) }, voice: w.voice, pillars: w.pillars,
         words: { ...w.words, customers: base.people.words }, proof: { ...base.proof, claims: w.claims }, look: w.look, naming: w.naming, playbooks: w.playbooks, library, usd: +(+r.usd || 0).toFixed(4) };
     } catch (e) { log.warn?.('[book] write', slug, e.message); return { ...base, error: e.billing ? 'The AI is paused, so the voice, story and look will be written once it’s back.' : 'The voice, story and look couldn’t be written this time; Brew tries again on the next open.' }; }
   }
   /* built once per read: missing, an older version, older than the read, or an error from more than an hour ago */
+  /* kept up to date by itself: rebuilt when anything it is made from changes (a re-read, healed ads, new posts or films, new
+     products, a new brief, a new kit), at most every 6 hours for those, and at least every week (with fresh posts, reels, TikToks and films). A re-read or a new version
+     rebuilds at once; an error retries after an hour. Team edits and uploads never wait: they sit on top and show at once */
   async function stale(slug) {
-    const [b, p] = await Promise.all([packs.getJSON(slug, FILE, null).catch(() => null), packs.getJSON(slug, 'profile.json', null).catch(() => null)]);
+    const [b, p, br, en] = await Promise.all([packs.getJSON(slug, FILE, null).catch(() => null), packs.getJSON(slug, 'profile.json', null).catch(() => null), packs.getJSON(slug, 'brief.json', null).catch(() => null), packs.getJSON(slug, 'enrich.json', null).catch(() => null)]);
     if (!p?.host || p.closed) return false;
     if (!b || b.v !== BOOK_V) return true;
     if (p.meta?.readAt && b.readAt !== p.meta.readAt) return true;
-    return !!b.error && now() - Date.parse(b.at || 0) > 36e5;
+    const age = now() - Date.parse(b.at || 0);
+    if (b.error) return age > 36e5;
+    return (b.sig !== bookSig(p, br, en) && age > 6 * 36e5) || age > 7 * 864e5; /* weekly at least: the enrichment refreshes on the same beat */
   }
   async function ensure(slug, opts = {}) {
     if (running.has(slug)) return running.get(slug);
