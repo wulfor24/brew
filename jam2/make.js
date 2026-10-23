@@ -108,7 +108,8 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
   /* ---------- the product, cut out once and kept ---------- */
   async function cutout(ctx) {
     const p = ctx.product; if (!p?.img) return null; const src = await fileOf(p.img); if (!src) return null;
-    const key = sha(Buffer.from(String(p.img))); ctx.cuts ||= {}; if (ctx.cuts[key]) return ctx.cuts[key];
+    /* v2 (23 Oct): cuts saved before see-through photos were kept as they are may have black fringes, so they are made again */
+    const key = sha(Buffer.from(`${p.img}|cut-v2`)); ctx.cuts ||= {}; if (ctx.cuts[key]) return ctx.cuts[key];
     /* a catalog photo that is already cut out (a PNG whose corners are see-through) is the cut-out: cutting it again flattens the
        see-through parts to black (23 Oct, Arata's MitoActive pack). Trimmed and used as it is, free */
     try { const sharp = (await import('sharp')).default, m = await sharp(src).metadata();
