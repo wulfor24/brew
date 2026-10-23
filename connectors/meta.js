@@ -161,11 +161,14 @@ const META = {
       const top = rows.map((x) => { const spend = +x.spend || 0, value = pick(x.action_values, PURCHASE), buys = pick(x.actions, PURCHASE); return { id: String(x.ad_id), name: x.ad_name || null, spend, ctr: x.ctr != null ? +(+x.ctr).toFixed(2) : null, buys, roas: value != null && spend ? +(value / spend).toFixed(2) : null }; })
         .filter((x) => x.spend >= floor).sort((p, q) => (q.roas ?? -1) - (p.roas ?? -1) || (q.buys || 0) - (p.buys || 0) || q.spend - p.spend).slice(0, 6);
       /* one read per winning ad (Graph v26 refused the ?ids= batch): its creative's picture and words */
-      await Promise.all(top.map(async (x) => { const j = await get(x.id, c.token, { fields: 'creative{image_url,thumbnail_url,body,title,video_id,call_to_action_type}', thumbnail_width: 600, thumbnail_height: 600 }).catch(() => null);
-        const cr = j?.creative || {};
-        /* a video ad's creative thumbnail is tiny (64px): its video's largest frame is the picture worth keeping */
-        const big = cr.video_id ? await get(String(cr.video_id), c.token, { fields: 'thumbnails{uri,width,is_preferred},picture' }).then((v) => (v?.thumbnails?.data || []).sort((p, q) => (q.is_preferred - p.is_preferred) || (q.width || 0) - (p.width || 0))[0]?.uri || v?.picture || null).catch(() => null) : null;
-        Object.assign(x, { image: big || cr.image_url || cr.thumbnail_url || null, body: cr.body || null, title: cr.title || null, video: !!cr.video_id, cta: cr.call_to_action_type || null }); }));
+      await Promise.all(top.map(async (x) => {
+        const j = await get(x.id, c.token, { fields: 'creative{id,image_url,thumbnail_url,body,title,video_id,call_to_action_type,object_story_spec{video_data{image_url},link_data{picture}},asset_feed_spec{images{url},videos{thumbnail_url}}}' }).catch(() => null);
+        const cr = j?.creative || {}, oss = cr.object_story_spec || {}, afs = cr.asset_feed_spec || {};
+        /* the creative's own full-size picture: a video's poster, a link ad's picture, a dynamic ad's first asset; failing those,
+           the creative's thumbnail asked at 1080px (its default is 64px, which reads as a blur) */
+        let img = oss.video_data?.image_url || cr.image_url || oss.link_data?.picture || afs.images?.[0]?.url || afs.videos?.[0]?.thumbnail_url || null;
+        if (!img && cr.id) img = await get(String(cr.id), c.token, { fields: 'thumbnail_url', thumbnail_width: 1080, thumbnail_height: 1080 }).then((t) => t?.thumbnail_url || null).catch(() => null);
+        Object.assign(x, { image: img || cr.thumbnail_url || null, body: cr.body || null, title: cr.title || null, video: !!cr.video_id, cta: cr.call_to_action_type || null }); }));
       m.winners = top.filter((x) => x.image).map((x) => ({ ...x, currency: m.currency, account: m.name }));
     } catch (e) { m.winnersError = String(e.message).slice(0, 120); }
     const byCamp = new Map();
