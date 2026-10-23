@@ -150,6 +150,7 @@ const META = {
     const adWeek = await ins({ date_preset: 'last_7d', level: 'ad', fields: 'ad_id,ad_name,campaign_id,campaign_name,frequency,spend,ctr,actions,action_values' }).catch((e) => (notes.push(`Campaigns (${m.name}): ${e.message.slice(0, 100)}`), []));
     /* the brand's winning ads over 30 days, by real return (then purchases, then spend), among ads that spent 2% or more: the
        Brand Book's best references for any new ad (their pictures are saved by connectors/index.js; the numbers stay private) */
+    const notes0 = [], log0 = console;
     try {
       /* Meta sometimes refuses the 30-day ad report ("Service temporarily unavailable"): once more, then 14 days, then the 7-day ad rows already read */
       const F = 'ad_id,ad_name,spend,ctr,actions,action_values', wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -162,13 +163,15 @@ const META = {
         .filter((x) => x.spend >= floor).sort((p, q) => (q.roas ?? -1) - (p.roas ?? -1) || (q.buys || 0) - (p.buys || 0) || q.spend - p.spend).slice(0, 6);
       /* one read per winning ad (Graph v26 refused the ?ids= batch): its creative's picture and words */
       await Promise.all(top.map(async (x) => {
-        const j = await get(x.id, c.token, { fields: 'creative{id,image_url,thumbnail_url,body,title,video_id,call_to_action_type,object_story_spec{video_data{image_url},link_data{picture}},asset_feed_spec{images{url},videos{thumbnail_url}}}' }).catch(() => null);
-        const cr = j?.creative || {}, oss = cr.object_story_spec || {}, afs = cr.asset_feed_spec || {};
-        /* the creative's own full-size picture: a video's poster, a link ad's picture, a dynamic ad's first asset; failing those,
-           the creative's thumbnail asked at 1080px (its default is 64px, which reads as a blur) */
-        let img = oss.video_data?.image_url || cr.image_url || oss.link_data?.picture || afs.images?.[0]?.url || afs.videos?.[0]?.thumbnail_url || null;
+        const j = await get(x.id, c.token, { fields: 'creative{id,image_url,thumbnail_url,body,title,video_id,call_to_action_type}' }).catch((e) => (notes0.push(`ad ${x.id}: ${String(e.message).slice(0, 80)}`), null));
+        const cr = j?.creative || {};
+        /* the creative's own full-size picture: a video's poster or a link ad's picture (asked apart: a refused field must not lose the rest),
+           else the creative's thumbnail asked at 1080px (its default is 64px, which reads as a blur) */
+        const rich = cr.id ? await get(String(cr.id), c.token, { fields: 'object_story_spec{video_data{image_url},link_data{picture}}' }).catch(() => null) : null;
+        let img = rich?.object_story_spec?.video_data?.image_url || cr.image_url || rich?.object_story_spec?.link_data?.picture || null;
         if (!img && cr.id) img = await get(String(cr.id), c.token, { fields: 'thumbnail_url', thumbnail_width: 1080, thumbnail_height: 1080 }).then((t) => t?.thumbnail_url || null).catch(() => null);
         Object.assign(x, { image: img || cr.thumbnail_url || null, body: cr.body || null, title: cr.title || null, video: !!cr.video_id, cta: cr.call_to_action_type || null }); }));
+      if (notes0.length) log0?.warn?.('[meta] winners', notes0.slice(0, 3).join(' | '));
       m.winners = top.filter((x) => x.image).map((x) => ({ ...x, currency: m.currency, account: m.name }));
     } catch (e) { m.winnersError = String(e.message).slice(0, 120); }
     const byCamp = new Map();
