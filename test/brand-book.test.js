@@ -233,6 +233,9 @@ test('the cover never shows a search title, and one creative listed under many a
   const { taglineOk } = await import('../brand-book-read.js');
   for (const t of ["Explore Arata's most trusted & dermat-approved haircare solutions for Indian hair.", 'Buy Protein Powder Online in India', 'Home | Puma', 'Official Store of X']) assert.equal(taglineOk(t), false, t);
   for (const t of ['Cold feet, fixed.', 'Forever Faster', "Bengaluru's Largest Child-Centric Township"]) assert.equal(taglineOk(t), true, t);
+  const { oneLineOk } = await import('../brand-book-read.js');
+  for (const t of ["Explore Arata's most trusted & dermat-approved haircare solutions for Indian hair.", 'Shop the best collection of running shoes', 'Buy shoes online at the best price']) assert.equal(oneLineOk(t), false, t);
+  for (const t of ['Clean, honest personal care, made in India with nothing to hide.', 'Warm paws for cold nights.']) assert.equal(oneLineOk(t), true, t);
   const lib = libraryOf({ ads: { own: { items: [{ id: '1', hook: 'Same ad', format: 'image', poster: '/b/x/a/ad-1.jpg', days: 9 }, { id: '2', hook: 'Same ad', format: 'image', poster: '/b/x/a/ad-2.jpg', days: 3 }, { id: '3', hook: 'Other', format: 'image', poster: '/b/x/a/ad-3.jpg', days: 1 }] } } });
   assert.deepEqual(lib['ad-image'].map((r) => r.id), ['ad:1', 'ad:3']);
   assert.equal(freeChapters({ profile: { tagline: 'Buy shoes online', name: 'X' } }).cover.tagline, null);

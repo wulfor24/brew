@@ -73,6 +73,9 @@ export function tiersOf(products = [], cur) {
 }
 /* a tagline the brand wrote, never a page title written for search ("Explore X's most trusted…", "Buy … online", "Home | X") */
 export const taglineOk = (t) => { const x = String(t || '').trim(); return x.length >= 3 && x.length <= 70 && !/\||\b(buy|shop|explore|discover|order)\b.*\b(online|best|trusted|range|collection|products?|solutions?)\b|\bonline\b|official (site|store|website)|^home\b/i.test(x); };
+/* a one-liner is the brand talking, not a search snippet: Shopify's short description is often written for Google ("Explore X's most
+   trusted range of … online"), so those never reach the cover */
+export const oneLineOk = (t) => { const x = String(t || '').trim(); return x.length >= 8 && x.length <= 180 && !/^(buy|shop|explore|discover|order|browse|get)\b|\|| online\b|official (site|store|website)|\b(best|trusted|top)\b.*\b(range|collection|products?|brand) (of|for|in)\b/i.test(x); };
 export function freeChapters({ profile = {}, brief = {}, ledger = [], homeText = '', config = {} } = {}) {
   const L = (k) => ledger.find((x) => x.key === k);
   const prods = profile.catalog?.products || [], hero = new Set(profile.catalog?.hero || []), cur = profile.currency;

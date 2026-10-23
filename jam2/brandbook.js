@@ -8,7 +8,7 @@
 // (a guidelines PDF, a deck, a link) sit over it, and the team's edits and confirms over those. view(bb, { scope }) decides who
 // sees what: 'member' everything, 'share' the read plus the team's edits that aren't private (the share link and the kit),
 // 'public' the read only (the free kit for brands not on Brew). Makers read refsFor / playbookFor / promptBlock / creativeBlock.
-import { familiesFor, REF_FAMILIES } from '../brand-book-read.js';
+import { familiesFor, REF_FAMILIES, taglineOk, oneLineOk } from '../brand-book-read.js';
 const FILE = 'private/brandbook.json';
 /* the chapters a team edit may change, by dotted path (story.mission, tone.summary, words.use, look.light, …) */
 export const EDITABLE = /^(cover|story|tone|words|products|people|proof|look|naming|pillars|playbooks|markets|rules|rivals|library)(\.[\w-]+){0,2}$/;
@@ -105,7 +105,7 @@ export function readLayer({ slug = null, profile = null, brief = null, config = 
      Splitting inside groups turned "heal(?:your|their|the)…" into the words "the", "their" (QA 22 Oct) */
   const neverRe = String(config?.banned || '').trim() || null;
   const top = []; { let d = 0, cur = ''; for (const ch of String(neverRe || '')) { if (ch === '(' || ch === '[') d++; if (ch === ')' || ch === ']') d = Math.max(0, d - 1); if (ch === '|' && d === 0) { top.push(cur); cur = ''; } else cur += ch; } if (cur) top.push(cur); }
-  const banned = top.map((x) => x.replace(/\(\?:/g, '(').replace(/\\[bsdw]\*?|\\[bsdw]\+?|[\^$]/g, ' ').replace(/\[([^\]]*)\]\??/g, '').replace(/\(([^()|]*)\|[^()]*\)\??/g, '$1').replace(/[()?*+\\]/g, '').replace(/\s+/g, ' ').trim()).filter((x) => x.length >= 4).slice(0, 20);
+  const banned = top.map((x) => x.replace(/\(\?:/g, '(').replace(/\\[bsdw]\*?|\\[bsdw]\+?|[\^$]/g, ' ').replace(/\[[^\]]*\]\?/g, '').replace(/\[([^\]]*)\]/g, (m, c) => (/[- ]/.test(c) ? '-' : c[0] || '')).replace(/\(([^()|]*)\|[^()]*\)\??/g, '$1').replace(/[()?*+\\]/g, '').replace(/\s+/g, ' ').trim()).flatMap((x) => x.split('|')).map((x) => x.trim()).filter((x) => x.length >= 4).slice(0, 20); /* a wrapping group (\b(cure|regrow…)\b) is left as one alternation once its inner groups fold: split it into words */
   const claims = [...(book?.proof?.claims || []).map((c) => ({ text: c.text, basis: 'on their own site or ads', from: 'read', src: c.from?.[0]?.url || null })),
     ...(brief?.claims || []).slice(0, 8).map((x) => ({ text: tidy(x.claim, 140), basis: tidy(x.basis, 80), product: x.product || null, from: 'read' }))].filter((c, i, a) => c.text && a.findIndex((y) => y.text === c.text) === i).slice(0, 12);
   const reviews = (profile?.reviews?.quotes || []).slice(0, 8).map((q) => ({ text: tidy(q.text, 220), rating: q.rating || null, product: q.product || null, src: q.src || 'review' }));
@@ -134,8 +134,9 @@ export function viewOf(bb, { scope = 'member' } = {}) {
     if (sh.colors?.length && !bb.kitEdits?.colors) { const seen = new Set(), roles = [...sh.colors, ...(v.kit.roles || [])].filter((c) => c.hex && !seen.has(c.hex) && seen.add(c.hex)).slice(0, 8);
       v.kit = { ...v.kit, roles, colors: roles.map((c) => c.hex) }; v.kit.accent = roles.find((c) => c.role === 'primary')?.hex || v.kit.accent; v.kit.ink = lum(v.kit.accent) > 0.55 ? '#111111' : '#ffffff'; v.src['kit.colors'] = 'shopify'; }
     if (sh.logo && !bb.kitEdits?.logo) { v.kit.logo = sh.logo; if (sh.squareLogo) v.kit.mark = sh.squareLogo; v.src['kit.logo'] = 'shopify'; }
-    v.cover = { ...(v.cover || {}), ...(sh.slogan ? { tagline: sh.slogan } : {}), ...(sh.about ? { oneLine: sh.about } : {}), ...(sh.logo ? { logo: sh.logo } : {}) };
-    if (sh.slogan) v.src['cover.tagline'] = 'shopify';
+    const slogan = taglineOk(sh.slogan) && sh.slogan, about = oneLineOk(sh.about) && sh.about;
+    v.cover = { ...(v.cover || {}), ...(slogan ? { tagline: slogan } : {}), ...(about ? { oneLine: about } : {}), ...(sh.logo ? { logo: sh.logo } : {}) };
+    if (slogan) v.src['cover.tagline'] = 'shopify';
   }
   /* their winning Meta ads with real returns (members only): the first references any new ad is made from */
   if (scope === 'member' && bb.winners?.ads?.length) v.library = { 'ad-winners': bb.winners.ads.filter((x, i, a) => a.findIndex((y) => y.src === x.src) === i).slice(0, 6).map((x) => ({ id: `meta:${x.id}`, src: x.src, words: [x.title, x.body].filter(Boolean).join(' — ').slice(0, 220) || x.name || null,
