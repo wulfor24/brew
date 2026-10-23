@@ -2058,7 +2058,7 @@ export function createRemix(o) {
   const landStudio = (t, chId, take) => { const ch = C(t, chId); if (!ch || !take?.file) return null; ensurePkg(t, ch);
     const st = take.studio || {}, label = cleanLabel(st.label || 'Studio') || 'Studio', slides = (take.slides || []).filter((x) => x?.file);
     const media = slides.length > 1 ? (ch.family === 'listing' ? { photoSet: slides.map((x) => ({ image: x.file, style: x.style || null })), image: slides[0].file } : { image: slides[0].file, cardImages: slides.map((x) => x.file) })
-      : st.kind === 'video' ? { video: take.file, poster: take.poster || take.shot?.file || null, image: take.poster || take.shot?.file || ch.pkg.image } : { image: take.file };
+      : st.kind === 'video' ? { video: take.file, poster: take.poster || take.shot?.file || null, image: take.poster || take.shot?.file || ch.pkg.image } : { image: take.file, wordsIn: take.file /* a Studio picture carries its own words: the frame lays none over it */ };
     ch.pkg = { ...ch.pkg, ...media }; ch.imageError = null; sync(t, ch);
     const v = version(t, ch, 'brew', `Studio: ${label}${take.cost?.usd ? ` · $${take.cost.usd}` : ''}`, label); v.studio = { style: st.style || null, label, kind: st.kind || null, size: st.size || null, usd: take.cost?.usd || 0, jid: take.jid || null };
     studioState(t, chId, { state: 'made', line: label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };

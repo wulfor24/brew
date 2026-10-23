@@ -3686,7 +3686,7 @@
       const made = imgOf(ch), img = made || (lg ? cardPhoto() : null), ratio = (p.format || '4:5').replace(':', '/'), [rw, rh] = (p.format || '4:5').split(':').map(Number);
       return `<div class="as as-meta${lg ? ' lg' : ''}" style="--ar:${(rw / rh) || 0.8}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${B.brand.name}</b><small>Sponsored</small></div></div>
         <p class="am-text">${esc(p.primaryText || '')}</p>
-        <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${ratio}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : !lg ? `<div class="am-empty">${ic('sparkles', 's16')}<span>The photo is made in the studio</span></div>` : ''}${p.overlay && p.image && p.wordsIn !== p.image /* a final with its words set in the picture */ ? `<span class="am-ov">${esc(p.overlay)}</span>` : ''}${pending}${!p.image && lg && !ch.imagePending ? (img ? `<button class="am-newpic" data-rx="image">${ic('sparkles', 's14')}New photo for this ad${freeTag()}</button>` : `<div class="am-make"><span>No photo for this version yet</span><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the photo${freeTag()}</button></div>`) : ''}</div>
+        <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${ratio}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : !lg ? `<div class="am-empty">${ic('sparkles', 's16')}<span>The photo is made in the studio</span></div>` : ''}${p.overlay && p.image && p.wordsIn !== p.image /* a final with its words set in the picture */ && !(ch.studio && ch.versions?.find((v) => v.id === ch.head)?.studio) /* a Studio take has its own words */ ? `<span class="am-ov">${esc(p.overlay)}</span>` : ''}${pending}${!p.image && lg && !ch.imagePending ? (img ? `<button class="am-newpic" data-rx="image">${ic('sparkles', 's14')}New photo for this ad${freeTag()}</button>` : `<div class="am-make"><span>No photo for this version yet</span><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the photo${freeTag()}</button></div>`) : ''}</div>
         <div class="am-foot"><div><small>${B.brand.host}</small>${hlHtml(ch, p, lg)}${p.description ? `<span>${esc(p.description)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div>
         ${lg && act === 'whatsapp_ad' && p.chat?.length ? `<div class="am-chat"><small>When they tap, WhatsApp opens with</small>${p.chat.map((m) => `<div class="wa ${m.from === 'in' ? 'in' : 'out'}">${esc(m.text)}</div>`).join('')}</div>` : ''}</div>`;
     }
@@ -3918,9 +3918,10 @@
   const poBtn = (po, primary) => `<button class="btn ${primary ? 'btn-primary' : 'btn-ghost'} ship-go" data-rx="post-open" title="${esc(po.url.split('?')[0])}">${ic('send', 's16')}${esc(po.label)}</button>`;
   const stepBar = (ch) => {
     const p = ch.pkg || {}, op = null, opt = null, /* one, always: an old jam's options never ask to pick one */ _op = ch.options, media = PH_FAM.includes(ch.family) && !ch.realOnly && (ch.family !== 'post' || isReel(ch) || p.image || p.media || p.video);
-    const fin = ch.versions.find((v) => v.id === ch.head)?.final, fix = ch.verdict === 'fix', reel = isReel(ch) || !!p.video;
-    const steps = [...(op ? ['Pick one'] : []), 'Draft', ...(media ? ['Final'] : []), 'Send'];
-    const at = op && !op.picked ? 'Pick one' : media && !fin ? 'Draft' : media ? 'Final' : 'Draft';
+    /* a Brew Studio take is already the finished piece (priced, made by the best maker): it is the final, no Sloosh step */
+    const hv = ch.versions.find((v) => v.id === ch.head), sv = ch.studio && hv?.studio, fin = hv?.final || (sv ? { studio: true } : null), fix = ch.verdict === 'fix', reel = isReel(ch) || !!p.video;
+    const steps = ch.studio ? ['Set up', 'Made', 'Send'] : [...(op ? ['Pick one'] : []), 'Draft', ...(media ? ['Final'] : []), 'Send'];
+    const at = ch.studio ? (fin ? 'Made' : 'Set up') : op && !op.picked ? 'Pick one' : media && !fin ? 'Draft' : media ? 'Final' : 'Draft';
     const strip = `<ol class="ship-steps" aria-label="Steps">${steps.map((x) => `<li class="${x === at ? 'is-on' : steps.indexOf(x) < steps.indexOf(at) ? 'is-done' : ''}">${esc(x)}</li>`).join('')}</ol>`;
     const nm = opt ? ` · <em>${esc(opt.name)}</em>` : '';
     let head, tip, main;
@@ -3934,7 +3935,7 @@
     else if (fp) { head = `<brew-load class="spin"></brew-load>${fp.fallback ? 'Brew' : 'Sloosh'} is making the final${nm}`; tip = 'It takes a few minutes. We’ll notify you when it’s ready; you can leave this page.'; main = `<button class="btn btn-primary ship-go" disabled aria-busy="true"><brew-load class="spin"></brew-load>Making the final ${reel ? 'reel' : 'picture'}…</button>`; }
     else if (media && !fin && isReel(ch) && !p.video) { head = `Script ready${nm}`; tip = 'Make the video to see it moving. It’s a quick draft; the final reel is made after.'; main = `<button class="btn btn-primary ship-go" data-rx="video">${ic('vid', 's16')}Make the video${freeTag(true)}</button>`; }
     else if (media && !fin) { head = `Draft ${reel ? 'video' : 'photo'} ready${nm}`; tip = `A quick draft made by Brew to check the idea. The final ${reel ? 'reel' : 'picture'} is made on Sloosh, ready to post. Then Send brief.`; main = finalBtn(ch); }
-    else if (media) { head = `Final ready${nm}`; tip = 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and posts or runs it. Its status shows in the top bar.'; main = send; }
+    else if (media) { head = `${sv ? 'Made by Brew Studio' : 'Final ready'}${nm}`; tip = 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and posts or runs it. Its status shows in the top bar.'; main = send; }
     else if (po) { head = `Ready${nm}`; tip = `${po.filled ? `Opens ${PO_WHERE(po)} with the post filled in, and copies it too.` : `Copies the post and opens ${PO_WHERE(po)}; paste it there.`} You post it yourself; Brew never posts in communities for you.${po.rule ? ` ${po.rule}` : ''}`; main = poBtn(po, true); }
     /* a post with no thread to open: its main button copies the post (it said "you post it yourself" over a Send brief button: QA J-20) */
     else if (ch.family === 'post' && ch.target?.conn !== 'meta' && (p.copy || p.title)) { head = `Ready${nm}`; tip = 'Copy the post and paste it where it goes. You post it yourself; Brew never posts in communities for you. The brief carries it too.'; main = `<button class="btn btn-primary ship-go" data-rx="copy-post">${ic('copy', 's16')}Copy the post</button>`; }
@@ -3945,11 +3946,12 @@
     if (po && !fix && !job && !/data-rx="post-open"/.test(main)) items.push(['data-rx="post-open"', 'send', po.label, po.filled ? `Opens ${PO_WHERE(po)} with the post filled in.` : `Copies the post and opens ${PO_WHERE(po)}.`]);
     if (!/data-rx="share-shopos"/.test(main)) items.push(['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team, Brew’s build crew, gets it by email and makes it.']);
     items.push(['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']);
-    if (media && (p.image || p.video || p.draft?.images?.length) && !fp) items.push([`data-fn-studio="${esc(ch.id)}"`, 'sparkles', fin ? 'Change the final…' : 'Choose how the final is made…', 'Pick the photos, the model or a Sloosh Space yourself.']);
+    if (media && !ch.studio && (p.image || p.video || p.draft?.images?.length) && !fp) items.push([`data-fn-studio="${esc(ch.id)}"`, 'sparkles', fin ? 'Change the final…' : 'Choose how the final is made…', 'Pick the photos, the model or a Sloosh Space yourself.']);
     if (dlTool(ch, ch)) items.push(['data-st-dl', 'down', 'Download', 'This version’s files, as they are now.']);
     /* Redo it: one new take beside the one way forward, whenever the version can still change (not while something is being made) */
     const busy = !!job;
-    const redo = !busy && !(op && !op.picked) ? `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle, a free draft. This one stays in History.">${ic('shuffle', 's16')}Redo it${freeTag()}</button>` : '';
+    const sPl = ch.studio ? window.CreativeStage?.state(ch.id)?.plan : null; /* a Studio redo is made again the same way, at its price */
+    const redo = !busy && !(op && !op.picked) ? (ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" title="Made again with the same set-up, priced first. This one stays in History.">${ic('shuffle', 's16')}Redo it${sPl?.usd != null ? ` · $${(+sPl.usd).toFixed(2)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle, a free draft. This one stays in History.">${ic('shuffle', 's16')}Redo it${freeTag()}</button>`) : '';
     return `<div class="ship one ${fix ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l">${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
   /* the options as tabs above the stage, named by their angle, never v1–v5 */
   /* one, always: no option tabs, not even on jams saved with options (the one on the stage is the one; the rest are in History) */
