@@ -154,8 +154,9 @@ const META = {
       const tot = rows.reduce((s, x) => s + (+x.spend || 0), 0), floor = Math.max(tot * 0.02, 1);
       const top = rows.map((x) => { const spend = +x.spend || 0, value = pick(x.action_values, PURCHASE), buys = pick(x.actions, PURCHASE); return { id: String(x.ad_id), name: x.ad_name || null, spend, ctr: x.ctr != null ? +(+x.ctr).toFixed(2) : null, buys, roas: value != null && spend ? +(value / spend).toFixed(2) : null }; })
         .filter((x) => x.spend >= floor).sort((p, q) => (q.roas ?? -1) - (p.roas ?? -1) || (q.buys || 0) - (p.buys || 0) || q.spend - p.spend).slice(0, 6);
-      if (top.length) { const j = await get('', c.token, { ids: top.map((x) => x.id).join(','), fields: 'creative{image_url,thumbnail_url,body,title,video_id,call_to_action_type}', thumbnail_width: 600, thumbnail_height: 600 });
-        for (const x of top) { const cr = j?.[x.id]?.creative || {}; Object.assign(x, { image: cr.image_url || cr.thumbnail_url || null, body: cr.body || null, title: cr.title || null, video: !!cr.video_id, cta: cr.call_to_action_type || null }); } }
+      /* one read per winning ad (Graph v26 refused the ?ids= batch): its creative's picture and words */
+      await Promise.all(top.map(async (x) => { const j = await get(x.id, c.token, { fields: 'creative{image_url,thumbnail_url,body,title,video_id,call_to_action_type}', thumbnail_width: 600, thumbnail_height: 600 }).catch(() => null);
+        const cr = j?.creative || {}; Object.assign(x, { image: cr.image_url || cr.thumbnail_url || null, body: cr.body || null, title: cr.title || null, video: !!cr.video_id, cta: cr.call_to_action_type || null }); }));
       m.winners = top.filter((x) => x.image).map((x) => ({ ...x, currency: m.currency, account: m.name }));
     } catch (e) { m.winnersError = String(e.message).slice(0, 120); }
     const adWeek = await ins({ date_preset: 'last_7d', level: 'ad', fields: 'ad_id,ad_name,campaign_id,campaign_name,frequency,spend,ctr,actions,action_values' }).catch((e) => (notes.push(`Campaigns (${m.name}): ${e.message.slice(0, 100)}`), []));
