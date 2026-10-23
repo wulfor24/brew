@@ -161,6 +161,9 @@ export function viewOf(bb, { scope = 'member' } = {}) {
   if (team) for (const [path, e] of Object.entries(bb.edits || {})) { if (scope === 'share' && e.private) continue; setPath(v, path, e.value); v.src[path] = e.src || 'team'; }
   /* the rules (rules.js): Brew's suggestions for this category and market, the team's changes and own rules; the comfort
      choices read as rules for the team only */
+  /* the fonts a team can switch between: what Brew read on the site, every family they uploaded, and what is set now, so
+     picking their own font never loses the way back to the original */
+  v.kit.fontChoices = [...new Set([v.kit.fonts?.heading, v.kit.fonts?.body, ...Object.values(r.kit?.fonts || {}), ...(v.kit.fontFiles || []).map((f) => f.family)].filter((f) => typeof f === 'string' && f.trim()))];
   const nm = v.cover?.name || v.name || 'the brand';
   v.rulebook = mergeRules(suggestRules({ name: nm, category: v.category || v.cover?.category, market: v.markets?.primary, never: r.never || [], rivals: v.rivals || [], sells: v.products?.sells }),
     team ? bb.rulebook || {} : {}, team ? bb.comfort : null, nm);

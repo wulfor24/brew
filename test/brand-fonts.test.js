@@ -56,3 +56,12 @@ test('Studio loads every uploaded weight of a family', async () => {
   const html = fontLink({ fonts: { heading: 'Geist' }, files: [{ family: 'Geist', weight: 400, src: '/b/x/a/font-a.ttf' }, { family: 'Geist', weight: 700, style: 'italic', src: '/b/x/a/font-b.ttf' }] });
   assert.match(html, /font-weight:400/); assert.match(html, /font-weight:700;font-style:italic/);
 });
+
+test('the font picker always offers the fonts Brew read, so the original is one tap away after an upload', async () => {
+  const { blankBook, readLayer, viewOf } = await import('../jam2/brandbook.js');
+  const read = readLayer({ slug: 'c', profile: { name: 'C', identity: { fonts: { heading: 'Nunito', body: 'Corben' } } }, brief: {}, config: {} });
+  const bb = { ...blankBook(), read, kitEdits: { fonts: { heading: 'Geist', body: 'Geist' }, fontFiles: [{ family: 'Geist', weight: 400, src: '/b/c/a/font-g.ttf' }] } };
+  const v = viewOf(bb, { scope: 'member' });
+  assert.deepEqual(v.kit.fonts, { heading: 'Geist', body: 'Geist' });
+  for (const f of ['Geist', 'Nunito', 'Corben']) assert.ok(v.kit.fontChoices.includes(f), f);
+});
