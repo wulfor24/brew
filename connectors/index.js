@@ -403,7 +403,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         if (!member) return json(res, 403, { error: 'Only the brand’s team can sync it.' }), true;
         /* one read per account every SYNC_GAP: a second click soon after says when it last read, it doesn't read again */
         const s = (await liveOf(slug, true)).conns[id];
-        if (s?.state === 'syncing' && Date.now() - (s.syncAt || 0) < 30 * 60e3) return json(res, 200, { ok: true, state: 'syncing', busy: true, note: 'Already reading it. This takes a minute.' }), true;
+        if (s?.state === 'syncing' && Date.now() - (s.syncAt || 0) < 10 * 60e3) return json(res, 200, { ok: true, state: 'syncing', busy: true, note: 'Already reading it. This takes a minute.' }), true;
         if (s?.state === 'live' && !s.error && s.lastSync && Date.now() - s.lastSync < SYNC_GAP) return json(res, 200, { ok: true, state: 'live', recent: true, lastSync: s.lastSync, note: `Read ${Math.max(1, Math.round((Date.now() - s.lastSync) / 60e3))} min ago. You can read it again in ${Math.max(1, Math.ceil((SYNC_GAP - (Date.now() - s.lastSync)) / 60e3))} min.` }), true;
         return json(res, 200, await sync(slug, id)), true; }
       if (b.action === 'disconnect') { if (!member) return json(res, 403, { error: 'Only the brand’s team can disconnect it.' }), true; return json(res, 200, await disconnect(slug, id)), true; }
@@ -436,11 +436,13 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     for (const { slug } of await packs.list().catch(() => [])) {
       const cs = await conns(slug).catch(() => ({}));
       for (const [id, s] of Object.entries(cs)) {
-        const stuck = s?.state === 'syncing' && Date.now() - (s.syncAt || 0) > 30 * 60e3; /* a read cut off by a restart */
+        /* a read cut off by a restart (a deploy mid-read): a read takes a few minutes, so 10 minutes on it is cut off. It reads again
+           now, not at its next cadence: a day of deploys every few minutes otherwise left it "reading" for hours (Arata, 23 Oct) */
+        const stuck = s?.state === 'syncing' && Date.now() - (s.syncAt || 0) > 10 * 60e3;
         /* a first read that failed (state error, never read) tries again once its backoff (retryAt) has passed */
         const retry = s?.state === 'error' && !s.lastSync && !s.needsReconnect && Date.now() >= (s.retryAt || 0);
         if ((s?.state !== 'live' && !stuck && !retry) || simOnly(id) || s.sim || OFF.has(id)) continue;
-        if (due(id, s)) await sync(slug, id).catch(() => {});
+        if (stuck || due(id, s)) await sync(slug, id).catch(() => {});
         await ageCheck(slug, id).catch((e) => log.warn('[connect] age', slug, id, e.message));
         await expiryCheck(slug, id).catch((e) => log.warn('[connect] expiry', slug, id, e.message));
       }
