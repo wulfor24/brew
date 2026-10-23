@@ -39,6 +39,11 @@ before, and must keep working:
 
 Test the brand matrix offline in `test/non-shopify.test.js`; add a case there for every new kind of brand that breaks.
 
+Brand Book (`public/brand-book.js`, `jam2/brandbook.js`, `brand-book-*.js`): the 23 Oct QA issues must never come back for any
+brand. `test/brand-book-guards.test.js` runs with the suite; before a Brand Book deploy also copy the bucket JSON
+(profile/brief/config/brandbook-read + private/brandbook, shop-brand, meta-winners) and run `node tools/audit-brand-book.mjs DIR`.
+Add a check there and a guard test for every new problem class you fix.
+
 ## Release rhythm
 
 Deploy whenever a change is tested; continuous deployment is part of how we work, and a deploy never waits for background work.
