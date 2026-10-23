@@ -1,8 +1,10 @@
 /* the creative stage in the v1 jam (creative-stage.js): the frame, then the Studio composer under it. The composer reuses the
    Studio look (jam2.css .j2-studio, .j2-sti, .j2-seg, .j2-chip); these are the v1 additions: labelled slots, the why lines, the
    direction box, the folded line under a made take, and the preview / being-made marks on the frame */
-.st-canvas .cs{width:min(760px,calc(100% - 32px));margin:14px auto 0;position:relative}
-.cs-frame{position:relative}
+.cs-stage .cs{width:min(760px,100%);margin:18px auto 0;position:relative}
+.cs-stage .cs-line{width:min(760px,100%)}
+.cs-frame{position:relative;width:min(600px,100%);display:flex;justify-content:center}
+.cs-frame>.as{width:min(600px,100%)}
 .cs-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:3;display:inline-flex;align-items:center;gap:6px;background:var(--bg,#fff);border:1px solid var(--line,#e6e6e6);border-radius:999px;padding:4px 12px;font-size:12px;color:var(--fg-2,#444);box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .cs-frame.is-preview .as-img img,.cs-frame.is-preview img.as-photo{opacity:.92}
 .cs-frame.is-making::after{content:'';position:absolute;inset:0;z-index:2;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.35) 50%,transparent 80%);background-size:200% 100%;animation:cs-sheen 1.6s linear infinite;pointer-events:none;border-radius:inherit}
@@ -39,4 +41,4 @@
 .cs-acts{display:flex;gap:8px;flex-wrap:wrap}
 .cs-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;width:min(760px,calc(100% - 32px));margin:12px auto 0;font-size:13px;color:var(--fg-2,#444)}
 .cs-line .j2-err{flex-basis:100%;text-align:center;margin:0}
-@media (max-width:640px){.cs-slots{gap:8px}.cs-chip{max-width:170px}.st-canvas .cs{width:calc(100% - 16px)}}
+@media (max-width:640px){.cs-slots{gap:8px}.cs-chip{max-width:170px}.cs-stage .cs{width:100%}}

@@ -4019,7 +4019,8 @@
   const caseBrief = (ch) => { const c = cardOf(RX.p), d = c.detail || {}, cut = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : x; };
     const why = (d.why || []).filter((x) => x && !/^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) && !/^[^:“"]{2,90}\([^)]*\):/.test(x) /* evidence rows (label (source): value), not reasons */).slice(0, 2), fix = ch.verdict === 'fix';
     const pl = planOf(ch), made = planMade(ch), opens = (ch.pkg?.where || []).some((w) => /^https?:/.test(w.url || '')), rule = (ch.pkg?.where || []).map((w) => w.rule).find(Boolean);
-    const next = jobOf(ch) ? `${jobOf(ch)} now. It lands on the stage on its own; then change it or share the brief.` : !made && pl ? `Press “${planGo(ch, pl).label}” below. ${planGo(ch, pl).line}. Change it, then share the brief.`
+    const csSt = ch.studio ? window.CreativeStage?.state(ch.id) : null;
+    const next = ch.studio && csSt?.making ? 'Brew Studio is making it now. You can leave: it lands on the stage and in Work, and Brew tells you.' : ch.studio && !studioMade(ch) ? 'I set it up from the card and your Brand Book: the style, the product, who’s on camera and the direction are on the stage. Change anything there or tell me here, then press Generate (the price is on the button). Nothing is made before that.' : jobOf(ch) ? `${jobOf(ch)} now. It lands on the stage on its own; then change it or share the brief.` : !made && pl ? `Press “${planGo(ch, pl).label}” below. ${planGo(ch, pl).line}. Change it, then share the brief.`
       : fix ? `Fix this first: ${(ch.fixes || []).join('; ')}. Press “Fix it with AI”, or tell me how.`
       : postOpenOf(ch) ? `Happy with it? Press “${postOpenOf(ch).label}”: Brew copies the post and opens the place; you post it yourself. Not right? Redo it.${rule ? ` ${rule}` : ''}`
       : ch.family === 'post' && ch.target?.conn !== 'meta' ? `Happy with it? Share the brief: it carries the post and where it goes; you post it yourself. Not right? Redo it.${rule ? ` ${rule}` : ''}` : 'Happy with it? Share the brief with the ShopOS team, Brew’s build crew, or your own team. Not right? Redo it, or tell me what to change.';
@@ -4422,8 +4423,9 @@
   const studioStage = (ch, pkgCh, viewing) => { const made = studioMade(ch), cs = window.CreativeStage, st = cs?.state(ch.id);
     if (cs && !st) cs.mount(ch, RX.p);
     const making = !!st?.making;
-    return `<div class="st-asset cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}${assetHtml(pkgCh, 'lg')}</div>
-      ${cs ? cs.html(ch) : ''}${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
+    /* the frame and the composer scroll together in the stage's one scrolling row (brew.css .st-canvas grid) */
+    return `<div class="st-asset cs-stage"><div class="cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}${assetHtml(pkgCh, 'lg')}</div>
+      ${cs ? cs.html(ch) : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
   window.CreativeStage?.init({ tapi, esc, toast, ic,
     paint: () => { if (view === 'remix' && RX.ch?.studio) paintStudio(); },
     remount: () => { if (view === 'remix' && RX.ch) paintStudio(); },
