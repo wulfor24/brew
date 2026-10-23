@@ -156,7 +156,10 @@ const META = {
         .filter((x) => x.spend >= floor).sort((p, q) => (q.roas ?? -1) - (p.roas ?? -1) || (q.buys || 0) - (p.buys || 0) || q.spend - p.spend).slice(0, 6);
       /* one read per winning ad (Graph v26 refused the ?ids= batch): its creative's picture and words */
       await Promise.all(top.map(async (x) => { const j = await get(x.id, c.token, { fields: 'creative{image_url,thumbnail_url,body,title,video_id,call_to_action_type}', thumbnail_width: 600, thumbnail_height: 600 }).catch(() => null);
-        const cr = j?.creative || {}; Object.assign(x, { image: cr.image_url || cr.thumbnail_url || null, body: cr.body || null, title: cr.title || null, video: !!cr.video_id, cta: cr.call_to_action_type || null }); }));
+        const cr = j?.creative || {};
+        /* a video ad's creative thumbnail is tiny (64px): its video's largest frame is the picture worth keeping */
+        const big = cr.video_id ? await get(String(cr.video_id), c.token, { fields: 'thumbnails{uri,width,is_preferred},picture' }).then((v) => (v?.thumbnails?.data || []).sort((p, q) => (q.is_preferred - p.is_preferred) || (q.width || 0) - (p.width || 0))[0]?.uri || v?.picture || null).catch(() => null) : null;
+        Object.assign(x, { image: big || cr.image_url || cr.thumbnail_url || null, body: cr.body || null, title: cr.title || null, video: !!cr.video_id, cta: cr.call_to_action_type || null }); }));
       m.winners = top.filter((x) => x.image).map((x) => ({ ...x, currency: m.currency, account: m.name }));
     } catch (e) { m.winnersError = String(e.message).slice(0, 120); }
     const adWeek = await ins({ date_preset: 'last_7d', level: 'ad', fields: 'ad_id,ad_name,campaign_id,campaign_name,frequency,spend,ctr,actions,action_values' }).catch((e) => (notes.push(`Campaigns (${m.name}): ${e.message.slice(0, 100)}`), []));

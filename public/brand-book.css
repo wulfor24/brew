@@ -159,6 +159,7 @@
 .bb-proof { position: absolute; top: 10px; left: 10px; background: var(--bb-2); color: #fff; font: 700 12px var(--font); padding: 4px 9px; border-radius: 8px; transform: rotate(-3deg); box-shadow: 0 4px 10px rgba(0,0,0,.2); }
 .bb-ref figcaption { padding: 10px 12px 12px; display: grid; gap: 4px; font-size: 13px; }
 .bb-ref figcaption b { font-weight: 600; }
+.bb-detail { color: var(--fg-3); font-size: 12px; }
 .bb-ref figcaption span { color: var(--fg-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bb-ref figcaption a { color: var(--fg-3); font-size: 12px; }
 

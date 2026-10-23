@@ -138,8 +138,9 @@ export function viewOf(bb, { scope = 'member' } = {}) {
     if (sh.slogan) v.src['cover.tagline'] = 'shopify';
   }
   /* their winning Meta ads with real returns (members only): the first references any new ad is made from */
-  if (scope === 'member' && bb.winners?.ads?.length) v.library = { 'ad-winners': bb.winners.ads.slice(0, 6).map((x) => ({ id: `meta:${x.id}`, src: x.src, words: [x.title, x.body].filter(Boolean).join(' — ').slice(0, 220) || x.name || null,
-    proof: [x.roas != null ? `${x.roas}× return` : null, x.buys ? `${x.buys} purchases` : null, x.spend ? `${Math.round(x.spend).toLocaleString('en-US')} ${x.currency || ''} spent`.trim() : null].filter(Boolean).join(', ') + ' in 30 days',
+  if (scope === 'member' && bb.winners?.ads?.length) v.library = { 'ad-winners': bb.winners.ads.filter((x, i, a) => a.findIndex((y) => y.src === x.src) === i).slice(0, 6).map((x) => ({ id: `meta:${x.id}`, src: x.src, words: [x.title, x.body].filter(Boolean).join(' — ').slice(0, 220) || x.name || null,
+    proof: [x.roas != null ? `${x.roas}× return` : null, x.buys ? `${x.buys} sales` : null].filter(Boolean).join(', ') || 'A top spender',
+    detail: [x.spend ? `${Math.round(x.spend).toLocaleString('en-US')} ${x.currency || ''} spent`.trim() : null, x.ctr != null ? `${x.ctr}% click rate` : null].filter(Boolean).join(', ') + ' in the last 30 days',
     video: null, cta: x.cta || null, kind: 'Their winning ad', private: true })), ...(v.library || {}) };
   if (scope === 'member') Object.assign(v, { recipes: bb.recipes || [], voice: bb.voice, music: bb.music, comfort: bb.comfort, cast: bb.cast, places: bb.places, taste: bb.taste, confirmed: bb.confirmed,
     uploads: (bb.uploads || []).map(({ id, name, kind, at, by, private: pv, applied }) => ({ id, name, kind, at, by, private: !!pv, applied: applied || 0 })) });

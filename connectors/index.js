@@ -202,15 +202,15 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   async function brandExtras(slug, id, d) {
     if (id === 'shopify' && d.brand) await packs.put(slug, 'private/shop-brand.json', { at: Date.now(), ...d.brand });
     if (id === 'meta' && (d.winners || d.winnersError)) {
-      const prev = await packs.getJSON(slug, 'private/meta-winners.json', null).catch(() => null), had = new Map((prev?.ads || []).map((x) => [x.id, x.src]));
+      const prev = await packs.getJSON(slug, 'private/meta-winners.json', null).catch(() => null), had = new Map(prev?.v === 2 ? (prev.ads || []).map((x) => [x.id, x.src]) : []); /* v2: video winners use the video's large frame, so older (tiny) pictures are fetched again once */
       const ads = [];
       for (const x of d.winners || []) {
         let src = had.get(x.id) || null;
         if (!src && x.image) { try { const r = await safeFetch(x.image, { signal: AbortSignal.timeout(20e3) }); const buf = r.ok ? Buffer.from(await r.arrayBuffer()) : null;
           if (buf?.length && buf.length < 8e6) { const f = `refs/${crypto.createHash('sha256').update(buf).digest('hex').slice(0, 16)}.jpg`; await packs.put(slug, f, buf, 'image/jpeg'); src = `/b/${slug}/${f}`; } } catch (e) { log.info?.('[connect] winner picture', x.id, e.message); } }
-        if (src) { const { image, ...rest } = x; ads.push({ ...rest, src }); }
+        if (src && !ads.some((y) => y.src === src)) { const { image, ...rest } = x; ads.push({ ...rest, src }); } /* one creative under several ad ids: its best-returning copy */
       }
-      await packs.put(slug, 'private/meta-winners.json', { at: Date.now(), ads: ads.length ? ads : prev?.ads || [], error: d.winnersError || null });
+      await packs.put(slug, 'private/meta-winners.json', { v: 2, at: Date.now(), ads: ads.length ? ads : prev?.ads || [], error: d.winnersError || null });
     }
   }
   const sync = (slug, id) => perBrand(slug, () => sync0(slug, id));

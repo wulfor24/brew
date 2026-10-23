@@ -245,7 +245,7 @@ test('Shopify brand settings lead the kit and cover for the team (never the publ
   const m = viewOf(bb), sh = viewOf(bb, { scope: 'share' }), pub = viewOf(bb, { scope: 'public' });
   assert.equal(m.kit.accent, '#ff5a5f'); assert.equal(m.kit.logo, shop.logo); assert.equal(m.cover.tagline, 'Warm toes, always'); assert.equal(m.src['kit.colors'], 'shopify');
   assert.equal(sh.cover.tagline, 'Warm toes, always'); assert.notEqual(pub.kit.logo, shop.logo); assert.notEqual(pub.cover?.tagline, 'Warm toes, always');
-  assert.equal(m.library['ad-winners'][0].proof, '4.2× return, 31 purchases, 12,000 INR spent in 30 days');
+  assert.equal(m.library['ad-winners'][0].proof, '4.2× return, 31 sales'); assert.equal(m.library['ad-winners'][0].detail, '12,000 INR spent in the last 30 days');
   assert.ok(!sh.library['ad-winners'] && !pub.library['ad-winners'], 'returns never leave the team');
   assert.equal(refsFor(m, 'meta-static', 1)[0].family, 'ad-winners');
   assert.equal(refsFor(sh, 'meta-static', 1)[0].family, 'ad-image');
