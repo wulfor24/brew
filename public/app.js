@@ -5267,10 +5267,10 @@
   };
   /* its entry on What Brew learned, under the Brand Book: the places it reads, as a small stack of marks */
   const lxWatch = (heard) => { const ps = (heard?.sources || []).map((x) => (typeof x === 'string' ? { id: x, name: x } : x)).slice(0, 4);
-    return `<button class="lx-watch" data-nav="watch"><span class="lx-watch-ic">${ps.length ? ps.map((x) => srcMark(x.id, x.name)).join('') : ic('search')}</span><span><b>What Brew watches for you</b><span>What people say, where you sell, what rivals do and how AI answers name you, read every day.</span></span>${ic('right', 's16')}</button>`; };
+    return `<button class="lx-tile lx-watch" data-nav="watch"><span class="lx-tile-top"><span class="lx-tile-ic${ps.length ? ' lx-marks' : ''}">${ps.length ? ps.map((x) => srcMark(x.id, x.name)).join('') : ic('search')}</span>${ic('right', 's16')}</span><b>What Brew watches for you</b><span class="lx-tile-sub">What people say, what rivals do and how AI answers name you. Read every day.</span></button>`; };
   /* ui=1: the big drop box on What Brew learned (the whole page still takes a drop) */
   /* the Brand Book sits at the top of what Brew learned: the brand's voice, look and own best work, in one place (brand-book.js) */
-  const lxBook = () => `<button class="lx-book" data-nav="brand"><span class="lx-book-ic">${ic('palette')}</span><span><b>Brand Book</b><span>Your voice, words, look and best work in one place. Every ad, post and email Brew makes follows it. Add your own guidelines there.</span></span>${ic('right', 's16')}</button>`;
+  const lxBook = () => `<button class="lx-tile lx-book" data-nav="brand"><span class="lx-tile-top"><span class="lx-tile-ic">${ic('palette')}</span>${ic('right', 's16')}</span><b>Brand Book</b><span class="lx-tile-sub">Your voice, look and best work. Everything Brew makes follows it.</span></button>`;
   const lxDropBig = () => `<div class="m2-drop lx-drop" data-m2-drop><span class="m2-up">${ic('upload')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads them and keeps what matters.</span><button class="lx-drop-btn" data-m2-pick>Upload files</button><input type="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.mp4" data-m2-file></div>`;
   /* Drop anything here: pick or drop files, then say where they go (brand memory / my preferences).
      Brand memory reads every file (PDF, Word, PowerPoint, Excel and photos through the server, drop-read.js), shows the learnings

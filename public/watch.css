@@ -115,14 +115,20 @@
 .wx-more { margin-top: 16px; } .wx-more > summary { cursor: pointer; font: 600 14px var(--font); padding: 8px 0; }
 .wx-foot { color: var(--fg-3); font-size: 13px; text-align: center; margin-top: 28px; }
 
-/* the entry on What Brew learned: side by side with the Brand Book, stacked on a phone */
-.lx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 16px; }
-.lx-pair > .lx-book, .lx-pair > .lx-watch { margin: 0; align-items: flex-start; }
+/* the two entries on What Brew learned (Brand Book, What Brew watches): matching tiles side by side, stacked on a phone */
+.lx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 16px; }
 @media (max-width: 760px) { .lx-pair { grid-template-columns: 1fr; } }
-.lx-watch { appearance: none; width: 100%; display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px 18px; margin: 0 0 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
-.lx-watch:hover { border-color: var(--fg-3); }
-.lx-watch > span:nth-child(2) { flex: 1; display: grid; gap: 2px; } .lx-watch b { font-size: 15px; } .lx-watch > span:nth-child(2) > span { color: var(--fg-2); font-size: 13px; }
-.lx-watch-ic { display: flex; } .lx-watch-ic img { width: 22px; height: 22px; border-radius: 6px; background: #fff; box-shadow: 0 0 0 2px var(--card); } .lx-watch-ic img + img { margin-left: -8px; }
+.lx-tile { appearance: none; display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; text-align: left; padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; cursor: pointer; transition: border-color .15s, transform .15s; }
+.lx-tile:hover { border-color: var(--fg-3); transform: translateY(-1px); }
+.lx-tile-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.lx-tile-top > .ic { color: var(--fg-3); }
+.lx-tile-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--surface); flex: none; }
+.lx-tile-ic > .ic { width: 20px; height: 20px; }
+.lx-tile-ic.lx-marks { grid-template-columns: repeat(2, 13px); gap: 4px; place-content: center; }
+.lx-tile-ic.lx-marks .hd-lg { flex: none; width: 13px; height: 13px; border-radius: 3px; box-shadow: none; font-size: 8px; }
+.lx-tile-ic.lx-marks .hd-lg img { width: 13px; height: 13px; object-fit: contain; }
+.lx-tile b { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.lx-tile-sub { color: var(--fg-2); font-size: 13px; line-height: 1.45; }
 
 @media (max-width: 760px) {
   .wx-cover { grid-template-columns: 1fr; min-height: 0; }
