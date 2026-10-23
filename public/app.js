@@ -3582,7 +3582,7 @@
         ${p.title ? `<h3 class="fb-t">${esc(p.title)}</h3>` : ''}<p class="pm-body">${pmText(String(p.copy || '').slice(0, lg ? 6000 : 300))}${tags.length ? `<br><br>${pmText(tags.join(' '))}` : ''}</p>${pmMedia(ch, p, lg)}
         ${pmBar([['thumb', 'Like'], ['reply', 'Comment'], ['share', 'Share']])}</div>`;
     }
-    const line = [esc(p.platform || PM_NAME[kind] || 'Post'), count, p.postAt ? esc(p.postAt) : ''].filter(Boolean).join(' · ');
+    const line = [esc(p.platform || PM_NAME[kind] || 'Post'), count, p.postAt ? esc(whenLine(p.postAt)) : ''].filter(Boolean).join(' · ');
     const whereHtml = wh.length && lg ? `<p class="pm-where">${ic('link', 's14')}<span>Post in ${wh.slice(0, 3).map((w) => /^https?:/.test(w.url || '') ? `<a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.name)}</a>` : esc(w.name)).join(', ')}${where1.rule ? `${tipBtn(where1.rule)}` : ''}</span></p>` : '';
     return `<div class="as as-pm${lg ? ' lg' : ''}"><p class="pm-line">${line}</p>${body}${whereHtml}</div>`;
   };
@@ -3657,6 +3657,9 @@
   /* words are laid over a picture only when Brew knows it has none: a v1 draft photo Brew made word-free (gen/…). A catalog or
      card photo, an upload, a rival's ad or a Brew Studio take (gen/j2-…, its words are in the picture) often carries its own
      words, and two sets collide (Arata 23 Oct, "Cleanse. Hydrate. Glow." twice). Everywhere else the words stay under it */
+  /* when a post goes up, as a person says it ("Sat 24 Oct, 6 pm"): a writer's machine date (2026-10-24T18:00:00Z) is never shown */
+  const whenLine = (v) => { const s0 = String(v || ''); if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?/.test(s0)) return s0; const d = new Date(s0); if (Number.isNaN(+d)) return s0;
+    return d.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', ...(/T\d{2}:\d{2}/.test(s0) ? { hour: 'numeric', minute: d.getMinutes() ? '2-digit' : undefined } : {}) }).replace(/:00(?=\s?[ap]m)/i, ''); };
   const wordsOver = (img, p = {}, ch = null) => !!img && /^\/?gen\//.test(img) && !/^\/?gen\/(j2-|att-)/.test(img) && p.wordsIn !== img
     && !(ch && (ch.rival || ch.ref)) /* our version of a rival's ad or a viral post copies its layout, words included */;
   const assetHtml0 = (ch, size = 'sm') => {
@@ -3690,8 +3693,8 @@
     if (ch.family === 'social') {
       const story = p.format === '9:16', handle = p.account || `@${String(B.brand.name).toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
       const slides = rows.length ? rows : [{ onSlide: p.overlay || '', imageBrief: p.imageBrief }];
-      return `<div class="as as-ig${story ? ' is-story' : ''}${lg ? ' lg' : ''}"><div class="ig-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><b>${esc(handle)}</b>${p.postAt ? `<small>${esc(p.postAt)}</small>` : ''}</div>
-        ${swipe('ig-slides', slides.slice(0, lg ? 10 : 3).map((r, i) => `<figure class="ig-slide">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : ''}${r.onSlide && (!picOf(i) || wordsOver(picOf(i), p, ch)) ? `<figcaption>${esc(r.onSlide)}</figcaption>` : ''}${i === 0 ? pending : ''}${slides.length > 1 ? `<span class="ig-n">${i + 1}/${slides.length}</span>` : ''}</figure>`).join(''))}
+      return `<div class="as as-ig${story ? ' is-story' : ''}${lg ? ' lg' : ''}"><div class="ig-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><b>${esc(handle)}</b>${p.postAt ? `<small>${esc(whenLine(p.postAt))}</small>` : ''}</div>
+        ${swipe('ig-slides', slides.slice(0, lg ? 10 : 3).map((r, i) => `<figure class="ig-slide">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : ''}${r.onSlide && (!picOf(i) || wordsOver(picOf(i), p, ch)) ? `<figcaption>${esc(r.onSlide)}</figcaption>` : r.onSlide && !/^\/?gen\//.test(picOf(i) || '') ? `<p class="ig-below">${esc(r.onSlide)}</p>` : ''}${i === 0 ? pending : ''}${slides.length > 1 ? `<span class="ig-n">${i + 1}/${slides.length}</span>` : ''}</figure>`).join(''))}
         ${!picOf(0) && lg && !ch.imagePending ? `<div class="ig-make"><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the first photo</button></div>` : ''}${morePics}
         ${story ? (p.stickers ? `<p class="ig-st">${ic('chat', 's14')}${esc(p.stickers)}</p>` : '') : `<p class="ig-cap"><b>${esc(handle)}</b> ${esc(p.caption || '').replace(/\n/g, '<br>')}${(p.hashtags || []).length ? `<span class="ig-tags">${esc(p.hashtags.join(' '))}</span>` : ''}</p>`}</div>`;
     }

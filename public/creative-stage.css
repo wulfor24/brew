@@ -106,3 +106,5 @@
 .as-aplus figcaption span{font-size:12px;line-height:1.4;color:#333}
 .as-aplus .az-wide{padding:0 12px 12px}
 .as-aplus .az-wide img{width:100%;aspect-ratio:97/30;object-fit:cover;display:block}
+/* a slide's words under a catalog photo (the preview): never laid over a picture that may carry its own */
+.ig-slide .ig-below{position:absolute;left:0;right:0;bottom:0;margin:0;padding:10px 12px;background:rgba(255,255,255,.92);color:#111;font-size:13px;font-weight:600;line-height:1.3}
