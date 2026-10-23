@@ -357,6 +357,18 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         return back(r.ok ? 'done=1' : `cxerr=${encodeURIComponent(r.error || 'Could not connect')}`), true;
       } catch (e) { log.warn('[connect] callback', cid, e.message); return back(`cxerr=${encodeURIComponent(e.message.slice(0, 160))}`), true; }
     }
+    if (p === '/shopify/own/callback' && req.method === 'GET') { /* the store approved the brand's own app (ownAuthorize above) */
+      const st = auth.verify(u.searchParams.get('state'), 'connect-own'), me = auth.user(req);
+      if (!st || !me || st.email !== me.email) return redirect(res, '/?signin=failed'), true;
+      const back = (q) => redirect(res, `/${st.slug}#v=connectors&cx=${st.id}&${q}`);
+      const access = await auth.claimInfo(st.slug, me); if (!access.gen) return back(`cxerr=${encodeURIComponent(noGen(access, access.host))}`), true;
+      if (!canConnect(access)) return back(`cxerr=${encodeURIComponent(ADMIN_ONLY)}`), true;
+      const pend = await loadPending(st.slug, `${st.id}-own`, me.email); if (!pend) return back(`cxerr=${encodeURIComponent('That took too long. Paste the keys again.')}`), true;
+      try { const creds = await REAL[st.id].ownExchange({ query: u.searchParams, pend }); await vault.drop(st.slug, pendKey(`${st.id}-own`, me.email));
+        const r = await finish(st.slug, st.id, creds, me); return back(r.ok ? 'done=1' : `cxerr=${encodeURIComponent(r.error || 'Could not connect')}`), true; }
+      catch (e) { log.warn('[connect] own callback', st.slug, e.message); return back(`cxerr=${encodeURIComponent(e.message.slice(0, 160))}`), true; }
+    }
+    if (p === '/shopify/own' && req.method === 'GET') return redirect(res, '/'), true; /* the own app's App URL: Brew lives outside the admin */
     const lm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/live$/);
     if (lm && req.method === 'GET') return json(res, 200, await liveView(lm[1], auth.user(req))), true;
     const cm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/connect\/([a-z0-9]+)(\/options)?$/);
@@ -393,7 +405,12 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       if (b.action === 'key') { if (!C.fromKey) return json(res, 400, { error: 'This one connects by signing in.' }), true;
         /* a pasted key or ID asks Google whether Brew can see it: a few tries per person, so nobody walks through IDs */
         if (!keyTry(me.email, id)) return json(res, 429, { ok: false, error: 'Too many tries. Wait a few minutes, then paste it again.' }), true;
-        try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me, { override: b.override === true })), true; } catch (e) { return json(res, 200, { ok: false, error: e.user ? e.message : `Could not connect: ${e.message.slice(0, 140)}` }), true; } }
+        try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me, { override: b.override === true })), true; } catch (e) {
+          /* an app from another Shopify organization: keep the keys (pending, 15 min) and send this person to the store's approve screen */
+          if (e.approve && C.ownAuthorize) { await savePending(slug, `${id}-own`, me.email, e.approve);
+            const state = auth.sign({ slug, id, email: me.email, n: crypto.randomBytes(9).toString('base64url') }, 900, 'connect-own');
+            return json(res, 200, { ok: false, error: e.message, approve: C.ownAuthorize({ ...e.approve, state, redirect: `${base(req)}/shopify/own/callback` }) }), true; }
+          return json(res, 200, { ok: false, error: e.user ? e.message : `Could not connect: ${e.message.slice(0, 140)}` }), true; } }
       if (b.action === 'select') { if (!C.select) return json(res, 400, { error: 'unknown action' }), true;
         const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { ok: false, error: 'Connect again: the sign-in expired.' }), true;
         await vault.drop(slug, pendKey(id, me.email));

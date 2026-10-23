@@ -209,6 +209,7 @@
     setStat(cur, stat(`Reading ${esc(nm(id0))}, the last 30 days…`, 'busy', 'spin'));
     const r = await p, id = r?.moved || id0; /* a Google sign-in that only picked GA4 connected Google Analytics instead */
     for (const [k, x] of Object.entries(r?.also || {})) if (x?.ok && k !== id) { L.conns[k] = { ...(L.conns[k] || {}), ...x, state: x.state || 'live' }; A().S.conn[k] = true; }
+    if (!r?.ok && r?.approve) { setStat(cur, stat(esc(r.error), 'busy', 'spin')); location.assign(r.approve); return; } /* Shopify's approve screen, then back here connected */
     if (!r?.ok) { if (go) { go.disabled = false; go.textContent = 'Try again'; } m.querySelectorAll('.cxb-gh').forEach((b) => { b.disabled = false; }); setStat(cur, stat(esc(r?.error || 'That didn’t connect. Check it and try again.'), 'bad', 'info')); return; }
     box0.innerHTML = result(id, r); bindDone(m, id, opts);
     L.conns[id] = { ...(L.conns[id] || {}), ...r, state: r.state || 'live' }; overlay(B(), A().S); A().S.conn[id] = true; A().save();

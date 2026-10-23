@@ -50,16 +50,26 @@ export default {
     if (!clientId || !clientSecret) throw Object.assign(new Error('Paste the client ID and secret of your app, or an Admin API access token.'), { user: true });
     const t = await token(s, { grant_type: 'client_credentials', client_id: clientId.trim(), client_secret: clientSecret.trim() }).catch((e) => {
       /* the own-app route only reaches a store in the app's own Shopify organization; say so instead of Shopify's code */
-      if (/shop_not_permitted/i.test(e.message)) throw Object.assign(new Error(`${s} is not in the same Shopify organization as this app. Create the app in the Dev Dashboard while signed in as the store’s owner, then paste its keys.`), { user: true });
+      /* the app sits in another Shopify organization (an agency's or a collaborator's): the store approves it once (ownAuthorize), and the code comes back as an offline token */
+      if (/shop_not_permitted/i.test(e.message)) throw Object.assign(new Error(`${s} is in another Shopify organization than this app, so Shopify asks the store to approve it once. Approve it in the Shopify tab that opens.`), { user: true, approve: { shop: s, clientId: clientId.trim(), clientSecret: clientSecret.trim() } });
       if (/invalid_client/i.test(e.message)) throw Object.assign(new Error('Shopify did not accept that Client ID and secret. Copy both again from the app’s Settings.'), { user: true });
       throw e;
     });
     return setOf(t, { shop: s, app: 'own', clientId: clientId.trim(), clientSecret: clientSecret.trim() });
   },
+  /* the brand's own app installed from another organization (custom distribution): Shopify's approve screen, back to /shopify/own/callback */
+  ownAuthorize: ({ shop, clientId, state, redirect }) => `https://${shop}/admin/oauth/authorize?${form({ client_id: clientId, scope: 'read_products,read_inventory,read_orders,read_customers', redirect_uri: redirect, state })}`,
+  async ownExchange({ query, pend }) {
+    if (!hmacOk(query, pend.clientSecret)) throw new Error('shopify: the redirect signature did not match');
+    const shop = shopOf(query.get('shop')); if (!shop || shop !== pend.shop) throw new Error('shopify: the store that answered is not the one being connected');
+    /* an offline token that doesn't expire: nothing to refresh, and connecting again replaces it */
+    return setOf(await token(shop, { client_id: pend.clientId, client_secret: pend.clientSecret, code: query.get('code') }), { shop, app: 'own-oauth', clientId: pend.clientId, clientSecret: pend.clientSecret });
+  },
   // tokens expire: the public app refreshes with its refresh token, the brand's own app mints a new one
   async fresh(c) {
     if (!c.exp || c.exp > Date.now() + 120e3) return c;
     if (c.app === 'own') return { ...c, ...setOf(await token(c.shop, { grant_type: 'client_credentials', client_id: c.clientId, client_secret: c.clientSecret })) };
+    if (c.refresh && c.app === 'own-oauth') return { ...c, ...setOf(await token(c.shop, { client_id: c.clientId, client_secret: c.clientSecret, grant_type: 'refresh_token', refresh_token: c.refresh })) };
     if (c.refresh) { const a = app(); return { ...c, ...setOf(await token(c.shop, { client_id: a.id, client_secret: a.secret, grant_type: 'refresh_token', refresh_token: c.refresh })) }; }
     return c;
   },

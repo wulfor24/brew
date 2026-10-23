@@ -202,6 +202,7 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
   async function handle(req, res, u) {
     const p = u.pathname;
     /* the app's own routes only: /shopify-home.js and /shopify-embed.js are public files, served like any other */
+    if (p === '/shopify/own' || p.startsWith('/shopify/own/')) return false; /* a brand's own app (connectors/index.js), not Brew's */
     const own = p === '/shopify' || p.startsWith('/shopify/');
     if (!own && !(embeddedReq(req, u) && /^\/(connect\/[a-z0-9]+\/start|auth\/google)$/.test(p))) return false;
     if (p === '/shopify/webhooks' && req.method === 'POST') return webhook(req, res);
