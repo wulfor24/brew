@@ -6,7 +6,7 @@ import shopify from '../connectors/shopify.js';
 
 const ok = (data) => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify(data) });
 const ago = (d) => new Date(Date.now() - d * 864e5).toISOString();
-const order = (d, cod = false) => ({ createdAt: ago(d), cancelledAt: null, displayFinancialStatus: cod ? 'PENDING' : 'PAID', paymentGatewayNames: [cod ? 'Cash on Delivery (COD)' : 'razorpay'], totalPriceSet: { shopMoney: { amount: '1000' } }, customer: { id: `c${d}`, numberOfOrders: 1 }, lineItems: { nodes: [{ title: 'Serum', quantity: 1 }] } });
+const order = (d, cod = false) => ({ createdAt: ago(d), cancelledAt: null, displayFinancialStatus: cod ? 'PENDING' : 'PAID', paymentGatewayNames: [cod ? 'Cash on Delivery (COD)' : 'razorpay'], totalPriceSet: { shopMoney: { amount: '1000' } }, app: { name: 'Gokwik New' }, customer: { id: `c${d}`, numberOfOrders: 1 }, lineItems: { nodes: [{ title: 'Serum', quantity: 1 }] } });
 const ctx = { profile: { currency: 'INR', country: 'IN' }, lane: 'core' };
 const conn = { shop: 'big.myshopify.com', token: 'shpat_x' };
 
@@ -106,4 +106,13 @@ test('order count windows use exact timestamps, never bare dates (Shopify reads 
   await shopify.sync(conn, ctx);
   assert.ok(qs.length > 2 && qs.every((q) => /created_at:>='\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z'/.test(q)), qs.slice(0, 3).join(' | '));
   assert.ok(qs.filter((q) => /created_at:</.test(q)).every((q) => /created_at:<'\d{4}-\d\d-\d\dT/.test(q)));
+});
+
+test('orders through a checkout app (GoKwik): Shopify’s checkouts left is only what reached Shopify, said plainly, no made-up started count', async (t) => {
+  const s = shop({ pages: [[...Array(30)].map(() => order(2))], products: [] });
+  t.mock.method(globalThis, 'fetch', s.fetch);
+  const r = await shopify.sync(conn, ctx);
+  assert.equal(r.metrics.checkoutApp.name, 'Gokwik New'); assert.equal(r.metrics.started, undefined);
+  const c = r.cards.find((x) => /carts/.test(x.id));
+  assert.match(c.title, /Shopify’s own checkout/); assert.match(c.sub, /100% of your orders come through Gokwik New/);
 });

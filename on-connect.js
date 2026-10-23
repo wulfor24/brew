@@ -44,7 +44,7 @@ export function withLive(profile, live) {
 /* the health card's Storefront and Creative rings, for members: the real readings behind them (the score stays simulated) */
 export function healthReadings(liveLedger = {}) {
   const L = liveLedger || {}, v = (k) => L[k]?.v, out = {};
-  const sf = [['Conversion', v('ga4.conversion')], ['Visits on phones', v('ga4.mobile.share')], ['Product page to cart', v('ga4.pdp.to.cart')], ['Checkouts left, 30 days', v('shopify.checkout.left')]].filter(([, x]) => x != null);
+  const sf = [['Conversion', v('ga4.conversion')], ['Visits on phones', v('ga4.mobile.share')], ['Product page to cart', v('ga4.pdp.to.cart')], [/own checkout/.test(L['shopify.checkout.left']?.label || '') ? 'Left on Shopify’s own checkout, 30 days' : 'Checkouts left, 30 days', v('shopify.checkout.left')]] /* a checkout app (GoKwik…) holds the rest (shopify.js) */.filter(([, x]) => x != null);
   const cr = [['Live Meta ads', v('meta.ads.live')], ['Cost per order', v('meta.cpa')], ['Highest frequency', v('meta.frequency.max')], ['Return on ad spend', v('meta.roas')]].filter(([, x]) => x != null);
   if (sf.length) out.Storefront = { what: sf.slice(0, 3).map(([k, x]) => `${k} ${x}`).join(' · '), parts: sf.map(([k, x]) => ({ k, v: String(x), real: true })) };
   if (cr.length) out.Creative = { what: cr.slice(0, 3).map(([k, x]) => `${k} ${x}`).join(' · '), parts: cr.map(([k, x]) => ({ k, v: String(x), real: true })) };
