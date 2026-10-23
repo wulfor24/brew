@@ -136,7 +136,7 @@
     if (g('[data-cs-open]')) { S.open = true; paint(); setTimeout(() => document.querySelector('.cs-stage .cs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); return true; }
     if (g('[data-cs-redo]')) { go(true); return true; }
     const sel = g('[data-cs-sel]'); if (sel) { S.sel = +sel.dataset.csSel; paint(); /* the frame swipes to the slide picked */
-      requestAnimationFrame(() => { const sw = document.querySelector('.cs-frame .as-swipe'), it = sw?.children?.[S.sel]; if (sw && it) sw.scrollTo({ left: it.offsetLeft - sw.offsetLeft, behavior: 'smooth' }); }); return true; }
+      requestAnimationFrame(() => toSel(true)); return true; }
     if (g('[data-cs-addslide]')) { S.adding = true; S.gallery = true; paint(); return true; }
     const so = g('[data-cs-slide]'); if (so) { const sl = slidesOf(H.ch?.() || {}) || []; const i = Math.min(S.sel || 0, sl.length - 1); slideOp(so.dataset.csSlide, i, sl[i]?.style); return true; }
     if (g('[data-cs-go]')) { go(false); return true; }
@@ -166,7 +166,9 @@
     if (e.target.id === 'cs-dir') { S.spec = { ...S.spec, direction: e.target.value }; clearTimeout(S.dirT); S.dirT = setTimeout(price, 600); return true; }
     if (e.target.id === 'cs-q') { S.q = e.target.value; const pos = e.target.selectionStart; paint(); const el = document.getElementById('cs-q'); if (el) { el.focus(); el.setSelectionRange(pos, pos); } return true; }
     return false; }
+  /* the frame shows the slide picked in the strip, through every repaint (a price coming back redraws the stage) */
+  const toSel = (smooth = false) => { if (!S?.sel) return; const sw = document.querySelector('.cs-frame .as-swipe'), it = sw?.children?.[S.sel]; if (sw && it) sw.scrollTo({ left: it.offsetLeft - sw.children[0].offsetLeft, behavior: smooth ? 'smooth' : 'auto' }); };
   const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null } : null);
   const reset = () => { clearTimeout(pollT); clearTimeout(planT); S = null; };
-  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, redo: () => go(true) };
+  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, redo: () => go(true), afterPaint: () => toSel(false) };
 })();

@@ -4451,7 +4451,7 @@
       <ul class="pp-checks">${pb.checks.map((c) => `<li class="${c.ok ? 'ok' : c.soft ? 'warn' : 'bad'}">${ic(c.ok ? 'check' : 'x', 's14')}<span>${esc(c.t)}</span>${!c.ok && c.fix === 'redo' ? ' <button class="linkbtn" data-cs-open>Change the set-up and make it again</button>' : ''}</li>`).join('')}</ul>
       <footer><button class="btn btn-ghost sm" data-st-dl>${ic('down', 's14')}Download everything</button><small>The picture in every shape, and copy.txt with every part above</small></footer></section>`; };
   const studioStage = (ch, pkgCh, viewing) => { const made = studioMade(ch), cs = window.CreativeStage, st = cs?.state(ch.id);
-    if (cs && !st) cs.mount(ch, RX.p);
+    if (cs && !st) cs.mount(ch, RX.p); requestAnimationFrame(() => cs?.afterPaint?.()); /* the picked slide stays in view */
     const making = !!st?.making;
     /* the frame and the composer scroll together in the stage's one scrolling row (brew.css .st-canvas grid) */
     /* before anything is made the frame shows the composer's product photo in the picture's place, never an empty grey box */
