@@ -289,6 +289,8 @@
     function wireDock() {
       const dock = $('[data-dock]', el); if (!dock) return; const cards = $('[data-cards]', dock), form = $('[data-ask]', dock), q = form.q, files = $('[data-files]', dock);
       /* the cards and the half-typed ask live in S, so a repaint (the book being written, an edit) never loses them */
+      /* a card used or dismissed elsewhere (another tab, a teammate, or the copy the page paints from before the book loads) goes */
+      { const ups = S.data.book?.uploads; if (Array.isArray(ups)) S.cards = S.cards.filter((c) => { const u = ups.find((x) => x.id === c.u.id); return !u || (!u.applied && !u.dismissed); }); }
       for (const u of (S.data.book?.uploads || []).filter((x) => !x.applied && !x.dismissed && (x.proposed?.length || x.kit || x.neverSay?.length || x.dropNever?.length))) if (!S.cards.some((c) => c.u.id === u.id) && !S.gone?.has(u.id)) S.cards.push({ u });
       for (const c of S.cards) cards.appendChild(changeCard(c.u, c.reply));
       for (const l of S.pending) cards.appendChild(thinking(l));
