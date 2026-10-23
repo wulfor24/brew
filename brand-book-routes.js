@@ -148,7 +148,7 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
     if (j.fonts && (j.fonts.heading || null) === (v.kit?.fonts?.heading || null) && (j.fonts.body || null) === (v.kit?.fonts?.body || null)) j.fonts = null;
     j.neverAdd = (j.neverAdd || []).filter((w) => !(v.neverSay || []).some((x) => x.toLowerCase() === String(w).toLowerCase()));
     j.neverRemove = (j.neverRemove || []).filter((w) => (v.neverSay || []).some((x) => x.toLowerCase() === String(w).toLowerCase()));
-    const upload = { id: `up_${crypto.randomBytes(4).toString('hex')}`, name: tidy(`“${text}”`, 80), kind: 'ask', private: false, proposed,
+    const upload = { id: `up_${crypto.randomBytes(4).toString('hex')}`, name: tidy(`“${String(b.label || text).trim().slice(0, 200)}”`, 80), kind: 'ask', /* the card shows what the team typed, never Brew's own framing */ private: false, proposed,
       neverSay: (j.neverAdd || []).map((x) => tidy(x, 40)).filter(Boolean).slice(0, 20), dropNever: (j.neverRemove || []).map((x) => tidy(x, 40)).filter(Boolean),
       kit: { ...((j.colors || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c.hex || '')).length ? { colors: j.colors.filter((c) => /^#[0-9a-f]{6}$/i.test(c.hex)).map((c) => ({ hex: c.hex.toLowerCase(), role: c.role || 'accent' })) } : {}),
         ...(j.fonts && (j.fonts.heading || j.fonts.body) ? { fonts: Object.fromEntries(Object.entries(j.fonts).filter(([, x]) => x)) } : {}) } };

@@ -541,3 +541,10 @@ span.bb-str, span.bb-where { cursor: default; }
 .bb-quote small { flex: none; color: var(--fg-3); }
 @media (prefers-reduced-motion: reduce) { .bb-selbar { animation: none; } }
 @media print { .bb-selbar { display: none !important; } }
+
+.bb-cover-src { position: absolute; top: 18px; left: 130px; z-index: 6; }
+.bb-cover-src .bb-src { margin: 0; background: rgba(0,0,0,.25); color: #fff; }
+.bb-cover-src .bb-undo { background: #fff; color: #161616; border: 0; }
+.bb-change.is-done { padding: 12px 16px 12px 22px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bb-change.is-done header { margin: 0; } .bb-change.is-done header p { color: var(--fg); font-weight: 600; }
+@media print { .bb-cover-src { display: none !important; } }

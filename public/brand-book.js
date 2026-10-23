@@ -149,7 +149,7 @@
           <span class="bb-cover-k">The ${esc(cov.name || v.name || '')} brand book</span>${((h) => `<h1${h.length > 44 ? ' class="is-long"' : h.length > 24 ? ' class="is-mid"' : ''}>${esc(h)}</h1>`)(cov.tagline || cov.oneLine || cov.name || v.name || '')}${cov.tagline && cov.oneLine ? `<p>${esc(cov.oneLine)}</p>` : ''}
           <div class="bb-cover-strip">${roles.slice(0, 6).map((c) => `<span style="background:${esc(c.hex)}"></span>`).join('')}</div></div>
           ${collage.length ? `<div class="bb-collage" aria-hidden="true">${collage.map((r, i) => `<figure style="--i:${i};--t:${tilt(i) * 2}deg"><img src="${esc(r.src)}" alt="">${r.proof && i < 3 ? `<span>${esc(r.proof)}</span>` : ''}</figure>`).join('')}</div>` : ''}
-          ${edit ? `<button class="bb-pen is-cover" data-edit="cover.tagline" data-kind="text" data-label="Tagline" data-value="${esc(cov.tagline || '')}">Edit tagline</button>` : ''}</header>`;
+          ${edit ? `<button class="bb-pen is-cover" data-edit="cover.tagline" data-kind="text" data-label="Tagline" data-value="${esc(cov.tagline || '')}">Edit tagline</button>${chip('cover.tagline') ? `<span class="bb-cover-src">${chip('cover.tagline')}</span>` : ''}` : ''}</header>`;
       el.className = 'bb'; el.innerHTML = `
         <div class="bb-bar">${ctx.back ? `<button class="bb-back" data-nav="${esc(ctx.back.nav)}">${esc(ctx.back.label)}</button>` : ''}${edit ? '' : `<span class="bb-made">${ctx.readOnly ? 'A brand book by Brew' : 'Your team edits this book. Ask them to add you.'}</span>`}
           <div class="bb-share"><button class="bb-btn is-main" data-share aria-haspopup="dialog">Share</button></div></div>
@@ -266,6 +266,12 @@
           <input type="file" hidden multiple data-files accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.svg,.ttf,.otf,.woff,.woff2,.zip"></form></div></div>`;
     }
     const valText = (x) => x == null || x === '' ? '' : esc(x);
+    /* after Use these: a small card with Undo for a while, so an AI change is one tap from gone */
+    function undoCard(u) { const live = $('[data-cards]', el); if (!live) return; const c = document.createElement('div'); c.className = 'bb-change is-done is-new';
+      c.innerHTML = `<header><p>Changed from ${esc(u.name || 'your request')}</p></header><footer><button type="button" class="bb-btn" data-undo-all>Undo</button><button type="button" class="bb-btn" data-ok>OK</button></footer>`;
+      live.appendChild(c); const go = () => c.remove(), t = setTimeout(go, 20000);
+      $('[data-ok]', c).onclick = () => { clearTimeout(t); go(); };
+      $('[data-undo-all]', c).onclick = async () => { clearTimeout(t); go(); await save({ undoUpload: u.id }, 'Undone. It’s back to how it was.'); }; }
     function changeCard(u, reply) {
       const c = document.createElement('div'); c.className = 'bb-change'; c.dataset.id = u.id;
       const kit = u.kit || {}, rows = [
@@ -282,7 +288,7 @@
       $('[data-skip]', c).onclick = notNow;
       $('[data-use]', c).onclick = async () => { const paths = $$('[data-path]', c).filter((x) => x.checked).map((x) => x.dataset.path), kitOff = $$('[data-kit]', c).filter((x) => !x.checked).map((x) => x.dataset.kit);
         const ok = await save({ applyUpload: { id: u.id, paths, ...(kitOff.length ? { skipKit: kitOff } : {}), overrideConfirmed: $$('[data-path]', c).some((x) => x.checked && x.closest('li').querySelector('em')) } }, 'Done. Brew writes and makes things this way from now on.');
-        if (ok) drop(); };
+        if (ok) { drop(); undoCard(u); } };
       return c;
     }
     function thinking(label) { const c = document.createElement('div'); c.className = 'bb-change is-busy'; c.innerHTML = `<header><span class="bb-from">${esc(label)}</span><p><brew-load class="spin"></brew-load> Reading it and working out the changes…</p></header>`; return c; }
@@ -310,7 +316,7 @@
         const x = $('[data-unquote]', quoteBox); if (x) x.onclick = () => { S.sel = null; showQuote(); q.focus(); }; q.placeholder = sl ? 'What should change? Rewrite it, cut it, make it bolder…' : q.dataset.ph; };
       q.dataset.ph = q.dataset.ph || q.placeholder;
       const askAbout = (x) => { const sl = S.sel; S.sel = null; showQuote();
-        send({ text: sl ? `In the “${sl.ch}” part of the book, the team selected this: “${sl.text}”. ${x}` : x }, sl ? `“${sl.text.slice(0, 50)}${sl.text.length > 50 ? '…' : ''}”: ${x.slice(0, 60)}` : `You asked: “${x.slice(0, 80)}”`); };
+        send({ text: sl ? `In the “${sl.ch}” part of the book, the team selected this: “${sl.text}”. ${x}` : x, ...(sl ? { label: `${x} (on “${sl.text.length > 40 ? sl.text.slice(0, 38) + '…' : sl.text}”)` } : {}) }, sl ? `“${sl.text.slice(0, 50)}${sl.text.length > 50 ? '…' : ''}”: ${x.slice(0, 60)}` : `You asked: “${x.slice(0, 80)}”`); };
       S.pickLine = (sl, now) => { S.sel = sl; showQuote(); if (now) askAbout(now); else { q.focus(); dock.scrollIntoView({ block: 'nearest' }); } };
       showQuote();
       $$('[data-idea]', dock).forEach((b) => b.onmousedown = (e) => e.preventDefault()); /* the box keeps focus, so the chips don't fold away under the tap */

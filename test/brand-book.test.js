@@ -297,3 +297,21 @@ test('an upload only proposes what the file says: invented missions, stories and
   assert.deepEqual(kept['words.use'], ['snuggle up', 'toasty']);
   assert.equal(groundedIn('Playfulness', 'we are playful'), 'Playfulness', 'a light stem match');
 });
+
+test('Undo on a used card puts back exactly what it replaced: edits, kit, never-say, rules', async () => {
+  const files = new Map([['cozy|profile.json', profile], ['cozy|brief.json', brief], ['cozy|brandbook-read.json', read]]);
+  const packs = { getJSON: async (s, n, d) => (files.has(`${s}|${n}`) ? structuredClone(files.get(`${s}|${n}`)) : d), put: async (s, n, v) => files.set(`${s}|${n}`, v) };
+  const bb = createBrandbook({ packs, log: { warn() {} } });
+  await bb.update('cozy', { edit: { path: 'tone.summary', value: 'Team words' } });
+  await bb.update('cozy', { never: 'tacky' });
+  await bb.update('cozy', { upload: { id: 'u9', name: '“warmer”', private: false, kit: { colors: [{ hex: '#e8a0b4', role: 'primary' }] }, neverSay: ['cheap'], dropNever: ['tacky'],
+    proposed: [{ path: 'tone.summary', value: 'AI words' }, { path: 'rulebook.add', value: [{ text: 'Never show a rival bottle.', strength: 'block' }] }, { path: 'rulebook.off', value: ['safety-topics'] }] } });
+  let v = bb.view(await bb.update('cozy', { applyUpload: { id: 'u9' } }));
+  assert.equal(v.tone.summary, 'AI words'); assert.ok(v.neverSay.includes('cheap') && !v.neverSay.includes('tacky'));
+  assert.ok(v.rulebook.some((r) => r.text === 'Never show a rival bottle.')); assert.ok(v.rulebook.find((r) => r.id === 'safety-topics').off);
+  v = bb.view(await bb.update('cozy', { undoUpload: 'u9' }));
+  assert.equal(v.tone.summary, 'Team words', 'back to the team’s own edit, not the read');
+  assert.ok(!v.neverSay.includes('cheap') && v.neverSay.includes('tacky'));
+  assert.ok(!v.rulebook.some((r) => r.text === 'Never show a rival bottle.')); assert.ok(!v.rulebook.find((r) => r.id === 'safety-topics').off);
+  assert.ok(!(await bb.load('cozy')).kitEdits?.colors, 'the kit colours it set are gone');
+});

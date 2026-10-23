@@ -253,6 +253,10 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
     /* an upload's proposed changes, taken in one tap: each becomes an edit sourced to the file, private unless the team shares it */
     if (patch.applyUpload) { const u = (bb.uploads || []).find((x) => x.id === patch.applyUpload.id); if (!u) throw Object.assign(new Error('That upload is gone.'), { status: 404 });
       const take = new Set(patch.applyUpload.paths || u.proposed.map((x) => x.path)); let n = 0;
+      /* what this card replaces, kept so Undo puts back exactly that (not the read, not a later teammate's edit) */
+      const before = { edits: {}, kit: structuredClone(bb.kitEdits || {}), never: [...(bb.neverSay || [])], rulesOwn: (bb.rulebook?.own || []).map((r) => r.id), rulesOff: [] };
+      for (const x of u.proposed) if (take.has(x.path) && EDITABLE.test(x.path)) before.edits[x.path] = bb.edits?.[x.path] ? structuredClone(bb.edits[x.path]) : null;
+      for (const x of u.proposed) if (take.has(x.path) && x.path === 'rulebook.off') before.rulesOff.push(...(x.value || []));
       for (const x of u.proposed) if (take.has(x.path) && x.path === 'rulebook.add') { for (const rule of x.value || []) bb.rulebook = applyRuleChange(bb.rulebook || {}, { add: rule }); n++; }
       for (const x of u.proposed) if (take.has(x.path) && x.path === 'rulebook.off') { for (const id of x.value || []) bb.rulebook = applyRuleChange(bb.rulebook || {}, { set: { id, off: true } }); n++; }
       for (const x of u.proposed) if (take.has(x.path) && x.path === 'proof.claimsAllowed') { bb.claimsAllowed = [...(x.value || []).map((c) => ({ text: tidy(c, 140), from: `upload:${u.name}` })), ...bb.claimsAllowed].slice(0, 20); n++; }
@@ -266,7 +270,17 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
         if (u.kit.fontFiles?.length && !skip.has('fonts')) { const fams = new Set(u.kit.fontFiles.map((f) => String(f.family || '').toLowerCase())); bb.kitEdits = { ...bb.kitEdits, fontFiles: [...u.kit.fontFiles, ...(bb.kitEdits?.fontFiles || []).filter((f) => !fams.has(String(f.family || '').toLowerCase()))].slice(0, 8) }; n++; } }
       if (u.dropNever?.length && !skip.has('never')) { bb.neverSay = bb.neverSay.filter((w) => !u.dropNever.some((d) => d.toLowerCase() === w.toLowerCase())); n++; }
       if (u.neverSay?.length && !skip.has('never')) { bb.neverSay = [...new Set([...bb.neverSay, ...u.neverSay.map((x) => tidy(x, 40))])].slice(0, 40); n++; }
-      u.applied = n; u.appliedAt = now(); }
+      u.applied = n; u.appliedAt = now(); u.before = before; }
+    /* Undo a used card: its edits go back to what they were, its kit keys too, never-say words it added go and ones it dropped
+       return, its new rules go and the rules it turned off come back on */
+    if (patch.undoUpload) { const u = (bb.uploads || []).find((x) => x.id === patch.undoUpload); const b = u?.before; if (!u || !b) throw Object.assign(new Error('That change can’t be undone any more.'), { status: 404 });
+      for (const [path, prev] of Object.entries(b.edits || {})) { if (bb.edits?.[path]?.src !== `upload:${u.name}`) continue; if (prev) bb.edits[path] = prev; else { const { [path]: _, ...rest } = bb.edits; bb.edits = rest; } }
+      for (const k of ['colors', 'fonts', 'logo', 'fontFiles']) if (u.kit?.[k]) { if (b.kit?.[k] !== undefined) bb.kitEdits = { ...bb.kitEdits, [k]: b.kit[k] }; else { const { [k]: _, ...rest } = bb.kitEdits || {}; bb.kitEdits = rest; } }
+      const added = (u.neverSay || []).filter((w) => !b.never.some((x) => x.toLowerCase() === String(w).toLowerCase())).map((w) => String(w).toLowerCase());
+      bb.neverSay = [...new Set([...(bb.neverSay || []).filter((w) => !added.includes(w.toLowerCase())), ...(u.dropNever || []).filter((w) => b.never.some((x) => x.toLowerCase() === w.toLowerCase()))])];
+      bb.claimsAllowed = (bb.claimsAllowed || []).filter((c) => c.from !== `upload:${u.name}`);
+      if (bb.rulebook) { const keep = new Set(b.rulesOwn || []); bb.rulebook = { ...bb.rulebook, own: (bb.rulebook.own || []).filter((r) => keep.has(r.id)) }; for (const id of b.rulesOff || []) bb.rulebook = applyRuleChange(bb.rulebook, { set: { id, off: false } }); }
+      u.applied = 0; u.undone = now(); delete u.before; u.dismissed = true; }
     if (patch.upload) bb.uploads = [{ ...patch.upload, at: now(), by: by?.email || null }, ...(bb.uploads || []).filter((x) => x.id !== patch.upload.id)].slice(0, 30);
     if (patch.dismissUpload) { const u = (bb.uploads || []).find((x) => x.id === patch.dismissUpload); if (u) u.dismissed = true; } /* Not now: the card stays gone after a reload; the file itself is kept */
     if (patch.removeUpload) bb.uploads = (bb.uploads || []).filter((x) => x.id !== patch.removeUpload);
