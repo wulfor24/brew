@@ -12,7 +12,8 @@ export const META_CTAS = ['Shop now', 'Learn more', 'Order now', 'Get offer', 'S
 /* where each family runs, and the shapes it needs: the pack cuts every one from the one make (publish-pack.js SHAPES) */
 const PLACES = { meta_ad: [['4:5', 'Feed'], ['1:1', 'Feed, right column'], ['9:16', 'Stories and Reels']], social: [['4:5', 'Post'], ['1:1', 'Grid'], ['9:16', 'Story']], post: [['9:16', 'Reels, TikTok, Shorts']], listing: [['1:1', 'Listing']], print: [['A5', 'Print']] };
 const SOURCE = { meta_ad: ['meta', 'paid_social'], social: ['instagram', 'social'], post: ['social', 'social'], listing: ['marketplace', 'listing'], print: ['print', 'insert'] };
-const slug = (s) => tidy(s, 60).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'brew';
+/* a UTM value: lower-case words joined by -, cut at a whole word (never "…-with-ou") */
+const slug = (s) => { const w = tidy(s, 120).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); if (w.length <= 40) return w || 'brew'; const cut = w.slice(0, 41); return cut.slice(0, cut.lastIndexOf('-') > 10 ? cut.lastIndexOf('-') : 40) || 'brew'; };
 
 /* the product's own page (never a guessed path: platforms differ), with the jam's UTM */
 export function linkOf({ family, product = null, host = '', campaign = '', content = '' }) {

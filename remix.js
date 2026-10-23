@@ -1746,7 +1746,7 @@ export function createRemix(o) {
   /* a version's package as it was then: the snapshot without the change's own keys */
   const pkgOfVersion = (t, ch, v) => { if (!v) return { ...ch.pkg }; const { action, amount, title, sub, state, ...pkg } = v.snapshot || {}; return pkg; };
   const versionAsked = (t, ch, q) => { const vq = q?.get?.('v'); if (!vq) return headOf(t, ch) || null; return versionsOf(t, ch.id).find((x) => String(x.n) === vq || x.id === vq) || false; };
-  const PACK_V = 4; /* 3: a Studio take carries its link (UTM) and alt text; 4: worded pictures fitted whole, never cropped */ // bump when a family's pack starts holding different files or words: every saved pack is made again (2: spend = a week of the daily budget)
+  const PACK_V = 5; /* 3: a Studio take carries its link (UTM) and alt text; 4: worded pictures fitted whole, never cropped; 5: Studio words and brief, not the draft's */ // bump when a family's pack starts holding different files or words: every saved pack is made again (2: spend = a week of the daily budget)
   /* read-only: the version as files the team posts or applies themselves (publish-pack.js). Brew writes to no account.
      The zip is saved once per version (gen/pack-….zip) and served from /gen/ like every made file */
   on('GET', '/api/changes/:chid/pack', async (b, t, p, q) => {
@@ -1754,7 +1754,8 @@ export function createRemix(o) {
     const v = versionAsked(t, ch, q); if (v === false) return { status: 404, error: 'That version isn’t on this change.' };
     let pkg = pkgOfVersion(t, ch, v); const n = v?.n || 1;
     /* a Studio take's pack carries its ready-to-publish link (with UTM) and alt text, the ones Brew filled in too */
-    if (studioOf(t, ch) && (!v || v.id === headOf(t, ch)?.id)) { const pb = publishFor(t, ch), at = (k) => pb?.parts?.find((x) => x.k === k)?.value || ''; if (pb?.made) pkg = { ...pkg, publish: { ...(pkg.publish || {}), link: at('link') || pkg.publish?.link || '', alt: at('alt') || pkg.publish?.alt || '' } }; }
+    if (studioOf(t, ch) && (!v || v.id === headOf(t, ch)?.id)) { const pb = publishFor(t, ch), at = (k) => pb?.parts?.find((x) => x.k === k)?.value || ''; if (pb?.made) { const sv = headOf(t, ch)?.studio || {}; pkg = { ...pkg, publish: { ...(pkg.publish || {}), link: at('link') || pkg.publish?.link || '', alt: at('alt') || pkg.publish?.alt || '' },
+      /* the words and the brief of what Studio made, never the free draft's */ overlay: (sv.words || []).length ? sv.words.slice(0, 6).join(' · ') : undefined, imageBrief: [sv.label, sv.product?.name].filter(Boolean).join(', ') + ' (made by Brew Studio)' }; } }
     const key = 'pack-' + crypto.createHash('sha1').update(`${PACK_V}|${ch.id}|${v?.id || ''}|${JSON.stringify(pkg)}|${ch.family}|${BN()}`).digest('hex').slice(0, 20) + '.zip';
     /* built once per version: the zip and what it holds are kept, so a repeat GET runs no ffmpeg or Chrome */
     ch.packMeta ||= {}; if (ch.packMeta[key] && (await genFile(key))) return { pack: { ...ch.packMeta[key], url: 'gen/' + key } };
