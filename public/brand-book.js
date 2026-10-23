@@ -17,6 +17,16 @@
     const fam = encodeURIComponent(name).replace(/%20/g, '+'); for (const href of [`https://fonts.googleapis.com/css2?family=${fam}&display=swap`, `https://fonts.googleapis.com/css2?family=${fam}:wght@400;600;700&display=swap`]) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
   };
 
+  /* platforms: the name as each writes it, a simple mark, its colour */
+  const NETS = { instagram: { n: 'Instagram', g: '◎', c: 'linear-gradient(135deg,#feda75,#d62976 55%,#4f5bd5)' }, youtube: { n: 'YouTube', g: '▶', c: '#ff0033' }, facebook: { n: 'Facebook', g: 'f', c: '#1877f2' },
+    x: { n: 'X', g: '𝕏', c: '#111' }, twitter: { n: 'X', g: '𝕏', c: '#111' }, linkedin: { n: 'LinkedIn', g: 'in', c: '#0a66c2' }, tiktok: { n: 'TikTok', g: '♪', c: '#111' }, pinterest: { n: 'Pinterest', g: 'P', c: '#e60023' },
+    threads: { n: 'Threads', g: '@', c: '#111' }, whatsapp: { n: 'WhatsApp', g: '✆', c: '#25d366' }, snapchat: { n: 'Snapchat', g: '👻', c: '#fffc00' } };
+  /* the handle from the link when the read didn't keep one: /arata.in → @arata.in, /company/x → x; a YouTube channel id says "Channel" */
+  const handleOf = (c) => { if (c.handle) return `@${String(c.handle).replace(/^@/, '')}`; try { const seg = new URL(c.url).pathname.split('/').filter(Boolean); const last = seg.at(-1) || '';
+    if (!last || /^UC[\w-]{20,}$/.test(last)) return 'Channel'; return /^(company|in|channel|c|user)$/.test(seg[0]) && seg.length > 1 ? last : `@${last.replace(/^@/, '')}`; } catch { return ''; } };
+  const regionOf = (m) => { try { return /^[A-Z]{2}$/i.test(m) ? new Intl.DisplayNames(['en'], { type: 'region' }).of(String(m).toUpperCase()) : m; } catch { return m; } };
+  const flagOf = (m) => /^[A-Z]{2}$/i.test(m) ? String(m).toUpperCase().replace(/./g, (ch) => String.fromCodePoint(127397 + ch.charCodeAt(0))) : '';
+  const symOf = (cur) => { try { return new Intl.NumberFormat('en', { style: 'currency', currency: cur, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((x) => x.type === 'currency')?.value || ''; } catch { return ''; } };
   const CHAPTERS = [
     ['story', 'Story'], ['kit', 'Look and kit'], ['voice', 'Voice'], ['words', 'Words'], ['products', 'Products'], ['people', 'People'],
     ['proof', 'Proof'], ['library', 'What {n} publishes'], ['playbooks', 'Playbooks'], ['reach', 'Where {n} shows up'], ['rivals', 'Rivals'], ['rules', 'Rules']
@@ -47,6 +57,8 @@
       const rmx = (path, i) => edit ? `<button class="bb-x" data-rm="${esc(path)}" data-i="${i}" aria-label="Remove">×</button>` : '';
       const nevers = (() => { const seen = new Set(); return [...(v.neverSay || []), ...(v.never || [])].filter((x) => x && !seen.has(String(x).toLowerCase()) && seen.add(String(x).toLowerCase())).slice(0, 18); })();
       const list = (path, items, label, cls = 'bb-chips') => items?.length ? `<div class="bb-line"><ul class="${cls}">${items.map((x, i) => `<li>${esc(x)}${rmx(path, i)}</li>`).join('')}</ul>${pen(path, items, 'list', label)}${chip(path)}</div>` : empty(path, label, 'list');
+      /* a picker in the book's own style (never the OS dropdown): one pill per option, the chosen one filled; "Name · note" shows the note small */
+      const picker = (kind, key, label, opts, cur) => `<div class="bb-pick" role="radiogroup" aria-label="${esc(label)}">${opts.map(([k2, l2]) => { const [a, b] = String(l2).split(' · '); return `<button type="button" role="radio" aria-checked="${cur === k2}" data-pick="${kind}" data-k="${esc(key)}" data-v="${esc(k2)}"><b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ''}</button>`; }).join('')}</div>`;
       const link = (u, t) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>` : esc(t);
       const nm = (v.cover || {}).name || v.name || 'the brand', T = (id) => (CHAPTERS.find((c) => c[0] === id)?.[1] || '').replace('{n}', nm);
       const st = v.story || {}, tn = v.tone || {}, w = v.words || {}, pr = v.products || {}, pe = v.people || {}, pf = v.proof || {}, lk = v.look || {}, cov = v.cover || {};
@@ -104,14 +116,16 @@
         library: !fams.length ? '' : ctx.print ? fams.map((f) => `<h3>${esc(F[f] || f)}</h3><div class="bb-wall">${lib[f].map((r) => `<figure class="bb-ref"><img src="${esc(r.src)}" alt="" loading="eager">${r.proof ? `<span class="bb-proof">${esc(r.proof)}</span>` : ''}<figcaption>${r.why ? `<b>${esc(r.why)}</b>` : ''}${r.words ? `<span>${esc(r.words)}</span>` : ''}</figcaption></figure>`).join('')}</div>`).join('') : `<div class="bb-tabs" role="tablist">${fams.map((f) => `<button role="tab" aria-selected="${f === S.fam}" data-fam="${esc(f)}">${esc(F[f] || f)}<small>${lib[f].length}</small></button>`).join('')}</div>
           <div class="bb-wall">${(lib[S.fam] || []).map((r, i) => `<figure class="bb-ref${/reel|video|tiktok/.test(S.fam) ? ' is-phone' : ''}">${r.video ? `<video src="${esc(r.video)}" poster="${esc(r.src)}" muted loop playsinline preload="none" data-hoverplay></video>` : `<img src="${esc(r.src)}" alt="" loading="lazy">`}${r.proof ? `<span class="bb-proof" style="--t:${tilt(i)}deg">${esc(r.proof)}</span>` : ''}<figcaption>${r.why ? `<b>${esc(r.why)}</b>` : ''}${r.detail ? `<small class="bb-detail">${esc(r.detail)}</small>` : ''}${r.words ? `<span>${esc(r.words)}</span>` : ''}${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">Open the original</a>` : ''}</figcaption></figure>`).join('')}</div>`,
         playbooks: (v.playbooks || []).length ? `<div class="bb-plays">${v.playbooks.map((p) => `<article class="bb-play">${playMock(p)}<div><h3>${esc(F[p.family] || p.family)}</h3><dl>${[['Layout', p.layout], ['Headline', p.headline], ['Words on it', p.wordsOnImage], ['Logo', p.logo], ['Call to action', p.cta], ['Never', p.avoid]].filter((x) => x[1]).map(([t, x]) => `<div><dt>${t}</dt><dd>${esc(x)}</dd></div>`).join('')}</dl></div></article>`).join('')}</div>` : '',
-        reach: [(v.channels || []).length ? `<ul class="bb-chan">${v.channels.map((c) => `<li><a href="${esc(c.url)}" target="_blank" rel="noopener"><b>${esc(c.net === 'x' ? 'X' : c.net[0].toUpperCase() + c.net.slice(1))}</b>${c.handle ? `<span>@${esc(c.handle)}</span>` : ''}</a></li>`).join('')}</ul>` : '',
-          v.markets?.primary ? `<p class="bb-meta">Sells mainly in <b>${esc(v.markets.primary)}</b>${v.markets.others?.length ? `, also ${esc(v.markets.others.join(', '))}` : ''}${v.markets.currency ? `, in ${esc(v.markets.currency)}` : ''}${v.markets.festival ? `. Next big date: <b>${esc(v.markets.festival)}</b>` : ''}.</p>` : ''].join(''),
+        /* where they show up: one card per platform (its own mark and colour, the handle read from the link), then the market as passport stamps */
+        reach: [(v.channels || []).length ? `<ul class="bb-chan">${v.channels.map((c, i) => { const P = NETS[c.net] || { n: c.net[0].toUpperCase() + c.net.slice(1), g: c.net[0].toUpperCase(), c: 'var(--bb-1)' };
+            return `<li style="--t:${tilt(i) / 2}deg;--pc:${P.c}"><a href="${esc(c.url)}" target="_blank" rel="noopener"><span class="bb-chan-g" aria-hidden="true">${P.g}</span><span class="bb-chan-t"><b>${esc(P.n)}</b><span>${esc(handleOf(c))}</span></span><i aria-hidden="true">↗</i></a></li>`; }).join('')}</ul>` : '',
+          v.markets?.primary ? `<div class="bb-stamps2">${[v.markets.primary, ...(v.markets.others || [])].slice(0, 4).map((m, i) => `<span class="bb-pass" style="--t:${tilt(i + 2)}deg"><small>${i ? 'Also sells in' : 'Sells mainly in'}</small><b>${flagOf(m)} ${esc(regionOf(m))}</b></span>`).join('')}${v.markets.currency ? `<span class="bb-pass is-cur" style="--t:${tilt(7)}deg"><small>Prices in</small><b>${esc(symOf(v.markets.currency))} ${esc(v.markets.currency)}</b></span>` : ''}${v.markets.festival ? `<span class="bb-pass is-date" style="--t:${tilt(9)}deg"><small>Next big date</small><b>${esc(v.markets.festival)}</b></span>` : ''}</div>` : ''].join(''),
         rivals: (v.rivals || []).length ? `<ul class="bb-rivals">${v.rivals.map((r, i) => `<li>${rmx('rivals', i)}<b>${r.host ? link(`https://${r.host}`, r.name) : esc(r.name)}</b>${r.why ? `<span>${esc(r.why)}</span>` : ''}</li>`).join('')}</ul><p class="bb-quiet">Brew never copies a rival’s product, name, words or people into ${esc(cov.name || 'your')} work.</p>` : '',
         /* rules (jam2/rules.js): plain sentences in four groups; block stops the work, warn flags it; each says where it reaches */
         rules: (() => { const rb = (v.rulebook || []), G = d.options?.groups || { claims: 'Claims and compliance', people: 'People and likeness', ai: 'AI use', safety: 'Brand safety' }, CH = d.options?.channels || {};
           const live = rb.filter((r) => !r.off), off = rb.filter((r) => r.off && !r.choice); if (!live.length) return '';
           const whereOf = (r) => r.where?.channels?.length ? r.where.channels.map((c) => CH[c] || c).join(', ') + ' only' : 'Everywhere';
-          const card = (r) => r.choice ? `<li class="bb-rule is-choice"><p>${esc(r.text)}</p>${edit ? `<select data-rchoice="${esc(r.choice)}" aria-label="${esc(d.options?.comfort?.[r.choice]?.label || r.choice)}">${Object.entries(d.options?.comfort?.[r.choice]?.options || {}).map(([k2, l2]) => `<option value="${esc(k2)}"${r.value === k2 ? ' selected' : ''}>${esc(l2)}</option>`).join('')}</select>` : ''}</li>`
+          const card = (r) => r.choice ? `<li class="bb-rule is-choice"><p>${esc(r.text)}</p>${edit ? picker('comfort', r.choice, d.options?.comfort?.[r.choice]?.label || r.choice, Object.entries(d.options?.comfort?.[r.choice]?.options || {}), r.value) : ''}</li>`
             : `<li class="bb-rule is-${r.strength}${r.src === 'suggested' && !r.confirmed ? ' is-sugg' : ''}"><p>${esc(r.text)}</p><div class="bb-rule-b">${edit ? `<button class="bb-str" data-rstr="${esc(r.id)}" data-to="${r.strength === 'block' ? 'warn' : 'block'}" title="${r.strength === 'block' ? 'Blocks the work. Tap to only warn' : 'Only warns. Tap to block'}">${r.strength === 'block' ? 'Must' : 'Warn'}</button><button class="bb-where" data-rwhere="${esc(r.id)}" aria-haspopup="true">${esc(whereOf(r))}</button>` : `<span class="bb-str">${r.strength === 'block' ? 'Must' : 'Warn'}</span><span class="bb-where">${esc(whereOf(r))}</span>`}${r.src === 'suggested' && !r.confirmed ? `<span class="bb-sugg">Suggested by Brew</span>${edit ? `<button class="bb-link" data-rkeep="${esc(r.id)}">Keep</button>` : ''}` : ''}${edit ? `<button class="bb-x" data-roff="${esc(r.id)}" aria-label="Turn off">×</button>` : ''}</div></li>`;
           return `<p class="bb-meta">Every writer and picture maker follows these. <b>Must</b> stops a piece of work that breaks it; <b>Warn</b> flags it.</p><div class="bb-rulegrid">${Object.entries(G).map(([g, label]) => { const xs = live.filter((r) => r.group === g); return xs.length || edit ? `<section class="bb-rgroup" data-g="${g}"><h3>${esc(label)} <small>${xs.length}</small></h3><ul>${xs.map(card).join('')}</ul></section>` : ''; }).join('')}</div>
             ${edit ? `<form class="bb-neverf bb-rulef" data-rule><input name="r" maxlength="220" placeholder="Add a rule, like “Never show a rival’s product”" aria-label="Add a rule"><button>Add rule</button></form>` : ''}
@@ -122,10 +136,10 @@
       const TONE = { story: 'paper', kit: 'plain', voice: 'brand', words: 'paper', products: 'plain', people: 'paper', proof: 'brand', library: 'ink', playbooks: 'plain', reach: 'paper', rivals: 'paper', rules: 'plain' };
       /* the studio's defaults sit with the formats they make, and the written voice with the voice: settings, not rules */
       if (edit && v.comfort) {
-        const sel = (attr, label, opts, cur) => `<div><dt>${esc(label)}</dt><dd><select ${attr} aria-label="${esc(label)}">${opts.map(([k2, l2]) => `<option value="${esc(k2)}"${cur === k2 ? ' selected' : ''}>${esc(l2)}</option>`).join('')}</select></dd></div>`;
+        const sel = (kind, key, label, opts, cur) => `<div><dt>${esc(label)}</dt><dd>${picker(kind, key, label, opts, cur)}</dd></div>`;
         const how = d.options?.comfort?.how;
-        chapters.playbooks = (chapters.playbooks || '') + `<div class="bb-studio"><span class="bb-kicker">Studio defaults</span><dl class="bb-facts">${how ? sel('data-comfort="how"', how.label, Object.entries(how.options), v.comfort.how) : ''}${sel('data-narrator', 'Narrator', (d.options?.narrators || []).map((n) => [n.id, n.label]), v.voice?.narrator)}</dl></div>`;
-        chapters.voice = (chapters.voice || '') + `<dl class="bb-facts bb-voicew">${sel('data-voicew', `How Brew writes for ${nm}`, Object.entries(d.options?.voices || {}), v.voice?.written)}</dl>`;
+        chapters.playbooks = (chapters.playbooks || '') + `<div class="bb-studio"><span class="bb-kicker">Studio defaults</span><dl class="bb-facts">${how ? sel('comfort', 'how', how.label, Object.entries(how.options), v.comfort.how) : ''}${sel('narrator', 'narrator', 'Narrator', (d.options?.narrators || []).map((n) => [n.id, n.label]), v.voice?.narrator)}</dl></div>`;
+        chapters.voice = (chapters.voice || '') + `<dl class="bb-facts bb-voicew">${sel('voicew', 'written', `How Brew writes for ${nm}`, Object.entries(d.options?.voices || {}), v.voice?.written)}</dl>`;
       }
       const shown = CHAPTERS.map(([id], i) => [id, i + 1]).filter(([id]) => chapters[id] && chapters[id].replace(/<[^>]+>/g, '').trim());
       const sec = (id, n, body2, sub = '') => `<section class="bb-ch is-${TONE[id] || 'plain'}" id="bb-${id}" data-ch="${id}"><header class="bb-chh"><span class="bb-n">${n}</span><div><h2>${esc(T(id))}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div></header>${body2}</section>`;
@@ -159,8 +173,8 @@
       $$('video[data-hoverplay]', el).forEach((vd) => { vd.onmouseenter = () => vd.play().catch(() => {}); vd.onmouseleave = () => vd.pause(); vd.onclick = () => (vd.paused ? vd.play() : vd.pause()); });
       $$('[data-unedit]', el).forEach((b) => b.onclick = () => save({ unedit: b.dataset.unedit }, 'Back to what Brew read.'));
       $$('[data-edit]', el).forEach((b) => b.onclick = () => openEdit(b));
-      $$('[data-comfort]', el).forEach((s) => s.onchange = () => save({ comfort: { [s.dataset.comfort]: s.value } }, 'Saved.'));
-      $$('[data-rchoice]', el).forEach((x) => x.onchange = () => save({ comfort: { [x.dataset.rchoice]: x.value } }, 'Rule saved.'));
+      $$('[data-pick]', el).forEach((b) => b.onclick = () => { if (b.getAttribute('aria-checked') === 'true') return; $$('[data-pick]', b.parentElement).forEach((x) => x.setAttribute('aria-checked', x === b)); /* shows at once; the save repaints */
+        const { pick, k, v: val } = b.dataset; save(pick === 'comfort' ? { comfort: { [k]: val } } : pick === 'narrator' ? { voice: { narrator: val } } : { voice: { written: val } }, 'Saved.'); });
       $$('[data-rstr]', el).forEach((b) => b.onclick = () => save({ rule: { set: { id: b.dataset.rstr, strength: b.dataset.to, confirmed: true } } }, b.dataset.to === 'block' ? 'Now a must.' : 'Now a warning.'));
       $$('[data-rkeep]', el).forEach((b) => b.onclick = () => save({ rule: { set: { id: b.dataset.rkeep, confirmed: true } } }, 'Kept.'));
       $$('[data-roff]', el).forEach((b) => b.onclick = () => save({ rule: { drop: b.dataset.roff } }, 'Rule turned off.'));
@@ -173,8 +187,6 @@
         const all = $('[value=all]', m), boxes = $$('input[type=checkbox]', m); all.onchange = () => boxes.forEach((x) => { x.checked = false; }); boxes.forEach((x) => x.onchange = () => { all.checked = !boxes.some((y) => y.checked); });
         const shut = (ev) => { if (!m.contains(ev.target)) { m.remove(); document.removeEventListener('click', shut); } }; setTimeout(() => document.addEventListener('click', shut), 0);
         $('[data-wok]', m).onclick = () => { const ch = boxes.filter((x) => x.checked).map((x) => x.value); m.remove(); document.removeEventListener('click', shut); save({ rule: { set: { id: r.id, where: ch.length ? { channels: ch } : null, confirmed: true } } }, ch.length ? 'Saved.' : 'Applies everywhere.'); }; });
-      const nr = $('[data-narrator]', el); if (nr) nr.onchange = () => save({ voice: { narrator: nr.value } }, 'Saved.');
-      const vw = $('[data-voicew]', el); if (vw) vw.onchange = () => save({ voice: { written: vw.value } }, 'Saved.');
       const nf = $('[data-never]', el); if (nf) nf.onsubmit = (e) => { e.preventDefault(); const x = nf.w.value.trim(); if (x) save({ never: x }, `Brew will never write “${x}”.`); };
       
       /* a product's own extra photos (its back, a side, a close-up): every picture and video Brew makes of it uses them, so no side is guessed */
@@ -227,11 +239,11 @@
     function dockHtml(v) {
       const n = v.cover?.name || v.name || 'your brand';
       return `<div class="bb-dock" data-dock><div class="bb-cards" data-cards></div>
-        <div class="bb-ideas" data-ideas>${['Add a product to our heroes', 'Change our tagline to …', 'Never say “…”', 'Make the voice warmer', 'Remove a rival'].map((x) => `<button type="button" data-idea="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+        <div class="bb-askbox"><div class="bb-ideas" data-ideas><div><span>Try</span>${[['Add a rule', 'Add a rule: '], ['Add a hero product', 'Add  to our hero products'], ['New tagline', 'Change our tagline to '], ['Never say a word', 'Never say '], ['Warmer voice', 'Make the voice warmer'], ['Remove a rival', 'Remove  from our rivals']].map(([l, t]) => `<button type="button" data-idea="${esc(t)}">${esc(l)}</button>`).join('')}</div></div>
         <form class="bb-ask" data-ask><button type="button" class="bb-attach" data-attach aria-label="Add files: guidelines, deck, logo, fonts"><span aria-hidden="true">+</span></button>
           <input name="q" autocomplete="off" placeholder="Tell Brew what to change in ${esc(n)}’s book, or paste a link…" aria-label="Tell Brew what to change">
           <button class="bb-send" aria-label="Send"><span aria-hidden="true">↑</span></button>
-          <input type="file" hidden multiple data-files accept=".pdf,.doc,.docx,.ppt,.pptx,.key,.xlsx,.txt,.md,.csv,.png,.jpg,.jpeg,.webp,.svg,.ttf,.otf,.woff,.woff2,.zip"></form></div>`;
+          <input type="file" hidden multiple data-files accept=".pdf,.doc,.docx,.ppt,.pptx,.key,.xlsx,.txt,.md,.csv,.png,.jpg,.jpeg,.webp,.svg,.ttf,.otf,.woff,.woff2,.zip"></form></div></div>`;
     }
     const valText = (x) => x == null || x === '' ? '' : esc(x);
     function changeCard(u, reply) {
@@ -268,7 +280,8 @@
         S.cards.push({ u: r.upload, reply: r.reply }); const nc = changeCard(r.upload, r.reply); nc.classList.add('is-new'); live.appendChild(nc); };
       form.onsubmit = (e) => { e.preventDefault(); const x = q.value.trim(); if (!x) return; q.value = ''; S.draft = '';
         if (/^https?:\/\/\S+$/i.test(x)) send({ url: x, private: false }, 'Reading the link'); else send({ text: x }, `You asked: “${x.slice(0, 80)}”`); };
-      $$('[data-idea]', dock).forEach((b) => b.onclick = () => { q.value = b.dataset.idea.replace(/ …|“…”/, ''); q.focus(); });
+      $$('[data-idea]', dock).forEach((b) => b.onmousedown = (e) => e.preventDefault()); /* the box keeps focus, so the chips don't fold away under the tap */
+      $$('[data-idea]', dock).forEach((b) => b.onclick = () => { const t = b.dataset.idea, at = t.indexOf('  '); q.value = t.replace('  ', ' '); q.focus(); const c = at >= 0 ? at + 1 : q.value.length; q.setSelectionRange(c, c); });
       const upload = async (list) => { for (const f of list) { if (f.size > 25e6) { toast(`${f.name} is over 25 MB. Upload it as a smaller PDF.`); continue; }
         const data = await new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.readAsDataURL(f); }); await send({ name: f.name, type: f.type, data, private: false }, `Reading ${f.name}`); } };
       $('[data-attach]', dock).onclick = () => files.click(); files.onchange = () => upload([...files.files]);
