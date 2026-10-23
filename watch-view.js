@@ -30,7 +30,8 @@ function peopleOf({ items = [], themes = [], status = {}, name, now }) {
     places: bySrc.map(([k, n]) => ({ id: k, name: pname(k), n, logo: hostLogo(PLACE[k]) })),
     topics: themes.filter((t) => !TALK.test(t.name || '')).slice(0, 8).map((t) => ({ name: t.name, n: t.n, neg: t.neg || 0, pos: t.pos || 0, week: wk(t) })),
     notes: { you: pickNotes(you), category: pickNotes(cat) },
-    tagged: recent.filter((x) => x.tagged).slice(0, 6).map(note), name };
+    /* posts that tag the brand (listen-watch igtag): `mention` since 24 Oct; the first ones saved it in `tagged` as a word */
+    tagged: recent.filter((x) => x.mention || /^(tagged|caption-mention|coauthor)/.test(typeof x.tagged === 'string' ? x.tagged : '')).slice(0, 6).map(note), name };
 }
 
 /* Where you sell: one shelf per platform, the brand's own listings first, each rival as a summary; changes this week stamped */

@@ -101,7 +101,7 @@ test('the view: four blocks, quiet when empty, "couldn’t read" apart from "not
 
 test('a post that tags the brand is a listening item with its picture, and the source is declared', () => {
   const x = NORM.igTagged({ shortCode: 'abc', url: 'https://www.instagram.com/p/abc/', caption: 'THEY ARE BEST. @arata.in', ownerUsername: 'fan1', likesCount: 5, timestamp: '2026-10-21T03:25:43Z', displayUrl: 'https://cdn/x.jpg', mentionType: 'caption-mention' }, { acct: 'own' });
-  assert.equal(x.platform, 'instagram'); assert.equal(x.id, 'ig:abc'); assert.equal(x.image, 'https://cdn/x.jpg'); assert.equal(x.tagged, 'caption-mention');
+  assert.equal(x.platform, 'instagram'); assert.equal(x.id, 'ig:abc'); assert.equal(x.image, 'https://cdn/x.jpg'); assert.equal(x.mention, 'caption-mention'); assert.equal(x.tagged, undefined, 'never marked as already tagged by the AI');
   assert.ok(SOURCES.igtag); assert.ok(Object.keys(PLATFORMS).length >= 6);
 });
 

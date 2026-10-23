@@ -139,7 +139,7 @@ export const NORM = {
   // a public post that tags or @mentions the brand (Apify dami_studio/instagram-mentions-scraper): the customer's own words and picture
   igTagged: (r, v) => ({ id: `ig:${r.shortCode || r.postId}`, platform: 'instagram', kind: 'post', link: r.url, postedAt: ms(r.timestamp), author: short(r.ownerUsername ? `@${r.ownerUsername}` : 'Instagram user'), text: clip(r.caption || ''),
     likes: r.likesCount || 0, replies: r.commentsCount ?? null, sub: r.ownerUsername ? `@${r.ownerUsername}` : 'Instagram', subUrl: r.ownerUsername ? `https://www.instagram.com/${r.ownerUsername}/` : null, thread: `ig-${r.shortCode || r.postId}`,
-    threadTitle: firstLine(r.caption || ''), threadUrl: r.url, image: r.displayUrl || null, tagged: r.mentionType || 'tagged', q: 'brand', acct: v.acct }),
+    threadTitle: firstLine(r.caption || ''), threadUrl: r.url, image: r.displayUrl || null, mention: r.mentionType || 'tagged' /* never `tagged`: that field means the AI has tagged the item */, q: 'brand', acct: v.acct }),
   // marketplace reviews from Apify actors or a page read: the field names differ by actor, so read the usual ones
   review: (r, v) => { const text = r.text || r.review || r.reviewText || r.review_text || r.description || r.body || r.comment || r.content || '';
     const id = r.id || r.review_id || r.reviewId || `${v.pid || ''}:${String(text).slice(0, 40)}`;
@@ -427,12 +427,17 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
 
   async function trustpilot(c, o, st, have, ex) {
     const doms = [[c.host, 'brand', undefined], ...(ex?.rivalHosts || []).slice(0, o.tpRivals ?? 2).map((h) => [h, 'rival', 'rival'])], out = (st.partial = []);
-    await each(doms, async ([domain, q, acct]) => { let n = 0;
+    const none = [];
+    await each(doms, async ([domain, q, acct]) => { let n = 0, tregErr = null;
       try { const j = await tcall('crawl4ai.trustpilot.business.reviews', { body: { domain, limit: 20 } }, o.capUsd); for (const r of j?.rows || []) if (r.review_id && r.text) { out.push(NORM.trustpilot(r, { domain, q, acct })); n++; } }
-      catch (e) { if (capHit(e) || !apify?.live) throw e; st.notes.push(`trustpilot ${domain}: ${e.message.slice(0, 100)}`); }
-      /* treg's Trustpilot read succeeds about two times in three: Apify's actor (probed 23 Oct) reads the same page when it came back empty */
-      if (!n && apify?.live) { const rs = await acall('memo23/trustpilot-scraper-ppe', { startUrls: [domain], maxItems: 20 }, { startUsd: 0.05, perItemUsd: 0.00075, maxUsd: 0.45, maxItems: 20 }, o.capUsd);
-        for (const r of rs) if (r.id && r.text) out.push(NORM.trustpilot({ review_id: r.id, text: r.text, title: r.title, rating: r.rating, date: r.publishedDate, author: r.reviewerName, url: `https://www.trustpilot.com/reviews/${r.id}` }, { domain, q, acct })); } }, st);
+      catch (e) { if (capHit(e) || !apify?.live) throw e; tregErr = e; }
+      /* treg's Trustpilot read succeeds about two times in three: Apify's actor (probed 23 Oct) reads the same page when it came back
+         empty. Its answer is the truth: no rows from it means the brand isn't on Trustpilot, so treg's failure is not kept as an error */
+      if (!n && apify?.live) { const rs = await acall('memo23/trustpilot-scraper-ppe', { startUrls: [domain], maxItems: 20 }, { startUsd: 0.05, perItemUsd: 0.00075, maxUsd: 0.45, maxItems: 20 }, o.capUsd).catch((e) => { if (tregErr) st.notes.push(`trustpilot ${domain}: ${tregErr.message.slice(0, 80)}`); throw e; });
+        for (const r of rs) if (r.id && r.text) { out.push(NORM.trustpilot({ review_id: r.id, text: r.text, title: r.title, rating: r.rating, date: r.publishedDate, author: r.reviewerName, url: `https://www.trustpilot.com/reviews/${r.id}` }, { domain, q, acct })); n++; }
+        if (!n) none.push(domain); }
+      else if (!n && tregErr) throw tregErr; }, st);
+    if (!out.length && none.length && none.length === doms.length) throw Object.assign(new Error(`skipped: not on Trustpilot (${none.join(', ')})`), { needs: true });
     return out;
   }
 
@@ -696,7 +701,8 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
     S.busy = true; runCost.start = treg?.meter?.usd || 0; runCost.apify = apify?.meter?.usd || 0; runCost.cfgAi = 0; const t0 = now();
     try {
       const c = await config({ fresh, paid, capUsd }), F = filterOf(c), ex = await extrasOf(c);
-      const prevItems = (await packs.getJSON(slug, P('items'), null))?.items || [];
+      const prevItems = ((await packs.getJSON(slug, P('items'), null))?.items || []).map((x) => (typeof x.tagged === 'string' && /^(tagged|caption-mention|coauthor)/.test(x.tagged)
+        ? (({ tagged, ...rest }) => ({ ...rest, mention: tagged }))(x) : x)); /* heal: posts that tag the brand saved 23 Oct kept the mention in `tagged`, so the AI never tagged them */
       const prevThemes = await packs.getJSON(slug, P('themes'), null), prevStatus = await packs.getJSON(slug, P('status'), null);
       const status = { at: t0, paid, lite, capUsd, sources: {}, usd: { ai: 0, treg: 0 } };
       const o = lite ? { capUsd, fallbackCalls: Math.min(fallbackCalls, 3), paid, lite, pace, mix: LITE_MIX, amazonListings: 1, tiktokVideos: 1, igPosts: 1, ytVideos: 2, fbPosts: 1 } : { capUsd, fallbackCalls, paid, lite, pace, mix: MIX, amazonListings: 3 };
