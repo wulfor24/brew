@@ -203,9 +203,9 @@ test('a Studio film is delivered at the placement’s exact pixels (a 720p clip 
   assert.equal(await finishVideo(Buffer.from('not a video'), { w: 1080, h: 1920 }, { warn: () => {} }).then((x) => x.toString()), 'not a video', 'a clip ffmpeg can’t read is kept as it came');
 });
 
-test('v1: a card button that makes a picture, a set or a video opens Studio; words, briefs and batches stay in v1', async () => {
-  const fs = await import('node:fs'), app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'), rt = fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8');
-  assert.match(app, /if \(j2Ok && !chId && !o\.v1 && !window\.BREW_DEMO\) \{ if \(openRemix\.asking\) return;/); assert.match(app, /tapi\('POST', '\/api\/jam2\/studio-for'/); assert.match(rt, /'\/api\/jam2\/studio-for'[^\n]*isBatchCard\(card\)\) return \{ studio: false \}/);
+test('v1: every card button, pictures and videos too, opens v1’s own jam; Studio opens only in v2 (?v=2)', async () => {
+  const fs = await import('node:fs'), app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(app, /\/api\/jam2\/studio-for/); assert.doesNotMatch(app, /brew-jam2-studio/); assert.match(app, /if \(j2Ok && window\.Jam2\.on\(\)\) \{ closeDetail\(true\); return window\.Jam2\.open/);
   const kindOf = (label, card = {}) => recipe(planFor({ title: 'x', ...card }, label)[0].recipe)?.kind;
   assert.ok(['static', 'video', 'carousel'].includes(kindOf('Make the ad'))); assert.ok(['static', 'video', 'carousel'].includes(kindOf('Make the video')));
 });
