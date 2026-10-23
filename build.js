@@ -1109,7 +1109,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const holdForPot = async (left) => { await potWait(slug, left.map((n) => ({ n, kind }))); log.log(`[pot] ${slug}: ${left.length} ${kind} moves wait for next week's pot (${left.join(', ')})`);
       if (via === 'connected') await enqueue(slug, left, { via: 'connected', auto: true, notBefore: nextWeek(), tries }); };
     if (P && cap < P.est) { x.running = false; x.rewriting = null; await holdForPot(ns); setTimeout(() => drain(slug).catch(() => {}), 0); return; }
-    const written = []; let prevState = null;
+    const written = [], runAt = Date.now(); let prevState = null;
     try {
       const profile0 = normalizeProfile(await packs.getJSON(slug, 'profile.json'));
       // a real connected account's numbers are evidence for the rewrite, and private to the brand's team (a move written
@@ -1168,6 +1168,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       await editUpd(slug, (u) => { u.history = [{ at, auto, ...(kind ? { kind } : {}), ...(priv ? { private: true } : {}), moves: written, usd, because: written.map((w) => stale[w.n]?.why).filter(Boolean)[0] || null }, ...(u.history || [])].slice(0, 30); });
       await setStatus(slug, { state: (await status(slug)).done ? 'Ready' : prevState });
       emit(slug, { type: 'rewrite-done', n: written.length, usd });
+      /* a move this run wrote no longer needs a rewrite queued before it started (a hand rewrite of moves waiting for next week's
+         pot): drop it from those queue entries and the pot's waits, so it is never written, and paid for, twice */
+      if (written.length) { const done = new Set(written.map((w) => +w.n)); await editUpd(slug, (u) => {
+        u.queue = (u.queue || []).map((q) => ((q.at || 0) <= runAt ? { ...q, ns: (q.ns || []).filter((n) => !done.has(+n)) } : q)).filter((q) => q.ns?.length);
+        const p = potOf(u); for (const n of done) delete p.waits[n]; u.pot = p; }).catch((e) => log.warn('[rewrite] queue', slug, e.message)); }
       if (written.length && !priv) notify(slug, 'update', { at, moves: written, because: auto ? 'Your read changed, and these plans quoted what changed.' : '' }).catch((e) => log.warn('[notify]', e.message));
       /* a connected run: the team hears once it is in; what the day's budget stopped carries on tomorrow (three days at most) */
       if (via === 'connected') {

@@ -138,3 +138,15 @@ test('a run the pot stops halfway keeps the rest flagged and waiting', async () 
   const left = Object.keys(u.stale).map(Number);
   assert.ok(left.length >= 1, 'what it did not write keeps its flag'); for (const n of left) assert.equal(u.pot.waits[n], 'learnings');
 });
+
+test('a hand rewrite of moves waiting for next week’s pot takes them off the queue and the waits: never written, or paid for, twice', async () => {
+  const { b, P, slug, runs } = await brand();
+  const later = Date.now() + 3 * 864e5;
+  await P.put(slug, 'updates.json', { stale: { 4: STALE[4], 6: STALE[6] }, queue: [{ via: 'connected', prio: 1, ns: [4, 6], auto: true, at: Date.now() - 1000, notBefore: later, tries: 0 }],
+    pot: { week: weekKey(Date.now()), usd: 0.4, by: { live: 0.4 }, waits: { 4: 'live', 6: 'live' } } });
+  const m = await b.rewrite(slug, [4]); await settle();
+  assert.equal(m.ok, true); assert.deepEqual(runs.at(-1).filter((n) => n), [4]);
+  const u = await P.getJSON(slug, 'updates.json');
+  assert.deepEqual(u.queue.map((q) => q.ns), [[6]], 'move 4 left the queue; 6 still waits for Monday');
+  assert.deepEqual(u.pot.waits, { 6: 'live' });
+});
