@@ -226,11 +226,18 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
      each slide's words follow on from the others. A slide that fails is left out and named; the rest stand */
   async function makeSet(ctx, board, spec, opts = {}) {
     const set = (spec.set || []).map(styleOf).filter((x) => x && x.kind === 'image').slice(0, 10), labels = set.map((x) => x.label).join(', '), slides = [], made = [], missing = [], missingIds = [];
+    /* each finished slide is written down on the board the moment it lands (opts.jobs, saved with the jam): a set a restart cuts
+       off picks up at the next slide, never buying the slides it already made (23 Oct, a deploy mid-set). The run's key is its
+       set-up and the board's take count, so a later Redo of the same set never reuses this run's slides */
+    const J = opts.jobs || {}, runKey = `set:${board.takes?.length || 0}:${set.map((x) => x.id).join(',')}:${tidy(spec.product?.img || '', 80)}`;
     for (let i = 0; i < set.length; i++) {
+      const kept = J[`${runKey}:${i}`]; if (kept?.slide) { slides.push(kept.slide); continue; } /* made before the restart: paid for once */
       try { const t = await make(ctx, board, { ...spec, set: null, style: set[i].id, count: 1, ask: [`Slide ${i + 1} of ${set.length} of one ${tidy(board.label, 40) || 'carousel'} (${labels}): its own short line that builds on the slides before it${i === 0 ? '; this one is the cover, the hook' : i === set.length - 1 ? '; this one closes with the reason to buy' : ''}.`, spec.ask].filter(Boolean).join(' ') }, i, opts);
-        made.push(...(t.made || [])); slides.push({ scene: t.scene, file: t.file, style: set[i].id, words: t.words, shot: t.shot || null, drawn: t.drawn || null }); }
+        made.push(...(t.made || [])); const slide = { scene: t.scene, file: t.file, style: set[i].id, words: t.words, shot: t.shot || null, drawn: t.drawn || null }; slides.push(slide);
+        J[`${runKey}:${i}`] = { slide, at: Date.now() }; await Promise.resolve(opts.save?.()).catch(() => {}); }
       catch (e) { made.push(...(e.made || [])); missing.push(`${set[i].label}: ${tidy(e.message, 120)}`); missingIds.push(set[i].id); log.warn?.('[studio] slide', set[i].id, e.message); } }
     if (!slides.length) { const err = new Error(missing[0] || 'No slide came out right.'); err.made = made; throw err; }
+    for (const k of Object.keys(J)) if (k.startsWith(`${runKey}:`)) delete J[k]; /* the take carries them now (saved with it) */
     return { op: 'studio', by: ctx.by, words: slides[0].words, slides, file: slides[0].file, scene: slides[0].scene, made, missing, missingIds, studio: { set: slides.map((x) => x.style), label: labels, kind: 'image', size: spec.sizes?.[0] || null },
       cost: { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(3), credits: 0 } };
   }

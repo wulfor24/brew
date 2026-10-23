@@ -16,13 +16,13 @@ const { readyOf } = await import('../publish-ready.js');
 const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'sets-')); G.configureGen({ dir: DIR, remote: false, log: { warn() {} } });
 const quiet = { warn() {}, log() {}, error() {} };
 
-const mount = () => {
-  const R = {}, on = (m, p, fn) => (R[`${m} ${p}`] = fn), mem = new Map(), landed = [], states = [];
-  const packs = { getJSON: async (s, f, d) => (mem.has(`${s}/${f}`) ? structuredClone(mem.get(`${s}/${f}`)) : d), putJSON: async (s, f, v) => { mem.set(`${s}/${f}`, structuredClone(v)); return true; } };
+const mount = (mem = new Map()) => {
+  const R = {}, on = (m, p, fn) => (R[`${m} ${p}`] = fn), landed = [], states = [];
+  const packs = { getJSON: async (s, f, d) => (mem.has(`${s}/${f}`) ? structuredClone(mem.get(`${s}/${f}`)) : d), putJSON: async (s, f, v) => { mem.set(`${s}/${f}`, structuredClone(v)); return true; }, put: async (s, f, v) => { mem.set(`${s}/${f}`, structuredClone(v)); return true; } };
   const card = { id: 'c1', title: 'Listing photos', cta: { label: 'Add the photos' } }, t = { id: 't1', brandId: 'acme', cards: new Map([['c1', card]]), changes: { ch1: { id: 'ch1' } }, work: [] };
   mountJam2({ on, packs, slugOfT: () => 'acme', brandOfT: () => ({ catalog: [{ t: 'Balm', img: 'balm.png' }], config: {} }), meOf: () => ({ email: 'a@acme.com' }), reqOf: () => ({ member: true }), cardOf: (tt, id) => tt.cards.get(id), sourceOf: () => '', refsOf: async () => [], isMock: () => true, spend: () => true, saveGen: G.saveGen, genFile: G.genFile, log: quiet,
     onStudioTake: (tt, chId, tk) => landed.push(tk.slides.map((x) => x.style)), onStudioState: (tt, chId, st) => states.push(st.state) });
-  return { R, t, landed, states };
+  return { R, t, landed, states, mem };
 };
 const until = async (R, t, jid, bid) => { for (let k = 0; k < 300; k++) { const g = await R['GET /api/jam2/jams/:jid']({}, t, { jid }); const b = g.jam.busy?.[bid]; if (!b || b.error) return g; await new Promise((r) => setTimeout(r, 100)); } throw new Error('still busy'); };
 
@@ -51,4 +51,19 @@ test('Amazon A+ opens as its modules at Amazon’s own sizes; module words follo
   assert.equal(r.ready, false); const why = r.parts.flatMap((x) => x.why).join(' | ');
   for (const w of ['“best” or “#1”', 'a price or a deal', 'a rating or a review', 'shipping or a guarantee']) assert.ok(why.includes(w), `${w}: ${why}`);
   assert.ok(!r.parts.some((x) => x.k === 'link'), 'A+ takes no link'); assert.ok(r.places.some((x) => x.where === 'A+ header'));
+});
+
+test('a set a restart cut off picks up where it stopped: the slides it already made are reused, never bought again', { timeout: 120e3 }, async () => {
+  const mem = new Map(), A = mount(mem);
+  const o = await A.R['POST /api/jam2/open']({ cardId: 'c1', cta: 'Add the photos', v1ch: 'ch1' }, A.t, {}); const jid = o.jam.id, bid = o.jam.boards[0].id;
+  const d = await A.R['GET /api/jam2/jams/:jid/studio']({}, A.t, { jid }, new URLSearchParams(`bid=${bid}`)); const spec = { ...d.defaults, set: ['mp-lifestyle', 'in-use', 'closeup'] };
+  for (let k = 0; k < 50 && !mem.get('acme/private/jams-v2.json')?.jams?.[jid]; k++) await new Promise((r) => setTimeout(r, 100));
+  /* the first slide was made before the restart: the run wrote it down on the board, which was saved */
+  const file = mem.get('acme/private/jams-v2.json'); assert.ok(file?.jams?.[jid], 'the jam was saved');
+  file.jams[jid].boards.find((b) => b.id === bid).hfJobs = { [`set:0:mp-lifestyle,in-use,closeup:${(spec.product?.img || '').slice(0, 80)}:0`]: { slide: { file: 'gen/kept-0.jpg', style: 'mp-lifestyle', scene: { w: 1, h: 1, layers: [] }, words: { headline: 'kept' } } } };
+  const B = mount(mem); /* the new instance */
+  const pl = (await B.R['POST /api/jam2/jams/:jid/studio/plan']({ spec }, B.t, { jid })).plan; const mk = await B.R['POST /api/jam2/jams/:jid/studio/make']({ spec, confirmUsd: pl.usd, bid }, B.t, { jid }); assert.ok(!mk.error, mk.error);
+  const g = await until(B.R, B.t, jid, bid), bd = g.jam.boards.find((b) => b.id === bid), head = bd.takes.at(-1);
+  assert.equal(head.slides[0].file, 'gen/kept-0.jpg', 'the slide made before the restart is the one used'); assert.equal(head.slides.length, 3);
+  assert.deepEqual(B.landed.at(-1), ['mp-lifestyle', 'in-use', 'closeup']);
 });
