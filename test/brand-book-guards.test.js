@@ -73,3 +73,7 @@ test('fonts: the card lets the team pick headings/body/both, and the page loads 
   assert.match(code, /font-weight:\$\{\+f\.weight \|\| 400\}/);
   assert.match(code, /data-dropfont/); assert.match(code, /data-addfont/);
 });
+
+test('the instant-paint copy is read-only until the fresh book arrives', () => {
+  assert.match(code, /edit = !!d\.canEdit && !ctx\.readOnly && !d\.stale/);
+});

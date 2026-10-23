@@ -49,7 +49,7 @@
     const save = async (patch, ok) => { if (S.busy) return; S.busy = true; const d = await api('POST', base, patch); S.busy = false; if (!d || d.error) { toast(d?.error || 'That didn’t save. Try again.'); return false; } S.data = d; paint(); if (ok) toast(ok); return true; };
 
     function paint() {
-      const d = S.data, v = d.book || {}, edit = !!d.canEdit && !ctx.readOnly, k = v.kit || {}, roles = k.roles?.length ? k.roles : (k.colors || []).map((hex) => ({ hex }));
+      const d = S.data, v = d.book || {}, edit = !!d.canEdit && !ctx.readOnly && !d.stale, /* the saved copy shown while the book loads is read-only: no tap lands on old data */ k = v.kit || {}, roles = k.roles?.length ? k.roles : (k.colors || []).map((hex) => ({ hex }));
       const primary = roles.find((c) => c.role === 'primary')?.hex || k.accent || '#1d1d1f', accent = roles.find((c) => c.role === 'accent' && c.hex !== primary)?.hex || roles.find((c) => c.hex !== primary && lum(c.hex) < 0.8 && lum(c.hex) > 0.08)?.hex || primary;
       const headFont = k.fonts?.heading, bodyFont = k.fonts?.body; loadFont(headFont, k.fontFiles); loadFont(bodyFont, k.fontFiles); for (const fam of new Set((k.fontFiles || []).map((f) => f.family))) loadFont(fam, k.fontFiles);
       el.style.setProperty('--bb-1', primary); el.style.setProperty('--bb-2', accent); el.style.setProperty('--bb-on', lum(primary) > 0.55 ? '#141414' : '#ffffff');
@@ -168,7 +168,7 @@
         <nav class="bb-pager" aria-label="Chapters"><button class="bb-pager-b" data-pager aria-expanded="false"><span class="bb-pager-n">01</span><span class="bb-pager-t">${esc(T(shown[0]?.[0]))}</span><i aria-hidden="true">▾</i></button>
           <ol class="bb-pager-list">${shown.map(([id], i) => `<li><a href="#bb-${id}" data-toc="${id}" data-n="${String(i + 1).padStart(2, '0')}"><span>${String(i + 1).padStart(2, '0')}</span>${esc(T(id))}</a></li>`).join('')}</ol></nav>
         <main class="bb-main">${body || `<p class="bb-note">Brew is still reading ${esc(v.host || 'the site')}. The book fills in as it reads.</p>`}
-          ${ctx.readOnly ? `<footer class="bb-foot"><p>Made by Brew from ${esc(v.host || 'the brand’s')} own site, ads and posts.</p><a class="bb-btn is-main" href="/?ref=brand-kit">Make it yours in Brew</a></footer>` : ''}</main>${edit ? dockHtml(v) : ''}`;
+          ${ctx.readOnly ? `<footer class="bb-foot"><p>Made by Brew from ${esc(v.host || 'the brand’s')} own site, ads and posts.</p><a class="bb-btn is-main" href="/?ref=brand-kit">Make it yours in Brew</a></footer>` : ''}</main>${edit || (d.stale && d.canEdit && !ctx.readOnly) ? dockHtml(v) : ''}`;
       wire();
     }
 
