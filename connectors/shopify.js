@@ -32,11 +32,15 @@ async function gql(c, query, variables, tries = 0) {
 }
 
 const ORDER_PAGES = 40; /* 10,000 orders */
-/* orders in the window, cancelled ones left out (Shopify counts past its default cap of 10,000 with limit:null) */
+/* orders since a day, cancelled ones left out. limit:null counts past Shopify's default cap of 10,000; a big store's whole
+   30 days can time out (TIMEOUT), so then it is counted again in 5-day windows, each small enough to finish */
 async function countOrders(c, since) {
-  const q = 'query($q:String){ all: ordersCount(query:$q, limit:null){ count } }';
-  const [a, x] = await Promise.all([gql(c, q, { q: `created_at:>=${since}` }), gql(c, q, { q: `created_at:>=${since} status:cancelled` })]);
-  return has(a?.all?.count) ? a.all.count - (x?.all?.count || 0) : null;
+  const one = async (q) => { const d = await gql(c, 'query($q:String){ n: ordersCount(query:$q, limit:null){ count } }', { q }); if (!has(d?.n?.count)) throw new Error('no count'); return d.n.count; };
+  const net = async (w) => (await one(w)) - (await one(`${w} status:cancelled`));
+  try { return await net(`created_at:>=${since}`); }
+  catch { const from = Date.parse(since), DAY = 864e5; let n = 0;
+    for (let t = from; t < Date.now() + DAY; t += 5 * DAY) n += await net(`created_at:>=${new Date(t).toISOString().slice(0, 10)} created_at:<${new Date(t + 5 * DAY).toISOString().slice(0, 10)}`);
+    return n; }
 }
 /* COD orders 10 to 40 days old, newest first, up to 8 pages: a sample big enough for the failed share */
 async function codWindow(c) {
@@ -187,10 +191,11 @@ export default {
     if (cur) for (const r of ledger) r.cur = cur;
     /* the store's own brand settings (Settings › Brand): the logo, colours, slogan and short description the merchant set on
        purpose. The Brand Book ranks them above anything read off the site; a store that set none (or a refusal) changes nothing */
-    const brand = await gql(c, '{ shop{ brand{ slogan shortDescription logo{ image{ url } } squareLogo{ image{ url } } coverImage{ image{ url } } colors{ primary{ background foreground } secondary{ background foreground } } } } }')
-      .then((d) => { const b = d?.shop?.brand; if (!b) return null; const col = (xs, role) => (xs || []).flatMap((x) => [x.background && { hex: String(x.background).toLowerCase(), role }, x.foreground && { hex: String(x.foreground).toLowerCase(), role: 'ink' }]).filter(Boolean);
-        const out = { slogan: b.slogan || null, about: b.shortDescription || null, logo: b.logo?.image?.url || null, squareLogo: b.squareLogo?.image?.url || null, cover: b.coverImage?.image?.url || null, colors: [...col(b.colors?.primary, 'primary'), ...col(b.colors?.secondary, 'accent')] };
-        return out.slogan || out.about || out.logo || out.colors.length ? out : null; }).catch((e) => { if (!e.denied) notes.push(`Brand settings: ${e.message.slice(0, 100)}`); return null; });
+    /* the Admin API (2026-04) has no shop.brand any more (Settings › Brand is Storefront-only now): the store's own description
+       is what is left. Logo and colours stay with the site read */
+    const brand = await gql(c, '{ shop{ description } }')
+      .then((d) => { const about = String(d?.shop?.description || '').trim(); return about ? { slogan: null, about, logo: null, squareLogo: null, cover: null, colors: [] } : null; })
+      .catch((e) => { if (!e.denied) notes.push(`Store description: ${e.message.slice(0, 100)}`); return null; });
     return { metrics: m, stats, changed, cards: out, ledger, notes, brand };
   }
 };

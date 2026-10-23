@@ -10,19 +10,21 @@ const order = (d, cod = false) => ({ createdAt: ago(d), cancelledAt: null, displ
 const ctx = { profile: { currency: 'INR', country: 'IN' }, lane: 'core' };
 const conn = { shop: 'big.myshopify.com', token: 'shpat_x' };
 
-function shop({ pages, count = 9000, cancelled = 100, products, throttleOnce = false }) {
+function shop({ pages, count = 9000, cancelled = 100, products, throttleOnce = false, timeoutWhole = false }) {
   let throttled = !throttleOnce, calls = [];
   const fetch = async (url, o) => {
     const { query, variables } = JSON.parse(o.body); calls.push(query);
     if (!throttled) { throttled = true; return ok({ errors: [{ message: 'Throttled', extensions: { code: 'THROTTLED' } }] }); }
-    if (/ordersCount/.test(query)) return ok({ data: { all: { count: /status:cancelled/.test(variables.q) ? cancelled : count } } });
+    if (timeoutWhole && /ordersCount/.test(query) && !/created_at:</.test(variables.q)) return ok({ errors: [{ message: 'Failed to complete in time.', extensions: { code: 'TIMEOUT' } }] });
+    if (/ordersCount/.test(query) && !timeoutWhole) return ok({ data: { n: { count: /status:cancelled/.test(variables.q) ? cancelled : count } } });
+    if (/ordersCount/.test(query)) return ok({ data: { n: { count: /status:cancelled/.test(variables.q) ? 10 : 1000 } } });
     if (/currencyCode \} \}$/.test(query.trim()) || /^\{ shop \{ currencyCode \} \}$/.test(query.trim())) return ok({ data: { shop: { currencyCode: 'INR' } } });
     if (/orders\(first:250/.test(query) && /lineItems/.test(query)) { const i = variables.a ? +variables.a : 0; return ok({ data: { orders: { nodes: pages[i], pageInfo: { hasNextPage: i + 1 < pages.length, endCursor: String(i + 1) } } } }); }
     if (/orders\(first:250/.test(query) && /paymentGatewayNames/.test(query)) return ok({ data: { orders: { nodes: [...Array(30)].map((_, k) => ({ ...order(15 + k % 20, true), cancelledAt: k < 6 ? ago(12) : null, displayFinancialStatus: k < 6 ? 'PENDING' : 'PAID' })), pageInfo: { hasNextPage: false } } } });
     if (/shippingAddress/.test(query)) return ok({ data: { orders: { nodes: [], pageInfo: { hasNextPage: false } } } });
     if (/abandonedCheckoutsCount/.test(query)) return ok({ data: { abandonedCheckoutsCount: { count: 50 } } });
     if (/productsCount/.test(query)) return ok({ data: { productsCount: { count: products.length }, products: { nodes: products } } });
-    if (/brand/.test(query)) return ok({ errors: [{ message: 'brand failed' }] });
+    if (/description/.test(query)) return ok({ errors: [{ message: 'description failed' }] });
     return ok({ data: { shop: { currencyCode: 'INR' } } });
   };
   return { fetch, calls };
@@ -40,7 +42,7 @@ test('a store with more orders than one read: Shopify counts the 30 days, the ne
   assert.ok(r.notes.some((n) => /newest 10,000 orders/.test(n)), r.notes.join(' | '));
   /* COD 10 to 40 days old came from its own read: 6 of 30 cancelled */
   assert.equal(Math.round(r.metrics.codFail), 20);
-  assert.ok(r.notes.some((n) => /Brand settings/.test(n)), 'a failed brand-settings read is said, not silent');
+  assert.ok(r.notes.some((n) => /Store description/.test(n)), 'a failed description read is said, not silent');
   assert.match(r.cards.find((c) => /repeat/.test(c.id))?.title || 'recent', /recent/);
 });
 
@@ -85,4 +87,14 @@ test('a refresh without a new refresh token keeps the old one; a rotated secret 
   assert.ok(shopify.expired(new Error('shopify token 400: invalid_client')));
   assert.ok(shopify.expired(new Error('shopify token 400: shop_not_permitted')));
   assert.ok(!shopify.expired(new Error('shopify graphql 503: busy')));
+});
+
+test('a count Shopify can’t finish in time is counted again in 5-day windows', async (t) => {
+  const pages = [...Array(41)].map(() => [...Array(250)].map(() => order(2)));
+  const s = shop({ pages, products: [], timeoutWhole: true });
+  t.mock.method(globalThis, 'fetch', s.fetch);
+  const r = await shopify.sync(conn, ctx);
+  const windows = s.calls.filter((q) => /ordersCount/.test(q)).length;
+  assert.ok(windows >= 14, `windows asked: ${windows}`);
+  assert.equal(r.metrics.orders % 990, 0); assert.ok(r.metrics.orders >= 6 * 990);
 });
