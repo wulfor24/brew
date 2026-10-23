@@ -47,7 +47,7 @@ test('the library keeps only saved pictures, by deliverable, best first with pro
   assert.ok(!JSON.stringify(lib).includes('expired'), 'an expired CDN link is no reference');
   assert.deepEqual(lib['product-photo'].map((x) => x.words), ['Paw Warmer']);
   assert.equal(familiesFor('reel')[0], 'ad-video');
-  assert.equal(familiesFor('meta-static')[0], 'ad-image');
+  assert.equal(familiesFor('meta-static')[0], 'ad-winners'); assert.equal(familiesFor('meta-static')[1], 'ad-image');
   assert.equal(familiesFor('carousel')[0], 'ad-carousel');
 });
 
@@ -230,4 +230,18 @@ test('the cover never shows a search title, and one creative listed under many a
   const lib = libraryOf({ ads: { own: { items: [{ id: '1', hook: 'Same ad', format: 'image', poster: '/b/x/a/ad-1.jpg', days: 9 }, { id: '2', hook: 'Same ad', format: 'image', poster: '/b/x/a/ad-2.jpg', days: 3 }, { id: '3', hook: 'Other', format: 'image', poster: '/b/x/a/ad-3.jpg', days: 1 }] } } });
   assert.deepEqual(lib['ad-image'].map((r) => r.id), ['ad:1', 'ad:3']);
   assert.equal(freeChapters({ profile: { tagline: 'Buy shoes online', name: 'X' } }).cover.tagline, null);
+});
+
+test('Shopify brand settings lead the kit and cover for the team (never the public kit); Meta winners are members-only and lead any new ad', () => {
+  const shop = { slogan: 'Warm toes, always', about: 'Heated comfort for cold days', logo: 'https://cdn.shopify.com/logo.png', colors: [{ hex: '#ff5a5f', role: 'primary' }, { hex: '#ffffff', role: 'ink' }] };
+  const winners = { ads: [{ id: '77', src: '/b/cozy/refs/abc.jpg', title: 'Cold feet, fixed', roas: 4.2, buys: 31, spend: 12000, currency: 'INR' }] };
+  const bb = { ...bbOf(), shop, winners };
+  const m = viewOf(bb), sh = viewOf(bb, { scope: 'share' }), pub = viewOf(bb, { scope: 'public' });
+  assert.equal(m.kit.accent, '#ff5a5f'); assert.equal(m.kit.logo, shop.logo); assert.equal(m.cover.tagline, 'Warm toes, always'); assert.equal(m.src['kit.colors'], 'shopify');
+  assert.equal(sh.cover.tagline, 'Warm toes, always'); assert.notEqual(pub.kit.logo, shop.logo); assert.notEqual(pub.cover?.tagline, 'Warm toes, always');
+  assert.equal(m.library['ad-winners'][0].proof, '4.2× return, 31 purchases, 12,000 INR spent in 30 days');
+  assert.ok(!sh.library['ad-winners'] && !pub.library['ad-winners'], 'returns never leave the team');
+  assert.equal(refsFor(m, 'meta-static', 1)[0].family, 'ad-winners');
+  assert.equal(refsFor(sh, 'meta-static', 1)[0].family, 'ad-image');
+  const edited = viewOf({ ...bb, kitEdits: { colors: [{ hex: '#000000', role: 'primary' }] } }); assert.equal(edited.kit.accent, '#000000', 'the team’s own edit beats Shopify');
 });

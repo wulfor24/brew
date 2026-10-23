@@ -301,8 +301,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       getJSON(slug, 'brief.json', {}), getJSON(slug, 'move-value.json', {}), getJSON(slug, 'notes.json', null), getFreshJSON(slug, 'drafts/cards.json', {}), getJSON(slug, 'learned.json', null), getJSON(slug, 'rival-reads.json', {}), getJSON(slug, 'pulse/latest.json', null)]);
     /* the Brand Book's share view (the read plus the team's edits that aren't private): its words block joins the system text and its
        never-say words join the banned list, so every writer follows it; the view rides on the pack for the picture makers */
-    const [bookRead, bookSaved] = await Promise.all([getJSON(slug, 'brandbook-read.json', null).catch(() => null), getJSON(slug, 'private/brandbook.json', null).catch(() => null)]);
-    const book = viewOf({ ...blankBook(), ...(bookSaved || {}), read: readLayer({ slug, profile, brief: briefJ, config, book: bookRead }) }, { scope: 'share' });
+    const [bookRead, bookSaved, shopBrand] = await Promise.all([getJSON(slug, 'brandbook-read.json', null).catch(() => null), getJSON(slug, 'private/brandbook.json', null).catch(() => null), getJSON(slug, 'private/shop-brand.json', null).catch(() => null)]);
+    const book = viewOf({ ...blankBook(), ...(bookSaved || {}), shop: shopBrand, read: readLayer({ slug, profile, brief: briefJ, config, book: bookRead }) }, { scope: 'share' });
     const bookWords = promptBlock(book);
     /* every picture maker reads config.product.style as the brand's look (sloosh-prompt lookOf, finals, drafts): the read's
        category template ("Premium Apparel product ad photography") gives way to the look Brew saw in the brand's own pictures */

@@ -127,6 +127,20 @@ export function viewOf(bb, { scope = 'member' } = {}) {
     claims: [...(team ? bb.claimsAllowed : []), ...(r.claims || [])], never: [...new Set([...(r.never || []), ...(team ? bb.neverSay : [])])], neverRe: r.neverRe || null, neverSay: team ? bb.neverSay || [] : [],
     reviews: r.reviews || [], personas: r.personas || [], language: r.language || [], currency: r.currency, ...structuredClone(chapters(r.book)) }; /* a copy: edits never touch the cached read */
   v.src = {}; /* where each edited field came from: the page's source chips */
+  /* the store's own Shopify brand settings (connected, team views only): the merchant set them on purpose, so they lead the
+     kit and the cover unless the team edited those; the public kit never has them */
+  const sh = team && bb.shop;
+  if (sh) {
+    if (sh.colors?.length && !bb.kitEdits?.colors) { const seen = new Set(), roles = [...sh.colors, ...(v.kit.roles || [])].filter((c) => c.hex && !seen.has(c.hex) && seen.add(c.hex)).slice(0, 8);
+      v.kit = { ...v.kit, roles, colors: roles.map((c) => c.hex) }; v.kit.accent = roles.find((c) => c.role === 'primary')?.hex || v.kit.accent; v.kit.ink = lum(v.kit.accent) > 0.55 ? '#111111' : '#ffffff'; v.src['kit.colors'] = 'shopify'; }
+    if (sh.logo && !bb.kitEdits?.logo) { v.kit.logo = sh.logo; if (sh.squareLogo) v.kit.mark = sh.squareLogo; v.src['kit.logo'] = 'shopify'; }
+    v.cover = { ...(v.cover || {}), ...(sh.slogan ? { tagline: sh.slogan } : {}), ...(sh.about ? { oneLine: sh.about } : {}), ...(sh.logo ? { logo: sh.logo } : {}) };
+    if (sh.slogan) v.src['cover.tagline'] = 'shopify';
+  }
+  /* their winning Meta ads with real returns (members only): the first references any new ad is made from */
+  if (scope === 'member' && bb.winners?.ads?.length) v.library = { 'ad-winners': bb.winners.ads.slice(0, 6).map((x) => ({ id: `meta:${x.id}`, src: x.src, words: [x.title, x.body].filter(Boolean).join(' — ').slice(0, 220) || x.name || null,
+    proof: [x.roas != null ? `${x.roas}× return` : null, x.buys ? `${x.buys} purchases` : null, x.spend ? `${Math.round(x.spend).toLocaleString('en-US')} ${x.currency || ''} spent`.trim() : null].filter(Boolean).join(', ') + ' in 30 days',
+    video: null, cta: x.cta || null, kind: 'Their winning ad', private: true })), ...(v.library || {}) };
   if (scope === 'member') Object.assign(v, { recipes: bb.recipes || [], voice: bb.voice, music: bb.music, comfort: bb.comfort, cast: bb.cast, places: bb.places, taste: bb.taste, confirmed: bb.confirmed,
     uploads: (bb.uploads || []).map(({ id, name, kind, at, by, private: pv, applied }) => ({ id, name, kind, at, by, private: !!pv, applied: applied || 0 })) });
   else Object.assign(v, { voice: { narrator: bb.voice?.narrator || null }, music: bb.music, places: (bb.places || []).map(({ label, describe }) => ({ label, describe })), confirmed: scope === 'share' ? bb.confirmed : {} });
@@ -145,9 +159,9 @@ function chapters(b) {
 /* the Brand Book view for code that only has packs (background writers: cards, statics, ideas, moves): never throws, {} when unread */
 export async function loadView(packs, slug, { scope = 'share' } = {}) {
   const P = (n, d) => packs.getJSON(slug, n, d).catch(() => d);
-  const [profile, brief, config, book, saved] = await Promise.all([P('profile.json', null), P('brief.json', null), P('config.json', {}), P('brandbook-read.json', null), P('private/brandbook.json', null)]);
+  const [profile, brief, config, book, saved, shop, winners] = await Promise.all([P('profile.json', null), P('brief.json', null), P('config.json', {}), P('brandbook-read.json', null), P('private/brandbook.json', null), P('private/shop-brand.json', null), scope === 'member' ? P('private/meta-winners.json', null) : null]);
   if (!profile) return {};
-  return viewOf({ ...blankBook(), ...(saved || {}), read: readLayer({ slug, profile, brief, config, book }) }, { scope });
+  return viewOf({ ...blankBook(), ...(saved || {}), shop, winners, read: readLayer({ slug, profile, brief, config, book }) }, { scope });
 }
 
 export function createBrandbook({ packs, log = console, now = () => Date.now() }) {
@@ -163,14 +177,14 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
   const blank = blankBook;
 
   async function load(slug, { fresh = false } = {}) {
-    if (!fresh && cache.has(slug)) return cache.get(slug);
+    if (!fresh && cache.has(slug) && now() - (cache.get(slug).loadedAt || 0) < 5 * 60e3) return cache.get(slug); /* five minutes: a connector's sync or a new read layer shows soon after */
     /* a saved Brand Book that couldn't be read is never replaced by a blank one: the error goes to the page and nothing is cached or saved */
-    const [got, read] = await Promise.all([packs.readJSON ? packs.readJSON(slug, FILE) : P(slug, FILE, null).then((data) => ({ ok: true, data })), fromRead(slug)]);
+    const [got, read, shop, winners] = await Promise.all([packs.readJSON ? packs.readJSON(slug, FILE) : P(slug, FILE, null).then((data) => ({ ok: true, data })), fromRead(slug), P(slug, 'private/shop-brand.json', null), P(slug, 'private/meta-winners.json', null)]);
     if (!got.ok) throw Object.assign(new Error('The Brand Book couldn’t be read just now. Try again in a moment; nothing was changed.'), { status: 503 });
-    const saved = got.data; const bb = { ...blank(), ...(saved || {}), read };
+    const saved = got.data; const bb = { ...blank(), ...(saved || {}), read, shop, winners, loadedAt: now() };
     cache.set(slug, bb); return bb;
   }
-  async function save(slug, bb) { const { read, ...keep } = bb; keep.updatedAt = now(); cache.set(slug, bb); await (packs.putStrict || packs.put)(slug, FILE, keep).catch((e) => log.warn?.('[brandbook] save', slug, e.message)); return bb; }
+  async function save(slug, bb) { const { read, shop, winners, loadedAt, ...keep } = bb; keep.updatedAt = now(); cache.set(slug, bb); await (packs.putStrict || packs.put)(slug, FILE, keep).catch((e) => log.warn?.('[brandbook] save', slug, e.message)); return bb; }
 
   /* the Brand Book as the page and every maker read it: confirmed edits over the read */
   const view = viewOf;

@@ -23,19 +23,19 @@ export const GUIDE_RE = /brand[-_ ]?(book|guide|guidelines|assets|kit|identity|s
 
 /* ---------------- the creative library: what the brand has put out, by deliverable ---------------- */
 export const REF_FAMILIES = {
-  'ad-image': 'Image ads', 'ad-video': 'Video ads', 'ad-carousel': 'Carousel ads',
+  'ad-winners': 'Your best ads', 'ad-image': 'Image ads', 'ad-video': 'Video ads', 'ad-carousel': 'Carousel ads',
   'ig-post': 'Instagram posts', 'ig-reel': 'Instagram reels', 'ig-carousel': 'Instagram carousels',
   'tiktok': 'TikTok', 'youtube': 'YouTube films', 'product-photo': 'Product photos', 'site-photo': 'On their site', 'email': 'Emails'
 };
 /* which families a deliverable (a jam2 recipe, a v1 asset kind) should look at, nearest first */
 export function familiesFor(kind = '') {
   const k = String(kind).toLowerCase();
-  if (/reel|video|ugc|founder|story|tiktok|short|film/.test(k)) return ['ad-video', 'ig-reel', 'tiktok', 'youtube', 'ad-image', 'ig-post'];
-  if (/carousel|slides/.test(k)) return ['ad-carousel', 'ig-carousel', 'ad-image', 'ig-post'];
+  if (/reel|video|ugc|founder|story|tiktok|short|film/.test(k)) return ['ad-video', 'ad-winners', 'ig-reel', 'tiktok', 'youtube', 'ad-image', 'ig-post'];
+  if (/carousel|slides/.test(k)) return ['ad-carousel', 'ad-winners', 'ig-carousel', 'ad-image', 'ig-post'];
   if (/email|newsletter|klaviyo/.test(k)) return ['email', 'ad-image', 'product-photo', 'site-photo'];
   if (/listing|product|pdp|packshot|photo-set|catalog/.test(k)) return ['product-photo', 'site-photo', 'ad-image'];
-  if (/post|social|instagram|static-post/.test(k)) return ['ig-post', 'ig-carousel', 'ad-image', 'product-photo'];
-  return ['ad-image', 'ig-post', 'ad-carousel', 'product-photo', 'site-photo'];
+  if (/post|social|instagram|static-post/.test(k)) return ['ig-post', 'ig-carousel', 'ad-winners', 'ad-image', 'product-photo'];
+  return ['ad-winners', 'ad-image', 'ig-post', 'ad-carousel', 'product-photo', 'site-photo']; /* their own winners (Meta, members only) lead any ad */
 }
 const isAsset = (p) => /^\/b\/[^/]+\/a\//.test(String(p || ''));
 export function libraryOf(profile = {}, { max = 6, enrich = null } = {}) {

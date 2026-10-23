@@ -86,7 +86,7 @@ const projectNote = (v, tool, url) => `# ${nameOf(v)} (${tool} instructions)\n\n
 
 export function createBrandKit({ packs, log = console }) {
   const viewOf = (slug) => loadView(packs, slug, { scope: 'share' });
-  async function zip(slug, { origin = '' } = {}) {
+  async function zip(slug, { origin = '', pdf = null } = {}) {
     const v = await viewOf(slug); if (!v?.name && !v?.cover) return null;
     const base = `${origin}/${slug}`, files = [], text = (name, s) => files.push({ name, data: Buffer.from(s) });
     const asset = async (p) => { const m = String(p || '').match(/^\/b\/[^/]+\/a\/([^?#]+)$/); if (!m) return null; return packs.get(slug, 'assets/' + m[1]).catch(() => null); };
@@ -97,6 +97,8 @@ export function createBrandKit({ packs, log = console }) {
     for (const [f, xs] of Object.entries(v.library || {})) { const caps = [];
       for (const [i, x] of xs.entries()) { const b = await asset(x.src); if (!b) continue; const nm = `${String(i + 1).padStart(2, '0')}${String(x.src).match(/\.[a-z0-9]+$/i)?.[0] || '.jpg'}`; files.push({ name: `references/${f}/${nm}`, data: b }); caps.push({ file: nm, why: x.why || null, words: x.words || null, proof: x.proof || null, original: x.url || null }); }
       if (caps.length) text(`references/${f}/captions.json`, JSON.stringify(caps, null, 2)); }
+    /* the book itself, printed: a PDF that couldn't be made leaves the rest of the kit as it is */
+    if (pdf) { const b = await pdf().catch((e) => (log.warn?.('[kit] pdf', slug, e.message), null)); if (b?.length) files.push({ name: 'brand-book.pdf', data: b }); }
     for (const p of v.products?.heroes || []) { const b = await asset(p.img); if (b) files.push({ name: `products/${slugify(p.title)}${String(p.img).match(/\.[a-z0-9]+$/i)?.[0] || '.jpg'}`, data: b }); }
     return { buf: zipBuffer(files), name: `${slugify(nameOf(v))}-brand-kit.zip`, files: files.length };
   }
