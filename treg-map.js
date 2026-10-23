@@ -51,6 +51,14 @@ export const CAPS = [
   C('site.reviews', 'local', 'judge.me public reviews', { platform: 'site', output: 'heard', families: ['listening', 'cro'], set: 'owned', label: 'Reviews on your site' }),
   C('nykaa.reviews', 'apify', 'stealth_mode/nykaa-reviews-scraper', { platform: 'nykaa', output: 'heard', families: ['listening', 'rival-weakness'], set: 'rivals', cadence: 'weekly', label: 'Nykaa reviews' }),
   C('flipkart.reviews', 'apify', 'shahidirfan/flipkart-reviews-scraper', { platform: 'flipkart', output: 'heard', families: ['listening', 'rival-weakness'], set: 'rivals', cadence: 'weekly', label: 'Flipkart reviews' }),
+  C('nykaa.listing', 'apify', 'automation_craft/nykaa-scraper', { platform: 'nykaa', output: 'heard', families: ['listening', 'price-offer'], set: 'rivals', cadence: 'weekly', label: 'Nykaa listings and reviews' }),
+  C('flipkart.listing', 'apify', 'scrapesage/flipkart-scraper', { platform: 'flipkart', output: 'heard', families: ['listening', 'price-offer'], set: 'rivals', cadence: 'weekly', label: 'Flipkart listings and reviews', fallbacks: ['shahidirfan/Flipkart-Product-Scraper'] }),
+  C('shelf.blinkit', 'apify', 'memo23/blinkit-scraper', { platform: 'blinkit', output: 'ledger', families: ['price-offer', 'rival-weakness'], set: 'rivals', cadence: 'weekly', label: 'Blinkit prices and stock', fallbacks: ['krazee_kaushik/blinkit-product-results-scraper'] }),
+  C('shelf.zepto', 'apify', 'memo23/zepto-product-scraper', { platform: 'zepto', output: 'ledger', families: ['price-offer', 'rival-weakness'], set: 'rivals', cadence: 'weekly', label: 'Zepto prices and stock', fallbacks: ['shahidirfan/zepto-product-scraper'] }),
+  C('shelf.instamart', 'apify', 'solidcode/swiggy-scraper', { platform: 'instamart', output: 'ledger', families: ['price-offer', 'rival-weakness'], set: 'rivals', cadence: 'weekly', label: 'Instamart prices and stock' }),
+  C('traffic.similarweb', 'apify', 'curious_coder/similarweb-scraper', { output: 'ledger', families: ['research', 'rival-weakness'], set: 'rivals', cadence: 'monthly', label: 'Website visits (Similarweb estimate)', fallbacks: ['tri_angle/similarweb-scraper'] }),
+  C('trustpilot.apify', 'apify', 'memo23/trustpilot-scraper-ppe', { platform: 'trustpilot', output: 'heard', families: ['listening', 'rival-weakness'], set: 'rivals', cadence: 'weekly', label: 'Trustpilot reviews (backup read)' }),
+  C('instagram.tagged', 'apify', 'dami_studio/instagram-mentions-scraper', { platform: 'instagram', output: 'heard', families: ['listening', 'creators', 'social-posts'], set: 'brand', cadence: 'daily', label: 'Instagram posts that tag you' }),
   C('myntra.search', 'apify', 'codingfrontend/myntra-product-search-scraper', { platform: 'myntra', output: 'heard', families: ['listening', 'price-offer'], set: 'category', cadence: 'weekly', label: 'Myntra listings' }),
 
   /* ---------- the pulse (numbers that move) ---------- */

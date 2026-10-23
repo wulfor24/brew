@@ -113,7 +113,10 @@ export function readLayer({ slug = null, profile = null, brief = null, config = 
   const banned = top.map((x) => x.replace(/\(\?:/g, '(').replace(/\\[bsdw]\*?|\\[bsdw]\+?|[\^$]/g, ' ').replace(/\[[^\]]*\]\?/g, '').replace(/\[([^\]]*)\]/g, (m, c) => (/[- ]/.test(c) ? '-' : c[0] || '')).replace(/\(([^()|]*)\|[^()]*\)\??/g, '$1').replace(/[()?*+\\]/g, '').replace(/\s+/g, ' ').trim()).flatMap((x) => x.split('|')).map((x) => x.trim()).filter((x) => x.length >= 4).slice(0, 20); /* a wrapping group (\b(cure|regrow…)\b) is left as one alternation once its inner groups fold: split it into words */
   const claims = [...(book?.proof?.claims || []).map((c) => ({ text: c.text, basis: 'on their own site or ads', from: 'read', src: c.from?.[0]?.url || null })),
     ...(brief?.claims || []).slice(0, 8).map((x) => ({ text: tidy(x.claim, 140), basis: tidy(x.basis, 80), product: x.product || null, from: 'read' }))].filter((c, i, a) => c.text && a.findIndex((y) => y.text === c.text) === i).slice(0, 12);
-  const reviews = (profile?.reviews?.quotes || []).slice(0, 8).map((q) => ({ text: tidy(q.text, 220), rating: q.rating || null, product: q.product || null, src: q.src || 'review' }));
+  /* the site's own reviews, then verified buyers on the marketplaces it sells on (the book's proof chapter, shelf.js); all quotable word for word */
+  const reviews = [...(profile?.reviews?.quotes || []).slice(0, 8).map((q) => ({ text: tidy(q.text, 220), rating: q.rating || null, product: q.product || null, src: q.src || 'review' })),
+    ...(book?.proof?.quotes || []).filter((q) => q.verified).map((q) => ({ text: tidy(q.text, 220), rating: q.rating || null, product: q.product || null, src: q.where || 'marketplace' }))]
+    .filter((q, i, a) => q.text && a.findIndex((y) => y.text === q.text) === i).slice(0, 10);
   return { name: profile?.name || brief?.name || slug, host: profile?.host || null, category: profile?.category || null, kit, styleRefs, golden, claims, never: banned, neverRe, reviews,
     personas: (brief?.personas || []).slice(0, 4).map((p) => ({ name: p.name, who: tidy(p.who, 120), job: tidy(p.job, 100) })), language: (brief?.language || []).slice(0, 10), currency: profile?.currency || null, book: book || null };
 }

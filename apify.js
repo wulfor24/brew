@@ -15,6 +15,9 @@ let sharedCache = null;
 export const setApifyCache = (c) => { sharedCache = c; };
 const ttlOf = (actor) => (/review/i.test(actor) ? 168 : +process.env.APIFY_CACHE_HOURS || 24);
 const inflight = new Map();
+/* every client's charges reach these too (server.js books them per brand in spend/<month>.json, tags prefixed apify) */
+const anyCharge = [];
+export const onAnyApifyCharge = (f) => anyCharge.push(f);
 export function createApify({ token = process.env.APIFY_TOKEN || cliToken(), log = console, fetchImpl = (...a) => fetch(...a), cache = undefined } = {}) {
   const meter = { usd: 0, runs: 0, byTag: {}, hits: 0 }, listeners = [];
   const off = process.env.APIFY_OFF === '1';
@@ -39,7 +42,7 @@ export function createApify({ token = process.env.APIFY_TOKEN || cliToken(), log
     const t = await r.text(); let j = null; try { j = JSON.parse(t || '[]'); } catch {}
     // a run that started is paid for even when it fails
     const items = Array.isArray(j) ? j : [], usd = +Math.min(maxUsd, startUsd + items.length * perItemUsd).toFixed(5);
-    meter.usd += usd; meter.runs++; meter.byTag[tag || actor] = (meter.byTag[tag || actor] || 0) + usd; listeners.forEach((f) => f(tag || actor, usd, meter));
+    meter.usd += usd; meter.runs++; meter.byTag[tag || actor] = (meter.byTag[tag || actor] || 0) + usd; listeners.forEach((f) => f(tag || actor, usd, meter)); anyCharge.forEach((f) => f(tag || actor, usd));
     if (!r.ok) throw new Error(`apify ${actor} ${r.status}: ${(j?.error?.message || t).slice(0, 200)}`);
     if (!Array.isArray(j)) throw new Error(`apify ${actor}: not a dataset`);
     return items;

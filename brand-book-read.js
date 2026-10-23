@@ -12,6 +12,8 @@
 // version, older than the read, or an error from more than an hour ago.
 import { safeFetch, stripTags, links, hostOf, UA, sha as hash, clean } from './reader/util.js';
 import { offersOf, guaranteeOf } from './reader/stages/ads.js';
+import { PLATFORMS as SHELF_PLATFORMS } from './shelf.js';
+const SHELF_KEYS = Object.keys(SHELF_PLATFORMS);
 
 export const BOOK_V = 6; // 6: the whole catalogue (products.all) for the All products page, tiers carry lo/hi; 5: 5: ratings to one decimal, a summed marketplace never shown twice; 4: // 4: a cover tagline is never a search title, one creative listed once; 3: Instagram pictures from fresh lists (signed links expire); // 2: built with the week's enrichment (posts, reels with plays, TikToks, film words) and the signature that keeps it current
 const FILE = 'brandbook-read.json';
@@ -76,7 +78,19 @@ export const taglineOk = (t) => { const x = String(t || '').trim(); return x.len
 /* a one-liner is the brand talking, not a search snippet: Shopify's short description is often written for Google ("Explore X's most
    trusted range of … online"), so those never reach the cover */
 export const oneLineOk = (t) => { const x = String(t || '').trim(); return x.length >= 8 && x.length <= 180 && !/^(buy|shop|explore|discover|order|browse|get)\b|\|| online\b|official (site|store|website)|\b(best|trusted|top)\b.*\b(range|collection|products?|brand) (of|for|in)\b/i.test(x); };
-export function freeChapters({ profile = {}, brief = {}, ledger = [], homeText = '', config = {} } = {}) {
+/* where the brand sells, from the weekly shelf reads (shelf/<platform>.json, market-pulse.js): one entry per platform it's listed on */
+export function shelfChannels(shelf = {}) {
+  return Object.entries(shelf || {}).filter(([, f]) => f?.byName && !f.error).map(([key, f]) => { const own = Object.values(f.byName).flat().filter((x) => x.own);
+    if (!own.length) return null; const prices = own.map((x) => x.price).filter(Boolean), rated = own.map((x) => x.rating).filter(Boolean);
+    return { net: key, label: f.label || key, kind: f.kind || 'marketplace', url: own[0].url || null, listed: own.length, from: prices.length ? Math.min(...prices) : null,
+      rating: rated.length ? Math.round(rated.reduce((a, b) => a + b, 0) / rated.length * 10) / 10 : null, city: f.city || null, at: String(f.at || '').slice(0, 10) || null }; }).filter(Boolean);
+}
+/* verified buyers' reviews from the marketplaces the brand is listed on: quotable word for word, like the site's own reviews */
+export function shelfQuotes(shelf = {}, n = 6) {
+  return Object.values(shelf || {}).filter((f) => f && !f.error).flatMap((f) => (f.reviews || []).filter((r) => r.text && r.text.length >= 25).map((r) => ({ text: tidy(r.text, 260), rating: r.rating || null, product: r.product || null, url: r.url || null, where: f.label || null, verified: !!r.verified, who: r.author || null })))
+    .sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0) || (b.rating || 0) - (a.rating || 0)).slice(0, n);
+}
+export function freeChapters({ profile = {}, brief = {}, ledger = [], homeText = '', config = {}, shelf = {}, traffic = null } = {}) {
   const L = (k) => ledger.find((x) => x.key === k);
   const prods = profile.catalog?.products || [], hero = new Set(profile.catalog?.hero || []), cur = profile.currency;
   const id = profile.identity || {};
@@ -103,10 +117,13 @@ export function freeChapters({ profile = {}, brief = {}, ledger = [], homeText =
     proof: { ratings: ((plats) => [...plats, ...(profile.marketplaces || []).filter((m) => !plats.some((p) => String(p.where).toLowerCase().includes(String(m.name).toLowerCase())))
         .flatMap((m) => (m.listings || []).slice(0, 1).filter((l) => l.reviews).map((l) => ({ where: m.name, count: l.reviews, rating: l.rating ? Math.round(l.rating * 10) / 10 : null, url: l.url || null })))].slice(0, 6))(
         (profile.reviews?.platforms || []).filter((p) => p.count).map((p) => ({ where: p.label || p.name, count: p.count, rating: p.rating ? Math.round(p.rating * 10) / 10 : null, url: p.url || null }))),
-      quotes: (profile.reviews?.quotes || []).slice(0, 6).map((q) => ({ text: tidy(q.text, 260), rating: q.rating || null, product: q.product || null, url: q.url || null, where: q.src || null })) },
-    channels: Object.entries(profile.socials || {}).filter(([, v]) => v?.url).map(([net, v]) => ({ net, url: v.url, handle: v.handle || null, posts: v.posts?.length || v.videos?.length || null, error: v.error || null })),
-    markets: { primary: profile.market?.primary || profile.country || null, others: profile.market?.others || [], languages: [profile.locale, config.lang].filter(Boolean), currency: cur || null, festival: config.festival?.name || config.festival || null },
-    rivals: (profile.rivals || []).slice(0, 6).map((r) => ({ name: r.name, host: r.host || null, why: tidy(r.why, 160) || null })),
+      quotes: [...(profile.reviews?.quotes || []).slice(0, 6).map((q) => ({ text: tidy(q.text, 260), rating: q.rating || null, product: q.product || null, url: q.url || null, where: q.src || null })), ...shelfQuotes(shelf, 4)].slice(0, 8) },
+    channels: [...Object.entries(profile.socials || {}).filter(([, v]) => v?.url).map(([net, v]) => ({ net, url: v.url, handle: v.handle || null, posts: v.posts?.length || v.videos?.length || null, error: v.error || null })), ...shelfChannels(shelf)],
+    markets: { primary: profile.market?.primary || profile.country || null, others: profile.market?.others || [], cities: [...new Set(Object.values(shelf || {}).map((f) => f?.city).filter(Boolean))], languages: [profile.locale, config.lang].filter(Boolean), currency: cur || null, festival: config.festival?.name || config.festival || null },
+    /* each rival with what Brew read about it: live ads and the longest-running one (as words only, never its picture), visits a month */
+    rivals: (profile.rivals || []).slice(0, 6).map((r) => { const a = (profile.ads?.rivals || []).find((x) => x.name === r.name || (r.host && x.host === r.host)) || {}, top = [...(a.items || [])].filter((x) => x.days).sort((p, q) => q.days - p.days)[0];
+      const t = (traffic?.rows || []).find((x) => x.host === r.host);
+      return { name: r.name, host: r.host || null, why: tidy(r.why, 160) || null, liveAds: a.error ? null : a.live ?? null, longestAd: top ? { days: top.days, hook: tidy(top.hook || top.body, 120) } : null, visits: t?.visits ?? null }; }),
     rules: { never: [], neverDefault: String(config.banned || '') || null }
   };
 }
@@ -225,29 +242,30 @@ async function pictures(slug, profile, library, { packs }) {
 }
 
 /* what the book is made from, as one short hash: when it changes, the book is written again */
-export function bookSig(profile = {}, brief = {}, enrich = null) {
+export function bookSig(profile = {}, brief = {}, enrich = null, shelf = null) {
   const id = profile.identity || {};
   return hash(JSON.stringify([profile.tagline, profile.descriptor, profile.about, id.logo, id.colors, id.fonts,
     (profile.ads?.own?.items || []).map((a) => [a.id, a.poster, a.video]), (profile.socials?.instagram?.posts || []).map((x) => [x.url, x.img]),
     (profile.socials?.youtube?.videos || []).map((v) => v.url), (profile.socials?.tiktok?.videos || []).map((v) => v.url),
-    profile.catalog?.hero, (profile.catalog?.products || []).length, (profile.reviews?.quotes || []).map((q) => q.text?.slice(0, 40)), brief?.at, (brief?.claims || []).length, enrich?.at || null]));
+    profile.catalog?.hero, (profile.catalog?.products || []).length, (profile.reviews?.quotes || []).map((q) => q.text?.slice(0, 40)), brief?.at, (brief?.claims || []).length, enrich?.at || null, ...(shelf ? Object.values(shelf).map((f) => f?.at || null) : [])]));
 }
 
 export function createBookReader({ packs, ai, treg = null, enricher = null, log = console, fetchText = null, now = () => Date.now() }) {
   const running = new Map(), fetch1 = fetchText || fetcherWith(treg);
   async function build(slug, { why = 'read' } = {}) {
     const P = (n, d) => packs.getJSON(slug, n, d).catch(() => d);
-    const [profile, brief, ledger, config] = await Promise.all([P('profile.json', null), P('brief.json', null), P('ledger.json', []), P('config.json', {})]);
+    const [profile, brief, ledger, config, traffic, ...sh] = await Promise.all([P('profile.json', null), P('brief.json', null), P('ledger.json', []), P('config.json', {}), P('shelf/traffic.json', null), ...SHELF_KEYS.map((k) => P(`shelf/${k}.json`, null))]);
+    const shelf = Object.fromEntries(SHELF_KEYS.map((k, i) => [k, sh[i]]).filter(([, f]) => f));
     if (!profile?.host) return { error: 'The store hasn’t been read yet.', skip: true };
     if (profile.closed) return { error: 'This store isn’t open yet, so there is nothing to build a brand book from.', skip: true };
     /* this week's fresh posts, reels, TikToks and film words (paid, capped, saved once); else what was saved last time */
     const enrich = enricher ? await enricher.run(slug).catch((e) => (log.warn?.('[book] enrich', slug, e.message), null)) : await P('enrich.json', null);
     const { pages, guides, errors } = await fetchPages(profile, { fetchText: fetch1, log });
     const home = pages.find((p) => p.home)?.text || '';
-    const free = freeChapters({ profile, brief: brief || {}, ledger: Array.isArray(ledger) ? ledger : [], homeText: home, config: config || {} });
+    const free = freeChapters({ profile, brief: brief || {}, ledger: Array.isArray(ledger) ? ledger : [], homeText: home, config: config || {}, shelf, traffic });
     const library = libraryOf(profile, { enrich });
     const E = evidenceOf({ profile, brief: brief || {}, pages, enrich });
-    const base = { v: BOOK_V, sig: bookSig(profile, brief, enrich), enrichErrors: enrich?.errors && Object.keys(enrich.errors).length ? enrich.errors : null, at: new Date(now()).toISOString(), readAt: profile.meta?.readAt || null, why, guides, pageErrors: errors, ...free, library,
+    const base = { v: BOOK_V, sig: bookSig(profile, brief, enrich, shelf), enrichErrors: enrich?.errors && Object.keys(enrich.errors).length ? enrich.errors : null, at: new Date(now()).toISOString(), readAt: profile.meta?.readAt || null, why, guides, pageErrors: errors, ...free, library,
       evidence: E.map(({ id, kind, src, text }) => ({ id, kind, url: src, text: tidy(text, 240) })) };
     if (!ai?.call) return { ...base, error: 'The AI is off on this server, so the voice, story and look weren’t written.' };
     const pics = await pictures(slug, profile, library, { packs });
@@ -284,7 +302,8 @@ export function createBookReader({ packs, ai, treg = null, enricher = null, log 
     if (p.meta?.readAt && b.readAt !== p.meta.readAt) return true;
     const age = now() - Date.parse(b.at || 0);
     if (b.error) return age > 36e5;
-    return (b.sig !== bookSig(p, br, en) && age > 6 * 36e5) || age > 7 * 864e5; /* weekly at least: the enrichment refreshes on the same beat */
+    const sh = Object.fromEntries((await Promise.all(SHELF_KEYS.map((k) => packs.getJSON(slug, `shelf/${k}.json`, null).catch(() => null)))).map((f, i) => [SHELF_KEYS[i], f]).filter(([, f]) => f));
+    return (b.sig !== bookSig(p, br, en, sh) && age > 6 * 36e5) || age > 7 * 864e5; /* weekly at least: the enrichment refreshes on the same beat */
   }
   async function ensure(slug, opts = {}) {
     if (running.has(slug)) return running.get(slug);

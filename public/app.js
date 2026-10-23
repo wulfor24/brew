@@ -632,6 +632,7 @@
       <section class="ck2-card"><h2>Who you compete with</h2><div class="ck2-rivals" id="ck2-rivals">${D.rivals.length ? D.rivals.map(rivalTile).join('') : '<p class="ck2-empty">No rivals yet. Add the brands you lose sales to.</p>'}</div>
         <form class="ck2-add" data-add="rival"><input placeholder="Paste a rival’s website, e.g. rivalbrand.com" inputmode="url"><button class="btn btn-ghost sm">Add rival</button></form></section>
       <section class="ck2-card"><h2>Where you show up</h2><div class="ck2-srcs">${D.sources.map(sourceRow).join('')}</div></section>
+      ${(D.sells || []).length ? `<section class="ck2-card"><h2>Where you sell</h2><p class="q-note">Brew checks your prices, stock and reviews here every week, next to your rivals’.</p><div class="ck2-srcs">${D.sells.map((x) => `<div class="ck2-s${x.found ? '' : ' is-miss'}"><div><span>${esc(x.label)}</span><b>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.v)}</a>` : esc(x.v)}</b></div></div>`).join('')}</div></section>` : ''}
       ${D.company.length ? `<details class="q-more ck2-co"><summary>Company details (optional)</summary><div class="ck2-grid">${D.company.map((x) => field(x, 'company')).join('')}</div></details>` : ''}
       <p class="q-note">Anything without a source is written as “to confirm”.</p>
       <p class="q-note">${OWN_LINE}</p>
@@ -1371,7 +1372,7 @@
     if (sv) sv.textContent = S.saved.length || ''; if (wk) { const n = WORK.items.filter(needsMe).length; wk.textContent = n || ''; wk.classList.toggle('hot', !!n); }
     $$('[data-count="bell"]').forEach((b) => { b.textContent = WORK.unread || ''; b.classList.toggle('hot', !!WORK.unread); });
     const vb = $('[data-viewing]'); if (vb) vb.innerHTML = `${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}`;
-    $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes', 'refs'].includes(view) ? 'saved' : ['move', 'moves', 'brand'].includes(view) ? 'learned' : view)));
+    $$('.rail [data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === (['jams', 'remixes', 'refs'].includes(view) ? 'saved' : ['move', 'moves', 'brand', 'watch'].includes(view) ? 'learned' : view)));
     { const tp = $('[data-team-pill]'), wt = WORK.withTeam || { n: 0 }, n = wt.n || 0; if (tp) { tp.hidden = !n; tp.querySelector('[data-count="team"]').innerHTML = tp.classList.contains('j1-pill') ? `<b>${n}</b><span class="j1-more">&nbsp;with the team</span>` : `${n} with the team`; tp.classList.toggle('is-ask', !!wt.needsInfo); } }
     paintTiles(); paintTabbar();
   };
@@ -1966,7 +1967,7 @@
      so the browser's Back and ours walk the same path. route() makes the screen match the URL. */
   const nav = (hash, push, a, v = view) => { const st = { a, v }; hash = typeof hash === 'string' && hash.startsWith('#') ? location.pathname + hash : hash; if (push) history.pushState(st, '', hash); else history.replaceState(st, '', hash); };
   const VIEWS = () => { const v = VIEWS0(); v.tune = renderTune; return v; };
-  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), refs: (f) => renderReferences(f !== false), done: renderWork, work: renderWork, connectors: renderConnectors, learned: renderLearned, brand: () => renderBrand(), heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
+  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), refs: (f) => renderReferences(f !== false), done: renderWork, work: renderWork, connectors: renderConnectors, learned: renderLearned, brand: () => renderBrand(), watch: () => renderWatch(), heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
   const route = () => {
     const hp = hashParams(), rm = location.hash.match(/^#remix=([^/&]+)(?:\/([^&]+))?/);
     if (rm) { const p = byId(decodeURIComponent(rm[1]));
@@ -5220,10 +5221,10 @@
         toldRows.length && t('data-lx-jump="lx-told"', toldRows.length, 'Team notes', 'Calls, notes and emails'),
         learnedN && t('data-lx-jump="lx-lessons"', learnedN, 'Lessons', 'From what you ship'),
         L.rules.length && t('data-lx-jump="lx-rules"', L.rules.length, L.rules.length === 1 ? 'Rule' : 'Rules', 'Every agent follows'),
-        ppl && t('data-hd-open', ppl.toLocaleString(), 'Things people said', srcs.slice(0, 2).map((x) => x.name).join(', '))].filter(Boolean);
+        ppl && t('data-nav="watch"', ppl.toLocaleString(), 'Things people said', srcs.length > 2 ? `${srcs.slice(0, 2).map((x) => x.name).join(', ')} +${srcs.length - 2} more` : srcs.map((x) => x.name).join(', '))].filter(Boolean);
       return tiles.length ? `<div class="lx-ov">${tiles.join('')}</div>` : ''; };
     libShell('What Brew learned', 'From what you pick, edit and ship, and anything you drop on this page. Edit, pause or forget any of it.',
-      `<div class="lx" data-m2-drop>${lxBook() + lxDropBig() + lxOverview()}
+      `<div class="lx" data-m2-drop>${lxBook() + lxWatch(heard) + lxDropBig() + lxOverview()}
         ${mvBuilding ? movesHtml : ''}
         
         ${toldHtml}
@@ -5255,6 +5256,16 @@
     if (!window.BrandBook) { $('#bbk').innerHTML = '<p class="lx-empty">The Brand Book didn’t load. Reload the page.</p>'; return; }
     window.BrandBook.render($('#bbk'), { slug: mvSlug(), api: tapi, toast, back: { nav: 'learned', label: 'What Brew learned' } });
   };
+  /* What Brew watches for you (watch.js): everything read from outside, in the brand's own colours, the Brand Book's toys */
+  const renderWatch = () => {
+    view = 'watch'; counts(); document.body.classList.remove('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
+    $('#view').innerHTML = '<div class="bb-host" id="wxk"></div>';
+    if (!window.BrandWatch) { $('#wxk').innerHTML = '<p class="lx-empty">This page didn’t load. Reload the page.</p>'; return; }
+    window.BrandWatch.render($('#wxk'), { slug: mvSlug(), api: tapi, toast, openHeard, back: { label: 'What Brew learned', go: () => { nav('#v=learned', true, 'view', 'learned'); renderLearned(); } } });
+  };
+  /* its entry on What Brew learned, under the Brand Book: the places it reads, as a small stack of marks */
+  const lxWatch = (heard) => { const ps = (heard?.sources || []).map((x) => (typeof x === 'string' ? { id: x, name: x } : x)).slice(0, 4);
+    return `<button class="lx-watch" data-nav="watch"><span class="lx-watch-ic">${ps.length ? ps.map((x) => srcMark(x.id, x.name)).join('') : ic('search')}</span><span><b>What Brew watches for you</b><span>What people say, where you sell, what rivals do and how AI answers name you, read every day.</span></span>${ic('right', 's16')}</button>`; };
   /* ui=1: the big drop box on What Brew learned (the whole page still takes a drop) */
   /* the Brand Book sits at the top of what Brew learned: the brand's voice, look and own best work, in one place (brand-book.js) */
   const lxBook = () => `<button class="lx-book" data-nav="brand"><span class="lx-book-ic">${ic('palette')}</span><span><b>Brand Book</b><span>Your voice, words, look and best work in one place. Every ad, post and email Brew makes follows it. Add your own guidelines there.</span></span>${ic('right', 's16')}</button>`;

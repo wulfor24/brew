@@ -774,6 +774,17 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const patch = { checkOpenAt: Date.now() }; if (!(+s.writeAt > 0) && !(await anonOf(slug))) patch.writeAt = confirmDueAt({ ...s, ...patch }); /* a time already shown never moves */
     await setStatus(slug, patch);
   }
+  const SELL_LABEL = { amazon: 'Amazon', flipkart: 'Flipkart', myntra: 'Myntra', nykaa: 'Nykaa', walmart: 'Walmart', meesho: 'Meesho', blinkit: 'Blinkit', zepto: 'Zepto', instamart: 'Instamart' };
+  async function sellsOf(slug, p) {
+    const out = new Map();
+    for (const m of p.marketplaces || []) { const id = String(m.name || '').split('.')[0].toLowerCase(); if (out.has(id)) continue; const ls = m.listings || [];
+      out.set(id, { key: id, label: SELL_LABEL[id] || m.name, v: m.error ? 'Couldn’t check this time' : ls.length ? `${ls.length} listing${ls.length === 1 ? '' : 's'}${ls[0]?.rating ? ` · ★ ${ls[0].rating}` : ''}` : 'Not listed', url: ls[0]?.url || null, found: !!ls.length }); }
+    for (const k of ['nykaa', 'flipkart', 'myntra', 'blinkit', 'zepto', 'instamart']) { const f = await packs.getJSON(slug, `shelf/${k}.json`, null).catch(() => null); if (!f) continue;
+      const own = Object.values(f.byName || f.last?.byName || {}).flat().filter((x) => x.own), city = f.city ? ` in ${f.city}` : '';
+      if (f.error && !own.length) { if (!out.has(k)) out.set(k, { key: k, label: SELL_LABEL[k], v: 'Couldn’t check this time', url: null, found: false }); continue; }
+      out.set(k, { key: k, label: SELL_LABEL[k], v: own.length ? `${own.length} listed${city}${own.some((x) => x.inStock === false) ? `, ${own.filter((x) => x.inStock === false).length} out of stock` : ''}` : `Not listed${city}`, url: own[0]?.url || null, found: own.length > 0 }); }
+    return [...out.values()].sort((a, b) => (b.found ? 1 : 0) - (a.found ? 1 : 0));
+  }
   async function checkData(slug, { heal: doHeal = true, opened = false } = {}) {
     if (doHeal) heal(slug).catch(() => {});
     if (opened) await checkOpened(slug).catch((e) => log.warn?.('[check] opened', slug, e.message));
@@ -807,6 +818,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         { key: 'instagram', label: 'Instagram', v: ig?.handle ? '@' + ig.handle : ig?.error || p.meta?.errors?.socials ? 'Couldn’t check this time' : 'Not found', /* a failed socials stage is not "Not found" */ url: ig?.url || null, hint: 'Paste your Instagram profile link', found: !!ig?.handle },
         { key: 'reviews', label: 'Reviews and ratings', v: reviewsCap(N)?.replace(/\.$/, '') || (N.reviews.n != null ? `${N.reviews.n.toLocaleString('en-IN')} reviews and ratings` : N.reviews.error ? 'Couldn’t check this time' : 'No reviews found') /* N.reviews.error carries a failed or timed-out reviews stage (pack-numbers.js) */, url: (rv.platforms || [])[0]?.url || null, hint: 'Paste the page where your reviews live (Judge.me, Loox, Amazon…)', found: N.reviews.n != null }
       ],
+      /* where the brand sells outside its site: the read's marketplace listings and the weekly shelves (shelf.js), each linked; a platform
+         that couldn't be read says so, a platform read with no listing says "Not listed", nothing read yet is left out */
+      sells: await sellsOf(slug, p),
       company: [
         { key: 'founders', label: 'Founders', v: (p.company?.founders || []).map((x) => (typeof x === 'string' ? x : x?.name)).filter(Boolean).join(', '), type: 'text', ...srcOf(L, ['company.founders', 'company.founder']) },
         { key: 'founded', label: 'Founded', v: String((typeof p.company?.founded === 'object' ? p.company?.founded?.v : p.company?.founded) || ''), type: 'text', ...srcOf(L, ['company.founded']) }

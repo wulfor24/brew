@@ -1,0 +1,133 @@
+/* What Brew watches for you (watch.js). It wears the brand the way the Brand Book does (the --bb-* tokens are set from the brand's
+   kit) and reuses the book's toys: the poster cover, stamps, stickers, notes, price tags, passport stamps and trading cards. */
+/* defaults on the host: watch.js sets the brand's own values inline on the same element, which wins */
+.bb-host:has(> .wx) { --bb-1: #1d1d1f; --bb-2: #1d1d1f; --bb-on: #fff; --bb-ink: #141414; --bb-on-ink: #fff; --bb-paper: #f6f3ee; --bb-head: Georgia, serif; --bb-body: var(--font); }
+.wx { max-width: 1180px; margin: 0 auto; padding: 0 16px 96px; color: var(--fg); font: 15px/1.55 var(--font); }
+.wx-loading { display: grid; place-items: center; min-height: 40vh; }
+.wx-empty { color: var(--fg-2); text-align: center; padding: 60px 0; }
+
+/* cover */
+.wx-cover { position: relative; background: var(--bb-1); color: var(--bb-on); border-radius: 32px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); min-height: 380px; }
+.wx-cover::before { content: ""; position: absolute; inset: -30% auto auto -15%; width: 70%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, color-mix(in oklab, var(--bb-2) 70%, transparent), transparent 70%); opacity: .6; }
+.wx-cover > *, .wx-shelves > *, .wx-cards > *, .wx-wall > * { min-width: 0; }
+.wx-cover-in { position: relative; z-index: 2; padding: clamp(26px, 5vw, 60px); align-self: end; }
+.wx-cover h1 { font: 800 clamp(34px, 5.4vw, 76px)/.98 var(--bb-head); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.wx-count { margin: 18px 0 0; font: 400 clamp(15px, 1.6vw, 19px)/1.5 var(--bb-body); }
+.wx-count b { font: 800 1.35em var(--bb-head); }
+.wx-count i { font-style: normal; opacity: .5; margin: 0 10px; }
+.wx-stickers { position: relative; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 14px; padding: 28px; z-index: 1; }
+.wx-sticker { display: grid; justify-items: center; gap: 6px; padding: 12px 14px 8px; background: #fff; color: #141414; border-radius: 18px; box-shadow: 0 14px 30px rgba(0,0,0,.25); transform: rotate(var(--t)); animation: wxPop .5s cubic-bezier(.2,.9,.3,1.3); animation-delay: calc(var(--i) * 60ms); }
+/* entrance motion never hides anything: it only scales from smaller, so a paused or reduced animation still shows the sticker */
+@keyframes wxPop { from { transform: rotate(calc(var(--t) * 3)) scale(.7); } }
+.wx-sticker small { font: 700 11px var(--font); }
+.wx-st-img { width: 34px; height: 34px; border-radius: 8px; object-fit: contain; }
+.wx-logo { width: 26px; height: 26px; border-radius: 7px; object-fit: contain; background: #fff; flex: none; }
+.wx-logo.is-txt, .wx-st-img.is-txt { display: grid; place-items: center; background: var(--bb-2); color: #fff; font: 800 13px var(--font); }
+
+/* spreads: paper, their colour, ink, in turn */
+.wx-sp { margin-top: 18px; border-radius: 28px; padding: clamp(22px, 4vw, 44px); }
+.wx-sp.is-paper { background: var(--bb-paper); color: #141414; }
+.wx-sp.is-color { background: color-mix(in oklab, var(--bb-1) 14%, var(--bb-paper)); color: #141414; }
+.wx-sp.is-ink { background: var(--bb-ink); color: var(--bb-on-ink); }
+.wx-sp-h { margin-bottom: 20px; }
+.wx-k { display: inline-block; font: 700 12px var(--font); letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+.wx-sp h2 { font: 800 clamp(26px, 3.4vw, 44px)/1.05 var(--bb-head); margin: 6px 0 6px; letter-spacing: -.015em; }
+.wx-sub { margin: 0; opacity: .75; font-size: 14px; }
+
+/* what people say: stamps, tabs, a wall of notes, polaroids */
+.wx-stamps { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 22px; }
+.wx-stamp { appearance: none; cursor: pointer; font: 800 14px var(--bb-head); padding: 9px 16px; border: 3px solid var(--bb-1); color: var(--bb-1); border-radius: 999px; background: transparent; transform: rotate(var(--t)); display: inline-flex; gap: 8px; align-items: center; }
+.wx-stamp b { font: 800 12px var(--font); background: var(--bb-1); color: var(--bb-on); border-radius: 999px; padding: 2px 8px; }
+.wx-stamp.is-new { animation: bbStampIn .45s cubic-bezier(.2,.9,.3,1.4) both; }
+@keyframes bbStampIn { from { transform: rotate(var(--t)) scale(1.6); } }
+.wx-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(0,0,0,.06); margin-bottom: 18px; }
+.wx-tabs button { appearance: none; border: 0; background: none; padding: 7px 14px; border-radius: 999px; font: 600 13px var(--font); color: inherit; cursor: pointer; }
+.wx-tabs button[aria-selected="true"] { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.wx-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
+.wx-note { margin: 0; background: #fff8c6; color: #2a2610; padding: 18px 18px 14px; border-radius: 4px 4px 14px 4px; box-shadow: 0 10px 22px rgba(0,0,0,.12); transform: rotate(var(--t)); transition: transform .2s; display: grid; gap: 10px; }
+.wx-note:hover { transform: rotate(0) translateY(-3px); }
+.wx-note.is-neg { background: #ffe1dc; } .wx-note.is-pos { background: #def6df; }
+.wx-note a { color: inherit; text-decoration: none; }
+.wx-note blockquote { margin: 0; font: 500 15px/1.45 var(--bb-body); }
+.wx-note figcaption { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; opacity: .75; }
+.wx-note.is-small blockquote { font-size: 13px; }
+.wx-stars { color: #b7791f; font-weight: 700; }
+.wx-sub-h { display: grid; gap: 2px; margin: 26px 0 12px; } .wx-sub-h span { font-size: 13px; opacity: .7; }
+.wx-polaroids { display: flex; flex-wrap: wrap; gap: 16px; }
+.wx-pol { display: grid; gap: 6px; width: 132px; padding: 8px 8px 10px; background: #fff; border-radius: 6px; box-shadow: 0 10px 24px rgba(0,0,0,.15); transform: rotate(var(--t)); text-decoration: none; color: #141414; font: 600 12px var(--font); }
+.wx-pol img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 3px; background: #eee; }
+.wx-say > .bb-btn { margin-top: 22px; }
+
+/* where you sell: shelves, packs, price tags, passport stamps */
+.wx-shelves { display: grid; gap: 18px; }
+.wx-shelf { background: #fff; border-radius: 22px; padding: 18px; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+.wx-shelf.is-err { opacity: .8; }
+.wx-shelf-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.wx-shelf-h b { font: 800 18px var(--bb-head); }
+.wx-shelf-h small { margin-left: auto; color: #6b6b6b; font-size: 12px; }
+.wx-passport { font: 800 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--bb-1); border: 2px dashed var(--bb-1); padding: 3px 9px; border-radius: 8px; transform: rotate(-4deg); }
+.wx-shelf-row { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 22px; border-bottom: 10px solid color-mix(in oklab, var(--bb-1) 35%, #d9cbb5); border-radius: 0 0 6px 6px; scrollbar-width: thin; }
+.wx-pack { position: relative; flex: none; width: 128px; display: grid; gap: 6px; }
+.wx-pack img { width: 128px; height: 128px; object-fit: contain; background: #f6f6f4; border-radius: 12px; }
+.wx-pack-n { display: grid; place-items: center; width: 128px; height: 128px; padding: 10px; text-align: center; background: color-mix(in oklab, var(--bb-1) 10%, #fff); border-radius: 12px; font: 700 12px var(--font); }
+.wx-pack small { font-size: 11.5px; line-height: 1.3; color: #555; }
+.wx-pack a { color: inherit; text-decoration: none; }
+.wx-pack.is-out img { filter: grayscale(1); opacity: .6; }
+.wx-tag { justify-self: start; display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 10px 4px 16px; background: var(--bb-2); color: #fff; font-size: 12px; border-radius: 4px 10px 10px 4px; clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%); transform: rotate(-2deg); }
+.wx-tag b { font: 800 14px var(--font); } .wx-tag s { opacity: .7; } .wx-tag .wx-stars { color: #ffe08a; }
+.wx-oos { --t: -14deg; position: absolute; top: 38px; left: 6px; font: 900 13px var(--font); color: #c0362c; border: 3px solid #c0362c; padding: 2px 8px; border-radius: 6px; transform: rotate(var(--t)); background: rgba(255,255,255,.85); animation: bbStampIn .4s; }
+.wx-eta { position: absolute; top: 6px; right: 6px; font: 800 10.5px var(--font); background: #141414; color: #fff; padding: 2px 6px; border-radius: 999px; }
+.wx-none { margin: 4px 0 12px; color: #555; }
+.wx-rv { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
+.wx-rv li { display: flex; gap: 10px; flex-wrap: wrap; } .wx-rv span { color: #555; } .wx-rv em { color: #c0362c; font-style: normal; font-weight: 700; }
+.wx-changes { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.wx-change { font: 700 12.5px var(--font); background: #141414; color: #fff; padding: 6px 12px; border-radius: 10px; transform: rotate(var(--t)); animation: bbStampIn .45s; }
+.wx-mini-notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 16px; }
+
+/* what rivals do: trading cards that flip */
+.wx-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+.wx-card { perspective: 900px; transform: rotate(var(--t)); }
+.wx-card-in { appearance: none; border: 0; padding: 0; width: 100%; min-height: 250px; position: relative; display: block; background: none; cursor: pointer; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.2,.8,.2,1); text-align: left; font: inherit; color: #141414; }
+.wx-card.is-flipped .wx-card-in { transform: rotateY(180deg); }
+.wx-face, .wx-back { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 20px; padding: 18px; background: #fff; box-shadow: 0 18px 40px rgba(0,0,0,.3); display: grid; align-content: start; gap: 12px; border: 6px solid var(--bb-2); }
+.wx-back { transform: rotateY(180deg); background: var(--bb-paper); overflow: auto; }
+.wx-face header { display: flex; gap: 10px; align-items: center; } .wx-face header b { font: 800 19px var(--bb-head); }
+.wx-face dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wx-face dt { font-size: 11px; color: #666; } .wx-face dd { margin: 0; font: 800 22px var(--bb-head); } .wx-face dd.wx-q { font: 600 13px var(--font); color: #888; }
+.wx-badge { justify-self: start; font: 800 12px var(--font); background: var(--bb-1); color: var(--bb-on); padding: 6px 11px; border-radius: 999px; transform: rotate(var(--t)); }
+.wx-turn { align-self: end; color: #888; font-size: 11.5px; }
+.wx-back p { margin: 0; display: grid; gap: 3px; } .wx-back b { font-size: 13px; } .wx-back span { font-size: 12.5px; color: #444; }
+
+/* how you show up: the race and the chat */
+.wx-race { display: grid; gap: 8px; margin-bottom: 22px; }
+.wx-lane { display: grid; grid-template-columns: minmax(90px, 160px) 1fr 34px; gap: 10px; align-items: center; font-size: 13.5px; }
+.wx-lane i { display: block; height: 14px; width: var(--w); border-radius: 999px; background: #c9c4bb; transition: width .6s; }
+.wx-lane.is-you span { font-weight: 800; } .wx-lane.is-you i { background: var(--bb-1); }
+.wx-chat { display: grid; gap: 10px; max-width: 720px; }
+.wx-q-b { justify-self: end; max-width: 80%; background: var(--bb-1); color: var(--bb-on); padding: 10px 14px; border-radius: 18px 18px 4px 18px; font-weight: 600; }
+.wx-a-b { justify-self: start; max-width: 92%; background: #fff; padding: 12px 16px; border-radius: 18px 18px 18px 4px; box-shadow: 0 6px 16px rgba(0,0,0,.08); }
+.wx-a-b small { color: #888; font-size: 11px; } .wx-a-b p { margin: 4px 0 0; font-size: 14px; }
+.wx-a-b mark { background: #ece8e0; color: inherit; padding: 0 3px; border-radius: 4px; } .wx-a-b mark.is-you { background: var(--bb-1); color: var(--bb-on); }
+
+/* couldn't read: a torn note */
+.wx-torn { margin-top: 18px; padding: 16px 20px; background: #fff; color: #333; font-size: 14px; border-radius: 4px; box-shadow: 0 6px 16px rgba(0,0,0,.08);
+  clip-path: polygon(0 4%, 6% 0, 13% 5%, 21% 1%, 29% 5%, 38% 0, 47% 4%, 56% 0, 64% 5%, 73% 1%, 82% 5%, 91% 0, 100% 4%, 100% 100%, 0 100%); }
+.wx-more { margin-top: 16px; } .wx-more > summary { cursor: pointer; font: 600 14px var(--font); padding: 8px 0; }
+.wx-foot { color: var(--fg-3); font-size: 13px; text-align: center; margin-top: 28px; }
+
+/* the entry on What Brew learned */
+.lx-watch { appearance: none; width: 100%; display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px 18px; margin: 0 0 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
+.lx-watch:hover { border-color: var(--fg-3); }
+.lx-watch > span:nth-child(2) { flex: 1; display: grid; gap: 2px; } .lx-watch b { font-size: 15px; } .lx-watch > span:nth-child(2) > span { color: var(--fg-2); font-size: 13px; }
+.lx-watch-ic { display: flex; } .lx-watch-ic img { width: 22px; height: 22px; border-radius: 6px; background: #fff; box-shadow: 0 0 0 2px var(--card); } .lx-watch-ic img + img { margin-left: -8px; }
+
+@media (max-width: 760px) {
+  .wx-cover { grid-template-columns: 1fr; min-height: 0; }
+  .wx-stickers { justify-content: flex-start; padding: 0 22px 26px; gap: 10px; }
+  .wx-sticker { padding: 8px 10px 6px; } .wx-st-img { width: 26px; height: 26px; }
+  .wx-sp { border-radius: 22px; }
+  .wx-pack, .wx-pack img, .wx-pack-n { width: 108px; } .wx-pack img, .wx-pack-n { height: 108px; }
+  .wx-lane { grid-template-columns: 96px 1fr 28px; }
+}
+@media (prefers-reduced-motion: reduce) { .wx * { animation: none !important; transition: none !important; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .wx-shelf { background: #fbfaf7; } }

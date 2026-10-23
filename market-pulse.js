@@ -6,6 +6,7 @@
 // Every treg call is tagged pulse-<slug> (the spend ledger books it to the brand).
 import fs from 'node:fs';
 import path from 'node:path';
+import { createShelf, PLATFORMS } from './shelf.js';
 
 const DAY = 864e5;
 const EVERY = { daily: 0.8 * DAY, weekly: 6.5 * DAY, monthly: 29 * DAY, quarterly: 89 * DAY };
@@ -28,7 +29,8 @@ const firstArr = (j, d = 0) => { if (!j || typeof j !== 'object' || d > 5) retur
 const deepKey = (j, k, d = 0) => { if (!j || typeof j !== 'object' || d > 6) return undefined; if (k in j && !Array.isArray(j)) return j[k]; for (const v of Object.values(j)) { const r = deepKey(v, k, d + 1); if (r !== undefined) return r; } return undefined; };
 async function pool(xs, n, f) { const out = []; let i = 0; await Promise.all(Array.from({ length: Math.min(n, xs.length) }, async () => { while (i < xs.length) { const k = i++; out[k] = await f(xs[k], k); } })); return out; }
 
-export function createPulse({ slug, packs, treg, ai, log = console, now = () => new Date() }) {
+export function createPulse({ slug, packs, treg, ai, apify = null, log = console, now = () => new Date() }) {
+  const shelf = apify ? createShelf({ slug, packs, apify, log, now }) : null;
   const tag = `pulse-${slug}`;
   const aiCall = ai ? (typeof ai === 'function' ? ai : ai.call?.bind(ai)) : null;
   const call = (id, o) => treg.call(id, { ...o, tag });
@@ -48,7 +50,7 @@ export function createPulse({ slug, packs, treg, ai, log = console, now = () => 
     const terms = [...new Set([...(l.terms?.category || []), ...(c.terms || []).flat(), ...(c.rising || [])].map((t) => String(t).replace(/"/g, '').trim().toLowerCase()).filter(Boolean))].slice(0, 12);
     const themeNames = (themes?.themes || []).slice(0, 10).map((t) => t.name).filter(Boolean);
     const products = (p.catalog?.products || []).filter((x) => !x.pack);
-    return { name: p.name || l.name || c.name || slug, host: (p.host || l.host || '').replace(/^www\./, ''), country, market, loc: c.locationCode || LOC[country] || 2840, currency: p.currency || c.currency || '',
+    return { name: p.name || l.name || c.name || slug, brandName: p.brandName || null, host: (p.host || l.host || '').replace(/^www\./, ''), country, market, loc: c.locationCode || LOC[country] || 2840, currency: p.currency || c.currency || '',
       category: [p.category, p.subcategory].filter(Boolean).join(' / ') || l.category || noun, noun, terms, themes: themeNames, rivals, products, heroes: products.slice(0, 3),
       instagram: p.socials?.instagram?.handle || l.instagram || null, cities: market ? c.cities || CITIES[market] || [] : [], questions: [...(c.questions || []).map((q) => q.q || q), ...(p.ai?.questions || [])], sourced: (c.questions || []).filter((q) => q?.why && q.q), asins: c.asins || p.asins || [], bestSellersUrl: c.amazonBestSellersUrl || null };
   }
@@ -240,6 +242,50 @@ export function createPulse({ slug, packs, treg, ai, log = console, now = () => 
     await pool(b.cities.slice(0, 3), 3, async ([place, lat, lon]) => { const rows = (await call('crawl4ai.weather.forecast.daily', { body: { days: 7, latitude: String(lat), longitude: String(lon), place } }))?.rows || []; if (!rows.length) return;
       L({ key: `weather.${kslug(place)}`, label: `${place}: hottest day in the next 7`, value: Math.max(...rows.map((r) => r.temp_max ?? -99)), unit: '°C', low: Math.min(...rows.map((r) => r.temp_min ?? 99)), rainDays: rows.filter((r) => (r.precipitation_chance ?? 0) >= 50 || (r.precipitation_mm ?? 0) >= 2).length,
         days: rows.map((r) => ({ d: r.date, hi: r.temp_max, lo: r.temp_min, rain: r.precipitation_chance, w: r.weather })), source: 'Weather forecast (Open-Meteo)', family: 'weather' }); });
+  } };
+
+  // where the brand sells (Apify, shelf.js): quick-commerce shelves by city and marketplaces, for the brand and its rivals. Each
+  // platform's result is kept in shelf/<platform>.json (the last two reads), so a new out-of-stock or a 10%+ price move shows as a change.
+  // A platform that could not be read keeps its error and its last good read; "not listed" is said only when the read worked.
+  const SHELF_AREA = { Bengaluru: 'Koramangala, Bengaluru', Mumbai: 'Bandra West, Mumbai', Delhi: 'Connaught Place, New Delhi' };
+  const whoOf = (b) => [{ name: b.brandName || b.name, own: true }, ...b.rivals.map((r) => ({ name: r.name }))].filter((w) => w.name);
+  async function readPlatform(key, b, L, note, city) {
+    const P = PLATFORMS[key], file = `shelf/${key}.json`, prev = await packs.getJSON(slug, file, null).catch(() => null);
+    let r; try { r = await shelf.platform(key, whoOf(b), { city }); }
+    catch (e) { await packs.put(slug, file, { ...(prev || {}), platform: key, label: P.label, kind: P.kind, error: String(e.message).slice(0, 240), errorAt: now().toISOString() }); note(`${P.label}: ${String(e.message).slice(0, 160)}`); return; }
+    const last = prev?.byName ? { at: prev.at, byName: prev.byName } : prev?.last || null, changes = [];
+    const key2 = (x) => String(x.id || x.url || x.name);
+    for (const [who, xs] of Object.entries(r.byName)) { const before = new Map((last?.byName?.[who] || []).map((x) => [key2(x), x]));
+      for (const x of xs) { const o = before.get(key2(x)); if (!o) continue;
+        if (o.inStock !== false && x.inStock === false) changes.push({ kind: 'stock', who, own: x.own, name: x.name, url: x.url, platform: key });
+        if (o.price && x.price && Math.abs(x.price - o.price) / o.price >= 0.1) changes.push({ kind: 'price', who, own: x.own, name: x.name, url: x.url, from: o.price, to: x.price, platform: key }); } }
+    await packs.put(slug, file, { ...r, last, changes, error: null });
+    const label = P.label + (r.city ? ` (${r.city})` : '');
+    for (const [who, xs] of Object.entries(r.byName)) { const own = who === whoOf(b)[0].name;
+      L({ key: `shelf.${key}.${kslug(who)}`, label: `${who} on ${label}: products listed`, value: xs.length, unit: 'products', inStock: xs.filter((x) => x.inStock !== false).length, minPrice: Math.min(...xs.map((x) => x.price).filter(Boolean)) || null,
+        rating: xs.length ? +(xs.map((x) => x.rating).filter(Boolean).reduce((a, v, _, a2) => a + v / a2.length, 0)).toFixed(1) || null : null, items: xs.slice(0, 6).map((x) => `${x.name}: ${x.price ?? '?'}${x.inStock === false ? ' (out of stock)' : ''}`),
+        subject: who, own, source: label, url: xs[0]?.url || P.home, family: P.kind === 'shelf' ? 'price-offer' : 'listening' }); }
+    if (changes.length) L({ key: `shelf.${key}.changes`, label: `${label}: changes since the last read`, value: changes.length, unit: 'changes', items: changes.slice(0, 8).map((c) => c.kind === 'stock' ? `${c.who}: ${c.name} went out of stock` : `${c.who}: ${c.name} ${c.from} → ${c.to}`), changes, source: label, url: P.home, family: 'price-offer' });
+  }
+  S.shelf = { cadence: 'weekly', family: 'price-offer', async run(b, L, note) {
+    if (!shelf) return note('Quick-commerce shelves not read: no Apify client');
+    if (b.market !== 'IN') return note(b.market ? `Quick-commerce shelves are read for India; ${b.market} is not covered yet` : 'Quick-commerce shelves not read: your selling market is not confirmed yet');
+    const city = (b.cities || []).map(([n]) => n).find((n) => SHELF_AREA[n]) || 'Bengaluru';
+    for (const key of ['blinkit', 'zepto', 'instamart']) await readPlatform(key, b, L, note, { name: city, area: SHELF_AREA[city] });
+  } };
+  S.marketplace = { cadence: 'weekly', family: 'listening', async run(b, L, note) {
+    if (!shelf) return note('Marketplaces not read: no Apify client');
+    if (b.market !== 'IN') return note(b.market ? `Nykaa, Flipkart and Myntra are Indian marketplaces; Amazon is read for ${b.market}` : 'Marketplaces not read: your selling market is not confirmed yet');
+    for (const key of ['nykaa', 'flipkart', 'myntra']) await readPlatform(key, b, L, note, null);
+  } };
+  // web traffic (Similarweb estimates), the brand and its rivals, monthly
+  S.traffic = { cadence: 'monthly', family: 'research', async run(b, L, note) {
+    if (!shelf) return note('Web traffic not read: no Apify client');
+    const hosts = [b.host, ...b.rivals.map((r) => r.host)].filter(Boolean).slice(0, 6); if (!hosts.length) return note('Web traffic: no sites to read');
+    const r = await shelf.traffic(hosts); await packs.put(slug, 'shelf/traffic.json', r);
+    for (const x of r.rows) { const own = x.host === b.host, who = own ? b.name : (b.rivals.find((v) => v.host === x.host)?.name || x.host);
+      if (x.visits == null) { note(`${x.host}: Similarweb has no estimate`); continue; }
+      L({ key: `traffic.visits.${kslug(x.host)}`, label: `${who}: visits a month (Similarweb estimate)`, value: x.visits, unit: 'visits', months: x.months, sources: x.sources, subject: x.host, own, source: 'Similarweb', url: `https://www.similarweb.com/website/${x.host}/`, family: 'research' }); }
   } };
 
   /* ---------- run ---------- */

@@ -42,6 +42,7 @@ export const SOURCES = {
   pinterest: { name: 'Pinterest', how: 'Pins about the brand and the category', paid: true },
   telegram: { name: 'Telegram', how: "Messages in the brand's known Telegram channels", paid: true },
   facebook: { name: 'Facebook comments', how: "Comments on the brand's and rivals' Facebook posts", paid: true },
+  igtag: { name: 'Instagram posts that tag you', how: 'Public Instagram posts and reels by customers and creators that tag or @mention the brand', paid: true },
   trustpilot: { name: 'Trustpilot reviews', how: 'Trustpilot reviews of the brand and its rivals', paid: true },
   google: { name: 'Google reviews', how: "Google Maps reviews of the brand's stores", paid: true },
   walmart: { name: 'Walmart reviews', how: "Reviews on the brand's Walmart listings (US)", paid: true },
@@ -134,6 +135,10 @@ export const NORM = {
   walmart: (r, v) => ({ id: `wm:${r.id || `${v.id}:${String(r.text).slice(0, 30)}`}`, platform: 'walmart', kind: 'review', link: `${v.url}#item-reviews`, postedAt: ms(r.date), author: short(r.author || 'Walmart customer'), rating: +r.rating || null, title: unesc(r.title || ''), text: clip(r.text), product: v.title, q: 'brand' }),
   news: (r, q) => ({ id: `nw:${hostOf(r.url)}:${String(r.url).replace(/^https?:\/\/[^/]+/, '').slice(0, 120)}`, platform: 'news', kind: 'article', link: r.url, postedAt: ms(r.date), author: short(r.publisher || r.site_name || hostOf(r.url)), title: unesc(r.title), text: clip(r.snippet), sub: r.publisher || r.site_name || hostOf(r.url), subUrl: r.url ? `https://${hostOf(r.url)}` : null, q }),
   web: (r, q) => ({ id: `web:${hostOf(r.url)}:${String(r.url).replace(/^https?:\/\/[^/]+/, '').split(/[?#]/)[0].slice(0, 120)}`, platform: 'web', kind: 'page', link: String(r.url).split('?srsltid')[0], postedAt: ms(r.date), author: short(hostOf(r.url)), title: unesc(r.title), text: clip(r.snippet || r.description), sub: hostOf(r.url), subUrl: r.url ? `https://${hostOf(r.url)}` : null, q }),
+  // a public post that tags or @mentions the brand (Apify dami_studio/instagram-mentions-scraper): the customer's own words and picture
+  igTagged: (r, v) => ({ id: `ig:${r.shortCode || r.postId}`, platform: 'instagram', kind: 'post', link: r.url, postedAt: ms(r.timestamp), author: short(r.ownerUsername ? `@${r.ownerUsername}` : 'Instagram user'), text: clip(r.caption || ''),
+    likes: r.likesCount || 0, replies: r.commentsCount ?? null, sub: r.ownerUsername ? `@${r.ownerUsername}` : 'Instagram', subUrl: r.ownerUsername ? `https://www.instagram.com/${r.ownerUsername}/` : null, thread: `ig-${r.shortCode || r.postId}`,
+    threadTitle: firstLine(r.caption || ''), threadUrl: r.url, image: r.displayUrl || null, tagged: r.mentionType || 'tagged', q: 'brand', acct: v.acct }),
   // marketplace reviews from Apify actors or a page read: the field names differ by actor, so read the usual ones
   review: (r, v) => { const text = r.text || r.review || r.reviewText || r.review_text || r.description || r.body || r.comment || r.content || '';
     const id = r.id || r.review_id || r.reviewId || `${v.pid || ''}:${String(text).slice(0, 40)}`;
@@ -421,7 +426,12 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
 
   async function trustpilot(c, o, st, have, ex) {
     const doms = [[c.host, 'brand', undefined], ...(ex?.rivalHosts || []).slice(0, o.tpRivals ?? 2).map((h) => [h, 'rival', 'rival'])], out = (st.partial = []);
-    await each(doms, async ([domain, q, acct]) => { const j = await tcall('crawl4ai.trustpilot.business.reviews', { body: { domain, limit: 20 } }, o.capUsd); for (const r of j?.rows || []) if (r.review_id && r.text) out.push(NORM.trustpilot(r, { domain, q, acct })); }, st);
+    await each(doms, async ([domain, q, acct]) => { let n = 0;
+      try { const j = await tcall('crawl4ai.trustpilot.business.reviews', { body: { domain, limit: 20 } }, o.capUsd); for (const r of j?.rows || []) if (r.review_id && r.text) { out.push(NORM.trustpilot(r, { domain, q, acct })); n++; } }
+      catch (e) { if (capHit(e) || !apify?.live) throw e; st.notes.push(`trustpilot ${domain}: ${e.message.slice(0, 100)}`); }
+      /* treg's Trustpilot read succeeds about two times in three: Apify's actor (probed 23 Oct) reads the same page when it came back empty */
+      if (!n && apify?.live) { const rs = await acall('memo23/trustpilot-scraper-ppe', { startUrls: [domain], maxItems: 20 }, { startUsd: 0.05, perItemUsd: 0.00075, maxUsd: 0.45, maxItems: 20 }, o.capUsd);
+        for (const r of rs) if (r.id && r.text) out.push(NORM.trustpilot({ review_id: r.id, text: r.text, title: r.title, rating: r.rating, date: r.publishedDate, author: r.reviewerName, url: `https://www.trustpilot.com/reviews/${r.id}` }, { domain, q, acct })); } }, st);
     return out;
   }
 
@@ -457,7 +467,12 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
     const d = j?.output?.data ?? j?.output ?? {}, rows = Array.isArray(d) ? d : d.reviews || []; return rows.filter((r) => r?.text).map((r) => NORM.review(r, { platform, url, title: d.title || null, now: now() })); };
   const india = (ex) => { if (!ex?.india) throw Object.assign(new Error('skipped: not sold in India'), { needs: true }); };
   async function nykaa(c, o, st, have, ex) {
-    india(ex); const urls = await listings(c, o, 'nykaa.com', /nykaa\.com\/.+\/(p|reviews)\/\d+$/, o.mkListings ?? 2), out = (st.partial = []);
+    india(ex); const out = (st.partial = []);
+    /* one Apify run finds the brand's Nykaa listings and their verified reviews (probed 23 Oct); the older two-step path is the fallback */
+    if (apify?.live) try { const rs = await acall('automation_craft/nykaa-scraper', { searchTerms: [c.name], maxItemsPerSearch: 4, maxItems: 4, includeReviews: true }, { startUsd: 0.006, perItemUsd: 0.0027, maxUsd: 0.2, maxItems: 80 }, o.capUsd), nre = new RegExp(escRe(c.name), 'i');
+      for (const r of rs) if (r.type === 'review' && r.text && nre.test(r.productName || '')) out.push(NORM.review({ ...r, author: r.reviewerName, date: r.reviewedAt, id: r.reviewId }, { platform: 'nykaa', url: r.productUrl, pid: r.productId, title: r.productName, now: now() }));
+      if (out.length) { st.detail = { listings: new Set(out.map((x) => x.link)).size, via: 'apify' }; return out; } } catch (e) { if (capHit(e)) throw e; st.notes.push(`nykaa: ${e.message.slice(0, 120)}`); }
+    const urls = await listings(c, o, 'nykaa.com', /nykaa\.com\/.+\/(p|reviews)\/\d+$/, o.mkListings ?? 2);
     if (!urls.length && apify?.live) { try { const ps = await acall('thirdwatch/nykaa-scraper', { queries: [c.name], maxResults: 5 }, { startUsd: 0.1, perItemUsd: 0.008, maxUsd: 0.15 }, o.capUsd);
       for (const p of ps) { const u = p.url || p.productUrl; if (u && /\/p\/\d+/.test(u) && new RegExp(escRe(c.name), 'i').test(`${p.brand || ''} ${p.name || p.title || ''}`)) urls.push(String(u).split('?')[0]); } } catch (e) { st.notes.push(`nykaa search: ${e.message.slice(0, 120)}`); } }
     if (!urls.length) throw Object.assign(new Error('skipped: no Nykaa listings found'), { needs: true });
@@ -468,7 +483,12 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
     st.detail = { listings: urls.length, via: apify?.live ? 'apify' : 'page' }; return out;
   }
   async function flipkart(c, o, st, have, ex) {
-    india(ex); const urls = await listings(c, o, 'flipkart.com', /flipkart\.com\/[^/]+\/(p|product-reviews)\/itm\w+$/, o.mkListings ?? 2), out = (st.partial = []);
+    india(ex); const out = (st.partial = []);
+    /* one Apify run searches Flipkart for the brand and reads each listing's reviews (probed 23 Oct); a site search is the fallback */
+    if (apify?.live) try { const rs = await acall('scrapesage/flipkart-scraper', { searchTerms: [c.name], maxProducts: 4, maxPagesPerSearch: 1, includeReviews: true, maxReviewsPerProduct: 10 }, { startUsd: 0.005, perItemUsd: 0.002, maxUsd: 0.15, maxItems: 60 }, o.capUsd), nre = new RegExp(escRe(c.name), 'i');
+      for (const r of rs) if (r.type === 'review' && r.text && nre.test(r.productTitle || '')) out.push(NORM.review({ ...r, date: r.dateISO || r.date, id: r.reviewId }, { platform: 'flipkart', url: r.reviewUrl || r.productUrl, pid: r.productId, title: r.productTitle, now: now() }));
+      if (out.length) { st.detail = { listings: new Set(out.map((x) => x.product)).size, via: 'apify' }; return out; } } catch (e) { if (capHit(e)) throw e; st.notes.push(`flipkart: ${e.message.slice(0, 120)}`); }
+    const urls = await listings(c, o, 'flipkart.com', /flipkart\.com\/[^/]+\/(p|product-reviews)\/itm\w+$/, o.mkListings ?? 2);
     if (!urls.length) throw Object.assign(new Error('skipped: no Flipkart listings found'), { needs: true });
     const rev = urls.map((u) => u.replace('/p/', '/product-reviews/'));
     if (apify?.live) try { const rs = await acall('shahidirfan/flipkart-reviews-scraper', { startUrls: rev.map((url) => ({ url })), results_wanted: 20, max_pages: 3 }, { startUsd: 0.0005, perItemUsd: 0.002, maxUsd: 0.15 }, o.capUsd);
@@ -568,7 +588,14 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
       for (const v of k?.rows || []) { if (!v.text) continue; out.push({ id: `amz:${v.review_id || `${r.asin}:${String(v.text).slice(0, 30)}`}`, platform: 'amazon', kind: 'review', link: `https://www.${domain}/dp/${r.asin}#customerReviews`, postedAt: Date.parse(v.date) || 0, author: short(v.author === '[redacted]' ? 'Amazon customer' : v.author), rating: +v.rating || null, title: unesc(v.title), text: unesc(v.text).slice(0, 800), product: String(r.title).slice(0, 80), q: r.q, ...(r.q === 'rival' ? { acct: 'rival' } : {}) }); } }, st);
     return out;
   }
-  const RUN = { reddit, youtube, site, x, amazon, tiktok, instagram, threads, linkedin, pinterest, telegram, facebook, trustpilot, google, walmart, nykaa, flipkart, myntra, news, web };
+  // posts that tag or @mention the brand's Instagram (the people who already show it off); needs the brand's handle
+  async function igtag(c, o, st, have, ex) {
+    const h = String(c.instagram || ex?.instagram || '').replace(/^@/, ''); if (!h) throw Object.assign(new Error('skipped: no Instagram handle for the brand'), { needs: true });
+    const rs = await acall('dami_studio/instagram-mentions-scraper', { usernames: [h], maxItems: 30, resultsPerUsername: 30 }, { startUsd: 0.0005, perItemUsd: 0.00044, maxUsd: 0.05, maxItems: 30 }, o.capUsd);
+    const out = rs.filter((r) => r.url && r.ok !== false && String(r.ownerUsername || '').toLowerCase() !== h.toLowerCase()).map((r) => NORM.igTagged(r, { acct: 'own' }));
+    st.detail = { handle: h, posts: out.length }; return out;
+  }
+  const RUN = { reddit, youtube, site, x, amazon, tiktok, instagram, igtag, threads, linkedin, pinterest, telegram, facebook, trustpilot, google, walmart, nykaa, flipkart, myntra, news, web };
   const SLOW = { reddit: 300e3, amazon: 360e3, nykaa: 420e3, flipkart: 420e3, myntra: 420e3, facebook: 240e3, google: 240e3 };
 
   /* ---------- tag: one cheap Claude pass, ~40 items a call ---------- */

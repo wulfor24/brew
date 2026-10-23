@@ -106,7 +106,11 @@ export async function digestContent(packs, slug, { since, now = Date.now(), base
   const statics = (cfg?.statics || []).map((id) => abs(`b/${slug}/statics/${id}.jpg`)).filter(Boolean);
   const images = [...new Set([...fresh, ...statics])].slice(0, 3);
   const needsOk = (jams?.work || []).filter((w) => OPEN(w) && w.stage === 'needs_you').length;
-  const out = { since, rewritten, weekly, teamOnly, rivalAds, theme: top ? { name: cut(top.name, 60), n: +top.n } : null,
+  /* on the shelf this week: a price move or a new out-of-stock on Blinkit, Zepto, Instamart or a marketplace since the last digest (market-pulse.js) */
+  const shelfFiles = await Promise.all(['blinkit', 'zepto', 'instamart', 'nykaa', 'flipkart', 'myntra'].map((k) => g(`shelf/${k}.json`)));
+  const shelf = shelfFiles.filter((f) => f && !f.error && after(f.at)).flatMap((f) => (f.changes || []).map((ch) => ({ ...ch, where: f.label + (f.city ? ` (${f.city})` : '') })))
+    .sort((a, b) => (b.own ? 1 : 0) - (a.own ? 1 : 0)).slice(0, 4).map((ch) => (ch.kind === 'stock' ? `${ch.who}: ${cut(ch.name, 50)} went out of stock on ${ch.where}` : `${ch.who}: ${cut(ch.name, 50)} ${ch.from} → ${ch.to} on ${ch.where}`));
+  const out = { since, rewritten, weekly, teamOnly, rivalAds, shelf, theme: top ? { name: cut(top.name, 60), n: +top.n } : null,
     question: q ? { title: cut(q.title, 120), url: q.url, where: cut(q.where || '', 40) } : null, event, images, needsOk };
   Object.defineProperty(out, 'jams', { value: jams, enumerable: false }); /* each person's own jams are picked from it (jamsFor), never listed whole */
   return out;
@@ -119,9 +123,9 @@ const dayLabel = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB
 export function digestMail({ name, slug, base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', c, jams = [], prefHref = null }) {
   const href = `${base}/${slug}?go=feed`;
   const nMoves = c.rewritten.length + c.teamOnly.rewritten, nNew = c.weekly.length + c.teamOnly.weekly, nAds = c.rivalAds.length;
-  const empty = !nMoves && !nNew && !nAds && !c.theme && !c.question && !c.event && !jams.length;
+  const empty = !nMoves && !nNew && !nAds && !(c.shelf || []).length && !c.theme && !c.question && !c.event && !jams.length;
   if (empty) return { empty: true };
-  const parts = [nNew && plural(nNew, 'new move'), nMoves && plural(nMoves, 'updated move'), nAds && (nAds === 1 ? 'a rival ad' : `${nAds} rival ads`), jams.length && `${plural(jams.length, 'jam')} waiting on you`,
+  const parts = [nNew && plural(nNew, 'new move'), nMoves && plural(nMoves, 'updated move'), nAds && (nAds === 1 ? 'a rival ad' : `${nAds} rival ads`), (c.shelf || []).length && ((c.shelf || []).length === 1 ? 'a change on the shelf' : `${c.shelf.length} changes on the shelf`), jams.length && `${plural(jams.length, 'jam')} waiting on you`,
     c.question && 'a question people asked', c.event && `${c.event.name} coming up`].filter(Boolean);
   const subject = parts.length ? `${parts.slice(0, 2).join(' and ')} for ${name} this week` : `What people said about ${name} this week`;
   const html = [], text = [];
@@ -130,6 +134,7 @@ export function digestMail({ name, slug, base = process.env.PUBLIC_URL || 'https
   sec('Moves Brew rewrote', [...c.rewritten.slice(0, 8).map((m) => `${moveLabel(m.n)} · ${m.title}${m.because ? `: ${m.because}` : ''}`), ...(c.teamOnly.rewritten ? [`and ${plural(c.teamOnly.rewritten, 'more move')} for your team, in Brew`] : [])]);
   sec('New this week', [...c.weekly.slice(0, 6).map((m) => m.title), ...(c.teamOnly.weekly ? [`and ${plural(c.teamOnly.weekly, 'more')} for your team, in Brew`] : [])]);
   sec(nAds === 1 ? 'A rival ad Brew spotted' : 'Rival ads Brew spotted', c.rivalAds.slice(0, 3).map((a) => (a.title ? `${a.brand}: ${a.title}` : a.brand)));
+  sec('On the shelf this week', c.shelf || []);
   if (c.theme || c.question) {
     const t = c.theme ? `Most talked about: “${c.theme.name}” (${plural(c.theme.n, 'mention')}).` : '';
     const qh = c.question ? `Someone asked${c.question.where ? ` on ${esc(c.question.where)}` : ''}: <a href="${esc(c.question.url)}" style="color:#0A0A0A;text-decoration:underline">${esc(c.question.title)}</a>` : '';
@@ -150,6 +155,7 @@ export function digestSlack({ name, slug, base = process.env.PUBLIC_URL || 'http
   if (nMoves) L.push(`• ${plural(nMoves, 'move')} rewritten: ${c.rewritten.slice(0, 4).map((m) => m.title).join('; ')}${nMoves > 4 ? '…' : ''}`);
   if (nNew) L.push(`• ${plural(nNew, 'new move')}: ${c.weekly.slice(0, 3).map((m) => m.title).join('; ')}${nNew > 3 ? '…' : ''}`);
   if (c.rivalAds.length) L.push(`• Rival ads: ${c.rivalAds.slice(0, 3).map((a) => a.brand).join(', ')}`);
+  if ((c.shelf || []).length) L.push(`• On the shelf: ${c.shelf.slice(0, 2).join('; ')}`);
   if (c.theme) L.push(`• Most talked about: “${c.theme.name}” (${plural(c.theme.n, 'mention')})`);
   if (c.question) L.push(`• Someone asked: <${c.question.url}|${c.question.title.replace(/[<>|]/g, '')}>`);
   if (c.event) L.push(`• Coming up: ${c.event.name}, ${dayLabel(c.event.date)}`);

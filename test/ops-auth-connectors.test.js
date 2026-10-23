@@ -50,7 +50,7 @@ test('the live site’s gate never says “Demo mode”, and sign-in can’t be 
   assert.match(s, /if \(me && !v\.gen\) return send\(res, 403, \{ error: 'The moves emails are for the brand’s team/);
   assert.match(s, /const visSeen = [^\n]*!a\?\.host/);
   assert.match(s, /process\.env\.K_SERVICE && !auth\.signinOn\(\) && process\.env\.OPEN_SITE !== '1'\) throw/);
-  assert.match(s, /budget\.flush\(\), tregLedger\.flush\(\), visFlush\(\), jamMail\.drain\(\), closed/, 'SIGTERM flushes everything');
+  assert.match(s, /budget\.flush\(\), tregLedger\.flush\(\), apifyLedger\.flush\(\), visFlush\(\), jamMail\.drain\(\), closed/, 'SIGTERM flushes everything');
 });
 
 /* ---------- 2. Meta Ads: several ad accounts ---------- */

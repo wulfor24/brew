@@ -319,7 +319,7 @@ test('Indian marketplaces: Apify when there is a token, a page read when the act
   assert.equal(st.walmart.state, 'needs', 'Walmart is for US brands');
   const ny = r.items.find((x) => x.platform === 'nykaa'); assert.equal(ny.author, 'Priya S.'); assert.equal(ny.about, 'brand'); assert.match(ny.link, /nykaa\.com\/.+\/reviews\/555/);
   assert.ok(r.items.some((x) => x.platform === 'flipkart' && x.rating === 5)); assert.ok(r.items.some((x) => x.platform === 'myntra' && x.author === 'Rohan'));
-  assert.ok(r.status.usd.treg >= 0.15, 'Apify spend counts toward the run'); assert.deepEqual(runs.sort(), ['codingfrontend/myntra-product-search-scraper', 'shahidirfan/flipkart-reviews-scraper', 'stealth_mode/nykaa-reviews-scraper']);
+  assert.ok(r.status.usd.treg >= 0.15, 'Apify spend counts toward the run'); assert.deepEqual(runs.sort(), ['automation_craft/nykaa-scraper', 'codingfrontend/myntra-product-search-scraper', 'scrapesage/flipkart-scraper', 'shahidirfan/flipkart-reviews-scraper', 'stealth_mode/nykaa-reviews-scraper']); /* the one-run actors first (23 Oct), the older pairs when they give nothing */
   // no token: every Apify run says so; the marketplace falls back to the page read
   const none = createApify({ token: null }); await assert.rejects(none.run('a/b', {}), /needs APIFY_TOKEN/); assert.equal(none.live, false);
   const r2 = await createListenWatch({ slug: 'acme-com', packs: await brandPacks({ ...PROFILE, country: 'IN' }), treg: fakeTreg(), ai: { live: false }, apify: none, log: quiet, now: () => NOW }).run({ only: ['nykaa'] });

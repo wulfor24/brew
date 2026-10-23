@@ -115,7 +115,7 @@ export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?
       title: `Asked in ${where}: “${cut(t.title, 60)}”`, sub: `${rt ? `${rt} so far` : n === 0 ? 'No replies yet' : 'Replies not counted'}, last active ${dateText(t.lastActive)}. ${t.about === 'brand' ? `They are asking about ${name} by name.` : t.about === 'rival' ? 'They are weighing a rival.' : 'They are choosing in your category.'} Reply as ${name}: answer the question first, say who you are.`,
       rows: [['Where', where], ...(rt ? [['Replies', rt]] : []), ['Last active', dateText(t.lastActive)], ['Mood', SENT[t.sentiment] || 'mixed']],
       link: { label: 'Open the thread', url: t.url }, cta: { label: 'Reply as the brand' },
-      detail: { why: [`“${cut(t.quote || t.title, 220)}”`, `Read in public on ${t.platform === 'reddit' ? 'Reddit' : t.platform}, ${dateText(t.lastActive)}.`], how: ['Open the thread and read the replies.', `Answer what they asked, plainly, and say you work at ${name}.`, 'No links or discount codes unless the community allows them.'] },
+      detail: { why: [`“${cut(t.quote || t.title, 220)}”`, `Read in public on ${SRC[t.platform] || t.platform}, ${dateText(t.lastActive)}.`], how: ['Open the thread and read the replies.', `Answer what they asked, plainly, and say you work at ${name}.`, 'No links or discount codes unless the community allows them.'] },
       heard: { kind: 'thread', url: t.url, where, replies: n, ...(t.repliesFloor ? { repliesFloor: true } : {}), quote: t.quote || t.title },
       post: { id: `heard-q-${hash(t.url)}`, platform: t.platform === 'reddit' ? 'reddit' : t.platform, platformLabel: t.platform === 'reddit' ? 'Reddit' : t.platform, format: 'reply', title: q, hook: '', copy: '', hashtags: [],
         media: { kind: 'none', slides: [], script: [] }, where: [{ name: `${where}: ${q}`, url: t.url, kind: 'thread', why: 'A real question about the brand, asked in public.', rule: 'Read the community rules before replying.', comments: n, ...(t.repliesFloor ? { commentsFloor: true } : {}), lastActive: t.lastActive }], why: 'Someone asked in public; a plain answer from the brand helps them and everyone who reads the thread later.', evidence: [], moves: [], measure: { metric: 'Upvotes, replies and no mod removal', how: 'Check the thread after 24 hours and 7 days' }, postAt: 'Today', at: new Date(at).toISOString() } });
@@ -127,7 +127,7 @@ export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?
   const byNeg = [...th].filter((t) => t !== byN && t.neg >= 3).sort((a, b) => b.neg / b.n - a.neg / a.n || b.neg - a.neg)[0]; if (byNeg) picks.push(byNeg);
   for (const t of th) { if (picks.length >= maxT) break; if (!picks.includes(t)) picks.push(t); }
   for (const t of picks.slice(0, maxT)) {
-    const qs2 = [...new Set([...(t.quoteIds || [])])].map((id) => items.get(id)).filter(Boolean).map((x) => ({ text: cut([x.title, x.text].filter(Boolean).join('. '), 200), url: x.link, where: x.sub || x.platform }));
+    const qs2 = [...new Set([...(t.quoteIds || [])])].map((id) => items.get(id)).filter(Boolean).map((x) => ({ text: cut([x.title, x.text].filter(Boolean).join('. '), 200), url: x.link, where: x.sub || SRC[x.platform] || x.platform }));
     if (!qs2.length && t.quote) qs2.push({ text: cut(t.quote, 200), url: t.quoteLink, where: (String(t.quoteLink || '').match(/\/r\/[^/]+/) || [''])[0].slice(1) || 'public post' });
     /* a small count reads as a count ("3 of 4 negative"), a share only from 20 mentions; a share that rounds to 0 reads "under 1%" */
     const share = (a, b) => (b < 20 ? `${a} of ${b}` : `${pct(a, b)}%`), ofAll = (a, b) => { const p = pct(a, b); return a && !p ? 'under 1%' : `${p}%`; };
@@ -151,7 +151,7 @@ export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?
    what buyers in the category keep asking or complaining about that no brand card covers. Counted over the last 90 days. */
 const WINDOW = 90 * DAY;
 const squash = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-const SRC = { reddit: 'Reddit', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', x: 'X', linkedin: 'LinkedIn', facebook: 'Facebook', amazon: 'Amazon', trustpilot: 'Trustpilot', google: 'Google reviews', news: 'News', web: 'Forums', threads: 'Threads', pinterest: 'Pinterest', walmart: 'Walmart', site: 'Site reviews', nykaa: 'Nykaa', flipkart: 'Flipkart', myntra: 'Myntra' };
+const SRC = { reddit: 'Reddit', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', x: 'X', linkedin: 'LinkedIn', facebook: 'Facebook', amazon: 'Amazon', trustpilot: 'Trustpilot', google: 'Google reviews', news: 'News', web: 'Forums', threads: 'Threads', pinterest: 'Pinterest', walmart: 'Walmart', site: 'Site reviews', nykaa: 'Nykaa', flipkart: 'Flipkart', myntra: 'Myntra', blinkit: 'Blinkit', zepto: 'Zepto', instamart: 'Instamart' };
 const quoteOfItem = (x) => ({ text: cut([x.title, x.text].filter(Boolean).join('. '), 200), url: x.link || x.url || null, where: x.sub || SRC[x.platform] || x.platform || 'public post' });
 /* a theme that names a kind of post, not a need ("product review", "feedback", "comparison") is no complaint or question */
 const META_THEME = /\b(reviews?|feedback|general|discussion|opinions?|experiences?|comparisons?|recommendations?|routine|content|post|video)\b/i;
@@ -237,7 +237,7 @@ async function readSocialNow(packs, slug) {
 export function heardView(L, { name = 'the brand', now = Date.now(), profile = {} } = {}) {
   if (!L || (!L.themes?.length && !L.threads?.length)) return null;
   const items = new Map((L.items || []).map((x) => [x.id, x]));
-  const quote = (x) => x && ({ text: cut([x.title, x.text].filter(Boolean).join('. '), 220), url: x.link, where: x.sub || x.platform, at: x.postedAt || null });
+  const quote = (x) => x && ({ text: cut([x.title, x.text].filter(Boolean).join('. '), 220), url: x.link, where: x.sub || SRC[x.platform] || x.platform, at: x.postedAt || null });
   const themes = (L.themes || []).filter((t) => t.n >= 3).slice(0, 4).map((t) => ({ name: t.name, n: t.n, share: t.share, pos: t.pos, neg: t.neg, neutral: t.neutral, brand: t.brand, week: t.wow?.week ?? null, lastWeek: t.wow?.lastWeek ?? null,
     quotes: (t.quoteIds || []).map((id) => quote(items.get(id))).filter(Boolean).slice(0, 2).concat(!(t.quoteIds || []).some((id) => items.has(id)) && t.quote ? [{ text: cut(t.quote, 220), url: t.quoteLink, where: '' }] : []).slice(0, 2) }));
   /* the communities that pass the community gate (about the category, in the market, not deals or general chat), and the
