@@ -18,10 +18,10 @@
     ]},
     { "id": "ads", "label": "Ads", "source": "higgsfield-presets", "job": "product-shot", "type": "drawn", "styles": []},
     { "id": "marketplace", "label": "Marketplace", "styles": [
-      { "id": "mp-main", "label": "Main image (white)", "job": "product-shot", "type": "none", "people": "none", "ratio": "1:1", "look": "An Amazon-style main image: the product alone on pure white (#FFFFFF), filling 85% of the frame, no props, no text." },
+      { "id": "mp-main", "label": "Main image (white)", "job": "packshot", "type": "none", "people": "none", "ratio": "1:1", "look": "The marketplace main image: the real product cut out of its own photo, alone on pure white (#FFFFFF), filling 85% of the frame, no props, no text. Nothing is redrawn." },
       { "id": "mp-lifestyle", "label": "Lifestyle", "job": "product-shot", "type": "none", "people": "any", "ratio": "1:1", "look": "A marketplace lifestyle image: the product in real use, bright and clear." },
-      { "id": "mp-benefits", "label": "Benefits", "job": "type-poster", "type": "drawn", "people": "none", "ratio": "1:1", "look": "A clean marketplace infographic: the product on the right, three short benefit callouts with icons on the left, white background." },
-      { "id": "mp-size", "label": "Size guide", "job": "type-poster", "type": "drawn", "people": "none", "ratio": "1:1", "look": "A marketplace size and dimensions image: the product on white with measurement lines and its real size." }
+      { "id": "mp-benefits", "label": "Benefits", "job": "product-shot", "designed": true, "type": "drawn", "people": "none", "ratio": "1:1", "look": "A clean marketplace infographic: the real product on the right, three short benefit callouts with simple icons on the left, white background." },
+      { "id": "mp-size", "label": "Size guide", "job": "product-shot", "designed": true, "type": "drawn", "people": "hands", "ratio": "1:1", "look": "A marketplace scale image: the real product on white held in a hand so its true size reads at a glance; no measurements or numbers unless they are given." }
     ]},
     { "id": "graphic", "label": "Graphic", "styles": [
       { "id": "offer-card", "label": "Offer card", "job": "type-poster", "type": "drawn", "people": "none", "look": "A bold offer poster in the brand's colours with the offer as the hero type." },

@@ -81,6 +81,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
   /* the price of one take of a style (what Higgsfield will charge, plus the check), in dollars */
   async function perTake(ctx, st, size, seconds) {
     const shot = await engines.quote('still.shot', { slug: ctx.slug }).catch(() => ({ usd: 0.14 }));
+    if (st.job === 'packshot') return 0; /* the real photo cut out and set on white, here */
     if (st.job === 'product-shot') return (shot.usd ?? 0.14) * 1.5; /* one take, a retry about half the time */
     if (st.job === 'type-poster' || st.job === 'brand-graphic') { const o = hf.pick(st.job); const e = await hf.estimate(o.id, { ...o.input, prompt: 'a poster with the brand offer in large type for a product ad', aspect_ratio: hf.nearestRatio(o.id, size.ratio) }); return e.usd ?? 0.1; }
     if (st.job === 'product-motion') { const o = hf.pick('product-motion'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', image_url: 'https://brew.joinsquareup.com/x.jpg', duration: seconds || 5 }); return (shot.usd ?? 0.14) + (e.usd ?? 0.11 * (seconds || 5)); }
@@ -106,7 +107,16 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     if (spec.product?.img) ctx.product = { ...spec.product };
     const words = await maker.write(ctx, board, { ask: spec.count > 1 ? `This is take ${i + 1} of ${spec.count}: a different hook and headline from the others${spec.ask ? `; ${spec.ask}` : ''}.` : spec.ask || '' }).catch(() => ({}));
     const made = [], take = { op: 'studio', by: ctx.by, words, made, studio: { style: st.id, label: st.label, group: st.group, kind: st.kind, size: size.key } };
-    if (st.kind === 'image' && st.job === 'product-shot' && !st.preset) {
+    if (st.job === 'packshot') { /* a marketplace main image is the real product, never a drawing: cut out of its clearest photo, alone on pure white
+         at 85% of the frame (Amazon, Flipkart, Nykaa, Myntra main-image rules); a photo that won't cut out cleanly is said so */
+      await ensureProfile(ctx); const best = ctx.profile?.best || ctx.product?.img; if (!best) throw new Error('Pick a product with a photo first.');
+      const cut = await maker.cutout({ ...ctx, product: { ...ctx.product, img: best } }); if (!cut || cut.raw) throw Object.assign(new Error('The product couldn’t be cut out of its photo cleanly. Add a photo of it on a plain background.'), { made });
+      const sharp = (await import('sharp')).default, f = await maker.fileOf(cut.file), box = Math.round(Math.min(size.w, size.h) * 0.85);
+      const prod = await sharp(fs.readFileSync(f)).resize(box, box, { fit: 'inside' }).toBuffer(), m = await sharp(prod).metadata();
+      const buf = await sharp({ create: { width: size.w, height: size.h, channels: 3, background: '#ffffff' } }).composite([{ input: prod, left: Math.round((size.w - m.width) / 2), top: Math.round((size.h - m.height) / 2) }]).jpeg({ quality: 92 }).toBuffer();
+      const file = engines.keep(buf, 'jpg'); made.push({ cap: 'cutout', provider: cut.provider || 'local', model: cut.model || 'cutout', usd: cut.usd || 0 });
+      Object.assign(take, { file, scene: { w: size.w, h: size.h, bg: { color: '#ffffff', src: file }, layers: [] } });
+    } else if (st.kind === 'image' && st.job === 'product-shot' && !st.preset && !st.designed) {
       const x = await cr.staticAd(ctx, board, words, size, { style: st, noWords: st.type === 'none' }); made.push(...x.made);
       if (!x.scene) throw Object.assign(new Error(x.fail || 'The picture didn’t come out right.'), { made }); /* what it spent still counts */
       Object.assign(take, { scene: x.scene, file: x.file, shot: x.shot, direction: x.direction });
@@ -115,20 +125,25 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       if (!spend('image', ctx.slug)) throw Object.assign(new Error('Today’s picture budget is used up.'), { budget: true });
       await ensureProfile(ctx);
       const proof = (words.proof || []).filter(Boolean).slice(0, 1), review = /social proof|review/i.test(`${st.group} ${st.label} ${st.look || ''}`) && proof.length;
-      const exact = [words.headline && `Headline: "${words.headline}"`, words.sub && `Line: "${words.sub}"`, review && `Customer review, word for word, with its stars: "${tidy(proof[0], 220)}"`, words.cta && `Button: "${words.cta}"`].filter(Boolean).join('; ');
-      const rules = `The only words on the image: ${exact}${ctx.bbv?.name ? `, and the brand name ${ctx.bbv.name}` : ''}. No other text: no sizes, numbers, prices, percentages, ingredients or claims.${review ? '' : ' Nothing styled as a customer review or star rating.'}`;
-      const job = st.preset ? 'product-shot' : st.job, o = hf.pick(job), photos = st.preset ? cr.photosOf(ctx, ctx.profile).slice(0, 1).map((u) => engines.pub(u)) : [];
-      const base = st.preset ? { ...o.input, enhance_prompt: true, preset_id: st.preset, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) } : { ...o.input, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
-      const promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}, in its colours ${(ctx.bbv?.kit?.colors || []).join(', ')}.`, cr.productLine(ctx.profile), rules, fix].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
+      const market = st.groupId === 'marketplace'; /* a marketplace image carries no button, price or promotion (their rules) */
+      const exact = [words.headline && `Headline: "${words.headline}"`, words.sub && `Line: "${words.sub}"`, review && `Customer review, word for word, with its stars: "${tidy(proof[0], 220)}"`, words.cta && !market && `Button: "${words.cta}"`].filter(Boolean).join('; ');
+      const rules = `The only words on the image: ${exact}${ctx.bbv?.name ? `, and the brand name ${ctx.bbv.name}` : ''}. No other text: no sizes, numbers, prices, percentages, ingredients or claims.${review ? '' : ' Nothing styled as a customer review or star rating.'}${market ? ' No button, badge, price or call to action: this is a marketplace product image.' : ''}`;
+      /* a piece that shows the product (an ad style, a marketplace infographic or scale image) is drawn by Flare around the real
+         product photos and must keep it; a type-led poster or an illustration (Ideogram / Recraft) carries no product */
+      const showsProduct = !!(st.preset || st.designed), job = showsProduct ? 'product-shot' : st.job, o = hf.pick(job), photos = showsProduct ? cr.photosOf(ctx, ctx.profile).slice(0, st.preset ? 1 : 3).map((u) => engines.pub(u)) : [];
+      const base = st.preset ? { ...o.input, enhance_prompt: true, preset_id: st.preset, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) }
+        : showsProduct ? { ...o.input, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) } : { ...o.input, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
+      const promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}, in its colours ${(ctx.bbv?.kit?.colors || []).join(', ')}.`, showsProduct && photos.length ? 'The product is exactly the one in the reference photos: same shape, colours, label and count.' : '', cr.productLine(ctx.profile), rules, fix].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
       let file = null, check = null;
       for (let t = 0; t < 2 && !file; t++) {
         const input = { ...base, prompt: promptOf(t && check ? `The last one was wrong: ${check.same ? '' : 'the product changed. '}${check.invented.length ? `it added "${check.invented.join('", "')}" — leave those out.` : ''}` : '') };
         const e = await hf.estimate(o.id, input), out = await hf.run(o.id, input); const f = engines.keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png');
         made.push({ cap: st.preset ? 'still.styled' : 'still.graphic', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.1 });
         check = await cr.checkMade(ctx, f, { ...words, proof: review ? proof : [] }); made.push({ cap: 'check', provider: 'gemini', model: 'made-check', usd: check.usd || 0 });
-        if ((check.same || !st.preset) && !check.invented.length) file = f;
+        if ((check.same || !photos.length) && !check.invented.length) file = f;
         else if (t === 0 && !spend('image', ctx.slug)) break; }
-      if (!file) { const err = new Error(`The ${st.label} picture ${check?.same === false ? 'changed the product' : `added words we can’t back up (${(check?.invented || []).join(', ')})`}, twice, so it isn’t shown. Try another style.`); err.made = made; throw err; }
+      if (!file) { const why = [photos.length && check?.same === false ? 'changed the product' : '', check?.invented?.length ? `added words we can’t back up (${check.invented.join(', ')})` : ''].filter(Boolean).join(' and ') || 'didn’t pass its check';
+        const err = new Error(`The ${st.label} picture ${why}, twice, so it isn’t shown. Try another style.`); err.made = made; throw err; }
       Object.assign(take, { file, scene: { w: size.w, h: size.h, bg: { src: file }, layers: [] }, check: { words: check.words, unchecked: !!check.unchecked } });
     } else if (st.job === 'product-motion') { /* a checked product shot (the style's look, no words), then Kling moves it */
       const shot = await cr.staticAd(ctx, board, words, size, { style: { ...st, people: 'none' }, noWords: true }); made.push(...shot.made); if (!shot.shot) throw Object.assign(new Error(shot.fail || 'The first frame didn’t keep the product.'), { made });
