@@ -15,7 +15,7 @@ function shop({ pages, count = 9000, cancelled = 100, products, throttleOnce = f
   const fetch = async (url, o) => {
     const { query, variables } = JSON.parse(o.body); calls.push(query);
     if (!throttled) { throttled = true; return ok({ errors: [{ message: 'Throttled', extensions: { code: 'THROTTLED' } }] }); }
-    if (timeoutWhole && /ordersCount/.test(query) && !/created_at:</.test(variables.q)) return ok({ errors: [{ message: 'Failed to complete in time.', extensions: { code: 'TIMEOUT' } }] });
+    if (timeoutWhole && /ordersCount/.test(query) && !/created_at:</.test(variables.q) && /^created_at:>='\d{4}-\d\d-\d\dT/.test(variables.q)) return ok({ errors: [{ message: 'Failed to complete in time.', extensions: { code: 'TIMEOUT' } }] });
     if (/ordersCount/.test(query) && !timeoutWhole) return ok({ data: { n: { count: /status:cancelled/.test(variables.q) ? cancelled : count } } });
     if (/ordersCount/.test(query)) return ok({ data: { n: { count: /status:cancelled/.test(variables.q) ? 10 : 1000 } } });
     if (/currencyCode \} \}$/.test(query.trim()) || /^\{ shop \{ currencyCode \} \}$/.test(query.trim())) return ok({ data: { shop: { currencyCode: 'INR' } } });
@@ -97,4 +97,13 @@ test('a count Shopify can’t finish in time is counted again in 5-day windows',
   const windows = s.calls.filter((q) => /ordersCount/.test(q)).length;
   assert.ok(windows >= 14, `windows asked: ${windows}`);
   assert.equal(r.metrics.orders % 990, 0); assert.ok(r.metrics.orders >= 6 * 990);
+});
+
+test('order count windows use exact timestamps, never bare dates (Shopify reads <DATE as the end of that day)', async (t) => {
+  const pages = [...Array(41)].map(() => [...Array(250)].map(() => order(2)));
+  const s = shop({ pages, products: [], timeoutWhole: true }), qs = [];
+  t.mock.method(globalThis, 'fetch', async (url, o) => { const b = JSON.parse(o.body); if (/ordersCount/.test(b.query)) qs.push(b.variables.q); return s.fetch(url, o); });
+  await shopify.sync(conn, ctx);
+  assert.ok(qs.length > 2 && qs.every((q) => /created_at:>='\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z'/.test(q)), qs.slice(0, 3).join(' | '));
+  assert.ok(qs.filter((q) => /created_at:</.test(q)).every((q) => /created_at:<'\d{4}-\d\d-\d\dT/.test(q)));
 });

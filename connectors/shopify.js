@@ -37,10 +37,11 @@ const ORDER_PAGES = 40; /* 10,000 orders */
 async function countOrders(c, since) {
   const one = async (q) => { const d = await gql(c, 'query($q:String){ n: ordersCount(query:$q, limit:null){ count } }', { q }); if (!has(d?.n?.count)) throw new Error('no count'); return d.n.count; };
   const net = async (w) => (await one(w)) - (await one(`${w} status:cancelled`));
-  try { return await net(`created_at:>=${since}`); }
-  catch { const from = Date.parse(since), DAY = 864e5; let n = 0;
-    for (let t = from; t < Date.now() + DAY; t += 5 * DAY) n += await net(`created_at:>=${new Date(t).toISOString().slice(0, 10)} created_at:<${new Date(t + 5 * DAY).toISOString().slice(0, 10)}`);
-    return n; }
+  /* exact timestamps, never bare dates: Shopify reads created_at:<2026-10-20 as "up to the end of the 20th", so date windows
+     overlap and count every order twice. The same UTC start for the whole count and the windows */
+  const iso = (t) => `'${new Date(t).toISOString()}'`, from = Date.parse(since), DAY = 864e5;
+  try { return await net(`created_at:>=${iso(from)}`); }
+  catch { let n = 0; for (let t = from; t < Date.now() + DAY; t += 5 * DAY) n += await net(`created_at:>=${iso(t)} created_at:<${iso(t + 5 * DAY)}`); return n; }
 }
 /* COD orders 10 to 40 days old, newest first, up to 8 pages: a sample big enough for the failed share */
 async function codWindow(c) {
