@@ -251,3 +251,25 @@ test('Shopify brand settings lead the kit and cover for the team (never the publ
   assert.equal(refsFor(sh, 'meta-static', 1)[0].family, 'ad-image');
   const edited = viewOf({ ...bb, kitEdits: { colors: [{ hex: '#000000', role: 'primary' }] } }); assert.equal(edited.kit.accent, '#000000', 'the team’s own edit beats Shopify');
 });
+
+test('“Tell Brew what to change”: products only from the real catalogue, never-say added and dropped, every change shown before → after', async () => {
+  const { mountBrandBook } = await import('../brand-book-routes.js');
+  const routes = {}, on = (m, p, fn) => { routes[`${m} ${p}`] = fn; };
+  const prof = { host: 'cozy.example', name: 'Cozy', identity: {}, catalog: { hero: ['paw'], products: [{ handle: 'paw', title: 'Paw Warmer', price: 39, img: '/b/cozy/a/pack-paw.jpg' }, { handle: 'mask', title: 'Steam Eye Mask', price: 19, img: 'https://cdn/mask.jpg', url: 'https://cozy.example/products/mask' }] } };
+  const files = new Map([['cozy|profile.json', prof], ['cozy|brandbook-read.json', { v: 5, products: { heroes: [{ title: 'Paw Warmer', price: '$39' }] }, voice: { summary: 'Warm' } }], ['cozy|private/brandbook.json', { neverSay: ['cheap'] }]]);
+  const packs = { getJSON: async (s, n, d) => (files.has(`${s}|${n}`) ? structuredClone(files.get(`${s}|${n}`)) : d), put: async (s, n, v) => files.set(`${s}|${n}`, v) };
+  const BOOK = createBrandbook({ packs, log: { warn() {} } }); let member = true, asked = '';
+  const ai = { call: async (o) => { asked = o.prompt; return { json: { reply: 'Adding the Steam Eye Mask and letting you say cheap again.', changes: [{ path: 'products.heroes', label: 'Hero products', json: JSON.stringify(['Paw Warmer', 'Steam Eye Mask', 'Magic Unicorn Socks']) }, { path: 'tone.summary', label: 'Voice', json: '"Warm and playful"' }, { path: 'kit.secret', json: '1' }], neverRemove: ['cheap'], neverAdd: ['cure'] } }; } };
+  mountBrandBook({ on, BOOK, GP: packs, reqOf: () => ({ member, email: 'a@b.c' }), isMock: () => false, ai, DEFAULT_BRAND: 'brew' });
+  const t = { brandId: 'cozy' }, ask = routes['POST /api/brands/:slug/book/ask'];
+  const r = await ask({ text: 'add the steam eye mask to our heroes, and cheap is fine' }, t, { slug: 'cozy' });
+  assert.match(asked, /CATALOGUE.*Steam Eye Mask/s);
+  const heroes = r.upload.proposed.find((x) => x.path === 'products.heroes');
+  assert.deepEqual(heroes.value.map((h) => h.title), ['Paw Warmer', 'Steam Eye Mask'], 'a product the store doesn’t sell is never added');
+  assert.equal(heroes.before, 'Paw Warmer'); assert.equal(heroes.after, 'Paw Warmer, Steam Eye Mask');
+  assert.ok(!r.upload.proposed.some((x) => x.path === 'kit.secret'));
+  const out = await routes['POST /api/brands/:slug/book']({ applyUpload: { id: r.upload.id } }, t, { slug: 'cozy' });
+  assert.deepEqual(out.book.products.heroes.map((h) => h.title), ['Paw Warmer', 'Steam Eye Mask']); assert.equal(out.book.tone.summary, 'Warm and playful');
+  assert.ok(!out.book.neverSay.includes('cheap') && out.book.neverSay.includes('cure'));
+  member = false; assert.equal((await ask({ text: 'x y z' }, t, { slug: 'cozy' })).status, 403);
+});

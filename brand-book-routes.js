@@ -85,6 +85,59 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
     try { await BOOK.update(slug, b || {}, meOf(t)); refreshPack(slug).catch(() => {}); /* the writers' system text follows at once */ return await out(slug, t); }
     catch (e) { return { status: e.status || 400, error: e.message }; } });
   /* rebuild the read layer now (the page's "Read my site again" for the book): free chapters always, the AI part when it is on */
+  /* ---------- "Tell Brew what to change": any edit in plain words, AI-native ----------
+     The writer sees the book's editable chapters as they stand, the store's real catalogue and the never-say list, and answers
+     with whole new values per path (a list comes back whole, minus what was removed). Products are matched to the catalogue in
+     code (a product the store doesn't sell is never added); every change is shown before → after and nothing changes until the
+     team taps Use these, as with an upload. Every brand alike. */
+  const ASK_PATHS = ['cover.tagline', 'cover.oneLine', 'story.positioning', 'story.mission', 'story.values', 'story.founderStory', 'tone.summary', 'tone.traits', 'tone.never', 'tone.pairs', 'tone.cta',
+    'words.use', 'words.avoid', 'words.customers', 'products.heroes', 'products.offers', 'products.guarantee', 'people.personas', 'look.notes', 'look.light', 'look.people', 'look.wordsOnImage', 'look.logoUse',
+    'look.packaging', 'naming.pattern', 'pillars', 'rivals', 'markets.festival'];
+  const ASK_SCHEMA = { type: 'object', properties: {
+    reply: { type: 'string', description: 'one short sentence to the team: what you would change, or why you can’t' },
+    changes: { type: 'array', items: { type: 'object', properties: { path: { type: 'string', enum: ASK_PATHS }, label: { type: 'string' }, json: { type: 'string', description: 'the WHOLE new value for that path as JSON (a list comes back whole). For products.heroes: a JSON list of product titles exactly as in CATALOGUE' } } } },
+    neverAdd: { type: 'array', items: { type: 'string' } }, neverRemove: { type: 'array', items: { type: 'string' } }, claimsAdd: { type: 'array', items: { type: 'string' } },
+    colors: { type: 'array', items: { type: 'object', properties: { hex: { type: 'string' }, role: { type: 'string', enum: ['primary', 'accent', 'ink', 'background', 'support'] } } } },
+    fonts: { type: 'object', properties: { heading: { type: 'string' }, body: { type: 'string' } } } } };
+  const getPath = (o, p) => p.split('.').reduce((x, k) => (x == null ? x : x[k]), o);
+  const short = (v) => v == null || v === '' ? null : typeof v === 'string' ? tidy(v, 160) : Array.isArray(v) ? tidy(v.map((x) => typeof x === 'object' ? x.title || x.trait || x.name || x.text || x.do || Object.values(x).find((y) => typeof y === 'string') || '' : x).filter(Boolean).join(', '), 200) : typeof v === 'object' ? tidy(Object.values(v).flat().filter((x) => typeof x === 'string').join('; '), 160) : String(v);
+  on('POST', '/api/brands/:slug/book/ask', async (b, t, p) => {
+    const slug = slugOf(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' };
+    const no = teamNo(t, 'change its Brand Book'); if (no) return no;
+    const text = String(b.text || '').trim().slice(0, 2000); if (text.length < 3) return { error: 'Say what to change.' };
+    if (isMock() || !ai || !spend('text')) return { error: 'Changing the book in words needs the AI, which is off on this server.' };
+    const v = BOOK.view(await BOOK.load(slug)), profile = await GP.getJSON(slug, 'profile.json', null).catch(() => null);
+    const cat = (profile?.catalog?.products || []).slice(0, 150), now = Object.fromEntries(ASK_PATHS.map((pa) => [pa, getPath(v, pa)]).filter(([, x]) => x != null && !(Array.isArray(x) && !x.length)));
+    if (now['products.heroes']) now['products.heroes'] = now['products.heroes'].map((h) => h.title);
+    let r; try { r = await ai.call({ model: 'sonnet', tag: 'brandbook-ask', max: 5000, effort: 'low', schema: ASK_SCHEMA,
+      prompt: [`The team of ${v.name || slug} asks to change their Brand Book: "${text}"`,
+        'Change only what they asked. Keep every other line as it is. Never invent facts, claims, numbers, reviews or products; if they ask for something you can’t do from what is here, say so in reply and change nothing.',
+        `THE BOOK NOW (path: value):\n${JSON.stringify(now, null, 1).slice(0, 14000)}`,
+        `NEVER-SAY NOW: ${JSON.stringify(v.neverSay || [])}`, `COLOURS NOW: ${JSON.stringify(v.kit?.roles || [])}; FONTS NOW: ${JSON.stringify(v.kit?.fonts || {})}`,
+        `CATALOGUE (the only products that exist): ${JSON.stringify(cat.map((x) => x.title))}`].join('\n\n') }); }
+    catch (e) { return { error: e.billing ? 'The AI is paused, so the book can’t be changed in words right now.' : 'Brew couldn’t work that out this time. Try saying it another way.' }; }
+    const j = r.json || {}, proposed = [];
+    for (const c of j.changes || []) {
+      if (!ASK_PATHS.includes(c.path) || !EDITABLE.test(c.path)) continue;
+      let val; try { val = JSON.parse(c.json); } catch { val = c.json; }
+      if (c.path === 'products.heroes') { /* titles → the store's real products; anything it doesn't sell is dropped */
+        const titles = (Array.isArray(val) ? val : []).map((x) => String(x?.title || x).toLowerCase().trim());
+        const by = (tt) => cat.find((x) => x.title.toLowerCase() === tt) || cat.find((x) => x.title.toLowerCase().includes(tt) || tt.includes(x.title.toLowerCase()));
+        const old = new Map((v.products?.heroes || []).map((h) => [h.title.toLowerCase(), h]));
+        val = titles.map((tt) => old.get(tt) || (() => { const x = by(tt); return x ? { title: x.title, img: x.img || x.images?.[0] || null, price: x.priceText || (x.price ? `${x.currency || ''} ${x.price}`.trim() : null), url: x.url || null, about: tidy(x.about, 220) || null } : null; })()).filter(Boolean);
+      }
+      proposed.push({ path: c.path, label: tidy(c.label, 60) || c.path, value: val, before: short(getPath(v, c.path)), after: short(val) });
+    }
+    const upload = { id: `up_${crypto.randomBytes(4).toString('hex')}`, name: tidy(`“${text}”`, 80), kind: 'ask', private: false, proposed,
+      neverSay: (j.neverAdd || []).map((x) => tidy(x, 40)).filter(Boolean).slice(0, 20), dropNever: (j.neverRemove || []).map((x) => tidy(x, 40)).filter(Boolean),
+      kit: { ...((j.colors || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c.hex || '')).length ? { colors: j.colors.filter((c) => /^#[0-9a-f]{6}$/i.test(c.hex)).map((c) => ({ hex: c.hex.toLowerCase(), role: c.role || 'accent' })) } : {}),
+        ...(j.fonts && (j.fonts.heading || j.fonts.body) ? { fonts: Object.fromEntries(Object.entries(j.fonts).filter(([, x]) => x)) } : {}) } };
+    if ((j.claimsAdd || []).length) proposed.push({ path: 'proof.claimsAllowed', label: 'Claims we can make', value: j.claimsAdd.slice(0, 8), before: null, after: short(j.claimsAdd) });
+    const any = proposed.length || upload.neverSay.length || upload.dropNever.length || Object.keys(upload.kit).length;
+    if (!any) return { ok: true, reply: tidy(j.reply, 240) || 'Nothing to change there.', upload: null };
+    await BOOK.update(slug, { upload }, meOf(t));
+    return { ok: true, reply: tidy(j.reply, 240) || null, upload: { id: upload.id, name: upload.name, kind: 'ask', private: false, proposed, neverSay: upload.neverSay, dropNever: upload.dropNever, kit: upload.kit } };
+  });
   on('POST', '/api/brands/:slug/book/refresh', async (b, t, p) => { const slug = slugOf(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' };
     const no = teamNo(t, 'rebuild its Brand Book'); if (no) return no; if (!builder?.bookAfter) return { error: 'The Brand Book can’t be rebuilt on this server.' };
     builder.bookAfter(slug, { force: true, why: 'team' }); return { ok: true, building: true }; });
@@ -155,6 +208,6 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
     await BOOK.update(slug, { upload }, meOf(t));
     const raw = await BOOK.load(slug), confirmed = raw.confirmed || {};
     return { ok: true, upload: { id, name: upload.name, kind: upload.kind, from: upload.from || null, private: upload.private, kit: upload.kit, neverSay: upload.neverSay,
-      proposed: upload.proposed.map((x) => ({ ...x, confirmed: !!confirmed[x.path] })) } };
+      proposed: upload.proposed.map((x) => ({ ...x, confirmed: !!confirmed[x.path], before: short(getPath(BOOK.view(raw), x.path)), after: short(x.value) })) } };
   });
 }

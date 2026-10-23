@@ -42,7 +42,8 @@
       const pen = (path, value, kind = 'text', label = '') => edit ? `<button class="bb-pen" data-edit="${esc(path)}" data-kind="${kind}" data-label="${esc(label)}" data-value="${esc(kind === 'list' ? (value || []).join('\n') : value || '')}" aria-label="Edit ${esc(label || 'this')}">Edit</button>` : '';
       const empty = (path, what, kind = 'text') => edit ? `<p class="bb-add"><button class="bb-addbtn" data-edit="${esc(path)}" data-kind="${kind}" data-label="${esc(what)}" data-value="">Add ${esc(what.toLowerCase())}</button></p>` : '';
       const line = (path, value, label, cls = '') => value ? `<div class="bb-line ${cls}"><p>${esc(value)}</p>${pen(path, value, 'text', label)}${chip(path)}</div>` : empty(path, label);
-      const list = (path, items, label, cls = 'bb-chips') => items?.length ? `<div class="bb-line"><ul class="${cls}">${items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${pen(path, items, 'list', label)}${chip(path)}</div>` : empty(path, label, 'list');
+      const rmx = (path, i) => edit ? `<button class="bb-x" data-rm="${esc(path)}" data-i="${i}" aria-label="Remove">×</button>` : '';
+      const list = (path, items, label, cls = 'bb-chips') => items?.length ? `<div class="bb-line"><ul class="${cls}">${items.map((x, i) => `<li>${esc(x)}${rmx(path, i)}</li>`).join('')}</ul>${pen(path, items, 'list', label)}${chip(path)}</div>` : empty(path, label, 'list');
       const link = (u, t) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>` : esc(t);
       const sec = (id, n, body, sub = '') => body && body.replace(/<[^>]+>/g, '').trim() ? `<section class="bb-ch" id="bb-${id}" data-ch="${id}"><header class="bb-chh"><span class="bb-n">${n}</span><h2>${esc(CHAPTERS.find((c) => c[0] === id)[1])}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</header>${body}</section>` : '';
       const st = v.story || {}, tn = v.tone || {}, w = v.words || {}, pr = v.products || {}, pe = v.people || {}, pf = v.proof || {}, lk = v.look || {}, cov = v.cover || {};
@@ -67,9 +68,9 @@
           (tn.reading || tn.language) ? `<dl class="bb-facts">${tn.reading ? `<div><dt>Reading level</dt><dd>${esc(tn.reading)}</dd></div>` : ''}${tn.language ? `<div><dt>Writes in</dt><dd>${esc(tn.language)}</dd></div>` : ''}</dl>` : ''].join(''),
         words: [`<div class="bb-wcols">${[['They say', 'words.use', w.use, 'Words we use', 'bb-chips'], ['Customers say', 'words.customers', w.customers?.length ? w.customers : v.language, 'Words customers use', 'bb-chips'], ['They avoid', 'words.avoid', w.avoid, 'Words we avoid', 'bb-chips is-avoid']]
             .filter((c) => c[2]?.length || edit).map(([h, path, xs, label, cls]) => `<div><h3>${h}</h3>${list(path, xs, label, cls)}</div>`).join('')}</div>`,
-          `${(v.neverSay || []).length || (v.never || []).length || edit ? `<div class="bb-line"><h3>Never say</h3>` : ''}${(v.neverSay || []).length || (v.never || []).length ? `<ul class="bb-chips is-never">${[...new Set([...(v.neverSay || []), ...(v.never || [])])].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${edit ? '<form class="bb-neverf" data-never><input name="w" placeholder="Add a word or claim they never use" aria-label="Add a never-say word"><button>Add</button></form>' : ''}${(v.neverSay || []).length || (v.never || []).length || edit ? '</div>' : ''}`].join(''),
+          `${(v.neverSay || []).length || (v.never || []).length || edit ? `<div class="bb-line"><h3>Never say</h3>` : ''}${(v.neverSay || []).length || (v.never || []).length ? `<ul class="bb-chips is-never">${[...new Set([...(v.neverSay || []), ...(v.never || [])])].map((x) => `<li>${esc(x)}${edit && (v.neverSay || []).includes(x) ? `<button class="bb-x" data-unnever="${esc(x)}" aria-label="Remove">×</button>` : ''}</li>`).join('')}</ul>` : ''}${edit ? '<form class="bb-neverf" data-never><input name="w" placeholder="Add a word or claim they never use" aria-label="Add a never-say word"><button>Add</button></form>' : ''}${(v.neverSay || []).length || (v.never || []).length || edit ? '</div>' : ''}`].join(''),
         products: [pr.heroes?.length ? `<div class="bb-prods">${pr.heroes.map((p) => { const own = (S.refs || []).filter((r) => r.job === 'product' && r.product && r.product.toLowerCase() === String(p.title || '').toLowerCase());
-          return `<article class="bb-prod">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : ''}<h3>${link(p.url, p.title)}</h3><p class="bb-price">${esc(p.price || '')}${p.mrp ? ` <s>${esc(p.mrp)}</s>` : ''}</p>${p.about ? `<p>${esc(p.about)}</p>` : ''}${edit ? `<p class="bb-prod-more">${own.length ? `<span class="bb-thumbs">${own.slice(0, 4).map((r) => `<img src="${esc(r.url)}" alt="${esc(r.label)}" loading="lazy">`).join('')}</span>` : ''}<button class="bb-link" data-prodphoto="${esc(p.title || '')}" title="Its back, a side or a close-up: every picture and video Brew makes of it uses them">${own.length ? `${own.length} photo${own.length > 1 ? 's' : ''} · add more` : '＋ Add photos'}</button></p>` : ''}</article>`; }).join('')}</div>` : '',
+          return `<article class="bb-prod">${rmx('products.heroes', pr.heroes.indexOf(p))}${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : ''}<h3>${link(p.url, p.title)}</h3><p class="bb-price">${esc(p.price || '')}${p.mrp ? ` <s>${esc(p.mrp)}</s>` : ''}</p>${p.about ? `<p>${esc(p.about)}</p>` : ''}${edit ? `<p class="bb-prod-more">${own.length ? `<span class="bb-thumbs">${own.slice(0, 4).map((r) => `<img src="${esc(r.url)}" alt="${esc(r.label)}" loading="lazy">`).join('')}</span>` : ''}<button class="bb-link" data-prodphoto="${esc(p.title || '')}" title="Its back, a side or a close-up: every picture and video Brew makes of it uses them">${own.length ? `${own.length} photo${own.length > 1 ? 's' : ''} · add more` : '＋ Add photos'}</button></p>` : ''}</article>`; }).join('')}</div>` : '',
           pr.tiers?.length ? `<div class="bb-tiers">${pr.tiers.map((t) => `<div class="bb-tier"><b>${esc(t.name)}</b><span>${esc(t.from === t.to ? t.from : `${t.from} to ${t.to}`)}</span><small>${t.n} product${t.n === 1 ? '' : 's'}${t.eg ? `, like ${esc(t.eg)}` : ''}</small></div>`).join('')}</div>` : '',
           (pr.offers?.length || pr.guarantee || pr.returns) ? `<dl class="bb-facts">${pr.offers?.length ? `<div><dt>Offers on the site</dt><dd>${pr.offers.map(esc).join('<br>')}</dd></div>` : ''}${pr.guarantee ? `<div><dt>Promise</dt><dd>${esc(pr.guarantee)}</dd></div>` : ''}${pr.returns ? `<div><dt>Returns</dt><dd>${esc(pr.returns)}</dd></div>` : ''}${pr.sells === 'by enquiry' ? '<div><dt>How it sells</dt><dd>By enquiry</dd></div>' : ''}</dl>` : '',
           v.naming?.pattern ? `<div class="bb-line"><h3>How they name things</h3><p>${esc(v.naming.pattern)}</p>${v.naming.examples?.length ? `<ul class="bb-chips">${v.naming.examples.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>` : ''].join(''),
@@ -77,14 +78,14 @@
           pe.objections?.length ? `<div class="bb-line"><h3>What makes them hesitate</h3><ul class="bb-list">${pe.objections.map((o) => `<li><b>${esc(o.text)}</b>${o.answer ? `<span>${esc(o.answer)}</span>` : ''}</li>`).join('')}</ul></div>` : '',
           (pe.praise?.length || pe.complaints?.length) ? `<div class="bb-wcols">${pe.praise?.length ? `<div><h3>They love</h3><ul class="bb-list">${pe.praise.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}${pe.complaints?.length ? `<div><h3>They complain about</h3><ul class="bb-list">${pe.complaints.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}</div>` : ''].join(''),
         proof: [(v.claims || []).length ? `<div class="bb-line"><h3>Claims they can make</h3><ul class="bb-list">${v.claims.slice(0, 10).map((c) => `<li>${esc(c.text)}${c.src ? ` <a class="bb-srcl" href="${esc(c.src)}" target="_blank" rel="noopener">source</a>` : ''}</li>`).join('')}</ul></div>` : '',
-          pf.ratings?.length ? `<div class="bb-ratings">${pf.ratings.map((r) => `<div class="bb-rating"><b>${r.rating ? `${esc(r.rating)}★` : esc(Number(r.count).toLocaleString())}</b><span>${r.rating ? `${esc(Number(r.count).toLocaleString())} reviews` : 'reviews'} on ${link(r.url, r.where)}</span></div>`).join('')}</div>` : '',
+          pf.ratings?.length ? `<div class="bb-ratings">${pf.ratings.map((r) => `<div class="bb-rating"><b>${r.rating ? `${(+r.rating).toFixed(1)}★` : esc(Number(r.count).toLocaleString())}</b><span>${r.rating ? `${esc(Number(r.count).toLocaleString())} reviews` : 'reviews'} on ${link(r.url, r.where)}</span></div>`).join('')}</div>` : '',
           pf.quotes?.length ? `<div class="bb-quotes">${pf.quotes.slice(0, 4).map((q) => `<blockquote>${esc(q.text)}${q.product ? `<cite>${esc(q.product)}</cite>` : ''}</blockquote>`).join('')}</div>` : ''].join(''),
         library: !fams.length ? '' : ctx.print ? fams.map((f) => `<h3>${esc(F[f] || f)}</h3><div class="bb-wall">${lib[f].map((r) => `<figure class="bb-ref"><img src="${esc(r.src)}" alt="" loading="eager">${r.proof ? `<span class="bb-proof">${esc(r.proof)}</span>` : ''}<figcaption>${r.why ? `<b>${esc(r.why)}</b>` : ''}${r.words ? `<span>${esc(r.words)}</span>` : ''}</figcaption></figure>`).join('')}</div>`).join('') : fams.length ? `<div class="bb-tabs" role="tablist">${fams.map((f) => `<button role="tab" aria-selected="${f === S.fam}" data-fam="${esc(f)}">${esc(F[f] || f)}<small>${lib[f].length}</small></button>`).join('')}</div>
           <div class="bb-wall">${(lib[S.fam] || []).map((r) => `<figure class="bb-ref">${r.video ? `<video src="${esc(r.video)}" poster="${esc(r.src)}" muted loop playsinline preload="none" data-hoverplay></video>` : `<img src="${esc(r.src)}" alt="" loading="lazy">`}${r.proof ? `<span class="bb-proof">${esc(r.proof)}</span>` : ''}<figcaption>${r.why ? `<b>${esc(r.why)}</b>` : ''}${r.detail ? `<small class="bb-detail">${esc(r.detail)}</small>` : ''}${r.words ? `<span>${esc(r.words)}</span>` : ''}${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">Open the original</a>` : ''}</figcaption></figure>`).join('')}</div>` : '',
         playbooks: (v.playbooks || []).length ? `<div class="bb-plays">${v.playbooks.map((p) => `<article class="bb-play"><div class="bb-mock" data-f="${esc(p.family)}"><span class="bb-mock-h"></span><span class="bb-mock-l"></span></div><h3>${esc(F[p.family] || p.family)}</h3><dl>${[['Layout', p.layout], ['Headline', p.headline], ['Words on it', p.wordsOnImage], ['Logo', p.logo], ['Call to action', p.cta], ['Never', p.avoid]].filter((x) => x[1]).map(([t, x]) => `<div><dt>${t}</dt><dd>${esc(x)}</dd></div>`).join('')}</dl></article>`).join('')}</div>` : '',
         reach: [(v.channels || []).length ? `<ul class="bb-chan">${v.channels.map((c) => `<li><a href="${esc(c.url)}" target="_blank" rel="noopener"><b>${esc(c.net === 'x' ? 'X' : c.net[0].toUpperCase() + c.net.slice(1))}</b>${c.handle ? `<span>@${esc(c.handle)}</span>` : ''}</a></li>`).join('')}</ul>` : '',
           v.markets?.primary ? `<dl class="bb-facts"><div><dt>Sells mainly in</dt><dd>${esc(v.markets.primary)}${v.markets.others?.length ? `, also ${esc(v.markets.others.join(', '))}` : ''}</dd></div>${v.markets.currency ? `<div><dt>Currency</dt><dd>${esc(v.markets.currency)}</dd></div>` : ''}${v.markets.festival ? `<div><dt>Next big date</dt><dd>${esc(v.markets.festival)}</dd></div>` : ''}</dl>` : ''].join(''),
-        rivals: (v.rivals || []).length ? `<ul class="bb-list is-rivals">${v.rivals.map((r) => `<li><b>${r.host ? link(`https://${r.host}`, r.name) : esc(r.name)}</b>${r.why ? `<span>${esc(r.why)}</span>` : ''}</li>`).join('')}</ul><p class="bb-quiet">Brew never copies a rival’s product, name, words or people into ${esc(cov.name || 'your')} work.</p>` : '',
+        rivals: (v.rivals || []).length ? `<ul class="bb-list is-rivals">${v.rivals.map((r, i) => `<li>${rmx('rivals', i)}<b>${r.host ? link(`https://${r.host}`, r.name) : esc(r.name)}</b>${r.why ? `<span>${esc(r.why)}</span>` : ''}</li>`).join('')}</ul><p class="bb-quiet">Brew never copies a rival’s product, name, words or people into ${esc(cov.name || 'your')} work.</p>` : '',
         rules: !ctx.readOnly && v.comfort ? `<dl class="bb-facts is-rules">${Object.entries(d.options?.comfort || {}).map(([key, o]) => `<div><dt>${esc(o.label)}</dt><dd>${edit ? `<select data-comfort="${esc(key)}" aria-label="${esc(o.label)}">${Object.entries(o.options).map(([ok, ol]) => `<option value="${esc(ok)}"${v.comfort[key] === ok ? ' selected' : ''}>${esc(ol)}</option>`).join('')}</select>` : esc(o.options[v.comfort[key]] || '')}</dd></div>`).join('')}
           <div><dt>Narrator</dt><dd>${edit ? `<select data-narrator aria-label="Narrator voice">${(d.options?.narrators || []).map((n) => `<option value="${esc(n.id)}"${v.voice?.narrator === n.id ? ' selected' : ''}>${esc(n.label)}</option>`).join('')}</select>` : esc(v.voice?.narrator || '')}</dd></div>
           <div><dt>Written voice</dt><dd>${edit ? `<select data-voicew aria-label="Written voice">${Object.entries(d.options?.voices || {}).map(([vk, vl]) => `<option value="${esc(vk)}"${v.voice?.written === vk ? ' selected' : ''}>${esc(vl)}</option>`).join('')}</select>` : esc(d.options?.voices?.[v.voice?.written] || '')}</dd></div></dl>` : ''
@@ -94,18 +95,17 @@
       const body = shown.map(([id], i) => sec(id, String(i + 1).padStart(2, '0'), chapters[id], subs[id])).join('');
       const ups = (v.uploads || []).filter((u) => !u.applied);
       el.className = 'bb'; el.innerHTML = `
-        <div class="bb-bar">${ctx.back ? `<button class="bb-back" data-nav="${esc(ctx.back.nav)}">${esc(ctx.back.label)}</button>` : ''}${edit ? `<button class="bb-btn" data-import>Bring your brand book</button>` : `<span class="bb-made">${ctx.readOnly ? 'A brand book by Brew' : 'Your team edits this book. Ask them to add you.'}</span>`}
-          <div class="bb-share"><button class="bb-btn is-main" data-share aria-haspopup="menu">Share</button></div></div>
+        <div class="bb-bar">${ctx.back ? `<button class="bb-back" data-nav="${esc(ctx.back.nav)}">${esc(ctx.back.label)}</button>` : ''}${edit ? '' : `<span class="bb-made">${ctx.readOnly ? 'A brand book by Brew' : 'Your team edits this book. Ask them to add you.'}</span>`}
+          <div class="bb-share"><button class="bb-btn is-main" data-share aria-haspopup="dialog">Share</button></div></div>
         ${d.building && !ctx.readOnly ? `<p class="bb-building"><brew-load class="spin"></brew-load>Brew is writing the voice, story and look from ${esc(v.host || 'the site')}. The rest is already here.</p>` : ''}
         ${v.book?.error && !d.building && edit ? `<p class="bb-note">${esc(v.book.error)}</p>` : ''}
-        ${ups.length && edit ? `<p class="bb-note">${ups.length} upload${ups.length > 1 ? 's' : ''} waiting: <button class="bb-link" data-import>review the changes</button></p>` : ''}
         <header class="bb-cover"><div class="bb-cover-in">${k.logo ? `<img class="bb-cover-logo" src="${esc(k.logo)}" alt="${esc(cov.name || v.name || '')}">` : `<p class="bb-cover-name">${esc(cov.name || v.name || '')}</p>`}
           <h1>${esc(cov.tagline || cov.oneLine || cov.name || v.name || '')}</h1>${cov.tagline && cov.oneLine ? `<p>${esc(cov.oneLine)}</p>` : ''}
           <div class="bb-cover-strip">${roles.slice(0, 6).map((c) => `<span style="background:${esc(c.hex)}"></span>`).join('')}</div></div>
           ${edit ? `<button class="bb-pen is-cover" data-edit="cover.tagline" data-kind="text" data-label="Tagline" data-value="${esc(cov.tagline || '')}">Edit tagline</button>` : ''}</header>
         <div class="bb-body"><nav class="bb-toc" aria-label="Chapters"><ol>${shown.map(([id], i) => `<li><a href="#bb-${id}" data-toc="${id}"><span>${String(i + 1).padStart(2, '0')}</span>${esc(CHAPTERS.find((c) => c[0] === id)[1])}</a></li>`).join('')}</ol></nav>
           <main class="bb-main">${body || `<p class="bb-note">Brew is still reading ${esc(v.host || 'the site')}. The book fills in as it reads.</p>`}
-          ${ctx.readOnly ? `<footer class="bb-foot"><p>Made by Brew from ${esc(v.host || 'the brand’s')} own site, ads and posts.</p><a class="bb-btn is-main" href="/?ref=brand-kit">Make it yours in Brew</a></footer>` : ''}</main></div>`;
+          ${ctx.readOnly ? `<footer class="bb-foot"><p>Made by Brew from ${esc(v.host || 'the brand’s')} own site, ads and posts.</p><a class="bb-btn is-main" href="/?ref=brand-kit">Make it yours in Brew</a></footer>` : ''}</main></div>${edit ? dockHtml(v) : ''}`;
       wire();
     }
 
@@ -120,7 +120,7 @@
       const nr = $('[data-narrator]', el); if (nr) nr.onchange = () => save({ voice: { narrator: nr.value } }, 'Saved.');
       const vw = $('[data-voicew]', el); if (vw) vw.onchange = () => save({ voice: { written: vw.value } }, 'Saved.');
       const nf = $('[data-never]', el); if (nf) nf.onsubmit = (e) => { e.preventDefault(); const x = nf.w.value.trim(); if (x) save({ never: x }, `Brew will never write “${x}”.`); };
-      $$('[data-import]', el).forEach((b) => b.onclick = openImport);
+      
       /* a product's own extra photos (its back, a side, a close-up): every picture and video Brew makes of it uses them, so no side is guessed */
       $$('[data-prodphoto]', el).forEach((b) => b.onclick = () => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp'; inp.multiple = true;
         inp.onchange = async () => { const files = [...inp.files].slice(0, 6); if (!files.length) return; b.disabled = true; b.textContent = 'Adding…'; let ok = 0; const bad = [];
@@ -131,7 +131,12 @@
           toast([ok ? `${ok} photo${ok > 1 ? 's' : ''} added. Every picture and video of ${name} now uses ${ok > 1 ? 'them' : 'it'}.` : '', bad.length ? `Not added: ${esc(bad.join('; '))}.` : ''].filter(Boolean).join(' ')); };
         inp.click(); });
       if (S.data?.canEdit && !ctx.readOnly && !S.refs && !S.refsLoading) { /* the team's own view only (wire() has no `edit` of its own) */ S.refsLoading = true; loadRefs().then(() => { S.refsLoading = false; if (S.refs.length) paint(); }); }
-      $('[data-share]', el).onclick = (e) => openShare(e.currentTarget);
+      /* × on any list item: the list is saved without it (an edit, so Undo brings the read back) */
+      $$('[data-rm]', el).forEach((b) => b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); const path = b.dataset.rm, i = +b.dataset.i, cur = path.split('.').reduce((x, k2) => x?.[k2], S.data.book);
+        if (!Array.isArray(cur)) return; save({ edit: { path, value: cur.filter((_, j) => j !== i) } }, 'Removed. Undo is on the chip.'); });
+      $$('[data-unnever]', el).forEach((b) => b.onclick = () => save({ unnever: b.dataset.unnever }, `Brew may use “${b.dataset.unnever}” again.`));
+      $('[data-share]', el).onclick = () => openShare();
+      wireDock();
       /* the index follows the chapter on screen */
       const toc = $$('[data-toc]', el); if ('IntersectionObserver' in window && toc.length) { const io = new IntersectionObserver((es) => es.forEach((x) => { if (x.isIntersecting) toc.forEach((a) => a.classList.toggle('on', a.dataset.toc === x.target.dataset.ch)); }), { rootMargin: '-20% 0px -70% 0px' }); $$('.bb-ch', el).forEach((s) => io.observe(s)); }
     }
@@ -149,61 +154,80 @@
     }
 
     /* ---------- share: the link, the kit, a prompt any AI can use ---------- */
-    function openShare(at) {
-      $('.bb-menu')?.remove(); const sh = S.data.share || {}, abs = (p) => new URL(p, location.origin).href, name = S.data.book?.cover?.name || S.data.book?.name || 'this brand';
-      const ask = `Use the brand book at ${abs(sh.md)} for everything you write or design for ${name}: follow its voice, words, never-say list, look and claims.`;
-      const m = document.createElement('div'); m.className = 'bb-menu'; m.setAttribute('role', 'menu');
-      m.innerHTML = `<button role="menuitem" data-s="link">Copy the link</button><button role="menuitem" data-s="ai">Copy for any AI</button>
-        <a role="menuitem" href="https://chatgpt.com/?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener">Open in ChatGPT</a><a role="menuitem" href="https://claude.ai/new?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener">Open in Claude</a><button role="menuitem" data-s="gemini">Open in Gemini</button>
-        <hr><a role="menuitem" href="${esc(sh.zip)}" download>Download the kit (.zip)</a><a role="menuitem" href="${esc(sh.pdf || sh.page + '.pdf')}" target="_blank" rel="noopener">Download as PDF</a><a role="menuitem" href="${esc(sh.md)}" target="_blank" rel="noopener">brand.md</a><a role="menuitem" href="${esc(sh.json)}" target="_blank" rel="noopener">brand.json</a>
-        <p>The link and kit hold what Brew read plus your team’s edits. Anything you kept private stays out.</p>`;
-      document.body.appendChild(m); const r = at.getBoundingClientRect(); m.style.top = `${r.bottom + 8 + scrollY}px`; m.style.right = `${Math.max(12, innerWidth - r.right)}px`;
-      const close = (e) => { if (!m.contains(e.target) && e.target !== at) { m.remove(); document.removeEventListener('click', close, true); } }; setTimeout(() => document.addEventListener('click', close, true));
-      m.onclick = async (e) => { const s = e.target.closest('[data-s]')?.dataset.s; if (!s) return; e.preventDefault();
-        if (s === 'link') { await navigator.clipboard?.writeText(abs(sh.page)); toast('Link copied. Anyone with it sees the brand book.'); }
-        if (s === 'ai' || s === 'gemini') { const md = await fetch(sh.md).then((r) => r.text()).catch(() => ''); await navigator.clipboard?.writeText(md || ask); toast(md ? 'Brand book copied. Paste it into any AI chat or project.' : 'Copied the link for your AI.'); if (s === 'gemini') window.open('https://gemini.google.com/app', '_blank', 'noopener'); }
-        m.remove(); };
+    /* ---------- the composer: tell Brew anything, paste a link or drop files; every change comes back as a card to take ---------- */
+    function dockHtml(v) {
+      const n = v.cover?.name || v.name || 'your brand';
+      return `<div class="bb-dock" data-dock><div class="bb-cards" data-cards></div>
+        <div class="bb-ideas" data-ideas>${['Add a product to our heroes', 'Change our tagline to …', 'Never say “…”', 'Make the voice warmer', 'Remove a rival'].map((x) => `<button type="button" data-idea="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+        <form class="bb-ask" data-ask><button type="button" class="bb-attach" data-attach aria-label="Add files: guidelines, deck, logo, fonts"><span aria-hidden="true">+</span></button>
+          <input name="q" autocomplete="off" placeholder="Tell Brew what to change in ${esc(n)}’s book, or paste a link…" aria-label="Tell Brew what to change">
+          <button class="bb-send" aria-label="Send"><span aria-hidden="true">↑</span></button>
+          <input type="file" hidden multiple data-files accept=".pdf,.doc,.docx,.ppt,.pptx,.key,.xlsx,.txt,.md,.csv,.png,.jpg,.jpeg,.webp,.svg,.ttf,.otf,.woff,.woff2,.zip"></form></div>`;
+    }
+    const valText = (x) => x == null || x === '' ? '' : esc(x);
+    function changeCard(u, reply) {
+      const c = document.createElement('div'); c.className = 'bb-change'; c.dataset.id = u.id;
+      const kit = u.kit || {}, rows = [
+        ...(u.proposed || []).map((x) => `<li><label><input type="checkbox" ${x.confirmed ? '' : 'checked'} data-path="${esc(x.path)}"><span class="bb-ch-l">${esc(x.label)}</span>${x.confirmed ? '<em>you confirmed the old one</em>' : ''}</label>
+          <div class="bb-diff">${x.before ? `<s>${valText(x.before)}</s><i aria-hidden="true">→</i>` : '<i class="bb-new">new</i>'}<b>${valText(x.after) || '<span class="bb-quiet">removed</span>'}</b></div></li>`),
+        kit.colors?.length ? `<li><label><input type="checkbox" checked data-kit="colors"><span class="bb-ch-l">Colours</span></label><div class="bb-diff"><span class="bb-dots">${kit.colors.map((c2) => `<i style="background:${esc(c2.hex)}" title="${esc(c2.hex)}"></i>`).join('')}</span></div></li>` : '',
+        kit.fonts && Object.keys(kit.fonts).length ? `<li><label><input type="checkbox" checked data-kit="fonts"><span class="bb-ch-l">Fonts</span></label><div class="bb-diff"><b>${esc(Object.entries(kit.fonts).map(([r, f]) => `${f} for ${r === 'heading' ? 'headings' : 'body'}`).join(', '))}</b></div></li>` : '',
+        kit.logo ? `<li><label><input type="checkbox" checked data-kit="logo"><span class="bb-ch-l">Logo</span></label><div class="bb-diff"><img src="${esc(kit.logo)}" alt="" class="bb-mini"></div></li>` : '',
+        u.neverSay?.length || u.dropNever?.length ? `<li><label><input type="checkbox" checked data-kit="never"><span class="bb-ch-l">Never say</span></label><div class="bb-diff">${(u.neverSay || []).map((w) => `<b class="bb-tag is-add">+ ${esc(w)}</b>`).join('')}${(u.dropNever || []).map((w) => `<b class="bb-tag is-drop">− ${esc(w)}</b>`).join('')}</div></li>` : ''].join('');
+      c.innerHTML = `<header><span class="bb-from">${u.kind === 'ask' ? 'You asked' : `From ${esc(u.from ? `${u.from}: ` : '')}${esc(u.name)}`}</span>${u.kind === 'ask' ? `<b>${esc(u.name)}</b>` : ''}${reply ? `<p>${esc(reply)}</p>` : ''}</header>
+        <ul>${rows}</ul><footer><button type="button" class="bb-btn" data-skip>Not now</button><button type="button" class="bb-btn is-brand" data-use>Use these</button></footer>`;
+      $('[data-skip]', c).onclick = () => c.remove();
+      $('[data-use]', c).onclick = async () => { const paths = $$('[data-path]', c).filter((x) => x.checked).map((x) => x.dataset.path), kitOff = $$('[data-kit]', c).filter((x) => !x.checked).map((x) => x.dataset.kit);
+        const ok = await save({ applyUpload: { id: u.id, paths, ...(kitOff.length ? { skipKit: kitOff } : {}), overrideConfirmed: $$('[data-path]', c).some((x) => x.checked && x.closest('li').querySelector('em')) } }, 'Done. Brew writes and makes things this way from now on.');
+        if (ok) c.remove(); };
+      return c;
+    }
+    function thinking(label) { const c = document.createElement('div'); c.className = 'bb-change is-busy'; c.innerHTML = `<header><span class="bb-from">${esc(label)}</span><p><brew-load class="spin"></brew-load> Reading it and working out the changes…</p></header>`; return c; }
+    function wireDock() {
+      const dock = $('[data-dock]', el); if (!dock) return; const cards = $('[data-cards]', dock), form = $('[data-ask]', dock), q = form.q, files = $('[data-files]', dock);
+      for (const u of (S.data.book?.uploads || []).filter((x) => !x.applied && (x.proposed?.length || x.kit || x.neverSay?.length))) cards.appendChild(changeCard(u));
+      const send = async (body, label) => { const w = thinking(label); cards.appendChild(w); w.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        const r = await api('POST', `${base}/${body.url || body.data || body.text && body.name ? 'import' : 'ask'}`, body); w.remove();
+        if (!r || r.error) { const e = document.createElement('div'); e.className = 'bb-change is-err'; e.innerHTML = `<header><p>${esc(r?.error || 'That didn’t go through. Try again.')}</p></header>`; cards.appendChild(e); setTimeout(() => e.remove(), 9000); return; }
+        if (!r.upload) { toast(r.reply || 'Nothing to change there.'); return; }
+        cards.appendChild(changeCard(r.upload, r.reply)); };
+      form.onsubmit = (e) => { e.preventDefault(); const x = q.value.trim(); if (!x) return; q.value = '';
+        if (/^https?:\/\/\S+$/i.test(x)) send({ url: x, private: false }, 'Reading the link'); else send({ text: x }, `You asked: “${x.slice(0, 80)}”`); };
+      $$('[data-idea]', dock).forEach((b) => b.onclick = () => { q.value = b.dataset.idea.replace(/ …|“…”/, ''); q.focus(); });
+      const upload = async (list) => { for (const f of list) { if (f.size > 25e6) { toast(`${f.name} is over 25 MB. Upload it as a smaller PDF.`); continue; }
+        const data = await new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.readAsDataURL(f); }); await send({ name: f.name, type: f.type, data, private: false }, `Reading ${f.name}`); } };
+      $('[data-attach]', dock).onclick = () => files.click(); files.onchange = () => upload([...files.files]);
+      /* drop a file anywhere on the book */
+      let depth = 0; const over = () => el.querySelector('.bb-dropzone') || el.appendChild(Object.assign(document.createElement('div'), { className: 'bb-dropzone', innerHTML: `<div><b>Drop it into ${esc(S.data.book?.cover?.name || S.data.book?.name || 'the')} brand book</b><span>Guidelines, decks, logos, fonts, a ZIP. Brew shows you what changes first.</span></div>` }));
+      el.ondragenter = (e) => { if (!e.dataTransfer?.types?.includes('Files')) return; depth++; over(); }; el.ondragleave = () => { if (--depth <= 0) { depth = 0; el.querySelector('.bb-dropzone')?.remove(); } };
+      el.ondragover = (e) => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); };
+      el.ondrop = (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); depth = 0; el.querySelector('.bb-dropzone')?.remove(); upload([...e.dataTransfer.files]); };
     }
 
-    /* ---------- bring your brand book: files, a ZIP, a link or text; Brew proposes, the team takes it in one tap ---------- */
-    function openImport() {
-      $('.bb-sheet')?.remove(); const v = S.data.book || {}, waiting = (v.uploads || []).filter((u) => !u.applied);
-      const sh = document.createElement('div'); sh.className = 'bb-sheet'; sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-label', 'Bring your brand book');
-      sh.innerHTML = `<div class="bb-sheet-in"><header><h2>Bring your brand book</h2><button class="bb-btn" data-close aria-label="Close">Close</button></header>
-        <p class="bb-quiet">Wherever it lives. Brew reads it and shows you what it would change before anything does.</p>
-        <label class="bb-drop" tabindex="0"><input type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.key,.xlsx,.txt,.md,.csv,.png,.jpg,.jpeg,.webp,.svg,.ttf,.otf,.woff,.woff2,.zip"><b>Drop files here or choose them</b><span>Guidelines PDF, a deck, Word or Excel, your logo, font files, or a ZIP of all of it</span></label>
-        <form class="bb-linkf"><input name="u" type="url" placeholder="Paste a link: Google Drive or Docs, Notion, Figma, Canva, a brand portal or any page" aria-label="Link to your brand book"><button class="bb-btn">Read it</button></form>
-        <details class="bb-textd"><summary>Or paste your tone notes and rules</summary><form class="bb-textf"><textarea name="t" rows="5" placeholder="How you sound, words you never use, claims you can make…"></textarea><button class="bb-btn">Read it</button></form></details>
-        <label class="bb-priv"><input type="checkbox" name="keep" checked> Keep what’s in these private (left out of the shared link and kit)</label>
-        <div class="bb-props"></div></div>`;
-      document.body.appendChild(sh); const props = $('.bb-props', sh), keep = () => $('[name=keep]', sh).checked;
-      const close = () => { sh.remove(); }; $('[data-close]', sh).onclick = close; sh.onclick = (e) => { if (e.target === sh) close(); };
-      const busy = (t) => { props.insertAdjacentHTML('afterbegin', `<p class="bb-reading" data-busy><brew-load class="spin"></brew-load>${esc(t)}</p>`); };
-      const done = () => $('[data-busy]', props)?.remove();
-      const show = (u) => { const card = document.createElement('div'); card.className = 'bb-prop'; card.dataset.id = u.id;
-        const kitBits = [u.kit?.colors?.length ? `<li><label><input type="checkbox" checked data-kit="colors"> Colours <span class="bb-dots">${u.kit.colors.map((c) => `<i style="background:${esc(c.hex)}" title="${esc(c.hex)}"></i>`).join('')}</span></label></li>` : '',
-          u.kit?.fonts && Object.keys(u.kit.fonts).length ? `<li><label><input type="checkbox" checked data-kit="fonts"> Fonts: ${esc(Object.entries(u.kit.fonts).map(([r, f]) => `${f} for ${r === 'heading' ? 'headings' : 'body'}`).join(', '))}</label></li>` : '',
-          u.kit?.logo ? `<li><label><input type="checkbox" checked data-kit="logo"> Logo <img src="${esc(u.kit.logo)}" alt="" class="bb-mini"></label></li>` : '',
-          u.neverSay?.length ? `<li><label><input type="checkbox" checked data-kit="never"> Never say: ${esc(u.neverSay.slice(0, 8).join(', '))}${u.neverSay.length > 8 ? '…' : ''}</label></li>` : ''].join('');
-        card.innerHTML = `<h3>From ${esc(u.name)}</h3><ul>${kitBits}${(u.proposed || []).map((x) => `<li><label><input type="checkbox" ${x.confirmed ? '' : 'checked'} data-path="${esc(x.path)}"> <b>${esc(x.label)}</b>${x.confirmed ? ' <em>you confirmed the current one</em>' : ''}<span>${esc(Array.isArray(x.value) ? x.value.map((y) => typeof y === 'object' ? Object.values(y).filter(Boolean).join(': ') : y).join('; ') : typeof x.value === 'object' ? Object.values(x.value || {}).flat().filter(Boolean).join('; ') : x.value)}</span></label></li>`).join('')}</ul>
-          <div class="bb-editb"><button class="bb-btn" data-skip>Not now</button><button class="bb-btn is-main" data-use>Use these</button></div>`;
-        props.appendChild(card);
-        $('[data-skip]', card).onclick = () => card.remove();
-        $('[data-use]', card).onclick = async () => { const paths = $$('[data-path]', card).filter((c) => c.checked).map((c) => c.dataset.path), kitOff = $$('[data-kit]', card).filter((c) => !c.checked).map((c) => c.dataset.kit);
-          const ok = await save({ applyUpload: { id: u.id, paths, ...(kitOff.length ? { skipKit: kitOff } : {}), overrideConfirmed: $$('[data-path]', card).some((c) => c.checked && c.closest('li').querySelector('em')) } }, `Brand Book updated from ${u.name}.`);
-          if (ok) card.remove(); if (!$('.bb-prop', sh)) close(); };
-      };
-      for (const u of waiting) show({ ...u, proposed: u.proposed || [] });
-      const send = async (body, label) => { busy(`Reading ${label}`); const r = await api('POST', `${base}/import`, { ...body, private: keep() }); done();
-        if (!r || r.error) { props.insertAdjacentHTML('afterbegin', `<p class="bb-err">${esc(r?.error || 'That didn’t go through. Try again.')}</p>`); return; }
-        if (r.upload.kind === 'font' || r.upload.kind === 'logo' || r.upload.proposed?.length || r.upload.kit || r.upload.neverSay?.length) show(r.upload); };
-      const files = async (list) => { for (const f of list) { if (f.size > 25e6) { props.insertAdjacentHTML('afterbegin', `<p class="bb-err">${esc(f.name)} is over 25 MB. Upload it as a smaller PDF.</p>`); continue; }
-        const data = await new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.readAsDataURL(f); }); await send({ name: f.name, type: f.type, data }, f.name); } };
-      const drop = $('.bb-drop', sh), inp = $('input[type=file]', sh); inp.onchange = () => files([...inp.files]);
-      drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('is-over'); }; drop.ondragleave = () => drop.classList.remove('is-over');
-      drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('is-over'); files([...e.dataTransfer.files]); };
-      $('.bb-linkf', sh).onsubmit = (e) => { e.preventDefault(); const u = e.target.u.value.trim(); if (u) send({ url: u }, 'the link'); };
-      $('.bb-textf', sh).onsubmit = (e) => { e.preventDefault(); const t = e.target.t.value.trim(); if (t) send({ text: t, name: 'Your notes' }, 'your notes'); };
+    /* ---------- share: one sheet, the book's own cover on top; every tile says it worked ---------- */
+    const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch {} t.remove(); return ok; } };
+    function openShare() {
+      $('.bb-share-sheet')?.remove(); const d = S.data, v = d.book || {}, sh = d.share || {}, abs = (p) => new URL(p, location.origin).href, name = v.cover?.name || v.name || 'this brand', k = v.kit || {};
+      const ask = `Use the brand book at ${abs(sh.md)} for everything you write or design for ${name}: follow its voice, words, never-say list, look and claims.`;
+      const w = document.createElement('div'); w.className = 'bb-share-sheet'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-label', `Share ${name}’s brand book`);
+      w.style.setProperty('--bb-1', el.style.getPropertyValue('--bb-1')); w.style.setProperty('--bb-2', el.style.getPropertyValue('--bb-2')); w.style.setProperty('--bb-on', el.style.getPropertyValue('--bb-on')); w.style.setProperty('--bb-head', el.style.getPropertyValue('--bb-head'));
+      w.innerHTML = `<div class="bb-ss"><button class="bb-ss-x" data-x aria-label="Close">✕</button>
+        <div class="bb-ss-cover">${k.logo ? `<img src="${esc(k.logo)}" alt="">` : ''}<b>${esc(name)}</b><span>${esc(v.cover?.tagline || v.cover?.oneLine || 'Brand book')}</span><div class="bb-ss-strip">${(k.roles || []).slice(0, 5).map((c) => `<i style="background:${esc(c.hex)}"></i>`).join('')}</div></div>
+        <div class="bb-ss-body"><h2>Share the brand book</h2><p>What Brew read plus your team’s edits. Anything you kept private stays out.</p>
+          <div class="bb-tiles"><button class="bb-tile" data-copy-link><b>Copy link</b><span>Anyone with it sees the book</span></button>
+            <a class="bb-tile" href="${esc(sh.pdf || sh.page + '.pdf')}" target="_blank" rel="noopener"><b>PDF</b><span>Print-ready, every chapter</span></a>
+            <a class="bb-tile" href="${esc(sh.zip)}" download><b>Brand kit</b><span>Logos, colours, fonts, references, PDF</span></a></div>
+          <h3>Use it with any AI</h3><div class="bb-ais"><a href="https://chatgpt.com/?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener">ChatGPT</a><a href="https://claude.ai/new?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener">Claude</a><button data-gemini>Gemini</button><button data-prompt>Copy as prompt</button></div></div></div>`;
+      document.body.appendChild(w); setTimeout(() => w.classList.add('is-in'), 16);
+      const close = () => { w.classList.remove('is-in'); setTimeout(() => w.remove(), 180); document.removeEventListener('keydown', esc1); }, esc1 = (e) => { if (e.key === 'Escape') close(); };
+      document.addEventListener('keydown', esc1); w.onclick = (e) => { if (e.target === w) close(); }; $('[data-x]', w).onclick = close;
+      const done = (b, label) => { const o = b.innerHTML; b.classList.add('is-done'); b.innerHTML = `<b>${label}</b>`; setTimeout(() => { b.classList.remove('is-done'); b.innerHTML = o; }, 1800); };
+      /* a browser that blocks the clipboard still gets the link: shown, selected, ready to copy by hand */
+      const showLink = (text) => { let i = $('.bb-ss-link', w); if (!i) { i = document.createElement('input'); i.className = 'bb-ss-link'; i.readOnly = true; i.setAttribute('aria-label', 'Link to copy'); $('.bb-tiles', w).after(i); } i.value = text; i.focus(); i.select(); };
+      $('[data-copy-link]', w).onclick = async (e) => { const b = e.currentTarget; if (await copy(abs(sh.page))) done(b, 'Copied ✓'); else { done(b, 'Press ⌘C'); showLink(abs(sh.page)); } };
+      const md = () => fetch(sh.md).then((r) => r.text()).catch(() => '');
+      $('[data-prompt]', w).onclick = async (e) => { const b = e.currentTarget; const t = await md(); if (await copy(t || ask)) done(b, 'Copied ✓'); else { done(b, 'Press ⌘C'); showLink(ask); } };
+      $('[data-gemini]', w).onclick = async (e) => { const b = e.currentTarget; const t = await md(); await copy(t || ask); done(b, 'Copied, paste it in'); window.open('https://gemini.google.com/app', '_blank', 'noopener'); };
     }
 
     if (S.data) paint(); else { el.innerHTML = '<div class="bb-empty"><brew-load class="spin"></brew-load><p>Opening the Brand Book</p></div>'; }

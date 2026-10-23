@@ -13,7 +13,7 @@
 import { safeFetch, stripTags, links, hostOf, UA, sha as hash, clean } from './reader/util.js';
 import { offersOf, guaranteeOf } from './reader/stages/ads.js';
 
-export const BOOK_V = 4; // 4: a cover tagline is never a search title, one creative listed once; 3: Instagram pictures from fresh lists (signed links expire); // 2: built with the week's enrichment (posts, reels with plays, TikToks, film words) and the signature that keeps it current
+export const BOOK_V = 5; // 5: ratings to one decimal, a summed marketplace never shown twice; 4: // 4: a cover tagline is never a search title, one creative listed once; 3: Instagram pictures from fresh lists (signed links expire); // 2: built with the week's enrichment (posts, reels with plays, TikToks, film words) and the signature that keeps it current
 const FILE = 'brandbook-read.json';
 const tidy = (s, n = 400) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const squash = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[^\p{L}\p{N}']+/gu, ' ').trim();
@@ -93,8 +93,10 @@ export function freeChapters({ profile = {}, brief = {}, ledger = [], homeText =
       objections: (brief.objections || []).slice(0, 5).map((o) => ({ text: tidy(o.objection, 140), answer: tidy(o.answerFromEvidence, 200) || null })),
       praise: (brief.praise || []).slice(0, 5).map((x) => tidy(x.point || x.text || x, 140)), complaints: (brief.complaints || []).slice(0, 5).map((x) => tidy(x.point || x.text || x, 140)),
       words: (brief.language || []).slice(0, 12) },
-    proof: { ratings: [...(profile.reviews?.platforms || []).filter((p) => p.count).map((p) => ({ where: p.label || p.name, count: p.count, rating: p.rating || null, url: p.url || null })),
-      ...(profile.marketplaces || []).flatMap((m) => (m.listings || []).slice(0, 1).filter((l) => l.reviews).map((l) => ({ where: m.name, count: l.reviews, rating: l.rating || null, url: l.url || null })))].slice(0, 6),
+    /* one tile per place, a rating to one decimal: a marketplace already summed across its listings never also shows its first listing */
+    proof: { ratings: ((plats) => [...plats, ...(profile.marketplaces || []).filter((m) => !plats.some((p) => String(p.where).toLowerCase().includes(String(m.name).toLowerCase())))
+        .flatMap((m) => (m.listings || []).slice(0, 1).filter((l) => l.reviews).map((l) => ({ where: m.name, count: l.reviews, rating: l.rating ? Math.round(l.rating * 10) / 10 : null, url: l.url || null })))].slice(0, 6))(
+        (profile.reviews?.platforms || []).filter((p) => p.count).map((p) => ({ where: p.label || p.name, count: p.count, rating: p.rating ? Math.round(p.rating * 10) / 10 : null, url: p.url || null }))),
       quotes: (profile.reviews?.quotes || []).slice(0, 6).map((q) => ({ text: tidy(q.text, 260), rating: q.rating || null, product: q.product || null, url: q.url || null, where: q.src || null })) },
     channels: Object.entries(profile.socials || {}).filter(([, v]) => v?.url).map(([net, v]) => ({ net, url: v.url, handle: v.handle || null, posts: v.posts?.length || v.videos?.length || null, error: v.error || null })),
     markets: { primary: profile.market?.primary || profile.country || null, others: profile.market?.others || [], languages: [profile.locale, config.lang].filter(Boolean), currency: cur || null, festival: config.festival?.name || config.festival || null },

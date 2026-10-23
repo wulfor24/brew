@@ -11,7 +11,7 @@
 import { familiesFor, REF_FAMILIES } from '../brand-book-read.js';
 const FILE = 'private/brandbook.json';
 /* the chapters a team edit may change, by dotted path (story.mission, tone.summary, words.use, look.light, …) */
-export const EDITABLE = /^(cover|story|tone|words|products|people|proof|look|naming|pillars|playbooks|markets|rules)(\.[\w-]+){0,2}$/;
+export const EDITABLE = /^(cover|story|tone|words|products|people|proof|look|naming|pillars|playbooks|markets|rules|rivals|library)(\.[\w-]+){0,2}$/;
 const end = (s) => String(s ?? '').trim().replace(/[\s.;,:]+$/, ''); /* no doubled full stops in the blocks makers read */
 const getPath = (o, p) => p.split('.').reduce((x, k) => (x == null ? x : x[k]), o);
 const setPath = (o, p, v) => { const ks = p.split('.'), last = ks.pop(); let x = o; for (const k of ks) { if (x[k] == null || typeof x[k] !== 'object') x[k] = {}; x = x[k]; } x[last] = v; };
@@ -225,6 +225,8 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
     if (patch.removeStyleRef) bb.removed.styleRefs = [...new Set([...bb.removed.styleRefs, patch.removeStyleRef])];
     if (patch.claim) bb.claimsAllowed = [{ text: tidy(patch.claim, 140), from: 'team' }, ...bb.claimsAllowed].slice(0, 20);
     if (patch.never) bb.neverSay = [...new Set([...bb.neverSay, tidy(patch.never, 40)])].slice(0, 30);
+    if (patch.unnever) bb.neverSay = bb.neverSay.filter((w) => w.toLowerCase() !== String(patch.unnever).toLowerCase());
+    if (patch.unclaim) bb.claimsAllowed = bb.claimsAllowed.filter((c) => c.text !== patch.unclaim);
     if (patch.cast) { const c = patch.cast; if (c.remove) bb.cast = bb.cast.filter((x) => x.id !== c.remove);
       else if (c.label) { if (c.real && !c.consent) throw Object.assign(new Error('Tick that you have their consent before adding a real person.'), { status: 400 });
         bb.cast.push({ id: `cast_${Math.random().toString(36).slice(2, 8)}`, label: tidy(c.label, 60), kind: c.real ? 'real' : 'ai', refs: (c.refs || []).slice(0, 80), voice: c.voice || null, consent: c.real ? { by: by?.email || null, at: now() } : null }); } }
@@ -246,6 +248,7 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
         if (u.kit.fonts && Object.keys(u.kit.fonts).length && !skip.has('fonts')) { bb.kitEdits = { ...bb.kitEdits, fonts: { ...(bb.kitEdits?.fonts || {}), ...u.kit.fonts } }; n++; }
         if (u.kit.logo && !skip.has('logo')) { bb.kitEdits = { ...bb.kitEdits, logo: u.kit.logo }; n++; }
         if (u.kit.fontFiles?.length && !skip.has('fonts')) { const fams = new Set(u.kit.fontFiles.map((f) => String(f.family || '').toLowerCase())); bb.kitEdits = { ...bb.kitEdits, fontFiles: [...u.kit.fontFiles, ...(bb.kitEdits?.fontFiles || []).filter((f) => !fams.has(String(f.family || '').toLowerCase()))].slice(0, 8) }; n++; } }
+      if (u.dropNever?.length && !skip.has('never')) { bb.neverSay = bb.neverSay.filter((w) => !u.dropNever.some((d) => d.toLowerCase() === w.toLowerCase())); n++; }
       if (u.neverSay?.length && !skip.has('never')) { bb.neverSay = [...new Set([...bb.neverSay, ...u.neverSay.map((x) => tidy(x, 40))])].slice(0, 40); n++; }
       u.applied = n; u.appliedAt = now(); }
     if (patch.upload) bb.uploads = [{ ...patch.upload, at: now(), by: by?.email || null }, ...(bb.uploads || []).filter((x) => x.id !== patch.upload.id)].slice(0, 30);

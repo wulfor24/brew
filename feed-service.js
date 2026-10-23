@@ -2326,7 +2326,7 @@ export function createFeedService(o) {
   const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|find-more|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
-    if (!/^\/(h\/|p\/|brief\/|api\/(share|tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh))?$))/.test(u.pathname)) return false;
+    if (!/^\/(h\/|p\/|brief\/|api\/(share|tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh|ask))?$))/.test(u.pathname)) return false;
     let tid = null;
     /* Jam v2's ready-to-post and brief links are signed: the link is the key, so they run before any sign-in, demo or team check (a team that got a brief marks its status without an account) */
     if (/^\/(p|brief)\//.test(u.pathname)) { if (JAM2 && await JAM2.publicHandle(req, res, u)) return true; send(res, 404, { error: 'not found' }); return true; }
@@ -2407,7 +2407,7 @@ export function createFeedService(o) {
       if (email && w && !viewer?.member && jamPrivate(t, w)) { send(res, 403, { error: TEAM_ONLY, teamOnly: true }); return true; }
       if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
       send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
-    if (!/^\/api\/(tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh))?$)/.test(u.pathname)) return false;
+    if (!/^\/api\/(tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh|ask))?$)/.test(u.pathname)) return false;
     for (const r of ROUTES) {
       if (r.method !== req.method) continue; const m = u.pathname.match(r.re); if (!m) continue;
       const params = m.groups || {};
