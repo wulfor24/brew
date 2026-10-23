@@ -122,13 +122,12 @@
    type (lxBook sets --bk-*), What Brew watches is a paper board of tilted source stickers. Side by side, stacked on a phone */
 .lx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 18px; }
 @media (max-width: 760px) { .lx-pair { grid-template-columns: 1fr; } }
-.lx-tile { appearance: none; position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 12px; min-width: 0; min-height: 176px; text-align: left; padding: 22px; border: 0; border-radius: 24px; font: inherit; cursor: pointer; transition: transform .25s cubic-bezier(.2,.9,.3,1.3), box-shadow .25s; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.lx-tile { appearance: none; position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 12px; min-width: 0; min-height: 150px; text-align: left; padding: 22px; border: 0; border-radius: 24px; font: inherit; cursor: pointer; transition: transform .25s cubic-bezier(.2,.9,.3,1.3), box-shadow .25s; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
 .lx-tile:hover { transform: translateY(-3px) rotate(-.4deg); box-shadow: 0 16px 34px rgba(0,0,0,.14); }
 .lx-tile:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
 .lx-tile-txt { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
-.lx-tile b { font-size: 24px; font-weight: 800; line-height: 1.05; letter-spacing: -.02em; text-wrap: balance; }
-.lx-tile-sub { font-size: 13px; line-height: 1.45; opacity: .78; max-width: 30ch; }
-.lx-go { margin-top: auto; padding-top: 10px; display: inline-flex; align-items: center; gap: 4px; font: 600 13px var(--font); }
+.lx-tile b { font-size: 30px; font-weight: 800; line-height: 1.05; letter-spacing: -.02em; text-wrap: balance; }
+.lx-go { margin-top: auto; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: color-mix(in oklab, currentColor 14%, transparent); }
 .lx-go .ic { transition: transform .2s; } .lx-tile:hover .lx-go .ic { transform: translateX(3px); }
 
 /* Brand Book: the cover */
@@ -160,7 +159,7 @@
 .lx-stk .hd-lg.is-mk { background: var(--mk); }
 .lx-stk .hd-lg img { width: 28px; height: 28px; object-fit: contain; }
 .lx-stk > .ic { width: 22px; height: 22px; }
-@media (max-width: 420px) { .lx-tile { padding: 18px; min-height: 160px; } .lx-tile b { font-size: 21px; } .lx-book b { font-size: 26px; } .lx-aa { font-size: 50px; } .lx-stks { width: 104px; } .lx-stk { width: 42px; height: 42px; } .lx-stk .hd-lg, .lx-stk .hd-lg img { width: 24px; height: 24px; } }
+@media (max-width: 420px) { .lx-tile { padding: 18px; min-height: 136px; } .lx-tile b { font-size: 26px; } .lx-aa { font-size: 50px; } .lx-stks { width: 104px; } .lx-stk { width: 42px; height: 42px; } .lx-stk .hd-lg, .lx-stk .hd-lg img { width: 24px; height: 24px; } }
 @media (prefers-reduced-motion: reduce) { .lx-tile, .lx-tile *, .lx-tile::before { transition: none !important; animation: none !important; } }
 
 @media (max-width: 760px) {
