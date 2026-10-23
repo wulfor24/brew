@@ -19,19 +19,41 @@ export const shopOf = (s) => { const h = String(s || '').trim().toLowerCase().re
 const hmacOk = (q, secret) => { const p = [...q.entries()].filter(([k]) => k !== 'hmac' && k !== 'signature').sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join('&');
   const want = crypto.createHmac('sha256', secret).update(p).digest('hex'), got = String(q.get('hmac') || ''); return got.length === want.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want)); };
 const token = async (shop, body) => getJSON(`https://${shop}/admin/oauth/access_token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, body: form(body) }, 'shopify token');
-const setOf = (t, extra = {}) => ({ token: t.access_token, scope: t.scope || '', exp: t.expires_in ? Date.now() + t.expires_in * 1e3 : null, refresh: t.refresh_token || null, ...extra });
+/* a refresh answer without a new refresh token keeps the old one (fresh spreads this over the saved creds) */
+const setOf = (t, extra = {}) => ({ token: t.access_token, scope: t.scope || '', exp: t.expires_in ? Date.now() + t.expires_in * 1e3 : null, ...(t.refresh_token ? { refresh: t.refresh_token } : {}), ...extra });
 
-async function gql(c, query, variables) {
+const nap = (ms) => new Promise((r) => setTimeout(r, ms));
+async function gql(c, query, variables, tries = 0) {
   const j = await getJSON(`https://${c.shop}/admin/api/${API}/graphql.json`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-shopify-access-token': c.token }, body: JSON.stringify({ query, variables }) }, 'shopify graphql');
+  /* Shopify answers a throttled query with 200 and THROTTLED: wait for the bucket to refill and ask again */
+  if (j.errors?.some((x) => x.extensions?.code === 'THROTTLED') && tries < 4) { await nap(gql.wait ?? 2e3 * 2 ** tries); return gql(c, query, variables, tries + 1); }
   if (j.errors?.length) { const e = new Error(`shopify: ${j.errors.map((x) => x.message).join('; ').slice(0, 200)}`); e.denied = j.errors.some((x) => /access denied|not approved|protected customer data|ACCESS_DENIED/i.test(x.message + JSON.stringify(x.extensions || {}))); throw e; }
   return j.data;
 }
+
+const ORDER_PAGES = 40; /* 10,000 orders */
+/* orders in the window, cancelled ones left out (Shopify counts past its default cap of 10,000 with limit:null) */
+async function countOrders(c, since) {
+  const q = 'query($q:String){ all: ordersCount(query:$q, limit:null){ count } }';
+  const [a, x] = await Promise.all([gql(c, q, { q: `created_at:>=${since}` }), gql(c, q, { q: `created_at:>=${since} status:cancelled` })]);
+  return has(a?.all?.count) ? a.all.count - (x?.all?.count || 0) : null;
+}
+/* COD orders 10 to 40 days old, newest first, up to 8 pages: a sample big enough for the failed share */
+async function codWindow(c) {
+  const out = []; let a = null;
+  for (let i = 0; i < 8; i++) { const d = await gql(c, 'query($q:String,$a:String){ orders(first:250, after:$a, query:$q, sortKey:CREATED_AT, reverse:true){ pageInfo{ hasNextPage endCursor } nodes{ createdAt cancelledAt displayFinancialStatus paymentGatewayNames } } }', { q: `created_at:>=${dayISO(40 * 864e5)} created_at:<=${dayISO(10 * 864e5)}`, a });
+    out.push(...d.orders.nodes); if (!d.orders.pageInfo.hasNextPage) break; a = d.orders.pageInfo.endCursor; }
+  return out;
+}
+/* a product title cut at a word, never mid-word ("Conditioner - 15") */
+const cut = (t, n = 44) => { t = String(t || '').trim(); if (t.length <= n) return t; const s = t.slice(0, n - 1), i = s.lastIndexOf(' '); return `${(i > n * 0.6 ? s.slice(0, i) : s).replace(/[\s,–—-]+$/, '')}…`; };
 
 export default {
   id: 'shopify', name: 'Shopify', modes: ['oauth', 'key'],
   ready: () => !!(app().id && app().secret),
   /* a dead token (the app uninstalled, the token revoked or run out, a refresh refused): only connecting again fixes it */
-  expired: (e) => e?.status === 401 || /invalid.?(api )?(access )?token|invalid_grant|token (was )?(revoked|expired|has expired)|unauthorized|\[API\] Invalid API key/i.test(String(e?.message || '')),
+  /* also an own app whose secret was rotated (invalid_client) or a store that left the app's organization (shop_not_permitted) */
+  expired: (e) => e?.status === 401 || /invalid.?(api )?(access )?token|invalid_grant|invalid_client|shop_not_permitted|token (was )?(revoked|expired|has expired)|unauthorized|\[API\] Invalid API key/i.test(String(e?.message || '')),
   // one-click sign-in only once Shopify has reviewed squareup-prod (SHOPIFY_OAUTH=1); until then a brand pastes its own app's key
   oauthOn: () => process.env.SHOPIFY_OAUTH === '1',
   keyFields: [{ k: 'shop', label: 'Store address', hint: 'your-store.myshopify.com' }, { k: 'clientId', label: 'Client ID', hint: 'From your app in the Shopify Dev Dashboard', optional: true }, { k: 'clientSecret', label: 'Client secret', secret: true, optional: true }, { k: 'token', label: 'Or an Admin API access token', hint: 'shpat_…, from a custom app in your Shopify admin', secret: true, optional: true }],
@@ -85,22 +107,34 @@ export default {
     const cur = await gql(c, '{ shop { currencyCode } }').then((d) => d?.shop?.currencyCode || null).catch(() => null);
     const F = fmt(cur ? { ...ctx.profile, currency: cur, ...(cur === 'INR' ? { country: 'IN', locale: 'en-IN' } : ctx.profile?.country === 'IN' ? { country: 'XX', locale: 'en-US' } : {}) } : ctx.profile), notes = [], m = {};
     // orders, last 90 days (customers too when the token may read them)
-    const since90 = dayISO(90 * 864e5), cut30 = Date.now() - 30 * 864e5;
+    const since90 = dayISO(90 * 864e5), since30 = dayISO(30 * 864e5), cut30 = Date.now() - 30 * 864e5;
     const Q = (cust) => `query($q:String,$a:String){ orders(first:250, after:$a, query:$q, sortKey:CREATED_AT, reverse:true){ pageInfo{ hasNextPage endCursor } nodes{ createdAt cancelledAt displayFinancialStatus paymentGatewayNames totalPriceSet{ shopMoney{ amount } } ${cust ? 'customer{ id numberOfOrders }' : ''} lineItems(first:5){ nodes{ title quantity } } } } }`;
-    let orders = null, withCust = true;
+    /* newest first, up to ORDER_PAGES pages: a big store's 90 days don't fit, so what was read is a sample of the newest orders
+       (full30/full90 say whether a window was read whole). Counts then come from Shopify's own ordersCount, and averages and
+       shares from the sample; a note says how far back the read reached */
+    let orders = null, withCust = true, full90 = false;
     try {
       for (const cust of [true, false]) {
-        try { orders = []; let a = null; for (let i = 0; i < 24; i++) { const d = await gql(c, Q(cust), { q: `created_at:>=${since90}`, a }); orders.push(...d.orders.nodes); if (!d.orders.pageInfo.hasNextPage) break; a = d.orders.pageInfo.endCursor; } withCust = cust; break; }
+        try { orders = []; full90 = false; let a = null; for (let i = 0; i < ORDER_PAGES; i++) { const d = await gql(c, Q(cust), { q: `created_at:>=${since90}`, a }); orders.push(...d.orders.nodes); if (!d.orders.pageInfo.hasNextPage) { full90 = true; break; } a = d.orders.pageInfo.endCursor; } withCust = cust; break; }
         catch (e) { if (!cust || !e.denied) throw e; }
       }
     } catch (e) { orders = null; notes.push(e.denied ? 'Orders need Shopify’s approval for this app; connect with your own app’s key to read them.' : `Orders: ${e.message.slice(0, 120)}`); }
     if (orders) {
       const live = orders.filter((o) => !o.cancelledAt), o30 = live.filter((o) => Date.parse(o.createdAt) >= cut30);
-      m.orders = o30.length; m.revenue = o30.reduce((s, o) => s + +o.totalPriceSet.shopMoney.amount, 0); m.aov = m.orders ? m.revenue / m.orders : null;
+      const oldest = orders.length ? Math.min(...orders.map((o) => Date.parse(o.createdAt))) : Date.now(), full30 = full90 || oldest <= cut30;
+      m.sampled = !full30; m.readDays = Math.max(1, Math.round((Date.now() - oldest) / 864e5));
+      const sum = o30.reduce((s, o) => s + +o.totalPriceSet.shopMoney.amount, 0); m.aov = o30.length ? sum / o30.length : null;
+      if (full30) { m.orders = o30.length; m.revenue = sum; }
+      else { /* the 30 days didn't fit: Shopify counts them, the newest orders give the average */
+        const n = await countOrders(c, since30).catch((e) => { notes.push(`Order count: ${e.message.slice(0, 100)}`); return null; });
+        m.orders = n; m.revenue = has(n, m.aov) ? n * m.aov : null;
+        notes.push(`Read the newest ${n0(orders.length)} orders (${m.readDays} days); averages and shares come from those.`); }
       const isCod = (o) => (o.paymentGatewayNames || []).some((g) => /cash on delivery|\bcod\b|cash_on_delivery|pay on delivery/i.test(g));
       if (o30.length) m.cod = 100 * o30.filter(isCod).length / o30.length;
-      // COD orders 10 to 40 days old that were cancelled or are still not paid
-      const settled = orders.filter((o) => { const t = Date.parse(o.createdAt); return isCod(o) && t < Date.now() - 10 * 864e5 && t >= Date.now() - 40 * 864e5; });
+      // COD orders 10 to 40 days old that were cancelled or are still not paid: their own read when the main one stopped short of 40 days
+      const inWin = (o) => { const t = Date.parse(o.createdAt); return t < Date.now() - 10 * 864e5 && t >= Date.now() - 40 * 864e5; };
+      const older = full90 || oldest <= Date.now() - 40 * 864e5 ? orders : await codWindow(c).catch((e) => { notes.push(`COD orders 10 to 40 days old: ${e.message.slice(0, 100)}`); return []; });
+      const settled = older.filter((o) => isCod(o) && inWin(o));
       if (settled.length >= 20) m.codFail = 100 * settled.filter((o) => o.cancelledAt || !/^(PAID|PARTIALLY_PAID|PARTIALLY_REFUNDED|REFUNDED)$/.test(o.displayFinancialStatus)).length / settled.length;
       if (withCust) { const cs = new Map(); for (const o of live) if (o.customer?.id) cs.set(o.customer.id, o.customer.numberOfOrders); if (cs.size >= 30) m.repeat = 100 * [...cs.values()].filter((n) => +n >= 2).length / cs.size; }
       const units = new Map(); for (const o of o30) for (const li of o.lineItems.nodes) units.set(li.title, (units.get(li.title) || 0) + li.quantity);
@@ -117,10 +151,12 @@ export default {
     } catch (e) { if (!e.denied) notes.push(`Order countries: ${e.message.slice(0, 100)}`); }
     try { const d = await gql(c, 'query($q:String){ abandonedCheckoutsCount(query:$q){ count } }', { q: `created_at:>=${dayISO(30 * 864e5)}` }); m.left = d.abandonedCheckoutsCount?.count ?? null; if (has(m.left, m.orders)) m.started = m.left + m.orders; }
     catch (e) { if (!e.denied) notes.push(`Checkouts: ${e.message.slice(0, 100)}`); }
-    try { const d = await gql(c, '{ productsCount(query:"status:active"){ count } products(first:100, sortKey:INVENTORY_TOTAL, query:"status:active"){ nodes{ title totalInventory tracksInventory } } }');
-      m.products = d.productsCount?.count ?? null; m.low = d.products.nodes.filter((p) => p.tracksInventory && p.totalInventory <= 5).map((p) => ({ title: p.title, left: p.totalInventory }));
+    try { const d = await gql(c, '{ productsCount(query:"status:active"){ count } products(first:100, sortKey:INVENTORY_TOTAL, query:"status:active"){ nodes{ title totalInventory tracksInventory onlineStoreUrl variants(first:5){ nodes{ inventoryPolicy } } } } }');
+      /* only what a shopper can't buy: on the online store (onlineStoreUrl), tracked, and no variant that keeps selling at zero (CONTINUE) */
+      const shown = (p) => p.tracksInventory && p.onlineStoreUrl !== null && !(p.variants?.nodes || []).some((v) => v.inventoryPolicy === 'CONTINUE');
+      m.products = d.productsCount?.count ?? null; m.low = d.products.nodes.filter((p) => shown(p) && p.totalInventory <= 5).map((p) => ({ title: p.title, left: p.totalInventory }));
       /* sold out: tracked products with none left. The list comes lowest stock first, so the count is whole once a product with stock shows (or every product was read) */
-      const ns = d.products.nodes; if (has(m.products) && (m.products <= ns.length || ns.some((p) => p.totalInventory > 0))) m.oos = ns.filter((p) => p.tracksInventory && p.totalInventory <= 0).length; }
+      const ns = d.products.nodes; if (has(m.products) && (m.products <= ns.length || ns.some((p) => p.totalInventory > 0))) m.oos = ns.filter((p) => shown(p) && p.totalInventory <= 0).length; }
     catch (e) { notes.push(`Products: ${e.message.slice(0, 100)}`); }
 
     const src = `Shopify · ${c.shop}`, k = 'shopify', name = 'Shopify', lane = ctx.lane, out = [];
@@ -129,14 +165,16 @@ export default {
       title: `${n0(m.left)} checkouts left in the last 30 days`, sub: `${n0(m.started)} people started checkout and ${n0(m.orders)} finished. A three-step reminder across email and WhatsApp, starting an hour after they leave, brings some of them back.`,
       rows: [['Checkouts started', n0(m.started)], ['Finished', n0(m.orders)], ['Left', n0(m.left)], ['Average order', F.money(m.aov)]], detail: { why: [`${pct(100 * m.left / m.started)} of checkouts were not finished.`, `The average order is ${F.money(m.aov)}.`], how: ['Send a reminder after one hour', 'Send the product and its reviews after a day', 'Stop the moment they buy'] } }));
     if (has(m.repeat)) out.push(card(k, name, lane, 'repeat', { agent: 'crm', sector: 'signals', type: 'idea', roles: ['crm', 'founder'], badge: [pct(m.repeat), m.repeat < 25 ? 'warn' : 'ok'], cta: 'Approve the flows',
-      title: `${pct(m.repeat)} of your last 90 days’ customers have ordered more than once`, sub: `A second-order flow timed to when the first order runs out turns more first-time buyers into regulars, with no ad spend.`,
+      title: `${pct(m.repeat)} of your ${m.sampled ? 'recent' : 'last 90 days’'} customers have ordered more than once`, sub: `A second-order flow timed to when the first order runs out turns more first-time buyers into regulars, with no ad spend.`,
       rows: [['Customers with 2+ orders', pct(m.repeat)], ['Orders, 30 days', has(m.orders) ? n0(m.orders) : null], ['Top seller, 30 days', m.top?.[0]?.title], ['Average order', has(m.aov) ? F.money(m.aov) : null]], detail: { why: ['A second order costs no ad spend.'], how: ['Pick the day the flow starts', 'Write the three messages', 'Leave out anyone with an open return'] } }));
     if (F.india && has(m.cod, m.codFail) && m.cod >= 5 && m.codFail >= 5) out.push(card(k, name, lane, 'cod', { agent: 'storefront', sector: 'storefront', type: 'decision', roles: ['ecom', 'founder'], badge: [`${pct(m.codFail)} fail`, m.codFail > 15 ? 'warn' : 'info'], cta: 'Agree with the call',
       title: `${pct(m.codFail)} of cash-on-delivery orders were cancelled or never paid`, sub: `Cash on delivery is ${pct(m.cod)} of last month’s orders. A WhatsApp confirm before dispatch and a small prepaid nudge cut the failed ones without losing the buyers who need COD.`,
       rows: [['COD share of orders', pct(m.cod)], ['Cancelled or unpaid after 10 days', pct(m.codFail)], ['Orders, 30 days', n0(m.orders)]], detail: { why: ['A failed COD order costs shipping both ways.'], how: ['Ask for a WhatsApp confirm on COD', 'Offer a small prepaid discount', 'Read it again in 30 days'] } }));
-    if (m.low?.length) out.push(card(k, name, lane, 'stock', { agent: 'storefront', sector: 'catalog', type: 'decision', roles: ['ecom', 'founder'], badge: [`${m.low.length} low`, 'warn'], cta: 'Plan the restock',
-      title: `${m.low.length} active product${m.low.length === 1 ? ' has' : 's have'} 5 or fewer units left`, sub: `${m.low.slice(0, 2).map((x) => x.title).join(' and ')}${m.low.length > 2 ? ' and others' : ''} ${m.low.length === 1 ? 'is' : 'are'} close to selling out. Pause their ads before they do, and start a back-in-stock list.`,
-      rows: m.low.slice(0, 4).map((x) => [x.title.slice(0, 40), `${n0(x.left)} left`]), detail: { why: ['Ads on a sold-out product waste spend.'], how: ['Pause ads on these products', 'Turn on a back-in-stock list', 'Restock the best sellers first'] } }));
+    const gone = (m.low || []).filter((x) => x.left <= 0).length, near = (m.low?.length || 0) - gone;
+    if (m.low?.length) out.push(card(k, name, lane, 'stock', { agent: 'storefront', sector: 'catalog', type: 'decision', roles: ['ecom', 'founder'], badge: [gone ? `${gone} sold out` : `${m.low.length} low`, 'warn'], cta: 'Plan the restock',
+      title: gone && near ? `${gone} product${gone === 1 ? ' is' : 's are'} sold out and ${near} ${near === 1 ? 'has' : 'have'} 5 or fewer units left` : gone ? `${gone} product${gone === 1 ? ' is' : 's are'} sold out on your store` : `${near} product${near === 1 ? ' has' : 's have'} 5 or fewer units left`,
+      sub: `${m.low.slice(0, 2).map((x) => x.title).join(' and ')}${m.low.length > 2 ? ` and ${m.low.length - 2} more` : ''} ${gone && !near ? (m.low.length === 1 ? 'is' : 'are') + ' sold out' : gone ? 'are sold out or close to it' : (m.low.length === 1 ? 'is' : 'are') + ' close to selling out'}. Pause their ads, and start a back-in-stock list.`,
+      rows: m.low.slice(0, 4).map((x) => [cut(x.title), x.left <= 0 ? 'Sold out' : `${n0(x.left)} left`]), detail: { why: ['Ads on a sold-out product waste spend.'], how: ['Pause ads on these products', 'Turn on a back-in-stock list', 'Restock the best sellers first'] } }));
     const changed = [has(m.orders) && (m.orders > 0 ? `Cards read your ${n0(m.orders)} orders from the last 30 days` : 'No orders in the last 30 days yet: order cards start with the first one'), has(m.left) && m.left > 0 && `${n0(m.left)} checkouts left get a reminder journey`, has(m.repeat) && `Second orders: ${pct(m.repeat)} of recent customers`, m.low?.length && `${m.low.length} product${m.low.length === 1 ? ' is' : 's are'} close to selling out`].filter(Boolean);
     const ledger = [has(m.orders) && L('shopify.orders.30d', 'Orders, last 30 days', n0(m.orders), m.orders, src), has(m.aov) && L('shopify.aov', 'Average order value, 30 days', F.money(m.aov), m.aov, src), has(m.revenue) && L('shopify.revenue.30d', 'Revenue, last 30 days', F.big(m.revenue), m.revenue, src),
       has(m.repeat) && L('shopify.repeat.90d', 'Customers in the last 90 days with 2+ orders', pct(m.repeat), m.repeat, src), has(m.left) && L('shopify.checkout.left', 'Checkouts started but not finished, 30 days', n0(m.left), m.left, src),
@@ -152,7 +190,7 @@ export default {
     const brand = await gql(c, '{ shop{ brand{ slogan shortDescription logo{ image{ url } } squareLogo{ image{ url } } coverImage{ image{ url } } colors{ primary{ background foreground } secondary{ background foreground } } } } }')
       .then((d) => { const b = d?.shop?.brand; if (!b) return null; const col = (xs, role) => (xs || []).flatMap((x) => [x.background && { hex: String(x.background).toLowerCase(), role }, x.foreground && { hex: String(x.foreground).toLowerCase(), role: 'ink' }]).filter(Boolean);
         const out = { slogan: b.slogan || null, about: b.shortDescription || null, logo: b.logo?.image?.url || null, squareLogo: b.squareLogo?.image?.url || null, cover: b.coverImage?.image?.url || null, colors: [...col(b.colors?.primary, 'primary'), ...col(b.colors?.secondary, 'accent')] };
-        return out.slogan || out.about || out.logo || out.colors.length ? out : null; }).catch(() => null);
+        return out.slogan || out.about || out.logo || out.colors.length ? out : null; }).catch((e) => { if (!e.denied) notes.push(`Brand settings: ${e.message.slice(0, 100)}`); return null; });
     return { metrics: m, stats, changed, cards: out, ledger, notes, brand };
   }
 };

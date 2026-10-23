@@ -168,7 +168,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     if (id === 'slack') teams.clear(); /* the workspace may have moved to this brand */
     /* a team account connected for the first time: the moves' rewrite waits for its first read (build.js connectPending) */
     if (!PUBLIC.has(id) && id !== 'slack' && !(await conns(slug))[id]?.lastSync) await builder.connectPending?.(slug, id).catch(() => {});
-    await editC(slug, (c) => { c[id] = { state: 'syncing', at: Date.now(), by: me.email, account: proof.account || c[id]?.account || null, ...(proof.accounts ? { accounts: proof.accounts } : {}), verified: !!proof.ok, why: proof.why || '' }; });
+    /* connecting the same account again keeps when it was last read, so a first read that fails shows the last numbers, not an error */
+    await editC(slug, (c) => { const was = c[id], same = was?.lastSync && (!proof.account?.id || was.account?.id === proof.account.id);
+      c[id] = { state: 'syncing', at: Date.now(), by: me.email, account: proof.account || was?.account || null, ...(proof.accounts ? { accounts: proof.accounts } : {}), verified: !!proof.ok, why: proof.why || '', ...(same ? { lastSync: was.lastSync } : {}) }; });
     cache.delete(sk(slug));
     /* proof: what the ownership check found, for the sheet to show plainly (advisory for every connector but GA4 by ID) */
     return { ...(await sync(slug, id)), claimed: may.claimed, verified: !!proof.ok, why: proof.ok ? null : proof.why || null, proof: { ok: !!proof.ok, error: !!proof.error, why: proof.why || null, ...(proof.accounts ? { accounts: proof.accounts.map(({ id: aid, name, ok, why }) => ({ id: aid, name, ok, why })) } : {}) } };
@@ -250,7 +252,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
        platform's side is left alone on purpose: one person's Meta sign-in may serve several brands, and taking it back
        (DELETE /me/permissions) would cut every one of them off */
     if (!simOnly(id) && !PUBLIC.has(id)) { await vault.drop(slug, id);
-      for (const f of await packs.listFiles?.(slug, 'private/vault').catch(() => []) || []) { const k = String(f).replace(/\.json$/, ''); if (k.startsWith(`${id}-pending-`)) await vault.drop(slug, k).catch(() => {}); } }
+      for (const f of await packs.listFiles?.(slug, 'private/vault').catch(() => []) || []) { const k = String(f).replace(/\.json$/, ''); if (k.startsWith(`${id}-pending-`) || k.startsWith(`${id}-own-pending-`)) await vault.drop(slug, k).catch(() => {}); } }
+    if (id === 'shopify') await packs.put(slug, 'private/shop-brand.json', { at: Date.now(), gone: true }).catch(() => {}); /* the Brand Book stops leading with the store's logo and colours */
     await editC(slug, (c) => { delete c[id]; });
     await packs.put(slug, liveName(id), { at: Date.now(), gone: true, stats: [], changed: [], cards: [], ledger: [] });
     cache.delete(sk(slug));
@@ -406,7 +409,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         /* a pasted key or ID asks Google whether Brew can see it: a few tries per person, so nobody walks through IDs */
         if (!keyTry(me.email, id)) return json(res, 429, { ok: false, error: 'Too many tries. Wait a few minutes, then paste it again.' }), true;
         try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me, { override: b.override === true })), true; } catch (e) {
-          /* an app from another Shopify organization: keep the keys (pending, 15 min) and send this person to the store's approve screen */
+          /* an app from another Shopify organization: keep the keys (pending, PENDING_MS) and send this person to the store's approve screen */
           if (e.approve && C.ownAuthorize) { await savePending(slug, `${id}-own`, me.email, e.approve);
             const state = auth.sign({ slug, id, email: me.email, n: crypto.randomBytes(9).toString('base64url') }, 900, 'connect-own');
             return json(res, 200, { ok: false, error: e.message, approve: C.ownAuthorize({ ...e.approve, state, redirect: `${base(req)}/shopify/own/callback` }) }), true; }
@@ -522,6 +525,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     for (const { slug } of await packs.list().catch(() => [])) { const s = (await conns(slug).catch(() => ({})))?.shopify; if (s?.account?.id === shop && !s.sim && (s.at || 0) >= at) { found = slug; at = s.at || 0; } }
     if (found) shops.set(shop, found); else shops.delete(shop); return found;
   }
+  /* how a brand's Shopify is connected: 'brew' (Brew's own app), 'own' / 'own-oauth' (the brand's app) or 'token'; null when not */
+  const shopApp = async (slug) => (await vault.load(slug, 'shopify').catch(() => null))?.app || null;
   /* Slack says the app was removed or its token revoked: the brand's Slack is disconnected */
   async function slackGone(team) { const slug = await slackSlug(team); teams.delete(team); if (slug) await disconnect(slug, 'slack').catch(() => {}); return slug; }
   async function slackRoutes(req, res, u) {
@@ -539,5 +544,5 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     return false;
   }
 
-  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, shopSlug, liveOf, forViewer, connectedIds, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, ageCheck, expiryCheck, CONNECTORS };
+  return { handle: async (req, res, u) => (await slackRoutes(req, res, u)) || handle(req, res, u), sim: SIM, slackOf, slackPost, slackLink, slackChannels, slackUser, slackSlug, slackGone, shopSlug, shopApp, liveOf, forViewer, connectedIds, drop: (slug) => cache.delete(sk(slug)), liveView, sync, disconnect, finish, tick, ageCheck, expiryCheck, CONNECTORS };
 }

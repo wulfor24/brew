@@ -3308,7 +3308,7 @@
   const sigStrip = () => { const more = sigSources().filter((id) => id !== 'shopify' && !conn(id) && !sigState(id)), bad = sigSources().filter((id) => sigState(id)?.[0] === 'bad');
     const n = byCol('signals').length;
     return `<div class="sig-strip"><p>${bad.length ? `${ic('info', 's14')}${esc(B.connectors[bad[0]].name)} stopped reading. Connect it again so Signals keeps finding people.`
-      : `<i class="pulse"></i>Brew reads ${esc(andList(sigSources().filter(conn).map((id) => B.connectors[id].name)))} once a day. ${n ? 'Each card below is a group of people to reach.' : 'Nothing to act on yet; new people land here as Brew finds them.'}`}${!bad.length && more.length ? ` Connect ${esc(andList(more.map((id) => B.connectors[id].name)))} to find more.` : ''}</p>
+      : `<i class="pulse"></i>Brew keeps reading ${esc(andList(sigSources().filter(conn).map((id) => B.connectors[id].name)))}. ${n ? 'Each card below is a group of people to reach.' : 'Nothing to act on yet; new people land here as Brew finds them.'}`}${!bad.length && more.length ? ` Connect ${esc(andList(more.map((id) => B.connectors[id].name)))} to find more.` : ''}</p>
       <div class="sig-pills">${sigSources().map((id) => { const c = B.connectors[id], st = sigState(id); return st?.[0] === 'ok' ? `<span class="sig-pill is-on">${glyph(id, 16)}${esc(c.name)}${ic('check', 's14')}</span>` : window.LiveConn?.boss?.() === false ? '' : `<button class="sig-pill" data-cx="${id}">${glyph(id, 16)}${esc(c.name)}${st ? '<small>connect again</small>' : SIG_WHY[id]?.need === 'Optional' ? '<small>optional</small>' : ''}</button>`; }).join('')}</div></div>`; };
   const sigBody = () => {
     if (!sigSources().length) return '';

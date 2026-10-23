@@ -126,6 +126,8 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
     await joinTeam(slug, me);
     const live = (await connectors.liveOf(slug, true)).conns.shopify;
     if (live?.state === 'live' && live.account?.id === t.shop && !live.needsReconnect && !live.stale) return { slug, connected: true };
+    /* the brand's own app or token reads more than Brew's app may (orders, customers): a stale read of it is never swapped for Brew's */
+    if (live?.account?.id === t.shop && !live.needsReconnect && /^(own|own-oauth|token)$/.test((await connectors.shopApp?.(slug).catch(() => null)) || '')) return { slug, connected: true };
     creds ||= credsOf(await exchange(t, 'offline'), t.shop);
     const r = await connectors.finish(slug, 'shopify', creds, me).catch((e) => ({ ok: false, error: e.message }));
     if (!r.ok) log.warn('[shopify-app] connect', slug, r.error);
@@ -192,7 +194,10 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
       /* shop/redact comes 48 hours after an uninstall, even when the store has installed Brew again since: a connection made
          after that uninstall (younger than the 48 hours) belongs to the new install and stays */
       const since = slug && topic === 'shop/redact' ? (await connectors.liveOf(slug, true).catch(() => null))?.conns?.shopify?.at || 0 : 0;
+      const route = slug ? await connectors.shopApp?.(slug).catch(() => null) : null;
       if (slug && since > Date.now() - REDACT_AFTER) log.log?.(`[shopify-app] ${slug}: shop/redact skipped, Brew was installed again since`);
+      /* Brew's app going says nothing about the brand's own app or token: that connection stays */
+      else if (slug && route && route !== 'brew') log.log?.(`[shopify-app] ${slug}: ${topic} skipped, Shopify is connected with the brand's own app (${route})`);
       else if (slug) await connectors.disconnect(slug, 'shopify').then(() => log.log?.(`[shopify-app] ${slug}: Shopify disconnected (${topic})`)).catch((e) => log.warn('[shopify-app] disconnect', slug, e.message));
     }
     /* customers/data_request, customers/redact: Brew stores order counts and shares, never a customer's record, so nothing to send or erase */

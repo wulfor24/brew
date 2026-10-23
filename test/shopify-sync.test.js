@@ -1,0 +1,88 @@
+// the Shopify read on a big store: a sample of the newest orders never passes for the whole window, Shopify counts the
+// 30 days, a throttle is waited out, and only what a shopper can't buy counts as sold out
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import shopify from '../connectors/shopify.js';
+
+const ok = (data) => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify(data) });
+const ago = (d) => new Date(Date.now() - d * 864e5).toISOString();
+const order = (d, cod = false) => ({ createdAt: ago(d), cancelledAt: null, displayFinancialStatus: cod ? 'PENDING' : 'PAID', paymentGatewayNames: [cod ? 'Cash on Delivery (COD)' : 'razorpay'], totalPriceSet: { shopMoney: { amount: '1000' } }, customer: { id: `c${d}`, numberOfOrders: 1 }, lineItems: { nodes: [{ title: 'Serum', quantity: 1 }] } });
+const ctx = { profile: { currency: 'INR', country: 'IN' }, lane: 'core' };
+const conn = { shop: 'big.myshopify.com', token: 'shpat_x' };
+
+function shop({ pages, count = 9000, cancelled = 100, products, throttleOnce = false }) {
+  let throttled = !throttleOnce, calls = [];
+  const fetch = async (url, o) => {
+    const { query, variables } = JSON.parse(o.body); calls.push(query);
+    if (!throttled) { throttled = true; return ok({ errors: [{ message: 'Throttled', extensions: { code: 'THROTTLED' } }] }); }
+    if (/ordersCount/.test(query)) return ok({ data: { all: { count: /status:cancelled/.test(variables.q) ? cancelled : count } } });
+    if (/currencyCode \} \}$/.test(query.trim()) || /^\{ shop \{ currencyCode \} \}$/.test(query.trim())) return ok({ data: { shop: { currencyCode: 'INR' } } });
+    if (/orders\(first:250/.test(query) && /lineItems/.test(query)) { const i = variables.a ? +variables.a : 0; return ok({ data: { orders: { nodes: pages[i], pageInfo: { hasNextPage: i + 1 < pages.length, endCursor: String(i + 1) } } } }); }
+    if (/orders\(first:250/.test(query) && /paymentGatewayNames/.test(query)) return ok({ data: { orders: { nodes: [...Array(30)].map((_, k) => ({ ...order(15 + k % 20, true), cancelledAt: k < 6 ? ago(12) : null, displayFinancialStatus: k < 6 ? 'PENDING' : 'PAID' })), pageInfo: { hasNextPage: false } } } });
+    if (/shippingAddress/.test(query)) return ok({ data: { orders: { nodes: [], pageInfo: { hasNextPage: false } } } });
+    if (/abandonedCheckoutsCount/.test(query)) return ok({ data: { abandonedCheckoutsCount: { count: 50 } } });
+    if (/productsCount/.test(query)) return ok({ data: { productsCount: { count: products.length }, products: { nodes: products } } });
+    if (/brand/.test(query)) return ok({ errors: [{ message: 'brand failed' }] });
+    return ok({ data: { shop: { currencyCode: 'INR' } } });
+  };
+  return { fetch, calls };
+}
+
+test('a store with more orders than one read: Shopify counts the 30 days, the newest orders give the average, a note says so', async (t) => {
+  /* 40 pages of 250 orders, all from the last 3 days: the read stops long before 30 days */
+  const pages = [...Array(41)].map(() => [...Array(250)].map(() => order(2))); /* one more page than a read takes */
+  const s = shop({ pages, products: [{ title: 'Serum', totalInventory: 50, tracksInventory: true, onlineStoreUrl: 'https://x', variants: { nodes: [] } }] });
+  t.mock.method(globalThis, 'fetch', s.fetch);
+  const r = await shopify.sync(conn, ctx);
+  assert.equal(r.metrics.orders, 8900, 'Shopify’s own count, cancelled ones left out');
+  assert.equal(r.metrics.aov, 1000); assert.equal(r.metrics.revenue, 8900 * 1000);
+  assert.equal(r.metrics.sampled, true);
+  assert.ok(r.notes.some((n) => /newest 10,000 orders/.test(n)), r.notes.join(' | '));
+  /* COD 10 to 40 days old came from its own read: 6 of 30 cancelled */
+  assert.equal(Math.round(r.metrics.codFail), 20);
+  assert.ok(r.notes.some((n) => /Brand settings/.test(n)), 'a failed brand-settings read is said, not silent');
+  assert.match(r.cards.find((c) => /repeat/.test(c.id))?.title || 'recent', /recent/);
+});
+
+test('a small store reads its whole 30 days: no count call, no sample note', async (t) => {
+  const s = shop({ pages: [[order(1), order(5), order(20), order(45)]], products: [] });
+  t.mock.method(globalThis, 'fetch', s.fetch);
+  const r = await shopify.sync(conn, ctx);
+  assert.equal(r.metrics.orders, 3); assert.equal(r.metrics.sampled, false);
+  assert.ok(!s.calls.some((q) => /ordersCount/.test(q)));
+  assert.ok(!r.notes.some((n) => /newest/.test(n)));
+});
+
+test('a throttled answer is waited out, not lost', async (t) => {
+  const s = shop({ pages: [[order(1)]], products: [], throttleOnce: true });
+  t.mock.method(globalThis, 'fetch', s.fetch);
+  const was = (await import('../connectors/shopify.js')).default; void was;
+  const r = await shopify.sync(conn, ctx);
+  assert.ok(r.metrics.orders >= 0); assert.ok(!r.notes.some((n) => /Throttled/.test(n)), r.notes.join(' | '));
+});
+
+test('sold out means a shopper can’t buy it: unpublished and keep-selling products are left out, titles cut at a word', async (t) => {
+  const products = [
+    { title: 'Anti-Breakage Intensive Conditioner - 15ml travel size', totalInventory: 0, tracksInventory: true, onlineStoreUrl: 'https://a', variants: { nodes: [{ inventoryPolicy: 'DENY' }] } },
+    { title: 'Hidden bundle', totalInventory: 0, tracksInventory: true, onlineStoreUrl: null, variants: { nodes: [{ inventoryPolicy: 'DENY' }] } },
+    { title: 'Pre-order serum', totalInventory: 0, tracksInventory: true, onlineStoreUrl: 'https://b', variants: { nodes: [{ inventoryPolicy: 'CONTINUE' }] } },
+    { title: 'Shampoo', totalInventory: 3, tracksInventory: true, onlineStoreUrl: 'https://c', variants: { nodes: [{ inventoryPolicy: 'DENY' }] } },
+    { title: 'Oil', totalInventory: 80, tracksInventory: true, onlineStoreUrl: 'https://d', variants: { nodes: [{ inventoryPolicy: 'DENY' }] } }];
+  const s = shop({ pages: [[order(1)]], products });
+  t.mock.method(globalThis, 'fetch', s.fetch);
+  const r = await shopify.sync(conn, ctx);
+  assert.equal(r.metrics.oos, 1); assert.deepEqual(r.metrics.low.map((x) => x.title), [products[0].title, 'Shampoo']);
+  const c = r.cards.find((x) => /stock/.test(x.id));
+  assert.equal(c.title, '1 product is sold out and 1 has 5 or fewer units left');
+  assert.deepEqual(c.rows[0], ['Anti-Breakage Intensive Conditioner - 15ml…', 'Sold out']);
+  assert.deepEqual(c.rows[1], ['Shampoo', '3 left']);
+});
+
+test('a refresh without a new refresh token keeps the old one; a rotated secret asks to connect again', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => ok({ access_token: 'shpat_new', expires_in: 3600 }));
+  const c = await shopify.fresh({ shop: 'a.myshopify.com', app: 'own-oauth', clientId: 'id', clientSecret: 's', token: 'old', exp: Date.now() - 1, refresh: 'r1' });
+  assert.equal(c.token, 'shpat_new'); assert.equal(c.refresh, 'r1');
+  assert.ok(shopify.expired(new Error('shopify token 400: invalid_client')));
+  assert.ok(shopify.expired(new Error('shopify token 400: shop_not_permitted')));
+  assert.ok(!shopify.expired(new Error('shopify graphql 503: busy')));
+});

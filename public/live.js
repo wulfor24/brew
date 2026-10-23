@@ -145,7 +145,8 @@
     const last = (t, p) => ({ t, p, last: true });
     if (id === 'meta') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Facebook', p: `Facebook asks which ad accounts Brew may read. Tick ${esc(n)}’s, then pick it here.`, last: true, oauth: true }] };
     if (id === 'shopify') return oauth && !av.fields?.length ? { time: 'About 1 minute', steps: [{ t: 'Sign in with Shopify', last: true, oauth: true }] } : { time: 'Takes about 3 minutes', alt: 'Use your own app', steps: [
-      { t: 'Create an app called Brew', p: 'Sign in to the Dev Dashboard as the store’s owner: Shopify only lets an app read stores in its own organization. Click <b>Create app</b>, paste this as the <b>App URL</b> and untick <b>Embed app in Shopify admin</b>.', go: ['Open the Dev Dashboard', 'https://dev.shopify.com/dashboard'], copy: location.origin },
+      { t: 'Create an app called Brew', p: 'Sign in to the Dev Dashboard (the store’s owner, or an agency or collaborator login). Click <b>Create app</b>, paste this as the <b>App URL</b> and untick <b>Embed app in Shopify admin</b>.', go: ['Open the Dev Dashboard', 'https://dev.shopify.com/dashboard'], copy: location.origin },
+      { t: 'Let it come back to Brew', p: 'Paste this into <b>Allowed redirection URL(s)</b> and tick <b>Use legacy install flow</b>. If the app sits in another organization than the store, Brew opens the store’s approve screen once and comes back here.', copy: `${location.origin}/shopify/own/callback` },
       { t: 'Give it read-only access', p: 'On the same page, under <b>API access</b>, paste these into <b>Scopes</b>. Then click <b>Create app</b>.', copy: SHOPIFY_SCOPES },
       { t: `Install it on ${shop ? esc(shop) : 'your store'}`, p: 'On the app’s home, click <b>Install app</b>.' },
       last('Paste the app’s keys', 'They’re in the app’s <b>Settings</b>.') ] };

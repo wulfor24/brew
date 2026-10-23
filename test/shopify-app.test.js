@@ -46,13 +46,13 @@ test('a page inside the admin gets App Bridge first in <head> and may be framed 
   assert.equal(frameAncestors('bad host'), 'frame-ancestors https://*.myshopify.com https://admin.shopify.com;');
 });
 
-function rig({ brands = { 'cozysnugglet-shop': { claimed: false } }, connected = {} } = {}) {
+function rig({ brands = { 'cozysnugglet-shop': { claimed: false } }, connected = {}, routes = {} } = {}) {
   const team = {}, finished = [], disconnected = [], started = [];
   const auth = { baseOf: () => 'https://brew.test', sign: (x, s, kind) => `${kind}:${b64u(x)}`, verify: (t, kind) => { const [k, p] = String(t || '').split(':'); return k === kind ? JSON.parse(Buffer.from(p, 'base64url')) : null; }, setCookie: () => {},
     claimInfo: async (slug, me) => ({ role: team[slug]?.[me.email] || null, claimed: brands[slug]?.claimed || Object.values(team[slug] || {}).includes('owner') }),
     addMember: async (slug, me, role) => { (team[slug] ||= {})[me.email] = role; } };
   const connectors = { liveOf: async (slug) => ({ conns: connected[slug] ? { shopify: connected[slug] } : {} }), finish: async (slug, id, creds, me) => { finished.push({ slug, id, creds, me: me.email }); return { ok: true }; },
-    disconnect: async (slug, id) => { disconnected.push([slug, id]); return { ok: true }; }, shopSlug: async (shop) => Object.entries(connected).find(([, c]) => c.account?.id === shop)?.[0] || null };
+    disconnect: async (slug, id) => { disconnected.push([slug, id]); return { ok: true }; }, shopSlug: async (shop) => Object.entries(connected).find(([, c]) => c.account?.id === shop)?.[0] || null, shopApp: async (slug) => routes[slug] || null };
   const builder = { status: async (slug) => (brands[slug] ? { slug } : null), start: async (url, o) => { started.push({ url, user: o.user.email }); return { slug: url.replace(/\./g, '-') }; } };
   const fetchFn = async (url, init = {}) => {
     const body = init.body ? JSON.parse(init.body) : {};
@@ -134,4 +134,22 @@ test('shop/redact after a reinstall leaves the new connection alone; with no rei
   const old = rig({ connected: { 'cozysnugglet-shop': { state: 'live', at: Date.now() - 50 * 3600e3, account: { id: 'cozy.myshopify.com' } } } });
   await send(old.sa); await new Promise((r) => setTimeout(r, 10));
   assert.deepEqual(old.disconnected, [['cozysnugglet-shop', 'shopify']]);
+});
+
+test('Brew’s app going never cuts a brand’s own app or token; the admin never swaps a stale own-app read for Brew’s', async () => {
+  const conn = { 'cozysnugglet-shop': { state: 'live', stale: true, account: { id: 'cozy.myshopify.com' } } };
+  const { sa, disconnected } = rig({ connected: conn, routes: { 'cozysnugglet-shop': 'own-oauth' } });
+  const body = JSON.stringify({ shop_domain: 'cozy.myshopify.com' }), sig = crypto.createHmac('sha256', SECRET).update(body).digest('base64');
+  for (const topic of ['app/uninstalled', 'shop/redact']) assert.equal((await call(sa, 'POST', '/shopify/webhooks', { body, headers: { 'x-shopify-hmac-sha256': sig, 'x-shopify-topic': topic, 'x-shopify-shop-domain': 'cozy.myshopify.com' } })).code, 200);
+  await new Promise((r) => setTimeout(r, 10));
+  assert.deepEqual(disconnected, []);
+  const brew = rig({ connected: conn, routes: { 'cozysnugglet-shop': 'brew' } });
+  await call(brew.sa, 'POST', '/shopify/webhooks', { body, headers: { 'x-shopify-hmac-sha256': sig, 'x-shopify-topic': 'app/uninstalled', 'x-shopify-shop-domain': 'cozy.myshopify.com' } });
+  await new Promise((r) => setTimeout(r, 10));
+  assert.deepEqual(brew.disconnected, [['cozysnugglet-shop', 'shopify']]);
+});
+
+test('/shopify/own/* belongs to the brand’s own app route, not Brew’s app', async () => {
+  const { sa } = rig();
+  assert.equal(await sa.handle({ method: 'GET', headers: {} }, {}, new URL('https://brew.test/shopify/own/callback?code=x')), false);
 });
