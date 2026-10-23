@@ -156,7 +156,7 @@ test('bring your brand book: links become readable exports, private links say ho
   const woff = 'data:font/woff2;base64,' + Buffer.from('wOF2-test-font-bytes').toString('base64');
   for (const n of ['BrandSans-Regular.woff2', 'BrandSans-Bold.woff2']) { const f = await imp({ name: n, data: woff + n.length, role: 'heading' }, t, { slug: 'cozy' });
     const o = await routes['POST /api/brands/:slug/book']({ applyUpload: { id: f.upload.id } }, t, { slug: 'cozy' }); assert.ok(o.book.uploads.find((u) => u.id === f.upload.id).applied >= 1, n); }
-  const fin = await routes['GET /api/brands/:slug/book']({}, t, { slug: 'cozy' }); assert.equal(fin.book.kit.fonts.heading, 'Brand Sans'); assert.equal(fin.book.kit.fontFiles.filter((f) => f.family === 'Brand Sans').length, 1);
+  const fin = await routes['GET /api/brands/:slug/book']({}, t, { slug: 'cozy' }); assert.equal(fin.book.kit.fonts.heading, 'Brand Sans'); assert.deepEqual(fin.book.kit.fontFiles.filter((f) => f.family === 'Brand Sans').map((f) => f.weight).sort(), [400, 700], 'Regular and Bold both kept');
   assert.match((await imp({ text: 'no codes here at all' }, t, { slug: 'cozy' })).error, /needs the AI/);
   assert.equal((await routes['GET /api/brands/:slug/book']({}, { brandId: 'other' }, { slug: 'cozy' })).status, 400);
 });

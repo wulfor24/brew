@@ -9,6 +9,7 @@
 //                            product photos and the project instructions for Claude and ChatGPT
 import { loadView } from './jam2/brandbook.js';
 import { zipBuffer } from './pdf/render.js';
+import { faceLabel } from './font-meta.js';
 
 const one = (s, n = 400) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const famName = { 'ad-image': 'Image ads', 'ad-video': 'Video ads', 'ad-carousel': 'Carousel ads', 'ig-post': 'Instagram posts', 'ig-reel': 'Instagram reels', 'ig-carousel': 'Instagram carousels', tiktok: 'TikTok', youtube: 'YouTube films', 'product-photo': 'Product photos', 'site-photo': 'On their site', email: 'Emails' };
@@ -98,6 +99,11 @@ export function createBrandKit({ packs, log = console }) {
     text('brand.md', toMarkdown(v, { url: `${base}/brand` })); text('brand.json', JSON.stringify(toJSON(v, { origin }), null, 2)); text('tokens.json', JSON.stringify(tokens(v), null, 2));
     text('colors.css', colorsCss(v)); if ((v.kit?.roles || []).length) files.push({ name: 'palette.ase', data: ase(v) });
     text('CLAUDE-PROJECT.md', projectNote(v, 'Claude', `${base}/brand.md`)); text('CUSTOM-GPT.md', projectNote(v, 'ChatGPT', `${base}/brand.md`)); text('llms.txt', llmsTxt(v, { base }));
+    /* the brand's own font files, every weight and style, with a fonts.css that loads them from this folder */
+    const faces = []; for (const f of v.kit?.fontFiles || []) { const b = await asset(f.src); if (!b) continue; const ext = String(f.src).match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() || 'ttf';
+      const fam = String(f.family || 'Font').replace(/[^\w ]+/g, '').trim() || 'Font', file = `fonts/${fam}/${fam.replace(/ /g, '')}-${faceLabel(f).replace(/ /g, '')}.${ext}`;
+      if (files.some((x) => x.name === file)) continue; files.push({ name: file, data: b }); faces.push({ ...f, file, ext }); }
+    if (faces.length) text('fonts/fonts.css', `/* ${nameOf(v)}: its own font files. Link this file, then use the families below. */\n` + faces.map((f) => `@font-face {\n  font-family: "${f.family}";\n  src: url("${f.file.replace(/^fonts\//, '')}") format("${{ ttf: 'truetype', otf: 'opentype', woff: 'woff', woff2: 'woff2' }[f.ext] || 'truetype'}");\n  font-weight: ${+f.weight || 400};\n  font-style: ${f.style === 'italic' ? 'italic' : 'normal'};\n  font-display: swap;\n}`).join('\n'));
     for (const [k, p] of [['logo', v.kit?.logo], ['mark', v.kit?.mark]]) { const b = await asset(p); if (b) files.push({ name: `logos/${k}${String(p).match(/\.[a-z0-9]+$/i)?.[0] || '.png'}`, data: b }); }
     for (const [f, xs] of Object.entries(v.library || {})) { const caps = [];
       for (const [i, x] of xs.entries()) { const b = await asset(x.src); if (!b) continue; const nm = `${String(i + 1).padStart(2, '0')}${String(x.src).match(/\.[a-z0-9]+$/i)?.[0] || '.jpg'}`; files.push({ name: `references/${f}/${nm}`, data: b }); caps.push({ file: nm, why: x.why || null, words: x.words || null, proof: x.proof || null, original: x.url || null }); }

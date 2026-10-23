@@ -9,6 +9,7 @@
 // sees what: 'member' everything, 'share' the read plus the team's edits that aren't private (the share link and the kit),
 // 'public' the read only (the free kit for brands not on Brew). Makers read refsFor / playbookFor / promptBlock / creativeBlock.
 import { familiesFor, REF_FAMILIES, taglineOk, oneLineOk } from '../brand-book-read.js';
+import { mergeFaces } from '../font-meta.js';
 import { suggestRules, mergeRules, applyRuleChange, ruleLines, blockWords, CHOICES } from './rules.js';
 const FILE = 'private/brandbook.json';
 /* the chapters a team edit may change, by dotted path (story.mission, tone.summary, words.use, look.light, …) */
@@ -231,6 +232,7 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
     const bb = await load(slug);
     if (patch.kit) { const k = patch.kit; bb.kitEdits = { ...bb.kitEdits };
       if (k.logo !== undefined) bb.kitEdits.logo = k.logo || null; if (k.fonts) bb.kitEdits.fonts = { ...(bb.kitEdits.fonts || {}), ...k.fonts };
+      if (k.dropFont) bb.kitEdits.fontFiles = (bb.kitEdits.fontFiles || []).filter((f) => f.src !== k.dropFont);
       if (Array.isArray(k.colors)) bb.kitEdits.colors = k.colors.filter((c) => hexOk(c.hex || c)).slice(0, 6).map((c, i) => ({ hex: c.hex || c, role: c.role || (i ? 'accent' : 'primary') })); }
     if (patch.voice) bb.voice = { ...bb.voice, ...(VOICES[patch.voice.written] ? { written: patch.voice.written } : {}), ...(NARRATORS.some((n) => n.id === patch.voice.narrator) ? { narrator: patch.voice.narrator } : {}) };
     if (patch.music) bb.music = { ...bb.music, ...(Array.isArray(patch.music.moods) ? { moods: patch.music.moods.filter((m) => MOODS.includes(m)).slice(0, 3) } : {}) };
@@ -268,9 +270,12 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
       /* a kit change counts as applied too (a font, logo or colours alone used to leave the upload "waiting" for ever); a font
          file added again replaces its family's older file instead of piling up */
       if (u.kit) { if (u.kit.colors?.length && !skip.has('colors')) { bb.kitEdits = { ...bb.kitEdits, colors: u.kit.colors.filter((c) => hexOk(c.hex)).slice(0, 8) }; n++; }
-        if (u.kit.fonts && Object.keys(u.kit.fonts).length && !skip.has('fonts')) { bb.kitEdits = { ...bb.kitEdits, fonts: { ...(bb.kitEdits?.fonts || {}), ...u.kit.fonts } }; n++; }
+        /* the team picks where an uploaded family goes: headings, body text or both (fontRole); without a pick, as proposed */
+        const fam = u.kit.fontFiles?.[0]?.family, role = patch.applyUpload.fontRole;
+        const fonts = fam && ['heading', 'body', 'both'].includes(role) ? (role === 'both' ? { heading: fam, body: fam } : { [role]: fam }) : u.kit.fonts;
+        if (fonts && Object.keys(fonts).length && !skip.has('fonts')) { bb.kitEdits = { ...bb.kitEdits, fonts: { ...(bb.kitEdits?.fonts || {}), ...fonts } }; n++; }
         if (u.kit.logo && !skip.has('logo')) { bb.kitEdits = { ...bb.kitEdits, logo: u.kit.logo }; n++; }
-        if (u.kit.fontFiles?.length && !skip.has('fonts')) { const fams = new Set(u.kit.fontFiles.map((f) => String(f.family || '').toLowerCase())); bb.kitEdits = { ...bb.kitEdits, fontFiles: [...u.kit.fontFiles, ...(bb.kitEdits?.fontFiles || []).filter((f) => !fams.has(String(f.family || '').toLowerCase()))].slice(0, 8) }; n++; } }
+        if (u.kit.fontFiles?.length && !skip.has('fonts')) { bb.kitEdits = { ...bb.kitEdits, fontFiles: mergeFaces(u.kit.fontFiles, bb.kitEdits?.fontFiles || []) }; n++; } } /* Bold never replaces Regular: one file per family + weight + style */
       if (u.dropNever?.length && !skip.has('never')) { bb.neverSay = bb.neverSay.filter((w) => !u.dropNever.some((d) => d.toLowerCase() === w.toLowerCase())); n++; }
       if (u.neverSay?.length && !skip.has('never')) { bb.neverSay = [...new Set([...bb.neverSay, ...u.neverSay.map((x) => tidy(x, 40))])].slice(0, 40); n++; }
       u.applied = n; u.appliedAt = now(); u.before = before; }

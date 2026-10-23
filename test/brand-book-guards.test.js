@@ -67,3 +67,9 @@ test('a font falls back to its own kind: Geist and Inter are sans, Fraunces is a
   assert.equal(fallbackOf('Geist'), 'sans-serif'); assert.equal(fallbackOf('Inter'), 'sans-serif');
   assert.equal(fallbackOf('Fraunces'), 'serif'); assert.equal(fallbackOf('IBM Plex Mono'), 'monospace');
 });
+
+test('fonts: the card lets the team pick headings/body/both, and the page loads every uploaded weight', () => {
+  assert.match(code, /data-fontrole/); assert.match(code, /fontRole/);
+  assert.match(code, /font-weight:\$\{\+f\.weight \|\| 400\}/);
+  assert.match(code, /data-dropfont/); assert.match(code, /data-addfont/);
+});

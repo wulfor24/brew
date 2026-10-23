@@ -10,15 +10,16 @@ const clamp = (x, lo, hi, d) => (Number.isFinite(+x) ? Math.max(lo, Math.min(hi,
 /* single quotes: the stack goes inside a style="…" attribute, where a double quote would end it (and drop the size after it) */
 const SAFE_FONTS = "'Helvetica Neue',Helvetica,Inter,Arial,sans-serif";
 export const fontStack = (name) => { const n = String(name || '').replace(/[^\w \-]/g, '').trim().slice(0, 40); return n ? `'${n}',${SAFE_FONTS}` : SAFE_FONTS; };
-/* the kit's fonts: a face the brand uploaded to its Brand Book (kit.files: [{ family, src }]) is loaded from its own file; any
+/* the kit's fonts: a face the brand uploaded to its Brand Book (kit.files: [{ family, src, weight, style }], every weight kept) is loaded from its own file; any
    other name from Google Fonts; a font that is neither falls back to the safe stack, which the gate notes. srcOf turns a stored
    src into what the page can load (the server passes data: URIs) */
 const FONT_SRC = /^(\/b\/[a-z0-9-]+\/a\/font-[\w.-]+|data:(font|application)\/[\w.+-]+;base64,[A-Za-z0-9+/=]+)$/;
 export const fontName = (f) => String(f || '').replace(/[^\w \-]/g, '').trim().slice(0, 40);
 export const fontLink = (kit = {}, srcOf = (x) => x) => { const fs = [...new Set([kit.fonts?.heading, kit.fonts?.body].filter(Boolean).map(fontName).filter((f) => f.length >= 2))];
-  const own = new Map((Array.isArray(kit.files) ? kit.files : []).filter((x) => x?.family && x.src).map((x) => [fontName(x.family).toLowerCase(), x.src]));
-  return fs.map((f) => { const src = own.has(f.toLowerCase()) ? srcOf(own.get(f.toLowerCase())) : null;
-    if (src && FONT_SRC.test(src)) return `<style>@font-face{font-family:'${f}';src:url("${src}");font-display:block}</style>`;
+  const own = new Map(); for (const x of (Array.isArray(kit.files) ? kit.files : []).filter((y) => y?.family && y.src)) { const k = fontName(x.family).toLowerCase(); own.set(k, [...(own.get(k) || []), x]); }
+  return fs.map((f) => { /* every uploaded weight and style of the family, so a bold headline uses the Bold file */
+    const faces = (own.get(f.toLowerCase()) || []).map((x) => ({ ...x, src: srcOf(x.src) })).filter((x) => x.src && FONT_SRC.test(x.src));
+    if (faces.length) return `<style>${faces.map((x) => `@font-face{font-family:'${f}';src:url("${x.src}");font-weight:${+x.weight || 400};font-style:${x.style === 'italic' ? 'italic' : 'normal'};font-display:block}`).join('')}</style>`;
     /* the plain family first (a one-weight face like Anton loads), then its bolder weights where it has them (Google refuses a
        weight list a family can't serve, and only that link fails) */
     const fam = encodeURIComponent(f).replace(/%20/g, '+');
