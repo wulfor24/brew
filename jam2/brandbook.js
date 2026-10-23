@@ -143,7 +143,9 @@ export function viewOf(bb, { scope = 'member' } = {}) {
     detail: [x.spend ? `${Math.round(x.spend).toLocaleString('en-US')} ${x.currency || ''} spent`.trim() : null, x.ctr != null ? `${x.ctr}% click rate` : null].filter(Boolean).join(', ') + ' in the last 30 days',
     video: null, cta: x.cta || null, kind: 'Their winning ad', private: true })), ...(v.library || {}) };
   if (scope === 'member') Object.assign(v, { recipes: bb.recipes || [], voice: bb.voice, music: bb.music, comfort: bb.comfort, cast: bb.cast, places: bb.places, taste: bb.taste, confirmed: bb.confirmed,
-    uploads: (bb.uploads || []).map(({ id, name, kind, at, by, private: pv, applied }) => ({ id, name, kind, at, by, private: !!pv, applied: applied || 0 })) });
+    /* a change not taken yet keeps its proposal, so its card comes back after a reload */
+    uploads: (bb.uploads || []).map(({ id, name, kind, from, at, by, private: pv, applied, proposed, kit, neverSay, dropNever }) => ({ id, name, kind, from: from || null, at, by, private: !!pv, applied: applied || 0,
+      ...(applied ? {} : { proposed: (proposed || []).map(({ path, label, value, before, after }) => ({ path, label, value, before: before ?? null, after: after ?? null })), kit: kit || null, neverSay: neverSay || [], dropNever: dropNever || [] }) })) });
   else Object.assign(v, { voice: { narrator: bb.voice?.narrator || null }, music: bb.music, places: (bb.places || []).map(({ label, describe }) => ({ label, describe })), confirmed: scope === 'share' ? bb.confirmed : {} });
   /* edits by path, over the read: a share leaves out what the team marked private, the public kit leaves them all out */
   if (team) for (const [path, e] of Object.entries(bb.edits || {})) { if (scope === 'share' && e.private) continue; setPath(v, path, e.value); v.src[path] = e.src || 'team'; }

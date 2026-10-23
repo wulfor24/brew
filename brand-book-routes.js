@@ -211,6 +211,7 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
       if (!live && !hx.length && !upload.kit) return { error: 'Reading a brand book needs the AI, which is off on this server.' }; }
     const found = upload.proposed.length + (upload.kit?.colors?.length ? 1 : 0) + (upload.kit?.fonts && Object.keys(upload.kit.fonts).length ? 1 : 0) + (upload.kit?.logo ? 1 : 0) + (upload.neverSay.length ? 1 : 0);
     if (!found) return { error: `Brew read ${upload.name} but found nothing about the brand’s look, voice or rules in it.` };
+    { const v0 = BOOK.view(await BOOK.load(slug)); upload.proposed = upload.proposed.map((x) => ({ ...x, before: short(getPath(v0, x.path)), after: short(x.value) })); }
     await BOOK.update(slug, { upload }, meOf(t));
     const raw = await BOOK.load(slug), confirmed = raw.confirmed || {};
     return { ok: true, upload: { id, name: upload.name, kind: upload.kind, from: upload.from || null, private: upload.private, kit: upload.kit, neverSay: upload.neverSay,
