@@ -42,6 +42,7 @@ test('a store with more orders than one read: Shopify counts the 30 days, the ne
   assert.ok(r.notes.some((n) => /newest 10,000 orders/.test(n)), r.notes.join(' | '));
   /* COD 10 to 40 days old came from its own read: 6 of 30 cancelled */
   assert.equal(Math.round(r.metrics.codFail), 20);
+  const keys = r.ledger.map((e) => e.key); assert.ok(keys.includes('shopify.cod.cancelled') && keys.includes('shopify.cod.unpaid') && !keys.includes('shopify.cod.failed'), keys.join(','));
   assert.ok(r.notes.some((n) => /Store description/.test(n)), 'a failed description read is said, not silent');
   assert.match(r.cards.find((c) => /repeat/.test(c.id))?.title || 'recent', /recent/);
 });
