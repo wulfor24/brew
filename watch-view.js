@@ -14,7 +14,7 @@ const PLACE = { reddit: 'reddit.com', youtube: 'youtube.com', instagram: 'instag
   telegram: 'telegram.org', amazon: 'amazon.com', walmart: 'walmart.com', trustpilot: 'trustpilot.com', google: 'google.com', nykaa: 'nykaa.com', flipkart: 'flipkart.com', myntra: 'myntra.com', news: 'news.google.com', web: 'quora.com',
   blinkit: 'blinkit.com', zepto: 'zepto.com', instamart: 'swiggy.com', similarweb: 'similarweb.com', chatgpt: 'chatgpt.com', gemini: 'gemini.google.com', perplexity: 'perplexity.ai' };
 /* a topic that names a kind of post ("product review", "recommendation") is no topic people talk about */
-const TALK = /\b(reviews?|feedback|general|discussion|opinions?|experiences?|comparisons?|recommendations?|content|post|video)\b/i;
+const TALK = /\b(reviews?|feedback|general|discussion|opinions?|experiences?|comparisons?|recommendations?|praise|usage|skepticism|content|post|video)\b/i;
 const pname = (k) => PLATFORMS[k]?.label || SOURCES[k]?.name?.replace(/ (comments|reviews|posts)$/i, '') || k;
 
 /* What people say: the count split into about you and about your category, the topics as stamps, quotes as notes */

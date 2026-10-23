@@ -115,7 +115,10 @@
 .wx-more { margin-top: 16px; } .wx-more > summary { cursor: pointer; font: 600 14px var(--font); padding: 8px 0; }
 .wx-foot { color: var(--fg-3); font-size: 13px; text-align: center; margin-top: 28px; }
 
-/* the entry on What Brew learned */
+/* the entry on What Brew learned: side by side with the Brand Book, stacked on a phone */
+.lx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 16px; }
+.lx-pair > .lx-book, .lx-pair > .lx-watch { margin: 0; align-items: flex-start; }
+@media (max-width: 760px) { .lx-pair { grid-template-columns: 1fr; } }
 .lx-watch { appearance: none; width: 100%; display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px 18px; margin: 0 0 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
 .lx-watch:hover { border-color: var(--fg-3); }
 .lx-watch > span:nth-child(2) { flex: 1; display: grid; gap: 2px; } .lx-watch b { font-size: 15px; } .lx-watch > span:nth-child(2) > span { color: var(--fg-2); font-size: 13px; }

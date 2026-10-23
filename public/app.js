@@ -5100,6 +5100,7 @@
     $$('.fs-fix', el).forEach((f) => f.onsubmit = (e) => { e.preventDefault(); send({ action: 'link', key: f.dataset.fsform, url: f.querySelector('input').value.trim() }, f.querySelector('button')); });
     $$('.fs-add', el).forEach((f) => f.onsubmit = (e) => { e.preventDefault(); const u = f.querySelector('input').value.trim(); send({ action: 'choices', ...(f.dataset.fsadd === 'product' ? { addProducts: [u] } : { addRivals: [u] }) }, f.querySelector('button')); });
   };
+  const TALK_KIND = /\b(reviews?|feedback|general|discussion|opinions?|experiences?|comparisons?|recommendations?|praise|usage|skepticism|content|post|video)\b/i;
   const openHeard = (f = {}) => { HD.f = { src: '', mode: '', theme: '', q: '', ...f }; nav('#v=heard', true, 'view', 'heard'); renderHeard(); };
   const renderHeard = async (more = false) => {
     view = 'heard'; if (!more) { HD.x = null; libShell('What we heard', `Everything people said about ${esc(B.brand.name)}. Tap a quote to open where it was said.`, `<div class="hd" id="hd">${loader('Gathering what people said')}</div>`); $('#col')?.classList.add('lib-col', 'hd-col'); }
@@ -5120,7 +5121,8 @@
     const seenQ = new Set(), items = x.items.filter((q) => { const t0 = String(q.quote || q.text || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(), k = t0.length > 60 ? t0.slice(0, 60) : `${t0}|${q.author || ''}`; if (!t0 || seenQ.has(k)) return false; seenQ.add(k);
       const w = String(q.quote || q.text || '').trim().split(/\s+/), tags = w.filter((x) => x.startsWith('#')).length; return !(tags >= 3 && w.length - tags < 6); });
     const th0 = x.themes || [], thN = HD.allT ? th0.length : 10, thI = th0.findIndex((t) => t.name === f.theme), th = thI >= thN ? [th0[thI], ...th0.filter((_, i) => i !== thI)] : th0; /* ten topics and "N more"; a picked topic always shows */
-    const top = th0.slice(0, 5), topMx = Math.max(1, ...top.map((t) => t.n || 0));
+    /* "what people talk about most" names subjects, never a kind of post ("Product review", "Product recommendation"): those stay as filters below */
+    const top = th0.filter((t) => !TALK_KIND.test(t.name || '')).slice(0, 5), topMx = Math.max(1, ...top.map((t) => t.n || 0));
     const sum = !f.theme && !f.q && top.length >= 3 ? `<section class="hd-sum" aria-label="What people talk about most"><span class="hd-l">What people talk about most</span><div class="hd-bars">${top.map((t, i) => `<button class="hd-bar${i ? '' : ' is-top'}" data-hd-f="theme" data-v="${esc(t.name)}"><span class="hd-bt"><b>${esc(topicCase(t.name))}</b><em>${n0(t.n)}</em></span><i style="--w:${Math.round((t.n || 0) / topMx * 100)}%"></i></button>`).join('')}</div></section>` : '';
     el.innerHTML = `${sum}<div class="hd-top"><b class="hd-n">${n0(x.total)}</b><span>${f.src || f.mode || f.theme || f.q ? 'match' : `quotes${x.at ? ` · read ${ago(x.at)}` : ''}`}</span></div>
       <div class="hd-grid"><aside class="hd-tools" aria-label="Filters">
@@ -5181,7 +5183,7 @@
     const srcs = (heard?.sources || []).map((s) => (typeof s === 'string' ? { id: s, name: s, n: null } : s));
     const heardHtml = !heard ? '' : `<section class="lx-sec">${lxHead('lx-heard', 'What people say', '', '')}<button class="lx-heard-row" data-hd-open><span class="hd-stack">${srcs.slice(0, 3).map((s) => srcMark(s.id, s.name)).join('')}</span><span><b>${Number(heard.total ?? heard.items ?? 0).toLocaleString()} things people said</b><small>${srcs.slice(0, 3).map((s) => `${esc(s.name)}${s.n != null ? ` ${Number(s.n).toLocaleString()}` : ''}`).join(' · ')}${heard.at ? ` · read ${ago(heard.at)}` : ''}</small></span>${ic('right', 's16')}</button>
       ${(heard.failed || []).length ? `<p class="lx-failed">${ic('info', 's14')}Couldn’t read ${esc(heard.failed.map((x) => x.name).join(', '))} this time. What they said before still counts.</p>` : ''}
-      ${(heard.themes || []).length ? `<div class="lx-topics">${heard.themes.slice(0, 4).map((t) => `<button class="hd-chip" data-hd-theme="${esc(t.name)}">${esc(topicCase(t.name))}<b>${t.n}</b></button>`).join('')}</div>` : ''}</section>`;
+      ${(heard.themes || []).length ? `<div class="lx-topics">${heard.themes.filter((t) => !TALK_KIND.test(t.name || '')).slice(0, 4).map((t) => `<button class="hd-chip" data-hd-theme="${esc(t.name)}">${esc(topicCase(t.name))}<b>${t.n}</b></button>`).join('')}</div>` : ''}</section>`;
     /* the brand memory, grouped under plain headings; each line says where it came from in a few words, never raw ids */
     const MEM_T = [['what-works', 'What works'], ['voice', `How ${B.brand.name} sounds`], ['creative-style', 'How its ads look'], ['audience', 'Who buys'], ['products', 'Products'], ['offers', 'Offers'], ['channels', 'Where it sells'], ['rules', 'House rules']];
     const memSrc = (f) => { const ls = (f.sources || [f.source]).filter(Boolean).map((x) => String(x.label || '')), cnt = {}, other = [];
@@ -5224,7 +5226,7 @@
         ppl && t('data-nav="watch"', ppl.toLocaleString(), 'Things people said', srcs.length > 2 ? `${srcs.slice(0, 2).map((x) => x.name).join(', ')} +${srcs.length - 2} more` : srcs.map((x) => x.name).join(', '))].filter(Boolean);
       return tiles.length ? `<div class="lx-ov">${tiles.join('')}</div>` : ''; };
     libShell('What Brew learned', 'From what you pick, edit and ship, and anything you drop on this page. Edit, pause or forget any of it.',
-      `<div class="lx" data-m2-drop>${lxBook() + lxWatch(heard) + lxDropBig() + lxOverview()}
+      `<div class="lx" data-m2-drop>${`<div class="lx-pair">${lxBook() + lxWatch(heard)}</div>` + lxDropBig() + lxOverview()}
         ${mvBuilding ? movesHtml : ''}
         
         ${toldHtml}
