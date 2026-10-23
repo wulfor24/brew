@@ -179,7 +179,7 @@ test('Studio opens every picture, set and video card on the right deliverable; f
   /* a set is priced slide by slide and named */
   const studio = createStudio({ engines: { hf: { pick: () => ({ id: 'x', input: {} }), estimate: async () => ({ usd: 0.08 }), nearestRatio: () => '1:1' }, quote: async () => ({ usd: 0.1 }) }, maker: { creative: {} } });
   const pl = await studio.plan(ctx, { set: ['mp-main', 'mp-lifestyle', 'mp-benefits'], sizes: ['pdp'], product: { name: 'Serum' } });
-  assert.match(pl.line, /^3 slides · Main image \(white\), Lifestyle, Benefits · Serum/); assert.equal(pl.usd, +(0.15 + 0.15 + 0.08).toFixed(2)); assert.deepEqual(pl.set, ['mp-main', 'mp-lifestyle', 'mp-benefits']);
+  assert.match(pl.line, /^3 slides · Main image \(white\), Lifestyle, Benefits · Serum/); assert.equal(pl.usd, 0.3); /* the main image is the real photo cut out (free); the other two show the real product, so each is a product shot */ assert.deepEqual(pl.set, ['mp-main', 'mp-lifestyle', 'mp-benefits']);
   assert.equal((await studio.plan(ctx, { set: ['mp-main'] })).error, 'Pick at least two slides.');
 });
 
@@ -188,9 +188,9 @@ test('a set lands on one board as slides; a failed slide is named and the rest s
   let n = 0; /* the slides go through Studio's own make, with the creative engine stubbed */
   const studio = createStudio({ engines: { hf: {}, keep: () => 'gen/x.png', pub: (u) => u }, maker: { write: async (ctx, b, o) => ({ headline: `h${n++}`, ask: o.ask }), creative: {
     staticAd: async (ctx, b, w, size, { style }) => (style.id === 'closeup' ? { made: [{ usd: 0.1 }], fail: 'no clear photo' } : { made: [{ usd: 0.1 }], scene: { w: 1, h: 1, layers: [] }, file: `gen/${style.id}.jpg`, shot: {} }) } } });
-  const t = await studio.makeSet({ by: 'a@b.c' }, { label: 'Listing' }, { set: ['mp-main', 'mp-lifestyle', 'closeup'], sizes: ['pdp'] });
-  assert.deepEqual(t.slides.map((x) => x.file), ['gen/mp-main.jpg', 'gen/mp-lifestyle.jpg']); assert.equal(t.missing.length, 1); assert.match(t.missing[0], /^Closeup: no clear photo/);
-  assert.equal(t.cost.usd, 0.3); assert.deepEqual(t.studio.set, ['mp-main', 'mp-lifestyle']); assert.equal(t.file, 'gen/mp-main.jpg');
+  const t = await studio.makeSet({ by: 'a@b.c' }, { label: 'Listing' }, { set: ['in-use', 'mp-lifestyle', 'closeup'], sizes: ['pdp'] });
+  assert.deepEqual(t.slides.map((x) => x.file), ['gen/in-use.jpg', 'gen/mp-lifestyle.jpg']); assert.equal(t.missing.length, 1); assert.match(t.missing[0], /^Closeup: no clear photo/);
+  assert.equal(t.cost.usd, 0.3); assert.deepEqual(t.studio.set, ['in-use', 'mp-lifestyle']); assert.equal(t.file, 'gen/in-use.jpg');
 });
 
 test('a Studio film is delivered at the placement’s exact pixels (a 720p clip becomes 1080×1920)', async () => {
@@ -208,4 +208,16 @@ test('v1: a card button that makes a picture, a set or a video opens Studio; wor
   assert.match(app, /if \(j2Ok && !chId && !o\.v1\) \{ const k = await tapi\('POST', '\/api\/jam2\/studio-for'/); assert.match(rt, /'\/api\/jam2\/studio-for'[^\n]*isBatchCard\(card\)\) return \{ studio: false \}/);
   const kindOf = (label, card = {}) => recipe(planFor({ title: 'x', ...card }, label)[0].recipe)?.kind;
   assert.ok(['static', 'video', 'carousel'].includes(kindOf('Make the ad'))); assert.ok(['static', 'video', 'carousel'].includes(kindOf('Make the video')));
+});
+
+test('a marketplace main image is the real product cut out on pure white at 85% of the frame, never redrawn, free', async () => {
+  const { createStudio } = await import('../jam2/studio.js'), sharp = (await import('sharp')).default, fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pk-')), cut = path.join(dir, 'cut.png'); fs.writeFileSync(cut, await sharp({ create: { width: 200, height: 400, channels: 4, background: { r: 200, g: 30, b: 30, alpha: 1 } } }).png().toBuffer());
+  let kept = null; const studio = createStudio({ engines: { hf: {}, keep: (b) => { kept = b; return 'gen/main.jpg'; } }, maker: { write: async () => ({ headline: 'h' }), creative: { entryOf: () => null }, cutout: async () => ({ file: 'gen/cut.png', provider: 'local' }), fileOf: async () => cut } });
+  const t = await studio.make({ by: 'a', product: { img: 'p.jpg', name: 'Serum' }, profile: { best: 'p.jpg' } }, { label: 'Listing' }, { style: 'mp-main', sizes: ['pdp'] });
+  const m = await sharp(kept).metadata(), px = await sharp(kept).extract({ left: 2, top: 2, width: 1, height: 1 }).raw().toBuffer();
+  assert.equal(t.file, 'gen/main.jpg'); assert.equal(m.width, m.height); assert.ok(px[0] > 250 && px[1] > 250 && px[2] > 250, 'pure white edge'); assert.equal(t.cost.usd, 0);
+  const tall = await sharp(await sharp(kept).trim({ threshold: 10 }).toBuffer()).metadata(); assert.ok(Math.abs(tall.height / m.height - 0.85) < 0.02, `fills 85% (${tall.height}/${m.height})`);
+  const bad = createStudio({ engines: { hf: {} }, maker: { write: async () => ({}), creative: { entryOf: () => null }, cutout: async () => ({ file: 'p.jpg', raw: true }) } });
+  await assert.rejects(bad.make({ by: 'a', product: { img: 'p.jpg' }, profile: { best: 'p.jpg' } }, {}, { style: 'mp-main', sizes: ['pdp'] }), /couldn’t be cut out/);
 });
