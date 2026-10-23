@@ -125,7 +125,7 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
     if (now['products.heroes']) now['products.heroes'] = now['products.heroes'].map((h) => h.title);
     let r; try { r = await ai.call({ model: 'sonnet', tag: 'brandbook-ask', max: 5000, effort: 'low', schema: ASK_SCHEMA,
       prompt: [`The team of ${v.name || slug} asks to change their Brand Book: "${text}"`,
-        'Change only what they asked. Keep every other line as it is. Never invent facts, claims, numbers, reviews or products; if they ask for something you can’t do from what is here, say so in reply and change nothing.',
+        'Nothing changes until the team taps Use these, so the reply says what you would change (“I’d make the tagline …”), never that you changed it. Change only what they asked. Keep every other line as it is. Never invent facts, claims, numbers, reviews or products; if they ask for something you can’t do from what is here, say so in reply and change nothing.',
         `THE BOOK NOW (path: value):\n${JSON.stringify(now, null, 1).slice(0, 14000)}`,
         `NEVER-SAY NOW: ${JSON.stringify(v.neverSay || [])}`, `RULES NOW (id: rule): ${JSON.stringify(Object.fromEntries((v.rulebook || []).filter((x) => !x.off && !x.choice).map((x) => [x.id, x.text])))}`, `COLOURS NOW: ${JSON.stringify(v.kit?.roles || [])}; FONTS NOW: ${JSON.stringify(v.kit?.fonts || {})}`,
         `CATALOGUE (the only products that exist): ${JSON.stringify(cat.map((x) => x.title))}`].join('\n\n') }); }
