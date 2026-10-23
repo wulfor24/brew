@@ -85,6 +85,7 @@ How to write:
 - No hype or filler: no "unlock", "leverage", "optimize", "supercharge", "game-changer", "seamless". No em dashes.
 - Keep every number exactly as written (same symbol, same digits). Never add a number, never drop the card's main number, never round.
 - Keep product names, brand names and rival names exactly as written.
+- Keep the ad platform's level words as written: a campaign, an ad set (Google: an ad group) and an ad are different things. Never call a campaign an ad set or an ad, or the other way round.
 - Never add a fact, claim or promise the original doesn't make. Same meaning, same advice, simpler words.
 - Never turn an idea into something Brew saw. "May", "might" and "can" stay. Say people are asking, complaining or worried, that visitors leave, bounce or abandon carts, that sales, orders or ad results are up or down, or that people search for something, only when the original says Brew saw it. Happy reviews are proof that it works, never doubt.
 - "because" names the evidence the original names (a review, a thread, a page Brew read, an account number). When the original gives a reason without evidence, say it as an idea: "Brew suggests this because buyers may worry ...".
@@ -94,6 +95,18 @@ Cards (JSON):
 ${JSON.stringify(list)}
 
 Return every card by its id.`;
+
+/* the ad platform's levels stay as the card says them: a rewrite that turned "campaign" into "ad set" (Arata's fatigue card,
+   23 Oct) names a different thing in Meta. A level the original never says is put back to the one it does say */
+const LEVELS = [['campaign', /\bcampaigns?\b/i], ['ad set', /\bad[- ]sets?\b/i], ['ad group', /\bad groups?\b/i]];
+export function keepLevels(out, orig) {
+  if (typeof out !== 'string' || !out) return out; const o = String(orig || '');
+  const said = LEVELS.filter(([, re]) => re.test(o)).map(([w]) => w); if (said.length !== 1) return out; /* none or several in the original: nothing to put back */
+  let r = out; for (const [w, re] of LEVELS) if (w !== said[0] && re.test(r) && !re.test(o)) r = r.replace(new RegExp(re.source, 'gi'), (m) => {
+    const word = said[0] + (/s$/i.test(m) ? 's' : '');
+    return /^[A-Z]/.test(m) ? word[0].toUpperCase() + word.slice(1) : word; });
+  return r;
+}
 
 /* isPrivate(card): a card only the brand's team sees (a connected account's card, a move rewritten from the team's numbers);
    its rewrite carries the team's real numbers, so it is kept in private/plain.json, never in the brand's shared plain.json */
@@ -111,12 +124,13 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
   /* the card a person reads: the rewrite where there is one, else its own words with the jargon swapped */
   /* a rewrite is swapped too: one written before a word joined the list still never shows it */
   const apply = (slug, c) => { if (!c || typeof c !== 'object') return c; const p = get(slug, c);
-    const d = c.detail || {}, out = { ...c, title: dejargon(p?.title || c.title), sub: dejargon(p?.sub || c.sub) };
-    if (c.detail) out.detail = { ...d, why: (p?.why?.length ? p.why : d.why || []).map(dejargon), how: (p?.how?.length ? p.how : d.how || []).map(dejargon) };
+    const d = c.detail || {}, all = [c.title, c.sub, ...(d.why || []), ...(d.how || [])].join(' '), L = (x) => keepLevels(x, all);
+    const out = { ...c, title: dejargon(L(p?.title || c.title)), sub: dejargon(L(p?.sub || c.sub)) };
+    if (c.detail) out.detail = { ...d, why: (p?.why?.length ? p.why : d.why || []).map((x) => dejargon(L(x))), how: (p?.how?.length ? p.how : d.how || []).map((x) => dejargon(L(x))) };
     if (c.make?.pieces) out.make = { ...c.make, pieces: dejargon(c.make.pieces) }; /* the make chip under the words ("Homepage: JSON-LD …") */
     if (Array.isArray(c.rows)) out.rows = c.rows.map((r) => (Array.isArray(r) ? r.map((x) => (typeof x === 'string' ? dejargon(x) : x)) : r)); /* the fact rows ("SKUs with Schema", "Sitemap files") */
     if (c.src) out.src = plainSrc(c.src);
-    if (p?.because) out.because = p.because;
+    if (p?.because) out.because = L(p.because);
     if (p && (p.title !== c.title || p.sub !== c.sub)) out.orig = { title: c.title, sub: c.sub }; /* the words as written, for the proof sheet */
     return out; };
   /* one checked rewrite: each field is kept only when it carries the original's numbers and no new one */
