@@ -62,7 +62,7 @@ test('a read (about $6) starts only for someone signed in; the page signs them i
 test('on live a brand is for its team: moves, PDFs, read, facts, Heard and stories are gated; the feed is empty outside the team; the demo stays open', () => {
   const s = src('server.js'), f = src('feed-service.js');
   const re = /const TEAM_READ = (\/.*\/);/.exec(s); assert.ok(re, 'TEAM_READ exists'); const TR = eval(re[1]);
-  for (const p of ['/api/brands/acme-com/moves', '/api/brands/acme-com/moves/7', '/api/brands/acme-com/moves/cadence', '/api/brands/acme-com/findings', '/api/brands/acme-com/check', '/api/brands/acme-com/facts', '/api/brands/acme-com/heard', '/api/brands/acme-com/heard/items', '/api/brands/acme-com/build', '/api/brands/acme-com/updates', '/api/brands/acme-com/summary']) assert.ok(TR.test(p), p);
+  for (const p of ['/api/brands/acme-com/watch', '/api/brands/acme-com/moves', '/api/brands/acme-com/moves/7', '/api/brands/acme-com/moves/cadence', '/api/brands/acme-com/findings', '/api/brands/acme-com/check', '/api/brands/acme-com/facts', '/api/brands/acme-com/heard', '/api/brands/acme-com/heard/items', '/api/brands/acme-com/build', '/api/brands/acme-com/updates', '/api/brands/acme-com/summary']) assert.ok(TR.test(p), p);
   assert.ok(!TR.test('/api/brands/acme-com/status'), 'progress stays public');
   assert.match(s, /const teamRead = async \(req, slug\) => \{ if \(process\.env\.DEMO_MODE === '1'/);
   assert.match(s, /if \(!\(await teamRead\(req, slug\)\)\) return send\(res, auth\.user\(req\) \? 403 : 401, 'These moves are for the brand’s team/);

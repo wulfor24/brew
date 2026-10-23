@@ -670,7 +670,7 @@ retireInit.finally(() => { if (!process.env.BUILD_RESUME_OFF) finals.reconcileAl
    email before it is claimed); the demo site stays open to anyone (Param, 2026-10-15). Status and progress stay public, so
    someone signing in mid-read still sees where it is */
 const teamRead = async (req, slug) => { if (process.env.DEMO_MODE === '1' || !auth.signinOn() || !slug || slug === DEFAULT) return true; const v = await viewerOf(req, slug); return !!(v.member || v.gen); };
-const TEAM_READ = /^\/api\/brands\/([a-z0-9-]+)\/(heard(?:\/(?:items|history|asked))?|moves(?:\/\d+|\/cadence)?|facts|findings|check|build|updates|summary|events)$/;
+const TEAM_READ = /^\/api\/brands\/([a-z0-9-]+)\/(heard(?:\/(?:items|history|asked))?|watch|moves(?:\/\d+|\/cadence)?|facts|findings|check|build|updates|summary|events)$/; /* watch: What Brew watches is the team's too */
 const teamGate = async (req, res, u) => {
   if (req.method !== 'GET') return false;
   const m = u.pathname.match(TEAM_READ), slug = m ? m[1] : u.pathname === '/api/research' ? req.headers['x-brand'] : null;
