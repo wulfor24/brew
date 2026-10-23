@@ -55,7 +55,9 @@ export function toJSON(v = {}, { origin = '' } = {}) {
     kit: { logo: abs(v.kit?.logo), mark: abs(v.kit?.mark), colors: v.kit?.roles || [], fonts: v.kit?.fonts || {}, typeUse: v.typeUse || null },
     voice: v.tone || null, words: { ...(v.words || {}), never: [...new Set([...(v.neverSay || []), ...(v.never || [])])] }, claims: (v.claims || []).map((c) => ({ text: c.text, source: c.src || null })),
     look: v.look || null, playbooks: v.playbooks || [], library: lib, products: v.products ? { ...v.products, heroes: (v.products.heroes || []).map((p) => ({ ...p, img: abs(p.img) })) } : null,
-    people: v.people || null, proof: v.proof || null, channels: v.channels || [], markets: v.markets || null, rivals: v.rivals || [], naming: v.naming || null };
+    people: v.people || null, proof: v.proof || null, channels: v.channels || [], markets: v.markets || null, rivals: v.rivals || [], naming: v.naming || null,
+    /* the rules every maker follows: must = the work can't go out breaking it; where = the channels it applies to (none = everywhere) */
+    rules: (v.rulebook || []).filter((r) => !r.off).map((r) => ({ group: r.group, rule: r.text, strength: r.strength === 'block' ? 'must' : 'prefer', where: r.where?.channels || [], ...(r.words?.length ? { words: r.words } : {}), source: r.src === 'suggested' && !r.confirmed ? 'suggested by Brew' : 'the team' })) };
 }
 
 /* design tokens in the W3C format (Figma variables, Style Dictionary), and the same as CSS */

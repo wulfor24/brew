@@ -166,6 +166,7 @@
 .bb-stickers li { padding: 9px 15px; border-radius: 999px; font: 700 15px var(--bb-body); transform: rotate(var(--t)); display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 3px 0 rgba(0,0,0,.08); }
 .is-say .bb-stickers li { background: var(--bb-1); color: var(--bb-on); }
 .is-cust .bb-stickers li { background: #fff; color: #161616; border-radius: 18px 18px 18px 4px; box-shadow: 0 0 0 1.5px rgba(0,0,0,.12), 0 3px 0 rgba(0,0,0,.06); }
+.is-gripe .bb-stickers li { background: #fff; color: #5a3a2e; border-radius: 18px 18px 4px 18px; box-shadow: 0 0 0 1.5px rgba(196,90,60,.35), 0 3px 0 rgba(0,0,0,.05); }
 .is-avoid .bb-stickers li { background: transparent; color: var(--fg-3); text-decoration: line-through; box-shadow: inset 0 0 0 1.5px currentColor; }
 .bb-stampzone { margin-top: 34px; padding-top: 26px; border-top: 2px dashed var(--line); }
 .bb-rubber { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 14px; }
@@ -418,7 +419,11 @@
   .bb { max-width: none; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .bb-dock, .bb-x, .bb-bar, .bb-pager, .bb-pen, .bb-undo, .bb-addbtn, .bb-add, .bb-back, .bb-building, .bb-note, .bb-neverf, .bb-tabs, .bb-foot a, .bb-ref figcaption a { display: none !important; }
   html, body { background: #fff !important; }
-  .bb-cover { min-height: 250mm; border-radius: 0; break-after: page; }
+  .bb-cover { min-height: 270mm; border-radius: 0; break-after: page; }
+  .bb-founder, .bb-lookbook, .bb-why, .bb-msg, .bb-stamps, .bb-poster, .bb-logo-row, .bb-fan, .bb-sheet-col, .bb-stampzone, .bb-rgroup, .bb-chan li, .bb-stamps2, .bb-claims, .bb-scores { break-inside: avoid; }
+  .bb-founder { break-before: auto; }
+  .bb-lt { height: 118px; } .bb-lt figcaption { bottom: 6px; font-size: 10px; }
+  .bb-why h3, .bb-kicker { break-after: avoid; }
   .bb-collage figure { animation: none; transform: rotate(var(--t)); }
   .bb-main { display: block; }
   .bb-ch { border-radius: 0; break-before: page; padding: 16mm 14mm; }
