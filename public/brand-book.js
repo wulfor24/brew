@@ -278,7 +278,8 @@
       c.innerHTML = `<header><span class="bb-from">${u.kind === 'ask' ? 'You asked' : `From ${esc(u.from ? `${u.from}: ` : '')}${esc(u.name)}`}</span>${u.kind === 'ask' ? `<b>${esc(u.name)}</b>` : ''}${reply ? `<p>${esc(reply)}</p>` : ''}</header>
         <ul>${rows}</ul><footer><button type="button" class="bb-btn" data-skip>Not now</button><button type="button" class="bb-btn is-brand" data-use>Use these</button></footer>`;
       const drop = () => { S.cards = S.cards.filter((x) => x.u.id !== u.id); (S.gone ||= new Set()).add(u.id); c.remove(); };
-      $('[data-skip]', c).onclick = drop;
+      const notNow = () => { drop(); api('POST', base, { dismissUpload: u.id }).catch(() => {}); }; /* remembered, so it doesn't come back on the next visit */
+      $('[data-skip]', c).onclick = notNow;
       $('[data-use]', c).onclick = async () => { const paths = $$('[data-path]', c).filter((x) => x.checked).map((x) => x.dataset.path), kitOff = $$('[data-kit]', c).filter((x) => !x.checked).map((x) => x.dataset.kit);
         const ok = await save({ applyUpload: { id: u.id, paths, ...(kitOff.length ? { skipKit: kitOff } : {}), overrideConfirmed: $$('[data-path]', c).some((x) => x.checked && x.closest('li').querySelector('em')) } }, 'Done. Brew writes and makes things this way from now on.');
         if (ok) drop(); };
@@ -288,7 +289,7 @@
     function wireDock() {
       const dock = $('[data-dock]', el); if (!dock) return; const cards = $('[data-cards]', dock), form = $('[data-ask]', dock), q = form.q, files = $('[data-files]', dock);
       /* the cards and the half-typed ask live in S, so a repaint (the book being written, an edit) never loses them */
-      for (const u of (S.data.book?.uploads || []).filter((x) => !x.applied && (x.proposed?.length || x.kit || x.neverSay?.length || x.dropNever?.length))) if (!S.cards.some((c) => c.u.id === u.id) && !S.gone?.has(u.id)) S.cards.push({ u });
+      for (const u of (S.data.book?.uploads || []).filter((x) => !x.applied && !x.dismissed && (x.proposed?.length || x.kit || x.neverSay?.length || x.dropNever?.length))) if (!S.cards.some((c) => c.u.id === u.id) && !S.gone?.has(u.id)) S.cards.push({ u });
       for (const c of S.cards) cards.appendChild(changeCard(c.u, c.reply));
       for (const l of S.pending) cards.appendChild(thinking(l));
       q.value = S.draft || ''; q.oninput = () => { S.draft = q.value; };
