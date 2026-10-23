@@ -183,7 +183,7 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
       upload.kind = 'font'; upload.kit = { fonts: { [b.role === 'body' ? 'body' : 'heading']: fontName(name) }, fontFiles: [{ family: fontName(name), src: `/b/${slug}/a/${file}` }] };
       upload.proposed = []; await BOOK.update(slug, { upload }, meOf(t)); return { ok: true, upload: { id, name, kind: 'font', family: fontName(name), proposed: [], kit: upload.kit } }; }
     /* a logo: saved as the brand's logo asset and proposed for the kit */
-    if (LOGO.test(name) && b.data && /logo|mark|wordmark|icon/i.test(name)) { const bytes = buf(); if (!bytes.length || bytes.length > 6e6) return { error: `${name} is empty or over 6 MB.` };
+    if (LOGO.test(name) && b.data && (/logo|mark|wordmark|icon/i.test(name) || /\.svg$/i.test(name))) { /* an SVG is a logo or mark whatever it's called: there are no words to read in it */ const bytes = buf(); if (!bytes.length || bytes.length > 6e6) return { error: `${name} is empty or over 6 MB.` };
       const ext = name.match(LOGO)[1].toLowerCase().replace('jpeg', 'jpg'), file = `logo-${crypto.createHash('sha1').update(bytes).digest('hex').slice(0, 12)}.${ext}`;
       await GP.put(slug, 'assets/' + file, bytes, ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`);
       upload.kind = 'logo'; upload.kit = { logo: `/b/${slug}/a/${file}` }; await BOOK.update(slug, { upload }, meOf(t)); return { ok: true, upload: { id, name, kind: 'logo', proposed: [], kit: upload.kit } }; }
@@ -197,9 +197,9 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
       } else if (/\.zip$/i.test(name) && b.data) {
         const z = unzip(buf()); let n = 0;
         for (const [file, bytes] of z) { if (n >= 12 || /(^|\/)(__MACOSX|\.)/.test(file)) continue;
-          if (FONT.test(file)) { const f = `font-${crypto.createHash('sha1').update(bytes).digest('hex').slice(0, 12)}${file.match(FONT)[0].toLowerCase()}`; await GP.put(slug, 'assets/' + f, bytes, 'font/woff2');
+          if (FONT.test(file)) { const f = `font-${crypto.createHash('sha1').update(bytes).digest('hex').slice(0, 12)}${file.match(FONT)[0].toLowerCase()}`; await GP.put(slug, 'assets/' + f, bytes, `font/${file.match(FONT)[1].toLowerCase()}`);
             upload.kit = { ...(upload.kit || {}), fontFiles: [...(upload.kit?.fontFiles || []), { family: fontName(file.split('/').pop()), src: `/b/${slug}/a/${f}` }] }; continue; }
-          if (LOGO.test(file) && /logo|mark|wordmark/i.test(file) && !upload.kit?.logo) { const ext = file.match(LOGO)[1].toLowerCase().replace('jpeg', 'jpg'), f = `logo-${crypto.createHash('sha1').update(bytes).digest('hex').slice(0, 12)}.${ext}`;
+          if (LOGO.test(file) && (/logo|mark|wordmark/i.test(file) || /\.svg$/i.test(file)) && !upload.kit?.logo) { const ext = file.match(LOGO)[1].toLowerCase().replace('jpeg', 'jpg'), f = `logo-${crypto.createHash('sha1').update(bytes).digest('hex').slice(0, 12)}.${ext}`;
             await GP.put(slug, 'assets/' + f, bytes, ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`); upload.kit = { ...(upload.kit || {}), logo: `/b/${slug}/a/${f}` }; continue; }
           if (!dropKind(file)) continue; n++;
           const f = await readDrop({ name: file.split('/').pop(), data: bytes.toString('base64') }, { ai: reader }).catch(() => null); if (f?.text) texts.push(`[${file}]\n${f.text}`); }

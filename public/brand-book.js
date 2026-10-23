@@ -227,7 +227,7 @@
       /* the pager follows the chapter on screen and opens the list of chapters */
       const pager = $('.bb-pager', el), pb = $('[data-pager]', el), toc = $$('[data-toc]', el);
       if (pb) { pb.onclick = () => { const open = pager.classList.toggle('is-open'); pb.setAttribute('aria-expanded', open); };
-        toc.forEach((a) => a.addEventListener('click', () => { pager.classList.remove('is-open'); pb.setAttribute('aria-expanded', 'false'); })); }
+        toc.forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); /* the app routes on #hash: a chapter jump scrolls, it never navigates */ pager.classList.remove('is-open'); pb.setAttribute('aria-expanded', 'false'); $(`#bb-${a.dataset.toc}`, el)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); })); }
       if ('IntersectionObserver' in window && toc.length) { const io = new IntersectionObserver((es) => es.forEach((x) => { if (!x.isIntersecting) return; const id = x.target.dataset.ch;
           toc.forEach((a) => a.classList.toggle('on', a.dataset.toc === id)); const a = toc.find((y) => y.dataset.toc === id); if (a && pb) { $('.bb-pager-n', pb).textContent = a.dataset.n; $('.bb-pager-t', pb).textContent = a.textContent.replace(a.dataset.n, ''); }
           pager?.classList.toggle('is-ink', x.target.classList.contains('is-ink') || x.target.classList.contains('is-brand')); }), { rootMargin: '-35% 0px -60% 0px' });
@@ -263,7 +263,7 @@
         <form class="bb-ask" data-ask><button type="button" class="bb-attach" data-attach aria-label="Add files: guidelines, deck, logo, fonts"><span aria-hidden="true">+</span></button>
           <input name="q" autocomplete="off" placeholder="Tell Brew what to change in ${esc(n)}’s book, or paste a link…" aria-label="Tell Brew what to change">
           <button class="bb-send" aria-label="Send"><span aria-hidden="true">↑</span></button>
-          <input type="file" hidden multiple data-files accept=".pdf,.doc,.docx,.ppt,.pptx,.key,.xlsx,.txt,.md,.csv,.png,.jpg,.jpeg,.webp,.svg,.ttf,.otf,.woff,.woff2,.zip"></form></div></div>`;
+          <input type="file" hidden multiple data-files accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.svg,.ttf,.otf,.woff,.woff2,.zip"></form></div></div>`;
     }
     const valText = (x) => x == null || x === '' ? '' : esc(x);
     function changeCard(u, reply) {
@@ -314,8 +314,20 @@
       showQuote();
       $$('[data-idea]', dock).forEach((b) => b.onmousedown = (e) => e.preventDefault()); /* the box keeps focus, so the chips don't fold away under the tap */
       $$('[data-idea]', dock).forEach((b) => b.onclick = () => { const t = b.dataset.idea, at = t.indexOf('  '); q.value = t.replace('  ', ' '); q.focus(); const c = at >= 0 ? at + 1 : q.value.length; q.setSelectionRange(c, c); });
-      const upload = async (list) => { for (const f of list) { if (f.size > 25e6) { toast(`${f.name} is over 25 MB. Upload it as a smaller PDF.`); continue; }
-        const data = await new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.readAsDataURL(f); }); await send({ name: f.name, type: f.type, data, private: false }, `Reading ${f.name}`); } };
+      /* what Brew reads, and the limits the server keeps: a file it can't read says how to send it instead, before any upload */
+      const kindOf = (f) => { const e = (f.name.match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase();
+        if (/^(pdf)$/.test(e)) return ['doc', 20e6]; if (/^(docx|pptx|xlsx)$/.test(e)) return ['doc', 20e6]; if (/^(txt|md|markdown|csv|tsv|json)$/.test(e)) return ['doc', 20e6];
+        if (/^(png|jpe?g|webp)$/.test(e) || /^image\/(png|jpeg|webp)$/.test(f.type)) return ['image', 8e6]; if (e === 'svg') return ['logo', 6e6]; if (/^(ttf|otf|woff2?)$/.test(e)) return ['font', 4e6]; if (e === 'zip') return ['zip', 20e6];
+        const how = { doc: 'Save it as .docx or PDF', ppt: 'Save it as .pptx or PDF', key: 'Export it from Keynote as PDF or .pptx', pages: 'Export it from Pages as PDF or .docx', numbers: 'Export it as .xlsx', heic: 'Send it as JPG or PNG', heif: 'Send it as JPG or PNG', gif: 'Send it as PNG', ai: 'Export it as PDF or SVG', psd: 'Export it as PNG or PDF', fig: 'Paste the Figma link instead', sketch: 'Export it as PDF' }[e];
+        return [null, 0, how ? `${how}, then drop it again.` : 'Brew reads PDF, Word, PowerPoint, Excel, text, photos, SVG logos, fonts and ZIPs.']; };
+      const upload = async (list) => { for (const f of list) { const [kind, max, how] = kindOf(f);
+        if (!kind) { toast(`Brew can’t open ${f.name}. ${how}`); continue; }
+        if (f.size > max) { toast(`${f.name} is over ${Math.round(max / 1e6)} MB. ${kind === 'image' ? 'Send a smaller photo.' : 'Send a smaller PDF, or split it.'}`); continue; }
+        const data = await new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = () => res(null); rd.readAsDataURL(f); });
+        if (!data) { toast(`${f.name} couldn’t be opened on this device.`); continue; }
+        await send({ name: f.name || `pasted.${(f.type.split('/')[1] || 'png')}`, type: f.type, data, private: false }, `Reading ${f.name || 'the pasted picture'}`); } };
+      /* paste a screenshot or a copied file straight into the bar */
+      q.onpaste = (e) => { const fs = [...(e.clipboardData?.files || [])]; if (!fs.length) return; e.preventDefault(); upload(fs.map((f, i) => f.name && f.name !== 'image.png' ? f : new File([f], `pasted-${Date.now()}-${i}.${(f.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`, { type: f.type }))); };
       $('[data-attach]', dock).onclick = () => files.click(); files.onchange = () => upload([...files.files]);
       /* drop a file anywhere on the book */
       let depth = 0; const over = () => el.querySelector('.bb-dropzone') || el.appendChild(Object.assign(document.createElement('div'), { className: 'bb-dropzone', innerHTML: `<div><b>Drop it into ${esc(S.data.book?.cover?.name || S.data.book?.name || 'the')} brand book</b><span>Guidelines, decks, logos, fonts, a ZIP. Brew shows you what changes first.</span></div>` }));

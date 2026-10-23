@@ -66,7 +66,8 @@ const PDF_ASK = 'Copy out all the text in this document, word for word, in readi
    data is base64 (a data: URL or bare) for every file but text, which may come as plain `text` */
 export async function readDrop(f = {}, { ai = null } = {}) {
   const name = String(f.name || 'file').replace(/[\r\n]+/g, ' ').slice(0, 120), kind = dropKind(name, f.type), ext = extOf(name);
-  if (!kind) return { error: `Brew can’t read ${name} yet. Drop a PDF, Word, PowerPoint, Excel, text file or a photo (PNG, JPG, WebP).` };
+  if (!kind) { const how = { doc: 'Save it as .docx or PDF', ppt: 'Save it as .pptx or PDF', key: 'Export it from Keynote as PDF', pages: 'Export it from Pages as PDF', heic: 'Send it as JPG or PNG', gif: 'Send it as PNG' }[ext];
+    return { error: `Brew can’t read ${name} yet. ${how ? `${how}, then drop it again.` : 'Drop a PDF, Word, PowerPoint, Excel, text file or a photo (PNG, JPG, WebP).'}` }; }
   const live = !!ai?.live;
   if (kind === 'text' && f.text != null) return done(kind, String(f.text));
   const b64 = String(f.data || '').replace(/^data:[^;,]*(;[^,]*)?,/, ''), buf = Buffer.from(b64, 'base64');
