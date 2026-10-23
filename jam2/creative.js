@@ -34,8 +34,10 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
   const entryOf = (ctx) => { const p = ctx.product; return p ? (ctx.catalog || []).find((x) => (p.handle && x.handle === p.handle) || (p.name && (x.t || x.title) === p.name)) || null : null; };
   /* the product's photos, the profile's cleanest one first (a packshot, never a size chart or a crowded scene) */
   /* the photos the brand added for this product in its Brand Book (back of the pack, a side, a close-up): references.js `product` */
-  const refPhotos = (ctx) => { const p = ctx.product; if (!p) return []; const keys = [p.handle, p.name].filter(Boolean).map((x) => String(x).toLowerCase());
-    return (ctx.refs || []).filter((r) => r.kind === 'image' && r.job === 'product' && r.product && keys.includes(String(r.product).toLowerCase())).map((r) => r.url); };
+  /* a photo added for "Serum - 30 ml" also serves "Serum - 30 ml - Pack of 3" (the same item in a pack); ™, ® and spacing don't count */
+  const norm = (x) => String(x || '').toLowerCase().replace(/[™®©]/g, '').replace(/\s+/g, ' ').trim();
+  const refPhotos = (ctx) => { const p = ctx.product; if (!p) return []; const keys = [p.handle, p.name].filter(Boolean).map(norm);
+    return (ctx.refs || []).filter((r) => r.kind === 'image' && r.job === 'product' && r.product && keys.some((k) => { const q = norm(r.product); return q.length >= 4 && (k === q || k.startsWith(`${q} `) || k.startsWith(`${q}-`)); })).map((r) => r.url); };
   /* the catalog entry the product profile is read from, with the brand's own extra photos of it first after the main one */
   const productEntry = (ctx) => { const e = entryOf(ctx) || { t: ctx.product?.name, img: ctx.product?.img, handle: ctx.product?.handle }; const extra = refPhotos(ctx);
     return extra.length ? { ...e, images: [...extra, ...(e.images || [])] } : e; };

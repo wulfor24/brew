@@ -242,7 +242,9 @@ test('a font the brand uploaded is loaded from its own file in the file and the 
 test('a product’s own extra photos (back, side) feed its profile and every shoot; a 360 turn without a back photo says so before any spend', async () => {
   const m = maker(), ctx = { product: { img: 'p.jpg', name: 'MitoActive Serum', handle: 'mito' }, catalog: [{ t: 'MitoActive Serum', handle: 'mito', img: 'p.jpg', images: ['c2.jpg'] }],
     refs: [{ kind: 'image', job: 'product', product: 'MitoActive Serum', url: '/b/s/refs/back.jpg' }, { kind: 'image', job: 'product', product: 'Other', url: '/b/s/refs/x.jpg' }, { kind: 'image', job: 'style', url: '/b/s/refs/mood.jpg' }] };
-  assert.deepEqual(m.creative.photosOf(ctx, { best: 'p.jpg' }), ['p.jpg', '/b/s/refs/back.jpg', 'c2.jpg']); assert.deepEqual(m.creative.productEntry(ctx).images, ['/b/s/refs/back.jpg', 'c2.jpg']);
+  assert.deepEqual(m.creative.photosOf(ctx, { best: 'p.jpg' }), ['p.jpg', '/b/s/refs/back.jpg', 'c2.jpg']);
+  assert.deepEqual(m.creative.refPhotos({ ...ctx, product: { img: 'q.jpg', name: 'MitoActive™ Serum - Pack of 3' } }), ['/b/s/refs/back.jpg'], 'a pack of the same item uses its photos');
+  assert.deepEqual(m.creative.refPhotos({ ...ctx, product: { img: 'q.jpg', name: 'MitoActive Serums Kit' } }), [], 'a different product does not'); assert.deepEqual(m.creative.productEntry(ctx).images, ['/b/s/refs/back.jpg', 'c2.jpg']);
   const { createStudio } = await import('../jam2/studio.js');
   const st = (sides) => createStudio({ engines: { hf: { pick: () => ({ id: 'k', input: {} }), estimate: async () => ({ usd: 0.39 }), nearestRatio: () => '9:16' }, quote: async () => ({ usd: 0.1 }) }, maker: { creative: { productEntry: () => ({}) } }, profileOf: async () => ({ sides, usable: true }) });
   assert.match((await st(['front']).plan({ ...ctx }, { style: 'orbit-360', sizes: ['story'], seconds: 5, product: ctx.product })).note, /No photo shows its back/);

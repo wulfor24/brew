@@ -151,6 +151,12 @@ test('bring your brand book: links become readable exports, private links say ho
   assert.deepEqual(r.upload.kit.colors.map((c) => c.hex), ['#3a1f45', '#f4d6dc']); assert.equal(r.upload.private, true);
   const out = await routes['POST /api/brands/:slug/book']({ applyUpload: { id: r.upload.id } }, t, { slug: 'cozy' });
   assert.deepEqual(out.book.kit.colors, ['#3a1f45', '#f4d6dc']);
+  /* a kit-only upload (colours, a font) is applied, never left "waiting"; the same font family added again replaces its file */
+  assert.equal(out.book.uploads.find((u) => u.id === r.upload.id).applied, 1);
+  const woff = 'data:font/woff2;base64,' + Buffer.from('wOF2-test-font-bytes').toString('base64');
+  for (const n of ['BrandSans-Regular.woff2', 'BrandSans-Bold.woff2']) { const f = await imp({ name: n, data: woff + n.length, role: 'heading' }, t, { slug: 'cozy' });
+    const o = await routes['POST /api/brands/:slug/book']({ applyUpload: { id: f.upload.id } }, t, { slug: 'cozy' }); assert.ok(o.book.uploads.find((u) => u.id === f.upload.id).applied >= 1, n); }
+  const fin = await routes['GET /api/brands/:slug/book']({}, t, { slug: 'cozy' }); assert.equal(fin.book.kit.fonts.heading, 'Brand Sans'); assert.equal(fin.book.kit.fontFiles.filter((f) => f.family === 'Brand Sans').length, 1);
   assert.match((await imp({ text: 'no codes here at all' }, t, { slug: 'cozy' })).error, /needs the AI/);
   assert.equal((await routes['GET /api/brands/:slug/book']({}, { brandId: 'other' }, { slug: 'cozy' })).status, 400);
 });
