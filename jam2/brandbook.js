@@ -9,6 +9,7 @@
 // sees what: 'member' everything, 'share' the read plus the team's edits that aren't private (the share link and the kit),
 // 'public' the read only (the free kit for brands not on Brew). Makers read refsFor / playbookFor / promptBlock / creativeBlock.
 import { familiesFor, REF_FAMILIES, taglineOk, oneLineOk } from '../brand-book-read.js';
+import { suggestRules, mergeRules, applyRuleChange, ruleLines, blockWords, CHOICES } from './rules.js';
 const FILE = 'private/brandbook.json';
 /* the chapters a team edit may change, by dotted path (story.mission, tone.summary, words.use, look.light, …) */
 export const EDITABLE = /^(cover|story|tone|words|products|people|proof|look|naming|pillars|playbooks|markets|rules|rivals|library)(\.[\w-]+){0,2}$/;
@@ -40,11 +41,14 @@ export function refsFor(v = {}, kind = '', n = 3) {
   (v.styleRefs || []).forEach((x) => add(x));
   return out;
 }
+/* which channel a maker's kind is for, so a rule set for ads only reaches ads */
+export const channelOf = (kind = '') => { const x = String(kind || '').toLowerCase(); return /\bad|meta|static|ugc|paid|carousel-ad|founder/.test(x) ? 'ads' : /email|whatsapp|klaviyo|sms/.test(x) ? 'email' : /pdp|site|landing|page|popup/.test(x) ? 'site' : /reel|post|story|insta|tiktok|youtube|social|community|reddit/.test(x) ? 'social' : /amazon|flipkart|nykaa|marketplace/.test(x) ? 'marketplaces' : null; };
 export const playbookFor = (v = {}, kind = '') => { const fs = familiesFor(kind); return [...(v.playbooks || [])].sort((a, b) => fs.indexOf(a.family) - fs.indexOf(b.family)).find((p) => fs.includes(p.family)) || null; };
 
 /* the words block every writer reads: rules first, then how the brand sounds (with its own lines), then the format's playbook, then taste */
 export function promptBlock(v = {}, { recipe = null, kind = null } = {}) {
   const L = [], t = v.tone || {};
+  const rl = ruleLines(v.rulebook || [], { channel: channelOf(kind || recipe) }); if (rl) L.push(rl);
   if (v.never?.length) L.push(`Never use these words or claims: ${v.never.join(', ')}.`);
   if (v.words?.avoid?.length) L.push(`Words this brand avoids: ${v.words.avoid.join(', ')}.`);
   if (v.claims?.length) L.push(`Claims the brand may make (only these, as written): ${v.claims.slice(0, 6).map((c) => `"${c.text}"`).join('; ')}.`);
@@ -71,6 +75,7 @@ export function promptBlock(v = {}, { recipe = null, kind = null } = {}) {
    pictures): the brand's look from its own pictures, colours with their roles, type, logo use and the format's playbook */
 export function creativeBlock(v = {}, kind = '') {
   const L = [], lk = v.look || {}, k = v.kit || {};
+  const rl = ruleLines((v.rulebook || []).filter((r) => r.group === 'people' || r.group === 'ai' || /\b(picture|photo|video|camera|before|show)/i.test(r.text)), { channel: channelOf(kind) }); if (rl) L.push(rl);
   if (lk.notes) L.push(`The brand's look (from its own pictures): ${lk.notes}`);
   const bits = [lk.light && `light: ${end(lk.light)}`, lk.setting && `settings: ${end(lk.setting)}`, lk.people && `people: ${end(lk.people)}`, lk.props && `props: ${end(lk.props)}`, lk.framing && `framing: ${end(lk.framing)}`].filter(Boolean);
   if (bits.length) L.push(bits.join('; ') + '.');
@@ -115,7 +120,7 @@ export function readLayer({ slug = null, profile = null, brief = null, config = 
 
 export const blankBook = () => ({ v: 1, voice: { written: 'site', narrator: 'Kore', clones: [] }, music: { moods: ['warm acoustic'], never: ['trending audio we have no rights to'] },
   comfort: { people: 'ai-cast', aiVoice: 'yes', testimonials: 'yes', how: 'ai' }, cast: [], places: [], pinned: { golden: [], styleRefs: [] }, removed: { golden: [], styleRefs: [] },
-  kitEdits: {}, claimsAllowed: [], neverSay: [], taste: { counts: {}, rules: [] }, confirmed: {}, recipes: [], edits: {}, uploads: [], updatedAt: null });
+  kitEdits: {}, claimsAllowed: [], neverSay: [], rulebook: { over: {}, own: [] }, taste: { counts: {}, rules: [] }, confirmed: {}, recipes: [], edits: {}, uploads: [], updatedAt: null });
 /* the Brand Book as the page and every maker read it (pure: the pack loader builds the share view from it too) */
 export function viewOf(bb, { scope = 'member' } = {}) {
   const r = bb.read || {}, team = scope !== 'public', k = { ...r.kit, ...(team ? bb.kitEdits : {}), fonts: { ...(r.kit?.fonts || {}), ...(team ? bb.kitEdits?.fonts || {} : {}) } };
@@ -150,6 +155,11 @@ export function viewOf(bb, { scope = 'member' } = {}) {
   else Object.assign(v, { voice: { narrator: bb.voice?.narrator || null }, music: bb.music, places: (bb.places || []).map(({ label, describe }) => ({ label, describe })), confirmed: scope === 'share' ? bb.confirmed : {} });
   /* edits by path, over the read: a share leaves out what the team marked private, the public kit leaves them all out */
   if (team) for (const [path, e] of Object.entries(bb.edits || {})) { if (scope === 'share' && e.private) continue; setPath(v, path, e.value); v.src[path] = e.src || 'team'; }
+  /* the rules (rules.js): Brew's suggestions for this category and market, the team's changes and own rules; the comfort
+     choices read as rules for the team only */
+  const nm = v.cover?.name || v.name || 'the brand';
+  v.rulebook = mergeRules(suggestRules({ name: nm, category: v.category || v.cover?.category, market: v.markets?.primary, never: r.never || [], rivals: v.rivals || [], sells: v.products?.sells }),
+    team ? bb.rulebook || {} : {}, team ? bb.comfort : null, nm);
   return v;
 }
 /* the read's book as chapters (empty when it isn't built yet: the page says it is still being written) */
@@ -227,6 +237,7 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
     if (patch.pinStyleRef) bb.pinned.styleRefs = [{ src: patch.pinStyleRef, label: 'Picked by the team', from: 'team' }, ...bb.pinned.styleRefs].slice(0, 6);
     if (patch.removeStyleRef) bb.removed.styleRefs = [...new Set([...bb.removed.styleRefs, patch.removeStyleRef])];
     if (patch.claim) bb.claimsAllowed = [{ text: tidy(patch.claim, 140), from: 'team' }, ...bb.claimsAllowed].slice(0, 20);
+    if (patch.rule) { bb.rulebook = applyRuleChange(bb.rulebook || {}, patch.rule); if (patch.rule.set?.id?.startsWith('choice-') ) { /* a choice rule is the comfort setting itself */ const k = patch.rule.set.id.slice(7); if (patch.rule.set.value && CHOICES[k]?.say[patch.rule.set.value]) bb.comfort[k] = patch.rule.set.value; } }
     if (patch.never) bb.neverSay = [...new Set([...bb.neverSay, tidy(patch.never, 40)])].slice(0, 30);
     if (patch.unnever) bb.neverSay = bb.neverSay.filter((w) => w.toLowerCase() !== String(patch.unnever).toLowerCase());
     if (patch.unclaim) bb.claimsAllowed = bb.claimsAllowed.filter((c) => c.text !== patch.unclaim);
@@ -242,6 +253,8 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
     /* an upload's proposed changes, taken in one tap: each becomes an edit sourced to the file, private unless the team shares it */
     if (patch.applyUpload) { const u = (bb.uploads || []).find((x) => x.id === patch.applyUpload.id); if (!u) throw Object.assign(new Error('That upload is gone.'), { status: 404 });
       const take = new Set(patch.applyUpload.paths || u.proposed.map((x) => x.path)); let n = 0;
+      for (const x of u.proposed) if (take.has(x.path) && x.path === 'rulebook.add') { for (const rule of x.value || []) bb.rulebook = applyRuleChange(bb.rulebook || {}, { add: rule }); n++; }
+      for (const x of u.proposed) if (take.has(x.path) && x.path === 'rulebook.off') { for (const id of x.value || []) bb.rulebook = applyRuleChange(bb.rulebook || {}, { set: { id, off: true } }); n++; }
       for (const x of u.proposed) if (take.has(x.path) && x.path === 'proof.claimsAllowed') { bb.claimsAllowed = [...(x.value || []).map((c) => ({ text: tidy(c, 140), from: `upload:${u.name}` })), ...bb.claimsAllowed].slice(0, 20); n++; }
       else if (take.has(x.path) && EDITABLE.test(x.path) && !(bb.confirmed?.[x.path] && !patch.applyUpload.overrideConfirmed)) { bb.edits = { ...bb.edits, [x.path]: { value: cleanVal(x.value), by: by?.email || null, at: now(), src: `upload:${u.name}`, private: !!u.private } }; n++; }
       const skip = new Set(patch.applyUpload.skipKit || []);

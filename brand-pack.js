@@ -22,7 +22,8 @@ import { cleanBrief, renderBrief } from './brief.js'; // a saved brief's "null" 
 import { aboutOf, OLD_ABOUT, marketConfig, laneProducts, bannedFor, BANNED_LISTS, countryFromText, CURRENCY_OF } from './derive.js'; // a saved config.about written by the old rule heals at load
 import { prototypeConnectors, storeConnectors } from './seed-template.js'; // DUMMY: connector copy that promises no action
 import { sentenceCase, oneCard } from './text-fit.js';
-import { readLayer, viewOf, blankBook, promptBlock } from './jam2/brandbook.js'; // the Brand Book: its words block in every prompt, its never-say in the banned list
+import { readLayer, viewOf, blankBook, promptBlock } from './jam2/brandbook.js';
+import { blockWords } from './jam2/rules.js'; // the Brand Book: its words block in every prompt, its never-say in the banned list
 import { withLearned, learnedMoveNs, learnedTerms, learnedItems } from './brand-learnings.js'; // what the team told Brew (pasted into a jam): in every prompt's system text
 import { sandboxName, virtualFile, demoSid } from './demo-mode.js'; // Demo Mode: per-session private files
 import { markMoveClaims, sourceText } from './claims.js'; // saved moves: a claim the store never made is marked as the team's call
@@ -370,7 +371,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     if (moves && typeof moves === 'object') seed.posts = (seed.posts || []).filter((c) => { const mm = /^m(\d+)-\d+$/.exec(String(c?.id || '')); return !(mm && moves[mm[1]] && pastOf(moves[mm[1]])); });
     const moveSrc = sourceText(Object.values(facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), catalogOf(profile), hooks.reviewQuotes, config?.about || '', seed?.brand?.about || '');
     let bannedRe = null; try { bannedRe = config?.banned ? new RegExp(config.banned, 'i') : null; } catch { bannedRe = null; }
-    const neverSay = (book.neverSay || []).filter((w) => String(w).trim().length >= 3);
+    const neverSay = [...new Set([...(book.neverSay || []), ...blockWords(book.rulebook || [])])].filter((w) => String(w).trim().length >= 3); /* a blocking rule's words join the banned check */
     const moveDocs = fitIndexIn(fitMoves(moves, keepOf({ profile, config, seed }), moveSrc, bannedRe, config?.currency));
     const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social, { profile }), profile), demo), { profile, config, seed, status }), moves, staleMoves);
     return finish({

@@ -27,6 +27,7 @@ export function toMarkdown(v = {}, { url = '' } = {}) {
   H('Rules'); B(never.length ? `Never use these words or claims: ${never.join(', ')}.` : null); B(w.avoid?.length ? `Avoid: ${w.avoid.join(', ')}.` : null);
   B((v.claims || []).length ? `Only make these claims, as written: ${v.claims.slice(0, 8).map((c) => `"${one(c.text, 140)}"`).join('; ')}.` : 'Make no claim the brand hasn’t made itself.');
   B('Quote customers only from the review lines below, word for word. Never invent results, reviews, prices or numbers.');
+  for (const r of (v.rulebook || []).filter((x) => !x.off && !x.choice && !/^Never use these words or claims/.test(x.text))) B(`${r.strength === 'block' ? 'Must: ' : 'Prefer: '}${end(r.text)}${r.where?.channels?.length ? ` (${r.where.channels.join(', ')} only)` : ''}.`);
   if (t.summary || t.traits?.length) { H('Voice'); B(t.summary); for (const x of t.traits || []) B(`${x.trait}${x.sounds ? `: like "${one(x.sounds, 180)}"` : ''}`);
     for (const x of t.never || []) B(`Never ${x.text.toLowerCase().replace(/^never\s+/, '')}`); B(t.reading ? `Reading level: ${end(t.reading)}.` : null); B(t.language ? `Writes in ${end(t.language)}.` : null);
     if (t.pairs?.length) { L.push('', `Say it the ${n} way:`); for (const p of t.pairs) L.push(`- Yes: "${one(p.do, 160)}" Not: "${one(p.dont, 160)}"`); }

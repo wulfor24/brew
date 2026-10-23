@@ -10,6 +10,7 @@ import crypto from 'node:crypto';
 import { readDrop, dropKind, unzip } from './drop-read.js';
 import { COMFORT, NARRATORS, MOODS, VOICES, EDITABLE } from './jam2/brandbook.js';
 import { REF_FAMILIES } from './brand-book-read.js';
+import { GROUPS, CHANNELS } from './jam2/rules.js';
 import { safeFetch, stripTags, UA } from './reader/util.js';
 
 const FONT = /\.(ttf|otf|woff2?)$/i, LOGO = /\.(svg|png|jpe?g|webp)$/i;
@@ -76,7 +77,7 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
     const building = !!builder?.book?.running?.(slug), stale = builder?.book ? await builder.book.stale(slug).catch(() => false) : false;
     if (stale && !building && !isMock()) builder.bookAfter?.(slug); /* a missing or older read layer is written now, in the background */
     return { book: v, building: building || stale, canEdit: member(t), readiness: BOOK.readiness(v, { products: (v.products?.heroes || []).length }),
-      options: { comfort: COMFORT, narrators: NARRATORS, moods: MOODS, voices: VOICES, families: REF_FAMILIES }, share: { page: `/${slug}/brand`, md: `/${slug}/brand.md`, json: `/${slug}/brand.json`, llms: `/${slug}/llms.txt`, zip: `/${slug}/brand-kit.zip`, pdf: `/${slug}/brand.pdf` } };
+      options: { comfort: COMFORT, narrators: NARRATORS, moods: MOODS, voices: VOICES, families: REF_FAMILIES, groups: GROUPS, channels: CHANNELS }, share: { page: `/${slug}/brand`, md: `/${slug}/brand.md`, json: `/${slug}/brand.json`, llms: `/${slug}/llms.txt`, zip: `/${slug}/brand-kit.zip`, pdf: `/${slug}/brand.pdf` } };
   };
   on('GET', '/api/brands/:slug/book', async (b, t, p) => { const slug = slugOf(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' };
     try { return await out(slug, t); } catch (e) { return { status: e.status || 500, error: e.message }; } });
@@ -96,6 +97,8 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
   const ASK_SCHEMA = { type: 'object', properties: {
     reply: { type: 'string', description: 'one short sentence to the team: what you would change, or why you can’t' },
     changes: { type: 'array', items: { type: 'object', properties: { path: { type: 'string', enum: ASK_PATHS }, label: { type: 'string' }, json: { type: 'string', description: 'the WHOLE new value for that path as JSON (a list comes back whole). For products.heroes: a JSON list of product titles exactly as in CATALOGUE' } } } },
+    rulesAdd: { type: 'array', description: 'new rules the team asked for, each one plain sentence ("Never show a competitor’s product.")', items: { type: 'object', properties: { text: { type: 'string' }, group: { type: 'string', enum: ['claims', 'people', 'ai', 'safety'] }, strength: { type: 'string', enum: ['block', 'warn'] }, channels: { type: 'array', items: { type: 'string', enum: ['ads', 'social', 'site', 'email', 'marketplaces'] } }, words: { type: 'array', items: { type: 'string' }, description: 'exact words or phrases the rule forbids, if any' } } } },
+    rulesOff: { type: 'array', description: 'ids from RULES NOW the team asked to turn off', items: { type: 'string' } },
     neverAdd: { type: 'array', items: { type: 'string' } }, neverRemove: { type: 'array', items: { type: 'string' } }, claimsAdd: { type: 'array', items: { type: 'string' } },
     colors: { type: 'array', items: { type: 'object', properties: { hex: { type: 'string' }, role: { type: 'string', enum: ['primary', 'accent', 'ink', 'background', 'support'] } } } },
     fonts: { type: 'object', properties: { heading: { type: 'string' }, body: { type: 'string' } } } } };
@@ -113,7 +116,7 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
       prompt: [`The team of ${v.name || slug} asks to change their Brand Book: "${text}"`,
         'Change only what they asked. Keep every other line as it is. Never invent facts, claims, numbers, reviews or products; if they ask for something you can’t do from what is here, say so in reply and change nothing.',
         `THE BOOK NOW (path: value):\n${JSON.stringify(now, null, 1).slice(0, 14000)}`,
-        `NEVER-SAY NOW: ${JSON.stringify(v.neverSay || [])}`, `COLOURS NOW: ${JSON.stringify(v.kit?.roles || [])}; FONTS NOW: ${JSON.stringify(v.kit?.fonts || {})}`,
+        `NEVER-SAY NOW: ${JSON.stringify(v.neverSay || [])}`, `RULES NOW (id: rule): ${JSON.stringify(Object.fromEntries((v.rulebook || []).filter((x) => !x.off && !x.choice).map((x) => [x.id, x.text])))}`, `COLOURS NOW: ${JSON.stringify(v.kit?.roles || [])}; FONTS NOW: ${JSON.stringify(v.kit?.fonts || {})}`,
         `CATALOGUE (the only products that exist): ${JSON.stringify(cat.map((x) => x.title))}`].join('\n\n') }); }
     catch (e) { return { error: e.billing ? 'The AI is paused, so the book can’t be changed in words right now.' : 'Brew couldn’t work that out this time. Try saying it another way.' }; }
     const j = r.json || {}, proposed = [];
@@ -138,6 +141,11 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
       neverSay: (j.neverAdd || []).map((x) => tidy(x, 40)).filter(Boolean).slice(0, 20), dropNever: (j.neverRemove || []).map((x) => tidy(x, 40)).filter(Boolean),
       kit: { ...((j.colors || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c.hex || '')).length ? { colors: j.colors.filter((c) => /^#[0-9a-f]{6}$/i.test(c.hex)).map((c) => ({ hex: c.hex.toLowerCase(), role: c.role || 'accent' })) } : {}),
         ...(j.fonts && (j.fonts.heading || j.fonts.body) ? { fonts: Object.fromEntries(Object.entries(j.fonts).filter(([, x]) => x)) } : {}) } };
+    /* rules (jam2/rules.js): added or turned off, taken with Use these like any other change */
+    const rulesAdd = (j.rulesAdd || []).filter((x) => tidy(x?.text, 220) && !(v.rulebook || []).some((y) => y.text.toLowerCase() === tidy(x.text, 220).toLowerCase())).slice(0, 8).map((x) => ({ text: tidy(x.text, 220), group: x.group, strength: x.strength, where: x.channels?.length ? { channels: x.channels } : null, words: x.words || [], src: 'team' }));
+    if (rulesAdd.length) proposed.push({ path: 'rulebook.add', label: rulesAdd.length > 1 ? 'New rules' : 'New rule', value: rulesAdd, before: null, after: short(rulesAdd.map((x) => x.text)) });
+    const rulesOff = (j.rulesOff || []).filter((id) => (v.rulebook || []).some((y) => y.id === id && !y.off && !y.choice));
+    if (rulesOff.length) proposed.push({ path: 'rulebook.off', label: 'Turn off', value: rulesOff, before: short(rulesOff.map((id) => v.rulebook.find((y) => y.id === id).text)), after: null });
     if ((j.claimsAdd || []).length) proposed.push({ path: 'proof.claimsAllowed', label: 'Claims we can make', value: j.claimsAdd.slice(0, 8), before: null, after: short(j.claimsAdd) });
     const any = proposed.length || upload.neverSay.length || upload.dropNever.length || Object.keys(upload.kit).length;
     if (!any) return { ok: true, reply: tidy(j.reply, 240) || 'Nothing to change there.', upload: null };
