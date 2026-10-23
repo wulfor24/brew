@@ -124,7 +124,8 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
   /* the card a person reads: the rewrite where there is one, else its own words with the jargon swapped */
   /* a rewrite is swapped too: one written before a word joined the list still never shows it */
   const apply = (slug, c) => { if (!c || typeof c !== 'object') return c; const p = get(slug, c);
-    const d = c.detail || {}, all = [c.title, c.sub, ...(d.why || []), ...(d.how || [])].join(' '), L = (x) => keepLevels(x, all);
+    /* the card's rows count as what it says (Meta's fatigue card names its level only in the row: "Campaign · TOF_…") */
+    const d = c.detail || {}, all = [c.title, c.sub, ...(d.why || []), ...(d.how || []), ...(Array.isArray(c.rows) ? c.rows.map((r) => (Array.isArray(r) ? r[0] : '')) : [])].join(' '), L = (x) => keepLevels(x, all);
     const out = { ...c, title: dejargon(L(p?.title || c.title)), sub: dejargon(L(p?.sub || c.sub)) };
     if (c.detail) out.detail = { ...d, why: (p?.why?.length ? p.why : d.why || []).map((x) => dejargon(L(x))), how: (p?.how?.length ? p.how : d.how || []).map((x) => dejargon(L(x))) };
     if (c.make?.pieces) out.make = { ...c.make, pieces: dejargon(c.make.pieces) }; /* the make chip under the words ("Homepage: JSON-LD …") */

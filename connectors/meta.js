@@ -236,7 +236,7 @@ const META = {
     /* fatigue: a campaign over 3.5 a week, or single ads over it (the ones the team would make fresh versions of) */
     if (hot || m.tired.length) { const t0 = m.tired[0];
       out.push(card(k, name, lane, 'freq', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder', 'brand'], badge: [`Frequency ${(hot || t0).freq.toFixed(1)}`, 'warn'], cta: 'Rotate creative',
-        title: hot ? `${hot.name} showed the same people its ads ${hot.freq.toFixed(1)} times this week` : m.tired.length === 1 ? `One ad showed the same people ${t0.freq.toFixed(1)} times this week` : `${plural(m.tired.length, 'ad')} showed the same people over 3.5 times this week`,
+        title: hot ? `Campaign ${hot.name} showed the same people its ads ${hot.freq.toFixed(1)} times this week` : m.tired.length === 1 ? `One ad showed the same people ${t0.freq.toFixed(1)} times this week` : `${plural(m.tired.length, 'ad')} showed the same people over 3.5 times this week`,
         sub: `${m.tired.length ? `${plural(m.tired.length, 'ad is', 'ads are')} past 3.5 a week. ` : ''}Above that, clicks fall and cost per order climbs. Fresh versions of the best ads reset it fastest.`,
         rows: [...(hot ? [['Campaign', hot.name], ...(many ? [['Ad account', hot.account]] : []), ['Frequency, 7 days', hot.freq.toFixed(1)], ['Spend a day', F.money(hot.spendDay)]] : []),
           ...m.tired.slice(0, 3).map((x, i) => [m.tired.length === 1 ? 'Tired ad' : `Tired ad ${i + 1}`, `${x.name} · ${x.freq.toFixed(1)} a week`]), ...(m.tired.length > 3 ? [['More tired ads', n0(m.tired.length - 3)]] : [])],
