@@ -132,7 +132,12 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
        paid in credits when the first wasn't) is skipped, so a refusal can't quietly move the job to a more expensive partner */
     let ceiling = null, first = true;
     for (const a of candidates(cap, o)) { const c = a.caps[cap]; if (c.available && !(await c.available())) continue;
-      if (!first) { const q = await Promise.resolve(c.quote(spec)).catch(() => null); if (!q || q.error || (q.credits && !(ceiling?.credits)) || (q.usd != null && ceiling?.usd != null && q.usd > ceiling.usd + 1e-6)) { log.warn?.('[engines] skip dearer fallback', a.id, cap); continue; } }
+      if (!first) { const q = await Promise.resolve(c.quote(spec)).catch(() => null);
+        /* a refusal the first partner refunded (a safety filter's false alarm) cost nothing, so the next partner may use the room the
+           shown price already leaves for a retry (Studio prices a take at 1.5× its first quote): Arata, 23 Oct, Flare refused a hair
+           shot and the cheaper-only rule left the brand with nothing */
+        const cap0 = ceiling?.usd != null ? ceiling.usd * (last?.refunded || last?.moderated ? 1.5 : 1) : null;
+        if (!q || q.error || (q.credits && !(ceiling?.credits)) || (q.usd != null && cap0 != null && q.usd > cap0 + 1e-6)) { log.warn?.('[engines] skip dearer fallback', a.id, cap); continue; } }
       else { ceiling = o.quote || await Promise.resolve(c.quote(spec)).catch(() => null); first = false; }
       try { const r = await c.run(spec, o.quote?.provider === a.id ? o.quote : null); return { ...r, provider: r.provider || a.id, cap }; }
       catch (e) { last = e; if (e.open) throw e; log.warn?.('[engines] run', a.id, cap, e.message); } }
