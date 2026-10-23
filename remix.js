@@ -687,7 +687,7 @@ export function createRemix(o) {
     const head = headOf(t, ch), sv = head?.studio || null, card = t.cards.get(ch.cardId) || {}, cat = catalogOf(t) || [];
     const name = sv?.product?.name || null, pe = name ? cat.find((x) => x.t === name) || cat.find((x) => sv.product.img && (x.img === sv.product.img || (x.imgs || []).includes(sv.product.img))) : null;
     const cp = (() => { try { return cardProduct(card, cat); } catch { return null; } })();
-    return { made: !!sv, ...readyOf({ family: ch.family, action: ch.action, pkg: ch.pkg, card, product: name ? { name, url: pe?.url || null } : cp ? { name: cp.t, url: cp.url || null } : null, cardProduct: cp ? { name: cp.t } : null, catalog: cat, brand: BN(), host: BH(), source: brandSource(t, card), words: sv?.words || [], style: sv ? { id: sv.style, label: sv.label } : null, version: head?.n || 1 }) };
+    return { made: !!sv, ...readyOf({ family: ch.family, action: ch.action, pkg: ch.pkg, card, product: name ? { name, url: pe?.url || null } : cp ? { name: cp.t, url: cp.url || null } : null, cardProduct: cp ? { name: cp.t } : null, catalog: cat, brand: BN(), host: BH(), source: brandSource(t, card), words: sv?.words || [], wordsRead: Array.isArray(sv?.words), style: sv ? { id: sv.style, label: sv.label } : null, version: head?.n || 1 }) };
   } catch (e) { log.warn('[publish]', e.message); return null; } };
   const pubChange = (t, ch) => {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
@@ -2072,7 +2072,7 @@ export function createRemix(o) {
     ch.pkg = { ...ch.pkg, ...media }; ch.imageError = null; sync(t, ch);
     const v = version(t, ch, 'brew', `Studio: ${label}${take.cost?.usd ? ` · $${take.cost.usd}` : ''}`, label); const tw = take.words || {}, prod = st.spec?.product || null;
     v.studio = { style: st.style || null, label, kind: st.kind || null, size: st.size || null, usd: take.cost?.usd || 0, jid: take.jid || null, product: prod ? { name: prod.name || null, img: prod.img || null } : null,
-      words: [...new Set([tw.headline, tw.sub, tw.button, tw.badge, tw.proof, ...(Array.isArray(take.check?.words) ? take.check.words : []), ...(take.slides || []).flatMap((x) => [x.words?.headline, x.words?.sub])].filter((x) => typeof x === 'string' && x.trim()).map((x) => x.slice(0, 200)))].slice(0, 20) }; /* what the picture itself says: the publish check reads it */
+      words: [...new Set([tw.headline, tw.sub, tw.button, tw.badge, tw.proof, ...(Array.isArray(take.check?.words) ? take.check.words : []), ...[take.scene, ...(take.slides || []).map((x) => x.scene)].flatMap((sc) => (sc?.layers || []).map((l) => l?.words || l?.text)) /* every word set on the picture */, ...(take.slides || []).flatMap((x) => [x.words?.headline, x.words?.sub])].filter((x) => typeof x === 'string' && x.trim()).map((x) => x.slice(0, 200)))].slice(0, 20) }; /* what the picture itself says: the publish check reads it */
     studioState(t, chId, { state: 'made', line: label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
   const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; ch.studioState = { ...st, at: now(t) }; const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };

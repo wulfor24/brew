@@ -67,7 +67,7 @@ function partsOf(family, action, p, extra) {
   return P;
 }
 
-export function readyOf({ family, action = '', pkg = {}, card = {}, product = null, cardProduct = null, catalog = [], brand = '', host = '', source = '', words = [], style = null, version = 1 }) {
+export function readyOf({ family, action = '', pkg = {}, card = {}, product = null, cardProduct = null, catalog = [], brand = '', host = '', source = '', words = [], wordsRead = true, style = null, version = 1 }) {
   const p = pkg || {}, look = style?.label || '';
   const extra = { link: linkOf({ family, product, host, campaign: card.title || card.id || brand, content: `${style?.id || 'creative'}-v${version}` }), alt: altOf({ product: product?.name || cardProduct?.name || '', look: style?.look || look, brand }) };
   const parts = partsOf(family, action, p, extra).map((x) => {
@@ -89,6 +89,8 @@ export function readyOf({ family, action = '', pkg = {}, card = {}, product = nu
   const lf = copyFlags(written, { source, names: [brand, ...(catalog || []).map((x) => x?.t || x?.title)].filter(Boolean) }); checks.push({ k: 'copy', ok: !lf.length, t: lf.length ? `Reads wrong: ${lf.slice(0, 2).join('; ')}` : 'Reads right' });
   const bp = pricesOk(seen, source, catalog); checks.push({ k: 'price', ok: !bp.length, t: bp.length ? `${bp.join(', ')} isn’t a price on your store today` : 'Every price is today’s' });
   const br = ratingsOk(seen, source); checks.push({ k: 'rating', ok: !br.length, t: br.length ? `“${br.join('”, “')}” isn’t from your own reviews` : 'No rating that isn’t yours', fix: br.length ? 'redo' : null });
+  /* a picture whose words Brew didn't keep (made before it kept them) was never read: say so, never "no problems" */
+  if (!wordsRead) { const i = checks.findIndex((c) => c.k === 'price'); for (const c of checks) if (['price', 'rating', 'claims'].includes(c.k) && c.ok) c.t = `${c.t} in the words above`; checks.splice(i, 0, { k: 'picture', ok: false, soft: true, t: 'The words in the picture weren’t read for this version: check its prices, ratings and claims yourself, or Redo it' }); }
   if (cardProduct?.name && product?.name && cardProduct.name !== product.name) checks.push({ k: 'product', ok: false, soft: true, t: `It shows ${tidy(product.name, 50)}; the card is about ${tidy(cardProduct.name, 50)}` });
   else if (product?.name) checks.push({ k: 'product', ok: true, t: `Shows ${tidy(product.name, 60)}, the card’s product` });
   const places = (PLACES[family] || []).map(([shape, where]) => ({ shape, where }));
