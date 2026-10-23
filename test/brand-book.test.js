@@ -295,5 +295,5 @@ test('an upload only proposes what the file says: invented missions, stories and
   const kept = Object.fromEntries(groundProposals(P, T).map((x) => [x.path, x.value]));
   assert.deepEqual(Object.keys(kept).sort(), ['look.colourUse', 'tone.summary', 'words.use']);
   assert.deepEqual(kept['words.use'], ['snuggle up', 'toasty']);
-  assert.equal(groundedIn('Playfulness first', 'we are playful'), 'Playfulness first', 'a light stem match');
+  assert.equal(groundedIn('Playfulness', 'we are playful'), 'Playfulness', 'a light stem match');
 });
