@@ -50,7 +50,7 @@
       const primary = roles.find((c) => c.role === 'primary')?.hex || k.accent || '#1d1d1f', accent = roles.find((c) => c.role === 'accent' && c.hex !== primary)?.hex || roles.find((c) => c.hex !== primary && lum(c.hex) < 0.8 && lum(c.hex) > 0.08)?.hex || primary;
       const headFont = k.fonts?.heading, bodyFont = k.fonts?.body; loadFont(headFont, k.fontFiles); loadFont(bodyFont, k.fontFiles);
       el.style.setProperty('--bb-1', primary); el.style.setProperty('--bb-2', accent); el.style.setProperty('--bb-on', lum(primary) > 0.55 ? '#141414' : '#ffffff');
-      el.style.setProperty('--bb-head', headFont ? `"${headFont}", Georgia, serif` : 'Georgia, serif'); el.style.setProperty('--bb-body', bodyFont ? `"${bodyFont}", var(--font)` : 'var(--font)');
+      el.style.setProperty('--bb-head', headFont ? `"${headFont}", ${!/sans|grotesk/i.test(headFont) && /serif|garamond|playfair|georgia|times|baskerville|caslon|fraunces|lora|merriweather|cormorant|bodoni|didot|crimson|spectral|recoleta|tiempos|canela|freight|domaine/i.test(headFont) ? 'Georgia, serif' : 'var(--font)'}` : 'Georgia, serif'); /* a sans heading never flashes in Georgia while it loads */ el.style.setProperty('--bb-body', bodyFont ? `"${bodyFont}", var(--font)` : 'var(--font)');
       const chip = (path) => { const s = v.src?.[path]; return s ? `<span class="bb-src${s.startsWith('upload:') ? ' is-up' : ' is-team'}">${esc(srcLabel(s))}${edit ? `<button class="bb-undo" data-unedit="${esc(path)}" aria-label="Undo: back to what Brew read">Undo</button>` : ''}</span>` : ''; };
       const pen = (path, value, kind = 'text', label = '') => edit ? `<button class="bb-pen" data-edit="${esc(path)}" data-kind="${kind}" data-label="${esc(label)}" data-value="${esc(kind === 'list' ? (value || []).join('\n') : value || '')}" aria-label="Edit ${esc(label || 'this')}">Edit</button>` : '';
       const empty = (path, what, kind = 'text') => edit ? `<p class="bb-add"><button class="bb-addbtn" data-edit="${esc(path)}" data-kind="${kind}" data-label="${esc(what)}" data-value="">Add ${esc(what.toLowerCase())}</button></p>` : '';
@@ -383,7 +383,7 @@
           <div class="bb-tiles"><button class="bb-tile" data-copy-link><b>Copy link</b><span>Anyone with it sees the book</span></button>
             <a class="bb-tile" href="${esc(sh.pdf || sh.page + '.pdf')}" target="_blank" rel="noopener"><b>PDF</b><span>Print-ready, every chapter</span></a>
             <a class="bb-tile" href="${esc(sh.zip)}" download><b>Brand kit</b><span>Logos, colours, fonts, references, PDF</span></a></div>
-          <h3>Use it with any AI</h3><div class="bb-ais"><a href="https://chatgpt.com/?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener">ChatGPT</a><a href="https://claude.ai/new?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener">Claude</a><button data-gemini>Gemini</button><button data-prompt>Copy as prompt</button></div></div></div>`;
+          <h3>Use it with any AI</h3><div class="bb-ais"><a href="https://chatgpt.com/?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener" data-ai>ChatGPT</a><a href="https://claude.ai/new?q=${encodeURIComponent(ask)}" target="_blank" rel="noopener" data-ai>Claude</a><button data-gemini>Gemini</button><button data-prompt>Copy as prompt</button></div></div></div>`;
       document.body.appendChild(w); setTimeout(() => w.classList.add('is-in'), 16);
       const close = () => { w.classList.remove('is-in'); setTimeout(() => w.remove(), 180); document.removeEventListener('keydown', esc1); }, esc1 = (e) => { if (e.key === 'Escape') close(); };
       document.addEventListener('keydown', esc1); w.onclick = (e) => { if (e.target === w) close(); }; $('[data-x]', w).onclick = close;
@@ -391,9 +391,14 @@
       /* a browser that blocks the clipboard still gets the link: shown, selected, ready to copy by hand */
       const showLink = (text) => { let i = $('.bb-ss-link', w); if (!i) { i = document.createElement('input'); i.className = 'bb-ss-link'; i.readOnly = true; i.setAttribute('aria-label', 'Link to copy'); $('.bb-tiles', w).after(i); } i.value = text; i.focus(); i.select(); };
       $('[data-copy-link]', w).onclick = async (e) => { const b = e.currentTarget; if (await copy(abs(sh.page))) done(b, 'Copied ✓'); else { done(b, 'Press ⌘C'); showLink(abs(sh.page)); } };
-      const md = () => fetch(sh.md).then((r) => r.text()).catch(() => '');
+      /* the whole book as a prompt, fetched as the sheet opens so every button acts at once (a slow fetch inside a click loses
+         the tap, and the browser then blocks the new tab or the copy) */
+      let mdText = ''; const mdReady = fetch(sh.md).then((r) => (r.ok ? r.text() : '')).then((t) => { mdText = t; return t; }).catch(() => '');
+      const md = async () => mdText || await mdReady;
       $('[data-prompt]', w).onclick = async (e) => { const b = e.currentTarget; const t = await md(); if (await copy(t || ask)) done(b, 'Copied ✓'); else { done(b, 'Press ⌘C'); showLink(ask); } };
-      $('[data-gemini]', w).onclick = async (e) => { const b = e.currentTarget; const t = await md(); await copy(t || ask); done(b, 'Copied, paste it in'); window.open('https://gemini.google.com/app', '_blank', 'noopener'); };
+      /* ChatGPT and Claude open with the link in the box; the whole book is copied too, for a chat that doesn't open links */
+      $$('[data-ai]', w).forEach((a) => a.addEventListener('click', () => { copy(mdText || ask).then((ok) => { if (ok) toast(`Opened ${a.textContent}. The whole book is copied too: paste it if it can’t open the link.`); }); }));
+      $('[data-gemini]', w).onclick = (e) => { const b = e.currentTarget; window.open('https://gemini.google.com/app', '_blank', 'noopener'); copy(mdText || ask).then((ok) => done(b, ok ? 'Copied, paste it in' : 'Use Copy as prompt')); };
     }
 
     if (S.data) paint(); else { el.innerHTML = '<div class="bb-empty"><brew-load class="spin"></brew-load><p>Opening the Brand Book</p></div>'; }

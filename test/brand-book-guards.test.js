@@ -55,3 +55,15 @@ test('a clean, current book passes the audit', async () => {
   assert.deepEqual(P, []);
   assert.ok(viewOf({ ...blankBook(), read: readLayer({ slug: 'y', profile, brief: {}, config: {} }) }, { scope: 'public' }).rulebook.length);
 });
+
+test('share buttons: the book is fetched as the sheet opens; ChatGPT and Claude also copy it; Gemini opens before copying', () => {
+  assert.match(code, /const mdReady = fetch\(sh\.md\)/);
+  assert.match(code, /data-ai>ChatGPT<\/a>/); assert.match(code, /data-ai>Claude<\/a>/);
+  assert.match(code, /\[data-gemini\][\s\S]{0,120}window\.open\('https:\/\/gemini\.google\.com\/app'[\s\S]{0,40}copy\(/);
+});
+
+test('a font falls back to its own kind: Geist and Inter are sans, Fraunces is a serif', async () => {
+  const { fallbackOf } = await import('../brand-kit.js');
+  assert.equal(fallbackOf('Geist'), 'sans-serif'); assert.equal(fallbackOf('Inter'), 'sans-serif');
+  assert.equal(fallbackOf('Fraunces'), 'serif'); assert.equal(fallbackOf('IBM Plex Mono'), 'monospace');
+});

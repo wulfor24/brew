@@ -47,6 +47,8 @@ export function toMarkdown(v = {}, { url = '' } = {}) {
 }
 
 /* the whole book as data, with absolute links, for any tool */
+/* the generic family a font falls back to: serif only for faces that are serifs (Geist, Inter, Nunito… are sans) */
+export const fallbackOf = (f = '') => /sans|grotesk|mono/i.test(f) ? (/mono/i.test(f) ? 'monospace' : 'sans-serif') : /serif|garamond|playfair|georgia|times|baskerville|caslon|fraunces|lora|merriweather|cormorant|bodoni|didot|libre bask|crimson|spectral|recoleta|tiempos|canela|freight|domaine|ogg/i.test(f) ? 'serif' : 'sans-serif';
 export function toJSON(v = {}, { origin = '' } = {}) {
   const abs = (p) => (p && /^\//.test(p) ? origin + p : p || null);
   const lib = Object.fromEntries(Object.entries(v.library || {}).map(([f, xs]) => [f, xs.map((x) => ({ image: abs(x.src), video: abs(x.video), why: x.why || null, words: x.words || null, proof: x.proof || null, original: x.url || null }))]));
@@ -64,7 +66,7 @@ export function toJSON(v = {}, { origin = '' } = {}) {
 export function tokens(v = {}) {
   const t = { color: {}, font: {} }, seen = {};
   for (const c of v.kit?.roles || []) { if (!c.hex) continue; const k = c.role || 'support'; seen[k] = (seen[k] || 0) + 1; t.color[seen[k] > 1 ? `${k}-${seen[k]}` : k] = { $type: 'color', $value: c.hex, ...(c.use ? { $description: c.use } : {}) }; }
-  if (v.kit?.fonts?.heading) t.font.heading = { $type: 'fontFamily', $value: [v.kit.fonts.heading, 'serif'] };
+  if (v.kit?.fonts?.heading) t.font.heading = { $type: 'fontFamily', $value: [v.kit.fonts.heading, fallbackOf(v.kit.fonts.heading)] };
   if (v.kit?.fonts?.body) t.font.body = { $type: 'fontFamily', $value: [v.kit.fonts.body, 'sans-serif'] };
   return { [slugify(nameOf(v))]: t };
 }
