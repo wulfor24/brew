@@ -128,6 +128,12 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       const items = (p.items || []).length ? p.items : [{ marketplace: '', now: 'As listed today', new: p.name || '' }];
       put('listings.csv', csv([['marketplace', 'product', 'current_title', 'new_title', 'bullets', 'backend_search_terms', 'images'], ...items.map((r) => [r.marketplace, p.product || '', r.now, r.new, list(p.bullets).join(' | '), p.searchTerms || '', p.images || ''])]));
       if (p.reason) put('takedown-request.txt', p.reason + '\n');
+      /* the photo set Brew made, in order (the first is the main image), and an Amazon A+ set as its modules at Amazon's sizes */
+      for (const [i, x] of (p.photoSet || []).entries()) { const f = await addFile(x?.image, `media/listing-${String(i + 1).padStart(2, '0')}`); if (f) where.push(`${f.name}: listing image ${i + 1}${i === 0 ? ' (the main image)' : ''}`); else if (x?.image) todo.push(`Listing image ${i + 1}: download it from the studio`); }
+      if ((p.aplus || []).length) { const W = { header: '970×600 header image', tile: '300×300 tile', wide: '970×300 image' };
+        for (const [i, m] of p.aplus.entries()) { const f = await addFile(m.image, `media/aplus-${String(i + 1).padStart(2, '0')}-${m.kind}`); if (!f) todo.push(`A+ module ${i + 1}: download it from the studio`); }
+        put('aplus.txt', lines('AMAZON A+ CONTENT, MODULE BY MODULE (Seller Central → Advertising → A+ Content Manager)', '', ...p.aplus.map((m, i) => `${i + 1}. ${W[m.kind] || m.kind} — media/aplus-${String(i + 1).padStart(2, '0')}-${m.kind}\n${m.headline ? `Headline: ${m.headline}\n` : ''}${m.body ? `Text: ${m.body}\n` : ''}`), p.publish?.alt ? `Image alt text: ${p.publish.alt}` : ''));
+        where.push('aplus.txt and media/aplus-*: the A+ modules in order, each image at Amazon’s size with its headline and text'); }
       where.unshift(`Each marketplace’s seller tool: listings.csv has one row per listing with the new title${list(p.bullets).length ? ', bullets' : ''} and search terms. Upload it as a flat file or paste each row by hand.${p.reason ? ' takedown-request.txt is the request to file.' : ''}`);
       break; }
     case 'vis': {

@@ -3662,6 +3662,13 @@
   const assetHtml0 = (ch, size = 'sm') => {
     const p = ch.pkg || {}, lg = size === 'lg', act = String(ch.action).split('.').pop();
     const pending = ch.imagePending ? `<div class="as-pending"><brew-load class="spin"></brew-load>Making the creative…</div>` : '';
+    /* Amazon A+ (Brew Studio): the product page's "From the brand" section, its modules in order, each with its words as page text */
+    if (Array.isArray(p.aplus) && p.aplus.length) { const tiles = p.aplus.map((m, i) => ({ ...m, i })).filter((m) => m.kind === 'tile');
+      const mod = (m) => m.kind === 'header' ? `<figure class="az-head"><img src="${esc(m.image)}" alt=""></figure>` : m.kind === 'wide' ? `<figure class="az-wide"><img src="${esc(m.image)}" alt="">${m.headline || m.body ? `<figcaption><b>${esc(m.headline || '')}</b><span>${esc(m.body || '')}</span></figcaption>` : ''}</figure>` : '';
+      return `<div class="as as-aplus${lg ? ' lg' : ''}"><div class="az-bar"><b>amazon</b><span>${esc(B.brand.name)} · product page</span></div><h4 class="az-h">From the brand</h4>
+        ${p.aplus.filter((m) => m.kind === 'header').map(mod).join('')}
+        ${tiles.length ? `<div class="az-tiles">${tiles.map((m) => `<figure><img src="${esc(m.image)}" alt=""><figcaption><b>${esc(m.headline || '')}</b><span>${esc(m.body || '')}</span></figcaption></figure>`).join('')}</div>` : ''}
+        ${p.aplus.filter((m) => m.kind === 'wide').map(mod).join('')}</div>`; }
     if (ch.family === 'meta_ad' && act === 'whatsapp_ad' && !lg) return `<div class="as as-chat">${(p.chat || []).slice(0, 3).map((m) => `<div class="wa ${m.from === 'in' ? 'in' : 'out'}">${esc(m.text)}</div>`).join('')}</div>`;
     // several pictures in one ad or post: a row that swipes, each with its own photo and words
     const rows = p.cards || p.slides || [], pics = p.cardImages || [];
@@ -4436,7 +4443,8 @@
       ${[...x.why, ...x.warn].map((w) => `<p class="pp-why">${ic(x.why.includes(w) ? 'x' : 'info', 's14')}${esc(w)}</p>`).join('')}</div>`;
     return `<section class="pp${pb.ready ? ' is-ready' : ''}"><header><b>${ic(pb.ready ? 'check' : 'info', 's16')}${pb.ready ? `Ready to publish${pb.checks.some((c) => !c.ok && c.soft) ? ' · one thing to check' : ''}` : `Needs a look · ${pb.bad}`}</b><span>Everything ${esc(ch.target?.name || ch.familyName || 'the platform')} needs, checked. Click any part to change it.</span></header>
       <dl>${pb.parts.map(row).join('')}</dl>
-      ${pb.places?.length && img ? `<div class="pp-places"><small>Every placement, cut from this one</small><div>${pb.places.map((x) => `<figure><span class="${wordsOver(img, pkgCh.pkg || {}, ch) ? '' : 'is-fit'}" style="aspect-ratio:${esc(String(x.shape).includes(':') ? x.shape.replace(':', '/') : '1/1.41')}">${wordsOver(img, pkgCh.pkg || {}, ch) ? '' : `<img class="bg" src="${esc(img)}" alt="">`}<img src="${esc(img)}" alt=""></span><figcaption><b>${esc(x.shape)}</b>${esc(x.where)}</figcaption></figure>`).join('')}</div></div>` : ''}
+      ${(pkgCh.pkg?.aplus || []).length ? `<div class="pp-places"><small>Every A+ module, at Amazon’s own size</small><div>${pkgCh.pkg.aplus.map((m) => `<figure><span style="aspect-ratio:${m.kind === 'header' ? '97/60' : m.kind === 'wide' ? '97/30' : '1/1'}"><img src="${esc(m.image)}" alt=""></span><figcaption><b>${m.kind === 'header' ? '970×600' : m.kind === 'wide' ? '970×300' : '300×300'}</b>${m.kind === 'header' ? 'Header' : m.kind === 'wide' ? 'Wide image' : 'Tile'}</figcaption></figure>`).join('')}</div></div>`
+      : pb.places?.length && img ? `<div class="pp-places"><small>Every placement, cut from this one</small><div>${pb.places.map((x) => `<figure><span class="${wordsOver(img, pkgCh.pkg || {}, ch) ? '' : 'is-fit'}" style="aspect-ratio:${esc(String(x.shape).includes(':') ? x.shape.replace(':', '/') : '1/1.41')}">${wordsOver(img, pkgCh.pkg || {}, ch) ? '' : `<img class="bg" src="${esc(img)}" alt="">`}<img src="${esc(img)}" alt=""></span><figcaption><b>${esc(x.shape)}</b>${esc(x.where)}</figcaption></figure>`).join('')}</div></div>` : ''}
       <ul class="pp-checks">${pb.checks.map((c) => `<li class="${c.ok ? 'ok' : c.soft ? 'warn' : 'bad'}">${ic(c.ok ? 'check' : 'x', 's14')}<span>${esc(c.t)}</span>${!c.ok && c.fix === 'redo' ? ' <button class="linkbtn" data-cs-open>Change the set-up and make it again</button>' : ''}</li>`).join('')}</ul>
       <footer><button class="btn btn-ghost sm" data-st-dl>${ic('down', 's14')}Download everything</button><small>The picture in every shape, and copy.txt with every part above</small></footer></section>`; };
   const studioStage = (ch, pkgCh, viewing) => { const made = studioMade(ch), cs = window.CreativeStage, st = cs?.state(ch.id);
@@ -4447,7 +4455,7 @@
     const pv = !made && !viewing && st?.productImg && !/^gen\//.test(pkgCh.pkg?.image || '') ? { ...pkgCh, pkg: { ...pkgCh.pkg, image: st.productImg } } : pkgCh;
     return `<div class="st-asset cs-stage">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${assetHtml(pv, 'lg')}</div>
       ${made && !viewing ? publishPanel(ch, pkgCh) : ''}${cs ? cs.html(ch) : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
-  window.CreativeStage?.init({ tapi, esc, toast, ic,
+  window.CreativeStage?.init({ tapi, esc, toast, ic, ch: () => RX.ch,
     paint: () => { if (view === 'remix' && RX.ch?.studio) paintStudio(); },
     remount: () => { if (view === 'remix' && RX.ch) paintStudio(); },
     toFeed: () => leaveRemix(),
@@ -4504,12 +4512,13 @@
   /* a ready-to-publish part, changed where it sits: it saves as a new version (POST /edit), like the headline */
   const ppSave = async (k, v) => { const ch = RX.ch; if (!ch) return; const val = String(v ?? '').trim(), cur = ch.publish?.parts?.find((x) => x.k === k);
     if (cur && String(cur.value || '').trim() === val) return paintStudio();
-    const pkg = ['link', 'alt'].includes(k) ? { publish: { ...(ch.pkg?.publish || {}), [k]: val } } : k === 'hashtags' ? { hashtags: val.split(/[\s,]+/).filter(Boolean).map((x) => (x.startsWith('#') ? x : `#${x}`)) } : k === 'bullets' ? { bullets: val.split('\n').filter(Boolean) } : { [k]: val };
+    const row = /^(aplus|cards|slides)\.(\d+)\.(\w+)$/.exec(k); /* a module's, card's or slide's own words */
+    const pkg = row ? { [row[1]]: (ch.pkg?.[row[1]] || []).map((x, q) => (q === +row[2] ? { ...x, [row[3]]: val } : x)) } : ['link', 'alt'].includes(k) ? { publish: { ...(ch.pkg?.publish || {}), [k]: val } } : k === 'hashtags' ? { hashtags: val.split(/[\s,]+/).filter(Boolean).map((x) => (x.startsWith('#') ? x : `#${x}`)) } : k === 'bullets' ? { bullets: val.split('\n').filter(Boolean) } : { [k]: val };
     const r = await tapi('POST', `/api/changes/${ch.id}/edit`, { pkg, reason: `${cur?.label || 'A part'} changed` }); if (r.error) { sound('error'); toast(esc(r.error)); return paintStudio(); }
     RX.ch = r.change; putCh(r.change); sound('tick'); paintStudio(); };
   document.addEventListener('click', (e) => { const el = e.target.closest?.('[data-pp-edit]'); if (!el || view !== 'remix' || el.isContentEditable) return; el.dataset.was = el.querySelector('em') ? '' : el.textContent; if (el.querySelector('em')) el.textContent = ''; el.contentEditable = 'plaintext-only'; el.focus(); });
   document.addEventListener('focusout', (e) => { const el = e.target.closest?.('[data-pp-edit]'); if (el?.isContentEditable) { el.removeAttribute('contenteditable'); ppSave(el.dataset.ppEdit, el.innerText); } });
-  addEventListener('keydown', (e) => { const el = e.target.closest?.('[data-pp-edit]'); if (!el?.isContentEditable) return; if (e.key === 'Escape') { el.textContent = el.dataset.was || ''; el.removeAttribute('contenteditable'); paintStudio(); } else if (e.key === 'Enter' && !e.shiftKey && !['primaryText', 'caption', 'copy', 'bullets'].includes(el.dataset.ppEdit)) { e.preventDefault(); el.blur(); } }, true);
+  addEventListener('keydown', (e) => { const el = e.target.closest?.('[data-pp-edit]'); if (!el?.isContentEditable) return; if (e.key === 'Escape') { el.textContent = el.dataset.was || ''; el.removeAttribute('contenteditable'); paintStudio(); } else if (e.key === 'Enter' && !e.shiftKey && !['primaryText', 'caption', 'copy', 'bullets'].includes(el.dataset.ppEdit) && !/\.body$/.test(el.dataset.ppEdit)) { e.preventDefault(); el.blur(); } }, true);
   document.addEventListener('change', (e) => { const el = e.target.closest?.('[data-pp-sel]'); if (el && view === 'remix') ppSave(el.dataset.ppSel, el.value); });
   addEventListener('keydown', (e) => { const el = e.target.closest?.('[data-hl-edit]'); if (!el) return; /* capture: Esc and Enter here never reach the studio's own keys */
     if (!el.isContentEditable) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopImmediatePropagation(); hlStart(el); } return; }

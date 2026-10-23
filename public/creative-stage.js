@@ -12,12 +12,15 @@
   const groups = () => (LIB ? [...LIB.image.map((g) => ({ ...g, kind: 'image' })), ...LIB.video.map((g) => ({ ...g, kind: 'video' }))] : []);
   const styleById = (id) => { for (const g of groups()) { const x = g.styles.find((y) => y.id === id); if (x) return { ...x, group: x.group || g.label, kind: g.kind }; } return null; };
   const paint = () => H.paint?.();
+  /* a listing card makes the marketplace image set, or the brand's Amazon A+ modules instead (each at Amazon's own size) */
+  const LISTING = new Set(['listing', 'pdp-set', 'aplus']), isAplus = (set) => (set || []).length > 0 && set.every((x) => /^aplus-/.test(x));
+  const SETS = { listing: { set: ['mp-main', 'mp-lifestyle', 'mp-benefits', 'mp-size'], sizes: ['pdp'] }, aplus: { set: ['aplus-hero', 'aplus-use', 'aplus-detail', 'aplus-hands', 'aplus-wide'], sizes: ['aplus-header'] } };
   const api = (m, p, b) => H.tapi(m, p, b).catch((e) => ({ error: e?.message || 'That didn’t go through.' }));
 
   /* open (or reopen) the composer for this v1 jam: its Studio jam, the filled set-up, the styles, the sizes, then the price */
   async function mount(ch, card) {
     if (S && S.chId === ch.id && !S.error) return; clearTimeout(pollT);
-    const mine = S = { chId: ch.id, loading: true, open: true, pop: null };
+    const mine = S = { chId: ch.id, loading: true, open: true, pop: null, recipe: ch.studio || null, sel: 0 };
     const [o, L, C] = await Promise.all([api('POST', '/api/jam2/open', { cardId: ch.cardId, cta: ch.studioLabel || card?.cta?.label || '', v1ch: ch.id }), LIB ? { library: LIB } : api('GET', '/api/jam2/studio/library'), SIZES ? { sizes: SIZES } : api('GET', '/api/jam2/catalogue')]);
     if (S !== mine) return; LIB = L?.library || LIB; SIZES = C?.sizes || SIZES;
     const jam = o?.jam, bd = jam?.boards?.[0];
@@ -45,6 +48,18 @@
     S.boards = r.jam?.boards?.map((b) => b.id) || S.boards; S.busy = r.jam?.busy || {}; S.making = { line: r.plan.line, usd: r.plan.usd, at: Date.now(), n: (r.boards || []).length || 1 }; S.open = false;
     H.making?.(S.chId, S.making); paint(); poll();
   }
+  /* one slide of a made set: redo it or add one (priced, from the plan of that one style), or drop it (free) */
+  const slidesOf = (ch) => ch.versions?.find((v) => v.id === ch.head)?.studio?.slides || null;
+  function slidePrice(style) { if (!S?.spec || !style) return; S.slidePlan ||= {}; if (S.slidePlan[style] !== undefined) return; S.slidePlan[style] = null; const mine = S;
+    api('POST', `/api/jam2/jams/${S.jid}/studio/plan`, { spec: { ...S.spec, set: null, kind: 'image', style, count: 1 } }).then((r) => { if (S === mine) { S.slidePlan[style] = r?.plan || { error: 'No price yet.' }; paint(); } }); }
+  async function slideOp(op, i, style) { if (S.working) return; const pl = op === 'drop' ? null : S.slidePlan?.[style]; if (op !== 'drop' && (!pl || pl.error)) return;
+    const mine = S; S.working = true; paint();
+    const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/slide`, { bid: S.bid, i, op, style, confirmUsd: pl?.usd });
+    if (S !== mine) return; S.working = false;
+    if (r?.needsConfirm) { S.slidePlan[style] = r.plan; paint(); return H.toast?.(`The price changed to ${usd(r.plan.usd)}. Tap it again.`); }
+    if (r?.error) { paint(); return H.toast?.(H.esc(r.error)); }
+    if (op === 'drop') { S.sel = Math.max(0, i - 1); H.landed?.(S.chId, {}); return; }
+    S.busy = r.jam?.busy || {}; S.making = { line: `${op === 'add' ? 'a new slide' : `slide ${i + 1}`} · ${styleById(style)?.label || ''}`, usd: pl.usd, at: Date.now(), n: 1 }; S.adding = false; S.gallery = false; H.making?.(S.chId, S.making); paint(); poll(); }
   /* the jam's boards until every take this press started has landed (or failed): then the v1 jam is read again, with its new version */
   function poll() { clearTimeout(pollT); const mine = S;
     pollT = setTimeout(async () => { if (S !== mine) return; const r = await api('GET', `/api/jam2/jams/${S.jid}`); if (S !== mine) return; if (!r?.jam) { pollT = setTimeout(poll, 6000); return; }
@@ -77,7 +92,7 @@
     const total = groups().filter((g) => g.kind === kind).reduce((a, g) => a + g.styles.length, 0), pl = S.plan, st = styleById(sp.style);
     const castOn = X.cast?.shown || kind === 'video' || /ugc|tt-|on-model|full-body|hands/.test(sp.style || '');
     return `<div class="j2-studio cs">${S.gallery ? gallery() : ''}
-      <div class="j2-st-top">${setIds ? `<b>${setIds.length} slides</b>` : `<div class="j2-seg"><button data-cs-kind="image" class="${kind === 'image' ? 'on' : ''}">Image</button><button data-cs-kind="video" class="${kind === 'video' ? 'on' : ''}">Video</button></div>`}<span class="j2-st-hint">${H.ic ? H.ic('sparkle', 's14') : ''}Filled in by Brew from the card and your Brand Book · change anything</span></div>
+      <div class="j2-st-top">${setIds && LISTING.has(S.recipe) ? `<div class="j2-seg"><button data-cs-mk="listing" class="${isAplus(setIds) ? '' : 'on'}">Listing images</button><button data-cs-mk="aplus" class="${isAplus(setIds) ? 'on' : ''}">Amazon A+</button></div><b>${setIds.length} ${isAplus(setIds) ? 'modules' : 'images'}</b>` : setIds ? `<b>${setIds.length} slides</b>` : `<div class="j2-seg"><button data-cs-kind="image" class="${kind === 'image' ? 'on' : ''}">Image</button><button data-cs-kind="video" class="${kind === 'video' ? 'on' : ''}">Video</button></div>`}<span class="j2-st-hint">${H.ic ? H.ic('sparkle', 's14') : ''}Filled in by Brew from the card and your Brand Book · change anything</span></div>
       <p class="cs-why cs-why-top">${H.esc(why('style'))}</p>
       <div class="j2-st-styles">${shown.map(tile).join('')}<button class="j2-sti more" data-cs-gal><span class="j2-sti-art">＋</span><b>Browse templates</b><small>${total} in all</small></button></div>
       <div class="cs-slots">
@@ -101,6 +116,12 @@
     if (!S || S.chId !== ch.id || S.loading) return `<div class="j2-studio cs"><p class="cs-wait"><brew-load class="spin"></brew-load> Setting it up from the card…</p></div>`;
     if (S.error) return `<div class="j2-studio cs"><p class="j2-err">${H.esc(S.error)}</p><button class="j2-pri" data-cs-retry>Try again</button></div>`;
     if (S.making || anyBusy()) { const m = S.making; return `<div class="j2-studio cs cs-making"><p><brew-load class="spin"></brew-load><b>Making ${H.esc(m?.line || 'it')}</b>${m?.usd != null ? ` · ${usd(m.usd)}` : ''}</p><p class="cs-why">You can leave this page: it lands here and in Work when it’s ready, and Brew tells you.</p><div class="cs-acts"><button class="j2-chip" data-cs-feed>Back to the feed</button>${window.BrewGame ? '<button class="j2-chip" data-cs-game>Play while it brews</button>' : ''}</div></div>`; }
+    const sl = slidesOf(ch);
+    if (!S.open && sl?.length > 1) { const i = Math.min(S.sel || 0, sl.length - 1), cur = sl[i], st = styleById(cur.style); slidePrice(cur.style); const sp = S.slidePlan?.[cur.style];
+      return `<div class="cs-line cs-set">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}${S.gallery && S.adding ? `<div class="j2-studio cs cs-addgal">${gallery()}</div>` : ''}
+        <div class="cs-strip">${sl.map((x, k) => `<button class="${k === i ? 'on' : ''}" data-cs-sel="${k}" title="${H.esc(styleById(x.style)?.label || '')}"><img src="${H.esc(srcOf(x.file))}" alt=""><span>${k + 1}</span></button>`).join('')}<button class="cs-add" data-cs-addslide title="Add a slide">＋</button></div>
+        ${S.adding && S.addStyle ? (() => { const ap = S.slidePlan?.[S.addStyle]; return `<div class="cs-acts cs-addrow"><span>Add a slide: ${H.esc(styleById(S.addStyle)?.label || '')}</span><button class="j2-pri" data-cs-addgo ${!ap || ap.error || S.working ? 'disabled' : ''}>${ap?.error ? H.esc(ap.error) : `Add this slide${ap?.usd != null ? ` · ${usd(ap.usd)}` : ''}`}</button><button class="j2-chip" data-cs-addx>Cancel</button></div>`; })() : ''}
+        <div class="cs-acts"><span>Slide ${i + 1} of ${sl.length}${st ? ` · ${H.esc(st.label)}` : ''}</span><button class="j2-chip" data-cs-slide="redo" ${!sp || sp.error ? 'disabled' : ''}>Redo this slide${sp?.usd != null ? ` · ${usd(sp.usd)}` : ''}</button><button class="j2-chip" data-cs-slide="drop" ${sl.length <= 2 ? 'disabled title="A set needs at least two slides"' : ''}>Drop it</button><button class="j2-chip" data-cs-open>Change the set-up</button><button class="j2-pri" data-cs-redo ${!S.plan || S.plan.error ? 'disabled' : ''}>Redo the set${S.plan?.usd != null ? ` · ${usd(S.plan.usd)}` : ''}</button></div></div>`; }
     if (!S.open) return `<div class="cs-line">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}<span>${H.esc(S.plan?.line || 'Made by Brew Studio')}</span><button class="j2-chip" data-cs-open>Change the set-up</button><button class="j2-pri" data-cs-redo ${!S.plan || S.plan.error ? 'disabled' : ''}>Redo it${S.plan?.usd != null ? ` · ${usd(S.plan.usd)}` : ''}</button></div>`;
     return full();
   }
@@ -112,13 +133,19 @@
     if (g('[data-cs-game]')) { window.BrewGame?.open?.({ progress: () => S?.making }); return true; }
     if (g('[data-cs-open]')) { S.open = true; paint(); setTimeout(() => document.querySelector('.cs-stage .cs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); return true; }
     if (g('[data-cs-redo]')) { go(true); return true; }
+    const sel = g('[data-cs-sel]'); if (sel) { S.sel = +sel.dataset.csSel; paint(); return true; }
+    if (g('[data-cs-addslide]')) { S.adding = true; S.gallery = true; paint(); return true; }
+    const so = g('[data-cs-slide]'); if (so) { const sl = slidesOf(H.ch?.() || {}) || []; const i = Math.min(S.sel || 0, sl.length - 1); slideOp(so.dataset.csSlide, i, sl[i]?.style); return true; }
     if (g('[data-cs-go]')) { go(false); return true; }
     if (!sp) return true;
     const pop = g('[data-cs-pop]'); if (pop) { S.pop = S.pop === pop.dataset.csPop ? null : pop.dataset.csPop; paint(); return true; }
-    if (g('[data-cs-gal]')) { S.gallery = true; paint(); return true; } if (g('[data-cs-galx]')) { S.gallery = false; paint(); return true; }
+    if (g('[data-cs-gal]')) { S.gallery = true; paint(); return true; } if (g('[data-cs-galx]')) { S.gallery = false; S.adding = false; paint(); return true; }
     const grp = g('[data-cs-grp]'); if (grp) { S.group = grp.dataset.csGrp; S.q = ''; paint(); return true; }
+    const mk = g('[data-cs-mk]'); if (mk) { const want = SETS[mk.dataset.csMk]; const ids = want.set.filter((id) => !S.blocked?.[id]); if (ids.length < 2) { H.toast?.('Your Brand Book rules out most of these.'); return true; } set({ set: ids, sizes: want.sizes }); return true; }
     const k = g('[data-cs-kind]'); if (k && k.dataset.csKind !== sp.kind) { const kind = k.dataset.csKind, first = groups().find((x) => x.kind === kind)?.styles?.[0]; S.picks = groups().filter((x) => x.kind === kind).flatMap((x) => x.styles.slice(0, 1)).map((x) => x.id); set({ kind, style: first?.id || null, sizes: [SIZE_OPTS[kind][0]], seconds: kind === 'video' ? first?.seconds || 10 : null }); return true; }
-    const s = g('[data-cs-style]'); if (s) { const id = s.dataset.csStyle; if (S.blocked?.[id]) { H.toast?.(H.esc(S.blocked[id])); return true; }
+    const s = g('[data-cs-style]'); if (s && S.adding) { const id = s.dataset.csStyle; if (S.blocked?.[id]) { H.toast?.(H.esc(S.blocked[id])); return true; } S.addStyle = id; S.gallery = false; slidePrice(id); paint(); return true; } /* the price shows first; the add is its own press */
+    if (g('[data-cs-addgo]')) { slideOp('add', 0, S.addStyle); return true; } if (g('[data-cs-addx]')) { S.adding = false; S.addStyle = null; paint(); return true; }
+    if (s) { const id = s.dataset.csStyle; if (S.blocked?.[id]) { H.toast?.(H.esc(S.blocked[id])); return true; }
       if (Array.isArray(sp.set)) { const has = sp.set.includes(id); if (has && sp.set.length <= 2) { H.toast?.('A set needs at least two slides.'); return true; } if (!has && sp.set.length >= 10) { H.toast?.('Ten slides at most.'); return true; } S.gallery = false; set({ set: has ? sp.set.filter((x) => x !== id) : [...sp.set, id] }); return true; }
       const x = styleById(id); S.gallery = false; set({ style: id, ...(x?.seconds && sp.kind === 'video' ? { seconds: x.seconds } : {}), ...(x?.ratio === '1:1' ? { sizes: ['ig-square'] } : {}) }); return true; }
     const pr = g('[data-cs-prod]'); if (pr) { const p = S.products[+pr.dataset.csProd]; if (p) set({ product: { img: p.img, name: p.name || null, handle: p.handle || null } }); return true; }

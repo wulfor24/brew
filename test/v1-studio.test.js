@@ -115,3 +115,13 @@ test('a picture with its own words is fitted whole into every placement, never c
   await buildPack({ ch: { actionLabel: 'Ad' }, family: 'meta_ad', pkg: { image: 'gen/plain.png', format: '4:5' }, read, crop: async () => { crops++; return Buffer.from('c'); }, fit: async () => { fits++; return Buffer.from('f'); } });
   assert.equal(crops, 2, 'a word-free photo is cropped as before');
 });
+
+test('a set lands whole: a carousel’s cards follow its slides, an A+ set lands as its modules, a listing as its photo set', async () => {
+  const S = studio(), t = tenant(card({ cta: { label: 'Make the carousel ad' }, make: { format: 'carousel ad' } }));
+  const { id, ch } = await press(S, t, 'Make the carousel ad'); await settle(ch);
+  S.RMX.landStudio(t, id, { file: 'gen/j2-a.jpg', slides: [{ file: 'gen/j2-a.jpg', style: 'in-use', words: { headline: 'Warm paws' } }, { file: 'gen/j2-b.jpg', style: 'closeup', words: { headline: 'One balm' } }, { file: 'gen/j2-c.jpg', style: 'flat-lay', words: { headline: 'Every morning' } }], studio: { kind: 'image', label: 'Carousel' } });
+  assert.deepEqual(ch.pkg.cardImages, ['gen/j2-a.jpg', 'gen/j2-b.jpg', 'gen/j2-c.jpg']); if (ch.family === 'meta_ad' && ch.pkg.cards) assert.deepEqual(ch.pkg.cards.map((x) => x.headline), ['Warm paws', 'One balm', 'Every morning']);
+  const head = versionsOf(t, id).at(-1); assert.equal(head.studio.slides.length, 3, 'the strip knows every slide');
+  S.RMX.landStudio(t, id, { file: 'gen/j2-h.jpg', slides: [{ file: 'gen/j2-h.jpg', style: 'aplus-hero', words: { headline: 'Acme' } }, { file: 'gen/j2-t.jpg', style: 'aplus-use', words: { headline: 'Soft hands', sub: 'Every morning.' } }, { file: 'gen/j2-w.jpg', style: 'aplus-wide', words: {} }], studio: { kind: 'image', label: 'A+' } });
+  assert.deepEqual(ch.pkg.aplus.map((m) => m.kind), ['header', 'tile', 'wide']); assert.equal(ch.pkg.aplus[1].body, 'Every morning.');
+});

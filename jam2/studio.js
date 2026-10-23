@@ -44,7 +44,9 @@ const BY_RECIPE = {
   'hook-variant': { picks: ['tt-hook', 'tt-pov', 'ugc-review'] }, orbit: { picks: ['orbit-360', 'showcase', 'dark-minimal'], seconds: 5, sizes: ['ig-square'] },
   listing: { set: ['mp-main', 'mp-lifestyle', 'mp-benefits', 'mp-size'], sizes: ['pdp'] }, 'pdp-set': { set: ['mp-main', 'in-use', 'mp-benefits', 'closeup'], sizes: ['pdp'] },
   photoshoot: { set: ['studio-white', 'in-use', 'editorial', 'flat-lay'] }, 'carousel-ad': { set: ['in-use', 'closeup', 'flat-lay', 'color-pop'], sizes: ['ig-square'] },
-  'ig-carousel': { set: ['editorial', 'in-use', 'hands', 'flat-lay'] }, stories: { set: ['ugc-still', 'in-use', 'closeup'], sizes: ['story'] } };
+  'ig-carousel': { set: ['editorial', 'in-use', 'hands', 'flat-lay'] }, stories: { set: ['ugc-still', 'in-use', 'closeup'], sizes: ['story'] },
+  /* Amazon A+: the header, three tiles, the wide image; each style carries its own Amazon size */
+  aplus: { set: ['aplus-hero', 'aplus-use', 'aplus-detail', 'aplus-hands', 'aplus-wide'], sizes: ['aplus-header'] } };
 /* a board the composer makes: every picture, set and video. A founder video stays a script for the real founder: an AI face
    presented as the brand's founder would be a lie */
 export const inStudio = (bd) => !!bd && ['static', 'video', 'carousel'].includes(bd.kind) && bd.recipe !== 'founder-ad';
@@ -122,7 +124,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     if (spec.product?.img) ctx.product = { ...spec.product }; if (spec.quality) ctx.tier = spec.quality === 'premium' ? 'premium' : spec.quality === 'preview' ? 'preview' : null;
     if (Array.isArray(spec.set)) { const set = spec.set.map(styleOf).filter((x) => x && x.kind === 'image').slice(0, 10); if (set.length < (spec.fill ? 1 : 2)) return { error: spec.fill ? 'Nothing is missing.' : 'Pick at least two slides.' }; /* filling in left-out slides may be one */
       const no = set.map((x) => blockOf(x, ctx)).find(Boolean); if (no) return { error: no };
-      const size = sizeOf(spec.sizes?.[0] || 'ig-portrait'), each = await Promise.all(set.map((x) => perTake(ctx, x, size))), usd = +each.reduce((a, b) => a + b, 0).toFixed(2), prod = spec.product?.name || ctx.product?.name;
+      const size = sizeOf(spec.sizes?.[0] || 'ig-portrait'), each = await Promise.all(set.map((x) => perTake(ctx, x, x.size ? sizeOf(x.size) : size))), usd = +each.reduce((a, b) => a + b, 0).toFixed(2), prod = spec.product?.name || ctx.product?.name;
       return { line: `${set.length} slides · ${set.map((x) => x.label).join(', ')}${prod ? ` · ${tidy(prod, 60)}` : ''} · ${size.label}`, usd, per: usd, count: 1, kind: 'image', set: set.map((x) => x.id) }; }
     const st = styleOf(spec.style); if (!st) return { error: 'Pick a style.' }; const no = blockOf(st, ctx); if (no) return { error: no };
     const secs = st.kind === 'video' ? +spec.seconds || st.seconds || 10 : null; /* the same length the make runs, so the price is that film's */
@@ -143,7 +145,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       try { const out = await hf.run(id, input, { ...o, resume: J[k] || null, onSubmit: (j) => { J[k] = j; return opts.save?.(); } }); delete J[k]; await opts.save?.()?.catch?.(() => {}); return out; }
       catch (e) { if (!e.open) { delete J[k]; await opts.save?.()?.catch?.(() => {}); } throw e; } };
     const st = styleOf(spec.style); if (!st) throw new Error('Pick a style.');
-    const size = sizeOf(spec.sizes?.[0] || (st.kind === 'video' ? 'story' : 'ig-portrait'));
+    const size = sizeOf(st.size || spec.sizes?.[0] || (st.kind === 'video' ? 'story' : 'ig-portrait')); /* an A+ module's own size wins */
     if (spec.product?.img) ctx.product = { ...spec.product };
     /* what the team set on the composer (the direction Brew wrote and they may have changed, who is on camera, the reference to
        follow, the quality) is what every maker below reads: the art direction, the shot, the film */

@@ -419,6 +419,8 @@ export const cleanPkg = (family, action, pkg = {}, clean = (s) => s) => {
     else out[f.k] = clean(str(v)).slice(0, f.max || (f.type === 'long' ? 900 : 240));
   });
   ['image', 'knobs', 'grade', 'cardImages', 'wordsIn', 'photoSet'].forEach((k) => { if (pkg[k] != null) out[k] = pkg[k]; });
+  /* Amazon A+ modules (Brew Studio): the picture is kept, the words are cleaned to Amazon's lengths */
+  if (Array.isArray(pkg.aplus)) out.aplus = pkg.aplus.slice(0, 7).filter((m) => m && m.image).map((m) => ({ kind: ['header', 'tile', 'wide'].includes(m.kind) ? m.kind : 'tile', image: str(m.image), style: m.style ? str(m.style) : null, headline: clean(str(m.headline)).slice(0, 160), body: clean(str(m.body)).slice(0, 1000) }));
   /* ready to publish: the link (with its UTM) and the alt text the team set; anything else in it is dropped */
   if (pkg.publish && typeof pkg.publish === 'object') { const pb = {}; const link = str(pkg.publish.link).trim(); if (/^https?:\/\/\S+$/.test(link)) pb.link = link.slice(0, 600); const alt = clean(str(pkg.publish.alt)).trim(); if (alt) pb.alt = alt.slice(0, 220); if (Object.keys(pb).length) out.publish = pb; }
   return out;

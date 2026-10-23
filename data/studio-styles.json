@@ -27,7 +27,14 @@
       { "id": "offer-card", "label": "Offer card", "job": "type-poster", "type": "drawn", "people": "none", "look": "A bold offer poster in the brand's colours with the offer as the hero type." },
       { "id": "quote-card", "label": "Review card", "job": "type-poster", "type": "drawn", "people": "none", "look": "A clean card with one real customer review in large type and five stars." },
       { "id": "illustration", "label": "Illustration", "job": "brand-graphic", "type": "none", "people": "none", "look": "A flat brand illustration in the brand's colours." }
-    ]}
+    ]},
+    { "id": "aplus", "label": "Amazon A+", "styles": [
+      {"id": "aplus-hero", "label": "A+ header", "job": "product-shot", "designed": true, "type": "drawn", "people": "none", "ratio": "97:60", "size": "aplus-header", "aplus": "header", "look": "An Amazon A+ header banner, 970×600: the real product large on one side, the brand's name and its one-line promise in clean type on the other, in the brand colours. No prices, ratings, reviews, '#1' or 'best', no shipping, guarantees or time-limited offers (Amazon's A+ rules)."},
+      {"id": "aplus-use", "label": "A+ in use", "job": "product-shot", "type": "none", "people": "any", "ratio": "1:1", "size": "aplus-tile", "aplus": "tile", "look": "A square A+ tile: the product in real use, bright and clear, no text."},
+      {"id": "aplus-detail", "label": "A+ detail", "job": "product-shot", "type": "none", "people": "none", "ratio": "1:1", "size": "aplus-tile", "aplus": "tile", "look": "A square A+ tile: a close-up of the product's texture or its key detail, no text."},
+      {"id": "aplus-hands", "label": "A+ in the hand", "job": "product-shot", "type": "none", "people": "hands", "ratio": "1:1", "size": "aplus-tile", "aplus": "tile", "look": "A square A+ tile: the product held in a hand so its true size reads at a glance, no text."},
+      {"id": "aplus-wide", "label": "A+ wide", "job": "product-shot", "type": "none", "people": "any", "ratio": "97:30", "size": "aplus-wide", "aplus": "wide", "look": "A wide A+ banner, 970×300: the product in its real setting, calm space on one side, no text."}
+    ] }
   ],
   "video": [
     { "id": "ugc", "label": "UGC", "styles": [

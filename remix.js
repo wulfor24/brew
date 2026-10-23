@@ -1746,7 +1746,7 @@ export function createRemix(o) {
   /* a version's package as it was then: the snapshot without the change's own keys */
   const pkgOfVersion = (t, ch, v) => { if (!v) return { ...ch.pkg }; const { action, amount, title, sub, state, ...pkg } = v.snapshot || {}; return pkg; };
   const versionAsked = (t, ch, q) => { const vq = q?.get?.('v'); if (!vq) return headOf(t, ch) || null; return versionsOf(t, ch.id).find((x) => String(x.n) === vq || x.id === vq) || false; };
-  const PACK_V = 5; /* 3: a Studio take carries its link (UTM) and alt text; 4: worded pictures fitted whole, never cropped; 5: Studio words and brief, not the draft's */ // bump when a family's pack starts holding different files or words: every saved pack is made again (2: spend = a week of the daily budget)
+  const PACK_V = 6; /* 6: listing photo sets and A+ modules */ /* 3: a Studio take carries its link (UTM) and alt text; 4: worded pictures fitted whole, never cropped; 5: Studio words and brief, not the draft's */ // bump when a family's pack starts holding different files or words: every saved pack is made again (2: spend = a week of the daily budget)
   /* read-only: the version as files the team posts or applies themselves (publish-pack.js). Brew writes to no account.
      The zip is saved once per version (gen/pack-….zip) and served from /gen/ like every made file */
   on('GET', '/api/changes/:chid/pack', async (b, t, p, q) => {
@@ -2066,13 +2066,20 @@ export function createRemix(o) {
   const v2 = { updatedSince, healTakes, jobs: TAKE_JOBS, settle: async () => { while (TAKE_JOBS.size) await Promise.all([...TAKE_JOBS.values()].map((j) => j.run)); } }; /* a take's words job hands over to its picture job */
   /* a Studio take (made from this jam's composer, priced and confirmed) lands as the jam's next version: a picture, the slides of a
      set (a listing's photo set), or a film with its poster. The words stay; History says what Studio made and what it cost */
+  const tidyL = (x, n) => String(x ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
   const landStudio = (t, chId, take) => { const ch = C(t, chId); if (!ch || !take?.file) return null; ensurePkg(t, ch);
     const st = take.studio || {}, label = cleanLabel(st.label || 'Studio') || 'Studio', slides = (take.slides || []).filter((x) => x?.file);
-    const media = slides.length > 1 ? (ch.family === 'listing' ? { photoSet: slides.map((x) => ({ image: x.file, style: x.style || null })), image: slides[0].file } : { image: slides[0].file, cardImages: slides.map((x) => x.file) })
+    /* a set lands whole: an A+ set as its modules (header, tiles, wide image, each with its own words), a listing as its photo
+       set, a carousel or stories set as its cards or slides, the rows following the slides one for one */
+    const aplus = slides.length && slides.every((x) => /^aplus-/.test(x.style || '')), wd = (x) => x.words || {};
+    const rows = (old, f) => slides.map((x, k) => ({ ...(old[k] || {}), ...f(x, old[k] || {}) }));
+    const media = aplus ? { aplus: slides.map((x) => ({ kind: x.style === 'aplus-hero' ? 'header' : x.style === 'aplus-wide' ? 'wide' : 'tile', image: x.file, style: x.style, headline: tidyL(wd(x).headline, 160), body: tidyL(wd(x).sub, 1000) })), image: slides[0].file }
+      : slides.length > 1 ? (ch.family === 'listing' ? { photoSet: slides.map((x) => ({ image: x.file, style: x.style || null })), image: slides[0].file }
+        : { image: slides[0].file, cardImages: slides.map((x) => x.file), ...(ch.family === 'meta_ad' ? { cards: rows(ch.pkg.cards || [], (x, o) => ({ headline: tidyL(wd(x).headline || o.headline, 120), text: tidyL(wd(x).sub || o.text, 200) })) } : { slides: rows(ch.pkg.slides || [], (x, o) => ({ onSlide: tidyL(wd(x).headline || o.onSlide, 120) })) }) })
       : st.kind === 'video' ? { video: take.file, poster: take.poster || take.shot?.file || null, image: take.poster || take.shot?.file || ch.pkg.image } : { image: take.file, wordsIn: take.file /* a Studio picture carries its own words: the frame lays none over it */ };
     ch.pkg = { ...ch.pkg, ...media }; ch.imageError = null; sync(t, ch);
     const v = version(t, ch, 'brew', `Studio: ${label}${take.cost?.usd ? ` · $${take.cost.usd}` : ''}`, label); const tw = take.words || {}, prod = st.spec?.product || null;
-    v.studio = { style: st.style || null, label, kind: st.kind || null, size: st.size || null, usd: take.cost?.usd || 0, jid: take.jid || null, product: prod ? { name: prod.name || null, img: prod.img || null } : null,
+    v.studio = { style: st.style || null, slides: slides.length > 1 || aplus ? slides.map((x) => ({ style: x.style || null, file: x.file })) : null, label, kind: st.kind || null, size: st.size || null, usd: take.cost?.usd || 0, jid: take.jid || null, product: prod ? { name: prod.name || null, img: prod.img || null } : null,
       words: [...new Set([tw.headline, tw.sub, tw.button, tw.badge, tw.proof, ...(Array.isArray(take.check?.words) ? take.check.words : []), ...[take.scene, ...(take.slides || []).map((x) => x.scene)].flatMap((sc) => (sc?.layers || []).map((l) => l?.words || l?.text)) /* every word set on the picture */, ...(take.slides || []).flatMap((x) => [x.words?.headline, x.words?.sub])].filter((x) => typeof x === 'string' && x.trim()).map((x) => x.slice(0, 200)))].slice(0, 20) }; /* what the picture itself says: the publish check reads it */
     studioState(t, chId, { state: 'made', line: label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */

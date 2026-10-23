@@ -169,6 +169,26 @@ export function mountJam2(d) {
     await store.put(slugOfT(t), j);
     boards.forEach((bd, i) => runBg(t, j, bd.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i, jobsOf(t, j, bd)); take.studio.spec = specOf(spec); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }, { resume: true, spec, i, confirmUsd: pl.per }));
     note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); v1State(t, j, pl, boards.length); return { jam: out(j), plan: pl, boards: boards.map((x) => x.id) }; }));
+  /* one slide of a set: redo it (priced, one take of its style, the rest kept), drop it (free) or add one (priced). Each lands
+     as the set's next take and, from v1, as the jam's next version */
+  on('POST', '/api/jam2/jams/:jid/studio/slide', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, b.bid), head = bd && headOf(bd);
+    if (!head?.slides?.length) return { error: 'There’s no set to change yet.' };
+    if (busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`)?.error) return { error: 'This set is still being made. Wait for it.' };
+    const i = Math.max(0, Math.min(head.slides.length - 1, Math.floor(+b.i || 0))), base = head.studio?.spec || {}, copyOf = (slides) => { const { id: _i, n: _n, at: _a, gate: _g, ...rest } = head; return { ...rest, slides, file: slides[0].file, scene: slides[0].scene, words: slides[0].words || head.words, made: [], cost: { usd: 0, credits: 0 }, missing: [], missingIds: [], studio: { ...(head.studio || {}), set: slides.map((x) => x.style), spec: { ...base, set: slides.map((x) => x.style) } } }; };
+    if (b.op === 'drop') { if (head.slides.length <= 2) return { error: 'A set needs at least two slides.' }; const tk = addTake(j, bd, copyOf(head.slides.filter((_, k) => k !== i))); await store.put(slugOfT(t), j); toV1(t, j, tk); return { jam: out(j) }; }
+    const style = studio.styleOf(b.op === 'add' ? b.style : head.slides[i].style); if (!style || style.kind !== 'image') return { error: 'Pick a picture style.' };
+    if (b.op === 'add' && head.slides.length >= 10) return { error: 'Ten slides at most.' };
+    const ctx0 = await ctxOf(t, j), c = await cleanSpec(t, j, ctx0, { ...base, kind: 'image', set: null, style: style.id, count: 1 }); if (c.error) return { error: c.error };
+    const pl = await studio.plan(ctx0, c.spec); if (pl.error) return { error: pl.error };
+    if (mustConfirm() && !(+b.confirmUsd + 0.01 >= pl.usd)) return { needsConfirm: true, plan: pl };
+    const n = head.slides.length + (b.op === 'add' ? 1 : 0), k = b.op === 'add' ? head.slides.length : i;
+    runBg(t, j, bd.id, 'studio', async () => { const ctx = await ctxOf(t, j);
+      const one = await studio.make(ctx, bd, { ...c.spec, ask: [`Slide ${k + 1} of ${n} of one set: its own short line that builds on the others${k === 0 ? '; this one is the cover, the hook' : ''}.`, c.spec.ask].filter(Boolean).join(' ') }, k, jobsOf(t, j, bd));
+      const slide = { scene: one.scene, file: one.file, style: style.id, words: one.words, shot: one.shot || null, drawn: one.drawn || null };
+      const slides = b.op === 'add' ? [...head.slides, slide] : head.slides.map((x, q) => (q === i ? slide : x));
+      const tk = addTake(j, bd, { ...copyOf(slides), made: one.made || [], cost: one.cost || { usd: 0, credits: 0 } }); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); });
+    v1State(t, j, { ...pl, line: `${b.op === 'add' ? 'a new slide' : `slide ${i + 1}`} · ${style.label}` }, 1);
+    note(j, `Studio: ${b.op === 'add' ? 'added a slide' : `slide ${i + 1} again`} · ${style.label} · $${pl.usd}`, whoOf(t).email); return { jam: out(j), plan: pl }; }));
   on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); await resumeCut(t, j).catch((e) => log.warn?.('[jam2] resume', e.message)); return { jam: out(j, t), also: alsoFor(j.boards[0]?.recipe) }; }));
   on('POST', '/api/jam2/jams/:jid/concept', wrap(async (b, t, p) => { const j = await load(t, p.jid); const changed = bumpConcept(j, b || {}, whoOf(t).me); await store.put(slugOfT(t), j); return { jam: out(j), changed }; }));
   on('POST', '/api/jam2/jams/:jid/boards', wrap(async (b, t, p) => { const j = await load(t, p.jid);

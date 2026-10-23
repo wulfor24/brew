@@ -16,7 +16,11 @@ export const SIZES = {
   pdp: { label: 'Product page 1:1', w: 2000, h: 2000, ratio: '1:1' },
   banner: { label: 'Banner 3:1', w: 2400, h: 800, ratio: '3:1' },
   email: { label: 'Email hero 3:2', w: 1200, h: 800, ratio: '3:2' },
-  a5: { label: 'Print A5', w: 1748, h: 2480, ratio: 'A5' }
+  a5: { label: 'Print A5', w: 1748, h: 2480, ratio: 'A5' },
+  /* Amazon A+ (Standard modules): the header image, the four-image tiles and the wide single image, at Amazon's own pixels */
+  'aplus-header': { label: 'A+ header 970×600', w: 970, h: 600, ratio: '97:60' },
+  'aplus-tile': { label: 'A+ tile 300×300', w: 300, h: 300, ratio: '1:1' },
+  'aplus-wide': { label: 'A+ wide image 970×300', w: 970, h: 300, ratio: '97:30' }
 };
 export const HOW = ['ai', 'ai+people', 'brief'];
 export const HOW_LABEL = { ai: 'AI makes it', 'ai+people': 'AI + people', brief: 'Brief people' };

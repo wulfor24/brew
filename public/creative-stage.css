@@ -80,3 +80,29 @@
 .pp-places figure span.is-fit img{position:absolute;inset:0;object-fit:contain}
 .pp-places figure span.is-fit img.bg{object-fit:cover;filter:blur(8px) brightness(.94);transform:scale(1.12)}
 .pp-checks li{flex-wrap:nowrap}.pp-checks li>svg{flex:none;margin-top:2px}.pp-checks li>span{flex:1;min-width:0}
+/* a made set: the slides as a strip under the frame; pick one to redo it (priced) or drop it (free), + adds one */
+.cs-set{flex-direction:column;gap:10px}
+.cs-strip{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.cs-strip button{position:relative;width:58px;height:58px;padding:0;border:2px solid transparent;border-radius:10px;overflow:hidden;background:var(--surface-2,#eee);cursor:pointer}
+.cs-strip button.on{border-color:var(--fg,#111)}
+.cs-strip img{width:100%;height:100%;object-fit:cover;display:block}
+.cs-strip span{position:absolute;left:3px;top:3px;min-width:16px;height:16px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;line-height:16px;text-align:center}
+.cs-strip .cs-add{font-size:20px;color:var(--fg-2,#555);border:1px dashed var(--line,#ccc)}
+.cs-set .cs-acts{justify-content:center;align-items:center}
+.cs-set .cs-acts>span{font-size:13px;color:var(--fg-2,#444)}
+.cs-addgal{position:relative;min-height:420px}
+/* Amazon A+: the product page's "From the brand" section, modules in order, words as page text */
+.as-aplus{width:min(600px,100%);background:#fff;color:#0f1111;border:1px solid #d5d9d9;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;text-align:left}
+.as-aplus .az-bar{display:flex;gap:10px;align-items:baseline;background:#131921;color:#fff;padding:8px 12px}
+.as-aplus .az-bar b{font-size:16px;letter-spacing:-.02em}
+.as-aplus .az-bar span{font-size:11px;opacity:.8}
+.as-aplus .az-h{margin:12px 12px 8px;font-size:17px;font-weight:700}
+.as-aplus figure{margin:0}
+.as-aplus .az-head img{width:100%;aspect-ratio:97/60;object-fit:cover;display:block}
+.as-aplus .az-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;padding:12px}
+.as-aplus .az-tiles img{width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:2px}
+.as-aplus figcaption{display:flex;flex-direction:column;gap:3px;padding-top:6px}
+.as-aplus figcaption b{font-size:13px}
+.as-aplus figcaption span{font-size:12px;line-height:1.4;color:#333}
+.as-aplus .az-wide{padding:0 12px 12px}
+.as-aplus .az-wide img{width:100%;aspect-ratio:97/30;object-fit:cover;display:block}

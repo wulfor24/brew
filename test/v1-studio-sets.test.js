@@ -1,0 +1,54 @@
+// Sets on the creative stage (Brew Studio, 24 Oct): a set is made slide by slide; one slide can be made again (priced) or dropped
+// (free) or one added, each landing as the set's next take and the v1 jam's next version; Amazon A+ is a set of modules at
+// Amazon's own sizes whose words are page text, held to Amazon's content rules.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+process.env.AI_MOCK = '1';
+const { mountJam2 } = await import('../jam2/routes.js');
+const G = await import('../gen-store.js');
+const { defaults, styleOf } = await import('../jam2/studio.js');
+const { SIZES } = await import('../jam2/catalogue.js');
+const { readyOf } = await import('../publish-ready.js');
+const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'sets-')); G.configureGen({ dir: DIR, remote: false, log: { warn() {} } });
+const quiet = { warn() {}, log() {}, error() {} };
+
+const mount = () => {
+  const R = {}, on = (m, p, fn) => (R[`${m} ${p}`] = fn), mem = new Map(), landed = [], states = [];
+  const packs = { getJSON: async (s, f, d) => (mem.has(`${s}/${f}`) ? structuredClone(mem.get(`${s}/${f}`)) : d), putJSON: async (s, f, v) => { mem.set(`${s}/${f}`, structuredClone(v)); return true; } };
+  const card = { id: 'c1', title: 'Listing photos', cta: { label: 'Add the photos' } }, t = { id: 't1', brandId: 'acme', cards: new Map([['c1', card]]), changes: { ch1: { id: 'ch1' } }, work: [] };
+  mountJam2({ on, packs, slugOfT: () => 'acme', brandOfT: () => ({ catalog: [{ t: 'Balm', img: 'balm.png' }], config: {} }), meOf: () => ({ email: 'a@acme.com' }), reqOf: () => ({ member: true }), cardOf: (tt, id) => tt.cards.get(id), sourceOf: () => '', refsOf: async () => [], isMock: () => true, spend: () => true, saveGen: G.saveGen, genFile: G.genFile, log: quiet,
+    onStudioTake: (tt, chId, tk) => landed.push(tk.slides.map((x) => x.style)), onStudioState: (tt, chId, st) => states.push(st.state) });
+  return { R, t, landed, states };
+};
+const until = async (R, t, jid, bid) => { for (let k = 0; k < 300; k++) { const g = await R['GET /api/jam2/jams/:jid']({}, t, { jid }); const b = g.jam.busy?.[bid]; if (!b || b.error) return g; await new Promise((r) => setTimeout(r, 100)); } throw new Error('still busy'); };
+
+test('a set made in Studio: redo one slide, drop one, add one; each lands in the v1 jam, the rest kept', { timeout: 120e3 }, async () => {
+  const { R, t, landed, states } = mount();
+  const o = await R['POST /api/jam2/open']({ cardId: 'c1', cta: 'Add the photos', v1ch: 'ch1' }, t, {}); const jid = o.jam.id, bid = o.jam.boards[0].id;
+  const d = await R['GET /api/jam2/jams/:jid/studio']({}, t, { jid }, new URLSearchParams(`bid=${bid}`)); assert.ok(Array.isArray(d.defaults.set), 'a listing opens as a set');
+  const spec = { ...d.defaults, set: ['mp-lifestyle', 'in-use', 'closeup'] }, pl = (await R['POST /api/jam2/jams/:jid/studio/plan']({ spec }, t, { jid })).plan;
+  await R['POST /api/jam2/jams/:jid/studio/make']({ spec, confirmUsd: pl.usd, bid }, t, { jid }); let g = await until(R, t, jid, bid);
+  assert.equal(g.jam.busy?.[bid]?.error, undefined, g.jam.busy?.[bid]?.error); assert.deepEqual(landed.at(-1), ['mp-lifestyle', 'in-use', 'closeup']);
+  const drop = await R['POST /api/jam2/jams/:jid/studio/slide']({ bid, i: 1, op: 'drop' }, t, { jid }); assert.ok(!drop.error, drop.error); assert.deepEqual(landed.at(-1), ['mp-lifestyle', 'closeup'], 'drop is free and keeps the others');
+  assert.match((await R['POST /api/jam2/jams/:jid/studio/slide']({ bid, i: 0, op: 'drop' }, t, { jid })).error, /at least two/);
+  const redo = await R['POST /api/jam2/jams/:jid/studio/slide']({ bid, i: 1, op: 'redo', confirmUsd: 1 }, t, { jid }); assert.ok(!redo.error, redo.error); await until(R, t, jid, bid);
+  assert.deepEqual(landed.at(-1), ['mp-lifestyle', 'closeup'], 'the same slide, made again');
+  const add = await R['POST /api/jam2/jams/:jid/studio/slide']({ bid, op: 'add', style: 'flat-lay', confirmUsd: 1 }, t, { jid }); assert.ok(!add.error, add.error); await until(R, t, jid, bid);
+  assert.deepEqual(landed.at(-1), ['mp-lifestyle', 'closeup', 'flat-lay']); assert.ok(states.includes('making'));
+  g = await R['GET /api/jam2/jams/:jid']({}, t, { jid }); assert.equal(g.jam.boards.find((b) => b.id === bid).takes.length, 4, 'every change is its own take; nothing is lost');
+});
+
+test('Amazon A+ opens as its modules at Amazon’s own sizes; module words follow Amazon’s rules', () => {
+  const d = defaults({ card: { title: 'A+ for the balm' }, product: { img: 'p.jpg', name: 'Balm' }, bbv: { comfort: { people: 'ai-cast' } } }, { kind: 'carousel', recipe: 'aplus' });
+  assert.deepEqual(d.set, ['aplus-hero', 'aplus-use', 'aplus-detail', 'aplus-hands', 'aplus-wide']);
+  assert.equal(SIZES[styleOf('aplus-hero').size].w, 970); assert.equal(SIZES[styleOf('aplus-use').size].w, 300); assert.equal(SIZES[styleOf('aplus-wide').size].h, 300);
+  const none = defaults({ card: { title: 'A+' }, product: { img: 'p.jpg', name: 'Balm' }, bbv: { comfort: { people: 'none' } } }, { kind: 'carousel', recipe: 'aplus' }); assert.ok(!none.set.includes('aplus-hands') && none.set.includes('aplus-use'), 'no hands tile when the Brand Book says no people');
+  const r = readyOf({ family: 'listing', pkg: { aplus: [{ kind: 'header', image: 'h.jpg', headline: 'Balm' }, { kind: 'tile', image: 'a.jpg', headline: 'Soft hands', body: 'Every morning.' }, { kind: 'tile', image: 'b.jpg', headline: 'The #1 balm', body: 'Only ₹299, rated 4.8 stars' }, { kind: 'wide', image: 'w.jpg', headline: 'Free shipping today', body: '' }] }, brand: 'Acme', host: 'acme.com' });
+  assert.equal(r.ready, false); const why = r.parts.flatMap((x) => x.why).join(' | ');
+  for (const w of ['“best” or “#1”', 'a price or a deal', 'a rating or a review', 'shipping or a guarantee']) assert.ok(why.includes(w), `${w}: ${why}`);
+  assert.ok(!r.parts.some((x) => x.k === 'link'), 'A+ takes no link'); assert.ok(r.places.some((x) => x.where === 'A+ header'));
+});
