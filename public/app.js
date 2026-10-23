@@ -3653,6 +3653,11 @@
     const vid = `<video class="as-vid" src="${esc(p.video)}"${p.poster ? ` poster="${esc(p.poster)}"` : ''} controls playsinline muted loop preload="metadata"></video>`;
     const pic = p.image || p.poster, re = pic ? new RegExp(`<img\\b[^>]*\\bsrc="${esc(pic).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>`) : null;
     return re && re.test(html) ? html.replace(re, vid) : `<div class="as as-draft${size === 'lg' ? ' lg' : ''}">${vid}</div>${html}`; };
+  /* words are laid over a picture only when Brew knows it has none: a v1 draft photo Brew made word-free (gen/…). A catalog or
+     card photo, an upload, a rival's ad or a Brew Studio take (gen/j2-…, its words are in the picture) often carries its own
+     words, and two sets collide (Arata 23 Oct, "Cleanse. Hydrate. Glow." twice). Everywhere else the words stay under it */
+  const wordsOver = (img, p = {}, ch = null) => !!img && /^\/?gen\//.test(img) && !/^\/?gen\/(j2-|att-)/.test(img) && p.wordsIn !== img
+    && !(ch && (ch.rival || ch.ref)) /* our version of a rival's ad or a viral post copies its layout, words included */;
   const assetHtml0 = (ch, size = 'sm') => {
     const p = ch.pkg || {}, lg = size === 'lg', act = String(ch.action).split('.').pop();
     const pending = ch.imagePending ? `<div class="as-pending"><brew-load class="spin"></brew-load>Making the creative…</div>` : '';
@@ -3678,7 +3683,7 @@
       const story = p.format === '9:16', handle = p.account || `@${String(B.brand.name).toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
       const slides = rows.length ? rows : [{ onSlide: p.overlay || '', imageBrief: p.imageBrief }];
       return `<div class="as as-ig${story ? ' is-story' : ''}${lg ? ' lg' : ''}"><div class="ig-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><b>${esc(handle)}</b>${p.postAt ? `<small>${esc(p.postAt)}</small>` : ''}</div>
-        ${swipe('ig-slides', slides.slice(0, lg ? 10 : 3).map((r, i) => `<figure class="ig-slide">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : ''}${r.onSlide ? `<figcaption>${esc(r.onSlide)}</figcaption>` : ''}${i === 0 ? pending : ''}${slides.length > 1 ? `<span class="ig-n">${i + 1}/${slides.length}</span>` : ''}</figure>`).join(''))}
+        ${swipe('ig-slides', slides.slice(0, lg ? 10 : 3).map((r, i) => `<figure class="ig-slide">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : ''}${r.onSlide && (!picOf(i) || wordsOver(picOf(i), p, ch)) ? `<figcaption>${esc(r.onSlide)}</figcaption>` : ''}${i === 0 ? pending : ''}${slides.length > 1 ? `<span class="ig-n">${i + 1}/${slides.length}</span>` : ''}</figure>`).join(''))}
         ${!picOf(0) && lg && !ch.imagePending ? `<div class="ig-make"><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the first photo</button></div>` : ''}${morePics}
         ${story ? (p.stickers ? `<p class="ig-st">${ic('chat', 's14')}${esc(p.stickers)}</p>` : '') : `<p class="ig-cap"><b>${esc(handle)}</b> ${esc(p.caption || '').replace(/\n/g, '<br>')}${(p.hashtags || []).length ? `<span class="ig-tags">${esc(p.hashtags.join(' '))}</span>` : ''}</p>`}</div>`;
     }
@@ -3686,7 +3691,7 @@
       const made = imgOf(ch), img = made || (lg ? cardPhoto() : null), ratio = (p.format || '4:5').replace(':', '/'), [rw, rh] = (p.format || '4:5').split(':').map(Number);
       return `<div class="as as-meta${lg ? ' lg' : ''}" style="--ar:${(rw / rh) || 0.8}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${B.brand.name}</b><small>Sponsored</small></div></div>
         <p class="am-text">${esc(p.primaryText || '')}</p>
-        <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${ratio}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : !lg ? `<div class="am-empty">${ic('sparkles', 's16')}<span>The photo is made in the studio</span></div>` : ''}${p.overlay && p.image && p.wordsIn !== p.image /* a final with its words set in the picture */ && !(ch.studio && ch.versions?.find((v) => v.id === ch.head)?.studio) /* a Studio take has its own words */ ? `<span class="am-ov">${esc(p.overlay)}</span>` : ''}${pending}${!p.image && lg && !ch.imagePending ? (img ? `<button class="am-newpic" data-rx="image">${ic('sparkles', 's14')}New photo for this ad${freeTag()}</button>` : `<div class="am-make"><span>No photo for this version yet</span><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the photo${freeTag()}</button></div>`) : ''}</div>
+        <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${ratio}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : !lg ? `<div class="am-empty">${ic('sparkles', 's16')}<span>The photo is made in the studio</span></div>` : ''}${p.overlay && img && wordsOver(img, p, ch) && !(ch.studio && ch.versions?.find((v) => v.id === ch.head)?.studio) /* a Studio take has its own words */ ? `<span class="am-ov">${esc(p.overlay)}</span>` : ''}${pending}${!p.image && lg && !ch.imagePending ? (img ? `<button class="am-newpic" data-rx="image">${ic('sparkles', 's14')}New photo for this ad${freeTag()}</button>` : `<div class="am-make"><span>No photo for this version yet</span><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the photo${freeTag()}</button></div>`) : ''}</div>
         <div class="am-foot"><div><small>${B.brand.host}</small>${hlHtml(ch, p, lg)}${p.description ? `<span>${esc(p.description)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div>
         ${lg && act === 'whatsapp_ad' && p.chat?.length ? `<div class="am-chat"><small>When they tap, WhatsApp opens with</small>${p.chat.map((m) => `<div class="wa ${m.from === 'in' ? 'in' : 'out'}">${esc(m.text)}</div>`).join('')}</div>` : ''}</div>`;
     }
