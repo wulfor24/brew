@@ -106,7 +106,7 @@
           (pr.all?.length || pr.count) > (pr.heroes || []).length ? `<button class="bb-door" data-deep="products"><span>See all ${pr.all?.length || pr.count} ${esc(nm)} products</span><i aria-hidden="true">→</i></button>` : '',
           pr.tiers?.length ? `<div class="bb-stairs">${pr.tiers.map((t, i) => `<button class="bb-step" style="--h:${40 + i * 30}px" data-deep="products" data-tier="${i}"><b>${esc(t.name)}</b><span>${esc(t.from === t.to ? t.from : `${t.from} to ${t.to}`)}</span><small>${t.n} product${t.n === 1 ? '' : 's'} ›</small></button>`).join('')}</div>` : '',
           (pr.offers?.length || pr.guarantee || pr.returns) ? `<div class="bb-perks">${(pr.offers || []).map((o) => `<span>${esc(o)}</span>`).join('')}${pr.guarantee ? `<span>${esc(pr.guarantee)}</span>` : ''}${pr.returns ? `<span>Returns: ${esc(pr.returns)}</span>` : ''}${pr.sells === 'by enquiry' ? '<span>Sells by enquiry</span>' : ''}</div>` : '',
-          v.naming?.pattern ? `<p class="bb-meta"><b>How ${esc(nm)} names things:</b> ${esc(v.naming.pattern)}${v.naming.examples?.length ? `, like ${v.naming.examples.map((x) => `“${esc(x)}”`).join(', ')}` : ''}</p>` : ''].join(''),
+          v.naming?.pattern ? `<p class="bb-meta"><b>How ${esc(nm)} names things:</b> ${esc(String(v.naming.pattern).replace(/[\s.;,:]+$/, ''))}${v.naming.examples?.length ? `, like ${v.naming.examples.map((x) => `“${esc(x)}”`).join(', ')}` : ''}</p>` : ''].join(''),
         people: [pe.personas?.length ? `<div class="bb-cards-tr">${pe.personas.map((p, i) => `<article class="bb-tc" style="--t:${tilt(i) / 1.5}deg"><span class="bb-mono">${esc(initials(p.name))}</span><h3>${esc(p.name)}</h3><p>${esc(p.who)}</p>${p.job ? `<p class="bb-wants"><b>Wants</b> ${esc(p.job)}</p>` : ''}${p.objection ? `<p class="bb-but">“But ${esc(String(p.objection).replace(/^but\s+/i, ''))}”</p>` : ''}</article>`).join('')}</div>` : '',
           pe.objections?.length ? `<div class="bb-objs"><span class="bb-kicker">What makes them hesitate</span>${pe.objections.map((o) => `<details><summary>${esc(o.text)}</summary>${o.answer ? `<p>${esc(o.answer)}</p>` : ''}</details>`).join('')}</div>` : '',
           (pe.praise?.length || pe.complaints?.length) ? `<div class="bb-sheet">${pe.praise?.length ? `<div class="bb-sheet-col is-say"><span class="bb-kicker">Customers love</span><ul class="bb-stickers">${pe.praise.map((x, i) => `<li style="--t:${tilt(i) / 2}deg">${esc(x)}</li>`).join('')}</ul></div>` : ''}${pe.complaints?.length ? `<div class="bb-sheet-col is-avoid"><span class="bb-kicker">Customers complain about</span><ul class="bb-stickers">${pe.complaints.map((x, i) => `<li style="--t:${tilt(i) / 2}deg">${esc(x)}</li>`).join('')}</ul></div>` : ''}</div>` : ''].join(''),
@@ -166,6 +166,25 @@
     function wire() {
       const d = S.data;
       /* a picture that won't load (an expired link, a moved file) leaves no broken box: its card goes, or just the picture */
+      /* select any text in the book → a small bar: Change with Brew (the composer, about that line), Rewrite, Remove */
+      if (!el.dataset.selGuard) { el.dataset.selGuard = 1; let bar = null, tm = 0;
+        const hide = () => { bar?.remove(); bar = null; };
+        const place = () => { clearTimeout(tm); tm = setTimeout(() => {
+          const sel = getSelection(), txt = String(sel || '').replace(/\s+/g, ' ').trim();
+          if (!S.data?.canEdit || ctx.readOnly || !el.isConnected || !sel.rangeCount || txt.length < 2) return hide();
+          const node = sel.anchorNode?.nodeType === 1 ? sel.anchorNode : sel.anchorNode?.parentElement, host = node?.closest?.('.bb-ch, .bb-cover');
+          if (!host || !el.contains(host) || node.closest('input, textarea, [contenteditable], .bb-dock, .bb-askbox')) return hide();
+          const ch = host.classList.contains('bb-cover') ? 'Cover' : (host.querySelector('.bb-chh h2')?.textContent || 'Book'), r = sel.getRangeAt(0).getBoundingClientRect();
+          if (!bar) { bar = document.createElement('div'); bar.className = 'bb-selbar'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Change this line');
+            bar.innerHTML = '<button data-s="ask"><i aria-hidden="true">✦</i> Change with Brew</button><button data-s="rewrite">Rewrite</button><button data-s="remove">Remove</button>';
+            bar.onmousedown = (e) => e.preventDefault(); document.body.appendChild(bar); }
+          bar.style.setProperty('--bb-1', getComputedStyle(el).getPropertyValue('--bb-1')); bar.style.setProperty('--bb-on', getComputedStyle(el).getPropertyValue('--bb-on'));
+          const w = bar.offsetWidth || 300, top = r.top > 64 ? r.top - 48 : r.bottom + 10; bar.style.top = `${top + scrollY}px`; bar.style.left = `${Math.max(10, Math.min(innerWidth - w - 10, r.left + r.width / 2 - w / 2)) + scrollX}px`;
+          const line = { text: txt.slice(0, 600), ch };
+          bar.querySelectorAll('[data-s]').forEach((b) => b.onclick = () => { hide(); getSelection().removeAllRanges(); const how = b.dataset.s;
+            S.pickLine?.(line, how === 'rewrite' ? 'Rewrite it in the brand’s own voice, same meaning, no new facts.' : how === 'remove' ? 'Remove it from the book.' : null); }); }, 120); };
+        document.addEventListener('selectionchange', place); addEventListener('scroll', () => bar && place(), { passive: true });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); }); }
       if (!el.dataset.imgGuard) { el.dataset.imgGuard = 1; el.addEventListener('error', (e) => { const t = e.target; if (t?.tagName !== 'IMG') return; (t.closest('.bb-collage figure, .bb-ref, .bb-lookbook > img') || t).remove(); }, true); }
       $$('[data-deep]', el).forEach((b) => b.onclick = () => openDeep(b.dataset.deep, { tier: b.dataset.tier != null ? +b.dataset.tier : null }));
       $$('[data-fam]', el).forEach((b) => b.onclick = () => { S.fam = b.dataset.fam; paint(); $('#bb-library', el)?.scrollIntoView({ block: 'start' }); });
@@ -240,6 +259,7 @@
       const n = v.cover?.name || v.name || 'your brand';
       return `<div class="bb-dock" data-dock><div class="bb-cards" data-cards></div>
         <div class="bb-askbox"><div class="bb-ideas" data-ideas><div><span>Try</span>${[['Add a rule', 'Add a rule: '], ['Add a hero product', 'Add  to our hero products'], ['New tagline', 'Change our tagline to '], ['Never say a word', 'Never say '], ['Warmer voice', 'Make the voice warmer'], ['Remove a rival', 'Remove  from our rivals']].map(([l, t]) => `<button type="button" data-idea="${esc(t)}">${esc(l)}</button>`).join('')}</div></div>
+        <div class="bb-quote" data-quote hidden></div>
         <form class="bb-ask" data-ask><button type="button" class="bb-attach" data-attach aria-label="Add files: guidelines, deck, logo, fonts"><span aria-hidden="true">+</span></button>
           <input name="q" autocomplete="off" placeholder="Tell Brew what to change in ${esc(n)}’s book, or paste a link…" aria-label="Tell Brew what to change">
           <button class="bb-send" aria-label="Send"><span aria-hidden="true">↑</span></button>
@@ -279,7 +299,16 @@
         if (!r.upload) { toast(r.reply || 'Nothing to change there.'); return; }
         S.cards.push({ u: r.upload, reply: r.reply }); const nc = changeCard(r.upload, r.reply); nc.classList.add('is-new'); live.appendChild(nc); };
       form.onsubmit = (e) => { e.preventDefault(); const x = q.value.trim(); if (!x) return; q.value = ''; S.draft = '';
-        if (/^https?:\/\/\S+$/i.test(x)) send({ url: x, private: false }, 'Reading the link'); else send({ text: x }, `You asked: “${x.slice(0, 80)}”`); };
+        if (/^https?:\/\/\S+$/i.test(x)) send({ url: x, private: false }, 'Reading the link'); else askAbout(x); };
+      /* a line picked in the book (select any text): the request is about that line, in its chapter */
+      const quoteBox = $('[data-quote]', dock);
+      const showQuote = () => { const sl = S.sel; quoteBox.hidden = !sl; quoteBox.innerHTML = sl ? `<span>Changing</span><q>${esc(sl.text.length > 90 ? sl.text.slice(0, 88) + '…' : sl.text)}</q><small>${esc(sl.ch)}</small><button type="button" class="bb-x" data-unquote aria-label="Change something else">×</button>` : '';
+        const x = $('[data-unquote]', quoteBox); if (x) x.onclick = () => { S.sel = null; showQuote(); q.focus(); }; q.placeholder = sl ? 'What should change? Rewrite it, cut it, make it bolder…' : q.dataset.ph; };
+      q.dataset.ph = q.dataset.ph || q.placeholder;
+      const askAbout = (x) => { const sl = S.sel; S.sel = null; showQuote();
+        send({ text: sl ? `In the “${sl.ch}” part of the book, the team selected this: “${sl.text}”. ${x}` : x }, sl ? `“${sl.text.slice(0, 50)}${sl.text.length > 50 ? '…' : ''}”: ${x.slice(0, 60)}` : `You asked: “${x.slice(0, 80)}”`); };
+      S.pickLine = (sl, now) => { S.sel = sl; showQuote(); if (now) askAbout(now); else { q.focus(); dock.scrollIntoView({ block: 'nearest' }); } };
+      showQuote();
       $$('[data-idea]', dock).forEach((b) => b.onmousedown = (e) => e.preventDefault()); /* the box keeps focus, so the chips don't fold away under the tap */
       $$('[data-idea]', dock).forEach((b) => b.onclick = () => { const t = b.dataset.idea, at = t.indexOf('  '); q.value = t.replace('  ', ' '); q.focus(); const c = at >= 0 ? at + 1 : q.value.length; q.setSelectionRange(c, c); });
       const upload = async (list) => { for (const f of list) { if (f.size > 25e6) { toast(`${f.name} is over 25 MB. Upload it as a smaller PDF.`); continue; }

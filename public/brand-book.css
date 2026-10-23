@@ -522,3 +522,17 @@ span.bb-str, span.bb-where { cursor: default; }
 .bb-pass.is-cur { border-style: solid; border-radius: 50px; }
 .bb-pass.is-date { border-color: var(--bb-2); background: color-mix(in oklab, var(--bb-2) 10%, transparent); }
 @media (prefers-reduced-motion: reduce) { .bb-chan a, .bb-pick button { transition: none; } }
+
+/* ---------- select any line → change it with Brew ---------- */
+.bb-selbar { position: absolute; z-index: 98; display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: #161616; box-shadow: 0 12px 34px rgba(0,0,0,.28); animation: bbPop .18s cubic-bezier(.34,1.4,.64,1) both; }
+.bb-selbar button { appearance: none; border: 0; background: none; color: #fff; font: 600 13.5px var(--font); padding: 8px 12px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
+.bb-selbar button:hover { background: rgba(255,255,255,.12); }
+.bb-selbar button[data-s="ask"] { background: var(--bb-1); color: var(--bb-on); }
+.bb-selbar button[data-s="ask"] i { font-style: normal; }
+.bb-quote { display: flex; align-items: center; gap: 8px; margin: 10px 12px 0; padding: 8px 8px 8px 12px; border-radius: 14px; background: color-mix(in oklab, var(--bb-1) 10%, var(--surface)); font-size: 13px; min-width: 0; }
+.bb-quote[hidden] { display: none; }
+.bb-quote span { flex: none; font-weight: 700; color: var(--fg-2); }
+.bb-quote q { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); font-style: italic; }
+.bb-quote small { flex: none; color: var(--fg-3); }
+@media (prefers-reduced-motion: reduce) { .bb-selbar { animation: none; } }
+@media print { .bb-selbar { display: none !important; } }
