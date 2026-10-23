@@ -104,7 +104,10 @@ export function mountJam2(d) {
   /* a paid render (already said yes to, at that price) or a free every-product run that a restart cut off picks up again the next
      time the jam is opened, keeping the shots already made; three tries within 3 hours, then it says so and waits for a press */
   const resumeCut = async (t, j) => { for (const bd of j.boards) { const m = j.running?.[bd.id]; if (!m || m.error || busy.get(`${j.id}:${bd.id}`)) continue;
-    if (!m.resume || Date.now() - m.at > 3 * 3600e3 || (m.tries || 0) >= 3) { m.error = `Brew restarted while this was being made. Press it again${bd.inflight ? ': the shots already made are kept, free' : ''}.`; continue; }
+    /* a set that kept slides since the last try is making progress: that restart doesn't count against it (deploys every few minutes) */
+    const kept = Object.keys(bd.hfJobs || {}).filter((k) => /^set:/.test(k)).length; if (m.op === 'studio' && kept > (m.kept || 0)) m.tries = 0; m.kept = kept;
+    if (!m.resume || Date.now() - m.at > 3 * 3600e3 || (m.tries || 0) >= 3) { m.error = `Brew restarted while this was being made. Press it again${bd.inflight || kept ? ': what was already made is kept, free' : ''}.`;
+      if (m.op === 'studio' && j.v1ch && !m.told) { m.told = true; try { d.onStudioState?.(t, j.v1ch, { state: 'failed', error: m.error, jid: j.id }); } catch {} } continue; } /* the v1 jam and Work say it stopped */
     const tries = (m.tries || 0) + 1, ctx = await ctxOf(t, j);
     if (m.op === 'render') runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: m.confirmUsd, tries });
     /* a shot change resumes only on the video it was asked for (a newer take means someone moved on) */

@@ -30,7 +30,7 @@
     const D = d.defaults, X = d.context?.slots || {};
     Object.assign(S, { loading: false, jid: jam.id, bid: bd.id, boards: jam.boards.map((b) => b.id), products: d.products || [], slots: X, missing: d.context?.missing || [], blocked: D.blocked || {}, picks: D.styles || [],
       spec: { ...D, ask: '', direction: X.direction?.value || '', cast: X.cast?.shown && X.cast.value !== 'none' ? X.cast.label : X.cast?.value === 'none' ? 'No people' : null, ref: X.reference?.value?.label || null, quality: 'standard' },
-      busy: jam.busy || {}, made: (bd.takes || []).length > 0 });
+      busy: jam.busy || {}, made: (bd.takes || []).length > 0, failed: Object.values(jam.busy || {}).find((b) => b?.error)?.error || null }); /* a make that stopped says so after a reload too */
     S.open = !ch.versions?.some((v) => v.studio) && !S.made; /* made already: the set-up folds into one line under the frame */
     paint(); price(); if (anyBusy()) poll();
   }
@@ -45,7 +45,7 @@
     if (S !== mine) return; S.working = false;
     if (r?.needsConfirm) { S.plan = r.plan; paint(); return H.toast?.(`The price changed to ${usd(r.plan.usd)}. Tap Generate again.`); }
     if (r?.error) { paint(); return H.toast?.(H.esc(r.error)); }
-    S.boards = r.jam?.boards?.map((b) => b.id) || S.boards; S.busy = r.jam?.busy || {}; S.making = { line: r.plan.line, usd: r.plan.usd, at: Date.now(), n: (r.boards || []).length || 1 }; S.open = false;
+    S.boards = r.jam?.boards?.map((b) => b.id) || S.boards; S.busy = r.jam?.busy || {}; S.making = { line: r.plan.line, usd: r.plan.usd, at: Date.now(), n: (r.boards || []).length || 1 }; S.open = false; S.failed = null;
     H.making?.(S.chId, S.making); paint(); poll();
   }
   /* one slide of a made set: redo it or add one (priced, from the plan of that one style), or drop it (free) */
@@ -91,7 +91,7 @@
     const shown = setIds ? setIds.map(styleById).filter(Boolean) : (() => { const picks = S.picks.map(styleById).filter((x) => x && x.kind === kind), cur = styleById(sp.style); return cur && !picks.some((x) => x.id === cur.id) ? [cur, ...picks.slice(0, 2)] : picks.slice(0, 3); })();
     const total = groups().filter((g) => g.kind === kind).reduce((a, g) => a + g.styles.length, 0), pl = S.plan, st = styleById(sp.style);
     const castOn = X.cast?.shown || kind === 'video' || /ugc|tt-|on-model|full-body|hands/.test(sp.style || '');
-    return `<div class="j2-studio cs">${S.gallery ? gallery() : ''}
+    return `<div class="j2-studio cs">${S.gallery ? gallery() : ''}${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}
       <div class="j2-st-top">${setIds && LISTING.has(S.recipe) ? `<div class="j2-seg"><button data-cs-mk="listing" class="${isAplus(setIds) ? '' : 'on'}">Listing images</button><button data-cs-mk="aplus" class="${isAplus(setIds) ? 'on' : ''}">Amazon A+</button></div><b>${setIds.length} ${isAplus(setIds) ? 'modules' : 'images'}</b>` : setIds ? `<b>${setIds.length} slides</b>` : `<div class="j2-seg"><button data-cs-kind="image" class="${kind === 'image' ? 'on' : ''}">Image</button><button data-cs-kind="video" class="${kind === 'video' ? 'on' : ''}">Video</button></div>`}<span class="j2-st-hint">${H.ic?.('sparkles', 's14') || ''}Filled in by Brew from the card and your Brand Book · change anything</span></div>
       <p class="cs-why cs-why-top">${H.esc(why('style'))}</p>
       <div class="j2-st-styles">${shown.map(tile).join('')}<button class="j2-sti more" data-cs-gal><span class="j2-sti-art">＋</span><b>Browse templates</b><small>${total} in all</small></button></div>
