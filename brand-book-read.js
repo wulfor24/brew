@@ -13,7 +13,7 @@
 import { safeFetch, stripTags, links, hostOf, UA, sha as hash, clean } from './reader/util.js';
 import { offersOf, guaranteeOf } from './reader/stages/ads.js';
 
-export const BOOK_V = 5; // 5: ratings to one decimal, a summed marketplace never shown twice; 4: // 4: a cover tagline is never a search title, one creative listed once; 3: Instagram pictures from fresh lists (signed links expire); // 2: built with the week's enrichment (posts, reels with plays, TikToks, film words) and the signature that keeps it current
+export const BOOK_V = 6; // 6: the whole catalogue (products.all) for the All products page, tiers carry lo/hi; 5: 5: ratings to one decimal, a summed marketplace never shown twice; 4: // 4: a cover tagline is never a search title, one creative listed once; 3: Instagram pictures from fresh lists (signed links expire); // 2: built with the week's enrichment (posts, reels with plays, TikToks, film words) and the signature that keeps it current
 const FILE = 'brandbook-read.json';
 const tidy = (s, n = 400) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const squash = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[^\p{L}\p{N}']+/gu, ' ').trim();
@@ -66,9 +66,9 @@ export function libraryOf(profile = {}, { max = 6, enrich = null } = {}) {
 const money = (n, cur) => { try { return new Intl.NumberFormat(cur === 'INR' ? 'en-IN' : 'en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(n); } catch { return String(n); } };
 export function tiersOf(products = [], cur) {
   const ps = products.filter((p) => +p.price > 0 && !p.pack).map((p) => ({ t: p.title, p: +p.price })).sort((a, b) => a.p - b.p);
-  if (ps.length < 3) return ps.length ? [{ name: 'Range', from: money(ps[0].p, cur), to: money(ps.at(-1).p, cur), n: ps.length }] : [];
+  if (ps.length < 3) return ps.length ? [{ name: 'Range', from: money(ps[0].p, cur), to: money(ps.at(-1).p, cur), lo: ps[0].p, hi: ps.at(-1).p, n: ps.length }] : [];
   const q = (f) => ps[Math.min(ps.length - 1, Math.floor(f * ps.length))].p, a = q(0.34), b = q(0.67);
-  const band = (name, lo, hi) => { const xs = ps.filter((x) => x.p >= lo && x.p <= hi); return xs.length ? { name, from: money(xs[0].p, cur), to: money(xs.at(-1).p, cur), n: xs.length, eg: tidy(xs[Math.floor(xs.length / 2)].t, 60) } : null; };
+  const band = (name, lo, hi) => { const xs = ps.filter((x) => x.p >= lo && x.p <= hi); return xs.length ? { name, from: money(xs[0].p, cur), to: money(xs.at(-1).p, cur), lo: xs[0].p, hi: xs.at(-1).p, n: xs.length, eg: tidy(xs[Math.floor(xs.length / 2)].t, 60) } : null; };
   return [band('Entry', 0, a - 0.01), band('Core', a, b - 0.01), band('Premium', b, Infinity)].filter(Boolean);
 }
 /* a tagline the brand wrote, never a page title written for search ("Explore X's most trusted…", "Buy … online", "Home | X") */
@@ -88,6 +88,9 @@ export function freeChapters({ profile = {}, brief = {}, ledger = [], homeText =
     kit: { logo: id.logo || null, mark: id.mark || null, colors, fonts: { heading: id.fonts?.heading || null, body: id.fonts?.body || null } },
     products: {
       heroes: prods.filter((p) => hero.has(p.handle)).slice(0, 8).map((p) => ({ title: p.title, img: isAsset(p.img) ? p.img : null, price: p.price ? money(p.price, p.currency || cur) : p.priceText || null, mrp: p.mrp ? money(p.mrp, p.currency || cur) : null, url: p.url, about: tidy(p.about, 220) || null, claims: (p.claims || []).slice(0, 3) })),
+      /* the whole catalogue for the book's "All products" page: heroes first, then by price; bundles kept and marked */
+      all: [...prods].sort((x, y) => (hero.has(y.handle) - hero.has(x.handle)) || ((+x.price || 1e9) - (+y.price || 1e9))).slice(0, 400).map((p) => ({ title: p.title, img: p.img || p.images?.[0] || null,
+        price: p.price ? money(p.price, p.currency || cur) : p.priceText || null, p: +p.price || null, mrp: p.mrp && +p.mrp > +p.price ? money(p.mrp, p.currency || cur) : null, url: p.url || null, hero: hero.has(p.handle) || undefined, pack: p.pack ? true : undefined })).filter((p) => p.title),
       count: profile.catalog?.total ?? prods.length ?? null, tiers: tiersOf(prods, cur), sells: profile.storeKind === 'enquiry' ? 'by enquiry' : 'online',
       offers: [...new Set([L('offer.free_shipping_banner')?.v, ...offersOf(homeText)].filter(Boolean).map((x) => tidy(x, 100)))].slice(0, 5),
       guarantee: guaranteeOf(homeText) || null, returns: L('policy.return_days')?.v || null, shipping: L('policy.free_shipping')?.v || null

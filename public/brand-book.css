@@ -174,9 +174,9 @@
 .bb-rubber .bb-x { color: inherit; text-decoration: none; }
 
 /* products: a shelf on pedestals, a price staircase, perks as tickets */
-.bb-shelf { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 230px); gap: 20px; overflow-x: auto; padding: 6px 4px 18px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+.bb-shelf { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 230px); gap: 20px; overflow-x: auto; padding: 14px 18px 18px 4px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
 .bb-prod { scroll-snap-align: start; position: relative; }
-.bb-ped { position: relative; aspect-ratio: 1; border-radius: 50% 50% 24px 24px; background: radial-gradient(circle at 50% 35%, color-mix(in oklab, var(--bb-1) 20%, #fff), color-mix(in oklab, var(--bb-1) 40%, #fff)); display: grid; place-items: center; overflow: hidden; }
+.bb-ped { position: relative; aspect-ratio: 1; border-radius: 50% 50% 24px 24px; background: radial-gradient(circle at 50% 35%, color-mix(in oklab, var(--bb-1) 20%, #fff), color-mix(in oklab, var(--bb-1) 40%, #fff)); display: grid; place-items: center; }
 .bb-ped img { width: 82%; height: 82%; object-fit: contain; filter: drop-shadow(0 14px 18px rgba(0,0,0,.18)); transition: transform .3s cubic-bezier(.34,1.4,.64,1); }
 .bb-prod:hover .bb-ped img { transform: translateY(-8px) rotate(-3deg) scale(1.04); }
 .bb-tag-price { position: absolute; top: 14px; right: 10px; background: var(--bb-2); color: #fff; font: 800 14px var(--font); padding: 6px 10px; border-radius: 10px; transform: rotate(8deg); box-shadow: 0 6px 14px rgba(0,0,0,.18); }
@@ -185,7 +185,8 @@
 .bb-prod h3 a { text-decoration: none; }
 .bb-prod > p { margin: 0; color: var(--fg-2); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bb-stairs { display: flex; align-items: flex-end; gap: 10px; margin-top: 26px; }
-.bb-step { flex: 1; min-height: var(--h); padding: 14px 16px; border-radius: 18px 18px 6px 6px; background: color-mix(in oklab, var(--bb-1) 14%, var(--surface)); display: grid; align-content: end; gap: 2px; }
+.bb-step { appearance: none; border: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; transition: transform .2s cubic-bezier(.34,1.4,.64,1); flex: 1; min-height: var(--h); padding: 14px 16px; border-radius: 18px 18px 6px 6px; background: color-mix(in oklab, var(--bb-1) 14%, var(--surface)); display: grid; align-content: end; gap: 2px; }
+.bb-step:hover { transform: translateY(-4px); }
 .bb-step:last-child { background: var(--bb-1); color: var(--bb-on); }
 .bb-step b { font: 800 18px var(--bb-head); } .bb-step span { font-size: 14px; } .bb-step small { font-size: 12px; opacity: .7; }
 .bb-perks { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
@@ -424,3 +425,28 @@
 .bb-prod-more { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .bb-prod .bb-thumbs { display: inline-flex; gap: 4px; }
 .bb-prod .bb-thumbs img { width: 34px; height: 34px; aspect-ratio: 1; border-radius: 8px; object-fit: cover; }
+
+/* ---------- deeper pages: a chapter's own full page (All products), over the book, in the book's colours ---------- */
+.bb-door { appearance: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 6px 0 4px; padding: 16px 20px; border: 2px dashed color-mix(in oklab, var(--bb-1) 55%, transparent); border-radius: 20px; background: none; color: var(--fg); font: 700 17px var(--bb-head); cursor: pointer; transition: background .15s; }
+.bb-door i { font-style: normal; font-size: 22px; transition: transform .2s; }
+.bb-door:hover { background: color-mix(in oklab, var(--bb-1) 10%, transparent); } .bb-door:hover i { transform: translateX(6px); }
+.bb-deep { position: fixed; inset: 0; z-index: 94; overflow-y: auto; background: var(--bg); opacity: 0; transform: translateY(24px); transition: opacity .2s, transform .28s cubic-bezier(.2,.9,.3,1); }
+.bb-deep.is-in { opacity: 1; transform: none; }
+html.bb-deep-open { overflow: hidden; }
+.bb-deep-in { max-width: 1180px; margin: 0 auto; padding: 18px 16px 120px; }
+.bb-deep-h { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 10px 0 6px; margin-bottom: 18px; }
+.bb-deep-h .bb-back { display: block; margin-bottom: 18px; }
+.bb-deep-h h2 { font: 800 clamp(30px, 4.6vw, 60px)/1 var(--bb-head); letter-spacing: -.02em; margin: 0 0 14px; }
+.bb-deep-h .bb-tabs { margin: 14px 0 0; }
+.bb-pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 22px 18px; }
+.bb-pc { display: grid; gap: 6px; color: var(--fg); text-decoration: none; animation: bbPop .35s cubic-bezier(.34,1.4,.64,1) both; animation-delay: calc(var(--i) * 18ms); }
+.bb-pc-img { position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 24px; background: radial-gradient(circle at 50% 35%, color-mix(in oklab, var(--bb-1) 14%, #fff), color-mix(in oklab, var(--bb-1) 32%, #fff)); overflow: hidden; }
+.bb-pc-img img { width: 84%; height: 84%; object-fit: contain; filter: drop-shadow(0 10px 14px rgba(0,0,0,.16)); transition: transform .3s cubic-bezier(.34,1.4,.64,1); }
+.bb-pc:hover .bb-pc-img img { transform: translateY(-6px) rotate(-2deg) scale(1.04); }
+.bb-pc-img em { position: absolute; top: 10px; left: 10px; font: 800 11px var(--font); font-style: normal; padding: 4px 8px; border-radius: 8px; background: var(--bb-1); color: var(--bb-on); transform: rotate(-4deg); }
+.bb-pc-img em.is-pack { background: var(--bb-2); color: #fff; }
+.bb-pc b { font: 600 14px/1.3 var(--font); }
+.bb-pc-p { font: 700 14px var(--font); } .bb-pc-p s { color: var(--fg-3); font-weight: 400; }
+@media (max-width: 560px) { .bb-pgrid { grid-template-columns: 1fr 1fr; gap: 16px 12px; } .bb-pc-img { border-radius: 18px; } }
+@media (prefers-reduced-motion: reduce) { .bb-deep, .bb-pc { transition: none; animation: none; } }
+@media print { .bb-door, .bb-deep { display: none !important; } }

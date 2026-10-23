@@ -276,3 +276,13 @@ test('“Tell Brew what to change”: products only from the real catalogue, nev
   assert.ok(!out.book.neverSay.includes('cheap') && out.book.neverSay.includes('cure'));
   member = false; assert.equal((await ask({ text: 'x y z' }, t, { slug: 'cozy' })).status, 403);
 });
+
+test('the book keeps the whole catalogue for its All products page, heroes first, with price steps to filter by', async () => {
+  const { freeChapters } = await import('../brand-book-read.js');
+  const products = Array.from({ length: 12 }, (_, i) => ({ handle: `p${i}`, title: `Product ${i}`, price: 100 + i * 50, url: `https://x.test/p${i}`, img: `https://cdn.x.test/p${i}.jpg` }));
+  const f = freeChapters({ profile: { currency: 'INR', catalog: { products, hero: ['p7'], total: 12 } } });
+  assert.equal(f.products.all.length, 12);
+  assert.equal(f.products.all[0].title, 'Product 7');
+  assert.ok(f.products.all[0].hero);
+  for (const t of f.products.tiers) { assert.equal(typeof t.lo, 'number'); assert.equal(f.products.all.filter((p) => p.p >= t.lo && p.p <= t.hi).length, t.n); }
+});

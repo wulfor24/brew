@@ -29,9 +29,9 @@ export function toMarkdown(v = {}, { url = '' } = {}) {
   B('Quote customers only from the review lines below, word for word. Never invent results, reviews, prices or numbers.');
   if (t.summary || t.traits?.length) { H('Voice'); B(t.summary); for (const x of t.traits || []) B(`${x.trait}${x.sounds ? `: like "${one(x.sounds, 180)}"` : ''}`);
     for (const x of t.never || []) B(`Never ${x.text.toLowerCase().replace(/^never\s+/, '')}`); B(t.reading ? `Reading level: ${end(t.reading)}.` : null); B(t.language ? `Writes in ${end(t.language)}.` : null);
-    if (t.pairs?.length) { L.push('', 'Say it their way:'); for (const p of t.pairs) L.push(`- Yes: "${one(p.do, 160)}" Not: "${one(p.dont, 160)}"`); }
+    if (t.pairs?.length) { L.push('', `Say it the ${n} way:`); for (const p of t.pairs) L.push(`- Yes: "${one(p.do, 160)}" Not: "${one(p.dont, 160)}"`); }
     if (t.cta?.style || t.cta?.examples?.length) B(`Calls to action: ${[end(t.cta.style), t.cta.examples?.length ? `theirs are ${t.cta.examples.map((x) => `"${x}"`).join(', ')}` : ''].filter(Boolean).join('; ')}.`); }
-  if (w.use?.length || w.customers?.length) { H('Words'); B(w.use?.length ? `They say: ${w.use.join(', ')}.` : null); B(w.customers?.length ? `Customers say: ${w.customers.join(', ')}.` : null); }
+  if (w.use?.length || w.customers?.length) { H('Words'); B(w.use?.length ? `${n} says: ${w.use.join(', ')}.` : null); B(w.customers?.length ? `Customers say: ${w.customers.join(', ')}.` : null); }
   if (lk.notes || k.roles?.length || k.fonts?.heading) { H('Look');
     B(lk.notes); for (const [k, x] of [['Light', lk.light], ['People', lk.people], ['Framing', lk.framing], ['Words on pictures', lk.wordsOnImage], ['Logo', lk.logoUse]]) B(x ? `${k}: ${end(x)}.` : null);
     B((k.roles || []).length ? `Colours: ${k.roles.map((c) => `${c.hex}${c.role ? ` (${c.role}${c.share ? `, ~${c.share}` : ''})` : ''}${c.use ? ` ${one(c.use, 60)}` : ''}`).join('; ')}.` : null);
