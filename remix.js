@@ -17,7 +17,8 @@ import { createStudioFinals } from './finals-routes.js';
 import { beatWords, buildDraft, motionOnly, onScreen } from './sloosh-prompt.js'; // Make the final on a version: Sloosh, quote first, behind a button
 import { versionLabel } from './text-fit.js';
 import { ctaName } from './seed-template.js'; /* a renamed button (Publish Campaign, List what points there) maps as its new name */
-import { withSteps } from './card-plan.js';
+import { withSteps, isBatchCard } from './card-plan.js';
+import { planFor as j2Plan, recipe as j2Recipe } from './jam2/catalogue.js'; import { inStudio } from './jam2/studio.js'; // v1's pictures, sets and videos are made by Brew Studio (priced, on a yes)
 import { shopperLine, familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx, isAdVideo, namesLiveTest } from './studio.js';
 import { buildPack } from './publish-pack.js';
 import { impactInputs, projectImpact } from './impact.js';
@@ -453,6 +454,13 @@ export function createRemix(o) {
   const { SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on: on0, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, log = console } = o;
   const colName = (id) => SEED.colleagues.find((c) => c.id === id)?.name || 'A colleague';
   /* anything done to a change moves its jam's clock, so every teammate's open jam and studio (jamPoll) picks it up in seconds */
+  /* a picture, a set or a video the card's button asks for is made by Brew Studio from the v1 jam: set up from the card, priced,
+     made on a yes (Param, 23 Oct). Nothing is drawn free on open. Returns the Studio recipe, or null for words, messages, batches.
+     V1_STUDIO=0 brings back the free Gemini draft */
+  const STUDIO_FAM = new Set(['meta_ad', 'social', 'post', 'listing', 'print']);
+  const studioOf = (t, ch, label = null, c = null) => { if (process.env.V1_STUDIO === '0' || process.env.DEMO_MODE === '1' /* the demo has no Studio */ || !ch || ch.batchKey || !STUDIO_FAM.has(ch.family)) return null; c ||= t.cards?.get?.(ch.cardId); if (!c || isBatchCard(c)) return null;
+    if (ch.family === 'post' && !isVideoPost(ch)) return null;
+    try { const r = j2Recipe(j2Plan(c, String(label || ch.studioLabel || ch.ctaMade?.label || c.cta?.label || '').slice(0, 60))[0]?.recipe); return r && inStudio({ kind: r.kind, recipe: r.id }) ? r.id : null; } catch { return null; } };
   const bump = (t, ch) => { try { const w = ch && jamOf(t, ch); if (w) w.updatedAt = now(t); } catch {} };
   const on = (m, pat, fn) => on0(m, pat, m === 'GET' || !/:chid/.test(pat) ? fn : async (b, t, p, q) => { try { return await fn(b, t, p, q); } finally { bump(t, changes(t)?.[p?.chid]); } });
   const changes = (t) => (t.changes ||= {});
@@ -687,11 +695,11 @@ export function createRemix(o) {
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
     /* the jam's own name in plain words ("syncing our Shopify products.json stock levels", final QA pass 19 Oct); the package itself is untouched */
     if (pub.after?.title && dejargon(pub.after.title) !== pub.after.title) pub.after = { ...pub.after, title: dejargon(pub.after.title) };
-    return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), ...(isReferenceCard(card0) && o.refSummary ? { ref: o.refSummary(t, card0) } : {}), /* View references: the ad or video it remakes */ thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
+    return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), ...(isReferenceCard(card0) && o.refSummary ? { ref: o.refSummary(t, card0) } : {}), /* View references: the ad or video it remakes */ thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, studio: studioOf(t, ch), /* made by Brew Studio on the stage */ /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
       familyName: ch.action === 'creative.short_video' && ch.target?.conn === 'meta' ? 'Meta video ad' : FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).filter((f) => !isAdClip(ch) || !['postAt', 'hashtags', 'where'].includes(f.k)).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label: isAdClip(ch) ? ({ copy: 'Ad text', title: 'Headline', platform: 'Placement' }[k] || label) : label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
       options: opts /* the cuts as tabs: pick one (Param, 19 Oct) */, head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
-        ...(v.drawing ? { drawing: true } : {}), ...(v.drawError ? { drawError: v.drawError } : {}), ...(v.passed ? { passed: true } : {}), ...(v.asset ? { asset: v.asset } : {}) /* v2 takes: a picture still being made, why it wasn't, a version passed over, the asset that landed */ })), live: ch.liveVersionId || null };
+        ...(v.drawing ? { drawing: true } : {}), ...(v.drawError ? { drawError: v.drawError } : {}), ...(v.passed ? { passed: true } : {}), ...(v.asset ? { asset: v.asset } : {}), ...(v.studio ? { studio: v.studio } : {}) /* v2 takes: a picture still being made, why it wasn't, a version passed over, the asset that landed */ })), live: ch.liveVersionId || null };
   };
 
   /* ---------- the studio: iterate, knobs, variations, the creative ---------- */
@@ -1452,11 +1460,11 @@ export function createRemix(o) {
     if (made[0]) seedV0(t, c, made[0]); /* the jam's package opens on the card's own first draft */
     /* "Make our version" of a rival's ad: the person asked for our ad, so its first picture (in the rival's style, our product)
        is made once the words are written; nothing else opens a paid picture by itself */
-    const firstPic = isRivalCard(c) && made[0] && !/^gen\//.test(made[0].pkg?.image || '') ? () => (isVideoPost(made[0]) ? genVideo(t, made[0], 'our version of the rival video') : genImage(t, made[0], 'our version of the rival ad')) : null;
+    const firstPic = isRivalCard(c) && made[0] && !studioOf(t, made[0], null, c) && !/^gen\//.test(made[0].pkg?.image || '') ? () => (isVideoPost(made[0]) ? genVideo(t, made[0], 'our version of the rival video') : genImage(t, made[0], 'our version of the rival ad')) : null;
     /* the first photo starts with the copy, not after it: an ad or a post with no picture of its own (no first draft on the card)
        gets one of the card's own product now, on version 1, and the copy keeps it when it lands (fillLater keepMedia) */
     const lead = made[0];
-    if (fast && lead && !firstPic && ['meta_ad', 'social'].includes(lead.family) && lead.v0 !== 'draft' && !/^gen\//.test(lead.pkg?.image || '')) genImage(t, lead, 'the first photo', { target: versionsOf(t, lead.id)[0]?.id || null });
+    if (fast && lead && !firstPic && !studioOf(t, lead, null, c) && ['meta_ad', 'social'].includes(lead.family) && lead.v0 !== 'draft' && !/^gen\//.test(lead.pkg?.image || '')) genImage(t, lead, 'the first photo', { target: versionsOf(t, lead.id)[0]?.id || null });
     if (writeLater && made[0]) fillLater(t, c, made[0], writeLater, firstPic); else firstPic?.();
     return { line, live, changes: made.map((x) => pubChange(t, x)), learned: learnedOut(t) };
   });
@@ -1510,7 +1518,8 @@ export function createRemix(o) {
     ch.planRun = { at: now(t), n: 1, versions: [v.id], by: 'redo' }; /* the card's button steps aside: this take is the one on the stage */
     if (ch.options && !ch.options.picked) ch.options = { ...ch.options, picked: v.id }; /* an old jam with options: the redo is the one */
     let made = '';
-    if (visual) made = genImage(t, ch, 'the new take', { all: rows.length > 1, target: v.id }) ? (rows.length > 1 ? 'Its slides land in a minute.' : 'Its picture lands in a minute.') : '';
+    if (studioOf(t, ch, null, c)) made = ''; /* a Studio jam: the words change free, the picture or film is made again on the stage, priced */
+    else if (visual) made = genImage(t, ch, 'the new take', { all: rows.length > 1, target: v.id }) ? (rows.length > 1 ? 'Its slides land in a minute.' : 'Its picture lands in a minute.') : '';
     else if (hadClip) made = genVideo(t, ch, 'the new take') ? 'Filming it now, a free draft, about two minutes.' : videoWhy(ch);
     else if (isVideoPost(ch)) made = 'Tap Make the video when you want the clip.';
     ch.thread.push({ from: 'ai', text: `Redid it${x.angle ? `: ${redoName(x.angle)}` : ''}. v${v.n} is on the stage${was ? `; v${was.n} is in History` : ''}. ${made}`.trim(), at: now(t) });
@@ -1622,6 +1631,7 @@ export function createRemix(o) {
   on('POST', '/api/changes/:chid/cta-make', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const c = t.cards.get(ch.cardId) || {}, label = String(b.label || c.cta?.label || '').slice(0, 60);
+    if (studioOf(t, ch, label, c)) { ch.studioLabel = label; return { change: pubChange(t, ch), making: false, studio: true }; } /* the stage's composer makes it, priced */
     if (!ctaMakes(t, label, ch, c) || editable(ch) || (isMock() && !(ch.family === 'listing' && /photo|image/i.test(label)) /* AI offline: only a listing's photos still land (the store's own, listingFromCatalog) */)) return { change: pubChange(t, ch), making: false };
     if (ch.ctaMade) return { change: pubChange(t, ch), making: false, already: true }; /* once per jam: the next press just opens it */
     ch.ctaMade = { label, at: now(t) };
@@ -2043,5 +2053,16 @@ export function createRemix(o) {
   const finalDone = (t, rec) => { const ok = STUDIO_FINALS?.landDone(t, rec) || false; if (ok) o.save?.(t); return ok; };
   /* v2 takes for the feed's pulse (updatedSince, healTakes) and for tests (the draws in flight) */
   const v2 = { updatedSince, healTakes, jobs: TAKE_JOBS, settle: async () => { while (TAKE_JOBS.size) await Promise.all([...TAKE_JOBS.values()].map((j) => j.run)); } }; /* a take's words job hands over to its picture job */
-  return { remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
+  /* a Studio take (made from this jam's composer, priced and confirmed) lands as the jam's next version: a picture, the slides of a
+     set (a listing's photo set), or a film with its poster. The words stay; History says what Studio made and what it cost */
+  const landStudio = (t, chId, take) => { const ch = C(t, chId); if (!ch || !take?.file) return null; ensurePkg(t, ch);
+    const st = take.studio || {}, label = cleanLabel(st.label || 'Studio') || 'Studio', slides = (take.slides || []).filter((x) => x?.file);
+    const media = slides.length > 1 ? (ch.family === 'listing' ? { photoSet: slides.map((x) => ({ image: x.file, style: x.style || null })), image: slides[0].file } : { image: slides[0].file, cardImages: slides.map((x) => x.file) })
+      : st.kind === 'video' ? { video: take.file, poster: take.poster || take.shot?.file || null, image: take.poster || take.shot?.file || ch.pkg.image } : { image: take.file };
+    ch.pkg = { ...ch.pkg, ...media }; ch.imageError = null; sync(t, ch);
+    const v = version(t, ch, 'brew', `Studio: ${label}${take.cost?.usd ? ` · $${take.cost.usd}` : ''}`, label); v.studio = { style: st.style || null, label, kind: st.kind || null, size: st.size || null, usd: take.cost?.usd || 0, jid: take.jid || null };
+    studioState(t, chId, { state: 'made', line: label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
+  /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
+  const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; ch.studioState = { ...st, at: now(t) }; const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };
+  return { landStudio, studioOf, studioState, remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
 }

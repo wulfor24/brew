@@ -111,7 +111,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
   async function perTake(ctx, st, size, seconds) {
     const shot = await engines.quote('still.shot', { slug: ctx.slug }).catch(() => ({ usd: 0.14 }));
     if (st.job === 'packshot') return 0; /* the real photo cut out and set on white, here */
-    if (st.job === 'product-shot') return (shot.usd ?? 0.14) * 1.5; /* one take, a retry about half the time */
+    if (st.job === 'product-shot') return (shot.usd ?? 0.14) * 1.5 * (ctx.tier === 'premium' ? 2 : ctx.tier === 'preview' ? 0.3 : 1); /* Flare 4K ≈ 2× 2K; 1K preview ≈ 0.3× */ /* one take, a retry about half the time */
     if (st.job === 'type-poster' || st.job === 'brand-graphic') { const o = hf.pick(st.job); const e = await hf.estimate(o.id, { ...o.input, prompt: 'a poster with the brand offer in large type for a product ad', aspect_ratio: hf.nearestRatio(o.id, size.ratio) }); return (e.usd ?? 0.1) * 1.5; /* a retry about half the time */ }
     if (st.job === 'product-motion') { const o = hf.pick('product-motion'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', image_url: 'https://brew.joinsquareup.com/x.jpg', duration: seconds || 5 }); return (shot.usd ?? 0.14) * 1.5 + (e.usd ?? 0.11 * (seconds || 5)); }
     if (st.job === 'ugc-video') { const o = hf.pick('ugc-video'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', image_urls: ['https://brew.joinsquareup.com/x.jpg'], duration: seconds || 10 }); return e.usd ?? 0.3 * (seconds || 10); }
@@ -119,7 +119,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
   }
   /* the plan line and its price: what will be made, how many, at what cost */
   async function plan(ctx, spec) {
-    if (spec.product?.img) ctx.product = { ...spec.product };
+    if (spec.product?.img) ctx.product = { ...spec.product }; if (spec.quality) ctx.tier = spec.quality === 'premium' ? 'premium' : spec.quality === 'preview' ? 'preview' : null;
     if (Array.isArray(spec.set)) { const set = spec.set.map(styleOf).filter((x) => x && x.kind === 'image').slice(0, 10); if (set.length < (spec.fill ? 1 : 2)) return { error: spec.fill ? 'Nothing is missing.' : 'Pick at least two slides.' }; /* filling in left-out slides may be one */
       const no = set.map((x) => blockOf(x, ctx)).find(Boolean); if (no) return { error: no };
       const size = sizeOf(spec.sizes?.[0] || 'ig-portrait'), each = await Promise.all(set.map((x) => perTake(ctx, x, size))), usd = +each.reduce((a, b) => a + b, 0).toFixed(2), prod = spec.product?.name || ctx.product?.name;
@@ -145,6 +145,10 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     const st = styleOf(spec.style); if (!st) throw new Error('Pick a style.');
     const size = sizeOf(spec.sizes?.[0] || (st.kind === 'video' ? 'story' : 'ig-portrait'));
     if (spec.product?.img) ctx.product = { ...spec.product };
+    /* what the team set on the composer (the direction Brew wrote and they may have changed, who is on camera, the reference to
+       follow, the quality) is what every maker below reads: the art direction, the shot, the film */
+    const asks = [spec.direction ? `The direction for this piece (follow it): ${tidy(spec.direction, 600)}` : '', spec.cast ? `On camera: ${tidy(spec.cast, 160)}.` : '', spec.ref ? `Follow the idea and layout of the reference (${tidy(spec.ref, 120)}), never copy its brand, words or people.` : ''].filter(Boolean);
+    if (asks.length && !ctx.asked) { ctx.notes = [...(ctx.notes || []), ...asks]; ctx.asked = true; } if (spec.quality) ctx.tier = spec.quality === 'premium' ? 'premium' : spec.quality === 'preview' ? 'preview' : null;
     const no = blockOf(st, ctx); if (no) throw new Error(no); /* the Brand Book may have changed since the price was shown */
     const words = await maker.write(ctx, board, { ask: spec.count > 1 ? `This is take ${i + 1} of ${spec.count}: a different hook and headline from the others${spec.ask ? `; ${spec.ask}` : ''}.` : spec.ask || '' }).catch(() => ({}));
     const made = [], take = { op: 'studio', by: ctx.by, words, made, studio: { style: st.id, label: st.label, group: st.group, kind: st.kind, size: size.key } };
@@ -178,10 +182,10 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       const rules = `The only words on the image: ${exact}${ctx.bbv?.name ? `, and the brand name ${ctx.bbv.name}` : ''}.${callouts} No other text: no sizes, numbers, prices, percentages, ingredients or claims.${review ? '' : ' Nothing styled as a customer review or star rating.'}${market ? ' No button, badge, price or call to action: this is a marketplace product image.' : ''}${people}`;
       /* a piece that shows the product (an ad style, a marketplace infographic or scale image) is drawn by Flare around the real
          product photos and must keep it; a type-led poster or an illustration (Ideogram / Recraft) carries no product */
-      const showsProduct = !!(st.preset || st.designed), job = showsProduct ? 'product-shot' : st.job, o = hf.pick(job), photos = showsProduct ? cr.photosOf(ctx, ctx.profile).slice(0, st.preset ? 1 : 3).map((u) => engines.pub(u)) : [];
+      const showsProduct = !!(st.preset || st.designed), job = showsProduct ? 'product-shot' : st.job, o = hf.pick(job, ctx.tier || 'default'), photos = showsProduct ? cr.photosOf(ctx, ctx.profile).slice(0, st.preset ? 1 : 3).map((u) => engines.pub(u)) : [];
       const base = st.preset ? { ...o.input, enhance_prompt: true, preset_id: st.preset, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) }
         : showsProduct ? { ...o.input, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) } : { ...o.input, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
-      const colours = (ctx.bbv?.kit?.colors || []).filter(Boolean), promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}${colours.length ? `, in its colours ${colours.join(', ')}` : ''}.`, showsProduct && photos.length ? 'The product is exactly the one in the reference photos: same shape, colours, label and count.' : '', cr.productLine(ctx.profile), rules, fix].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
+      const colours = (ctx.bbv?.kit?.colors || []).filter(Boolean), promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}${colours.length ? `, in its colours ${colours.join(', ')}` : ''}.`, showsProduct && photos.length ? 'The product is exactly the one in the reference photos: same shape, colours, label and count.' : '', cr.productLine(ctx.profile), spec.direction ? tidy(spec.direction, 600) : '', rules, fix].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
       let file = null, check = null;
       for (let t = 0; t < 2 && !file; t++) {
         const input = { ...base, prompt: promptOf(t && check ? `The last one was wrong: ${check.same ? '' : 'the product changed. '}${check.invented.length ? `it added "${check.invented.join('", "')}" — leave those out.` : ''}` : '') };
@@ -199,12 +203,12 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     } else if (st.job === 'product-motion') { /* a checked product shot (the style's look, no words), then Kling moves it */
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); /* before the first frame is paid for */
       const shot = await cr.staticAd(ctx, board, words, size, { style: { ...st, people: 'none' }, noWords: true }); made.push(...shot.made); if (!shot.shot) throw Object.assign(new Error(shot.fail || 'The first frame didn’t keep the product.'), { made });
-      const o = hf.pick('product-motion'), input = { ...o.input, prompt: tidy(`${st.look} ${cr.productLine(ctx.profile)} Nothing new appears; no text.`, 2400), image_url: engines.pub(shot.shot.file), duration: +spec.seconds || st.seconds || 5 };
+      const o = hf.pick('product-motion', ctx.tier || 'default'), input = { ...o.input, prompt: tidy(`${st.look} ${cr.productLine(ctx.profile)} Nothing new appears; no text.`, 2400), image_url: engines.pub(shot.shot.file), duration: +spec.seconds || st.seconds || 5 };
       const e = await hf.estimate(o.id, input), out = await runHF('motion', o.id, input, { maxMs: 20 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.motion', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.55 });
       Object.assign(take, { file, poster: shot.shot.file, shot: shot.shot });
     } else { /* UGC / TikTok: a person with the real product, talking, Seedance with the product photos as references */
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); await ensureProfile(ctx);
-      const photos = cr.photosOf(ctx, ctx.profile).map((u) => engines.pub(u)), o = hf.pick('ugc-video'), line = tidy([words.headline, words.sub].filter(Boolean).join(' '), 220);
+      const photos = cr.photosOf(ctx, ctx.profile).map((u) => engines.pub(u)), o = hf.pick('ugc-video', ctx.tier || 'default'), line = tidy([words.headline, words.sub].filter(Boolean).join(' '), 220);
       /* the same art direction as a photo: the brand's market, cast, places and taste decide who is on camera and where (23 Oct, Arata:
          the look alone gave a Western presenter for an Indian hair brand) */
       const d = await cr.direct(ctx, board, words, size, { ...st, people: 'person' }, { film: true }).catch(() => null);

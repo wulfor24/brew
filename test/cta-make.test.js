@@ -10,6 +10,9 @@ import { versionsOf } from '../learn.js';
 import { configureGen } from '../gen-store.js';
 import { runIn } from '../brand-ctx.js';
 
+/* these are the free Gemini drafts v1 made before Brew Studio (V1_STUDIO=0 keeps that path); the Studio path is in v1-studio.test.js */
+process.env.V1_STUDIO = '0';
+
 process.env.AI_MOCK = '1';
 const BRAND = { slug: 'acme', name: 'Acme', host: 'acme.com', sym: '$', config: { product: { noun: 'balm' } }, seed: { brand: { name: 'Acme', host: 'acme.com' } } };
 const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'cta-make-')); fs.mkdirSync(path.join(DIR, 'gen'), { recursive: true });

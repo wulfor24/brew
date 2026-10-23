@@ -1910,7 +1910,11 @@
     // anything that moved: a lane change, a new reading, a new version, read state. Not every move posts a note (readings never do)
     const sig = (x) => (x.items || []).map((w) => `${w.id}:${w.stage}:${w.updatedAt}:${w.unread ? 1 : 0}:${w.current}:${w.measure?.readings?.length || 0}:${w.result?.verdict || ''}`).join('|');
     const moved = !first && sig(r) !== sig(WORK), before = new Map(WORK.items.map((w) => [w.id, sig({ items: [w] })]));
+    const wasMaking = new Set(WORK.items.filter((w) => w.creative?.state === 'making').map((w) => w.id));
     (r.items || []).forEach(teamFix); WORK = { ...r, loaded: true };
+    /* a Studio creative that finished since the last look (made from any jam, by anyone): the ready cue and a way to it */
+    if (!first) for (const w of r.items || []) if (wasMaking.has(w.id) && w.creative && w.creative.state !== 'making' && !(view === 'remix' && RX.ch?.id === w.changeId)) {
+      const ok = w.creative.state === 'made'; sound(ok ? 'ready' : 'error'); toast(`${ic(ok ? 'check' : 'info', 's16')}${ok ? `Ready: ${esc(w.creative.line || 'your creative')}` : `Couldn’t make it: ${esc(w.creative.error || 'try again')}`}${w.cardId ? ` <button class="linkbtn" data-livech="${esc(w.changeId || '')}" data-card="${esc(w.cardId)}">See it</button>` : ''}`); break; }
     const fresh = first ? [] : r.notes.filter((n) => !known.has(n.id));
     if (fresh.length && !first && document.visibilityState === 'visible') { const ks = fresh.map((n) => n.kind); sound(ks.includes('result') ? (fresh.some((n) => n.kind === 'result' && /beat|won/i.test(n.text)) ? 'win' : 'ping') : ks.includes('needs_you') ? 'knock' : ks.includes('live') ? 'live' : ks.includes('ready') ? 'approve' : 'ping'); }
     if (fresh.length && !quiet) toast(`${ic('done', 's16')}${esc(fresh[0].text)}${fresh.length > 1 ? ` <small>+${fresh.length - 1} more</small>` : ''}`);
@@ -2581,7 +2585,10 @@
       <header class="card-head">${face(w.agent || 'brew')}<div class="who"><b>${esc(AGENT[w.agent] || 'Brew')}</b><span>${ago(w.updatedAt)}</span></div>${wbBadge(w)}</header>
       ${w.img ? `<div class="media portrait"><img src="${esc(w.img)}" alt="" loading="lazy"></div>` : ''}
       <div class="body">${(() => { const c = w.whose || w.cardSnap || {}, rv = rivalOf(c), wa = rv ? ourVersionOf(rv.name) : whoseAd({ ...c, images: c.images?.length ? c.images : w.img ? [w.img] : [] }); return wa ? `<small class="wb-whose">${esc(wa)}</small>` : ''; })() /* whose ad it is, like the feed: "Made for you" on our own (FEED-NOT-02) */}<h3>${w.unread ? '<i class="wb-new"></i>' : ''}${esc(wbTitle(w))}</h3>${wbBody(w)}</div>${wbFoot(w)}</article>`;
-  const wbStrip = (w) => { const say = needsMe(w) ? `Answer ${esc(w.askMe?.who || w.with?.name || 'them')}` : w.stage === 'needs_you' ? `Waiting on ${esc(w.assignee?.name || 'your team')}` : w.stage === 'team' ? `With ${esc(w.with?.name || 'your team')}` : w.stage === 'ready' ? 'Approved · share the brief' : w.stage === 'shared' ? `Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}` : w.versions?.length > 1 ? `Draft v${w.current} of ${w.versions.length}` : 'Draft';
+  /* a creative Brew Studio is making for this jam, or just made: the Work card says so first (fresh for 40 minutes) */
+  const creativeSay = (w) => { const c = w.creative; if (!c || Date.now() - (c.at || 0) > 40 * 60e3 && c.state === 'making') return null;
+    return c.state === 'making' ? `<brew-load class="spin"></brew-load>Making ${esc(c.line || 'it')}` : c.state === 'made' && w.unread ? `Ready · ${esc(c.line || 'your creative')}` : c.state === 'failed' && w.unread ? `Couldn’t make it · ${esc(String(c.error || '').slice(0, 60))}` : null; };
+  const wbStrip = (w) => { const say = creativeSay(w) || (needsMe(w) ? `Answer ${esc(w.askMe?.who || w.with?.name || 'them')}` : w.stage === 'needs_you' ? `Waiting on ${esc(w.assignee?.name || 'your team')}` : w.stage === 'team' ? `With ${esc(w.with?.name || 'your team')}` : w.stage === 'ready' ? 'Approved · share the brief' : w.stage === 'shared' ? `Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}` : w.versions?.length > 1 ? `Draft v${w.current} of ${w.versions.length}` : 'Draft');
     return `<div class="wb-strip is-${esc(needsMe(w) ? 'needs_you' : w.stage === 'needs_you' ? 'team' : w.stage)}">${w.unread ? '<i class="wb-new"></i>' : ''}<b>${say}</b><span>${ago(w.updatedAt)}</span>${ic('right', 's14')}</div>`; };
   const workTile = (w) => { const p = w.cardId && byId(w.cardId), i = p ? FEED.indexOf(p) : -1;
     return i < 0 ? tileHtml(w) : `<div class="wb-fc${w.unread ? ' is-unread' : ''}" data-witem="${w.id}">${wbStrip(w)}${postCard(p, i)}</div>`; };
@@ -2611,6 +2618,9 @@
         if (!b.inflight.length && b.done < 51 && !b.failed.length && !b.queue.length) out.push({ id: 'bg-w', kind: 'next', t: 'Waiting to start', s: b.state || '', meta: '' });
       } }
     const r = await api('/api/research'); (r?.running || []).forEach((k) => out.push({ id: 'bg-r' + k, kind: 'run', t: { ads: 'Reading rival ads', own: 'Reading your live ads', trends: 'Reading Google Trends', news: 'Reading industry news', howto: 'Writing this week’s playbooks' }[k] || 'Research', s: 'For your story rings', meta: 'A minute or two', pct: 50 }));
+    /* creatives Brew Studio is making right now, from any jam: in the background lane with what they cost */
+    WORK.items.filter((w) => w.creative?.state === 'making' && Date.now() - (w.creative.at || 0) < 40 * 60e3).forEach((w) => { const secs = (Date.now() - w.creative.at) / 1e3, vid = w.creative.kind === 'video';
+      out.unshift({ id: 'bg-cs' + w.id, kind: 'run', t: `Making ${w.creative.n > 1 ? `${w.creative.n} creatives` : vid ? 'a video' : 'a creative'}`, s: w.creative.line || w.title || '', meta: `${mins(secs)} so far · usually ${vid ? '3 to 8 min' : 'about a minute'}${w.creative.usd != null ? ` · $${(+w.creative.usd).toFixed(2)}` : ''}`, pct: Math.min(92, Math.round(100 * secs / (vid ? 360 : 70))) }); });
     const was = JSON.stringify(BG.items); BG.items = out;
     if (view === 'work' && was !== JSON.stringify(out)) renderWork();
     BG.t = view === 'work' || view === 'moves' ? setTimeout(loadBG, 10e3) : null;
@@ -4406,13 +4416,31 @@
     if (g('[data-tb-files]')) { (TBS.brief?.creatives || []).forEach((c, i) => setTimeout(() => dl('/' + c.url, c.name), i * 300)); } });
   addEventListener('keydown', (e) => { if (view !== 'remix' || RX.stage !== 'brief') return; const ed = e.target.closest?.('[data-tb-ai]'); if (ed && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ed.click(); }
     if (e.target.id === 'tbm-ed') { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); e.target.blur(); RX.tbEdit = null; paintStudio(); } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $('[data-tb-save]')?.click(); } } }, true);
+  /* the creative stage (Brew Studio in the v1 jam): the frame the piece lives in, filled from the card at once (never a blank
+     skeleton), the composer under it, and the ship bar once something is made. Before that the composer's Generate is the way on */
+  const studioMade = (ch) => ch.versions.some((v) => v.studio);
+  const studioStage = (ch, pkgCh, viewing) => { const made = studioMade(ch), cs = window.CreativeStage, st = cs?.state(ch.id);
+    if (cs && !st) cs.mount(ch, RX.p);
+    const making = !!st?.making;
+    return `<div class="st-asset cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}${assetHtml(pkgCh, 'lg')}</div>
+      ${cs ? cs.html(ch) : ''}${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
+  window.CreativeStage?.init({ tapi, esc, toast, ic,
+    paint: () => { if (view === 'remix' && RX.ch?.studio) paintStudio(); },
+    remount: () => { if (view === 'remix' && RX.ch) paintStudio(); },
+    toFeed: () => leaveRemix(),
+    toBrand: () => { location.hash = '#v=brand'; },
+    making: () => pullWork(true),
+    /* a Studio take landed (or failed): read the jam again (its new version), say so with the ready cue, wherever the person is */
+    landed: async (chId, r) => { const g = await tapi('GET', `/api/changes/${chId}`).catch(() => ({})); if (g.change) { putCh(g.change); if (RX.ch?.id === chId) RX.ch = g.change; }
+      pullWork(true); if (r.failed) { sound('error'); toast(`${ic('info', 's16')}${esc(r.failed)}`); } else { sound('ready'); if (!(view === 'remix' && RX.ch?.id === chId)) toast(`${ic('check', 's16')}Your ${esc(g.change?.familyName || 'creative')} is ready. <button class="linkbtn" data-livech="${esc(chId)}" data-card="${esc(g.change?.cardId || '')}">See it</button>`); }
+      if (view === 'remix' && RX.ch?.id === chId) paintStudio(); } });
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;
     window.__GR = { Original: 'none', Warm: 'sepia(.25) saturate(1.25) hue-rotate(-8deg)', Quiet: 'saturate(.6) brightness(1.05) contrast(.92)', Vivid: 'saturate(1.6) contrast(1.08)', 'Golden hour': 'sepia(.45) saturate(1.4) brightness(1.05)' };
     if ($('#st-in')) RX.draft = $('#st-in').value;
     const viewing = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((v) => v.id === RX.viewing) : null; if (!viewing) RX.viewing = null;
     const pkgCh = asPkg(ch, viewing), edit = ch.state !== 'jam', tab = RX.tab && RX.tab !== 'history' ? RX.tab : 'iterate'; /* history is the dropdown on the History button now */
-    const formFocus = document.activeElement?.closest?.('#st-spec');
+    const formFocus = document.activeElement?.closest?.('#st-spec') || document.activeElement?.closest?.('.cs');
     if (formFocus || document.activeElement?.id === 'bf-ed' || document.activeElement?.id === 'tbm-ed' || document.activeElement?.id === 'bf-cm-in' || bfPop.el?.classList.contains('is-form') || document.activeElement?.matches?.('[data-hl-edit][contenteditable]')) { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
     const logScroll = $('.st-panel-b')?.scrollTop, tbmScroll = $('.tbm-scroll')?.scrollTop || 0; /* brief mode keeps its place through a repaint */
     /* an open panel stays open through a repaint (the jam's 3-second poll, a video landing): Param, 19 Oct, "What Brew read" closed in 2 s */
@@ -4423,7 +4451,7 @@
         <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · ${studioFrom(ch)}</small></div>${tbSwitch()}${studioJamCtl()}
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
       <div class="st-body">
-        <main class="st-canvas${RX.stage === 'brief' ? ' is-brief' : ''}">${RX.stage === 'brief' ? `<div class="tbm-scroll">${tbStage(ch)}</div>` : `${refBtnHtml(ch)}${rivalReadHtml(ch)}${optTabs(ch, viewing)}<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}`}</main>
+        <main class="st-canvas${RX.stage === 'brief' ? ' is-brief' : ''}">${RX.stage === 'brief' ? `<div class="tbm-scroll">${tbStage(ch)}</div>` : `${refBtnHtml(ch)}${rivalReadHtml(ch)}${optTabs(ch, viewing)}${ch.studio ? studioStage(ch, pkgCh, viewing) : `<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}`}`}</main>
         <aside class="st-panel"><div class="st-tabs" role="tablist">${[['iterate', 'Chat'], ['adjust', 'Adjust'], ['details', 'Brief']].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}</div>
           <div class="st-panel-b${tab === 'iterate' ? ' is-chat' : ''}">${tab === 'iterate' ? chatTab(ch, edit) : tab === 'adjust' ? adjustTab(ch, edit) : tab === 'details' ? detailsTab(ch, pkgCh, edit) : chatTab(ch, edit)}</div></aside>
       </div>`;
@@ -4517,6 +4545,7 @@
   };
   // a Meta ad without its own creative gets one on the way in (once per package), after its first copy is written
   const autoImage = async (ch) => {
+    if (ch.studio) return; /* Brew Studio makes it on the stage, priced, on a yes */
     if (['meta_ad', 'social'].includes(ch.family) && !ch.copyPending && !ch.remakePending && !ch.versions.some((v) => v.snapshot?.image || v.snapshot?.draft?.video) && !ch.imagePending && !ch.imageError && aiMode === 'live' && !RX.autoImg[ch.id] && !ls.get(`${LSP()}img-${ch.id}`)) { RX.autoImg[ch.id] = 1; ls.set(`${LSP()}img-${ch.id}`, '1'); /* once per change, ever: a failed or slow photo is never retried on its own (each try costs) */ const r = await tapi('POST', `/api/changes/${ch.id}/image`, {}); if (r.change && RX.ch?.id === ch.id) { RX.ch = r.change; putCh(r.change); paintStudio(); } }
   };
   const jamWait = () => { $('.jam-wait')?.remove(); document.body.insertAdjacentHTML('beforeend', `<div class="jam-wait" role="status" aria-live="polite"><p><brew-load class="spin"></brew-load>Opening the jam…</p></div>`); return $('.jam-wait'); };
@@ -4625,6 +4654,7 @@
   const rxAct = async (act, ch, btn) => {
     const id = ch.id;
     if (act === 'open') { const w = WORK.items.find((x) => x.id === ch.workId) || (await tapi('GET', '/api/tenants/:t/work')).items?.find((x) => x.id === ch.workId); if (w) { putWork(w); openDetail({ ...RX.p, _work: w }, { jam: true }); } else openDetail(RX.p, { jam: true }); /* a jam this viewer doesn't hold yet: the normal path joins it, never a dead tap (QA UI) */ return; }
+    if (act === 'variants' && ch.studio && window.CreativeStage?.state(ch.id)?.made) return window.CreativeStage.redo(); /* a Studio take: made again the same way, priced */
     if (act === 'variants') return stSay('', 'variants', {});
     if (act === 'plan') return stSay('', 'plan', {}); /* the card's action, pressed in the jam: the plan's make step */
     if (act === 'mychecks') { RX.tab = 'details'; RX.editing = false; paintStudio(); $('.dt-mine')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
@@ -4652,6 +4682,7 @@
     const so = e.target.closest('[data-st-open]'); if (so) { e.stopPropagation(); const p = byId(so.dataset.stOpen); if (p) openDetail(p); return; }
     const lc = e.target.closest('[data-livech]'); if (lc) { e.stopPropagation(); const p = byId(lc.dataset.card); const ch = p?.liveChange?.changeId; if (p) openRemix(p, ch); return; }
     if (view !== 'remix') return;
+    if (window.CreativeStage?.click(e)) return; /* the creative stage's composer (creative-stage.js) */
     if (e.target.closest('[data-vmenu]')) { RX.vmenu = !RX.vmenu; return paintStudio(); }
     { const k = e.target.closest('[data-j2-pack],[data-j2-impact],[data-j2-remake]'); if (k && RX.ch) return j2Run(k.hasAttribute('data-j2-pack') ? 'pack' : k.hasAttribute('data-j2-impact') ? 'impact' : 'remake', RX.ch, k.dataset.j2Remake); }
     const nm = e.target.closest('[data-nav-move]'); if (nm) { closeModal(); location.hash = `#v=move&m=${nm.dataset.navMove}`; return; }

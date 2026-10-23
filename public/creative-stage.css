@@ -1,0 +1,42 @@
+/* the creative stage in the v1 jam (creative-stage.js): the frame, then the Studio composer under it. The composer reuses the
+   Studio look (jam2.css .j2-studio, .j2-sti, .j2-seg, .j2-chip); these are the v1 additions: labelled slots, the why lines, the
+   direction box, the folded line under a made take, and the preview / being-made marks on the frame */
+.st-canvas .cs{width:min(760px,calc(100% - 32px));margin:14px auto 0;position:relative}
+.cs-frame{position:relative}
+.cs-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:3;display:inline-flex;align-items:center;gap:6px;background:var(--bg,#fff);border:1px solid var(--line,#e6e6e6);border-radius:999px;padding:4px 12px;font-size:12px;color:var(--fg-2,#444);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.cs-frame.is-preview .as-img img,.cs-frame.is-preview img.as-photo{opacity:.92}
+.cs-frame.is-making::after{content:'';position:absolute;inset:0;z-index:2;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.35) 50%,transparent 80%);background-size:200% 100%;animation:cs-sheen 1.6s linear infinite;pointer-events:none;border-radius:inherit}
+@keyframes cs-sheen{from{background-position:120% 0}to{background-position:-80% 0}}
+@media (prefers-reduced-motion:reduce){.cs-frame.is-making::after{animation:none}}
+.cs-why{margin:0;font-size:12px;color:var(--fg-3,#777);line-height:1.4}
+.cs-why-top{margin-top:-4px}
+.cs-wait{display:flex;align-items:center;gap:8px;margin:0;color:var(--fg-2,#444)}
+.cs-slots{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end;position:relative}
+.cs-slot{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cs-slot>small{font-size:11px;font-weight:600;color:var(--fg-3,#777);text-transform:uppercase;letter-spacing:.04em}
+.cs-chip{display:inline-flex;align-items:center;gap:6px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs-chip.on{border-color:var(--fg,#111)}
+.cs-chip img{width:22px;height:22px;border-radius:6px;object-fit:cover;flex:none}
+.cs-dot{width:12px;height:12px;border-radius:999px;display:inline-block;border:1px solid rgba(0,0,0,.12);flex:none}
+.cs-pop{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:46;max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:4px;padding:10px}
+.cs-pop .cs-why{padding:2px 4px 6px}
+.cs-pop button.on{font-weight:700;background:var(--surface,#f6f6f6)}
+.cs-pop button img{width:28px;height:28px;border-radius:7px;object-fit:cover}
+.cs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.cs-grid button{flex-direction:column;align-items:flex-start;gap:4px;border:2px solid transparent!important;border-radius:12px}
+.cs-grid button.on{border-color:var(--fg,#111)!important}
+.cs-grid button img{width:100%;height:auto;aspect-ratio:1;border-radius:9px}
+.cs-grid button span{font-size:12px;line-height:1.3}
+.cs-refimg{max-width:180px;border-radius:10px;margin:0 4px 6px}
+.cs-kit{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 4px 6px}
+.cs-kit img{height:32px;max-width:120px;object-fit:contain}
+.cs-kit i{width:26px;height:26px;border-radius:8px;display:inline-block;border:1px solid rgba(0,0,0,.1)}
+.cs-dir{display:flex;flex-direction:column;gap:5px}
+.cs-dir small{font-size:11px;font-weight:600;color:var(--fg-3,#777);text-transform:uppercase;letter-spacing:.04em}
+.cs-dir small span{text-transform:none;letter-spacing:0;font-weight:400;margin-left:6px}
+.cs-dir textarea{width:100%;resize:vertical;min-height:64px;border:1px solid var(--line,#e6e6e6);border-radius:12px;padding:10px 12px;font:inherit;font-size:13.5px;line-height:1.45;background:var(--bg,#fff);color:var(--fg,#111)}
+.cs-making p{display:flex;align-items:center;gap:8px;margin:0}
+.cs-acts{display:flex;gap:8px;flex-wrap:wrap}
+.cs-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;width:min(760px,calc(100% - 32px));margin:12px auto 0;font-size:13px;color:var(--fg-2,#444)}
+.cs-line .j2-err{flex-basis:100%;text-align:center;margin:0}
+@media (max-width:640px){.cs-slots{gap:8px}.cs-chip{max-width:170px}.st-canvas .cs{width:calc(100% - 16px)}}

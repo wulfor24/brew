@@ -1,0 +1,78 @@
+// Brew Studio in the v1 jam (Param, 23 Oct): a card's picture, set or video is made on the stage by Studio (priced, on a yes),
+// never drawn free on open; a finished take lands as the jam's next version and the Work item says where it stands.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { createRemix } from '../remix.js';
+import { versionsOf } from '../learn.js';
+import { configureGen } from '../gen-store.js';
+import { runIn } from '../brand-ctx.js';
+import { contextOf } from '../jam2/context.js';
+
+delete process.env.V1_STUDIO;
+process.env.AI_MOCK = '1';
+const BRAND = { slug: 'acme', name: 'Acme', host: 'acme.com', sym: '$', config: { product: { noun: 'balm' } }, seed: { brand: { name: 'Acme', host: 'acme.com' } } };
+const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'v1-studio-')); fs.mkdirSync(path.join(DIR, 'gen'), { recursive: true });
+fs.writeFileSync(path.join(DIR, 'balm.png'), Buffer.from('89504e470d0a1a0a', 'hex'));
+configureGen({ dir: path.join(DIR, 'gen'), remote: false, log: { warn() {} } });
+const quiet = { warn() {}, log() {}, error() {} };
+let k = 0; const fakeImage = async () => Buffer.from(`89504e470d0a1a0a${(++k).toString(16).padStart(4, '0')}`, 'hex');
+
+const studio = (extra = {}) => {
+  const R = {}, on = (m, pat, fn) => (R[`${m} ${pat}`] = fn); let n = 0;
+  const RMX = createRemix({ on, claudeTool: null, geminiImage: fakeImage, mediaFake: true, PUB: DIR, LANE_PHOTO: { lane1: 'balm.png' }, FACTS: {}, SEED: { connectors: { meta: { name: 'Meta Ads' } }, colleagues: [] }, AGENT: { creative: 'Creative', storefront: 'Storefront' }, cardBrief: () => '', seatLine: () => '', qaCheck: () => [], mechanicalFix: (x) => x, clean: (x) => String(x ?? ''), BANNED: /$^/,
+    isMock: () => false, spend: () => true, uid: (p) => `${p}_${++n}`, now: (t) => Date.now() + (t?.clock || 0), clone: (x) => JSON.parse(JSON.stringify(x)), inr: (x) => `$${x}`, say: (t, w, m) => w.thread.push(m), move: () => {}, notify: () => {}, curV: (w) => w.versions.at(-1), log: quiet, ...extra });
+  const call = (key, b, t, p) => runIn(BRAND, () => R[key](b, t, p));
+  return { R, RMX, call };
+};
+const tenant = (card) => ({ id: 't_1', brandId: 'acme', clock: 0, cards: new Map([[card.id, card]]), changes: {}, work: [], conn: {}, acted: new Set(), shown: {} });
+const card = (o) => ({ id: 'c1', title: 'Warm paws all winter', sub: 'Cold hands, sorted. One balm, every morning.', agent: 'creative', sector: 'creatives', type: 'idea', lane: 'lane1', images: ['balm.png'], detail: { why: ['Searches for hand balm doubled this week'], how: ['Write the hook'] }, ...o });
+const settle = async (ch, ms = 8000) => { const end = Date.now() + ms; await new Promise((r) => setTimeout(r, 30)); while (Date.now() < end && (ch.ctaPending || ch.ctaQueued || ch.imagePending || ch.copyPending)) await new Promise((r) => setTimeout(r, 25)); };
+/* the jam opened from the button: the package first (as linkChange does), then the press */
+const press = async (S, t, label) => { const r = await S.call('POST /api/cards/:cid/remix', { fast: true }, t, { cid: 'c1' }); const id = r.changes[0].id;
+  const m = await S.call('POST /api/changes/:chid/cta-make', { label }, t, { chid: id }); return { id, m, ch: t.changes[id] }; };
+
+
+test('Make the ad opens on the Studio composer: nothing is drawn on open or on the press, and the change says it is a Studio jam', async () => {
+  for (const [label, fmt, want] of [['Make the ad', 'single image ad', 'image-ad'], ['Make the video', 'reel', 'reel'], ['Make the carousel ad', 'carousel ad', 'carousel-ad']]) {
+    let drawn = 0; const S = studio({ geminiImage: async (...a) => { drawn++; return fakeImage(...a); } }), t = tenant(card({ cta: { label }, make: { format: fmt, pieces: 'The balm on a frosty windowsill' } }));
+    const { id, m, ch } = await press(S, t, label); await settle(ch);
+    assert.equal(m.studio, true, `${label}: the press hands over to the composer`); assert.equal(m.making, false);
+    assert.equal(drawn, 0, `${label}: no free picture drawn`); assert.ok(!/^gen\//.test(ch.pkg.image || ''), `${label}: no made picture yet`);
+    assert.equal(S.RMX.pubChange(t, ch).studio, want, `${label}: a ${want} Studio jam`); assert.equal(ch.studioLabel, label);
+  }
+});
+
+test('words, community replies and the legacy switch stay as they were', async () => {
+  const S = studio(), t = tenant(card({ cta: { label: 'Draft the email' }, make: { format: 'email' } }));
+  const { ch } = await press(S, t, 'Draft the email'); await settle(ch); assert.equal(S.RMX.pubChange(t, ch).studio, null, 'an email is written, not made in Studio');
+  process.env.V1_STUDIO = '0'; try { const S2 = studio(), t2 = tenant(card({ cta: { label: 'Make the ad' }, make: { format: 'single image ad' } })); const r = await press(S2, t2, 'Make the ad'); assert.notEqual(r.m.studio, true); assert.equal(S2.RMX.pubChange(t2, r.ch).studio, null); } finally { delete process.env.V1_STUDIO; }
+});
+
+test('a Studio take lands as the next version (picture, set, film) and the Work item follows making → made / failed', async () => {
+  const S = studio(), t = tenant(card({ cta: { label: 'Make the ad' }, make: { format: 'single image ad' } }));
+  const { id, ch } = await press(S, t, 'Make the ad'); await settle(ch); t.work.push({ id: 'w1', changeId: id, cardId: 'c1', versions: [], updatedAt: 0 });
+  const n0 = versionsOf(t, id).length;
+  S.RMX.studioState(t, id, { state: 'making', line: 'in use picture', usd: 0.21, n: 1 }); assert.equal(t.work[0].creative.state, 'making'); assert.equal(ch.studioState.usd, 0.21);
+  const v = S.RMX.landStudio(t, id, { file: 'gen/ad.jpg', cost: { usd: 0.21 }, studio: { style: 'in-use', label: 'In use', kind: 'image', size: 'ig-portrait' }, jid: 'j2_x' });
+  assert.equal(versionsOf(t, id).length, n0 + 1); assert.equal(ch.pkg.image, 'gen/ad.jpg'); assert.equal(v.studio.usd, 0.21); assert.equal(t.work[0].creative.state, 'made'); assert.equal(t.work[0].creative.thumb, 'gen/ad.jpg');
+  assert.ok(S.RMX.pubChange(t, ch).versions.at(-1).studio, 'the version says Studio made it');
+  S.RMX.landStudio(t, id, { file: 'gen/s1.jpg', slides: [{ file: 'gen/s1.jpg' }, { file: 'gen/s2.jpg' }], studio: { kind: 'image', label: 'Carousel' } }); assert.deepEqual(ch.pkg.cardImages, ['gen/s1.jpg', 'gen/s2.jpg']);
+  S.RMX.landStudio(t, id, { file: 'gen/f.mp4', poster: 'gen/p.jpg', studio: { kind: 'video', label: 'UGC review' } }); assert.equal(ch.pkg.video, 'gen/f.mp4'); assert.equal(ch.pkg.image, 'gen/p.jpg');
+  S.RMX.studioState(t, id, { state: 'failed', error: 'The picture changed the product, twice' }); assert.equal(t.work[0].creative.state, 'failed');
+});
+
+test('the composer arrives filled: every slot says why, gaps are said plainly, nothing is made up', () => {
+  const base = { card: { title: 'Customers love it: 222 reviews say less hair fall', cta: { label: 'Make the ad' } }, product: { img: 'p.jpg', name: 'Shampoo', handle: 'shampoo' }, catalog: [{ handle: 'shampoo', title: 'Shampoo', images: ['p.jpg', 'p2.jpg', 'p3.jpg'] }] };
+  const d0 = { kind: 'image', style: 'in-use', sizes: ['ig-portrait'], count: 1 };
+  const a = contextOf({ ...base, bbv: { comfort: { people: 'ai-cast' }, kit: { colors: ['#123456'], logo: 'logo.png' }, reviews: [{ text: 'My hair fall stopped in 3 weeks' }], never: ['miracle'] } }, d0);
+  for (const [k, s] of Object.entries(a.slots)) if (s) assert.ok(s.why && s.why.length > 8, `${k} says why`);
+  assert.equal(a.slots.products.value[0].photos.length, 3, 'every photo of the product'); assert.match(a.slots.words.value.review, /hair fall stopped/); assert.match(a.slots.direction.value, /Never: miracle/);
+  assert.equal(a.missing.length, 0, `nothing missing: ${a.missing.map((m) => m.text).join(' | ')}`); assert.doesNotMatch(a.slots.direction.value, /\.\./);
+  const b = contextOf({ ...base, catalog: [], bbv: { comfort: { people: 'none' }, kit: {} } }, d0);
+  assert.equal(b.slots.words.value.review, null, 'no review is ever invented'); assert.equal(b.slots.cast.value, 'none'); assert.match(b.slots.direction.value, /No people/);
+  assert.ok(b.missing.some((m) => /logo/i.test(m.text)) && b.missing.some((m) => /one photo/i.test(m.text)), 'the gaps are said, with a fix');
+  const r = contextOf({ ...base, card: { ...base.card, research: { kind: 'ad' }, rivalName: 'Rival', images: ['r.jpg'] }, bbv: {} }, d0); assert.equal(r.slots.reference.value.img, 'r.jpg'); assert.match(r.slots.reference.why, /rival ad/);
+});
