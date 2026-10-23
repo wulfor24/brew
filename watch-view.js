@@ -81,15 +81,19 @@ function showOf(profile = {}) {
   return { at: s.at, of: s.unOf, brand: s.brand, rivals: (s.rivals || []).slice(0, 4).map((r) => ({ name: r.name, un: r.un })), bubbles, tools: s.tools };
 }
 
-export function watchView({ name, host, profile = {}, listen = {}, shelf = {}, pulse = null, traffic = null, now = Date.now() }) {
+export function watchView({ name, host, profile = {}, listen = {}, shelf = {}, channels = null, pulse = null, traffic = null, now = Date.now() }) {
   const people = peopleOf({ items: listen.items || [], themes: listen.themes || [], status: listen.status || {}, name, now });
-  const sell = shelfOf(shelf, now), rivals = rivalsOf({ profile, pulse, traffic }), show = showOf(profile);
+  const onSite = new Map((channels?.found || []).map((c) => [c.platform, c.url]));
+  const sell = shelfOf(shelf, now).map((x) => ({ ...x, onSite: onSite.get(x.id) || null })), rivals = rivalsOf({ profile, pulse, traffic }), show = showOf(profile);
   /* the read's marketplace listings (reader/stages/reviews.js), for platforms the weekly shelf doesn't already cover; one per platform */
   const MK = { amazon: 'Amazon', myntra: 'Myntra', flipkart: 'Flipkart', nykaa: 'Nykaa', walmart: 'Walmart', meesho: 'Meesho' }, seen = new Set(sell.filter((x) => x.at).map((x) => x.id));
   const pnum = (v) => { const m = String(v ?? '').replace(/,/g, '').match(/\d+(\.\d+)?/); return m ? +m[0] : null; }, same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
   const mk = (profile.marketplaces || []).map((m) => { const id = String(m.name || '').split('.')[0].toLowerCase(); return { id, label: MK[id] || m.name, logo: hostLogo(m.name), error: m.error || null,
     listings: [...new Map((m.listings || []).map((l) => [l.url || l.asin || l.title, { name: same(l.title, name) ? null : l.title, price: pnum(l.price), rating: l.rating || null, ratings: l.reviews || null, url: l.url || null }])).values()].slice(0, 4) }; })
     .filter((m) => { if (!(m.listings.length || m.error) || seen.has(m.id)) return false; seen.add(m.id); return true; });
+  /* stores the brand's own site links to that Brew doesn't read on a shelf yet (Purplle, Tira, Walmart…): named, linked */
+  const readIds = new Set([...sell.filter((x) => x.at).map((x) => x.id), ...mk.map((m) => m.id)]), STORE = { purplle: 'Purplle', tira: 'Tira', ajio: 'Ajio', meesho: 'Meesho', walmart: 'Walmart', target: 'Target', ulta: 'Ulta', sephora: 'Sephora', amazon: 'Amazon', flipkart: 'Flipkart', nykaa: 'Nykaa', myntra: 'Myntra', blinkit: 'Blinkit', zepto: 'Zepto', instamart: 'Instamart' };
+  const alsoOn = (channels?.found || []).filter((c) => !readIds.has(c.platform)).map((c) => ({ id: c.platform, label: STORE[c.platform] || c.platform, url: c.url, logo: hostLogo(new URL(c.url).hostname) }));
   /* couldn't read: listening sources and shelves that failed this time (skipped and "not this kind of brand" are not failures) */
   const st = listen.status?.sources || {}, cant = [
     ...Object.entries(st).filter(([, v]) => v?.state === 'error').map(([k, v]) => ({ id: k, name: pname(k), at: day(v.at || listen.status?.at), why: clip(v.error || (v.notes || [])[0], 120) })),
@@ -98,5 +102,5 @@ export function watchView({ name, host, profile = {}, listen = {}, shelf = {}, p
   const cities = [...new Set(sell.map((x) => x.city).filter(Boolean))];
   return { name, host, at: new Date(now).toISOString(),
     header: { heard: people.total, places: places.size, rivals: rivals.length, cities: cities.length, cityNames: cities, logos: [...new Map([...people.places.slice(0, 6).map((p) => ({ name: p.name, logo: p.logo })), ...sell.filter((x) => x.listed).map((x) => ({ name: x.label, logo: x.logo }))].filter((l) => l.logo).map((l) => [l.logo, l])).values()].slice(0, 9) },
-    people: people.total ? people : null, sell: sell.length || mk.length ? { shelves: sell, marketplaces: mk } : null, rivals: rivals.length ? rivals : null, show, cant };
+    people: people.total ? people : null, sell: sell.length || mk.length || alsoOn.length ? { shelves: sell, marketplaces: mk, alsoOn } : null, rivals: rivals.length ? rivals : null, show, cant };
 }

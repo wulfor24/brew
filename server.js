@@ -30,7 +30,8 @@ import { createAlerts, noteVertex, noteAlert } from './alerts.js'; // ops emails
 import { createBudget } from './budget.js'; // the day's AI budget: a ceiling and a share per brand
 import { createTreg, gcsCache } from './treg.js';
 import { setApifyCache, createApify, onAnyApifyCharge } from './apify.js';
-import { watchView } from './watch-view.js'; // What Brew watches for you: the four blocks
+import { watchView } from './watch-view.js';
+import { attachHealthStore, sourceTable, flush as healthFlush } from './source-health.js'; // how well each outside source works // What Brew watches for you: the four blocks
 import { PLATFORMS as SHELF_PLATFORMS } from './shelf.js';
 const SHELF_KEYS = Object.keys(SHELF_PLATFORMS);
 import { chain as mediaChain, openaiImage as openaiImageRaw, makeVideo } from './media.js';
@@ -438,6 +439,7 @@ const tregLedger = spendLedger(treg, packs, { log: console }); /* flushed on SIG
 /* Apify spend lands in the same per-brand month file, tagged apify<what> (shelf.js reads it for the $10 brand cap) */
 const apifyLedger = spendLedger({ onCharge: (f) => onAnyApifyCharge((tag, usd) => f(String(tag || '').replace(/^([a-z0-9]+)-/i, 'apify$1-'), usd)) }, packs, { log: console });
 const apifyPulse = createApify({ log: console });
+attachHealthStore(packs).catch((e) => console.warn('[sources] health store', e.message));
 const calendar = createCalendar({ packs, ai, log: console });
 const builder = createBuilder({ ROOT, packs, ai, treg, image: countedImage, log: console, signGate: () => !!(process.env.GOOGLE_CLIENT_ID && process.env.FEED_SIGNIN !== '0' && process.env.BUILD_SIGNIN !== '0'),
   // a pack changed on disk (new seed, facts, moves): reload it, keep its research/live instances
@@ -711,9 +713,9 @@ const brandRoutes = async (req, res, u) => {
   const wm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/watch$/);
   if (wm && req.method === 'GET') { const slug = wm[1]; if (blocked(slug)) return send(res, 404, { error: 'unknown brand' }), true;
     const g = (n) => packs.getJSON(slug, n, null).catch(() => null);
-    const [pf, it, th, st, pl, tf, ...sh] = await Promise.all([g('profile.json'), g('listen/items.json'), g('listen/themes.json'), g('listen/status.json'), g('pulse/latest.json'), g('shelf/traffic.json'), ...SHELF_KEYS.map((k) => g(`shelf/${k}.json`))]);
+    const [pf, it, th, st, pl, tf, ch, ...sh] = await Promise.all([g('profile.json'), g('listen/items.json'), g('listen/themes.json'), g('listen/status.json'), g('pulse/latest.json'), g('shelf/traffic.json'), g('shelf/channels.json'), ...SHELF_KEYS.map((k) => g(`shelf/${k}.json`))]);
     const name = pf?.brandName || pf?.name || packs.peek(slug)?.name || slug;
-    return send(res, 200, watchView({ name, host: pf?.host || null, profile: pf || {}, listen: { items: it?.items || [], themes: th?.themes || [], status: st || {} }, shelf: Object.fromEntries(SHELF_KEYS.map((k, i) => [k, sh[i]])), pulse: pl, traffic: tf })), true; }
+    return send(res, 200, watchView({ name, host: pf?.host || null, profile: pf || {}, listen: { items: it?.items || [], themes: th?.themes || [], status: st || {} }, shelf: Object.fromEntries(SHELF_KEYS.map((k, i) => [k, sh[i]])), channels: ch, pulse: pl, traffic: tf })), true; }
   // What we heard: every quote (filter by source, mode, theme, intent, words; paged), the asked threads, the daily history
   const hx = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/heard\/(items|asked|history)$/);
   if (hx) { const [, slug, what] = hx; if (blocked(slug)) return send(res, 404, { error: 'unknown brand' }), true;
@@ -738,6 +740,9 @@ const brandRoutes = async (req, res, u) => {
     const slug = u.searchParams.get('slug'), bl = u.searchParams.get('blocked') === '1';
     const rows = Object.values(await visLoad()).filter((r) => (!slug || r.slug === slug) && (!bl || r.access === 'blocked' || r.blocked)).sort((x, y) => y.last - x.last);
     return send(res, 200, { n: rows.length, emails: new Set(rows.map((r) => r.email)).size, rows }), true; }
+  /* admins: how well each outside source worked on Brew's own calls this week (source-health.js), worst first */
+  if (req.method === 'GET' && u.pathname === '/api/admin/sources') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
+    return send(res, 200, { days: +u.searchParams.get('days') || 7, sources: sourceTable({ n: +u.searchParams.get('days') || 7 }) }), true; }
   if (req.method === 'GET' && u.pathname === '/api/admin/treg') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
     const slug = u.searchParams.get('brand'), month = new Date().toISOString().slice(0, 7);
     const [news, spend] = await Promise.all([watchCatalog(treg).catch((e) => ({ error: e.message })), slug ? packs.getJSON(slug, `spend/${month}.json`, null).catch(() => null) : null]);
@@ -964,7 +969,7 @@ const server = http.createServer(async (req, res) => {
 process.once('SIGTERM', () => { builder?.stop?.(); /* no new move starts here; the next instance resumes the build */
   movesCadence?.stop?.(); /* the weekly families end before the next one; the next instance carries on */
   const closed = new Promise((r) => { try { server.close(() => r()); server.closeIdleConnections?.(); } catch { r(); } }); /* in-flight requests finish; idle keep-alives go now */
-  const work = Promise.allSettled([feedSvc?.jams?.flush?.(), feedSvc?.jam2?.flush?.(), store.flushPending(), budget.flush(), tregLedger.flush(), apifyLedger.flush(), visFlush(), jamMail.drain(), closed]);
+  const work = Promise.allSettled([feedSvc?.jams?.flush?.(), feedSvc?.jam2?.flush?.(), store.flushPending(), budget.flush(), tregLedger.flush(), apifyLedger.flush(), healthFlush(), visFlush(), jamMail.drain(), closed]);
   Promise.race([work, new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
 async function serve(req, res, u) {
   try {

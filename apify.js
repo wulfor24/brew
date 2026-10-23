@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { recordCall } from './source-health.js';
 
 const cliToken = () => { try { return JSON.parse(fs.readFileSync(path.join(os.homedir(), '.apify', 'auth.json'), 'utf8')).token || null; } catch { return null; } };
 
@@ -37,14 +38,16 @@ export function createApify({ token = process.env.APIFY_TOKEN || cliToken(), log
     return p;
   }
   async function runLive(actor, input = {}, { timeoutSecs = 240, maxItems = 200, startUsd = 0.005, perItemUsd = 0.003, maxUsd = 0.25, memory = null, tag } = {}) {
+    const t0 = Date.now();
     const u = `https://api.apify.com/v2/acts/${String(actor).replace('/', '~')}/run-sync-get-dataset-items?format=json&clean=1&timeout=${timeoutSecs}&maxItems=${maxItems}&maxTotalChargeUsd=${maxUsd}${memory ? `&memory=${memory}` : ''}`; /* memory (MB): the account caps all runs at once */
     const r = await fetchImpl(u, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify(input), signal: AbortSignal.timeout((timeoutSecs + 30) * 1e3) });
     const t = await r.text(); let j = null; try { j = JSON.parse(t || '[]'); } catch {}
     // a run that started is paid for even when it fails
     const items = Array.isArray(j) ? j : [], usd = +Math.min(maxUsd, startUsd + items.length * perItemUsd).toFixed(5);
     meter.usd += usd; meter.runs++; meter.byTag[tag || actor] = (meter.byTag[tag || actor] || 0) + usd; listeners.forEach((f) => f(tag || actor, usd, meter)); anyCharge.forEach((f) => f(tag || actor, usd));
-    if (!r.ok) throw new Error(`apify ${actor} ${r.status}: ${(j?.error?.message || t).slice(0, 200)}`);
-    if (!Array.isArray(j)) throw new Error(`apify ${actor}: not a dataset`);
+    if (!r.ok) { recordCall(actor, 'apify', { error: `${r.status}`, usd, ms: Date.now() - t0 }); throw new Error(`apify ${actor} ${r.status}: ${(j?.error?.message || t).slice(0, 200)}`); }
+    if (!Array.isArray(j)) { recordCall(actor, 'apify', { error: 'not a dataset', usd, ms: Date.now() - t0 }); throw new Error(`apify ${actor}: not a dataset`); }
+    recordCall(actor, 'apify', { ok: true, empty: !items.length, usd, ms: Date.now() - t0 });
     return items;
   }
   return { run, meter, onCharge: (f) => listeners.push(f), live: !off && !!token };

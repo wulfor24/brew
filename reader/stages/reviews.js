@@ -278,7 +278,7 @@ export async function reviews(ctx) {
     platforms.push({ name: domain, label: `${domain} ratings on ${uniq.length} listings`, count: total, rating: total ? wr / total : null, listings: uniq.length, url: src, scope: `first search page for "${name}"` });
     ledger.add({ key: 'reviews.amazon.count', label: `${domain} ratings across ${uniq.length} ${name} listings (first search page)`, v: num(total), n: total, unit: 'ratings', url: src, method: 'treg:crawl4ai.amazon.search.products', note: uniq.slice(0, 8).map((r) => `${r.asin} ${r.rating}★ ${r.reviews}`).join('; ') });
     ledger.add({ key: 'reviews.amazon.listings', label: `${domain} listings found for "${name}"`, v: String(uniq.length), n: uniq.length, url: src, method: 'treg:crawl4ai.amazon.search.products' });
-    profile.marketplaces = [...(profile.marketplaces || []), { name: domain, listings: uniq.slice(0, 20).map((r) => ({ asin: r.asin, title: clean(r.title).slice(0, 140), price: r.price, rating: r.rating, reviews: r.reviews, url: `https://www.${domain}/dp/${r.asin}` })) }];
+    profile.marketplaces = [...(profile.marketplaces || []).filter((m) => m?.name !== domain) /* a re-read replaces its own entry, never a second amazon.in */, { name: domain, listings: uniq.slice(0, 20).map((r) => ({ asin: r.asin, title: clean(r.title).slice(0, 140), price: r.price, rating: r.rating, reviews: r.reviews, url: `https://www.${domain}/dp/${r.asin}` })) }];
     const top = [...uniq].sort((a, b) => (+b.reviews || 0) - (+a.reviews || 0))[0];
     if (!top) return;
     if (domain === 'amazon.com') {

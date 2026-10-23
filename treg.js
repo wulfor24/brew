@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { recordCall } from './source-health.js';
 
 // Data calls are cached by signal (TTL_RULES: reviews, search, AI answers and profiles a week, company data a month, ads, news
 // and prices a day, else TREG_CACHE_HOURS): the same endpoint with the same parameters is paid for once per window at most,
@@ -65,7 +66,11 @@ export function createTreg({ client = 'shopos-feed', dayCapUsd = +process.env.TR
     inflight.set(k, p); p.finally(() => inflight.delete(k)).catch(() => {});
     return p;
   }
-  async function live(id, { query, body, timeout = 150e3, tag } = {}) {
+  /* every live call is measured for the source health ledger (source-health.js): ok, empty or error, time and cost */
+  async function live(id, o = {}) { const t0 = Date.now();
+    try { const j = await live0(id, o); recordCall(id, 'treg', { ok: true, empty: j == null || (Array.isArray(j) && !j.length), ms: Date.now() - t0 }); return j; }
+    catch (e) { if (!/day cap|no TREG_TOKEN/.test(e.message)) recordCall(id, 'treg', { error: e.message, ms: Date.now() - t0 }); throw e; } }
+  async function live0(id, { query, body, timeout = 150e3, tag } = {}) {
     const a = auth(); if (!a?.token) throw new Error('no TREG_TOKEN');
     const d = new Date().toDateString(); if (meter.day !== d) Object.assign(meter, { day: d, dayUsd: 0 });
     if (meter.dayUsd >= dayCapUsd) throw new Error(`treg day cap $${dayCapUsd} reached`);

@@ -82,6 +82,9 @@
 .wx-rv li { display: flex; gap: 10px; flex-wrap: wrap; } .wx-rv span { color: #555; } .wx-rv em { color: #c0362c; font-style: normal; font-weight: 700; }
 .wx-changes { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .wx-change { font: 700 12.5px var(--font); background: #141414; color: #fff; padding: 6px 12px; border-radius: 10px; transform: rotate(var(--t)); animation: bbStampIn .45s; }
+.wx-also { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 0; font-size: 13.5px; }
+.wx-also-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 6px; border-radius: 999px; background: #fff; color: #141414; text-decoration: none; font-weight: 600; }
+.wx-also-chip .wx-logo { width: 20px; height: 20px; }
 .wx-mini-notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 16px; }
 
 /* what rivals do: trading cards that flip */
@@ -170,3 +173,11 @@
 }
 @media (prefers-reduced-motion: reduce) { .wx * { animation: none !important; transition: none !important; } }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .wx-shelf { background: #fbfaf7; } }
+
+/* the card's one line of where its proof comes from (evidence.js seenOf); taps open the proof */
+.pf-seen { appearance: none; border: 0; background: none; display: flex; align-items: center; gap: 6px; padding: 0 14px 12px; margin-top: -4px; color: var(--fg-3); font: 500 12px var(--font); cursor: pointer; text-align: left; }
+.pf-seen:hover { color: var(--fg-2); }
+.pf-seen span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the Heard page's folded "couldn't read" line */
+.hd-cant { margin: 0 0 14px; font-size: 13.5px; color: var(--fg-2); }
+.hd-cant p { margin: 6px 0 0; }

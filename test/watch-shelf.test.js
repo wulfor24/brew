@@ -102,3 +102,47 @@ test('a post that tags the brand is a listening item with its picture, and the s
   assert.equal(x.platform, 'instagram'); assert.equal(x.id, 'ig:abc'); assert.equal(x.image, 'https://cdn/x.jpg'); assert.equal(x.tagged, 'caption-mention');
   assert.ok(SOURCES.igtag); assert.ok(Object.keys(PLATFORMS).length >= 6);
 });
+
+test('source health: every call counts; a source failing most of its week is skipped, keeps one try a day, and healthy ones go first', async () => {
+  const H = await import('../source-health.js'); H._reset(); const now = Date.parse('2026-10-24T10:00:00Z');
+  for (let i = 0; i < 6; i++) H.recordCall('bad/actor', 'apify', { error: '403', at: now });
+  for (let i = 0; i < 6; i++) H.recordCall('good/actor', 'apify', { ok: true, at: now });
+  assert.equal(H.healthOf('bad/actor', { now }).rate, 0); assert.equal(H.healthOf('good/actor', { now }).rate, 1);
+  assert.deepEqual(H.byHealth(['bad/actor', 'good/actor']), ['good/actor', 'bad/actor']);
+  assert.equal(H.unhealthy('bad/actor', { now }), false, 'its one try today'); assert.equal(H.unhealthy('bad/actor', { now }), true, 'then skipped');
+  assert.equal(H.unhealthy('good/actor', { now }), false);
+  assert.equal(H.sourceTable()[0].id, 'bad/actor', 'worst first'); H._reset();
+});
+
+test('the router walks a capability’s endpoint and fallbacks, each with its own input, and says why each failed', async () => {
+  const { runCap } = await import('../treg-map.js'); (await import('../source-health.js'))._reset();
+  const seen = []; const apify = { run: async (id, input) => { seen.push([id, input]); if (id === 'curious_coder/similarweb-scraper') throw new Error('apify 500'); return [{ name: 'x.com', totalVisits: 5 }]; } };
+  const r = await runCap('traffic.similarweb', { apify }, { inputOf: (id) => (id.startsWith('curious') ? { domains: ['x.com'] } : { websites: ['x.com'] }) });
+  assert.equal(r.endpoint, 'tri_angle/similarweb-scraper'); assert.deepEqual(seen.map((s) => Object.keys(s[1])[0]), ['domains', 'websites']);
+  await assert.rejects(() => runCap('traffic.similarweb', { apify: { run: async () => [] } }, { inputOf: () => ({}) }), /empty/);
+});
+
+test('store links on the brand’s own site are found by host, once each, without tracking tails', async () => {
+  const { storeLinks } = await import('../shelf.js');
+  const xs = storeLinks('<a href="https://www.nykaa.com/arata/p/1?utm=x">Nykaa</a><a href="https://www.nykaa.com/arata/p/2">again</a><a href="https://www.amazon.in/dp/B0X">Amazon</a><a href="https://notamazon.example.com/">no</a><a href="https://www.purplle.com/brand/arata">P</a>');
+  assert.deepEqual(xs.map((x) => x.platform), ['nykaa', 'amazon', 'purplle']); assert.equal(xs[0].url, 'https://www.nykaa.com/arata/p/1');
+});
+
+test('a card’s Seen-in line: the mention count, then up to two places, by plain names', async () => {
+  const { seenOf } = await import('../evidence.js');
+  assert.equal(seenOf({ items: [{ kind: 'count', label: 'Mentions Brew found', value: '1,580 (40 unhappy)' }, { kind: 'quote', src: 'reddit.com' }, { kind: 'quote', src: 'www.nykaa.com' }, { kind: 'quote', src: 'youtube.com' }] }), '1,580 mentions · Reddit · Nykaa');
+  assert.equal(seenOf({ items: [{ kind: 'ad', label: 'OZiva’s live ad', src: 'Meta Ad Library · IN' }] }), 'Meta Ad Library');
+  assert.equal(seenOf({ items: [] }), null);
+});
+
+test('Amazon is a weekly shelf in any market (treg), with this week’s 10% price moves, and the view merges it with no duplicate', async () => {
+  const packs = mem(); let wk = 1;
+  packs.m.set('us/profile.json', { name: 'Cozy', host: 'cozy.shop', country: 'US', rivals: [{ name: 'The Oodie', host: 'theoodie.com' }], marketplaces: [{ name: 'amazon.com', listings: [{ title: 'Cozy', url: 'https://a/1' }] }] });
+  const treg = { live: true, meter: { usd: 0 }, call: async (id, { body }) => ({ rows: body.keywords === 'The Oodie' ? [{ asin: 'B1', title: 'The Oodie Original Blanket Hoodie', price: wk === 1 ? '$100' : '$80', rating: 4.5, reviews: 900 }] : [] }) };
+  const P = () => createPulse({ slug: 'us', packs, treg, apify: null, ai: null });
+  await P().run({ only: ['marketplace'], fresh: true }); wk = 2; const r = await P().run({ only: ['marketplace'], fresh: true });
+  const f = await packs.getJSON('us', 'shelf/amazon.json'); assert.equal(f.byName['The Oodie'][0].price, 80); assert.equal(f.changes[0].kind, 'price');
+  assert.ok(r.lines.some((l) => l.key === 'shelf.amazon.changes'));
+  const v = watchView({ name: 'Cozy', profile: await packs.getJSON('us', 'profile.json'), listen: {}, shelf: { amazon: f }, channels: { found: [{ platform: 'walmart', url: 'https://walmart.com/x' }] } });
+  assert.deepEqual(v.sell.marketplaces, [], 'the read’s amazon.com isn’t shown twice'); assert.equal(v.sell.shelves[0].id, 'amazon'); assert.equal(v.sell.alsoOn[0].label, 'Walmart');
+});

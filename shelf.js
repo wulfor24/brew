@@ -4,6 +4,9 @@
 // returns nothing usable, the next one runs. Every row is matched to the brand or a rival by name, so a fuzzy search hit
 // ("NutroVally" for Nutrova) never counts. An error stays an error: a platform that could not be read says so, never "not sold there".
 // Spend: each run carries its own cap, and a brand's month of Apify spend stops at APIFY_BRAND_MONTH_CAP_USD (default $10).
+import { byHealth, unhealthy } from './source-health.js';
+import { runCap } from './treg-map.js';
+import { safeFetch, UA } from './reader/util.js';
 const esc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const num = (v) => { if (v == null || v === '') return null; const m = String(v).replace(/,/g, '').match(/-?\d+(\.\d+)?/); return m ? +m[0] : null; };
 const flat = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -43,6 +46,8 @@ export const PLATFORMS = {
     { id: 'codingfrontend/myntra-product-search-scraper', input: (qs) => ({ search: qs[0], sortBy: 'popularity', maxProductsPerSearch: 5, maxPages: 1, scrapeReviews: false }), start: 0.0001, per: 0.004, one: true }],
     row: (r) => ({ name: r.name, brand: r.brand, price: num(r.price), mrp: num(r.mrp), inStock: null, rating: num(r.rating), ratings: num(r.ratingCount), url: r.url || null, image: r.imageUrl || null, id: r.productId }) }
 };
+/* Amazon is read through treg (market-pulse.js amazonShelf), weekly in every market; listed here so every reader of shelf files sees it */
+PLATFORMS.amazon = { kind: 'marketplace', label: 'Amazon', market: '*', home: 'https://www.amazon.com', actors: [], row: (r) => r };
 export const TRAFFIC = [
   { id: 'curious_coder/similarweb-scraper', input: (hosts) => ({ domains: hosts }), start: 0.001, per: 0.003 },
   { id: 'tri_angle/similarweb-scraper', input: (hosts) => ({ websites: hosts }), start: 0.001, per: 0.013 }];
@@ -70,7 +75,10 @@ export function createShelf({ slug, packs, apify, log = console, now = () => new
     if (!apify?.live) throw Object.assign(new Error('needs APIFY_TOKEN'), { needs: true });
     const cap = brandCapUsd(), used = await monthUsd(); if (used >= cap) throw Object.assign(new Error(`skipped: this month's Apify budget ($${cap}) is used`), { capped: true });
     const errs = [];
-    for (const a of actors) {
+    /* the router: the healthiest actor first by Brew's own measured calls (source-health.js); one that failed most of its last
+       week is skipped, but never the last one standing, and it still gets one try a day */
+    const order = byHealth(actors.map((a) => a.id)).map((id) => actors.find((a) => a.id === id));
+    for (const a of order) { if (order.length > 1 && a !== order.at(-1) && unhealthy(a.id)) { errs.push(`${a.id}: skipped, failing this week`); continue; }
       for (let k = 0; k <= (a.retry || 0); k++) try { if (k) await new Promise((r) => setTimeout(r, a.retryMs ?? (process.env.APIFY_RETRY_MS ? +process.env.APIFY_RETRY_MS : 45e3))); const rows = await apify.run(a.id, a.input(), { tag, startUsd: a.start, perItemUsd: a.per, maxUsd: extra.maxUsd ?? 0.25, maxItems: extra.maxItems ?? 60, timeoutSecs: 200 });
         if (rows.length) return { rows, actor: a.id }; errs.push(`${a.id}: no rows`); break; }
       catch (e) { errs.push(`${a.id}: ${String(e.message).slice(0, 120)}`); }
@@ -95,8 +103,26 @@ export function createShelf({ slug, packs, apify, log = console, now = () => new
     return { platform: key, label: P.label, kind: P.kind, city: city?.name || null, actor, at: now().toISOString(), byName, reviews: ownReviews.slice(0, 30), rivalReviews: reviews.filter((r) => !ownReviews.includes(r)).slice(0, 30) };
   }
   async function traffic(hosts) {
-    const { rows, actor } = await chain(TRAFFIC.map((a) => ({ ...a, input: () => a.input(hosts) })), { maxItems: hosts.length + 2, maxUsd: 0.1 });
-    return { actor, at: now().toISOString(), rows: rows.map(trafficRow).filter((r) => r.host) };
+    /* through the capability router (treg-map.js runCap): Similarweb actors healthiest first */
+    if (!apify?.live) throw Object.assign(new Error('needs APIFY_TOKEN'), { needs: true });
+    const cap = brandCapUsd(), used = await monthUsd(); if (used >= cap) throw Object.assign(new Error(`skipped: this month's Apify budget ($${cap}) is used`), { capped: true });
+    const { endpoint, data } = await runCap('traffic.similarweb', { apify, tag }, { inputOf: (id) => TRAFFIC.find((a) => a.id === id)?.input(hosts) ?? null, apifyOpts: { maxItems: hosts.length + 2, maxUsd: 0.1, startUsd: 0.001, perItemUsd: 0.005 } });
+    return { actor: endpoint, at: now().toISOString(), rows: data.map(trafficRow).filter((r) => r.host) };
   }
   return { platform, traffic };
+}
+
+/* ---------- where the brand says it sells: "Buy on Nykaa / Amazon / Blinkit" links on its own site (free, one page read) ---------- */
+export const STORE_HOSTS = [['amazon', /(^|\.)amazon\.(in|com|co\.uk|de|ca|com\.au|ae)$/], ['flipkart', /(^|\.)flipkart\.com$/], ['nykaa', /(^|\.)nykaa\.com$/], ['myntra', /(^|\.)myntra\.com$/],
+  ['blinkit', /(^|\.)blinkit\.com$/], ['zepto', /(^|\.)zepto(now)?\.com$/], ['instamart', /(^|\.)swiggy\.com$/], ['meesho', /(^|\.)meesho\.com$/], ['purplle', /(^|\.)purplle\.com$/],
+  ['tira', /(^|\.)tirabeauty\.com$/], ['ajio', /(^|\.)ajio\.com$/], ['walmart', /(^|\.)walmart\.com$/], ['target', /(^|\.)target\.com$/], ['ulta', /(^|\.)ulta\.com$/], ['sephora', /(^|\.)sephora\.(com|in)$/]];
+export function storeLinks(html = '') {
+  const out = new Map();
+  for (const m of String(html).matchAll(/href=["'](https?:\/\/[^"'#\s]+)["']/gi)) { let h; try { h = new URL(m[1]).hostname.replace(/^www\./, '').toLowerCase(); } catch { continue; }
+    const hit = STORE_HOSTS.find(([, re]) => re.test(h)); if (hit && !out.has(hit[0])) out.set(hit[0], { platform: hit[0], url: m[1].split('?')[0] }); }
+  return [...out.values()];
+}
+export async function channelsOnSite(host, { fetchText = async (u) => { const r = await safeFetch(u, { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(20e3) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); } } = {}) {
+  if (!host) return { found: [], error: 'no site' };
+  try { return { found: storeLinks(await fetchText(`https://${String(host).replace(/^https?:\/\//, '')}/`)), error: null }; } catch (e) { return { found: [], error: String(e.message).slice(0, 120) }; }
 }

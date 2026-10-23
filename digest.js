@@ -107,7 +107,7 @@ export async function digestContent(packs, slug, { since, now = Date.now(), base
   const images = [...new Set([...fresh, ...statics])].slice(0, 3);
   const needsOk = (jams?.work || []).filter((w) => OPEN(w) && w.stage === 'needs_you').length;
   /* on the shelf this week: a price move or a new out-of-stock on Blinkit, Zepto, Instamart or a marketplace since the last digest (market-pulse.js) */
-  const shelfFiles = await Promise.all(['blinkit', 'zepto', 'instamart', 'nykaa', 'flipkart', 'myntra'].map((k) => g(`shelf/${k}.json`)));
+  const shelfFiles = await Promise.all(['blinkit', 'zepto', 'instamart', 'nykaa', 'flipkart', 'myntra', 'amazon'].map((k) => g(`shelf/${k}.json`)));
   const shelf = shelfFiles.filter((f) => f && !f.error && after(f.at)).flatMap((f) => (f.changes || []).map((ch) => ({ ...ch, where: f.label + (f.city ? ` (${f.city})` : '') })))
     .sort((a, b) => (b.own ? 1 : 0) - (a.own ? 1 : 0)).slice(0, 4).map((ch) => (ch.kind === 'stock' ? `${ch.who}: ${cut(ch.name, 50)} went out of stock on ${ch.where}` : `${ch.who}: ${cut(ch.name, 50)} ${ch.from} → ${ch.to} on ${ch.where}`));
   const out = { since, rewritten, weekly, teamOnly, rivalAds, shelf, theme: top ? { name: cut(top.name, 60), n: +top.n } : null,

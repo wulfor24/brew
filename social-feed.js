@@ -252,6 +252,8 @@ export function heardView(L, { name = 'the brand', now = Date.now(), profile = {
   const skippedOnPurpose = (s) => /^skipped:/i.test(String(s.error || ''));
   const failed = Object.values(st.sources || {}).filter((s) => ['error', 'needs'].includes(s.state) && !skippedOnPurpose(s)).map((s) => ({ name: s.name, why: String(s.error || '').slice(0, 120) }));
   const skipped = Object.values(st.sources || {}).filter((s) => skippedOnPurpose(s)).map((s) => ({ name: s.name, why: String(s.error || '').replace(/^skipped:\s*/i, '').slice(0, 120) }));
+  /* kept from an earlier read (a light read leaves them out, or they failed this time): named with the day of what's shown */
+  const carried = Object.values(st.sources || {}).filter((s) => s.state === 'carried' || (s.state === 'ok' && s.partial)).map((s) => ({ name: s.name, at: s.carried || null, partial: !!s.partial }));
   // everything heard, counted by where it was said (display names only), by how (heard without asking, or replies to a question the brand asked)
   // and by reach (direct: about the brand; indirect: about rivals, the category or a problem it solves)
   const all = L.items || [], cnt = {}; all.forEach((x) => { if (x.platform) cnt[x.platform] = (cnt[x.platform] || 0) + 1; });
@@ -260,7 +262,7 @@ export function heardView(L, { name = 'the brand', now = Date.now(), profile = {
   const sources = Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, name: sourceName(id), n }));
   const byMode = { heard: all.filter((x) => (x.mode || 'heard') === 'heard').length, asked: all.filter((x) => x.mode === 'asked').length };
   const direct = (x) => (x.reach ? x.reach === 'direct' : x.about === 'brand'), byReach = { direct: all.filter(direct).length, indirect: all.filter((x) => !direct(x)).length };
-  return { name, at: st.at || null, items: st.items ?? all.length, total: all.length || st.items || 0, byMode, byReach, tagged: L.total || null, sources: sources.length ? sources : okSources.map((n) => ({ id: n, name: n, n: null })), okSources, failed, skipped, themes, communities, questions };
+  return { name, at: st.at || null, items: st.items ?? all.length, total: all.length || st.items || 0, byMode, byReach, tagged: L.total || null, sources: sources.length ? sources : okSources.map((n) => ({ id: n, name: n, n: null })), okSources, failed, carried, skipped, themes, communities, questions };
 }
 
 /* ---------- the background scheduler ---------- */

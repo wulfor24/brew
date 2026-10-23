@@ -138,3 +138,24 @@ export async function watchCatalog(treg, { days = 7, queries = WATCH_QUERIES, ba
   }
   return { since, at: new Date().toISOString(), known: known.size, added: [...found.values()].sort((a, b) => b.added.localeCompare(a.added)) };
 }
+
+/* ---------- the router: one capability, its endpoint and fallbacks, healthiest first ----------
+   runCap('shelf.blinkit', ctx, { inputOf }) walks [endpoint, ...fallbacks] in order of measured health (source-health.js),
+   skips one failing most of its week (one try a day still), and calls each through its provider's client (treg or Apify).
+   inputOf(endpoint) builds that endpoint's own input, since providers take different parameters; an endpoint it returns null
+   for is skipped. The first non-empty answer wins; every failure is kept in the thrown error. */
+import { byHealth, unhealthy } from './source-health.js';
+export async function runCap(capId, { treg = null, apify = null, tag } = {}, { inputOf, apifyOpts = {} } = {}) {
+  const c = byId(capId); if (!c) throw new Error(`unknown capability ${capId}`);
+  const ids = byHealth([c.endpoint, ...c.fallbacks]), errs = [];
+  for (const id of ids) {
+    if (ids.length > 1 && id !== ids.at(-1) && unhealthy(id)) { errs.push(`${id}: skipped, failing this week`); continue; }
+    const input = inputOf ? inputOf(id) : {}; if (input == null) continue;
+    try {
+      const out = c.provider === 'apify' ? await apify.run(id, input, { tag, ...apifyOpts }) : await treg.call(id, { ...input, tag });
+      if (Array.isArray(out) ? out.length : out != null) return { endpoint: id, data: out };
+      errs.push(`${id}: empty`);
+    } catch (e) { errs.push(`${id}: ${String(e.message).slice(0, 120)}`); }
+  }
+  throw new Error(errs.join(' · ') || `${capId}: nothing ran`);
+}

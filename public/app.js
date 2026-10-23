@@ -918,7 +918,7 @@
       ${proofBtn(p)}
       <button class="icon-btn" data-act="take" aria-label="Another take, a free draft" title="Another take · Free draft">${ic('refresh')}</button>
       <span class="sp"></span>
-      <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>`;
+      <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>${p.proof?.seen ? `<button class="pf-seen" data-act="proof" aria-label="Seen in ${esc(p.proof.seen)}: open the proof">${ic('search', 's14')}<span>Seen in ${esc(p.proof.seen)}</span></button>` : ''}`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
   const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 moves are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="Why this card, and the proof" title="Why Brew suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n}</span>` : ''}</button>`; };
   const pfDay = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
@@ -5116,7 +5116,8 @@
   const openHeard = (f = {}) => { HD.f = { src: '', mode: '', theme: '', q: '', ...f }; nav('#v=heard', true, 'view', 'heard'); renderHeard(); };
   const renderHeard = async (more = false) => {
     view = 'heard'; if (!more) { HD.x = null; libShell('What we heard', `Everything people said about ${esc(B.brand.name)}. Tap a quote to open where it was said.`, `<div class="hd" id="hd">${loader('Gathering what people said')}</div>`); $('#col')?.classList.add('lib-col', 'hd-col'); }
-    const off = more ? HD.x?.items.length || 0 : 0, r = await api(`/api/brands/${encodeURIComponent(BR)}/heard/items?${hdQs({ ...HD.f, offset: off, limit: 60 })}`);
+    const off = more ? HD.x?.items.length || 0 : 0, [r, sm] = await Promise.all([api(`/api/brands/${encodeURIComponent(BR)}/heard/items?${hdQs({ ...HD.f, offset: off, limit: 60 })}`), more ? null : api(`/api/brands/${encodeURIComponent(BR)}/heard`)]);
+    if (sm?.heard) HD.st = { failed: sm.heard.failed || [], carried: sm.heard.carried || [] };
     if (view !== 'heard' || !r || r.error) { if (!more && $('#hd')) $('#hd').innerHTML = `<p class="lx-empty">${r?.error ? esc(r.error) : 'Nothing heard yet. Brew listens every day; the first quotes land here within a day.'}</p>`; return; }
     HD.x = more && HD.x ? { ...r, items: [...HD.x.items, ...r.items] } : r; paintHeard(); };
   const paintHeard = () => { const el = $('#hd'); if (!el || !HD.x) return; const x = HD.x, f = HD.f, n0 = (n) => Number(n || 0).toLocaleString(), focus = document.activeElement?.matches?.('[data-hd-q]');
@@ -5136,7 +5137,11 @@
     /* "what people talk about most" names subjects, never a kind of post ("Product review", "Product recommendation"): those stay as filters below */
     const top = th0.filter((t) => !TALK_KIND.test(t.name || '')).slice(0, 5), topMx = Math.max(1, ...top.map((t) => t.n || 0));
     const sum = !f.theme && !f.q && top.length >= 3 ? `<section class="hd-sum" aria-label="What people talk about most"><span class="hd-l">What people talk about most</span><div class="hd-bars">${top.map((t, i) => `<button class="hd-bar${i ? '' : ' is-top'}" data-hd-f="theme" data-v="${esc(t.name)}"><span class="hd-bt"><b>${esc(topicCase(t.name))}</b><em>${n0(t.n)}</em></span><i style="--w:${Math.round((t.n || 0) / topMx * 100)}%"></i></button>`).join('')}</div></section>` : '';
-    el.innerHTML = `${sum}<div class="hd-top"><b class="hd-n">${n0(x.total)}</b><span>${f.src || f.mode || f.theme || f.q ? 'match' : `quotes${x.at ? ` · read ${ago(x.at)}` : ''}`}</span></div>
+    /* what couldn't be read this time, and what is shown from an earlier read: one folded line, never hidden */
+    const fl = HD.st?.failed || [], cr = HD.st?.carried || [], cantHtml = fl.length || cr.length ? `<details class="q-more hd-cant"><summary>${fl.length ? `Couldn’t read ${esc(fl.map((s) => s.name).join(', '))} this time` : `${cr.length} source${cr.length === 1 ? '' : 's'} from an earlier read`}</summary>
+      ${fl.map((s) => `<p><b>${esc(s.name)}</b> couldn’t be read this time${s.why ? `: ${esc(s.why.replace(/^\w+: /, '').slice(0, 90))}` : ''}. What it said before still counts; Brew tries again on the next read.</p>`).join('')}
+      ${cr.map((s) => `<p><b>${esc(s.name)}</b> ${s.partial ? 'was read in part' : `shows what Brew read${s.at ? ` on ${fmtDay(s.at)}` : ' earlier'}`}; the next full read brings it up to date.</p>`).join('')}</details>` : '';
+    el.innerHTML = `${sum}${cantHtml}<div class="hd-top"><b class="hd-n">${n0(x.total)}</b><span>${f.src || f.mode || f.theme || f.q ? 'match' : `quotes${x.at ? ` · read ${ago(x.at)}` : ''}`}</span></div>
       <div class="hd-grid"><aside class="hd-tools" aria-label="Filters">
         <label class="hd-search">${ic('search', 's16')}<input data-hd-q data-nomic type="search" placeholder="Search the words" value="${esc(f.q)}" aria-label="Search what people said"></label>
         <div class="hd-grp"><span class="hd-l">Where</span>${row('src', '', 'Everywhere', all, !f.src, `<span class="hd-stack">${(x.sources || []).slice(0, 3).map((s) => srcMark(s.id, s.name)).join('')}</span>`)}${(x.sources || []).filter((s, i) => HD.allS || i < 6 || f.src === s.id).map((s) => row('src', s.id, s.name, s.n, f.src === s.id, srcMark(s.id, s.name))).join('')}${!HD.allS && (x.sources || []).length > 6 ? `<button class="hd-row is-more" data-hd-alls><span>${x.sources.length - 6} more places</span></button>` : ''}</div>

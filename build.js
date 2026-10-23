@@ -779,7 +779,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const out = new Map();
     for (const m of p.marketplaces || []) { const id = String(m.name || '').split('.')[0].toLowerCase(); if (out.has(id)) continue; const ls = m.listings || [];
       out.set(id, { key: id, label: SELL_LABEL[id] || m.name, v: m.error ? 'Couldn’t check this time' : ls.length ? `${ls.length} listing${ls.length === 1 ? '' : 's'}${ls[0]?.rating ? ` · ★ ${ls[0].rating}` : ''}` : 'Not listed', url: ls[0]?.url || null, found: !!ls.length }); }
-    for (const k of ['nykaa', 'flipkart', 'myntra', 'blinkit', 'zepto', 'instamart']) { const f = await packs.getJSON(slug, `shelf/${k}.json`, null).catch(() => null); if (!f) continue;
+    for (const k of ['amazon', 'nykaa', 'flipkart', 'myntra', 'blinkit', 'zepto', 'instamart']) { const f = await packs.getJSON(slug, `shelf/${k}.json`, null).catch(() => null); if (!f) continue;
       const own = Object.values(f.byName || f.last?.byName || {}).flat().filter((x) => x.own), city = f.city ? ` in ${f.city}` : '';
       if (f.error && !own.length) { if (!out.has(k)) out.set(k, { key: k, label: SELL_LABEL[k], v: 'Couldn’t check this time', url: null, found: false }); continue; }
       out.set(k, { key: k, label: SELL_LABEL[k], v: own.length ? `${own.length} listed${city}${own.some((x) => x.inStock === false) ? `, ${own.filter((x) => x.inStock === false).length} out of stock` : ''}` : `Not listed${city}`, url: own[0]?.url || null, found: own.length > 0 }); }

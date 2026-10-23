@@ -6,7 +6,7 @@
 // Every treg call is tagged pulse-<slug> (the spend ledger books it to the brand).
 import fs from 'node:fs';
 import path from 'node:path';
-import { createShelf, PLATFORMS } from './shelf.js';
+import { createShelf, PLATFORMS, channelsOnSite } from './shelf.js';
 
 const DAY = 864e5;
 const EVERY = { daily: 0.8 * DAY, weekly: 6.5 * DAY, monthly: 29 * DAY, quarterly: 89 * DAY };
@@ -267,13 +267,39 @@ export function createPulse({ slug, packs, treg, ai, apify = null, log = console
         subject: who, own, source: label, url: xs[0]?.url || P.home, family: P.kind === 'shelf' ? 'price-offer' : 'listening' }); }
     if (changes.length) L({ key: `shelf.${key}.changes`, label: `${label}: changes since the last read`, value: changes.length, unit: 'changes', items: changes.slice(0, 8).map((c) => c.kind === 'stock' ? `${c.who}: ${c.name} went out of stock` : `${c.who}: ${c.name} ${c.from} → ${c.to}`), changes, source: label, url: P.home, family: 'price-offer' });
   }
+  /* the store links on the brand's own home page (free): kept in shelf/channels.json so the page can say "your site links to Nykaa" */
+  const siteChannels = async (b) => { const r = await channelsOnSite(b.host).catch((e) => ({ found: [], error: e.message })); const prev = await packs.getJSON(slug, 'shelf/channels.json', null).catch(() => null);
+    await packs.put(slug, 'shelf/channels.json', { at: now().toISOString(), found: r.error && prev?.found ? prev.found : r.found, error: r.error || null }); return r.found; };
   S.shelf = { cadence: 'weekly', family: 'price-offer', async run(b, L, note) {
+    await siteChannels(b);
     if (!shelf) return note('Quick-commerce shelves not read: no Apify client');
     if (b.market !== 'IN') return note(b.market ? `Quick-commerce shelves are read for India; ${b.market} is not covered yet` : 'Quick-commerce shelves not read: your selling market is not confirmed yet');
     const city = (b.cities || []).map(([n]) => n).find((n) => SHELF_AREA[n]) || 'Bengaluru';
     for (const key of ['blinkit', 'zepto', 'instamart']) await readPlatform(key, b, L, note, { name: city, area: SHELF_AREA[city] });
   } };
+  /* Amazon for every market (treg, the reader's own search): the brand's and each rival's listings, prices and ratings, weekly,
+     in the same shape as the other shelves so the page, the Brand Book and the digest read it the same way */
+  const AMZ = { IN: ['in', 'amazon.in'], US: ['us', 'amazon.com'], GB: ['uk', 'amazon.co.uk'], CA: ['ca', 'amazon.ca'], AU: ['au', 'amazon.com.au'], DE: ['de', 'amazon.de'], FR: ['fr', 'amazon.fr'], AE: ['ae', 'amazon.ae'] };
+  async function amazonShelf(b, L, note) {
+    const m = AMZ[b.market]; if (!m) return note(b.market ? `Amazon isn't read for ${b.market} yet` : 'Amazon not read: your selling market is not confirmed yet');
+    const [country, domain] = m, file = 'shelf/amazon.json', prev = await packs.getJSON(slug, file, null).catch(() => null), who = whoOf(b);
+    const reW = (n) => new RegExp(`(^|\\b)${String(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')}\\b`, 'i');
+    const byName = {}, errs = [];
+    await pool(who, 2, async (w) => { try { const j = await call('crawl4ai.amazon.search.products', { body: { keywords: w.name, country, limit: 40 } });
+      byName[w.name] = [...new Map((j?.rows || []).filter((r) => r.title && r.asin && reW(w.name).test(String(r.title).slice(0, 60))).map((r) => [r.asin, r])).values()].slice(0, 8)
+        .map((r) => ({ name: String(r.title).slice(0, 140), id: r.asin, price: num(r.price), mrp: num(r.list_price ?? r.original_price), rating: num(r.rating), ratings: num(r.reviews), inStock: null, url: `https://www.${domain}/dp/${r.asin}`, image: r.image || r.thumbnail || null, who: w.name, own: !!w.own })); }
+      catch (e) { errs.push(`${w.name}: ${String(e.message).slice(0, 100)}`); } });
+    if (!Object.keys(byName).length) { await packs.put(slug, file, { ...(prev || {}), platform: 'amazon', label: 'Amazon', kind: 'marketplace', error: errs.join(' · ') || 'no answer', errorAt: now().toISOString() }); note(`Amazon: ${errs[0] || 'no answer'}`); return; }
+    const last = prev?.byName ? { at: prev.at, byName: prev.byName } : prev?.last || null, changes = [];
+    for (const [n, xs] of Object.entries(byName)) { const before = new Map((last?.byName?.[n] || []).map((x) => [x.id, x]));
+      for (const x of xs) { const o = before.get(x.id); if (o?.price && x.price && Math.abs(x.price - o.price) / o.price >= 0.1) changes.push({ kind: 'price', who: n, own: x.own, name: x.name, url: x.url, from: o.price, to: x.price, platform: 'amazon' }); } }
+    await packs.put(slug, file, { platform: 'amazon', label: 'Amazon', kind: 'marketplace', city: null, actor: 'treg:crawl4ai.amazon.search.products', at: now().toISOString(), byName, reviews: [], rivalReviews: [], last, changes, error: null });
+    for (const [n, xs] of Object.entries(byName)) L({ key: `shelf.amazon.${kslug(n)}`, label: `${n} on ${domain}: products listed`, value: xs.length, unit: 'products', minPrice: Math.min(...xs.map((x) => x.price).filter(Boolean)) || null,
+      items: xs.slice(0, 6).map((x) => `${x.name.slice(0, 60)}: ${x.price ?? '?'}${x.rating ? ` ★${x.rating}` : ''}`), subject: n, own: n === who[0].name, source: domain, url: `https://www.${domain}/s?k=${encodeURIComponent(n)}`, family: 'price-offer' });
+    if (changes.length) L({ key: 'shelf.amazon.changes', label: `${domain}: changes since the last read`, value: changes.length, unit: 'changes', items: changes.slice(0, 8).map((c) => `${c.who}: ${c.name.slice(0, 40)} ${c.from} → ${c.to}`), changes, source: domain, family: 'price-offer' });
+  }
   S.marketplace = { cadence: 'weekly', family: 'listening', async run(b, L, note) {
+    await amazonShelf(b, L, note);
     if (!shelf) return note('Marketplaces not read: no Apify client');
     if (b.market !== 'IN') return note(b.market ? `Nykaa, Flipkart and Myntra are Indian marketplaces; Amazon is read for ${b.market}` : 'Marketplaces not read: your selling market is not confirmed yet');
     for (const key of ['nykaa', 'flipkart', 'myntra']) await readPlatform(key, b, L, note, null);

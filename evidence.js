@@ -170,3 +170,17 @@ export const proofAnswer = (e) => {
   return { text, proof: { saw, data, so, unbacked: (e.unbacked || []).slice(0, 3) } };
 };
 
+
+/* the one line a card wears under its words ("Seen in 580 mentions · Reddit · Nykaa"): at most three parts from its own proof,
+   a mention count first, then the places the proof came from by their plain names; never a zero, never a raw link */
+const PLACE_NAMES = [[/reddit/i, 'Reddit'], [/youtube|youtu\.be/i, 'YouTube'], [/instagram/i, 'Instagram'], [/tiktok/i, 'TikTok'], [/nykaa/i, 'Nykaa'], [/flipkart/i, 'Flipkart'], [/myntra/i, 'Myntra'],
+  [/amazon/i, 'Amazon'], [/blinkit/i, 'Blinkit'], [/zepto/i, 'Zepto'], [/swiggy|instamart/i, 'Instamart'], [/trustpilot/i, 'Trustpilot'], [/meta ad library|facebook\.com\/ads/i, 'Meta Ad Library'],
+  [/google shopping/i, 'Google Shopping'], [/google rankings|google search|trends/i, 'Google'], [/similarweb/i, 'Similarweb'], [/chatgpt|gemini|perplexity|ai answers/i, 'AI answers'], [/your (\w+) account/i, null]];
+export function seenOf(e) {
+  if (!e?.items?.length) return null; const parts = [], places = new Set();
+  const m = e.items.find((x) => x.kind === 'count' && /mention/i.test(x.label || '')); const mn = m ? parseInt(String(m.value).replace(/,/g, ''), 10) : 0;
+  if (mn > 0) parts.push(`${mn.toLocaleString('en-IN')} mention${mn === 1 ? '' : 's'}`);
+  for (const x of e.items) { const t = `${x.src || ''} ${x.label || ''}`; for (const [re, name] of PLACE_NAMES) { const hit = t.match(re); if (!hit) continue; places.add(name || `Your ${hit[1]}`); break; } }
+  parts.push(...[...places].slice(0, 3 - parts.length));
+  return parts.length ? parts.join(' · ') : null;
+}
