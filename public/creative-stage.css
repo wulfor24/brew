@@ -75,3 +75,8 @@
 .pp-checks li.warn{color:var(--warn,#a15c00)}
 .pp footer{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .pp footer small{font-size:12px;color:var(--fg-3,#777)}
+/* a picture with its own words is fitted whole on a blurred copy of itself, never cropped (as in the pack: publish-pack.js fitTo) */
+.pp-places figure span.is-fit{position:relative}
+.pp-places figure span.is-fit img{position:absolute;inset:0;object-fit:contain}
+.pp-places figure span.is-fit img.bg{object-fit:cover;filter:blur(8px) brightness(.94);transform:scale(1.12)}
+.pp-checks li{flex-wrap:nowrap}.pp-checks li>svg{flex:none;margin-top:2px}.pp-checks li>span{flex:1;min-width:0}

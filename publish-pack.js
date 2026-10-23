@@ -31,13 +31,24 @@ export const cropTo = (file, shape) => new Promise((res) => {
     if (e || !fs.existsSync(out)) return res(null); const buf = fs.readFileSync(out); fs.rmSync(out, { force: true }); res(buf); });
 });
 
+/* a picture that carries its own words is never cropped (a centre crop slices the headline): it is set whole on a soft blurred
+   copy of itself at the shape's size. sharp, local, free; null when it can't */
+export const fitTo = async (file, shape) => { const r = SHAPES[shape]; if (!r) return null;
+  try { const sharp = (await import('sharp')).default, m = await sharp(file).metadata(), W0 = m.width, H0 = m.height; if (!W0 || !H0) return null;
+    const [W, H] = r > W0 / H0 ? [Math.round(H0 * r), H0] : [W0, Math.round(W0 / r)];
+    const bg = await sharp(file).resize(W, H, { fit: 'cover' }).blur(Math.max(20, Math.round(Math.min(W, H) / 30))).modulate({ brightness: 0.94 }).toBuffer();
+    const fg = await sharp(file).resize(W, H, { fit: 'inside' }).toBuffer();
+    return await sharp(bg).composite([{ input: fg, gravity: 'center' }]).jpeg({ quality: 90 }).toBuffer(); } catch { return null; } };
+/* the picture's words are in it: a Brew Studio take (gen/j2-…) or a version marked so */
+export const hasWords = (rel, p = {}) => !!rel && (p.wordsIn === rel || /^\/?gen\/j2-/.test(rel));
+
 /* Ads Editor wants one row per keyword with its match type in its own column: "minoxidil alternative (phrase)" → phrase */
 const kwRow = (s) => { const m = /^\[(.+)\]$/.exec(s) || /^"(.+)"$/.exec(s); if (m) return [m[1], s.startsWith('[') ? 'Exact' : 'Phrase'];
   const t = /^(.*?)\s*\((exact|phrase|broad)\)\s*$/i.exec(s); return t ? [t[1].replace(/^["[]|["\]]$/g, ''), t[2][0].toUpperCase() + t[2].slice(1).toLowerCase()] : [s, 'Broad']; };
 
 /* the version's package → { entries: [{ name, data }], readme, todo } — entries is what the zip holds.
    read(rel) → a local file path or null (gen/…, the brand's photos); renderPdf(html) → a PDF buffer or throws */
-export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = {}, assets = [], read = async () => null, renderPdf = null, crop = cropTo }) {
+export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = {}, assets = [], read = async () => null, renderPdf = null, crop = cropTo, fit = fitTo }) {
   const entries = [], put = (name, data) => entries.push({ name, data: Buffer.isBuffer(data) ? data : Buffer.from(String(data)) });
   const where = [], todo = [], links = [];
   const name = brand.name || 'the brand', act = ch.actionLabel || 'The change', target = ch.target || {};
@@ -50,7 +61,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
     const got = [];
     for (const s of Object.keys(SHAPES)) {
       if (s === made) { const n = `${base}-${s.replace(':', 'x')}.${extOf(f)}`; put(n, fs.readFileSync(f)); got.push(n); continue; }
-      const buf = await crop(f, s); if (buf) { const n = `${base}-${s.replace(':', 'x')}.jpg`; put(n, buf); got.push(n); }
+      const buf = hasWords(rel, p) ? await fit(f, s) || await crop(f, s) : await crop(f, s); if (buf) { const n = `${base}-${s.replace(':', 'x')}.jpg`; put(n, buf); got.push(n); }
       else todo.push(`${base} at ${s}: crop it from the ${made} file (this server couldn’t)`);
     }
     return got;

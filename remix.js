@@ -1746,7 +1746,7 @@ export function createRemix(o) {
   /* a version's package as it was then: the snapshot without the change's own keys */
   const pkgOfVersion = (t, ch, v) => { if (!v) return { ...ch.pkg }; const { action, amount, title, sub, state, ...pkg } = v.snapshot || {}; return pkg; };
   const versionAsked = (t, ch, q) => { const vq = q?.get?.('v'); if (!vq) return headOf(t, ch) || null; return versionsOf(t, ch.id).find((x) => String(x.n) === vq || x.id === vq) || false; };
-  const PACK_V = 3; /* 3: a Studio take carries its link (UTM) and alt text */ // bump when a family's pack starts holding different files or words: every saved pack is made again (2: spend = a week of the daily budget)
+  const PACK_V = 4; /* 3: a Studio take carries its link (UTM) and alt text; 4: worded pictures fitted whole, never cropped */ // bump when a family's pack starts holding different files or words: every saved pack is made again (2: spend = a week of the daily budget)
   /* read-only: the version as files the team posts or applies themselves (publish-pack.js). Brew writes to no account.
      The zip is saved once per version (gen/pack-….zip) and served from /gen/ like every made file */
   on('GET', '/api/changes/:chid/pack', async (b, t, p, q) => {

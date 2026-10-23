@@ -102,3 +102,16 @@ test('a Studio take’s jam carries the publish parts; an edit keeps the link, t
   await S.call('POST /api/changes/:chid/edit', { pkg: { publish: { link: 'https://acme.com/balm', alt: 'Balm on a windowsill.' } } }, t, { chid: id });
   assert.equal(ch.pkg.publish.link, 'https://acme.com/balm'); assert.equal(ch.pkg.wordsIn, 'gen/ad.jpg', 'the picture still says its words are in it');
 });
+
+test('a picture with its own words is fitted whole into every placement, never cropped; a word-free photo is still cropped', async () => {
+  const { fitTo, hasWords, buildPack } = await import('../publish-pack.js'), sharp = (await import('sharp')).default;
+  const f = path.join(DIR, 'worded.png'); fs.writeFileSync(f, await sharp({ create: { width: 400, height: 500, channels: 3, background: { r: 200, g: 40, b: 40 } } }).png().toBuffer());
+  const out = await fitTo(f, '9:16'), m = await sharp(out).metadata(); assert.equal(m.width, 400); assert.equal(m.height, 711, 'the 9:16 frame around the whole 4:5 picture');
+  const wide = await sharp(await fitTo(f, '1:1')).metadata(); assert.equal(wide.width, 500); assert.equal(wide.height, 500);
+  assert.equal(hasWords('gen/j2-abc.jpg'), true); assert.equal(hasWords('gen/abc.png'), false); assert.equal(hasWords('gen/abc.png', { wordsIn: 'gen/abc.png' }), true);
+  let fits = 0, crops = 0; const read = async () => f;
+  await buildPack({ ch: { actionLabel: 'Ad' }, family: 'meta_ad', pkg: { image: 'gen/j2-x.png', format: '4:5', wordsIn: 'gen/j2-x.png' }, read, crop: async () => { crops++; return Buffer.from('c'); }, fit: async () => { fits++; return Buffer.from('f'); } });
+  assert.equal(fits, 2); assert.equal(crops, 0);
+  await buildPack({ ch: { actionLabel: 'Ad' }, family: 'meta_ad', pkg: { image: 'gen/plain.png', format: '4:5' }, read, crop: async () => { crops++; return Buffer.from('c'); }, fit: async () => { fits++; return Buffer.from('f'); } });
+  assert.equal(crops, 2, 'a word-free photo is cropped as before');
+});
