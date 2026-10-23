@@ -76,3 +76,29 @@ test('the composer arrives filled: every slot says why, gaps are said plainly, n
   assert.ok(b.missing.some((m) => /logo/i.test(m.text)) && b.missing.some((m) => /one photo/i.test(m.text)), 'the gaps are said, with a fix');
   const r = contextOf({ ...base, card: { ...base.card, research: { kind: 'ad' }, rivalName: 'Rival', images: ['r.jpg'] }, bbv: {} }, d0); assert.equal(r.slots.reference.value.img, 'r.jpg'); assert.match(r.slots.reference.why, /rival ad/);
 });
+
+test('ready to publish: every part with its limit, Brew fills the link and alt text, the check reads the picture’s own words', async () => {
+  const { readyOf, linkOf } = await import('../publish-ready.js');
+  const base = { family: 'meta_ad', card: { title: 'Sell more combos' }, product: { name: 'Combo', url: 'https://shop.example/p/combo' }, catalog: [{ t: 'Combo', price: '1803' }], brand: 'Acme', host: 'shop.example', source: 'acme reviews rated 4.6 stars, combo ₹1,803', style: { id: 'in-use', label: 'In use' } };
+  const ok = readyOf({ ...base, pkg: { primaryText: 'Two steps, one routine.', headline: 'The ₹1,803 combo', cta: 'Shop now' }, words: ['4.6 stars from reviews', 'SHOP NOW'] });
+  assert.equal(ok.ready, true, JSON.stringify(ok.checks.filter((c) => !c.ok).concat(ok.parts.filter((p) => !p.ok))));
+  const link = ok.parts.find((x) => x.k === 'link'); assert.match(link.value, /^https:\/\/shop\.example\/p\/combo\?utm_source=meta&utm_medium=paid_social&utm_campaign=sell-more-combos/); assert.equal(link.made, true);
+  assert.match(ok.parts.find((x) => x.k === 'alt').value, /Acme Combo: in use/);
+  const bad = readyOf({ ...base, pkg: { primaryText: 'x'.repeat(140), headline: 'A very long headline that Meta will cut on phones', cta: 'Buy it' }, words: ['4.9★ from 1,000 reviews', 'Now ₹999'] });
+  assert.equal(bad.ready, false); assert.ok(bad.checks.find((c) => c.k === 'rating' && !c.ok), 'a rating that isn’t the brand’s'); assert.ok(bad.checks.find((c) => c.k === 'price' && !c.ok), 'a price that isn’t on the store');
+  assert.ok(bad.parts.find((x) => x.k === 'cta' && !x.ok), 'a button Meta doesn’t offer'); assert.ok(bad.parts.find((x) => x.k === 'headline').warn.length, 'a headline Meta cuts'); assert.ok(bad.parts.find((x) => x.k === 'primaryText').warn.length);
+  assert.ok(readyOf({ ...base, pkg: { primaryText: 'a', headline: 'b', cta: 'Shop now', publish: { link: 'https://evil.example/x' } } }).parts.find((x) => x.k === 'link' && !x.ok), 'a link off the brand’s site');
+  assert.equal(linkOf({ family: 'social', host: 'www.shop.example', campaign: 'Warm paws' }), 'https://www.shop.example/?utm_source=instagram&utm_medium=social&utm_campaign=warm-paws', 'no guessed product path when the store gave none');
+  const s = readyOf({ ...base, family: 'social', pkg: { caption: 'Warm paws.', hashtags: ['#cats'] } }); assert.ok(s.parts.find((x) => x.k === 'hashtags').warn.length, 'too few hashtags');
+});
+
+test('a Studio take’s jam carries the publish parts; an edit keeps the link, the alt text and the words-in-picture mark', async () => {
+  const S = studio(), t = tenant(card({ cta: { label: 'Make the ad' }, make: { format: 'single image ad' } }));
+  const { id, ch } = await press(S, t, 'Make the ad'); await settle(ch);
+  assert.equal(S.RMX.pubChange(t, ch).publish.made, false, 'nothing to publish before a take');
+  S.RMX.landStudio(t, id, { file: 'gen/ad.jpg', cost: { usd: 0.1 }, words: { headline: 'Warm paws', proof: '4.9★ rated' }, studio: { style: 'in-use', label: 'In use', kind: 'image', spec: { product: { name: 'Balm', img: 'balm.png' } } } });
+  const pb = S.RMX.pubChange(t, ch).publish; assert.equal(pb.made, true); assert.ok(pb.parts.some((x) => x.k === 'link') && pb.parts.some((x) => x.k === 'alt'));
+  assert.ok(pb.checks.find((c) => c.k === 'rating' && !c.ok), 'the 4.9★ in the picture isn’t backed'); assert.equal(pb.ready, false);
+  await S.call('POST /api/changes/:chid/edit', { pkg: { publish: { link: 'https://acme.com/balm', alt: 'Balm on a windowsill.' } } }, t, { chid: id });
+  assert.equal(ch.pkg.publish.link, 'https://acme.com/balm'); assert.equal(ch.pkg.wordsIn, 'gen/ad.jpg', 'the picture still says its words are in it');
+});

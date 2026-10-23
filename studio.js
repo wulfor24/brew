@@ -418,7 +418,9 @@ export const cleanPkg = (family, action, pkg = {}, clean = (s) => s) => {
     else if (f.type === 'select') out[f.k] = f.opts.includes(v) ? v : f.opts[0];
     else out[f.k] = clean(str(v)).slice(0, f.max || (f.type === 'long' ? 900 : 240));
   });
-  ['image', 'knobs', 'grade', 'cardImages'].forEach((k) => { if (pkg[k] != null) out[k] = pkg[k]; });
+  ['image', 'knobs', 'grade', 'cardImages', 'wordsIn', 'photoSet'].forEach((k) => { if (pkg[k] != null) out[k] = pkg[k]; });
+  /* ready to publish: the link (with its UTM) and the alt text the team set; anything else in it is dropped */
+  if (pkg.publish && typeof pkg.publish === 'object') { const pb = {}; const link = str(pkg.publish.link).trim(); if (/^https?:\/\/\S+$/.test(link)) pb.link = link.slice(0, 600); const alt = clean(str(pkg.publish.alt)).trim(); if (alt) pb.alt = alt.slice(0, 220); if (Object.keys(pb).length) out.publish = pb; }
   return out;
 };
 export const publicText = (family, action, pkg = {}) => fieldsFor(family, action).filter((f) => f.pub).flatMap((f) => {

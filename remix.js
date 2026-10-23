@@ -18,6 +18,7 @@ import { beatWords, buildDraft, motionOnly, onScreen } from './sloosh-prompt.js'
 import { versionLabel } from './text-fit.js';
 import { ctaName } from './seed-template.js'; /* a renamed button (Publish Campaign, List what points there) maps as its new name */
 import { withSteps, isBatchCard } from './card-plan.js';
+import { readyOf } from './publish-ready.js'; // ready to publish: every part the platform needs, and the check
 import { planFor as j2Plan, recipe as j2Recipe } from './jam2/catalogue.js'; import { inStudio } from './jam2/studio.js'; // v1's pictures, sets and videos are made by Brew Studio (priced, on a yes)
 import { shopperLine, familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx, isAdVideo, namesLiveTest } from './studio.js';
 import { buildPack } from './publish-pack.js';
@@ -681,6 +682,13 @@ export function createRemix(o) {
   /* the spend a saved change shows, made again from its package (changes saved before the budget floor came out heal on open) */
   const healCost = (ch) => { const act = actOf(ch.action); if (!act?.money) return; ch.amount = amountOf(act, ch.family, ch.pkg); ch.costLabel = ch.amount > 0 ? `About ${inr(ch.amount)} a week` : ['meta_ad', 'search', 'meta_ops'].includes(ch.family) ? 'A budget to confirm' : 'A one-off cost to confirm'; };
   const ensurePkg = (t, ch) => { if (ch.pkg) { healCost(ch); return ch; } const c = t.cards.get(ch.cardId) || {}; ch.family = familyOf(ch.action); ch.pkg = cleanPkg(ch.family, ch.action, mockPkg(ch.family, ch.action, c, 0, ch.angle, FACTS), clean); ch.pkg.knobs = {}; ch.thread ||= []; return sync(t, ch, c); };
+  /* a Studio jam's ready-to-publish parts and check (publish-ready.js), from the version on the stage */
+  const publishFor = (t, ch) => { if (!studioOf(t, ch)) return null; try {
+    const head = headOf(t, ch), sv = head?.studio || null, card = t.cards.get(ch.cardId) || {}, cat = catalogOf(t) || [];
+    const name = sv?.product?.name || null, pe = name ? cat.find((x) => x.t === name) || cat.find((x) => sv.product.img && (x.img === sv.product.img || (x.imgs || []).includes(sv.product.img))) : null;
+    const cp = (() => { try { return cardProduct(card, cat); } catch { return null; } })();
+    return { made: !!sv, ...readyOf({ family: ch.family, action: ch.action, pkg: ch.pkg, card, product: name ? { name, url: pe?.url || null } : cp ? { name: cp.t, url: cp.url || null } : null, cardProduct: cp ? { name: cp.t } : null, catalog: cat, brand: BN(), host: BH(), source: brandSource(t, card), words: sv?.words || [], style: sv ? { id: sv.style, label: sv.label } : null, version: head?.n || 1 }) };
+  } catch (e) { log.warn('[publish]', e.message); return null; } };
   const pubChange = (t, ch) => {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
     if (ch.v0 !== 'draft' && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch); /* 'none' tries again while the jam is untouched: the card's draft may land after the jam opened */
@@ -695,7 +703,7 @@ export function createRemix(o) {
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
     /* the jam's own name in plain words ("syncing our Shopify products.json stock levels", final QA pass 19 Oct); the package itself is untouched */
     if (pub.after?.title && dejargon(pub.after.title) !== pub.after.title) pub.after = { ...pub.after, title: dejargon(pub.after.title) };
-    return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), ...(isReferenceCard(card0) && o.refSummary ? { ref: o.refSummary(t, card0) } : {}), /* View references: the ad or video it remakes */ thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, studio: studioOf(t, ch), /* made by Brew Studio on the stage */ /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
+    return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), ...(isReferenceCard(card0) && o.refSummary ? { ref: o.refSummary(t, card0) } : {}), /* View references: the ad or video it remakes */ thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, studio: studioOf(t, ch), /* made by Brew Studio on the stage */ publish: publishFor(t, ch), /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
       familyName: ch.action === 'creative.short_video' && ch.target?.conn === 'meta' ? 'Meta video ad' : FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).filter((f) => !isAdClip(ch) || !['postAt', 'hashtags', 'where'].includes(f.k)).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label: isAdClip(ch) ? ({ copy: 'Ad text', title: 'Headline', platform: 'Placement' }[k] || label) : label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
       options: opts /* the cuts as tabs: pick one (Param, 19 Oct) */, head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
@@ -1738,13 +1746,15 @@ export function createRemix(o) {
   /* a version's package as it was then: the snapshot without the change's own keys */
   const pkgOfVersion = (t, ch, v) => { if (!v) return { ...ch.pkg }; const { action, amount, title, sub, state, ...pkg } = v.snapshot || {}; return pkg; };
   const versionAsked = (t, ch, q) => { const vq = q?.get?.('v'); if (!vq) return headOf(t, ch) || null; return versionsOf(t, ch.id).find((x) => String(x.n) === vq || x.id === vq) || false; };
-  const PACK_V = 2; // bump when a family's pack starts holding different files or words: every saved pack is made again (2: spend = a week of the daily budget)
+  const PACK_V = 3; /* 3: a Studio take carries its link (UTM) and alt text */ // bump when a family's pack starts holding different files or words: every saved pack is made again (2: spend = a week of the daily budget)
   /* read-only: the version as files the team posts or applies themselves (publish-pack.js). Brew writes to no account.
      The zip is saved once per version (gen/pack-….zip) and served from /gen/ like every made file */
   on('GET', '/api/changes/:chid/pack', async (b, t, p, q) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
     const v = versionAsked(t, ch, q); if (v === false) return { status: 404, error: 'That version isn’t on this change.' };
-    const pkg = pkgOfVersion(t, ch, v), n = v?.n || 1;
+    let pkg = pkgOfVersion(t, ch, v); const n = v?.n || 1;
+    /* a Studio take's pack carries its ready-to-publish link (with UTM) and alt text, the ones Brew filled in too */
+    if (studioOf(t, ch) && (!v || v.id === headOf(t, ch)?.id)) { const pb = publishFor(t, ch), at = (k) => pb?.parts?.find((x) => x.k === k)?.value || ''; if (pb?.made) pkg = { ...pkg, publish: { ...(pkg.publish || {}), link: at('link') || pkg.publish?.link || '', alt: at('alt') || pkg.publish?.alt || '' } }; }
     const key = 'pack-' + crypto.createHash('sha1').update(`${PACK_V}|${ch.id}|${v?.id || ''}|${JSON.stringify(pkg)}|${ch.family}|${BN()}`).digest('hex').slice(0, 20) + '.zip';
     /* built once per version: the zip and what it holds are kept, so a repeat GET runs no ffmpeg or Chrome */
     ch.packMeta ||= {}; if (ch.packMeta[key] && (await genFile(key))) return { pack: { ...ch.packMeta[key], url: 'gen/' + key } };
@@ -2060,7 +2070,9 @@ export function createRemix(o) {
     const media = slides.length > 1 ? (ch.family === 'listing' ? { photoSet: slides.map((x) => ({ image: x.file, style: x.style || null })), image: slides[0].file } : { image: slides[0].file, cardImages: slides.map((x) => x.file) })
       : st.kind === 'video' ? { video: take.file, poster: take.poster || take.shot?.file || null, image: take.poster || take.shot?.file || ch.pkg.image } : { image: take.file, wordsIn: take.file /* a Studio picture carries its own words: the frame lays none over it */ };
     ch.pkg = { ...ch.pkg, ...media }; ch.imageError = null; sync(t, ch);
-    const v = version(t, ch, 'brew', `Studio: ${label}${take.cost?.usd ? ` · $${take.cost.usd}` : ''}`, label); v.studio = { style: st.style || null, label, kind: st.kind || null, size: st.size || null, usd: take.cost?.usd || 0, jid: take.jid || null };
+    const v = version(t, ch, 'brew', `Studio: ${label}${take.cost?.usd ? ` · $${take.cost.usd}` : ''}`, label); const tw = take.words || {}, prod = st.spec?.product || null;
+    v.studio = { style: st.style || null, label, kind: st.kind || null, size: st.size || null, usd: take.cost?.usd || 0, jid: take.jid || null, product: prod ? { name: prod.name || null, img: prod.img || null } : null,
+      words: [...new Set([tw.headline, tw.sub, tw.button, tw.badge, tw.proof, ...(Array.isArray(take.check?.words) ? take.check.words : []), ...(take.slides || []).flatMap((x) => [x.words?.headline, x.words?.sub])].filter((x) => typeof x === 'string' && x.trim()).map((x) => x.slice(0, 200)))].slice(0, 20) }; /* what the picture itself says: the publish check reads it */
     studioState(t, chId, { state: 'made', line: label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
   const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; ch.studioState = { ...st, at: now(t) }; const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };

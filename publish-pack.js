@@ -65,6 +65,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       const rows = p.cards || p.slides || [];
       for (let i = 0; i < rows.length; i++) { const img = (p.cardImages || [])[i] || (i === 0 ? p.image : null); if (img) { const x = await addFile(img, `media/${p.cards ? 'card' : 'slide'}-${String(i + 1).padStart(2, '0')}`); if (!x) todo.push(`${p.cards ? 'Card' : 'Slide'} ${i + 1} photo: download it from the studio`); } else if (i) todo.push(`${p.cards ? 'Card' : 'Slide'} ${i + 1} photo still to be made${rows[i].imageBrief ? `: ${rows[i].imageBrief}` : ''}`); }
       await video();
+      const pubLines = [p.publish?.link && `LINK (WITH UTM)\n${p.publish.link}\n`, p.publish?.alt && `ALT TEXT\n${p.publish.alt}\n`]; /* ready to publish (publish-ready.js) */
       put('copy.txt', lines(
         family === 'meta_ad' ? [p.primaryText && `PRIMARY TEXT\n${p.primaryText}\n`, p.headline && `HEADLINE\n${p.headline}\n`, p.description && `DESCRIPTION\n${p.description}\n`, p.cta && `CALL TO ACTION BUTTON\n${p.cta}\n`, p.overlay && `TEXT ON THE IMAGE\n${p.overlay}\n`] : [p.overlay && `TEXT ON THE IMAGE\n${p.overlay}\n`],
         p.caption && `CAPTION\n${p.caption}\n`, list(p.hashtags).length && `HASHTAGS\n${list(p.hashtags).join(' ')}\n`, p.stickers && `STICKER\n${p.stickers}\n`,
@@ -72,6 +73,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
         (p.chat || []).length && `WHATSAPP CHAT THAT OPENS\n${p.chat.map((m) => `${m.from === 'in' ? 'Customer' : name}: ${m.text}`).join('\n')}\n`,
         list(p.products).length && `PRODUCTS IN THE GRID\n${list(p.products).join('\n')}${p.instantPage ? `\nOpens to: ${p.instantPage}` : ''}\n`,
         p.productSet && `CATALOG SET\n${p.productSet}${p.frame ? `\nFrame on every photo: ${p.frame}` : ''}\n`,
+        pubLines,
         p.imageBrief && `IMAGE BRIEF\n${p.imageBrief}\n`,
         family === 'meta_ad' && `SETTINGS\n${[['Audience', p.audience], ['Placements', p.placements], ['Ad set', p.adSet], ['Daily budget', p.dailyBudget], ['Schedule', p.schedule], ['Link', p.utm]].filter((x) => x[1] != null && x[1] !== '').map(([k, v]) => `${k}: ${v}`).join('\n')}\n`,
         family === 'social' && [p.account && `ACCOUNT\n${p.account}\n`, p.postAt && `GOES UP\n${p.postAt}\n`]));

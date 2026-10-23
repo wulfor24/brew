@@ -3940,7 +3940,7 @@
     else if (fp) { head = `<brew-load class="spin"></brew-load>${fp.fallback ? 'Brew' : 'Sloosh'} is making the final${nm}`; tip = 'It takes a few minutes. We’ll notify you when it’s ready; you can leave this page.'; main = `<button class="btn btn-primary ship-go" disabled aria-busy="true"><brew-load class="spin"></brew-load>Making the final ${reel ? 'reel' : 'picture'}…</button>`; }
     else if (media && !fin && isReel(ch) && !p.video) { head = `Script ready${nm}`; tip = 'Make the video to see it moving. It’s a quick draft; the final reel is made after.'; main = `<button class="btn btn-primary ship-go" data-rx="video">${ic('vid', 's16')}Make the video${freeTag(true)}</button>`; }
     else if (media && !fin) { head = `Draft ${reel ? 'video' : 'photo'} ready${nm}`; tip = `A quick draft made by Brew to check the idea. The final ${reel ? 'reel' : 'picture'} is made on Sloosh, ready to post. Then Send brief.`; main = finalBtn(ch); }
-    else if (media) { head = `${sv ? 'Made by Brew Studio' : 'Final ready'}${nm}`; tip = 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and posts or runs it. Its status shows in the top bar.'; main = send; }
+    else if (media) { head = `${sv ? (ch.publish?.made ? (ch.publish.ready ? 'Ready to publish' : `Needs a look · ${ch.publish.bad}`) : 'Made by Brew Studio') : 'Final ready'}${nm}`; tip = 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and posts or runs it. Its status shows in the top bar.'; main = send; }
     else if (po) { head = `Ready${nm}`; tip = `${po.filled ? `Opens ${PO_WHERE(po)} with the post filled in, and copies it too.` : `Copies the post and opens ${PO_WHERE(po)}; paste it there.`} You post it yourself; Brew never posts in communities for you.${po.rule ? ` ${po.rule}` : ''}`; main = poBtn(po, true); }
     /* a post with no thread to open: its main button copies the post (it said "you post it yourself" over a Send brief button: QA J-20) */
     else if (ch.family === 'post' && ch.target?.conn !== 'meta' && (p.copy || p.title)) { head = `Ready${nm}`; tip = 'Copy the post and paste it where it goes. You post it yourself; Brew never posts in communities for you. The brief carries it too.'; main = `<button class="btn btn-primary ship-go" data-rx="copy-post">${ic('copy', 's16')}Copy the post</button>`; }
@@ -4427,6 +4427,17 @@
   /* the creative stage (Brew Studio in the v1 jam): the frame the piece lives in, filled from the card at once (never a blank
      skeleton), the composer under it, and the ship bar once something is made. Before that the composer's Generate is the way on */
   const studioMade = (ch) => ch.versions.some((v) => v.studio);
+  /* Ready to publish (publish-ready.js on the server): every part the platform needs, each editable where it sits, the check, and
+     every placement cut from the one make. "Ready to publish" only when nothing needs a look */
+  const publishPanel = (ch, pkgCh) => { const pb = ch.publish; if (!pb?.made) return ''; const img = pkgCh.pkg?.image;
+    const row = (x) => `<div class="pp-r${x.ok ? (x.warn.length ? ' is-warn' : '') : ' is-bad'}"><dt>${esc(x.label)}${x.max || x.soft ? `<small>${x.n}${x.soft ? `/${x.soft}` : x.max ? `/${x.max}` : ''}</small>` : ''}${x.made ? '<small class="pp-by">Brew filled this in</small>' : ''}</dt>
+      ${x.opts ? `<dd><select data-pp-sel="${esc(x.k)}">${x.opts.map((o) => `<option${o === x.value ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></dd>` : `<dd data-pp-edit="${esc(x.k)}" title="Click to change" tabindex="0">${esc(x.value || '') || `<em>Empty · click to write it</em>`}</dd>`}
+      ${[...x.why, ...x.warn].map((w) => `<p class="pp-why">${ic(x.why.includes(w) ? 'x' : 'info', 's14')}${esc(w)}</p>`).join('')}</div>`;
+    return `<section class="pp${pb.ready ? ' is-ready' : ''}"><header><b>${ic(pb.ready ? 'check' : 'info', 's16')}${pb.ready ? 'Ready to publish' : `Needs a look · ${pb.bad}`}</b><span>Everything ${esc(ch.target?.name || ch.familyName || 'the platform')} needs, checked. Click any part to change it.</span></header>
+      <dl>${pb.parts.map(row).join('')}</dl>
+      ${pb.places?.length && img ? `<div class="pp-places"><small>Every placement, cut from this one</small><div>${pb.places.map((x) => `<figure><span style="aspect-ratio:${esc(String(x.shape).includes(':') ? x.shape.replace(':', '/') : '1/1.41')}"><img src="${esc(img)}" alt=""></span><figcaption><b>${esc(x.shape)}</b>${esc(x.where)}</figcaption></figure>`).join('')}</div></div>` : ''}
+      <ul class="pp-checks">${pb.checks.map((c) => `<li class="${c.ok ? 'ok' : c.soft ? 'warn' : 'bad'}">${ic(c.ok ? 'check' : 'x', 's14')}<span>${esc(c.t)}</span>${!c.ok && c.fix === 'redo' ? ' <button class="linkbtn" data-cs-open>Change the set-up and make it again</button>' : ''}</li>`).join('')}</ul>
+      <footer><button class="btn btn-ghost sm" data-st-dl>${ic('down', 's14')}Download everything</button><small>The picture in every shape, and copy.txt with every part above</small></footer></section>`; };
   const studioStage = (ch, pkgCh, viewing) => { const made = studioMade(ch), cs = window.CreativeStage, st = cs?.state(ch.id);
     if (cs && !st) cs.mount(ch, RX.p);
     const making = !!st?.making;
@@ -4434,7 +4445,7 @@
     /* before anything is made the frame shows the composer's product photo in the picture's place, never an empty grey box */
     const pv = !made && !viewing && st?.productImg && !/^gen\//.test(pkgCh.pkg?.image || '') ? { ...pkgCh, pkg: { ...pkgCh.pkg, image: st.productImg } } : pkgCh;
     return `<div class="st-asset cs-stage">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${assetHtml(pv, 'lg')}</div>
-      ${cs ? cs.html(ch) : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
+      ${made && !viewing ? publishPanel(ch, pkgCh) : ''}${cs ? cs.html(ch) : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
   window.CreativeStage?.init({ tapi, esc, toast, ic,
     paint: () => { if (view === 'remix' && RX.ch?.studio) paintStudio(); },
     remount: () => { if (view === 'remix' && RX.ch) paintStudio(); },
@@ -4451,7 +4462,7 @@
     if ($('#st-in')) RX.draft = $('#st-in').value;
     const viewing = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((v) => v.id === RX.viewing) : null; if (!viewing) RX.viewing = null;
     const pkgCh = asPkg(ch, viewing), edit = ch.state !== 'jam', tab = RX.tab && RX.tab !== 'history' ? RX.tab : 'iterate'; /* history is the dropdown on the History button now */
-    const formFocus = document.activeElement?.closest?.('#st-spec') || document.activeElement?.closest?.('.cs');
+    const formFocus = document.activeElement?.closest?.('#st-spec') || document.activeElement?.closest?.('.cs') || document.activeElement?.matches?.('.pp [contenteditable]');
     if (formFocus || document.activeElement?.id === 'bf-ed' || document.activeElement?.id === 'tbm-ed' || document.activeElement?.id === 'bf-cm-in' || bfPop.el?.classList.contains('is-form') || document.activeElement?.matches?.('[data-hl-edit][contenteditable]')) { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
     const logScroll = $('.st-panel-b')?.scrollTop, tbmScroll = $('.tbm-scroll')?.scrollTop || 0; /* brief mode keeps its place through a repaint */
     /* an open panel stays open through a repaint (the jam's 3-second poll, a video landing): Param, 19 Oct, "What Brew read" closed in 2 s */
@@ -4489,6 +4500,16 @@
     if (r.error) { el.textContent = was; return toast(`${ic('info', 's16')}${esc(r.error)}`); }
     if (r.change) { RX.ch = r.change; putCh(r.change); } toast(`${ic('check', 's16')}Headline saved as v${curN(RX.ch)}`); paintStudio(); };
   document.addEventListener('click', (e) => { const el = e.target.closest?.('[data-hl-edit]'); if (el && view === 'remix') hlStart(el); });
+  /* a ready-to-publish part, changed where it sits: it saves as a new version (POST /edit), like the headline */
+  const ppSave = async (k, v) => { const ch = RX.ch; if (!ch) return; const val = String(v ?? '').trim(), cur = ch.publish?.parts?.find((x) => x.k === k);
+    if (cur && String(cur.value || '').trim() === val) return paintStudio();
+    const pkg = ['link', 'alt'].includes(k) ? { publish: { ...(ch.pkg?.publish || {}), [k]: val } } : k === 'hashtags' ? { hashtags: val.split(/[\s,]+/).filter(Boolean).map((x) => (x.startsWith('#') ? x : `#${x}`)) } : k === 'bullets' ? { bullets: val.split('\n').filter(Boolean) } : { [k]: val };
+    const r = await tapi('POST', `/api/changes/${ch.id}/edit`, { pkg, reason: `${cur?.label || 'A part'} changed` }); if (r.error) { sound('error'); toast(esc(r.error)); return paintStudio(); }
+    RX.ch = r.change; putCh(r.change); sound('tick'); paintStudio(); };
+  document.addEventListener('click', (e) => { const el = e.target.closest?.('[data-pp-edit]'); if (!el || view !== 'remix' || el.isContentEditable) return; el.dataset.was = el.querySelector('em') ? '' : el.textContent; if (el.querySelector('em')) el.textContent = ''; el.contentEditable = 'plaintext-only'; el.focus(); });
+  document.addEventListener('focusout', (e) => { const el = e.target.closest?.('[data-pp-edit]'); if (el?.isContentEditable) { el.removeAttribute('contenteditable'); ppSave(el.dataset.ppEdit, el.innerText); } });
+  addEventListener('keydown', (e) => { const el = e.target.closest?.('[data-pp-edit]'); if (!el?.isContentEditable) return; if (e.key === 'Escape') { el.textContent = el.dataset.was || ''; el.removeAttribute('contenteditable'); paintStudio(); } else if (e.key === 'Enter' && !e.shiftKey && !['primaryText', 'caption', 'copy', 'bullets'].includes(el.dataset.ppEdit)) { e.preventDefault(); el.blur(); } }, true);
+  document.addEventListener('change', (e) => { const el = e.target.closest?.('[data-pp-sel]'); if (el && view === 'remix') ppSave(el.dataset.ppSel, el.value); });
   addEventListener('keydown', (e) => { const el = e.target.closest?.('[data-hl-edit]'); if (!el) return; /* capture: Esc and Enter here never reach the studio's own keys */
     if (!el.isContentEditable) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopImmediatePropagation(); hlStart(el); } return; }
     if (e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); el.blur(); } else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); el.textContent = el.dataset.was ?? el.textContent; el.dataset.was = el.textContent; el.blur(); } }, true);

@@ -106,11 +106,11 @@
   }
   /* clicks on the composer: true when handled */
   function click(e) {
-    const g = (sel) => e.target.closest(sel); if (!S || !g('.cs, .cs-line')) return false; const sp = S.spec;
+    const g = (sel) => e.target.closest(sel); if (!S || !g('.cs, .cs-line, [data-cs-open]')) return false; const sp = S.spec;
     if (g('[data-cs-retry]')) { const id = S.chId; S = null; H.paint?.(); H.remount?.(id); return true; }
     if (g('[data-cs-feed]')) { H.toFeed?.(); return true; }
     if (g('[data-cs-game]')) { window.BrewGame?.open?.({ progress: () => S?.making }); return true; }
-    if (g('[data-cs-open]')) { S.open = true; paint(); return true; }
+    if (g('[data-cs-open]')) { S.open = true; paint(); setTimeout(() => document.querySelector('.cs-stage .cs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); return true; }
     if (g('[data-cs-redo]')) { go(true); return true; }
     if (g('[data-cs-go]')) { go(false); return true; }
     if (!sp) return true;
