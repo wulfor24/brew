@@ -196,7 +196,7 @@
         const live = $('[data-cards]', el) || cards; live.querySelectorAll('.bb-change.is-busy').forEach((x) => { if (x.textContent.includes(label)) x.remove(); });
         if (!r || r.error) { const e = document.createElement('div'); e.className = 'bb-change is-err'; e.innerHTML = `<header><p>${esc(r?.error || 'That didn’t go through. Try again.')}</p></header>`; live.appendChild(e); setTimeout(() => e.remove(), 9000); return; }
         if (!r.upload) { toast(r.reply || 'Nothing to change there.'); return; }
-        S.cards.push({ u: r.upload, reply: r.reply }); live.appendChild(changeCard(r.upload, r.reply)); };
+        S.cards.push({ u: r.upload, reply: r.reply }); const nc = changeCard(r.upload, r.reply); nc.classList.add('is-new'); live.appendChild(nc); };
       form.onsubmit = (e) => { e.preventDefault(); const x = q.value.trim(); if (!x) return; q.value = ''; S.draft = '';
         if (/^https?:\/\/\S+$/i.test(x)) send({ url: x, private: false }, 'Reading the link'); else send({ text: x }, `You asked: “${x.slice(0, 80)}”`); };
       $$('[data-idea]', dock).forEach((b) => b.onclick = () => { q.value = b.dataset.idea.replace(/ …|“…”/, ''); q.focus(); });
