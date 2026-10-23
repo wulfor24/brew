@@ -210,7 +210,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
           if (buf?.length && buf.length < 8e6) { const f = `refs/${crypto.createHash('sha256').update(buf).digest('hex').slice(0, 16)}.jpg`; await packs.put(slug, f, buf, 'image/jpeg'); src = `/b/${slug}/${f}`; } } catch (e) { log.info?.('[connect] winner picture', x.id, e.message); } }
         if (src && !ads.some((y) => y.src === src)) { const { image, ...rest } = x; ads.push({ ...rest, src }); } /* one creative under several ad ids: its best-returning copy */
       }
-      await packs.put(slug, 'private/meta-winners.json', { v: 2, at: Date.now(), ads: ads.length ? ads : prev?.ads || [], error: d.winnersError || null });
+      await packs.put(slug, 'private/meta-winners.json', { v: ads.length ? 2 : prev?.v, at: Date.now(), ads: ads.length ? ads : prev?.ads || [], error: d.winnersError || null });
     }
   }
   const sync = (slug, id) => perBrand(slug, () => sync0(slug, id));
