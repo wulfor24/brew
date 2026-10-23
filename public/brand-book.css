@@ -262,3 +262,7 @@
   .bb-swatch:hover { transform: none; }
   .bb-line > .bb-pen { opacity: 0; }
 }
+/* a product's own extra photos (back, side, close-up) under its card */
+.bb-prod-more { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.bb-prod .bb-thumbs { display: inline-flex; gap: 4px; }
+.bb-prod .bb-thumbs img { width: 34px; height: 34px; aspect-ratio: 1; border-radius: 8px; object-fit: cover; }

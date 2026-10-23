@@ -10,9 +10,16 @@ const clamp = (x, lo, hi, d) => (Number.isFinite(+x) ? Math.max(lo, Math.min(hi,
 /* single quotes: the stack goes inside a style="…" attribute, where a double quote would end it (and drop the size after it) */
 const SAFE_FONTS = "'Helvetica Neue',Helvetica,Inter,Arial,sans-serif";
 export const fontStack = (name) => { const n = String(name || '').replace(/[^\w \-]/g, '').trim().slice(0, 40); return n ? `'${n}',${SAFE_FONTS}` : SAFE_FONTS; };
-/* Google Fonts link for the kit's fonts (a font that isn't on Google Fonts falls back to the safe stack, which the gate notes) */
-export const fontLink = (kit = {}) => { const fs = [kit.fonts?.heading, kit.fonts?.body].filter(Boolean).map((f) => String(f).replace(/["<>&]/g, '').trim()).filter((f) => /^[\w ]{2,40}$/.test(f));
-  return [...new Set(fs)].map((f) => `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;600;700;800&display=swap">`).join(''); };
+/* the kit's fonts: a face the brand uploaded to its Brand Book (kit.files: [{ family, src }]) is loaded from its own file; any
+   other name from Google Fonts; a font that is neither falls back to the safe stack, which the gate notes. srcOf turns a stored
+   src into what the page can load (the server passes data: URIs) */
+const FONT_SRC = /^(\/b\/[a-z0-9-]+\/a\/font-[\w.-]+|data:(font|application)\/[\w.+-]+;base64,[A-Za-z0-9+/=]+)$/;
+export const fontName = (f) => String(f || '').replace(/[^\w \-]/g, '').trim().slice(0, 40);
+export const fontLink = (kit = {}, srcOf = (x) => x) => { const fs = [...new Set([kit.fonts?.heading, kit.fonts?.body].filter(Boolean).map(fontName).filter((f) => f.length >= 2))];
+  const own = new Map((Array.isArray(kit.files) ? kit.files : []).filter((x) => x?.family && x.src).map((x) => [fontName(x.family).toLowerCase(), x.src]));
+  return fs.map((f) => { const src = own.has(f.toLowerCase()) ? srcOf(own.get(f.toLowerCase())) : null;
+    if (src && FONT_SRC.test(src)) return `<style>@font-face{font-family:'${f}';src:url("${src}");font-display:block}</style>`;
+    return `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;600;700;800&display=swap">`; }).join(''); };
 
 /* a style value goes inside style="…": only plain CSS words, numbers, colours and gradients (no quotes, ; < > or url()) */
 const css = (v, d = '') => { const x = String(v ?? '').trim(); return x && x.length < 200 && /^[#\w\s.,%()+-]+$/.test(x) && !/url\s*\(|expression/i.test(x) ? x : d; };
@@ -42,7 +49,7 @@ export function sceneBody(scene, { srcOf = (s) => s, editable = false } = {}) {
   return `<div class="j2-scene" style="position:relative;width:${num(scene.w, 1080)}px;height:${num(scene.h, 1350)}px;overflow:hidden;background:${css(bg.color, '#eee')}">${bgImg}${ls}</div>`;
 }
 export function sceneHtml(scene, o = {}) {
-  return `<!doctype html><html><head><meta charset="utf-8">${fontLink(scene.kit)}<style>html,body{margin:0;padding:0;background:transparent}*{box-sizing:border-box}</style></head><body>${sceneBody(scene, o)}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8">${fontLink(scene.kit, o.srcOf)}<style>html,body{margin:0;padding:0;background:transparent}*{box-sizing:border-box}</style></head><body>${sceneBody(scene, o)}</body></html>`;
 }
 
 /* a new size from the same scene: layers keep their place by anchor (top/centre/bottom, left/centre/right) and scale with

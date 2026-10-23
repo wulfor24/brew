@@ -156,6 +156,7 @@
 .j2-stprod,.j2-stsize{position:absolute;left:0;top:40px;z-index:46;max-height:260px;overflow:auto}
 .j2-stsize{display:flex;flex-direction:column;left:160px}.j2-stsize button.on{font-weight:800}
 #j2-st-ask{border:1px solid var(--line,#e2e2e2);border-radius:12px;padding:10px 12px;font:inherit}
+.j2-st-note{color:var(--warn,#a15c00);font-size:12px}
 .j2-st-go{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap}.j2-st-go span{font-size:13px;color:var(--fg-2,#444);flex:1;min-width:200px}
 .j2-stgal{position:absolute;inset:0;background:var(--surface,#fff);border-radius:18px;display:flex;z-index:47;overflow:hidden}
 .j2-stgal-side{width:170px;border-right:1px solid var(--line,#eee);padding:12px;display:flex;flex-direction:column;gap:4px;overflow:auto}

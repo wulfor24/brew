@@ -38,7 +38,7 @@ export function mountJam2(d) {
     const prod = productFor({ card, catalog, refs, pick: pick || jam.product || null, lanePhoto: null });
     let memory = ''; try { memory = memoryOf ? memoryOf(t, card?.agent && card.agent !== 'brew' ? card.agent : 'creative') || '' : ''; } catch { memory = ''; }
     const cfg = br?.config || {}, market = br ? askMarket({ country: cfg.country, locale: cfg.locale, market: cfg.market }, cfg) : null; /* who the people in a picture or film look like */
-    return { slug, jam, card, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text), market };
+    return { slug, jam, card, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text), market, refs };
   }
   /* run slow work in the background; the board says what it is doing and any error in plain words */
   /* a job also leaves a mark on the jam (saved with it): after a restart, a mark with no job running says the job was cut off */

@@ -44,7 +44,7 @@
       { "id": "color-pop-v", "label": "Color pop", "job": "product-motion", "seconds": 5, "look": "The product on a bold colour backdrop with playful bounces and a crisp shadow." },
       { "id": "in-life", "label": "In life", "job": "product-motion", "seconds": 5, "look": "Gentle natural motion in a real setting where the product is used: steam, light, fabric moving." },
       { "id": "dark-minimal", "label": "Dark minimal", "job": "product-motion", "seconds": 5, "look": "A minimal dark scene, a single moving light reveals the product." },
-      { "id": "orbit-360", "label": "360° turn", "job": "product-motion", "seconds": 5, "look": "The product turns a full slow 360 degrees on a turntable, even studio light, a clean plain backdrop; every side of the product stays exactly as it is." },
+      { "id": "orbit-360", "label": "360° turn", "job": "product-motion", "allSides": true, "seconds": 5, "look": "The product turns a full slow 360 degrees on a turntable, even studio light, a clean plain backdrop; every side of the product stays exactly as it is." },
       { "id": "asmr", "label": "Texture / ASMR", "job": "product-motion", "seconds": 5, "look": "An extreme macro close-up of the product's texture and surface in slow motion, soft raking light, tactile and calm." },
       { "id": "unveil", "label": "Unveil", "job": "product-motion", "seconds": 5, "look": "A soft fabric or shadow slides away to reveal the product, slow and premium, one moving light." }
     ]},

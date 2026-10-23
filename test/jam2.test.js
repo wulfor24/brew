@@ -230,3 +230,30 @@ test('a catalog photo that is already cut out (see-through PNG) is used as the c
   const c = await m.cutout({ slug: 's', product: { img: 'https://cdn/p.png', name: 'Serum' }, cuts: {} });
   assert.equal(ran, false); assert.equal(c.provider, 'own'); assert.equal(c.usd, 0); const k = await sharp(kept).metadata(); assert.equal(k.width, 100); assert.equal(k.height, 200);
 });
+
+test('a font the brand uploaded is loaded from its own file in the file and the preview; other names from Google; nothing unsafe gets in', async () => {
+  const { fontLink, sceneHtml } = await import('../public/jam2/scene.js');
+  const kit = { fonts: { heading: 'FFDINfor Puma', body: 'Inter' }, files: [{ family: 'FFDINfor Puma', src: '/b/in-puma-com/a/font-abc123.woff2' }] };
+  const h = fontLink(kit); assert.match(h, /@font-face\{font-family:'FFDINfor Puma';src:url\("\/b\/in-puma-com\/a\/font-abc123\.woff2"\)/); assert.match(h, /fonts\.googleapis\.com\/css2\?family=Inter/); assert.doesNotMatch(h, /family=FFDINfor/);
+  assert.match(sceneHtml({ w: 10, h: 10, kit, layers: [] }, { srcOf: () => 'data:font/woff2;base64,AAAA' }), /src:url\("data:font\/woff2;base64,AAAA"\)/);
+  for (const bad of ['javascript:alert(1)', '/b/x/a/font-a.woff2") ;}body{x', 'https://evil.example/f.woff2']) assert.doesNotMatch(fontLink({ fonts: { heading: 'X Y' }, files: [{ family: 'X Y', src: bad }] }), /@font-face/, bad);
+});
+
+test('a product’s own extra photos (back, side) feed its profile and every shoot; a 360 turn without a back photo says so before any spend', async () => {
+  const m = maker(), ctx = { product: { img: 'p.jpg', name: 'MitoActive Serum', handle: 'mito' }, catalog: [{ t: 'MitoActive Serum', handle: 'mito', img: 'p.jpg', images: ['c2.jpg'] }],
+    refs: [{ kind: 'image', job: 'product', product: 'MitoActive Serum', url: '/b/s/refs/back.jpg' }, { kind: 'image', job: 'product', product: 'Other', url: '/b/s/refs/x.jpg' }, { kind: 'image', job: 'style', url: '/b/s/refs/mood.jpg' }] };
+  assert.deepEqual(m.creative.photosOf(ctx, { best: 'p.jpg' }), ['p.jpg', '/b/s/refs/back.jpg', 'c2.jpg']); assert.deepEqual(m.creative.productEntry(ctx).images, ['/b/s/refs/back.jpg', 'c2.jpg']);
+  const { createStudio } = await import('../jam2/studio.js');
+  const st = (sides) => createStudio({ engines: { hf: { pick: () => ({ id: 'k', input: {} }), estimate: async () => ({ usd: 0.39 }), nearestRatio: () => '9:16' }, quote: async () => ({ usd: 0.1 }) }, maker: { creative: { productEntry: () => ({}) } }, profileOf: async () => ({ sides, usable: true }) });
+  assert.match((await st(['front']).plan({ ...ctx }, { style: 'orbit-360', sizes: ['story'], seconds: 5, product: ctx.product })).note, /No photo shows its back/);
+  assert.equal((await st(['front', 'back']).plan({ ...ctx }, { style: 'orbit-360', sizes: ['story'], seconds: 5, product: ctx.product })).note, null);
+  assert.equal((await st(['front']).plan({ ...ctx }, { style: 'showcase', sizes: ['story'], seconds: 5, product: ctx.product })).note, null);
+});
+
+test('a reference added for a product is a product photo tied to it; the same bytes added for a product are re-tied', async () => {
+  const { createReferences } = await import('../references.js'); const files = new Map();
+  const packs = { getJSON: async (s, f, d) => (files.has(f) ? JSON.parse(files.get(f)) : d), put: async (s, f, v) => { files.set(f, typeof v === 'string' || Buffer.isBuffer(v) ? v : JSON.stringify(v)); } };
+  const R = createReferences({ packs, log: { info() {} } }), png = 'data:image/png;base64,' + Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da6364f8ffbf1e000502027f3c64a8a80000000049454e44ae426082', 'hex').toString('base64');
+  const a = await R.add('s', { data: png, label: 'Back', product: 'MitoActive Serum' }); assert.equal(a.item.job, 'product'); assert.equal(a.item.product, 'MitoActive Serum');
+  const b = await R.add('s', { data: png, label: 'Back', product: 'Super Shampoo' }); assert.ok(b.same); assert.equal((await R.list('s'))[0].product, 'Super Shampoo');
+});

@@ -17,7 +17,7 @@ import { claimFlags, bannedHits } from '../claims.js';
 
 const tidy = (s, n = 240) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const sha = (b) => crypto.createHash('sha1').update(b).digest('hex').slice(0, 16);
-const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
+const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' };
 
 /* the writer's answer, one schema for every kind (fields a kind doesn't use stay empty) */
 const SCHEMA = { type: 'object', properties: {
@@ -136,6 +136,13 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
   }
 
   /* ---------- compose a static scene ---------- */
+  /* what a scene keeps of the Brand Book's kit: the font names, their uploaded files, the colours */
+  const kitOf = (kit = {}) => ({ fonts: kit.fonts || {}, colors: kit.colors || [], files: (kit.fontFiles || []).filter((x) => x?.family && x.src).slice(0, 8) });
+  /* a scene re-rendered later follows the latest Brand Book: its kit is refreshed, and words still in the old heading or body
+     face move to the new one (a face the team picked by hand on one piece stays) */
+  function refreshKit(sc, kit = {}) { if (!sc || !kit) return sc; const was = sc.kit?.fonts || {}, now = kitOf(kit);
+    for (const l of sc.layers || []) { if (!l.style?.font) continue; if (was.heading && l.style.font === was.heading && now.fonts.heading) l.style.font = now.fonts.heading; else if (was.body && l.style.font === was.body && (now.fonts.body || now.fonts.heading)) l.style.font = now.fonts.body || now.fonts.heading; }
+    sc.kit = { ...(sc.kit || {}), ...now }; return sc; }
   function composeScene({ size, bgFile, cut, words, kit, preset = 'top' }) {
     const { w, h } = size, tall = h / w > 1.6, wide = w / h > 1.4;
     const pw = Math.round(w * (tall ? 0.62 : wide ? 0.34 : 0.5)), ph = Math.round(h * (tall ? 0.42 : wide ? 0.7 : 0.48));
@@ -144,7 +151,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
     if (cut?.file) layers.push({ id: 'product', kind: 'product', src: cut.file, x: px, y: py, w: pw, h: ph, z: 3, locked: true, shadow: true, fit: 'contain', blend: cut.white ? 'multiply' : null });
     layers.push(...typePreset(preset, { w, h, kit, headline: words.headline || '', sub: words.sub || '', badge: words.badge || '', cta: '' }));
     if (kit.logo) layers.push({ id: 'logo', kind: 'logo', src: kit.logo, x: w - Math.round(w * 0.2) - Math.round(w * 0.05), y: h - Math.round(h * 0.08) - Math.round(w * 0.05) - (tall ? Math.round(h * 0.14) : 0), w: Math.round(w * 0.2), h: Math.round(h * 0.07), z: 8, fit: 'contain' });
-    return { w, h, bg: { color: kit.colors?.[1] || '#efece6', src: bgFile || null }, kit: { fonts: kit.fonts || {}, colors: kit.colors || [] }, layers };
+    return { w, h, bg: { color: kit.colors?.[1] || '#efece6', src: bgFile || null }, kit: kitOf(kit), layers };
   }
 
   /* ---------- render a scene to the file people download ---------- */
@@ -153,7 +160,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
   let slots = 0; const waiting = [];
   const slot = async (fn) => { if (slots >= 2) await new Promise((ok) => waiting.push(ok)); slots++; try { return await fn(); } finally { slots--; waiting.shift()?.(); } };
   async function render(sc, { ext = 'jpg', clear = false } = {}) {
-    const srcs = {}; for (const s of [sc.bg?.src, ...(sc.layers || []).map((l) => l.src)].filter(Boolean)) srcs[s] = await dataUri(s);
+    const srcs = {}; for (const s of [sc.bg?.src, ...(sc.layers || []).map((l) => l.src), ...(sc.kit?.files || []).map((x) => x?.src)].filter(Boolean)) srcs[s] = await dataUri(s);
     const html = sceneHtml(sc, { srcOf: (s) => srcs[s] || '' }), w = Math.min(4000, Math.max(50, +sc.w || 1080)), h = Math.min(4000, Math.max(50, +sc.h || 1350));
     return slot(() => (withBrowser || (async (fn) => { const b = await launchBrowser(); try { return await fn(b); } finally { await b.close?.().catch?.(() => {}); } }))(async (browser) => {
       const page = await browser.newPage();
@@ -301,7 +308,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
     if (logo && kit.logo) layers.push({ id: 'logo', kind: 'logo', src: kit.logo, x: 390, y: 1690, w: 300, h: 110, z: 8, fit: 'contain' });
     if (s.vo) layers.push({ id: 'cap', kind: 'text', role: 'small', words: tidy(s.vo, 140), x: 90, y: 1430, w: 900, z: 6, style: { font, size: 52, weight: 700, color: '#ffffff', align: 'center', bg: 'rgba(0,0,0,0.55)', pad: 18, radius: 18, lh: 1.2 } });
     if (s.words) layers.push({ id: 'ost', kind: 'text', role: 'headline', words: tidy(s.words, 60), x: 90, y: 330, w: 900, z: 6, style: { font, size: 70, weight: 800, color: '#ffffff', align: 'center', shadow: true, lh: 1.1 } });
-    return render({ w: 1080, h: 1920, bg: { color: 'transparent' }, kit: { fonts: kit.fonts || {}, colors: [] }, layers }, { ext: 'png', clear: true });
+    return render({ w: 1080, h: 1920, bg: { color: 'transparent' }, kit: { ...kitOf(kit), colors: [] }, layers }, { ext: 'png', clear: true });
   }
   /* edit one shot's first frame (an area or a whole new look), animate that shot again from it, and put the video back together:
      the other shots, the voice and the music are kept */
@@ -363,8 +370,10 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
     ctx.kind = board.recipe;
     const h = headOf(board); if (!h) throw new Error('Nothing to edit yet.'); const r = recipe(board.recipe);
     const base = JSON.parse(JSON.stringify(h)); delete base.id; delete base.n; delete base.gate; base.parent = h.id; base.by = ctx.by; base.made = []; base.at = Date.now();
+    /* every new version follows the latest Brand Book's fonts (an upload today reaches the piece made yesterday on its next edit) */
+    if (base.scene?.layers?.length) refreshKit(base.scene, ctx.bbv?.kit); for (const sl of base.slides || []) if (sl.scene?.layers?.length) refreshKit(sl.scene, ctx.bbv?.kit);
     /* free: the canvas's own moves (drag, resize, retype, font, colour, hide, preset, size) arrive as a scene patch */
-    if (patch?.scene && base.scene) { base.scene = safeScene(patch.scene, base); base.op = 'arrange'; base.file = await render(base.scene); base.words = { ...base.words, ...(patch.words || {}) }; }
+    if (patch?.scene && base.scene) { base.scene = safeScene(patch.scene, base); base.scene.kit = { ...(base.scene.kit || {}), files: kitOf(ctx.bbv?.kit).files }; base.op = 'arrange'; base.file = await render(base.scene); base.words = { ...base.words, ...(patch.words || {}) }; }
     else if (patch?.words) { base.words = { ...base.words, ...patch.words }; base.op = 'words';
       if (base.scene) for (const l of base.scene.layers) if (l.role && patch.words[l.role] !== undefined) l.words = patch.words[l.role]; if (base.scene) base.file = await render(base.scene); }
     else if (patch?.timeline && base.timeline) { const t0 = patch.timeline, old = base.timeline;

@@ -76,7 +76,7 @@ export function defaults(ctx, board = null) {
 export function createStudio({ engines, maker, profileOf = async () => null, isMock = () => false, spend = () => true, log = console }) {
   const hf = engines.hf, cr = maker.creative;
   /* the product's profile (read once, kept): the facts every prompt carries */
-  const ensureProfile = async (ctx) => { if (ctx.product?.img && ctx.profile === undefined) ctx.profile = await profileOf(ctx.slug, cr.entryOf(ctx) || { t: ctx.product.name, img: ctx.product.img, handle: ctx.product.handle }).catch(() => null); return ctx.profile || null; };
+  const ensureProfile = async (ctx) => { if (ctx.product?.img && ctx.profile === undefined) ctx.profile = await profileOf(ctx.slug, cr.productEntry(ctx)).catch(() => null); return ctx.profile || null; };
   const sizeOf = (k) => ({ key: k, ...(SIZES[k] || SIZES['ig-portrait']) });
   /* the price of one take of a style (what Higgsfield will charge, plus the check), in dollars */
   async function perTake(ctx, st, size, seconds) {
@@ -96,8 +96,11 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     const st = styleOf(spec.style); if (!st) return { error: 'Pick a style.' };
     const size = sizeOf(spec.sizes?.[0] || (st.kind === 'video' ? 'story' : 'ig-portrait')), n = Math.max(1, Math.min(12, +spec.count || 1)), per = await perTake(ctx, st, size, spec.seconds);
     const usd = +(per * n).toFixed(2), prod = spec.product?.name || ctx.product?.name;
+    /* a style that shows every side says so before anything is spent when no photo shows the back (it would be drawn by AI) */
+    let note = null; if (st.allSides && (spec.product?.img || ctx.product?.img)) { if (spec.product?.img) ctx.product = { ...spec.product }; const prof = await ensureProfile(ctx);
+      if (prof && !(prof.sides || []).some((x) => /back/.test(x))) note = 'No photo shows its back yet, so the back would be drawn by AI. Add one in Brand Book → Products → Add photos.'; }
     const line = `${n > 1 ? `${n} ` : ''}${st.kind === 'video' ? `${spec.seconds || st.seconds || 10} s ${st.group} video${n > 1 ? 's' : ''}` : `${st.group.toLowerCase()} picture${n > 1 ? 's' : ''}`} · ${st.label}${prod ? ` · ${tidy(prod, 60)}` : ''} · ${size.label}`;
-    return { line, usd, per: +per.toFixed(3), count: n, kind: st.kind, style: st.id };
+    return { line, usd, per: +per.toFixed(3), count: n, kind: st.kind, style: st.id, note };
   }
 
   /* one take for one board */

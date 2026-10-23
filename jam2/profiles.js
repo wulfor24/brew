@@ -12,6 +12,7 @@ const SCHEMA = { type: 'object', additionalProperties: false, required: ['what',
   kit: { type: 'boolean', description: 'More than one item sold together' },
   items: { type: 'array', items: { type: 'string' }, description: 'Each item with its look, when it is a kit; else one entry' },
   label: { type: 'string', description: 'Printed words or logos that must stay exact, or empty' },
+  sides: { type: 'array', items: { type: 'string' }, description: 'Which sides the photos show: front, back, side, top, bottom, in use' },
   size: { type: 'string', description: 'Its size against a hand or a body' },
   use: { type: 'string', description: 'How and where it is used' },
   best: { type: 'integer', description: 'Index (0-based) of the photo that shows the whole product most clearly on a plain background' },
@@ -22,7 +23,7 @@ export function createProfiles({ packs, ai = null, fileOf, isMock = () => false,
   const mem = new Map();
   const load = async (slug) => { if (mem.has(slug)) return mem.get(slug); const x = (await packs.getJSON(slug, FILE, null).catch(() => null)) || {}; mem.set(slug, x); return x; };
   const keyOf = (p) => String(p?.handle || p?.t || p?.title || p?.name || '').toLowerCase().slice(0, 120);
-  const photosOf = (p) => [...new Set([p?.img, ...((p?.images) || [])].filter(Boolean))].slice(0, 4);
+  const photosOf = (p) => [...new Set([p?.img, ...((p?.images) || [])].filter(Boolean))].slice(0, 6); /* the main photo, the brand's own extra views, then the catalog's */
   /* the profile of one catalog product: from the store when read before (and its photos haven't changed), else read now */
   async function of(slug, p, { force = false } = {}) {
     if (!p) return null; const key = keyOf(p), photos = photosOf(p); if (!key || !photos.length) return null;
@@ -34,10 +35,10 @@ export function createProfiles({ packs, ai = null, fileOf, isMock = () => false,
     const shown = files.map((f, i) => (f ? { f, i } : null)).filter(Boolean); if (!shown.length) return have || null;
     try {
       const r = await ai.call({ model: 'sonnet', tag: 'product_profile', max: 1500, effort: 'low', schema: SCHEMA, messages: [{ role: 'user', content: [
-        ...shown.map((x) => img(x.f)), { type: 'text', text: `These ${shown.length} photos are the store's catalog photos for "${tidy(p.t || p.title || p.name, 160)}". Describe the real product exactly as it looks, for a photographer who must recreate it. "best" is the index of the clearest whole-product photo on a plain background (photos are numbered 0 to ${shown.length - 1}); a size chart, a graphic or a crowded lifestyle shot is not a good reference.` }] }] });
+        ...shown.map((x) => img(x.f)), { type: 'text', text: `These ${shown.length} photos are the store's own photos of "${tidy(p.t || p.title || p.name, 160)}" (some may show its back, side or a close-up). Describe the real product exactly as it looks from every side shown, including what is printed on its back, for a photographer who must recreate it. "best" is the index of the clearest whole-product photo on a plain background (photos are numbered 0 to ${shown.length - 1}); a size chart, a graphic or a crowded lifestyle shot is not a good reference.` }] }] });
       const j = r.json || {}; const best = Number.isInteger(j.best) && shown[j.best] ? shown[j.best].i : 0;
       const prof = { name: tidy(p.t || p.title || p.name, 160), photos, best: photos[best], what: tidy(j.what, 200), colours: tidy(j.colours, 160), materials: tidy(j.materials, 160), kit: !!j.kit,
-        items: (j.items || []).slice(0, 8).map((x) => tidy(x, 140)), label: tidy(j.label, 160), size: tidy(j.size, 120), use: tidy(j.use, 200), usable: j.usable !== false, why: tidy(j.why, 200), at: Date.now() };
+        items: (j.items || []).slice(0, 8).map((x) => tidy(x, 140)), label: tidy(j.label, 160), sides: (j.sides || []).slice(0, 6).map((x) => tidy(x, 20).toLowerCase()), size: tidy(j.size, 120), use: tidy(j.use, 200), usable: j.usable !== false, why: tidy(j.why, 200), at: Date.now() };
       all[key] = prof; await packs.put(slug, FILE, all).catch((e) => log.warn?.('[profiles] save', e.message)); return prof;
     } catch (e) { log.warn?.('[profiles] read', slug, key, e.message); return have || null; }
   }

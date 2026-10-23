@@ -33,8 +33,14 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
   /* the catalog entry behind the jam's product: its photos (the hero first, then up to two more angles) */
   const entryOf = (ctx) => { const p = ctx.product; return p ? (ctx.catalog || []).find((x) => (p.handle && x.handle === p.handle) || (p.name && (x.t || x.title) === p.name)) || null : null; };
   /* the product's photos, the profile's cleanest one first (a packshot, never a size chart or a crowded scene) */
+  /* the photos the brand added for this product in its Brand Book (back of the pack, a side, a close-up): references.js `product` */
+  const refPhotos = (ctx) => { const p = ctx.product; if (!p) return []; const keys = [p.handle, p.name].filter(Boolean).map((x) => String(x).toLowerCase());
+    return (ctx.refs || []).filter((r) => r.kind === 'image' && r.job === 'product' && r.product && keys.includes(String(r.product).toLowerCase())).map((r) => r.url); };
+  /* the catalog entry the product profile is read from, with the brand's own extra photos of it first after the main one */
+  const productEntry = (ctx) => { const e = entryOf(ctx) || { t: ctx.product?.name, img: ctx.product?.img, handle: ctx.product?.handle }; const extra = refPhotos(ctx);
+    return extra.length ? { ...e, images: [...extra, ...(e.images || [])] } : e; };
   const photosOf = (ctx, prof = null) => { const p = ctx.product; if (!p?.img) return [];
-    return [...new Set([prof?.best, p.img, ...((entryOf(ctx)?.images || []).filter(Boolean))].filter(Boolean))].slice(0, 3); };
+    return [...new Set([prof?.best, p.img, ...refPhotos(ctx), ...((entryOf(ctx)?.images || []).filter(Boolean))].filter(Boolean))].slice(0, 4); };
   /* the product in words, from its profile: what it is, its real colours, each item of a kit, printed words that must stay */
   const productLine = (prof) => (prof ? [`It is ${prof.what}${prof.colours ? `, in ${prof.colours}` : ''}${prof.materials ? `, ${prof.materials}` : ''}.`,
     prof.kit && prof.items?.length ? `It is a kit of ${prof.items.length}: ${prof.items.join('; ')}. All ${prof.items.length} items appear, each exactly as photographed.` : '',
@@ -183,7 +189,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
   /* the whole static: direct → shoot → critic → layout. Returns null when no candidate kept the product (the caller composites) */
   async function staticAd(ctx, board, words, size, { n = 1, style = null, noWords = false } = {}) {
     /* the product's profile first (read once, kept): a product with no usable photo is asked for, never shot blind */
-    if (ctx.product?.img && ctx.profile === undefined) ctx.profile = await profileOf(ctx.slug, entryOf(ctx) || { t: ctx.product.name, img: ctx.product.img, handle: ctx.product.handle }).catch(() => null);
+    if (ctx.product?.img && ctx.profile === undefined) ctx.profile = await profileOf(ctx.slug, productEntry(ctx)).catch(() => null);
     if (ctx.profile && ctx.profile.usable === false) return { made: [], fail: `No photo shows ${ctx.profile.name || 'this product'} clearly enough to shoot it (${ctx.profile.why || 'add a clear product photo'}). Add one with + → Product photo.`, needPhoto: true };
     const d = await direct(ctx, board, words, size, style);
     if (!spend('image', ctx.slug)) throw Object.assign(new Error('Today’s picture budget is used up. It resets tonight.'), { budget: true });
@@ -216,5 +222,5 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     return { scene, file: await render(scene), bg, made };
   }
 
-  return { direct, shoot, critique, checkMade, staticAd, extend, photosOf, presetFor, productLine, entryOf, layout, aspectOf };
+  return { direct, shoot, critique, checkMade, staticAd, extend, photosOf, refPhotos, productEntry, presetFor, productLine, entryOf, layout, aspectOf };
 }

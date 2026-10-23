@@ -1808,7 +1808,7 @@ export function createFeedService(o) {
     }
     /* References: the file itself, for the generators (references.js); label + job + keep ride in the body. The team only */
     if (dest === 'references') { const r0 = reqOf(t); if (!(r0?.member || process.env.DEMO_MODE === '1')) return { status: r0?.email ? 403 : 401, error: 'Only this brand’s team adds References.', team: true };
-      const x = await REFS.add(slug, { data: b.data, label: b.label || b.name, job: b.job, keep: b.keep, by: meOf(t)?.email || null }); return x.error ? x : { ok: true, dest, item: x.item, same: !!x.same }; }
+      const x = await REFS.add(slug, { data: b.data, label: b.label || b.name, job: b.job, keep: b.keep, product: b.product, by: meOf(t)?.email || null }); return x.error ? x : { ok: true, dest, item: x.item, same: !!x.same }; }
     const f = parseDrop(b); if (f.error) return f;
     const r = reqOf(t), me0 = meOf(t), mk = r?.member && r.email ? memberKey(r.email) : null;
     const rel = f.kind === 'image' ? (saveGen(f.file, f.buf), `gen/${f.file}`) : null;
@@ -1839,9 +1839,9 @@ export function createFeedService(o) {
   const refTeam = (t) => { const r = reqOf(t); return r?.member || process.env.DEMO_MODE === '1' ? null : { status: r?.email ? 403 : 401, error: 'Only this brand’s team changes its References.', team: true }; };
   on('GET', '/api/brands/:slug/references', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; return { items: await REFS.list(slug), jobs: REFS.JOBS }; });
   on('POST', '/api/brands/:slug/references', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; const no = refTeam(t); if (no) return no;
-    const x = await REFS.add(slug, { data: b.data, label: b.label || b.name, job: b.job, keep: b.keep, by: meOf(t)?.email || null }); return x.error ? x : { ok: true, item: x.item, same: !!x.same, items: await REFS.list(slug) }; });
+    const x = await REFS.add(slug, { data: b.data, label: b.label || b.name, job: b.job, keep: b.keep, product: b.product, by: meOf(t)?.email || null }); return x.error ? x : { ok: true, item: x.item, same: !!x.same, items: await REFS.list(slug) }; });
   on('POST', '/api/brands/:slug/references/:rid', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; const no = refTeam(t); if (no) return no;
-    const x = await REFS.update(slug, p.rid, { label: b.label, job: b.job, keep: b.keep }); /* :rid, not :id: the dispatcher reads params.id as the tenant */ return x.error ? x : { ok: true, item: x.item, items: await REFS.list(slug) }; });
+    const x = await REFS.update(slug, p.rid, { label: b.label, job: b.job, keep: b.keep, product: b.product }); /* :rid, not :id: the dispatcher reads params.id as the tenant */ return x.error ? x : { ok: true, item: x.item, items: await REFS.list(slug) }; });
   on('POST', '/api/brands/:slug/references/:rid/remove', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; const no = refTeam(t); if (no) return no;
     return REFS.remove(slug, p.rid); });
   on('PUT', '/api/tenants/:id/deck-layout', async (b, t) => { if (Array.isArray(b.hidden)) t.deck.hidden = b.hidden; if (b.colWidth) t.deck.colWidth = b.colWidth; return t.deck; });

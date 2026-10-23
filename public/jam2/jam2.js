@@ -3,7 +3,7 @@
 // small toolbar changes just that part: free changes apply at once, anything a model makes shows its price first. Each piece
 // is either made ready to post or turned into a brief for a team; Finish hands over the files, or sends the briefs and
 // tracks them. Everything runs on /api/jam2 (jam2/routes.js); v1's jam is never touched.
-import { sceneBody, sentencesOf } from './scene.js';
+import { sceneBody, sentencesOf, fontLink } from './scene.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = (s, r = document) => r.querySelector(s);
@@ -210,7 +210,11 @@ function chips() {
 const chipSay = (c) => { if (c === 'Make an image ad from it') return addBoard('image-ad'); if (c === 'Give it to your agency') return brief({ owner: 'Your agency' }, 'Now with your agency'); if (c === 'Make the headline shorter') return op({ op: 'line', target: { kind: 'role', role: 'headline' }, ask: 'shorter' }, 'Headline shorter'); return send(c); };
 
 /* ---------- the canvas ---------- */
+/* the canvas shows the brand's own faces (uploaded files or Google Fonts), loaded once each, so the preview matches the file */
+const fontsIn = new Set();
+function ensureFonts(kit) { const html = fontLink(kit || {}); if (!html || fontsIn.has(html)) return; fontsIn.add(html); document.head.insertAdjacentHTML('beforeend', html); }
 function sceneArt(sc, file, { slide = null } = {}) {
+  ensureFonts(sc?.kit);
   const sel = S.sel, selId = sel && ['text', 'product', 'logo', 'badge', 'image'].includes(sel.kind) && (slide == null || sel.slide === slide) ? sel.id : null;
   const body = sceneBody(sc, { srcOf, editable: true }).replace(new RegExp(`(data-id="${(selId || '§none').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}")`), '$1 data-sel="1"');
   return `<div class="j2-art${sel?.kind === 'bg' ? ' bgsel' : ''}${S.area ? ' area' : ''}" data-art data-w="${sc.w}" data-h="${sc.h}">${body}${S.box ? `<div class="j2-box" style="left:${S.box.x * 100}%;top:${S.box.y * 100}%;width:${S.box.w * 100}%;height:${S.box.h * 100}%"></div>` : ''}${busyHtml()}</div>`;
@@ -265,7 +269,7 @@ function studioHtml() {
       ${set ? '' : `<div class="j2-count"><button data-scount="-1" aria-label="Fewer">−</button><b>${sp.count}</b><button data-scount="1" aria-label="More">+</button></div>`}
     </div>
     <input id="j2-st-ask" placeholder="Anything to add? (optional: a mood, a person, a line to say)" value="${esc(sp.ask || '')}">
-    <div class="j2-st-go"><span>${pl ? esc(pl.error || pl.line) : 'Pricing it…'}</span><button class="j2-pri" data-sgo ${!pl || pl.error || S.working ? 'disabled' : ''}>Generate${pl?.usd != null ? ` · ${usd(pl.usd)}` : ''}</button></div>
+    <div class="j2-st-go"><span>${pl ? esc(pl.error || pl.line) : 'Pricing it…'}${pl?.note ? `<br><small class="j2-st-note">${esc(pl.note)}</small>` : ''}</span><button class="j2-pri" data-sgo ${!pl || pl.error || S.working ? 'disabled' : ''}>Generate${pl?.usd != null ? ` · ${usd(pl.usd)}` : ''}</button></div>
     ${gal}</div>`;
 }
 function studioClick(g) {
