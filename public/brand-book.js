@@ -258,7 +258,7 @@
     /* deeper pages: a chapter that has more than a spread can hold opens its own page over the book (Back, Esc or the
        browser's back button returns to the same place). Products: the whole catalogue, filtered by price step. */
     function openDeep(kind, o = {}) {
-      $('.bb-deep', el)?.remove(); const v = S.data?.book || {}, pr = v.products || {}, nm = v.cover?.name || v.name || 'the brand';
+      $('.bb-deep')?.remove(); const v = S.data?.book || {}, pr = v.products || {}, nm = v.cover?.name || v.name || 'the brand';
       if (kind !== 'products') return;
       const all = pr.all?.length ? pr.all : (pr.heroes || []).map((h) => ({ ...h, hero: true })), tiers = (pr.tiers || []).filter((t) => t.lo != null);
       let f = o.tier != null && tiers[o.tier] ? `t${o.tier}` : 'all';
@@ -273,10 +273,11 @@
           <div class="bb-pgrid">${grid()}</div></div>`;
         $$('[data-f]', d).forEach((b) => b.onclick = () => { f = b.dataset.f; draw(); });
         $('[data-deep-x]', d).onclick = () => history.state?.bbDeep ? history.back() : close(); };
-      const close = () => { d.classList.remove('is-in'); setTimeout(() => d.remove(), 200); removeEventListener('popstate', pop); document.removeEventListener('keydown', esc1); document.documentElement.classList.remove('bb-deep-open'); };
+      const close = () => { d.classList.remove('is-in'); setTimeout(() => d.remove(), 200); removeEventListener('popstate', pop); removeEventListener('hashchange', pop); document.removeEventListener('keydown', esc1); document.documentElement.classList.remove('bb-deep-open'); };
       const pop = () => close(), esc1 = (e) => { if (e.key === 'Escape') history.state?.bbDeep ? history.back() : close(); };
-      draw(); el.appendChild(d); document.documentElement.classList.add('bb-deep-open'); setTimeout(() => d.classList.add('is-in'), 10);
-      history.pushState({ ...(history.state || {}), bbDeep: kind }, ''); addEventListener('popstate', pop); document.addEventListener('keydown', esc1);
+      d.style.cssText = el.style.cssText; /* the book's colours and fonts travel with it: it sits on <body>, above the app's own layers */
+      draw(); document.body.appendChild(d); document.documentElement.classList.add('bb-deep-open'); setTimeout(() => d.classList.add('is-in'), 10);
+      history.pushState({ ...(history.state || {}), bbDeep: kind }, ''); addEventListener('popstate', pop); addEventListener('hashchange', pop); /* leaving the book from the app's own nav closes it too */ document.addEventListener('keydown', esc1);
       $('[data-deep-x]', d).focus();
     }
     function openShare() {
