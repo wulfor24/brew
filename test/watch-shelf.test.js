@@ -2,6 +2,8 @@
 // by name only, a failed actor falls to the next, the brand's month cap stops paid runs, a brand outside India runs no Indian
 // shelves, and the view folds everything into four blocks with "couldn't read" kept apart from "not listed". Free.
 import test from 'node:test';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 import assert from 'node:assert/strict';
 import { whoseRow, trafficRow, createShelf, PLATFORMS } from '../shelf.js';
 import { watchView } from '../watch-view.js';
@@ -145,4 +147,12 @@ test('Amazon is a weekly shelf in any market (treg), with this week’s 10% pric
   assert.ok(r.lines.some((l) => l.key === 'shelf.amazon.changes'));
   const v = watchView({ name: 'Cozy', profile: await packs.getJSON('us', 'profile.json'), listen: {}, shelf: { amazon: f }, channels: { found: [{ platform: 'walmart', url: 'https://walmart.com/x' }] } });
   assert.deepEqual(v.sell.marketplaces, [], 'the read’s amazon.com isn’t shown twice'); assert.equal(v.sell.shelves[0].id, 'amazon'); assert.equal(v.sell.alsoOn[0].label, 'Walmart');
+});
+
+test('Amazon reviews are read in the listing’s own country; an empty answer with a warning is a failure, never "0 reviews"', () => {
+  const s = require('node:fs').readFileSync(new URL('../listen-watch.js', import.meta.url), 'utf8');
+  assert.match(s, /justoneapi\.x\.amazon-get-product-top-reviews-v1', \{ query: \{ asin: r\.asin, country: AMZ_CC\[domain\]/);
+  assert.match(s, /'amazon\.in': 'IN'/);
+  assert.match(s, /if \(!rows\.length && \(k\?\.meta\?\.warnings \|\| \[\]\)\.length\) throw new Error\(`amazon reviews failed for/);
+  assert.match('amazon reviews failed for B1: Amazon has no such product (404)', /failed/, 'the listen FAILED rule turns it into an error');
 });

@@ -28,6 +28,7 @@ export const MIX = { brand: 2, rival: 2, category: 2, problem: 2 }, LITE_MIX = {
 export const LITE_SKIP = new Set(['amazon', 'walmart', 'trustpilot', 'google', 'nykaa', 'flipkart', 'myntra', 'facebook', 'linkedin', 'pinterest', 'telegram']);
 // search kinds that are not about the brand by name
 const INDIRECT_Q = new Set(['category', 'problem', 'question']);
+const AMZ_CC = { 'amazon.in': 'IN', 'amazon.com': 'US', 'amazon.co.uk': 'GB', 'amazon.ca': 'CA', 'amazon.com.au': 'AU', 'amazon.de': 'DE', 'amazon.fr': 'FR', 'amazon.ae': 'AE', 'amazon.sa': 'SA', 'amazon.sg': 'SG', 'amazon.co.jp': 'JP' };
 const AMAZON = { IN: ['in', 'amazon.in'], US: ['us', 'amazon.com'], GB: ['uk', 'amazon.co.uk'], CA: ['ca', 'amazon.ca'], AU: ['au', 'amazon.com.au'], DE: ['de', 'amazon.de'], FR: ['fr', 'amazon.fr'], AE: ['ae', 'amazon.ae'], JP: ['jp', 'amazon.co.jp'] };
 export const SOURCES = {
   reddit: { name: 'Reddit', how: 'Posts and comments that mention the brand, its rivals or the category', paid: false },
@@ -584,7 +585,16 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
       const ok = (r) => { const t = String(r.title || '').slice(0, 80); return who ? starts(who).test(t) : F.must.test(t) && !starts(c.name).test(t); };
       [...new Map((j?.rows || []).filter((r) => r.asin && ok(r)).map((r) => [r.asin, r])).values()].sort((a, b) => (+b.reviews || 0) - (+a.reviews || 0)).slice(0, n).forEach((r) => { if (!rows.has(r.asin)) rows.set(r.asin, { ...r, q: kind }); }); }, st);
     st.detail = { listings: rows.size, brand: [...rows.values()].filter((r) => r.q === 'brand').length, domain };
-    await each([...rows.values()], async (r) => { const k = await tcall('crawl4ai.amazon.product.reviews', { body: { product: `https://www.${domain}/dp/${r.asin}`, limit: r.q === 'brand' ? 30 : 15 } }, o.capUsd);
+    /* reviews per listing: justoneapi reads the listing's own Amazon country (100% in treg's measures, 24 Oct); crawl4ai is the backup,
+       and it reads amazon.com whatever the link says, so an amazon.in listing came back "no such product" and counted as 0 reviews */
+    const reviewsOf = async (r) => { let rows = [], why = null;
+      try { const j = await tcall('justoneapi.x.amazon-get-product-top-reviews-v1', { query: { asin: r.asin, country: AMZ_CC[domain] || 'US' } }, o.capUsd);
+        rows = (j?.data?.reviews || []).map((v) => ({ review_id: v.review_id, text: v.review_comment, title: v.review_title, rating: v.review_star_rating, author: v.review_author, date: v.review_date })); }
+      catch (e) { if (capHit(e)) throw e; why = e.message; }
+      if (!rows.length) { const k = await tcall('crawl4ai.amazon.product.reviews', { body: { product: `https://www.${domain}/dp/${r.asin}`, limit: r.q === 'brand' ? 30 : 15 } }, o.capUsd);
+        rows = k?.rows || []; if (!rows.length && (k?.meta?.warnings || []).length) throw new Error(`amazon reviews failed for ${r.asin}: ${why ? `${why.slice(0, 80)}; ` : ''}${String(k.meta.warnings[0]).slice(0, 100)}`); }
+      return rows; };
+    await each([...rows.values()], async (r) => { const k = { rows: await reviewsOf(r) };
       for (const v of k?.rows || []) { if (!v.text) continue; out.push({ id: `amz:${v.review_id || `${r.asin}:${String(v.text).slice(0, 30)}`}`, platform: 'amazon', kind: 'review', link: `https://www.${domain}/dp/${r.asin}#customerReviews`, postedAt: Date.parse(v.date) || 0, author: short(v.author === '[redacted]' ? 'Amazon customer' : v.author), rating: +v.rating || null, title: unesc(v.title), text: unesc(v.text).slice(0, 800), product: String(r.title).slice(0, 80), q: r.q, ...(r.q === 'rival' ? { acct: 'rival' } : {}) }); } }, st);
     return out;
   }
