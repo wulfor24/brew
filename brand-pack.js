@@ -164,8 +164,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
      FRESH_MS, and never force the next page load to rebuild the whole pack */
   const BUILT_FROM = /^(?:seed|status|profile|facts|brief|config|moves|labels|learned|pages|pools|rival-reads|statics|updates|demo|brandbook-read|ledger|findings)\.(?:json|md)$|^(?:moves|docs|drafts|pulse)\/|^private\/(?:brandbook|shop-brand|facts|profile-live|moves|statics)/; /* private/connections.json is rewritten by every connector read and the pack only asks it whether Shopify is connected: a real connect drops the pack itself */
   /* status.json is part of the pack, but a page view's seenAt stamp is not: a write that changes only seenAt never rebuilds it */
-  const statusSig = (x) => { try { const { seenAt, ...rest } = typeof x === 'string' || Buffer.isBuffer(x) ? JSON.parse(String(x)) : x || {}; return JSON.stringify(rest); } catch { return null; } };
-  const changesPack = (slug, name, data) => { if (name !== 'status.json') return BUILT_FROM.test(name); const was = cache.get(slug)?.status; return !was || statusSig(was) !== statusSig(data); };
+  const statusSig = (x) => { try { const { seenAt, updatedAt, ...rest } = typeof x === 'string' || Buffer.isBuffer(x) ? JSON.parse(String(x)) : x || {}; return JSON.stringify(rest); } catch { return null; } };
+  const ST_SIG = new Map(); /* slug → the status this instance last saw written (its own writes and every notice) */
+  const changesPack = (slug, name, data) => { if (name !== 'status.json') return BUILT_FROM.test(name); const sig = statusSig(data), was = ST_SIG.get(slug); ST_SIG.set(slug, sig); return was === undefined || sig === null || was !== sig; };
   /* where packs live behind this disk: Postgres rows + the bucket for binaries (STORAGE=pg), or the bucket (Cloud Run) */
   const obj = objects || (process.env.K_SERVICE && bucket && gToken ? createObjects({ bucket, gToken, log }) : null);
   const remote = !!obj?.remote;
@@ -176,7 +177,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   /* another instance wrote to a pack: the next fresh load here reads it (pg NOTIFY) */
   obj?.onChange?.((key) => { if (key === '*') { for (const sl of new Set([...vers.keys(), ...cache.keys()])) bump(sl); return; } /* notices may have been missed: every pack loads fresh */
     const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (!m || !BUILT_FROM.test(m[2])) return;
-    if (m[2] === 'status.json' && cache.has(m[1])) { getJSON(m[1], 'status.json', null).then((st) => { if (changesPack(m[1], 'status.json', st)) bump(m[1]); }).catch(() => bump(m[1])); return; } /* a seenAt stamp alone keeps the built pack */
+    if (m[2] === 'status.json') { getJSON(m[1], 'status.json', null).then((st) => { if (changesPack(m[1], 'status.json', st)) bump(m[1]); }).catch(() => bump(m[1])); return; } /* a seenAt stamp alone keeps the built pack (and so does the notice of this instance's own write) */
     bump(m[1]); }).catch((e) => log.warn('[packs] listen', e.message));
 
   /* ---------- the files of a pack (local first, GCS behind) ---------- */
@@ -206,9 +207,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   const readRow = async (slug, name, f) => {
     const k = `${slug}/${name}`, c = RAW.get(k), get1 = () => obj.getV(`brands/${slug}/${name}`, c?.v);
     const r = await get1().catch(() => get1()); /* tried once more, then a failure throws: never "not there" */
-    if (r.same) { RAW.delete(k); RAW.set(k, c); return c.out; }
+    if (r.same) { if (RAW.get(k) === c) { RAW.delete(k); RAW.set(k, c); } return c.out; } /* kept fresh in line only if nobody replaced it meanwhile */
     const out = brewFile(name, r.body);
-    if (c) { RAW.delete(k); rawBytes -= c.n; }
+    { const cur = RAW.get(k); if (cur) { rawBytes -= cur.n; RAW.delete(k); } } /* whatever is there now, not what was there before the read */
     if (out && r.version != null) { const n = out.length || 0; RAW.set(k, { v: r.version, out, n }); rawBytes += n; while (rawBytes > RAW_MAX && RAW.size) { const [k0, x] = RAW.entries().next().value; RAW.delete(k0); rawBytes -= x.n; } }
     if (r.body) { try { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, r.body); } catch {} }
     return out; };
@@ -449,7 +450,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   /* a fresh load is shared: the page asks for seed.js and facts.js together, and both want it fresh. It is reused while the
      pack's version (every put on this instance) is unchanged, for at most FRESH_MS (a write another instance made shows within
      that), so a page load no longer rebuilds the whole seed each time (MOB-05: ~0.35 s a load for a big pack) */
-  const freshP = new Map(), FRESH_MS = +process.env.SEED_CACHE_MS || 60e3;
+  const freshP = new Map(), FRESH_MS = +process.env.SEED_CACHE_MS || (obj?.pg ? 3600e3 : 60e3); /* Postgres tells every instance of each write (NOTIFY bumps the version), so a built pack stands until it changes; an hour is only the safety net */
   async function load(slug, { fresh = false, share = false } = {}) {
     if (!slug) return null;
     if (!fresh && cache.has(slug)) return cache.get(slug);

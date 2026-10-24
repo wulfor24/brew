@@ -30,6 +30,7 @@ import { createAlerts, noteVertex, noteAlert } from './alerts.js'; // ops emails
 import { createBudget } from './budget.js'; // the day's AI budget: a ceiling and a share per brand
 import { createTreg, gcsCache } from './treg.js';
 import { createObjects } from './objects.js'; // STORAGE=pg: rows in Postgres, binaries in the bucket
+import { zipRes, zip, encOf } from './http-zip.js'; // compressed answers
 import { enabled as pgEnabled } from './db/index.js';
 import { migrate } from './db/migrate.js';
 import { isWeb, isWorker, isLeader, whenLeader, leaderOnly, startLease } from './roles.js'; // ROLE=web|worker; the background lease
@@ -259,9 +260,6 @@ const ZTEXT = /\.(js|css|html|svg|json|webmanifest|txt|md)$/;
 const ZC = new Map(); // file → { mtime, size, etag, raw, br, gzip }
 const fileEntry = (f) => { const st = fs.statSync(f); const e0 = ZC.get(f); if (e0 && e0.mtime === st.mtimeMs && e0.size === st.size) return e0;
   const raw = fs.readFileSync(f), e = { mtime: st.mtimeMs, size: st.size, raw, etag: `"${crypto.createHash('sha1').update(raw).digest('base64url').slice(0, 16)}"` }; ZC.set(f, e); return e; };
-const encOf = (req) => { const ae = String(req.headers['accept-encoding'] || ''); return /\bbr\b/.test(ae) ? 'br' : /\bgzip\b/.test(ae) ? 'gzip' : null; };
-const zipAsync = (buf, enc, level) => new Promise((ok, no) => (enc === 'br' ? zlib.brotliCompress(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: level ?? 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: buf.length } }, (e, z) => (e ? no(e) : ok(z))) : zlib.gzip(buf, { level: level ?? 6 }, (e, z) => (e ? no(e) : ok(z)))));
-const zip = (buf, enc, level) => (enc === 'br' ? zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: level ?? 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: buf.length } }) : zlib.gzipSync(buf, { level: level == null ? 6 : Math.min(9, level) }));
 const verOf = (f) => { try { return fileEntry(f).etag.slice(1, 9); } catch { return null; } };
 const serveFile = (req, res, f, o = {}) => {
   const type = TYPES[path.extname(f)] || 'application/octet-stream', st = fs.statSync(f), size = st.size;
@@ -284,31 +282,7 @@ const serveFile = (req, res, f, o = {}) => {
   res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes', 'cache-control': cache, etag });
   fs.createReadStream(f).pipe(res);
 };
-/* every other answer (JSON, the brand's seed and facts scripts, the page) goes out compressed when it is text and over 1 KB:
-   the feed is ~400 KB of JSON. Streams (server-sent events, the jam's reply) write before they end and pass through as they are */
-const ZTYPE = /^(application\/(json|javascript)|text\/(html|javascript|plain|css))/;
-const zipRes = (req, res) => {
-  const enc = encOf(req); if (!enc) return;
-  const wh = res.writeHead, wr = res.write, en = res.end; let held = null;
-  const flush = () => { if (held) { const h = held; held = null; wh.apply(res, h); } };
-  res.writeHead = function (...a) { held = a; return res; };
-  res.write = function (...a) { flush(); return wr.apply(res, a); };
-  res.end = function (body, ...rest) {
-    if (held && (typeof body === 'string' || Buffer.isBuffer(body))) {
-      const [code] = held, hd = held.find((x, i) => i > 0 && x && typeof x === 'object') || {}, get = (k) => Object.entries(hd).find(([x]) => x.toLowerCase() === k)?.[1] ?? res.getHeader(k);
-      const buf = Buffer.isBuffer(body) ? body : Buffer.from(body, typeof rest[0] === 'string' ? rest[0] : 'utf8');
-      if (code === 200 && buf.length > 1024 && !get('content-encoding') && ZTYPE.test(String(get('content-type') || ''))) {
-        const out = Object.fromEntries(Object.entries(hd).filter(([x]) => x.toLowerCase() !== 'content-length')), cb = rest.filter((x) => typeof x === 'function');
-        const send = (z) => { res.removeHeader('content-length'); wh.call(res, code, { ...out, 'content-encoding': enc, vary: 'Accept-Encoding', 'content-length': z.length }); en.call(res, z, ...cb); };
-        held = null;
-        /* a big answer (the feed is ~400 KB) is compressed off the main thread, so one request's compression never holds the others */
-        if (buf.length > 32 * 1024) { zipAsync(buf, enc).then(send, () => { wh.call(res, code, hd); en.call(res, buf, ...cb); }); return res; }
-        send(zip(buf, enc)); return res;
-      }
-    }
-    flush(); return en.call(res, body, ...rest);
-  };
-};
+/* every other answer goes out compressed (http-zip.js zipRes) */
 const send = (res, code, body, type = 'application/json') => { res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' }); res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body)); };
 const readBody = (req) => new Promise((res) => { let d = ''; req.on('data', (c) => (d += c)); req.on('end', () => { try { res(JSON.parse(d || '{}')); } catch { res({}); } }); });
 // a page-relative image path → the file: public/… or a brand pack asset (b/<slug>/a/<file>)
@@ -1044,13 +1018,16 @@ const server = http.createServer(async (req, res) => {
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => timed(req, res, u, () => serve(req, res, u))); }
   return timed(req, res, u, () => serve(req, res, u));
 }).listen(PORT, () => console.log(`Brew Feed on http://localhost:${PORT} · AI ${MOCK ? "mock" : `live (${PROVIDER})`} · env ${fs.existsSync(envFile) ? envFile : 'none'}${DEMO ? ' · DEMO MODE' : ''}`));
-/* every web instance starts with every ready brand already built in memory (most recently opened first), one after
-   another in the background, so the first visitor after a deploy or a scale-up never waits for a pack build (Phase 4) */
-if (isWeb() && process.env.WARM_OFF !== '1') setTimeout(async () => { const t0 = Date.now(); let n = 0;
+/* every web instance on the live stack starts with the brands people use already built in memory (opened in the last 30 days,
+   most recent first): only the pack is built (no watchers, no paid fills: those start when someone opens the brand, as
+   before), one brand at a time with a pause between, so a fresh instance keeps answering while it warms (Phase 4) */
+if (isWeb() && OBJ && process.env.K_SERVICE && !MOCK && !DEMO && process.env.WARM_OFF !== '1') setTimeout(async () => { const t0 = Date.now(); let n = 0;
   const all = (await builder.list().catch(() => [])).filter((x) => x.slug && x.status?.ready !== false);
   const lo = new Map(await Promise.all(all.map(async (b) => [b.slug, (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0])));
-  for (const b of all.sort((x, y) => lo.get(y.slug) - lo.get(x.slug)).slice(0, +process.env.WARM_BRANDS || 40)) { /* most recently opened first */
-    try { await loadBrand(b.slug, { fresh: true, share: true }); n++; } catch (e) { console.warn('[warm]', b.slug, e.message); } }
+  for (const b of all.filter((x) => Date.now() - lo.get(x.slug) < 30 * 864e5).sort((x, y) => lo.get(y.slug) - lo.get(x.slug)).slice(0, +process.env.WARM_BRANDS || 20)) {
+    if (shuttingDown) break;
+    try { await packs.load(b.slug, { fresh: true, share: true }); n++; } catch (e) { console.warn('[warm]', b.slug, e.message); }
+    await new Promise((r) => setTimeout(r, 250)); } /* requests go first between brands */
   if (n) console.log(`[warm] ${n} brand(s) ready in memory in ${Date.now() - t0} ms`); }, +process.env.WARM_DELAY_MS || 3000).unref?.();
 /* Cloud Run stops an instance with SIGTERM (deploys, scale to zero): the team's jams, any workspace still inside its 1.5 s
    save debounce, the day's budget counters, the treg spend ledger and the batched jam emails are written (or sent) before it
@@ -1069,9 +1046,9 @@ process.once('SIGTERM', () => shutdown(0));
 /* a change asked from another site (a sibling subdomain included) with this site's cookie is refused: state-changing requests
    must come from Brew's own pages. Webhooks (Slack, Shopify) and the Shopify admin's bearer-token calls aren't cookie-based */
 const OWN_ORIGINS = new Set([process.env.PUBLIC_URL, 'http://localhost:' + (process.env.PORT || 4200)].filter(Boolean).map((x) => { try { return new URL(x).origin; } catch { return null; } }).filter(Boolean));
-const NO_CSRF = /^\/(?:slack\/(?:events|actions|commands)|shopify\/webhooks)/;
+const NO_CSRF = /^\/(?:slack\/(?:events|actions|commands)|shopify\/webhooks)(?:\/|$)/;
 const crossSite = (req, u) => {
-  if (!/^(POST|PUT|PATCH|DELETE)$/.test(req.method) || NO_CSRF.test(u.pathname) || /^Bearer /i.test(req.headers.authorization || '') || !/(?:^|;\s*)fs_s=/.test(req.headers.cookie || '')) return false;
+  if (!/^(POST|PUT|PATCH|DELETE)$/.test(req.method) || NO_CSRF.test(u.pathname) || !/(?:^|;\s*)(?:fs_s|brew_demo)=/.test(req.headers.cookie || '')) return false; /* any sign-in cookie (the demo's too); a bearer header never excuses one */
   const origin = req.headers.origin, site = String(req.headers['sec-fetch-site'] || '');
   const own = new Set([...OWN_ORIGINS, `https://${req.headers.host}`, `http://${req.headers.host}`]);
   if (origin) return !own.has(origin);
@@ -1081,10 +1058,10 @@ const crossSite = (req, u) => {
    logged with its route, so production speed is watched per route (Phase 4) */
 const SLOW_MS = +process.env.SLOW_MS || 1500;
 function timed(req, res, u, fn) {
-  const t0 = performance.now(), clock = { ms: 0, n: 0 }, wh = res.writeHead;
-  res.writeHead = function (code, ...a) { try { const st = `total;dur=${Math.round(performance.now() - t0)}, db;dur=${Math.round(clock.ms)};desc="${clock.n} queries"`;
-    const hd = a.find((x) => x && typeof x === 'object'); if (hd && !Object.keys(hd).some((k) => k.toLowerCase() === 'server-timing')) hd['server-timing'] = st; else if (!hd && !res.getHeader('server-timing')) res.setHeader('server-timing', st); } catch {} return wh.call(res, code, ...a); };
-  res.once('finish', () => { const ms = performance.now() - t0; if (ms > SLOW_MS && !/text\/event-stream/.test(String(res.getHeader('content-type') || ''))) console.warn(`[slow] ${req.method} ${u.pathname.replace(/t_[a-f0-9]+/g, 't_*').replace(/\/w_[A-Za-z0-9_-]+/g, '/w_*')} ${res.statusCode} ${Math.round(ms)} ms (db ${Math.round(clock.ms)} ms, ${clock.n} queries)`); });
+  const t0 = performance.now(), clock = { ms: 0, n: 0 }, wh = res.writeHead; let ctype = '';
+  res.writeHead = function (code, ...a) { try { const st = `total;dur=${Math.round(performance.now() - t0)}, db;dur=${Math.round(clock.ms)}`;
+    const hd = a.find((x) => x && typeof x === 'object' && !Array.isArray(x)); if (hd) ctype = String(Object.entries(hd).find(([k]) => k.toLowerCase() === 'content-type')?.[1] || ''); if (hd && !Object.keys(hd).some((k) => k.toLowerCase() === 'server-timing')) hd['server-timing'] = st; else if (!hd && !res.getHeader('server-timing')) res.setHeader('server-timing', st); } catch {} return wh.call(res, code, ...a); };
+  res.once('close', () => { const ms = performance.now() - t0; if (ms > SLOW_MS && !/text\/event-stream/.test(ctype || String(res.getHeader('content-type') || ''))) console.warn(`[slow]${res.writableFinished ? '' : ' (client gone)'} ${req.method} ${u.pathname.replace(/t_[a-f0-9]+/g, 't_*').replace(/\/w_[A-Za-z0-9_-]+/g, '/w_*')} ${res.statusCode} ${Math.round(ms)} ms (db ${Math.round(clock.ms)} ms, ${clock.n} queries)`); });
   return dbClock.run(clock, fn);
 }
 async function serve(req, res, u) {

@@ -1815,7 +1815,7 @@ export function createFeedService(o) {
     if (hit) log.log?.(`[feed] ${t.brandId || ''} built fresh: ${hit.who !== who ? `was ${hit.who.split('|').slice(1).join('|')} now ${who.split('|').slice(1).join('|')}` : `${Math.round((Date.now() - hit.at) / 1e3)} s old`}`); /* why a reload waited (1.7) */
     return store(await feedRoute(b, t)); });
   const feedRoute = async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts);
-    if (t.visit && t.feedVisit !== t.visit.at) { t.feedVisit = t.visit.at; if (t.onboarding.readyAt) await runFree(t, 'visit', +process.env.VISIT_WAIT_MS || 600); } /* the free watchers get a moment; what they find later lands on the next refresh, never holding the page */
+    if (t.visit && t.feedVisit !== t.visit.at) { t.feedVisit = t.visit.at; if (t.onboarding.readyAt && !t.freeRun) { t.freeRun = true; await runFree(t, 'visit', +process.env.VISIT_WAIT_MS || 600).finally(() => { setTimeout(() => { t.freeRun = false; }, 30e3).unref?.(); }); } } /* one visit run at a time: the one still running after the wait finishes first */ /* the free watchers get a moment; what they find later lands on the next refresh, never holding the page */
     await PLAIN.load(slugOfT(t)).catch(() => {}); if (t.member) await PLAIN.load(slugOfT(t), true).catch(() => {}); /* the team's private cards' rewrites */
     const f = feed(t); if (process.env.PLAIN_OFF !== '1' && !demoReq()) PLAIN.queue(slugOfT(t), f.order.map((id) => t.cards.get(id)).filter(Boolean), BN()); /* cards still in their first words get plain ones in the background */
     oneTitles(t);

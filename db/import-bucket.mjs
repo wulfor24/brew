@@ -45,7 +45,7 @@ const work = async (x) => {
     const body = await get(x.name); if (!body) return;
     const n = await tx(async (c) => {
       const r = await c.query(`INSERT INTO objects (key, body, content_type, updated_at, src) VALUES ($1, $2, $3, $4, 'import')
-        ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, version = objects.version + 1, updated_at = EXCLUDED.updated_at, src = 'import'
+        ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, version = nextval('objects_version'), updated_at = EXCLUDED.updated_at, src = 'import'
         WHERE objects.updated_at + make_interval(secs => CASE WHEN objects.src = 'import' THEN 0 ELSE $5 END) < EXCLUDED.updated_at`, [x.name, body, typeOf(x.name), at, LAG_MS / 1e3]);
       if (r.rowCount) await c.query('DELETE FROM doc_parts WHERE key = $1', [x.name]); /* a parted document taken from the bucket is whole again */
       return r.rowCount; });

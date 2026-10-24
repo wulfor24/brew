@@ -70,14 +70,14 @@ export function createObjects({ bucket, gToken, log = console, pg = pgOn(), read
      stub row's version moves on (its trigger tells the other instances) */
   /* the stub row first: it is the document's lock (every writer of the document takes it first, so two writers never wait
      on each other in opposite order) and its version is what the other instances hear */
-  const stub = async (c, key) => +(await c.query(`INSERT INTO objects (key, body, content_type, src) VALUES ($1, '\\x', '${STUB}', NULL) ON CONFLICT (key) DO UPDATE SET body = '\\x', content_type = '${STUB}', src = NULL, version = objects.version + 1, updated_at = now() RETURNING version`, [key])).rows[0].version;
+  const stub = async (c, key) => +(await c.query(`INSERT INTO objects (key, body, content_type, src) VALUES ($1, '\\x', '${STUB}', NULL) ON CONFLICT (key) DO UPDATE SET body = '\\x', content_type = '${STUB}', src = NULL, version = nextval('objects_version'), updated_at = now() RETURNING version`, [key])).rows[0].version;
   const byPart = (a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
   /* a parted document written whole in one transaction: only parts whose bytes changed are sent, parts gone are deleted, and
      every part's place follows the document's order */
   async function putParts(c, key, buf) {
     let doc; try { doc = JSON.parse(buf.toString('utf8')); } catch { doc = null; }
     if (!doc || typeof doc !== 'object' || Array.isArray(doc)) { /* not a document of fields: kept whole, as any object */
-      await c.query(`INSERT INTO objects (key, body, content_type, src) VALUES ($1, $2, 'application/json', NULL) ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, src = NULL, version = objects.version + 1, updated_at = now()`, [key, buf]);
+      await c.query(`INSERT INTO objects (key, body, content_type, src) VALUES ($1, $2, 'application/json', NULL) ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, src = NULL, version = nextval('objects_version'), updated_at = now()`, [key, buf]);
       await c.query('DELETE FROM doc_parts WHERE key = $1', [key]); return 0; }
     const version = await stub(c, key);
     const parts = splitDoc(doc, { always: ALWAYS.test(key) }), have = new Map((await c.query('SELECT part, ord, md5(body) AS h FROM doc_parts WHERE key = $1', [key])).rows.map((r) => [r.part, r]));
@@ -127,6 +127,7 @@ export function createObjects({ bucket, gToken, log = console, pg = pgOn(), read
     if (!row) return { version: null, body: await get(key) }; /* not a row (yet): read-through and the rest as get() does */
     const version = +row.version; if (have != null && version === have) return { version, same: true };
     if (row.content_type === STUB) return { version, body: Buffer.from(JSON.stringify(joinDoc((await q('SELECT part, body FROM doc_parts WHERE key = $1 ORDER BY ord, part', [key])).rows))) };
+    if (!row.body?.length && readThrough && gcsOn) return { version: null, body: await get(key) }; /* not imported yet: as get() */
     return { version, body: row.body?.length ? row.body : null };
   }
   async function get(key) {
@@ -143,7 +144,7 @@ export function createObjects({ bucket, gToken, log = console, pg = pgOn(), read
     live(key); const buf = toBuf(data);
     if (inRows(key) && PARTED.test(key)) { await tx((c) => putParts(c, key, buf)); mirrorPut(key, buf, 'application/json'); return true; }
     if (inRows(key)) { await q(`INSERT INTO objects (key, body, content_type) VALUES ($1, $2, $3)
-      ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, src = NULL, version = objects.version + 1, updated_at = now()`, [key, buf, typeOf(key, type)]); mirrorPut(key, buf, typeOf(key, type)); return true; }
+      ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, src = NULL, version = nextval('objects_version'), updated_at = now()`, [key, buf, typeOf(key, type)]); mirrorPut(key, buf, typeOf(key, type)); return true; }
     if (!gcsOn) return false;
     await gcsPut(key, buf, type); return true;
   }
@@ -173,7 +174,7 @@ export function createObjects({ bucket, gToken, log = console, pg = pgOn(), read
       if (next === undefined) { if (!cur?.length) await c.query('DELETE FROM objects WHERE key = $1', [key]); return prev; }
       const buf = toBuf(next);
       if (PARTED.test(key)) { await putParts(c, key, buf); copy = [buf, 'application/json']; return next; }
-      await c.query('UPDATE objects SET body = $2, content_type = $3, src = NULL, version = version + 1, updated_at = now() WHERE key = $1', [key, buf, typeOf(key, type)]);
+      await c.query(`UPDATE objects SET body = $2, content_type = $3, src = NULL, version = nextval('objects_version'), updated_at = now() WHERE key = $1`, [key, buf, typeOf(key, type)]);
       copy = [buf, typeOf(key, type)];
       return next;
     });

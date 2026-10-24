@@ -57,7 +57,7 @@ const PACK_SRC = new WeakMap();
 export const packSource = (p, card = null) => { let base = p && typeof p === 'object' ? PACK_SRC.get(p) : '';
   if (base == null || base === undefined) { base = sourceText(Object.values(p?.facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), p?.catalog, p?.reviewQuotes, p?.seed?.brand?.about || '', p?.seed?.brand?.tagline || '', String(p?.factBrief || '').split('\n'), approvedText(p?.book?.claims)); /* the fact brief one fact at a time, so a test named in one never proves another (certifiedIn) */ if (p && typeof p === 'object') PACK_SRC.set(p, base); }
   if (!card || typeof card !== 'object') return base || ''; const ev = sourceText(card.post?.evidence || [], card.evidence || []); if (!ev.trim()) return base || '';
-  const k = CARD_SRC.get(card); if (k?.base === base && k.ev === ev) return k.s; const out = `${base || ''}\n${ev}`; CARD_SRC.set(card, { base, ev, s: out }); COMP.set(out, { base: base || '', ev }); if (COMP.size > 5000) COMP.delete(COMP.keys().next().value); return out; }; /* the same string per card, so it is normalised once */
+  const k = CARD_SRC.get(card); if (k?.base === base && k.ev === ev) return k.s; const out = `${base || ''}\n${ev}`; CARD_SRC.set(card, { base, ev, s: out }); COMP.set(out, { base: base || '', ev }); if (COMP.size > 64) COMP.delete(COMP.keys().next().value); return out; }; /* a card's source is checked right after it is made: a short list holds them (each key is a full copy of the brand's words) */ /* the same string per card, so it is normalised once */
 const CARD_SRC = new WeakMap();
 
 /* → [{ kind, phrase, quote, why }] for every claim in `text` that `source` (sourceText) doesn't carry */
