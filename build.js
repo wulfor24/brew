@@ -753,7 +753,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         /* reads from before non-Shopify stores were read properly (reader/products.js): an empty or product-page catalog, older reviews, no base name */
         || ((p.catalog?.v || 0) < CATALOG_V && (!p.catalog?.products?.length || /^jsonld/.test(p.catalog?.source || ''))) || (p.reviews && (p.reviews.v || 0) < REVIEWS_V) || (!!p.name && !p.brandName)
         || ((p.rivals || []).some((r) => r.host && !(r.prices || []).length) && !p.meta?.healTried?.rivalPrices)
-        || ((p.company?.v || 0) < COMPANY_V && !(p.company?.founders || []).length && !p.meta?.healTried?.companyAbout); /* founders from the brand's own about page, once (2.8) */
+        || ((p.company?.v || 0) < COMPANY_V && !(p.company?.founders || []).length && !p.meta?.healTried?.[`companyAbout${COMPANY_V}`]); /* founders from the brand's own about page, once (2.8) */
       const stillBroken = !!p.ads?.own?.error || (p.ads?.rivals || []).some((r) => r.error) || (!p.ai?.answers?.length && !!p.meta?.errors?.answers); /* the AI tools step failed in the read: ask again hourly */
       if (!outdated && p.meta?.healedAt && Date.now() - Date.parse(p.meta.healedAt) < (stillBroken ? 36e5 : 864e5)) return null;
       const reader = makeReader(await load()); if (!reader.heal) return null;

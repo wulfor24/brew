@@ -7,12 +7,15 @@ const ABOUT = ['/pages/about', '/pages/about-us', '/pages/our-story', '/about', 
 const textOf = (h) => String(h || '').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 async function aboutPage(ctx) {
   const origin = ctx.state?.origin || (ctx.profile?.host ? `https://${ctx.profile.host}` : null); if (!origin || !ctx.http?.get) return null;
-  for (const p of ABOUT) { try { const r = await ctx.http.get(origin + p, { key: `about-${p.replace(/\W+/g, '-')}`, ms: 15e3 }); const t = r?.ok ? textOf(r.text) : '';
-    if (t.length > 300 && /found|start|began|born|since|story|journey/i.test(t)) return { url: origin + p, text: t.slice(0, 6000) }; } catch {} }
+  /* the home page's own link first ("/pages/about-arata", "/pages/our-founders"): stores name the page their own way */
+  let home = ctx.state?.home || ''; if (!home) try { const r = await ctx.http.get(origin, { key: 'about-home', ms: 15e3 }); home = r?.ok ? r.text : ''; } catch {}
+  const own = [...new Set([...String(home).matchAll(/href=["']([^"'#?]*(?:about|our-?story|who-?we-?are|founder|our-?journey)[^"'#?]*)["']/gi)].map((m) => { try { const u = new URL(m[1], origin); return u.hostname.replace(/^www\./, '') === new URL(origin).hostname.replace(/^www\./, '') ? u.pathname : null; } catch { return null; } }).filter(Boolean))].slice(0, 4);
+  for (const p of [...own, ...ABOUT.filter((x) => !own.includes(x))]) { try { const r = await ctx.http.get(origin + p, { key: `about-${p.replace(/\W+/g, '-')}`, ms: 15e3 }); const t = r?.ok ? textOf(r.text) : '';
+    if (t.length > 300 && /found|start|began|born|since|story|journey/i.test(t)) return { url: origin + p, text: t.slice(0, 12000) }; } catch {} }
   return null;
 }
 
-export const COMPANY_V = 2; /* 2: the brand's own about page is read first */
+export const COMPANY_V = 3; /* 3: the about page the home page links to; 2: the brand's own about page is read first */
 export async function company(ctx) {
   const { profile, ledger } = ctx;
   if (!ctx.aiOn) return;

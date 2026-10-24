@@ -207,7 +207,7 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
     const failedStages = Object.keys(profile.meta?.errors || {}).filter((k) => RERUN[k] && !!profile.host && (!tried[k] || Date.now() - Date.parse(tried[k]) >= 864e5));
     /* a read from before the about page was read (company.js COMPANY_V) with no founders found: once, so founders and the founding
        year come from the brand's own page (23 Oct QA 2.8) */
-    if (!failedStages.includes('company') && !!profile.host && !profile.closed && (profile.company?.v || 0) < COMPANY_V && !(profile.company?.founders || []).length && !tried.companyAbout) { failedStages.push('company'); profile.meta = { ...(profile.meta || {}), healTried: { ...(profile.meta?.healTried || {}), companyAbout: new Date().toISOString() } }; }
+    if (!failedStages.includes('company') && !!profile.host && !profile.closed && (profile.company?.v || 0) < COMPANY_V && !(profile.company?.founders || []).length && !tried[`companyAbout${COMPANY_V}`]) { failedStages.push('company'); profile.meta = { ...(profile.meta || {}), healTried: { ...(profile.meta?.healTried || {}), [`companyAbout${COMPANY_V}`]: new Date().toISOString() } }; }
     /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
     const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.triedAt || ps.at || 0) >= 864e5)); /* triedAt: a kept reading's last failed try */
     if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length && !catalogStale && !reviewsStale && !nameMissing && !rivalPricesStale) return null;
