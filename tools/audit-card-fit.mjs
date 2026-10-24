@@ -5,7 +5,7 @@
 // --before counts the same problems on the cards as saved, to compare with what is served.
 import fs from 'node:fs';
 import path from 'node:path';
-import { fillMake, fitCta, inferMake, inferable, rulesCard, intendsAsset, MAKE_LABELS } from '../cards-gen.js';
+import { fillMake, fitCta, fitMedium, inferMake, inferable, rulesCard, intendsAsset, MAKE_LABELS } from '../cards-gen.js';
 import { countsOf, freshCounts } from '../card-nums.js';
 
 const dir = process.argv[2], before = process.argv.includes('--before');
@@ -26,26 +26,28 @@ for (const f of fs.readdirSync(path.join(dir, 'tenants'))) {
 let total = 0, bad = 0;
 const rows = [];
 for (const [slug, { counts, cards }] of byBrand) {
-  const hits = { makingNoAsset: 0, buttonOnlyAd: 0, rulesWithStray: 0, staleCounts: 0 }, ex = [];
+  const hits = { makingNoAsset: 0, buttonOnlyAd: 0, rulesWithStray: 0, wrongMedium: 0, staleCounts: 0 }, ex = [];
   for (const [where, c0] of cards) {
     if (!c0?.title || c0.done || ['dismissed', 'done', 'dropped', 'expired'].includes(c0.state)) continue; total++;
     const c = before ? JSON.parse(JSON.stringify(c0)) : freshCounts(fitCta(fillMake(JSON.parse(JSON.stringify(c0)))), counts);
     const label = c.cta?.label || '', p = [];
     /* a making button with nothing to make (the Arata ad-fatigue card) */
     /* live readings, demo and report cards get their buttons from the code that writes them (the jam makes what the button says): skipped */
-    if (inferable(c) && MAKE_LABELS.has(label) && !c.make?.format && !inferMake(c) && !before) p.push('making button, nothing to make');
+    if (inferable(c) && MAKE_LABELS.has(label) && !c.make?.format && !inferMake(c) && c.medium !== 'community' /* its post button opens the platform's post (fitMedium) */ && !before) p.push('making button, nothing to make');
     if (before && MAKE_LABELS.has(label) && !c.make?.format && (c.makeDropped || rulesCard(c))) p.push('making button, nothing to make');
     /* an ad the card's words never ask for, only its button */
     const byWords = inferMake({ ...c, make: null, cta: { label: '' } }); /* what the title alone names */
     if (c.make?.inferred && /ad$|reel/.test(c.make.format) && !byWords && !intendsAsset(c)) p.push(`button-only ${c.make.format}`);
     /* a rules card carrying a picture its words never name */
     if (rulesCard(c) && c.make?.format && c.make.inferred && !byWords) p.push(`rules card with ${c.make.format}`);
+    /* an asset typed for the wrong place: a Reddit or forum post as an Instagram post, a printed card as an image ad (25 Oct) */
+    if (c.make?.format) { const m = fitMedium(JSON.parse(JSON.stringify(c))); if (m.medium) p.push(`wrong medium: ${c.make.format} for a ${m.medium} piece`); }
     /* a count row that isn't today's */
     const now = freshCounts(c, counts); if (now !== c && JSON.stringify(now.rows) !== JSON.stringify(c.rows)) p.push('stale count rows');
-    if (p.length) { bad++; for (const x of p) { if (/^making/.test(x)) hits.makingNoAsset++; else if (/^button-only/.test(x)) hits.buttonOnlyAd++; else if (/^rules/.test(x)) hits.rulesWithStray++; else hits.staleCounts++; } if (ex.length < 4) ex.push(`  ${where} ${c.id}: ${p.join(', ')} | "${String(c.title).slice(0, 60)}" [${label}]`); }
+    if (p.length) { bad++; for (const x of p) { if (/^making/.test(x)) hits.makingNoAsset++; else if (/^button-only/.test(x)) hits.buttonOnlyAd++; else if (/^rules/.test(x)) hits.rulesWithStray++; else if (/^wrong medium/.test(x)) hits.wrongMedium++; else hits.staleCounts++; } if (ex.length < 4) ex.push(`  ${where} ${c.id}: ${p.join(', ')} | "${String(c.title).slice(0, 60)}" [${label}]`); }
   }
   rows.push([slug, cards.length, hits, ex]);
 }
-for (const [slug, n, h, ex] of rows) { const s = Object.values(h).reduce((a, b) => a + b, 0); console.log(`${s ? '✖' : '✔'} ${slug} (${n} cards) making-no-asset ${h.makingNoAsset} · button-only ad ${h.buttonOnlyAd} · rules+asset ${h.rulesWithStray} · stale counts ${h.staleCounts}`); ex.forEach((x) => console.log(x)); }
+for (const [slug, n, h, ex] of rows) { const s = Object.values(h).reduce((a, b) => a + b, 0); console.log(`${s ? '✖' : '✔'} ${slug} (${n} cards) making-no-asset ${h.makingNoAsset} · button-only ad ${h.buttonOnlyAd} · rules+asset ${h.rulesWithStray} · wrong medium ${h.wrongMedium} · stale counts ${h.staleCounts}`); ex.forEach((x) => console.log(x)); }
 console.log(`\n${before ? 'AS SAVED' : 'AS SERVED'}: ${bad} of ${total} open cards break a rule`);
 process.exit(bad ? 1 : 0);

@@ -13,7 +13,7 @@ import { fontName } from './reader/stages/brand.js';
 
 export const CTA = {
   'Publish the campaign': ['Writing the brief', 'Campaign brief ready for your team'], 'Shift budget': ['Writing the brief', 'Budget brief ready: your team moves it in Ads Manager'], 'Rotate creative': ['Making versions', 'Fresh versions ready for your team'],
-  'Update landing page': ['Updating pages', 'The pages are updated'], 'Publish the page': ['Publishing', 'The page is live'], 'Make the ad': ['Making', 'The ad is on the way'], 'Generate versions': ['Generating', 'Versions on the way'],
+  'Update landing page': ['Updating pages', 'The pages are updated'], 'Publish the page': ['Publishing', 'The page is live'], 'Make the ad': ['Making', 'The ad is on the way'], 'Draft the print card': ['Drafting', 'The print card is drafted for your team'], 'Generate versions': ['Generating', 'Versions on the way'],
   'Draft the listing': ['Drafting', 'Listing drafted'], 'Fix tracking': ['Fixing tracking', 'Tracking fixes queued'], 'Turn on the journey': ['Turning it on', 'The journey is on'],
   'Approve the flows': ['Saving', 'Flows saved as drafts'], 'Draft the email': ['Drafting', 'The email is drafted'], 'Draft the message': ['Drafting', 'The message is drafted'], 'Pause the ads for these': ['Listing them', 'The ads to pause are listed for your team'], 'Send the review ask': ['Sending', 'Review ask is going out'], 'Make the video': ['Starting', 'The video is in production'],
   'Brief the shoot': ['Briefing', 'Shoot brief sent to the team'], 'Shortlist creators': ['Shortlisting', 'Creators shortlisted'], 'Start the tests': ['Starting tests', 'The tests are running'],

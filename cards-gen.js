@@ -76,9 +76,34 @@ export const makeMentioned = (c) => { const p = String(c?.make?.pieces || ''); i
   const said = keyWords([c.title, c.sub, ...(c.detail?.why || []), ...(c.detail?.how || [])].filter((x) => typeof x === 'string').join(' ')), has = new Set(said);
   const thing = keyWords(p.split(/:/)[0]).slice(0, 3), rest = keyWords(p.split(/:/).slice(1).join(':')).slice(0, 4);
   return thing.some((w) => has.has(w)) || rest.filter((w) => has.has(w)).length >= 2; };
+/* where the piece goes decides what it is (design-partner audit, 25 Oct). A reply or question for Reddit, Quora, a forum or a
+   Facebook group is words the team posts by hand: no Instagram format, no picture, no "4:5 post" line, and the jam opens it as
+   that platform's post with Copy and open (remix.js primaryOf). A printed card is a print piece, never an image ad: its button
+   drafts the print card (remix.js crm.print_insert). Only where the card says the piece GOES: a Reddit thread that is the
+   evidence for an Instagram carousel keeps the carousel. Runs when cards are written and as packs load (fitCta) */
+export const COMMUNITY = /\b(?:reddit|r\/\w+|subreddits?|quora|forums?|facebook groups?|linkedin|discord|telegram groups?|community threads?)\b/i;
+const COMMUNITY_RE = COMMUNITY.source;
+const IG_NAMED = /\b(?:instagram|insta|ig|reels?|stories|carousels?|feed posts?)\b/i;
+const POSTS_THERE = new RegExp(String.raw`\b(?:post|reply|replies|answer|ask|publish|comment|share|respond|track|clarify)\w*\b[^.]{0,70}?\b(?:on|in|to|across|via)\b[^.]{0,40}?${COMMUNITY_RE}|\b(?:this|a|the|our)\s+(?:${COMMUNITY_RE})\s+(?:post|reply|replies|answer|question|thread)s?\b`, 'i');
+const RULES_LABELS = new Set(['Set up the rules']); /* a rules card keeps its button */
+export const PRINT = /\b(?:print(?:ed|able)?|box inserts?|insert cards?|in-box cards?|leaflets?|flyers?|brochures?|booklets?|stickers?|thank-?you cards?|cards? in (?:every|the) box)\b/i;
+export function fitMedium(card) {
+  const f = card?.make?.format; if (!f) return card;
+  const title = String(card.title || ''), steps = [...(card.detail?.how || []), ...(card.plan?.steps || [])].filter((x) => typeof x === 'string').join('. ');
+  const social = /^instagram (?:post|carousel|stories)$/.test(f), ad = / ad$/.test(f);
+  const goesToCommunity = COMMUNITY.test(title) || POSTS_THERE.test(`${card.sub || ''}. ${steps}`);
+  if (social && goesToCommunity && !IG_NAMED.test(`${title}. ${card.sub || ''}. ${steps}`)) { /* Instagram named anywhere ("publish Instagram Q&A stories"): it stays an Instagram piece */
+    card.makeDropped = f; card.medium = 'community'; delete card.make;
+    /* the jam opens the platform's post from the card's words; a making button that needs a format would be swapped for "Agree with the call" */
+    if (!RULES_LABELS.has(card.cta?.label)) card.cta = { ...(card.cta || {}), label: /\b(?:answer|reply|replies|respond|help|resolve|clarify|explain)\w*\b/i.test(title) ? 'Reply as the brand' : 'Draft the post' };
+    return card; }
+  if ((social || ad) && PRINT.test(title)) { card.makeDropped = f; card.medium = 'print'; delete card.make; card.cta = { ...(card.cta || {}), label: 'Draft the print card' }; return card; }
+  return card;
+}
 export function fitCta(card) {
   if (!card || typeof card !== 'object') return card;
   if (card.cta?.label && ctaName(card.cta.label) !== card.cta.label) card.cta = { ...card.cta, label: ctaName(card.cta.label) }; /* a renamed button heals (Publish Campaign, List what points there) */
+  fitMedium(card);
   /* an asset filled in at load from the button alone, saved on a feed copy before the rules above: it goes when today's inference gives none */
   if (card.make?.inferred && !inferMake({ ...card, make: null })) delete card.make;
   const offTopic = card.cta?.label && !topicOk(card);
@@ -103,7 +128,7 @@ export function fitCta(card) {
   if (want && CTA[want] && card.cta?.label !== want && (!cur || MAKE_LABELS.has(cur) || wrongNet || fmtOff || cur === 'Queue the ads' /* nothing made yet to queue: make it first */ || cur === 'Publish the campaign' /* a card that makes something: its button makes it (a video ad card makes the video), Brew never publishes */)) card.cta = { ...(card.cta || {}), label: want };
   /* a making button on a card with nothing to make (its asset was dropped, or its words name none) promises a picture the card
      never asked for: a rules card saves its rules, any other card is a call to agree with */
-  if (!card.make?.format && (card.title || card.sub) /* no words to judge by: the button stays */ && inferable(card) && MAKE_LABELS.has(card.cta?.label) && !inferMake(card)) card.cta = { ...card.cta, label: rulesCard(card) ? RULES_CTA : 'Agree with the call' };
+  if (!card.make?.format && card.medium !== 'community' /* its post button opens the platform's post (fitMedium) */ && (card.title || card.sub) /* no words to judge by: the button stays */ && inferable(card) && MAKE_LABELS.has(card.cta?.label) && !inferMake(card)) card.cta = { ...card.cta, label: rulesCard(card) ? RULES_CTA : 'Agree with the call' };
   return card;
 }
 /* a card that names an asset carries what to make. Old packs were written before every such card set "make", so cards
@@ -128,7 +153,7 @@ const MAKE_RE = [
 ];
 const NO_MAKE = /^(build-|statics-batch$|story-|live-|read-|heard-)/;
 /* buttons that decide, fix or open something: such a card is not asking for an asset, whatever its words mention */
-const NOT_MAKING = new Set([RULES_CTA, 'Fix tracking', 'Agree with the call', 'Open the moves', 'Open the scoreboard', 'Shift budget', 'Add the search info', 'Push the titles', 'Launch the ad group', 'Turn on guest checkout', 'Publish the claims ledger', 'Shortlist creators', 'Draft the buyer deck', 'Brief the shoot', 'Open report', 'Approve the offers']);
+const NOT_MAKING = new Set([RULES_CTA, 'Draft the print card', 'Fix tracking', 'Agree with the call', 'Open the moves', 'Open the scoreboard', 'Shift budget', 'Add the search info', 'Push the titles', 'Launch the ad group', 'Turn on guest checkout', 'Publish the claims ledger', 'Shortlist creators', 'Draft the buyer deck', 'Brief the shoot', 'Open report', 'Approve the offers']);
 /* buttons that ship an asset: the body may say which, and with nothing named the button's own format is used (flows and journeys name theirs) */
 const CTA_DEFAULT = { 'Send the review ask': 'email', 'Make the video': 'reel', 'Generate versions': 'single image ad', 'Make the ad': 'single image ad', 'Rotate creative': 'single image ad', 'Queue the ads': 'single image ad', 'Publish Campaign': 'single image ad', 'Publish the campaign': 'single image ad', 'Make our version': 'single image ad', 'Approve the flows': null, 'Turn on the journey': null, 'Publish the page': 'page section', 'Draft the listing': 'page section' };
 const ASSET_WORDS = /\b(?:ads?|creatives?|hooks?|headlines?|captions?|copy|visuals?|images?|pictures?|photos?|videos?|clips?|reels?|posts?|emails?|messages?|banners?|versions?|variants?|scripts?|stories|carousels?|landing pages?|sections?)\b/i;
