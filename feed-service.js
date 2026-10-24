@@ -270,7 +270,12 @@ export function createFeedService(o) {
   /* every card's plan (card-plan.js): the ground-work steps toward its action, with its first draft as v0. Worked out from
      the card itself, so saved cards get it without new spend; every prompt that reads a card reads its plan too */
   const planOfCard = (c) => { if (!c?.id || !c.title) return null; try { return planFor(c, { draft: draftView(draftFor(c, B()?.firstDrafts), c) }); } catch (e) { log.warn?.('[plan]', e.message); return null; } };
-  const cardBrief = (c, role, t = null) => `${o.cardBrief(c, role, t?.member ? packFor(t)?.factBrief : null)}${planPrompt(planOfCard(c))}`; /* a member's writers quote the team's truth (their connected accounts), a visitor's the public sheet */
+  /* the Brand Book (voice, claims allowed, words, real reviews, what the team keeps undoing) reaches every v1 writer too, not only Studio:
+     read from its 5-minute cache, filled in the background the first time a brand's writer runs */
+  const BOOKTXT = new Map(); const bookText = (t) => { if (!t) return ''; const slug = slugOfT(t), hit = BOOKTXT.get(slug);
+    if (!hit || Date.now() - hit.at > 5 * 60e3) { BOOKTXT.set(slug, { at: Date.now(), text: hit?.text || '' }); BOOK.load(slug).then((bb) => BOOKTXT.set(slug, { at: Date.now(), text: BOOK.promptBlock(BOOK.view(bb)).slice(0, 3500) })).catch(() => {}); }
+    return hit?.text ? `\n\nTHE BRAND BOOK (follow it):\n${hit.text}` : ''; };
+  const cardBrief = (c, role, t = null) => `${o.cardBrief(c, role, t?.member ? packFor(t)?.factBrief : null)}${planPrompt(planOfCard(c))}${bookText(t)}`; /* a member's writers quote the team's truth (their connected accounts), a visitor's the public sheet */
   /* demo mode: a request from someone who may not make fresh work runs every AI path as mock (nothing spent, the plain
      version shown); the background clock and the team's requests are unchanged */
   const isMock = () => !!o.isMock?.() || demoReq(), spend = (k, n) => !demoReq() && (o.spend ? o.spend(k, undefined, n) : true);
@@ -1787,7 +1792,7 @@ export function createFeedService(o) {
   /* the feed is built from cards that change a few times an hour: the same viewer asking again within 20 s, with nothing changed in
      the workspace since, gets the answer it just had (1.7: a fresh load spent 3.7 s on this call, a tab switch as long again) */
   const FEED_C = new Map(), STATE_SIG = new WeakMap(); /* the last saved state each workspace sent (kept in memory only) */
-  on('GET', '/api/tenants/:id/feed', async (b, t) => { const who = `${t.id}|${t.rev || 0}|${t.member ? 1 : 0}|${storefrontOn() ? 1 : 0}|${t.viewer?.role || ''}`, ck = `${who}|${t.cards.size}`, hit = FEED_C.get(t.id);
+  on('GET', '/api/tenants/:id/feed', async (b, t) => { try { bookText(t); } catch {} /* warms the Brand Book for the jams opened from this feed */ const who = `${t.id}|${t.rev || 0}|${t.member ? 1 : 0}|${storefrontOn() ? 1 : 0}|${t.viewer?.role || ''}`, ck = `${who}|${t.cards.size}`, hit = FEED_C.get(t.id);
     const store = (v) => { if (!v?.error) { FEED_C.set(t.id, { k: ck, who, at: Date.now(), v }); if (FEED_C.size > 400) FEED_C.delete(FEED_C.keys().next().value); } return v; };
     if (hit && hit.k === ck && Date.now() - hit.at < 20e3) return hit.v;
     /* the same viewer, nothing they did since (rev): the last answer goes back at once and a fresh one is built behind, so a page load

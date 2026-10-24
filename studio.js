@@ -491,16 +491,20 @@ const multiPkg = (act, c, F) => {
   return {};
 };
 const socialPkg = (act, c, i, F) => {
-  const P = tplProduct(c, F), hook = P.hook, handle = '@' + String(BN()).toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const P = shopP(c, F);
+  const hook = P.hook, handle = '@' + String(BN()).toLowerCase().replace(/[^a-z0-9]+/g, '');
   const tags = [`#${String(BN()).replace(/\W+/g, '')}`];
   if (act === 'ig_post') return { account: handle, overlay: wcut(hook, 50), imageBrief: P.photo, caption: `${P.lead ? `${P.lead}.\n\n` : ''}${P.name}.${P.claim ? ' ' + P.claim.replace(/[.!]+$/, '') + '.' : ''}\n\nTell us what you want to see next.`, hashtags: tags, format: '4:5', postAt: 'Thursday 7 pm' };
-  const steps = (c.detail?.how || []).slice(0, 3);
-  const slides = [{ onSlide: wcut(c.title || hook, 70), imageBrief: P.photo }, ...steps.map((x) => ({ onSlide: x, imageBrief: P.photo })), { onSlide: act === 'ig_story' ? 'Which one is you? Vote below' : 'Save this for later', imageBrief: P.photo }];
-  return { account: handle, slides, caption: `${hook}.\n\n${(c.detail?.why || []).slice(0, 2).join(' ')}`.trim(), hashtags: tags, ...(act === 'ig_story' ? { stickers: 'A poll on the last story' } : {}), format: act === 'ig_story' ? '9:16' : '4:5', postAt: 'Thursday 7 pm' };
+  /* slides a shopper reads, from the product's own words: the card's how-to steps and reasons are notes for the team, never slides */
+  const bits = String(P.claim || '').split(/,\s+(?:and\s+)?|;\s+|\s+and\s+(?=\d)/).map((x) => wcut(x.replace(/[.!]+$/, ''), 70)).filter((x) => x && x.split(' ').length >= 3).slice(0, 3);
+  const slides = [{ onSlide: wcut(hook, 70), imageBrief: P.photo }, ...bits.map((x) => ({ onSlide: x[0].toUpperCase() + x.slice(1), imageBrief: P.photo })), { onSlide: P.price ? `${P.name}, ${P.price}` : P.name, imageBrief: P.photo }, { onSlide: act === 'ig_story' ? 'Which one is you? Vote below' : 'Save this for later', imageBrief: P.photo }];
+  return { account: handle, slides, caption: `${hook}.${P.claim ? `\n\n${P.claim.replace(/[.!]+$/, '')}.` : ''}`.trim(), hashtags: tags, ...(act === 'ig_story' ? { stickers: 'A poll on the last story' } : {}), format: act === 'ig_story' ? '9:16' : '4:5', postAt: 'Thursday 7 pm' };
 };
 // any other brand, offline: the same shapes, written only from the catalog (no claim the site doesn't make)
 const genericPkg = (family, action, c, i = 0, angle = '', F = {}) => {
-  const P = tplProduct(c, F), act = String(action).split('.').pop(), N = BN(), sym = B().sym || '';
+  const act = String(action).split('.').pop(), N = BN(), sym = B().sym || '', P0 = tplProduct(c, F);
+  /* shoppers read the name people call it ("Advanced Curl Care Hair Serum"); a listing and product markup keep the catalog's full title */
+  const P = family === 'listing' || act === 'schema_fix' ? P0 : shopP(c, F);
   if (family === 'meta_ops' && opsPkg(act, c)) return opsPkg(act, c);
   if (family === 'meta_ops' && act === 'shift_budget' && c.shift?.from && c.shift?.to) return shiftPkg(c, sym);
   if (act === 'fix_links') return linksPkg(c);
@@ -518,12 +522,12 @@ const genericPkg = (family, action, c, i = 0, angle = '', F = {}) => {
   if (family === 'search') return { adGroup: `${sh && sh !== 'product' ? sh : N} | Problem | Phrase`, keywords: (B().config.terms?.[0] || []).slice(0, 3).map((k) => `"${k}" (phrase)`), negatives: ['free', 'diy'], headlines: [wcut(hook, 30), `${sh}${P.price ? ', ' + P.price : ''}`.slice(0, 30)], descriptions: [`${P.name}.${claim}`.slice(0, 90)], finalUrl: P.page, bidding: 'Maximise conversions, target cost per order from the plan' };
   if (family === 'listing') { const nm = String(P.name).toLowerCase().startsWith(String(N).toLowerCase()) ? P.name : `${N} ${P.name}`; /* never "Arata Arata …" (QA J-19) */ return { product: P.name, name: nm, items: (B().config.marketplaces || ['Amazon']).map((m) => ({ marketplace: m, now: 'As listed today', new: nm })), bullets: [P.claim].filter(Boolean), images: 'The same images on every listing, product first', searchTerms: (B().config.terms?.[0] || []).slice(0, 3).join(', ') }; }
   if (family === 'brief' && /film_brief$/.test(act || '')) { const short = (x) => wcut(String(x || '').split(/(?<=[.!?])\s|[,;:]\s/)[0], 70);
-    return { title: `${hook}: a 30-second film`, deliverables: ['One 30s film, 9:16', 'Two 15s cuts, 9:16 and 4:5'], scenes: [{ shot: 'Founder to camera: why we made it', line: `“${short(hook)}”` }, { shot: 'Hands: the product in use', line: short(P.claim) || short(P.name) }, { shot: 'Founder to camera, close', line: `“${short(P.claim ? `This is ${P.short || P.name}` : P.name)}.”`.replace(/\.\.”$/, '.”') }, { shot: 'Pack shot with price', line: `${P.name}${P.price ? ', ' + P.price : ''}.` }], talent: 'The founder', location: 'To confirm', deadline: 'This week' }; }
-  if (family === 'brief') return { title: `${hook}: a 30-second film`, deliverables: ['One 30s film, 9:16', 'Two 15s cuts, 9:16 and 4:5'], scenes: [{ shot: 'Close-up: the product in hand', line: hook }, { shot: 'In use', line: P.claim || P.name }, { shot: 'Pack shot with price', line: `${P.name}${P.price ? ', ' + P.price : ''}.` }], talent: 'To confirm', location: 'To confirm', deadline: 'This week' };
+    return { title: `${hook}: a 30-second film`, deliverables: ['One 30s film, 9:16', 'Two 15s cuts, 9:16 and 4:5'], scenes: [{ shot: 'Founder to camera: why we made it', line: `“${short(hook)}”` }, { shot: 'Hands: the product in use', line: short(P.claim) || short(P.name) }, { shot: 'Founder to camera, close', line: `“${short(P.claim ? `This is ${P.short || P.name}` : P.name)}.”`.replace(/\.\.”$/, '.”') }, { shot: 'Pack shot with price', line: `${P.name}${P.price ? ', ' + P.price : ''}.` }], talent: 'The founder', location: '', deadline: 'This week' }; }
+  if (family === 'brief') return { title: `${hook}: a 30-second film`, deliverables: ['One 30s film, 9:16', 'Two 15s cuts, 9:16 and 4:5'], scenes: [{ shot: 'Close-up: the product in hand', line: hook }, { shot: 'In use', line: P.claim || P.name }, { shot: 'Pack shot with price', line: `${P.name}${P.price ? ', ' + P.price : ''}.` }], talent: '', location: '', deadline: 'This week' };
   if (family === 'setup') return { tool: 'Store and ad tracking', what: c.title || 'Change a setting', steps: (c.detail?.how || ['Change the setting', 'Test a full order on mobile', 'Watch for 7 days']).slice(0, 4), verify: 'Before and after, the same number', customerSees: 'Nothing changes for customers' };
   if (family === 'outreach') { const who = outreachTo(c), named = P.name && P.name !== 'the product', line = named ? ` ${P.name}${P.claim ? `: ${P.claim.replace(/[.!]+$/, '')}` : ''}.` : ''; /* no "the product" placeholder in a real email */
     return { to: who.to, company: who.company, subject: wcut(`${N} for ${who.company.toLowerCase()}`, 60), body: `Hi,\n\nI work at ${N}${BH() ? ` (${BH()})` : ''}.${line}\n\nWould you be open to a 15-minute call next week to see if it fits your team?\n\nThanks,\n{your_name}, ${N}` }; }
-  if (family === 'print') return { front: `Thanks for choosing ${N}.`, back: 'Scan for how to get the most from it.', qr: `${BH()}`, size: 'A6 card', quantity: 'To confirm', goesIn: 'Every order' };
+  if (family === 'print') return { front: `Thanks for choosing ${N}.`, back: 'Scan for how to get the most from it.', qr: `${BH()}`, size: 'A6 card', goesIn: 'Every order' };
   const op = c.options?.[i % (c.options?.length || 1)];
   if (act === 'plan') return { decision: String(c.title || 'The plan'), why: [c.sub, ...(c.detail?.why || [])].filter(Boolean).join(' '), owner: 'Founder', changes: (c.detail?.how || []).slice(0, 5) };
   return { decision: op?.name || 'Pick one answer and use it everywhere', why: op?.effect || op?.says || '', owner: 'Founder', changes: (c.affects || []).slice(0, 4) };
@@ -648,10 +652,15 @@ const firstLine = (x, n = 70) => { const s1 = String(x || '').split(/(?<=[.!?])\
 /* a hook that stops mid-phrase ("…powered by", "…has shown up to") is no hook: the product's name stands in */
 const DANGLE = /\b(?:by|with|and|or|of|to|for|the|a|an|in|on|at|up|from|than|as|is|are|was|has|have|had|shown|our|your|its|their)$/i;
 const wholeHook = (h, name) => { h = String(h || '').trim().replace(/[,;:–-]+$/, ''); return h && !DANGLE.test(h) ? h : name; };
+/* a catalog title cut to what people call it: "Arata Advanced Curl Care Hair Serum For Frizz Control (100 ml)" → "Advanced Curl Care Hair Serum" */
+export const shortName = (t) => { let x = String(t || '').trim(); const bn = String(BN?.() || '').trim();
+  if (bn && x.toLowerCase().startsWith(bn.toLowerCase() + ' ')) x = x.slice(bn.length).trim();
+  x = x.replace(/\s*[([][^)\]]*[)\]]\s*/g, ' ').replace(/\s+[-–|,]\s+.*$/, '').replace(/\s+(?:for|with|-)\s+.*$/i, '').replace(/\b\d+(?:\.\d+)?\s*(?:ml|g|gm|kg|l|oz|pcs?|pack)\b.*$/i, '').replace(/\s+/g, ' ').trim();
+  const w = x.split(' '); if (w.length > 8) x = w.slice(0, 8).join(' ').replace(/\s*[&+]$/, ''); return x.length >= 3 ? x : String(t || '').trim(); };
 const asProduct = (m) => { const LP = B()?.config?.laneProducts || {}, lane = Object.values(LP).find((x) => x?.name === m.t);
   if (lane) return { ...lane, claim: cleanClaim(lane.claim), hook: wholeHook(cleanClaim(lane.hook), lane.name), img: m.img || lane.img || null };
-  const claim = cleanClaim(m.claim);
-  return { name: m.t, short: m.t, price: m.price || '', claim, hook: wholeHook(firstLine(claim), m.t), page: m.url || BH(), photo: `The ${m.t} on a clean surface, soft daylight, calm space at the top.`, pack: '', img: m.img || null }; };
+  const claim = wcut(String(cleanClaim(m.claim)).split(/(?<=[.!?])\s+/)[0], 160); /* the claim's first sentence, whole words: a product description is no line */
+  return { name: m.t, short: shortName(m.t), price: m.price || '', claim, hook: wholeHook(firstLine(claim), m.t), page: m.url || BH(), photo: `The ${m.t} on a clean surface, soft daylight, calm space at the top.`, pack: '', img: m.img || null }; };
 /* the starting package (on the stage while the first draft is written, and kept when it can't be) tells the card's story with
    the product's facts, for every family (Param, 19 Oct: the ad said "As per clinical trials, 87%…" twice, with the site's
    footnote marks, under a card about a light serum against heavy oils):
@@ -667,13 +676,19 @@ const rivalNamed = (t) => Object.keys(B()?.rivalPages || {}).some((r) => r && r.
 export const shopperLine = (x) => { const s = String(x || '').replace(/^[-•\d.)\s]+/, '').trim(); return s.length > 3 && !OPS_VERB.test(s) && !/^(?:route|check|send|map|audit|tag|segment|exclude|retarget|bid|split)\b/i.test(s) && !NOT_PUBLIC.test(s) && !INTERNAL.test(s); };
 export const cardHook = (c = {}) => { const t = String(c.title || '').replace(/\s+/g, ' ').trim(); return t && t.length <= 70 && !INTERNAL.test(t) && !OPS_VERB.test(t) && !NOT_PUBLIC.test(t) && !/[’']s\s+(?:serum|price|ads?)\b/i.test(t) && !rivalNamed(t) ? t.replace(/[.!]+$/, '') : ''; };
 /* a hook cut to a field's limit at a word, never mid-word ("…with our ₹1") */
-const wcut = (x, n) => { x = String(x || '').trim(); return x.length <= n ? x : x.slice(0, n + 1).replace(/\s+\S*$/, '').replace(/[\s,;:&+–-]+$/, '').trim() || x.slice(0, n); };
+const wcut = (x, n) => { x = String(x || '').trim(); if (x.length <= n) return x; let c = x.slice(0, n + 1).replace(/\s+\S*$/, '').replace(/[\s,;:&+–-]+$/, '').trim(); for (let k = 0; k < 4 && DANGLE.test(c); k++) c = c.replace(/\s*\S+$/, '').replace(/[\s,;:&+–-]+$/, '').trim(); /* never ends on "with", "for", "the" */ return c || x.slice(0, n); };
 const leadOf = (hook, claim, name) => (!hook || (name && hook.toLowerCase() === String(name).toLowerCase()) || (claim && claim.toLowerCase().startsWith(hook.toLowerCase().replace(/[.!?]+$/, ''))) ? '' : hook); /* the name is said right after it; the claim says it itself */
+/* the product as shoppers read it: the short name people call it, with the hook, lead and photo line following it */
+const shopP = (c, F) => { const P0 = tplProduct(c, F); if (!P0.short || P0.short === P0.name) return P0; const sw = (x) => String(x || '').split(P0.name).join(P0.short);
+  return { ...P0, name: P0.short, full: P0.name, hook: P0.hook === P0.name ? P0.short : sw(P0.hook), lead: sw(P0.lead), photo: sw(P0.photo) }; };
 const tplProduct = (c, F) => { const P = productFor(c, F), hook = cardHook(c) || wholeHook(cleanClaim(P.hook), P.name) || c.title || P.name, sc = sceneOf(c);
   return { ...P, claim: cleanClaim(P.claim), hook, lead: leadOf(hook, cleanClaim(P.claim), P.name), photo: sc ? `The ${P.name}: ${sc}. Natural light, the label readable.` : P.photo }; };
 export const productFor = (c = {}, F, extra = '') => {
   const cat = B()?.catalog, brand = BN() || '';
   if (cat?.length) for (const text of [extra, c.product, cardWords(c)]) { const m = text && matchProduct(text, cat, { brand }); if (m) return asProduct(m); } /* c.product: the product a card names outright (a team static's photo) */
+  const LP = B()?.config?.laneProducts; if (LP && (LP[c.lane] || Object.values(LP)[0])) return PRODUCT(c.lane, F);
+  /* a card that names no product and a brand with no lane products: its first in-stock catalog product, never the words "the product" */
+  const first = (cat || []).find((x) => x?.t && !x.out) || (cat || []).find((x) => x?.t); if (first) return asProduct(first);
   return PRODUCT(c.lane, F);
 };
 
@@ -682,8 +697,8 @@ export const IDEA_ACTION = { x: 'x_post', linkedin: 'linkedin_post', reddit: 're
 /* a reply under a video is a comment, not a new video (a YouTube "reply" used to open as "Make the short video") */
 export const ideaAction = (i) => (/^(reply|comment)$/i.test(i?.format || '') && /youtube|tiktok|instagram/.test(i?.platform || '') ? 'creative.comment_reply' : i?.platform === 'instagram' ? (i.media?.kind === 'carousel' ? 'creative.ig_carousel' : i.media?.kind === 'video' ? 'creative.short_video' : 'creative.ig_post') : `creative.${IDEA_ACTION[i?.platform] || 'x_post'}`);
 /* offline, a video card with no post of its own: five beats and a caption from the product's own words */
-const clipCaption = (c) => { const P = tplProduct(c, {}); return [P.hook || P.name, P.claim ? `${P.claim.replace(/[.!]+$/, '')}.` : '', P.name !== 'the product' && P.price ? `${P.name}, ${P.price}.` : ''].filter(Boolean).join(' '); };
-const clipScript = (c) => { const P = tplProduct(c, {}); return [['Hook', 'Close-up: the product in hand', P.hook || P.name], ['Problem', 'The moment it matters', c.sub ? String(c.sub).split(/(?<=[.!?])\s/)[0].slice(0, 90) : 'The everyday problem it solves'], ['Show', 'In use', P.claim || P.name], ['Proof', 'Pack shot', P.price ? `${P.name}, ${P.price}` : P.name], ['Ask', 'End card', `Shop ${BN()}`]].map(([beat, shot, line]) => ({ beat, shot, line })); };
+const clipCaption = (c) => { const P = shopP(c, {}); return [String(P.hook || P.name).replace(/([^.!?])$/, '$1.'), P.claim ? `${P.claim.replace(/[.!]+$/, '')}.` : '', P.name !== 'the product' && P.price ? `${P.name}, ${P.price}.` : ''].filter(Boolean).join(' '); };
+const clipScript = (c) => { const P = shopP(c, {}); return [['Hook', 'Close-up: the product in hand', P.hook || P.name], ['Problem', 'The moment it matters', c.sub ? String(c.sub).split(/(?<=[.!?])\s/)[0].slice(0, 90) : 'The everyday problem it solves'], ['Show', 'In use', P.claim || P.name], ['Proof', 'Pack shot', P.price ? `${P.name}, ${P.price}` : P.name], ['Ask', 'End card', `Shop ${BN()}`]].map(([beat, shot, line]) => ({ beat, shot, line })); };
 export const ideaPkg = (i = {}, act = String(ideaAction(i)).split('.').pop(), c = {}) => {
   const where = (i.where || []).map((w) => ({ name: w.name, url: w.url, rule: w.rule || w.why || '', ...(w.kind ? { kind: w.kind } : {}) })); /* kind: a thread to reply in or a community to post in (Copy and open, post-open.js) */
   const own = (i.where || []).find((w) => w.kind === 'own'), handle = own ? own.name.split(' ')[0] : `@${String(BN() || '').toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
