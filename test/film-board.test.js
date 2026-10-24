@@ -13,7 +13,9 @@ test('only a film brief gets a storyboard', () => {
   assert.equal(isFilm(film(PKG)), true);
   assert.equal(isFilm({ family: 'brief', action: 'creative.creative_brief', pkg: PKG }), false);
   assert.equal(boardOf({ family: 'post', action: 'creative.short_video', pkg: PKG }), null);
-  assert.equal(boardOf(film({ ...PKG, scenes: [] })), null, 'no shots, no board');
+  assert.equal(boardOf(film({ ...PKG, scenes: [] })).shots.length, 0, 'every shot cleared: the board stays, so a shot can be added again');
+  const many = boardOf(film({ ...PKG, title: 'A 6 second film', scenes: Array.from({ length: 9 }, (_, i) => ({ shot: `Close-up ${i}`, line: 'one two three four five six' })) }));
+  assert.equal(many.shots.at(-1).to, 6, 'the shots add up to the film, never past it'); assert.ok(many.shots.every((s) => s.to >= s.from));
 });
 
 test('the shots are timed to the asked length and say who is on camera', () => {

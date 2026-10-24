@@ -105,7 +105,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
       try { const r = await ai.call({ model: 'sonnet', tag: 'jam2_critic', max: 1500, effort: 'low', schema: CRITIC_SCHEMA, messages: [{ role: 'user', content: [
           ...(ref ? [img(ref)] : []), img(f), { type: 'text', text: `${ref ? 'Image 1 is the real product. Image 2 is a new ad photograph meant to show it.' : 'This is a new ad photograph (the brand has no product photo).'} The ad: "${tidy(ctx.jam.concept?.angle, 160)}". Judge it like a creative director: is it the same product (when there is one), does it look really shot, would it work as an ad, and where can a headline sit. A blank band, border, panel, an empty grey area or an obvious paste-up is not a real photograph: score shot 4 or lower.` }] }] });
         const j = r.json || {}; return { ...c, same: ref ? !!j.same : true, shot: +j.shot || 0, ad: +j.ad || 0, zone: ZONES.includes(j.zone) ? j.zone : d.zone, why: tidy(j.why, 200), usd: (c.usd || 0) + (r.usd || 0), i };
-      } catch (e) { log.warn?.('[creative] critic', e.message); return { ...c, same: true, shot: 5, ad: 5, zone: d.zone, why: `check didn't run: ${e.message}`, i, unchecked: true }; } }));
+      } catch (e) { log.warn?.('[creative] critic', e.message); return { ...c, same: true, shot: 6, ad: 6, zone: d.zone, why: `check didn't run: ${e.message}`, i, unchecked: true }; } /* a check that didn't run never buys a second picture */ }));
   }
 
   /* a designed piece (a Higgsfield ad style, a poster, a graphic) draws its own words, so it is read back before anyone sees it:

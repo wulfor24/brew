@@ -40,7 +40,7 @@
     H.saved(r.change); H.sound?.('tick'); }
   const scenes = () => (H.ch()?.film?.shots || []).map((x) => ({ shot: x.shot, line: x.line })); /* the shots as the board reads them (a row holding several shots is split), so an edit saves them split */
   function commit(el) { const k = el.dataset.fbEdit, now = el.innerText.replace(/\s+/g, ' ').trim(), was = el.dataset.was ?? ''; el.removeAttribute('contenteditable'); delete el.dataset.was;
-    if (now === was) return H.paint();
+    if (now === was) { if (!now) H.paint(); return; } /* unchanged: no repaint (the next click lands first time); an empty one gets its placeholder back */
     if (k === 'title') return save({ title: now || was }, 'Working title changed');
     const [i, col] = k.split('.'), rows = scenes(); if (!rows[+i]) return H.paint(); rows[+i][col] = now; save({ scenes: rows }, `Shot ${+i + 1} changed`); }
 
@@ -76,21 +76,23 @@
   const tpBtn = (k) => TP?.el.querySelector(`[data-tp="${k}"]`);
   function tick(t) { if (!TP?.on) return; const dt = TP.last ? (t - TP.last) / 1000 : 0; TP.last = t; const r = TP.el.querySelector('.tp-read');
     r.scrollTop += TP.speed * dt; if (r.scrollTop + r.clientHeight >= r.scrollHeight - 2) { tpStop(); return; } requestAnimationFrame(tick); }
-  function tpStart() { const c = TP.el.querySelector('.tp-count'); let n = 3; c.hidden = false; c.textContent = n; tpBtn('go').disabled = true;
-    const step = () => { if (!TP) return; n -= 1; if (n > 0) { c.textContent = n; setTimeout(step, 700); return; } c.hidden = true; tpBtn('go').disabled = false; TP.on = true; TP.last = 0; tpBtn('go').textContent = 'Pause'; requestAnimationFrame(tick); };
+  function tpStart() { if (TP.counting || TP.on) return; const c = TP.el.querySelector('.tp-count'); let n = 3; TP.counting = true; c.hidden = false; c.textContent = n; tpBtn('go').disabled = true;
+    const step = () => { if (!TP) return; n -= 1; if (n > 0) { c.textContent = n; setTimeout(step, 700); return; } c.hidden = true; tpBtn('go').disabled = false; TP.counting = false; TP.on = true; TP.last = 0; tpBtn('go').textContent = 'Pause'; requestAnimationFrame(tick); };
     setTimeout(step, 700); }
   function tpStop() { if (!TP) return; TP.on = false; tpBtn('go').textContent = 'Start'; }
-  function tpToggle() { if (!TP) return; if (TP.on) tpStop(); else { const r = TP.el.querySelector('.tp-read'); if (r.scrollTop + r.clientHeight >= r.scrollHeight - 2) r.scrollTop = 0; tpStart(); } }
+  function tpToggle() { if (!TP || TP.counting) return; if (TP.on) tpStop(); else { const r = TP.el.querySelector('.tp-read'); if (r.scrollTop + r.clientHeight >= r.scrollHeight - 2) r.scrollTop = 0; tpStart(); } }
   async function tpCam() { if (TP.stream) { TP.stream.getTracks().forEach((x) => x.stop()); TP.stream = null; TP.el.classList.remove('has-cam'); tpBtn('rec').hidden = true; return; }
     try { TP.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: true }); }
     catch { H.toast?.('The camera didn’t open. Allow the camera for this site, or read from the screen without it.'); return; }
     const v = TP.el.querySelector('.tp-cam'); v.srcObject = TP.stream; v.play().catch(() => {}); TP.el.classList.add('has-cam'); tpBtn('rec').hidden = !window.MediaRecorder; }
   function tpRec() { if (TP.rec) { TP.rec.stop(); return; }
     const type = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'].find((x) => MediaRecorder.isTypeSupported?.(x)) || '';
-    TP.parts = []; TP.rec = new MediaRecorder(TP.stream, type ? { mimeType: type } : {});
-    TP.rec.ondataavailable = (ev) => ev.data.size && TP.parts.push(ev.data);
-    TP.rec.onstop = () => { const blob = new Blob(TP.parts, { type: TP.rec.mimeType || 'video/webm' }), a = TP.el.querySelector('.tp-save'); if (TP.url) URL.revokeObjectURL(TP.url);
-      TP.url = URL.createObjectURL(blob); a.href = TP.url; a.download = `take-${Date.now()}.${/mp4/.test(blob.type) ? 'mp4' : 'webm'}`; a.hidden = false; TP.rec = null; tpBtn('rec').textContent = 'Record again'; TP.el.classList.remove('is-rec'); tpStop(); };
+    const me = TP, parts = []; me.rec = new MediaRecorder(me.stream, type ? { mimeType: type } : {}); const rec = me.rec;
+    rec.ondataavailable = (ev) => ev.data.size && parts.push(ev.data);
+    /* the take is saved even when the teleprompter was closed while recording: it downloads straight away */
+    rec.onstop = () => { const blob = new Blob(parts, { type: rec.mimeType || 'video/webm' }), name = `take-${Date.now()}.${/mp4/.test(blob.type) ? 'mp4' : 'webm'}`, url = URL.createObjectURL(blob);
+      if (TP !== me) { const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60e3); H.toast?.('Your take was saved to this device.'); return; }
+      const a = me.el.querySelector('.tp-save'); if (me.url) URL.revokeObjectURL(me.url); me.url = url; a.href = url; a.download = name; a.hidden = false; me.rec = null; tpBtn('rec').textContent = 'Record again'; me.el.classList.remove('is-rec'); tpStop(); };
     TP.rec.start(); TP.el.classList.add('is-rec'); tpBtn('rec').textContent = 'Stop'; TP.el.querySelector('.tp-save').hidden = true; const r = TP.el.querySelector('.tp-read'); r.scrollTop = 0; if (!TP.on) tpStart(); }
   function tpClose() { if (!TP) return; TP.on = false; TP.rec?.state === 'recording' && TP.rec.stop(); TP.stream?.getTracks().forEach((x) => x.stop()); const u = TP.url; TP.el.remove(); document.body.classList.remove('tp-open'); TP = null; if (u) setTimeout(() => URL.revokeObjectURL(u), 60e3); }
   function tpClick(e) { if (!TP || !e.target.closest('#fb-tp')) return false; const b = e.target.closest('[data-tp]'); if (!b) return true; const k = b.dataset.tp, txt = TP.el.querySelector('.tp-txt');

@@ -432,7 +432,7 @@ export function createRemix(o) {
   /* what a package keeps when its words are rewritten: the picture, the knobs and the look, and a first draft's own media
      (its video, its slides), so the draft the card showed stays v0 and every version made from it keeps it */
   const keepMedia = (p = {}, all = false) => { const d = p.draft && (all || !p.draft.text) ? p.draft : undefined; /* a text draft (an email or page shown as a picture) is only v0: new words replace it */
-    return { image: p.image, knobs: p.knobs, grade: p.grade, ...(p.video ? { video: p.video, poster: p.poster || null, ...(p.videoHook ? { videoHook: p.videoHook } : {}) } : {}), draft: d, ...(d && p.cardImages ? { cardImages: p.cardImages } : {}) }; };
+    return { image: p.image, knobs: p.knobs, grade: p.grade, ...(p.video ? { video: p.video, poster: p.poster || null, ...(p.videoHook ? { videoHook: p.videoHook } : {}) } : {}), draft: d, ...((d || p.photoSet || p.aplus || (p.cardImages || []).length > 1) && p.cardImages ? { cardImages: p.cardImages } : {}), /* a Studio set's pictures, the team's picked photos and a film's files outlive new words and a restore */ ...(p.photos ? { photos: p.photos } : {}), ...(p.photosBy ? { photosBy: p.photosBy } : {}), ...(p.film ? { film: p.film } : {}), ...(p.photoSet ? { photoSet: p.photoSet } : {}), ...(p.aplus ? { aplus: p.aplus } : {}), ...(p.wordsIn ? { wordsIn: p.wordsIn } : {}) }; };
   /* photos on a post: community platforms (Reddit, Quora, Facebook groups) take real photos only, never an AI image */
   const realOnly = (ch) => ch.family === 'post' && /reddit|quora|facebook|fb_group|comment_reply/i.test(`${ch.action} ${ch.pkg?.platform || ''}`);
   /* a line in the studio chat from the person in this request: who said it travels with it, so a team jam shows whose ask it was */
@@ -719,7 +719,7 @@ export function createRemix(o) {
      as its picture until new words replace it. Jams opened before this heal while they still hold only their first version */
   const TEXT_DRAFT = /^(email|whatsapp|page|text|catalog)$/;
   const seedV0 = (t, c, ch) => {
-    if (!ch || !c || ch.batchKey || ch.v0 === 'draft' || isFilm(ch)) return false; /* a film brief is the founder's storyboard: the card's own picture or video draft is not it */
+    if (!ch || !c || ch.batchKey || ch.v0 === 'draft' || isFilm(ch) || /^gen\//.test(ch.pkg?.image || '')) return false; /* a picture already made for this jam (paid) is never replaced by the card's draft */ /* a film brief is the founder's storyboard: the card's own picture or video draft is not it */
     /* the card's background draft may not be ready when the jam opens: 'none' is looked at again on every read while the jam
        still holds only its first version and nobody has said anything (it used to stay 'none' for good) */
     if (ch.v0 === 'none' && (versionsOf(t, ch.id).length > 1 || (ch.thread || []).length || ch.imagePending)) return false;
@@ -1017,7 +1017,7 @@ export function createRemix(o) {
      (app.js polls the change while it waits), never a bare spinner */
   const ITER_JOBS = new Map(), ITER_MAX_MS = +process.env.ITER_MAX_MS || 4 * 60e3; /* revisions in flight on this instance; one longer than this stops with a plain message */
   const think = (ch, step) => { ch.thinking = step ? { step, at: ch.thinking?.at || Date.now(), stepAt: Date.now() } : null; };
-  const iterate = async (t, ch, message, { knob, quiet, show, fix, att = null } = {}) => {
+  const iterate = async (t, ch, message, { knob, quiet, show, fix, att = null, cancel = null } = {}) => {
     const c = t.cards.get(ch.cardId) || {};
     ANSWERED.delete(ch);
     if (!knob && !quiet && !fix /* "Fix it with AI" carries the checks' own words ("evidence", "source"): a fix, never a question (QA J-02) */ && (isQuestion(message) || EVIDENCE_ASK.test(message))) { think(ch, 'Looking it up in the facts, the moves and this version'); try { return await answerIn(t, ch, message, show, att); } finally { think(ch, null); } } /* a question never makes a version */
@@ -1032,6 +1032,7 @@ export function createRemix(o) {
         out = await claudeTool(withPics(`${cardBrief(c, seatLine(t.viewer), t)}${rvI ? `\n\n${rivalBlock(rvI.ad, rvI.style, BN())}\nKeep following that ad's angle, hook pattern and style unless the team asks to move away from it.` : viralOf(t, c) ? `\n${viralLine(t, c)}Keep following that video's format and beats unless the team asks to move away from it.` : ''}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${specOf(ch.action)}\n${productLine(c, pkgWords(ch))}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${ch.agent === 'brew' ? promptBlock(t, ch.agent) : '' /* the agent's rules are already above; only the brew agent has a second set */}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, att), schema, 3000, 'studio_iterate');
       } catch (e) { log.warn('[studio iterate]', e.message); }
     }
+    if (cancel?.stop) return ch; /* the person was told it stopped: a late answer changes nothing */
     think(ch, out ? 'Checking the words against the facts and the product' : null);
     const before = { ...ch.after };
     if (Array.isArray(out?.plan) && out.plan.length >= 3) { const pl = withSteps(ch.plan || o.planOf?.(t, c), out.plan.map((x) => clean(String(x)))); if (pl) { ch.plan = pl; const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...pl, made: w.cardPlan?.made || null }; } } /* the plan, refined in the chat */
@@ -1145,6 +1146,11 @@ export function createRemix(o) {
       if (!d.video && !(d.images || []).length) out.push({ kind: 'todo', label: `${d.as === 'video' ? 'Reel' : d.as === 'carousel' ? 'Carousel' : 'Picture'} still to be made`, text: [d.overlay, ...(d.script || []).map((x) => x.line), ...(d.slides || []).map((x) => x.text)].filter(Boolean).join(' / ').slice(0, 400) });
     }
     if (p.video && p.video !== d?.video) out.push({ kind: 'video', label: `Video${isVideoPost(ch) ? ', 9:16' : ''}`, url: p.video, poster: p.poster || p.image || null });
+    /* what Studio made goes to the team whole: every slide of a set, each A+ module, a listing's photo set, and the film's cover, captions, GIF and clean cut */
+    if (!d && (p.cardImages || []).length > 1) p.cardImages.forEach((u, i) => { if (i) out.push({ kind: 'image', label: `Slide ${i + 1}`, url: u }); });
+    (p.photoSet || []).forEach((x, i) => { if (x?.image && x.image !== p.image) out.push({ kind: 'image', label: `Listing image ${i + 1}`, url: x.image }); });
+    (p.aplus || []).forEach((m, i) => { if (m?.image) out.push({ kind: 'image', label: `A+ module ${i + 1} · ${m.kind === 'header' ? '970×600' : m.kind === 'wide' ? '970×300' : '300×300'}${m.headline ? `: ${String(m.headline).slice(0, 60)}` : ''}`, url: m.image }); });
+    if (p.video && p.film) { const f = p.film; if (f.cover) out.push({ kind: 'image', label: 'Cover frame', url: f.cover }); if (f.gif) out.push({ kind: 'image', label: 'GIF, loops', url: f.gif }); if (f.srt) out.push({ kind: 'link', label: 'Captions (.srt)', url: f.srt }); if (f.raw) out.push({ kind: 'video', label: 'The film without captions', url: f.raw, poster: f.cover || p.poster || null }); }
     if (p.image && !(d && (d.images || []).includes(p.image))) out.push({ kind: 'image', label: `${d ? 'Photo the version was made from' : 'Creative'}, ${p.format || '4:5'}${p.grade && p.grade !== 'Original' ? `, ${p.grade} grade` : ''}`, url: p.image });
     else if (!p.image && !d && (ch.family === 'meta_ad' || ch.family === 'social')) out.push({ kind: 'todo', label: `Creative still to be made (${p.format || '4:5'})`, text: p.imageBrief || 'See the image brief' });
     if (ch.family === 'meta_ad' && p.overlay) out.push({ kind: 'copy', label: p.wordsIn && p.wordsIn === p.image ? 'Words already set in the creative' : 'Text to set on the creative', text: p.overlay });
@@ -1195,8 +1201,12 @@ export function createRemix(o) {
     // jam edits of a change are versions of that change too, and your own edits are learning signals
     const ch = w.changeId && changes(t)[w.changeId]; if (!ch || v.fromChange) return; ensurePkg(t, ch);
     const before = { ...ch.after }; const tf = TITLE_F[ch.family], sf = SUB_F[ch.family];
-    ch.pkg = { ...ch.pkg, ...(tf ? { [tf]: v.title } : {}), ...(sf ? { [sf]: v.sub } : {}), ...(v.images?.[0] && /^gen\//.test(v.images[0]) ? { image: v.images[0] } : {}) };
-    sync(t, ch); version(t, ch, v.by === 'you' ? 'you' : v.by === 'brew' ? 'brew' : v.by === 'colleague' ? 'teammate' : `ai:${ch.agent}`, v.note || 'Jam version');
+    const was = JSON.stringify(snapOf(ch));
+    if (tf || sf) ch.pkg = { ...ch.pkg, ...(tf ? { [tf]: v.title } : {}), ...(sf ? { [sf]: v.sub } : {}) };
+    else if (v.title || v.sub) { try { putWords(t, ch, t.cards.get(ch.cardId) || {}, { title: v.title || '', body: v.sub || '' }); } catch (e) { log.warn('[work edit]', e.message); } } /* every family takes the words (social, post, listing, search…), not only ads and emails */
+    if (v.images?.[0] && /^gen\//.test(v.images[0])) ch.pkg = { ...ch.pkg, image: v.images[0] };
+    sync(t, ch); if (JSON.stringify(snapOf(ch)) === was) return; /* nothing reached the package: no empty version */
+    version(t, ch, v.by === 'you' ? 'you' : v.by === 'brew' ? 'brew' : v.by === 'colleague' ? 'teammate' : `ai:${ch.agent}`, v.note || 'Jam version');
     if (v.by === 'you') signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'you' }, now(t));
   };
 
@@ -1499,7 +1509,8 @@ export function createRemix(o) {
     /* Another take answers at once: its new words are written in the background (the AI call took minutes on a slow day and the
        button sat still), then its picture is drawn with them. The take is held in TAKE_JOBS meanwhile, so healTakes leaves it be */
     if (take) { const wj = (async () => {
-        try { let tm; const w2 = await Promise.race([rewriteWords(t, c, ch, ask), new Promise((_, no) => { tm = setTimeout(() => no(new Error('the words took over 90 s; the take keeps the last words')), 90e3); tm.unref?.(); })]).finally(() => clearTimeout(tm)); if (v.drawing) { putWords(t, ch, c, w2); v.snapshot = { ...v.snapshot, ...snapOf(ch) }; v.label = cleanLabel(w2.label) || v.label;
+        try { let tm; const w2 = await Promise.race([rewriteWords(t, c, ch, ask), new Promise((_, no) => { tm = setTimeout(() => no(new Error('the words took over 90 s; the take keeps the last words')), 90e3); tm.unref?.(); })]).finally(() => clearTimeout(tm)); if (v.drawing && headOf(t, ch)?.id !== v.id) { /* someone moved on while the words were written: only this take gets them, the stage keeps the newer version */ const tmp = { ...ch, pkg: { ...v.snapshot }, after: { ...ch.after } }; try { putWords(t, tmp, c, w2); v.snapshot = { ...v.snapshot, ...snapOf(tmp) }; v.label = cleanLabel(w2.label) || v.label; } catch (e) { log.warn('[take words] side', e.message); } }
+          else if (v.drawing) { putWords(t, ch, c, w2); v.snapshot = { ...v.snapshot, ...snapOf(ch) }; v.label = cleanLabel(w2.label) || v.label;
           signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'ai-asked' }, now(t)); try { mirror(t, ch, v); } catch {} mirrorTake(t, c, ch, v); } }
         catch (e) { log.warn('[take words]', e.message); }
         TAKE_JOBS.delete(v.id); if (v.drawing) drawTake(t, c, ch, v, ask); o.save?.(t); })();
@@ -1778,11 +1789,12 @@ export function createRemix(o) {
       ch.thread.push({ from: 'ai', text: started ? 'Making a new photo now. It lands as a new version in a minute. Rather use one of your own product photos, or upload one? The photo picker is open.' : realOnly(ch) ? `${ch.pkg.platform || 'This community'} wants real photos, not AI ones. Pick one of your product photos or upload your own: the photo picker is open.` : 'Pick one of your product photos or upload your own: the photo picker is open. Want a new one made instead? Describe it there.', at: now(t) });
       return { change: pubChange(t, ch), pickPhotos: true, image: started };
     }
+    const tok = { stop: false };
     const run = async () => {
-      await iterate(t, ch, msg, { show: b.show ? clean(String(b.show)).slice(0, 300) : null, fix: !!b.fix });
+      await iterate(t, ch, msg, { show: b.show ? clean(String(b.show)).slice(0, 300) : null, fix: !!b.fix, cancel: tok });
       if (ANSWERED.has(ch)) return { answered: true }; /* a question: answered, nothing changed, no version */
       // fixing: re-check, and if anything is still wrong, try again with the exact problems (twice at most)
-      for (let i = 0; b.fix && i < 2 && ch.fixes?.length && !isMock(); i++) await iterate(t, ch, `Still not fixed: ${ch.fixes.join('; ')}. Fix exactly these and change nothing else.`, { quiet: true });
+      for (let i = 0; b.fix && i < 2 && ch.fixes?.length && !isMock() && !tok.stop; i++) await iterate(t, ch, `Still not fixed: ${ch.fixes.join('; ')}. Fix exactly these and change nothing else.`, { quiet: true, cancel: tok });
       if (b.fix && ch.fixes?.length) ch.thread.push({ from: 'ai', text: `I couldn’t fix everything: ${ch.fixes.join('; ')}. Edit it in Details, or tell me how you want it.`, at: now(t) });
       return {};
     };
@@ -1792,7 +1804,7 @@ export function createRemix(o) {
     if (b.wait || isMock()) { try { const r = await run(); return { change: pubChange(t, ch), ...(r.answered ? { answered: true } : { learned: learnedOut(t) }) }; } finally { think(ch, null); } }
     if (ch.job && ITER_JOBS.has(ch.job.id)) return { change: pubChange(t, ch), working: true, queued: true, error: null };
     const id = `it_${Date.now().toString(36)}`; ch.job = { id, kind: 'iterate', at: Date.now(), ask: msg.slice(0, 160) }; think(ch, 'Reading the brief and your note');
-    const p0 = Promise.race([run(), new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), { timeout: true })), ITER_MAX_MS))])
+    const p0 = Promise.race([run(), new Promise((_, rej) => setTimeout(() => { tok.stop = true; rej(Object.assign(new Error('timeout'), { timeout: true })); }, ITER_MAX_MS))])
       .then((r) => { if (r?.answered) ch.job.answered = true; })
       .catch((e) => { log.warn('[iterate job]', ch.id, e.message); ch.thread.push({ from: 'ai', text: e.timeout ? `That took over ${Math.round(ITER_MAX_MS / 60e3)} minutes, so I stopped. Nothing changed. Try again, or say it in fewer words.` : `That didn’t go through (${String(e.message).slice(0, 100)}). Nothing changed. Try again.`, at: now(t), retry: msg.slice(0, 400) }); })
       .finally(() => { ITER_JOBS.delete(id); if (ch.job?.id === id) ch.lastJob = { id, at: Date.now(), answered: !!ch.job.answered }; delete ch.job; think(ch, null); bump(t, ch); o.save?.(t); });
@@ -1826,7 +1838,7 @@ export function createRemix(o) {
     await iterate(t, ch, `${knob.label}: ${b.v}`, { knob: { ...knob, v: b.v } }); return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
   on('POST', '/api/changes/:chid/image', async (b, t, p) => {
-    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) }; /* a locked or live change gets no new paid picture */
     let bv = null; if (b.brief) { ch.pkg.imageBrief = clean(String(b.brief)).slice(0, 600); sync(t, ch); bv = version(t, ch, 'you', 'New image brief'); }
     const started = genImage(t, ch, b.brief ? 'your brief' : 'a new take', { all: !!b.all, target: bv?.id || null }); /* the photo lands on the brief's version, not a second one */
     return { change: pubChange(t, ch), image: started, why: started ? null : imageWhy(ch) };
@@ -1862,8 +1874,8 @@ export function createRemix(o) {
     const read = async (rel) => { if (!rel || typeof rel !== 'string') return null; if (/^\/?gen\//.test(rel)) return genFile(rel.replace(/^\/?gen\//, ''));
       const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || photoFile(rel); return f && fs.existsSync(f) && fs.statSync(f).isFile() ? f : null; };
     const renderPdf = ch.family === 'print' && process.env.PACK_PDF !== '0' ? (html) => withBrowser(async (br) => { const pg = await br.newPage(); try { await pg.setContent(html, { waitUntil: 'load' }); return Buffer.from(await pg.pdf({ preferCSSPageSize: true, printBackground: true })); } finally { await pg.close().catch(() => {}); } }) : null;
-    { const cut = checkCopyIn(chV.pkg = structuredClone(pkg), brandSource(t, t.cards.get(ch.cardId) || {}), { skip: /^(id|url|src|img|image|images|key|handle|at|by|kind|state|status|knobs|utm|finalUrl|qr|file)$/i }); if (cut.length) log.warn?.('[pack] claims cut', ch.id, cut.map((f) => f.phrase).join(', ')); } /* what the team downloads (ad text, WhatsApp, email, SMS templates) carries no claim the store doesn't back (1.5) */
-    const made = await buildPack({ ch: chV, pkg: chV.pkg, family: ch.family, version: n, brand, assets: assetsFor(t, chV), read, renderPdf });
+    let cutOut = []; { const cut = checkCopyIn(chV.pkg = structuredClone(pkg), brandSource(t, t.cards.get(ch.cardId) || {}), { skip: /^(id|url|src|img|image|images|key|handle|at|by|kind|state|status|knobs|utm|finalUrl|qr|file)$/i }); if (cut.length) { log.warn?.('[pack] claims cut', ch.id, cut.map((f) => f.phrase).join(', ')); cutOut = [...new Set(cut.map((f) => f.phrase))].slice(0, 6); } } /* what the team downloads (ad text, WhatsApp, email, SMS templates) carries no claim the store doesn't back (1.5) */
+    const made = await buildPack({ ch: chV, pkg: chV.pkg, family: ch.family, version: n, brand, assets: assetsFor(t, chV), read, renderPdf, cut: cutOut });
     if (!(await genFile(key))) saveGen(key, zipBuffer(made.entries));
     const meta = { name: made.fileName, version: n, versionId: v?.id || null, family: ch.family, familyName: FAMILY_NAME[ch.family], files: made.entries.map((e) => e.name), todo: made.todo, readme: made.readme, readOnly: true };
     ch.packMeta[key] = meta; const pk = Object.keys(ch.packMeta); if (pk.length > 6) delete ch.packMeta[pk[0]];
@@ -2038,8 +2050,11 @@ export function createRemix(o) {
   on('POST', '/api/changes/:chid/edit', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
     const before = { ...ch.after };
-    if (b.pkg) ch.pkg = { ...ch.pkg, ...cleanPkg(ch.family, ch.action, { ...ch.pkg, ...b.pkg }, clean), ...keepMedia(ch.pkg) };
-    sync(t, ch); version(t, ch, 'you', b.reason || 'Your edit');
+    const was = JSON.stringify(snapOf(ch));
+    if (b.pkg) { ch.pkg = { ...ch.pkg, ...cleanPkg(ch.family, ch.action, { ...ch.pkg, ...b.pkg }, clean), ...keepMedia(ch.pkg) };
+      for (const [k, v] of Object.entries(b.pkg)) if (v === '' || v === null) delete ch.pkg[k]; } /* a field the person cleared stays cleared (it used to come back) */
+    sync(t, ch); if (JSON.stringify(snapOf(ch)) === was) return { change: pubChange(t, ch), learned: learnedOut(t), same: true }; /* nothing changed: no new version */
+    version(t, ch, 'you', b.reason || 'Your edit');
     signal(t, 'edit', { before, after: ch.after, agent: ch.agent, changeId: ch.id, by: 'you' }, now(t));
     return { change: pubChange(t, ch), learned: learnedOut(t) };
   });

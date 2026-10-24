@@ -127,3 +127,12 @@ test('the waiting game loads only when tapped, shows while a creative is made, a
   assert.doesNotMatch(html, /brew-game\.js/, 'never in the page until someone taps Play'); assert.match(cs, /sc\.src = '\/brew-game\.js'/); assert.match(cs, /data-cs-game>Play while it brews/);
   assert.match(cs, /window\.BrewGame\?\.done\?\.\(\);/, 'a landing stops the game'); assert.match(game, /visibilitychange/); assert.match(game, /prefers-reduced-motion/); assert.match(game, /try \{ return \+localStorage/);
 });
+
+test('audit 24 Oct: two v1 jams on one card each get their own Studio jam, of the kind each makes, so a take lands where it was made', async () => {
+  const { R, t } = mount(); t.changes.ch2 = { id: 'ch2' };
+  const a = await R['POST /api/jam2/open']({ cardId: 'c1', cta: 'Add the photos', v1ch: 'ch1', recipe: 'listing' }, t, {});
+  const b = await R['POST /api/jam2/open']({ cardId: 'c1', cta: 'Add the photos', v1ch: 'ch2', recipe: 'reel' }, t, {});
+  assert.notEqual(a.jam.id, b.jam.id); assert.equal(b.jam.boards[0].recipe, 'reel');
+  const a2 = await R['POST /api/jam2/open']({ cardId: 'c1', cta: 'Add the photos', v1ch: 'ch1', recipe: 'listing' }, t, {});
+  assert.equal(a2.jam.id, a.jam.id, 'the same v1 jam reopens its own Studio jam');
+});

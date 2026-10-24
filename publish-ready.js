@@ -25,13 +25,16 @@ export function linkOf({ family, product = null, host = '', campaign = '', conte
 export const altOf = ({ product = '', look = '', brand = '' }) => tidy(`${brand && product && !product.toLowerCase().includes(brand.toLowerCase()) ? `${tidy(brand, 40)} ` : ''}${tidy(product, 80) || 'The product'}${look ? `: ${tidy(look, 120).replace(/^[A-Z]/, (c) => c.toLowerCase()).replace(/\.$/, '')}` : ''}`, 220) + '.';
 
 /* a price in the words is the brand's own when the store, the card's evidence or the catalog has it */
-const PRICE = /(₹|rs\.?|inr|\$|€|£|aed|sgd)\s?([\d,]+(?:\.\d+)?)/gi;
-const num = (s) => +String(s).replace(/,/g, '');
+/* any market: the symbol or code before or after the amount ("$29", "Rs. 599", "20 €", "1.299,00 €", "AED 120"), with either decimal mark */
+const CUR = '₹|rs\\.?|inr|\\$|us\\$|a\\$|c\\$|€|£|¥|aed|sgd|usd|eur|gbp|cad|aud|sar|myr|idr|php|thb|r\\$|kr';
+const AMT = '\\d{1,3}(?:[.,\\s]\\d{3})*(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?';
+const PRICE = new RegExp(`(?:(?<![a-z])(${CUR})\\s?(${AMT})|(${AMT})\\s?(€|£|¥|eur|gbp|kr|zł|chf|aed|sar)(?![a-z]))`, 'gi');
+const num = (s) => { let x = String(s).replace(/\s/g, ''); if (/,\d{1,2}$/.test(x)) x = x.replace(/\./g, '').replace(',', '.'); else x = x.replace(/,/g, ''); if (/\.\d{3}(\.|$)/.test(x)) x = x.replace(/\./g, ''); return +x; };
 function pricesOk(text, src, catalog = []) {
   const known = new Set(); for (const x of catalog || []) for (const k of ['price', 'compareAt', 'compare_at', 'p']) if (x?.[k] != null && Number.isFinite(num(x[k]))) known.add(Math.round(num(x[k])));
   const s = String(src || '').toLowerCase(), bad = [];
-  for (const m of String(text).matchAll(PRICE)) { const n = num(m[2]); if (!Number.isFinite(n)) continue; const r = Math.round(n);
-    if (known.has(r) || s.includes(m[2].toLowerCase()) || s.includes(String(r))) continue; bad.push(m[0]); }
+  for (const m of String(text).matchAll(PRICE)) { const a = m[2] || m[3], n = num(a); if (!Number.isFinite(n)) continue; const r = Math.round(n);
+    if (known.has(r) || s.includes(String(a).toLowerCase()) || s.includes(String(r))) continue; bad.push(m[0].trim()); }
   return [...new Set(bad)];
 }
 /* a star rating in the words is backed only when the brand's own reviews say that number */

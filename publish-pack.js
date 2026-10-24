@@ -49,7 +49,7 @@ const kwRow = (s) => { const m = /^\[(.+)\]$/.exec(s) || /^"(.+)"$/.exec(s); if 
 
 /* the version's package → { entries: [{ name, data }], readme, todo } — entries is what the zip holds.
    read(rel) → a local file path or null (gen/…, the brand's photos); renderPdf(html) → a PDF buffer or throws */
-export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = {}, assets = [], read = async () => null, renderPdf = null, crop = cropTo, fit = fitTo }) {
+export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = {}, assets = [], read = async () => null, renderPdf = null, crop = cropTo, fit = fitTo, cut = [] }) {
   const entries = [], put = (name, data) => entries.push({ name, data: Buffer.isBuffer(data) ? data : Buffer.from(String(data)) });
   const where = [], todo = [], links = [];
   const name = brand.name || 'the brand', act = ch.actionLabel || 'The change', target = ch.target || {};
@@ -133,6 +133,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       put('listings.csv', csv([['marketplace', 'product', 'current_title', 'new_title', 'bullets', 'backend_search_terms', 'images'], ...items.map((r) => [r.marketplace, p.product || '', r.now, r.new, list(p.bullets).join(' | '), p.searchTerms || '', p.images || ''])]));
       if (p.reason) put('takedown-request.txt', p.reason + '\n');
       /* the photo set Brew made, in order (the first is the main image), and an Amazon A+ set as its modules at Amazon's sizes */
+      if (!(p.photoSet || []).length && !(p.aplus || []).length && p.image) { const f = await addFile(p.image, 'media/listing-01'); if (f) where.push(`${f.name}: listing image 1 (the main image)`); else todo.push('Listing image 1: download it from the jam'); } /* a single Studio listing image */
       for (const [i, x] of (p.photoSet || []).entries()) { const f = await addFile(x?.image, `media/listing-${String(i + 1).padStart(2, '0')}`); if (f) where.push(`${f.name}: listing image ${i + 1}${i === 0 ? ' (the main image)' : ''}`); else if (x?.image) todo.push(`Listing image ${i + 1}: download it from the studio`); }
       if ((p.aplus || []).length) { const W = { header: '970×600 header image', tile: '300×300 tile', wide: '970×300 image' };
         for (const [i, m] of p.aplus.entries()) { const f = await addFile(m.image, `media/aplus-${String(i + 1).padStart(2, '0')}-${m.kind}`); if (!f) todo.push(`A+ module ${i + 1}: download it from the studio`); }
@@ -210,6 +211,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
   }
   for (const a of assets) if (a.kind === 'link' && a.url && !links.includes(a.url)) links.push(a.url);
   if (links.length) put('links.txt', [...new Set(links)].join('\n') + '\n');
+  if (cut.length) todo.unshift(`Brew took these out of the copy here because your store doesn’t back them: ${cut.map((x) => `“${x}”`).join(', ')}. The jam still shows them: edit them there too.`); /* the zip's words differ from the jam's: say so */
   const readme = lines(`${act} — ${name}, version ${version}`, '',
     `Brew made this pack and changes nothing in your accounts. Nothing here is live until someone on your team puts it up.`, '',
     'WHERE EACH PART GOES', ...where.map((w) => `- ${w}`), '',

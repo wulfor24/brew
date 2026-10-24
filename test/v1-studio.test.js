@@ -139,3 +139,36 @@ test('collection and catalog ads show the catalog’s own photos; a catalog ad n
   const { ch } = await press(S, t, 'Build the catalog ad'); await settle(ch); ch.pkg.productSet = 'Every in-stock best seller';
   const pub = S.RMX.pubChange(t, ch); assert.match(ch.action, /catalog_ad$/, ch.action); assert.equal(pub.studio, null, 'nothing to make for a catalog ad'); assert.equal(pub.catalogPics.length, 2); assert.equal(pub.catalogPics[0].img, 'balm.png');
 });
+
+/* jam audit, 24 Oct */
+test('audit 24 Oct: the jam’s own action decides what Studio makes; marketplace titles are words only', async () => {
+  const S = studio(), t = tenant(card({ cta: { label: 'Make the ad' }, make: { format: 'single image ad' } }));
+  const { ch } = await press(S, t, 'Make the ad'); await settle(ch);
+  ch.action = 'creative.short_video'; ch.family = 'post'; assert.equal(S.RMX.pubChange(t, ch).studio, 'reel', 'a short-video jam on a "Make the ad" card makes a video');
+  ch.action = 'creative.ig_carousel'; ch.family = 'social'; assert.equal(S.RMX.pubChange(t, ch).studio, 'ig-carousel', 'a carousel jam makes a set');
+  ch.action = 'storefront.listing_titles'; ch.family = 'listing'; assert.equal(S.RMX.pubChange(t, ch).studio, null, 'titles are written, never drawn');
+});
+
+test('audit 24 Oct: a words edit keeps what Studio made (panel, strip, check); a picture after a film drops the film; an edit that changes nothing adds no version', async () => {
+  const S = studio(), t = tenant(card({ cta: { label: 'Make the ad' }, make: { format: 'single image ad' } }));
+  const { id, ch } = await press(S, t, 'Make the ad'); await settle(ch);
+  S.RMX.landStudio(t, id, { file: 'gen/f.mp4', poster: 'gen/p.jpg', srt: 'gen/c.srt', studio: { kind: 'video', label: 'UGC review', spec: { quality: 'preview' } } });
+  assert.ok(ch.pkg.film, 'the film is on the package');
+  const v = S.RMX.landStudio(t, id, { file: 'gen/ad2.jpg', studio: { kind: 'image', label: 'In use' } });
+  assert.equal(ch.pkg.video, undefined, 'the old film is gone'); assert.equal(ch.pkg.film, undefined); assert.equal(ch.pkg.image, 'gen/ad2.jpg'); assert.ok(v.studio);
+  const n0 = versionsOf(t, id).length;
+  await S.call('POST /api/changes/:chid/edit', { pkg: { headline: 'Warm hands by nine' } }, t, { chid: id });
+  const head = versionsOf(t, id).at(-1); assert.equal(versionsOf(t, id).length, n0 + 1); assert.ok(head.studio, 'the words version still says Studio made the picture');
+  assert.equal(S.RMX.pubChange(t, ch).publish?.made, true, 'the ready-to-publish panel stays');
+  const r = await S.call('POST /api/changes/:chid/edit', { pkg: { headline: 'Warm hands by nine' } }, t, { chid: id });
+  assert.equal(r.same, true); assert.equal(versionsOf(t, id).length, n0 + 1, 'no empty version');
+  await S.call('POST /api/changes/:chid/edit', { pkg: { description: '' } }, t, { chid: id }); assert.equal(ch.pkg.description, undefined, 'a cleared field stays cleared');
+});
+
+test('audit 24 Oct: a preview take is never called ready; nothing made yet has no picture-words check', async () => {
+  const S = studio(), t = tenant(card({ cta: { label: 'Make the ad' }, make: { format: 'single image ad' } }));
+  const { id, ch } = await press(S, t, 'Make the ad'); await settle(ch);
+  assert.ok(!(S.RMX.pubChange(t, ch).publish?.checks || []).some((c) => c.k === 'picture'), 'no picture yet, no "words weren’t read"');
+  S.RMX.landStudio(t, id, { file: 'gen/pv.jpg', words: { headline: 'Warm paws' }, studio: { kind: 'image', label: 'In use', spec: { quality: 'preview' } } });
+  assert.ok(S.RMX.pubChange(t, ch).publish.checks.some((c) => c.k === 'preview' && !c.ok), 'the quick preview says to make the full one');
+});

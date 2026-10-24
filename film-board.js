@@ -33,14 +33,15 @@ export const splitRows = (rows) => rows.flatMap((r) => { const all = [r?.shot, r
 export function boardOf(ch, { card = {} } = {}) {
   if (!isFilm(ch)) return null;
   const p = ch.pkg || {}, rows = splitRows(Array.isArray(p.scenes) ? p.scenes : []).filter((r) => r && (r.shot || r.line)).slice(0, 10);
-  if (!rows.length) return null;
-  const total = lengthOf(ch), all = [p.title, p.talent, card.title, card.subtitle, ...rows.map((r) => r.shot)].join(' ');
+  const total = lengthOf(ch), all = [p.title, p.talent, card.title, card.sub, ...rows.map((r) => r.shot)].join(' ');
   const founder = /\bfounders?\b|co-?founder/i.test(all);
   const talent = !TBC.test(String(p.talent || '').trim()) ? String(p.talent).trim() : founder ? 'The founder' : 'Whoever is on camera';
   const need = rows.map((r) => Math.max(2, words(r.line) / 2.5)), sum = need.reduce((a, b) => a + b, 0);
-  let at = 0;
-  const shots = rows.map((r, i) => { const who = whoOf(r.shot, r.line), sec = i === rows.length - 1 ? Math.max(1, half(total - at)) : Math.max(1, half(need[i] / sum * total));
-    const s = { n: i + 1, from: at, to: Math.min(total, at + sec), sec, shot: String(r.shot || ''), line: String(r.line || ''), who, say: who === 'person' }; at = s.to; return s; });
+  /* times add up to the film exactly: each shot's share of the length, in half seconds, the last one taking what is left */
+  let at = 0; const fl = rows.length && total >= rows.length ? 1 : 0.5;
+  const shots = rows.map((r, i) => { const who = whoOf(r.shot, r.line), left = rows.length - i - 1, room = total - at - left * fl;
+    const sec = left ? Math.min(Math.max(fl, half(need[i] / sum * total)), Math.max(fl, room)) : Math.max(0, half(total - at));
+    const s = { n: i + 1, from: at, to: +(at + sec).toFixed(1), sec, shot: String(r.shot || ''), line: String(r.line || ''), who, say: who === 'person' }; at = s.to; return s; });
   /* nobody on camera in any shot: the lines are a voiceover the founder (or a teammate) records */
   const vo = !shots.some((s) => s.say);
   const read = shots.filter((s) => (vo ? s.line : s.say && s.line));

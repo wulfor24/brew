@@ -55,8 +55,8 @@
     G.pi = setInterval(() => { if (!G) return; const m = progress(); const secs = (Date.now() - (m?.at || t0)) / 1e3;
       if (m) { line.textContent = `Making ${String(m.line || 'your creative').slice(0, 60)} · ${secs < 60 ? `${Math.round(secs)} s` : `${Math.floor(secs / 60)} min`}`; bar.style.width = `${Math.min(92, (secs / (m.video ? 300 : 70)) * 100)}%`; }
       else if (!G.landed) done(); }, 1000);
-    function done() { if (!G || G.landed) return; G.landed = true; bar.style.width = '100%'; line.textContent = 'Your creative is ready'; keepBest(G.score);
-      pause('Your creative is ready', `You caught ${G.score}${G.score >= best() && G.score ? ' — a new best' : ''}.`, `<button class="bg-see">See it</button><button class="bg-go bg-alt">Keep playing</button>`); }
+    function done() { if (!G || G.landed) return; G.landed = true; bar.style.width = '100%'; line.textContent = 'Your creative is ready'; const was = best(); keepBest(G.score);
+      pause('Your creative is ready', `You caught ${G.score}${G.score > was && G.score ? ' — a new best' : ''}.`, `<button class="bg-see">See it</button><button class="bg-go bg-alt">Keep playing</button>`); }
     G.done = done;
     const bean = (x, y, r, burnt) => { cx.save(); cx.translate(x, y); cx.rotate(0.5); cx.fillStyle = burnt ? '#1b1b1b' : '#7a4a2a'; cx.beginPath(); cx.ellipse(0, 0, r * 0.75, r, 0, 0, Math.PI * 2); cx.fill();
       cx.strokeStyle = burnt ? '#5a5a5a' : '#c79a6b'; cx.lineWidth = Math.max(1.5, r / 5); cx.beginPath(); cx.moveTo(0, -r * 0.8); cx.quadraticCurveTo(r * 0.3, 0, 0, r * 0.8); cx.stroke(); if (burnt) { cx.fillStyle = '#ff5a3c'; cx.fillRect(-1.5, -r - 6, 3, 5); } cx.restore(); };

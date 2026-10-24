@@ -1986,6 +1986,7 @@
   /* one read of the work list at a time, and none again within 5 s of the last one unless something changed since (1.7: fetched
      3 to 4 times on open) */
   let WORK_P = null, WORK_AT = 0, WORK_REV = 0;
+  const READY_TOLD = new Map(); /* changeId → when its ready toast was shown */
   const pullWork = async (quiet) => { if (WORK_P) return WORK_P; if (Date.now() - WORK_AT < 5000 && FEED_LOADED && WORK_REV === FEED_LOADED) return;
     WORK_P = pullWork0(quiet).finally(() => { WORK_P = null; WORK_AT = Date.now(); WORK_REV = FEED_LOADED; }); return WORK_P; };
   const pullWork0 = async (quiet) => {
@@ -1997,7 +1998,7 @@
     const wasMaking = new Set(WORK.items.filter((w) => w.creative?.state === 'making').map((w) => w.id));
     (r.items || []).forEach(teamFix); WORK = { ...r, loaded: true };
     /* a Studio creative that finished since the last look (made from any jam, by anyone): the ready cue and a way to it */
-    if (!first) for (const w of r.items || []) if (wasMaking.has(w.id) && w.creative && w.creative.state !== 'making' && !(view === 'remix' && RX.ch?.id === w.changeId)) {
+    if (!first) for (const w of r.items || []) if (wasMaking.has(w.id) && w.creative && w.creative.state !== 'making' && !(view === 'remix' && RX.ch?.id === w.changeId) && !(Date.now() - (READY_TOLD.get(w.changeId) || 0) < 120e3) /* the jam's own poll already said it: one cue, one toast */) {
       const ok = w.creative.state === 'made'; sound(ok ? 'ready' : 'error'); toast(`${ic(ok ? 'check' : 'info', 's16')}${ok ? `Ready: ${esc(w.creative.line || 'your creative')}` : `Couldn’t make it: ${esc(w.creative.error || 'try again')}`}${w.cardId ? ` <button class="linkbtn" data-livech="${esc(w.changeId || '')}" data-card="${esc(w.cardId)}">See it</button>` : ''}`); break; }
     const fresh = first ? [] : r.notes.filter((n) => !known.has(n.id));
     if (fresh.length && !first && document.visibilityState === 'visible') { const ks = fresh.map((n) => n.kind); sound(ks.includes('result') ? (fresh.some((n) => n.kind === 'result' && /beat|won/i.test(n.text)) ? 'win' : 'ping') : ks.includes('needs_you') ? 'knock' : ks.includes('live') ? 'live' : ks.includes('ready') ? 'approve' : 'ping'); }
@@ -3691,19 +3692,19 @@
     const name = esc(B.brand.name), quiet = (xs) => { const t = xs.filter(Boolean).map(esc).join(' · '); return t ? `<p class="pm-line">${t}</p>` : ''; };
     if (ch.family === 'crm') {
       const chn = String(p.channel || 'WhatsApp'), btns = (p.buttons || []).filter(Boolean), meta = quiet([chn, p.trigger, p.segment, p.code && `code ${p.code}`]);
-      if (/mail/i.test(chn)) return `<div class="as as-pm lg">${meta}<div class="pm ml"><div class="ml-top"><b class="ml-subj">${esc(p.subject || `A note from ${B.brand.name}`)}</b>
+      if (/mail/i.test(chn)) return `<div class="as as-pm lg">${meta}<div class="pm ml"><div class="ml-top"><b class="ml-subj">${esc(p.subject || `A note from ${esc(B.brand.name)}`)}</b>
           <div class="ml-from">${pmAv()}<div><b>${name}</b><small>to <span class="tok">first name</span></small></div><small class="ml-t">10:02</small></div></div>
           <div class="ml-body"><p>${tokHtml(p.message || '')}</p>${btns.map((b, i) => `<span class="ml-btn${i ? ' alt' : ''}">${esc(b)}</span>`).join('')}</div>
           <p class="ml-foot">${name} · ${esc(B.brand.host || '')} · Unsubscribe</p></div></div>`;
       return `<div class="as as-pm lg">${meta}<div class="pm wa2${/sms|text/i.test(chn) ? ' is-sms' : ''}"><div class="wa2-h">${pmAv()}<div><b>${name}</b><small>${/sms|text/i.test(chn) ? 'Text message' : 'Business account'}</small></div></div>
         <div class="wa2-chat"><span class="wa2-day">Today</span><div class="wa2-msg"><p>${tokHtml(p.message || '')}</p><small>10:02</small></div>${btns.length ? `<div class="wa2-btns">${btns.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div></div>`;
     }
-    if (ch.family === 'outreach') return `<div class="as as-pm lg">${quiet(['Email', p.company])}<div class="pm ml"><div class="ml-top"><b class="ml-subj">${esc(p.subject || `A note from ${B.brand.name}`)}</b>
+    if (ch.family === 'outreach') return `<div class="as as-pm lg">${quiet(['Email', p.company])}<div class="pm ml"><div class="ml-top"><b class="ml-subj">${esc(p.subject || `A note from ${esc(B.brand.name)}`)}</b>
           <div class="ml-from">${pmAv()}<div><b>${name}</b><small>to ${esc(p.to || 'the right person')}</small></div></div></div>
           <div class="ml-body"><p>${tokHtml(p.body || '')}</p></div></div></div>`;
     if (ch.family === 'vis' && /\.(llms_txt|schema_fix)$/.test(ch.action)) return ''; /* a file (llms.txt, product markup) shows as the file it is, not as an FAQ page */
     if (ch.family === 'vis') { const es = p.entries || [];
-      return `<div class="as as-web as-faq lg"><div class="aw-bar"><i></i><i></i><i></i><span>${esc(p.file || `${B.brand.host}/faq`)}</span></div>
+      return `<div class="as as-web as-faq lg"><div class="aw-bar"><i></i><i></i><i></i><span>${esc(p.file || `${esc(B.brand.host)}/faq`)}</span></div>
         <div class="faq-b"><h3>Questions people ask</h3>${es.map((e, i) => `<details class="faq-q"${i < 2 ? ' open' : ''}><summary>${esc(e.q)}${ic('chev', 's16')}</summary><p>${txt(e.a)}${e.source ? tipBtn(`Source: ${e.source}`) : ''}</p></details>`).join('')}
         ${p.asOf ? `<small class="faq-asof">Updated ${esc(String(p.asOf).replace(/^as of\s*/i, ''))}</small>` : ''}</div></div>`; }
     if (ch.family === 'meta_ops') { const items = p.items || [];
@@ -3786,23 +3787,23 @@
     const swipe = (cls, inner) => `<div class="as-swipe ${cls}" style="--ar:${esc((p.format || '1:1').replace(':', '/'))}">${inner}</div>`;
     const picOf = (i) => pics[i] || (i === 0 ? p.image || null : null); // only photos made for this ad; the card's own image carries its own words
     const morePics = lg && rows.length > 1 && !ch.imagePending && rows.some((_, i) => !picOf(i)) ? `<button class="btn btn-ghost sm as-allpics" data-rx="images-all">${ic('sparkles', 's14')}Make the photo for every ${ch.family === 'social' ? 'slide' : 'card'}</button>` : '';
-    if (ch.family === 'meta_ad' && rows.length) return `<div class="as as-meta as-multi${lg ? ' lg' : ''}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${B.brand.name}</b><small>Sponsored</small></div></div>
+    if (ch.family === 'meta_ad' && rows.length) return `<div class="as as-meta as-multi${lg ? ' lg' : ''}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${esc(B.brand.name)}</b><small>Sponsored</small></div></div>
         <p class="am-text">${esc(p.primaryText || '')}</p>
         ${swipe('am-cards', rows.slice(0, lg ? 10 : 3).map((r, i) => `<figure class="am-card"><div class="am-cm">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : `<span class="am-cm-e">${ic('pic', 's16')}</span>`}${i === 0 ? pending : ''}</div><figcaption><b>${esc(r.headline || '')}</b>${r.text ? `<span>${esc(r.text)}</span>` : ''}<em>${esc(p.cta || 'Shop now')}</em></figcaption></figure>`).join(''))}
         <small class="am-count">${rows.length} cards · swipe</small>${morePics}</div>`;
     if (ch.family === 'meta_ad' && (p.products?.length || p.productSet)) {
       const img = imgOf(ch), coll = !!p.products?.length, pics = ch.catalogPics || [];
       /* a catalog ad is the catalog's own photos, each with the frame line, as Meta shows it; no picture is made for it */
-      if (!coll && pics.length) return `<div class="as as-meta as-coll is-cat${lg ? ' lg' : ''}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${B.brand.name}</b><small>Sponsored</small></div></div>
+      if (!coll && pics.length) return `<div class="as as-meta as-coll is-cat${lg ? ' lg' : ''}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${esc(B.brand.name)}</b><small>Sponsored</small></div></div>
         <p class="am-text">${esc(p.primaryText || '')}</p>
         <div class="am-cat">${pics.slice(0, 4).map((x) => `<figure><span><img src="${esc(x.img)}" alt="">${p.frame ? `<em class="am-frame" style="font-style:normal">${esc(p.frame)}</em>` : ''}</span><figcaption><b>${esc(x.name)}</b>${x.price != null ? `<small>${esc(/^\d/.test(String(x.price)) ? `${B.sym || ''}${x.price}` : x.price)}</small>` : ''}</figcaption></figure>`).join('')}</div>
         <p class="am-set">${ic('grid', 's14')}<span><b>Product set:</b> ${esc(p.productSet || 'your catalog')} · each person sees the products they are most likely to buy</span></p>
-        <div class="am-foot"><div><small>${B.brand.host}</small>${hlHtml(ch, p, lg)}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div></div>`;
-      return `<div class="as as-meta as-coll${lg ? ' lg' : ''}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${B.brand.name}</b><small>Sponsored</small></div></div>
+        <div class="am-foot"><div><small>${esc(B.brand.host)}</small>${hlHtml(ch, p, lg)}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div></div>`;
+      return `<div class="as as-meta as-coll${lg ? ' lg' : ''}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${esc(B.brand.name)}</b><small>Sponsored</small></div></div>
         <p class="am-text">${esc(p.primaryText || '')}</p>
         <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${coll ? '16/9' : '1/1'}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : `<div class="am-empty">${ic('sparkles', 's16')}<span>${coll ? 'The cover is made in the studio' : 'Each person sees products from the set'}</span></div>`}${!coll && p.frame ? `<span class="am-frame">${esc(p.frame)}</span>` : ''}${pending}${!img && lg && !ch.imagePending ? `<div class="am-make"><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the ${coll ? 'cover' : 'sample photo'}</button></div>` : ''}</div>
         ${coll ? `<div class="am-grid">${p.products.slice(0, 4).map((x) => { const m = pics.find((y) => y.name && (y.name === x || String(y.name).toLowerCase().includes(String(x).toLowerCase().slice(0, 18)))); return m ? `<span class="has-img"><img src="${esc(m.img)}" alt=""><b>${esc(x)}</b></span>` : `<span>${esc(x)}</span>`; }).join('')}</div>` : `<p class="am-set">${ic('grid', 's14')}<span><b>Product set:</b> ${esc(p.productSet)}</span></p>`}
-        <div class="am-foot"><div><small>${B.brand.host}</small>${hlHtml(ch, p, lg)}${coll && p.instantPage ? `<span>Opens: ${esc(p.instantPage)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div></div>`;
+        <div class="am-foot"><div><small>${esc(B.brand.host)}</small>${hlHtml(ch, p, lg)}${coll && p.instantPage ? `<span>Opens: ${esc(p.instantPage)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div></div>`;
     }
     if (ch.family === 'social') {
       const story = p.format === '9:16', handle = p.account || `@${String(B.brand.name).toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
@@ -3814,15 +3815,15 @@
     }
     if (ch.family === 'meta_ad') {
       const made = imgOf(ch), img = made || (lg ? cardPhoto() : null), ratio = (p.format || '4:5').replace(':', '/'), [rw, rh] = (p.format || '4:5').split(':').map(Number);
-      return `<div class="as as-meta${lg ? ' lg' : ''}" style="--ar:${(rw / rh) || 0.8}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${B.brand.name}</b><small>Sponsored</small></div></div>
+      return `<div class="as as-meta${lg ? ' lg' : ''}" style="--ar:${(rw / rh) || 0.8}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${esc(B.brand.name)}</b><small>Sponsored</small></div></div>
         <p class="am-text">${esc(p.primaryText || '')}</p>
         <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${ratio}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : !lg ? `<div class="am-empty">${ic('sparkles', 's16')}<span>The photo is made in the studio</span></div>` : ''}${p.overlay && img && wordsOver(img, p, ch) && !(ch.studio && ch.versions?.find((v) => v.id === ch.head)?.studio) /* a Studio take has its own words */ ? `<span class="am-ov">${esc(p.overlay)}</span>` : ''}${pending}${!p.image && lg && !ch.imagePending ? (img ? `<button class="am-newpic" data-rx="image">${ic('sparkles', 's14')}New photo for this ad${freeTag()}</button>` : `<div class="am-make"><span>No photo for this version yet</span><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the photo${freeTag()}</button></div>`) : ''}</div>
-        <div class="am-foot"><div><small>${B.brand.host}</small>${hlHtml(ch, p, lg)}${p.description ? `<span>${esc(p.description)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div>
+        <div class="am-foot"><div><small>${esc(B.brand.host)}</small>${hlHtml(ch, p, lg)}${p.description ? `<span>${esc(p.description)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div>
         ${lg && act === 'whatsapp_ad' && p.chat?.length ? `<div class="am-chat"><small>When they tap, WhatsApp opens with</small>${p.chat.map((m) => `<div class="wa ${m.from === 'in' ? 'in' : 'out'}">${esc(m.text)}</div>`).join('')}</div>` : ''}</div>`;
     }
     if (ch.family === 'post') return postMock(ch, p, lg);
     if (lg) { const sm = stageMock(ch, p); if (sm) return sm; }
-    if (ch.family === 'search') return `<div class="as as-file as-search"><div class="af-h">${ic('link', 's14')}Google Search · ${esc(p.adGroup || '')}</div><div class="srch"><small>Sponsored · ${esc(String(p.finalUrl || `${B.brand.host}`).replace(/^https?:\/\//, ''))}</small><b>${esc((p.headlines || []).slice(0, 3).join(' | '))}</b><p>${esc((p.descriptions || [])[0] || '')}</p></div>
+    if (ch.family === 'search') return `<div class="as as-file as-search"><div class="af-h">${ic('link', 's14')}Google Search · ${esc(p.adGroup || '')}</div><div class="srch"><small>Sponsored · ${esc(String(p.finalUrl || `${esc(B.brand.host)}`).replace(/^https?:\/\//, ''))}</small><b>${esc((p.headlines || []).slice(0, 3).join(' | '))}</b><p>${esc((p.descriptions || [])[0] || '')}</p></div>
       ${lg ? `<div class="af-e"><b>Keywords</b><p>${esc((p.keywords || []).join(' · '))}</p>${(p.negatives || []).length ? `<small>Not for: ${esc(p.negatives.join(', '))}</small>` : ''}</div>` : ''}</div>`;
     if (ch.family === 'setup') return `<div class="as as-doc"><small>${esc(p.tool || 'Setup')}</small><h4>${esc(p.what || '')}</h4><ol>${(p.steps || []).slice(0, lg ? 10 : 3).map((x) => `<li><span>${txt(x)}</span></li>`).join('')}</ol>${p.verify ? `<p class="ad-meta">${ic('check', 's14')} Done when: ${esc(p.verify)}</p>` : ''}</div>`;
     if (ch.family === 'print') return `<div class="as as-print">${p.image ? `<figure class="pr-pic"><img src="${esc(p.image)}" alt="${esc(p.publish?.alt || '')}"></figure>` : ''}<div class="pr-card"><small>Front</small><div class="rx">${rich(p.front)}</div></div>${p.back ? `<div class="pr-card back"><small>Back</small><p>${esc(p.back)}</p>${p.qr ? `<span class="pr-qr">QR · ${esc(p.qr)}</span>` : ''}</div>` : ''}<p class="ad-meta">${esc([p.size, p.quantity && `${p.quantity} cards`, p.goesIn].filter(Boolean).join(' · '))}</p></div>`;
@@ -3844,14 +3845,14 @@
         <section class="lp-hero"><small class="aw-where">Landing page</small><h3>${esc(L.hero)}</h3>${L.sub ? `<p>${esc(L.sub)}</p>` : ''}<span class="aw-btn">${esc(L.cta || 'Shop now')}</span></section>
         ${(L.benefits || []).length ? `<section class="lp-ben">${L.benefits.slice(0, size === 'lg' ? 3 : 2).map((b) => `<figure>${b.img ? `<img src="${esc(cdnSized(b.img, 600))}" alt="" loading="lazy" decoding="async">` : '<span class="lp-ph"></span>'}<figcaption><b>${esc(b.title)}</b>${b.body ? `<span>${esc(b.body)}</span>` : ''}</figcaption></figure>`).join('')}</section>` : ''}
         ${L.quote?.text ? `<blockquote class="lp-q"><p>“${esc(L.quote.text)}”</p><cite>${esc(L.quote.who || 'A customer review')}</cite></blockquote>` : ''}</div></div>`; }
-    if (ch.family === 'store') return `<div class="as as-web"><div class="aw-bar"><i></i><i></i><i></i><span>${esc((String(p.pages || '').match(/(?:[a-z0-9-]+\.)+[a-z]{2,}\/[^\s,;)]*/i) || [`${B.brand.host}`])[0].replace(/^www\./, ''))}</span></div>
+    if (ch.family === 'store') return `<div class="as as-web"><div class="aw-bar"><i></i><i></i><i></i><span>${esc((String(p.pages || '').match(/(?:[a-z0-9-]+\.)+[a-z]{2,}\/[^\s,;)]*/i) || [`${esc(B.brand.host)}`])[0].replace(/^www\./, ''))}</span></div>
       <div class="aw-body"><small class="aw-where">${esc([String(p.pages || '').replace(/(?:https?:\/\/)?(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}\/\S*/gi, '').replace(/^[\s,;·-]+|[\s,;·-]+$/g, ''), p.section].filter(Boolean).join(' · '))}</small><h4>${esc(p.heading || '')}</h4><div class="rx">${rich(p.body)}</div>${(p.bullets || []).length ? `<ul>${p.bullets.map((x) => `<li>${ic('check', 's14')}${esc(x)}</li>`).join('')}</ul>` : ''}
       ${p.priceAfter ? `<div class="aw-price">${p.priceBefore ? `<del>${esc(p.priceBefore)}</del>` : ''}<b>${esc(p.priceAfter)}</b></div>` : ''}${p.button ? `<span class="aw-btn">${esc(p.button)}</span>` : ''}</div></div>`;
-    if (ch.family === 'vis') return `<div class="as as-file"><div class="af-h">${ic('link', 's14')}${esc(p.file || `${B.brand.host}/faq`)}${p.asOf ? `<span>${esc(p.asOf)}</span>` : ''}</div>${(p.entries || []).slice(0, lg ? 8 : 2).map((e) => `<div class="af-e"><b>${esc(e.q)}</b><p>${txt(e.a)}</p>${e.source ? `<small>Source: ${esc(e.source)}</small>` : ''}</div>`).join('')}</div>`;
+    if (ch.family === 'vis') return `<div class="as as-file"><div class="af-h">${ic('link', 's14')}${esc(p.file || `${esc(B.brand.host)}/faq`)}${p.asOf ? `<span>${esc(p.asOf)}</span>` : ''}</div>${(p.entries || []).slice(0, lg ? 8 : 2).map((e) => `<div class="af-e"><b>${esc(e.q)}</b><p>${txt(e.a)}</p>${e.source ? `<small>Source: ${esc(e.source)}</small>` : ''}</div>`).join('')}</div>`;
     if (ch.family === 'outreach') return `<div class="as as-doc"><small>Email to ${esc([p.to, p.company].filter(Boolean).join(', ') || 'a business')}</small><h4>${esc(p.subject || '')}</h4><p>${esc(String(p.body || '').slice(0, lg ? 2000 : 220))}</p></div>`;
     if (ch.family === 'crm') {
       const wa = p.channel !== 'Email';
-      return `<div class="as as-phone${wa ? ' wa-ph' : ''}"><div class="ap-h">${wa ? `<span class="av" style="--ac:#25D366;width:22px;height:22px">A</span><b>${B.brand.name}</b><small>${esc(p.channel || 'WhatsApp')}</small>` : `<b>${esc(p.subject || `${B.brand.name}`)}</b><small>from ${B.brand.name}</small>`}</div>
+      return `<div class="as as-phone${wa ? ' wa-ph' : ''}"><div class="ap-h">${wa ? `<span class="av" style="--ac:#25D366;width:22px;height:22px">A</span><b>${esc(B.brand.name)}</b><small>${esc(p.channel || 'WhatsApp')}</small>` : `<b>${esc(p.subject || `${esc(B.brand.name)}`)}</b><small>from ${esc(B.brand.name)}</small>`}</div>
         <div class="ap-msg rx">${rich(p.message)}${(p.buttons || []).length ? `<div class="ap-btns">${p.buttons.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>
         <small class="ap-meta">${esc([p.trigger, p.segment].filter(Boolean).join(' · '))}${p.code ? ` · code ${esc(p.code)}` : ''}</small></div>`;
     }
@@ -4084,8 +4085,8 @@
     if (dlTool(ch, ch)) items.push(['data-st-dl', 'down', 'Download', 'This version’s files, as they are now.']);
     /* Redo it: one new take beside the one way forward, whenever the version can still change (not while something is being made) */
     const busy = !!job;
-    const sPl = ch.studio ? window.CreativeStage?.state(ch.id)?.plan : null; /* a Studio redo is made again the same way, at its price */
-    const redo = !busy && !(op && !op.picked) ? (ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" title="Made again with the same set-up, priced first. This one stays in History.">${ic('shuffle', 's16')}Redo it${sPl?.usd != null ? ` · ${moneyOf(sPl.usd)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle, a free draft. This one stays in History.">${ic('shuffle', 's16')}Redo it${freeTag()}</button>`) : '';
+    const sSt = ch.studio ? window.CreativeStage?.state(ch.id) : null, sPl = sSt?.plan || null; /* a Studio redo is made again the same way, at its price */
+    const redo = !busy && !(op && !op.picked) ? (ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" ${sSt?.making || !sPl || sPl.error || sPl.usd == null ? 'disabled' : ''} title="${sSt?.making ? 'It is being made now' : !sPl ? 'Pricing it…' : 'Made again with the same set-up, priced first. This one stays in History.'}">${ic('shuffle', 's16')}Redo it${sPl?.usd != null ? ` · ${moneyOf(sPl.usd)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle, a free draft. This one stays in History.">${ic('shuffle', 's16')}Redo it${freeTag()}</button>`) : '';
     return `<div class="ship one ${fix ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l">${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
   /* the options as tabs above the stage, named by their angle, never v1–v5 */
   /* one, always: no option tabs, not even on jams saved with options (the one on the stage is the one; the rest are in History) */
@@ -4578,10 +4579,10 @@
     /* before anything is made the frame shows the composer's product photo in the picture's place, never an empty grey box */
     const pv = !made && !viewing && st?.productImg && !/^gen\//.test(pkgCh.pkg?.image || '') ? { ...pkgCh, pkg: { ...pkgCh.pkg, image: st.productImg } } : pkgCh;
     return `<div class="st-asset cs-stage">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${assetHtml(pv, 'lg')}</div>
-      ${made && !viewing ? publishPanel(ch, pkgCh) : ''}${cs ? cs.html(ch) : ''}${ch.filmOk && !making ? `<p class="fb-alt">Would the founder rather film it for real? <button class="linkbtn" data-film-alt>Brief a film instead</button></p>` : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
+      ${made && !viewing ? publishPanel(ch, pkgCh) : ''}${cs && !viewing ? cs.html(ch) : ''}${ch.filmOk && !making ? `<p class="fb-alt">Would the founder rather film it for real? <button class="linkbtn" data-film-alt>Brief a film instead</button></p>` : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
   document.addEventListener('input', (e) => { if (view === 'remix') window.CreativeStage?.input(e); }); /* the composer's Direction and template search */
   window.FilmBoard?.init({ tapi, esc, toast, sound, ch: () => RX.ch, paint: () => { if (view === 'remix' && RX.ch) paintStudio(); }, saved: (c) => { RX.ch = c; putCh(c); if (view === 'remix') paintStudio(); } });
-  window.CreativeStage?.init({ tapi, esc, toast, ic, ch: () => RX.ch, viewing: () => RX.viewing,
+  window.CreativeStage?.init({ tapi, esc, toast, ic, money: (n) => moneyOf(n), ch: () => RX.ch, viewing: () => RX.viewing,
     paint: () => { if (view === 'remix' && RX.ch?.studio) paintStudio(); },
     remount: () => { if (view === 'remix' && RX.ch) paintStudio(); },
     toFeed: () => leaveRemix(),
@@ -4589,7 +4590,7 @@
     making: () => pullWork(true),
     /* a Studio take landed (or failed): read the jam again (its new version), say so with the ready cue, wherever the person is */
     landed: async (chId, r) => { const g = await tapi('GET', `/api/changes/${chId}`).catch(() => ({})); if (g.change) { putCh(g.change); if (RX.ch?.id === chId) RX.ch = g.change; }
-      pullWork(true); if (r.failed) { sound('error'); toast(`${ic('info', 's16')}${esc(r.failed)}`); } else { sound('ready'); if (!(view === 'remix' && RX.ch?.id === chId)) toast(`${ic('check', 's16')}Your ${esc(g.change?.familyName || 'creative')} is ready. <button class="linkbtn" data-livech="${esc(chId)}" data-card="${esc(g.change?.cardId || '')}">See it</button>`); }
+      READY_TOLD.set(chId, Date.now()); pullWork(true); if (r.failed) { sound('error'); toast(`${ic('info', 's16')}${esc(r.failed)}`); } else { sound('ready'); if (!(view === 'remix' && RX.ch?.id === chId)) toast(`${ic('check', 's16')}Your ${esc(g.change?.familyName || 'creative')} is ready. <button class="linkbtn" data-livech="${esc(chId)}" data-card="${esc(g.change?.cardId || '')}">See it</button>`); }
       if (view === 'remix' && RX.ch?.id === chId) paintStudio(); } });
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;
@@ -4637,7 +4638,7 @@
   document.addEventListener('click', (e) => { const el = e.target.closest?.('[data-hl-edit]'); if (el && view === 'remix') hlStart(el); });
   /* a ready-to-publish part, changed where it sits: it saves as a new version (POST /edit), like the headline */
   const ppSave = async (k, v) => { const ch = RX.ch; if (!ch) return; const val = String(v ?? '').trim(), cur = ch.publish?.parts?.find((x) => x.k === k);
-    if (cur && String(cur.value || '').trim() === val) return paintStudio();
+    if (cur && String(cur.value || '').trim() === val) return; /* nothing changed: no repaint, so the click on the next part lands first time */
     const row = /^(aplus|cards|slides)\.(\d+)\.(\w+)$/.exec(k); /* a module's, card's or slide's own words */
     const pkg = row ? { [row[1]]: (ch.pkg?.[row[1]] || []).map((x, q) => (q === +row[2] ? { ...x, [row[3]]: val } : x)) } : ['link', 'alt'].includes(k) ? { publish: { ...(ch.pkg?.publish || {}), [k]: val } } : k === 'hashtags' ? { hashtags: val.split(/[\s,]+/).filter(Boolean).map((x) => (x.startsWith('#') ? x : `#${x}`)) } : k === 'bullets' ? { bullets: val.split('\n').filter(Boolean) } : { [k]: val };
     const r = await tapi('POST', `/api/changes/${ch.id}/edit`, { pkg, reason: `${cur?.label || 'A part'} changed` }); if (r.error) { sound('error'); toast(esc(r.error)); return paintStudio(); }
@@ -4874,7 +4875,7 @@
   document.addEventListener('click', async (e) => {
     const rf = e.target.closest('[data-refs]'); if (rf) { e.stopPropagation(); return openRefs(REF_OF[rf.dataset.refs]); }
     const so = e.target.closest('[data-st-open]'); if (so) { e.stopPropagation(); const p = byId(so.dataset.stOpen); if (p) openDetail(p); return; }
-    const lc = e.target.closest('[data-livech]'); if (lc) { e.stopPropagation(); const p = byId(lc.dataset.card); const ch = p?.liveChange?.changeId; if (p) openRemix(p, ch); return; }
+    const lc = e.target.closest('[data-livech]'); if (lc) { e.stopPropagation(); const p = byId(lc.dataset.card); const ch = lc.dataset.livech || p?.liveChange?.changeId; /* the jam the toast is about */ if (p) openRemix(p, ch || undefined); return; }
     if (view !== 'remix') return;
     if (e.target.closest('[data-film-alt]')) { const b = e.target.closest('[data-film-alt]'), ch = RX.ch; if (!ch?.cardId || b.disabled) return; b.disabled = true; b.textContent = 'Opening the storyboard…';
       const r = await tapi('POST', `/api/cards/${ch.cardId}/remix`, { as: 'film', fast: true }).catch((er) => ({ error: er.message })); const fc = r.changes?.[0];
