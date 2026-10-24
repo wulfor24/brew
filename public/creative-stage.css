@@ -142,3 +142,14 @@
 .cs-early figure{margin:0;width:104px;display:flex;flex-direction:column;gap:4px}
 .cs-early img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:10px;background:var(--surface-2,#eee)}
 .cs-early figcaption{font-size:11px;color:var(--fg-3,#777);line-height:1.3}.cs-early figcaption b{display:block;color:var(--fg,#111)}
+
+/* the free first look (3.4) */
+.cs-look{margin:10px 0;padding:10px;border:1px dashed var(--line,#ddd);border-radius:12px}
+.cs-look>small{display:block;color:var(--mute,#777);margin-bottom:8px}
+.cs-look-row{display:flex;gap:12px;align-items:flex-start}
+.cs-look-row img{width:140px;max-width:40%;border-radius:8px;flex:none}
+.cs-look-row b{display:block;margin-bottom:4px}
+.cs-look-row ol{margin:6px 0 0;padding-left:18px;font-size:13px}
+.cs-look-row li span{color:var(--mute,#777);margin-right:4px}
+.cs-look-row li em{display:block;font-style:normal;color:var(--mute,#777)}
+.j2-st-go .j2-chip{margin-left:auto}

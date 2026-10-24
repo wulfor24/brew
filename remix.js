@@ -460,7 +460,8 @@ export function createRemix(o) {
       text = plain.split(/(?<=[.!?])\s+/).filter((x) => x.length > 20 && x.length < 260 && (/\d/.test(x) || /clinical|tested|proven|derma|natural|safe|results?|days?|weeks?/i.test(x))).slice(0, 14).join(' ').slice(0, 1600); } } catch {}
     LIVE_PAGE.set(url, { at: Date.now(), text }); if (LIVE_PAGE.size > 200) LIVE_PAGE.delete(LIVE_PAGE.keys().next().value); return text; };
   const livePageLine = async (c, extra = '') => { try { const P = productFor(c, FACTS, extra), txt = await livePage(P.page); return txt ? `\nTHE PRODUCT PAGE TODAY (${P.page}), read just now; its numbers and claims win over any older line above:\n${txt}\n` : ''; } catch { return ''; } };
-  const productLine = (c, extra = '') => { const P = productFor(c, FACTS, extra); return `THE PRODUCT: every public field is about ${P.name} (page ${P.page}${P.price ? `, ${P.price}` : ''}${P.claim ? `; claim: ${P.claim}` : ''}). Stay on this product unless the person asks for another one.`; };
+  const productLine = (c, extra = '') => { const leftRow = (c?.rows || []).find((r) => Array.isArray(r) && /^left in carts most$/i.test(String(r[0] || ''))); if (leftRow && !extra) extra = String(leftRow[1]).split(' · ')[0]; /* a cart message leads with what people leave behind (2.4) */
+    const P = productFor(c, FACTS, extra); return `THE PRODUCT: every public field is about ${P.name} (page ${P.page}${P.price ? `, ${P.price}` : ''}${P.claim ? `; claim: ${P.claim}` : ''}). Stay on this product unless the person asks for another one.`; };
   const pkgWords = (ch) => (ch?.pkg ? [ch.after?.title, ...publicText(ch.family, ch.action, ch.pkg)].filter(Boolean).join('. ') : '');
   const specOf = (key) => ACTION_SPEC[String(key).split('.').pop()] || '';
   const { SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on: on0, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, log = console } = o;
@@ -497,7 +498,13 @@ export function createRemix(o) {
     return `${base}\n${sourceText(card.post?.evidence || [], card.evidence || [], card.liveOnly || /^live-/.test(card.id || '') ? [card.title, card.sub, card.rows] : [])}`; };
   /* the card's amounts (₹/$ in its title, body and rows) against the draft's: a budget move whose draft moves another amount,
      or between campaigns the card doesn't name, fails until the draft says what the card says */
-  const budgetMatch = (card, ch) => { if (ch.family !== 'meta_ops' || !/(shift|scale)_budget$/.test(ch.action || '')) return null;
+  const budgetMatch = (card, ch, t = null) => { if (ch.family !== 'meta_ops' || !/(shift|scale)_budget$/.test(ch.action || '')) return null;
+    /* the account's own budget card is gone (today's numbers no longer support the move): the saved draft can't ship as it is */
+    if (/^live-meta-shift/.test(String(ch.cardId || '')) && !card?.shift) return { k: 'Your Meta account no longer supports this move: the budget card was withdrawn on today’s numbers. Check the campaigns in Ads Manager before moving anything.', ok: false };
+    /* every campaign or ad set the draft moves is a real one in the connected account, never a made-up name (2.6) */
+    const live = t?.member ? t.liveLedger?.['meta.campaigns.7d'] : null, known = live && !live.stale ? String(live.v).split(/;\s*/).map((x) => x.split(':')[0].trim().toLowerCase()).filter(Boolean) : [];
+    const names = (ch.pkg?.items || []).map((x) => String(x?.name || '').trim()).filter(Boolean), unknown = known.length ? [...new Set(names.filter((n) => !known.some((k) => k === n.toLowerCase() || k.includes(n.toLowerCase()) || n.toLowerCase().includes(k))))] : [];
+    if (unknown.length) return { k: `${unknown.slice(0, 2).map((n) => `“${n.slice(0, 60)}”`).join(' and ')} ${unknown.length === 1 ? 'isn’t a campaign' : 'aren’t campaigns'} in your Meta account this week. Use one of yours: ${known.slice(0, 3).map((k) => k.slice(0, 40)).join('; ')}`, ok: false, fix: true };
     const money = (x) => numbersIn(JSON.stringify(x ?? '')).filter((n) => /^[^\d%]+\d/.test(n));
     const said = [...new Set(money([card.title, card.sub, card.shift ? [card.shift.perDay] : []]))], made = new Set(money(ch.pkg));
     const camps = card.shift ? [card.shift.from, card.shift.to] : [], txt = JSON.stringify(ch.pkg || {});
@@ -523,7 +530,7 @@ export function createRemix(o) {
     if (ch.pkg) {
       const miss = missing(ch.family, ch.action, ch.pkg).map((l) => (isAdClip(ch) ? ({ Post: 'Ad text', Title: 'Headline' }[l] || l) : l)); checks.unshift({ k: miss.length ? `Missing: ${miss.join(', ')}` : `${isAdClip(ch) ? 'Meta video ad' : FAMILY_NAME[ch.family]} package complete`, ok: !miss.length, pkg: true, fix: true });
       const guard = ACTION_GUARD[String(ch.action).split('.').pop()]?.(ch.pkg); if (guard) checks.unshift({ k: guard, ok: false, fix: true });
-      { const bm = budgetMatch(card, ch); if (bm) checks.unshift(bm); } /* a budget draft moves what its card says (Arata 23 Oct) */
+      { const bm = budgetMatch(card, ch, t); if (bm) checks.unshift(bm); } /* a budget draft moves what its card says (Arata 23 Oct) */
       const lk = leaks(ch.family, ch.action, ch.pkg); checks.splice(1, 0, { k: lk.length ? `Reads like an internal note, not to customers (“${lk.slice(0, 3).join('”, “')}”)` : 'Written for customers, not the team', ok: !lk.length, fix: true, leak: true });
     }
     /* what a shopper would read: no invented code, guarantee or timed result, and copy that reads right (QA-25, QA-02) */

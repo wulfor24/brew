@@ -117,9 +117,16 @@
       </div>
       <label class="cs-dir"><small>Direction <span>${H.esc(why('direction'))}</span></small><textarea id="cs-dir" rows="3">${H.esc(sp.direction || '')}</textarea></label>
       ${(S.missing || []).map((m) => `<p class="j2-st-note">${H.esc(m.text)}${m.go === 'brand' ? ` <button class="linkbtn" data-cs-brand>${H.esc(m.fix)}</button>` : ''}</p>`).join('')}${pl?.note ? `<p class="j2-st-note">${H.esc(pl.note)}</p>` : ''}
-      <div class="j2-st-go"><span>${pl ? H.esc(pl.error || pl.line) : 'Pricing it…'}</span><button class="j2-pri" data-cs-go ${!pl || pl.error || S.working ? 'disabled' : ''}>${S.working ? 'Starting…' : `Generate${pl?.usd != null ? ` · ${usd(pl.usd)}` : ''}`}</button></div>
+      ${look()}
+      <div class="j2-st-go"><span>${pl ? H.esc(pl.error || pl.line) : 'Pricing it…'}</span>${setIds ? '' : `<button class="j2-chip" data-cs-look ${S.looking ? 'disabled' : ''} title="Brew’s words on your real product photo${kind === 'video' ? ', with the shot list' : ''}. No picture or video is made, so it costs nothing">${S.looking ? 'Sketching…' : S.look ? 'Another first look · free' : 'First look · free'}</button>`}<button class="j2-pri" data-cs-go ${!pl || pl.error || S.working ? 'disabled' : ''}>${S.working ? 'Starting…' : `Generate${pl?.usd != null ? ` · ${usd(pl.usd)}` : ''}`}</button></div>
       ${st && !setIds ? '' : ''}</div>`;
   }
+  /* the free first look (3.4): Brew's words over the real product photo and, for a video, the shots; made before anything is paid */
+  const look = () => { const L = S.look; if (!L) return ''; if (L.error) return `<p class="j2-err">${H.esc(L.error)}</p>`;
+    return `<div class="cs-look"><small>First look · free · words and layout only; Generate makes the real ${L.shots?.length ? 'video' : 'picture'}</small><div class="cs-look-row">${L.file ? `<img src="${H.esc(srcOf(L.file))}" alt="First look">` : ''}<div>${L.headline ? `<b>${H.esc(L.headline)}</b>` : ''}${L.sub ? `<p>${H.esc(L.sub)}</p>` : ''}${L.shots?.length ? `<ol>${L.shots.map((x) => `<li><span>${x.sec} s</span> ${H.esc(x.see)}${x.vo ? `<em>“${H.esc(x.vo)}”</em>` : ''}</li>`).join('')}</ol>` : ''}${L.flags?.length ? `<p class="j2-st-note">Needs a source before it runs: ${H.esc(L.flags.join(', '))}. Brew’s check will ask for it, or change the words.</p>` : ''}</div></div></div>`; };
+  async function sketch() { if (!S?.spec || S.looking) return; const mine = S; S.looking = true; paint();
+    const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/sketch`, { spec: S.spec }); if (S !== mine) return; S.looking = false;
+    S.look = r?.sketch || { error: r?.error || 'The first look didn’t come out. Try again.' }; paint(); }
   /* the stage's composer: the whole set-up, a line while it is being made, or one line under a made take */
   function html(ch) {
     if (!S || S.chId !== ch.id || S.loading) return `<div class="j2-studio cs"><p class="cs-wait"><brew-load class="spin"></brew-load> Setting it up from the card…</p></div>`;
@@ -156,6 +163,7 @@
     if (g('[data-cs-addslide]')) { S.adding = true; S.gallery = true; paint(); return true; }
     const so = g('[data-cs-slide]'); if (so) { const sl = slidesOf(H.ch?.() || {}) || []; const i = Math.min(S.sel || 0, sl.length - 1); slideOp(so.dataset.csSlide, i, sl[i]?.style); return true; }
     if (g('[data-cs-go]')) { go(false); return true; }
+    if (g('[data-cs-look]')) { sketch(); return true; }
     if (!sp) return true;
     const pop = g('[data-cs-pop]'); if (pop) { S.pop = S.pop === pop.dataset.csPop ? null : pop.dataset.csPop; paint(); return true; }
     if (g('[data-cs-gal]')) { S.gallery = true; paint(); return true; } if (g('[data-cs-galx]')) { S.gallery = false; S.adding = false; paint(); return true; }

@@ -290,5 +290,17 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     return { op: 'studio', by: ctx.by, words: slides[0].words, slides, file: slides[0].file, scene: slides[0].scene, made, missing, missingIds, studio: { set: slides.map((x) => x.style), label: labels, kind: 'image', size: spec.sizes?.[0] || null },
       cost: { usd: +made.reduce((a, m) => a + (m.usd || 0), 0).toFixed(3), credits: 0 } };
   }
-  return { library, defaults, plan, make, makeSet, styleOf, countOf };
+  /* a free first look (3.4): Brew's words for this set-up laid over the real product photo in the brand's colours, rendered here,
+     and for a video its shot list. No picture or video model runs, so nothing is charged; Generate makes the real one */
+  async function sketch(ctx, spec) {
+    if (spec.product?.img) ctx.product = { ...spec.product }; const st = styleOf(spec.style), video = st?.kind === 'video' || spec.kind === 'video';
+    if (spec.direction && !ctx.asked) { ctx.notes = [...(ctx.notes || []), `The direction for this piece (follow it): ${tidy(spec.direction, 600)}`]; ctx.asked = true; }
+    const words = await maker.write(ctx, { recipe: video ? 'reel' : 'image-ad' }, { ask: spec.ask || '' }).catch(() => ({}));
+    const size = sizeOf(spec.sizes?.[0] || (video ? 'story' : 'ig-portrait')), img = ctx.product?.img || null;
+    const scene = maker.composeScene({ size, bgFile: null, cut: img ? { file: img } : null, words, kit: ctx.bbv?.kit || {} });
+    const file = await maker.render(scene).catch((e) => { log.warn?.('[studio] sketch render', e.message); return null; });
+    const flags = claimFlags([words.headline, words.sub, ...(words.shots || []).map((x) => `${x.vo || ''} ${x.words || ''}`)].join(' '), ctx.source || '').map((f) => f.phrase).filter(Boolean);
+    return { file, headline: words.headline || '', sub: words.sub || '', shots: video ? (words.shots || []).slice(0, 8).map((x) => ({ sec: +x.sec || 4, see: tidy(x.see, 200), vo: tidy(x.vo, 200) })) : [], flags, usd: 0 };
+  }
+  return { library, defaults, plan, make, makeSet, sketch, styleOf, countOf };
 }

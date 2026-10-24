@@ -183,6 +183,8 @@ export function mountJam2(d) {
     if (['preview', 'standard', 'premium'].includes(out.quality)) patch.quality = out.quality; if (out.size && SIZES[out.size]) patch.sizes = [out.size]; if (out.cast) patch.cast = tidyLabel(out.cast).slice(0, 80) || String(out.cast).slice(0, 80);
     if (out.direction) patch.addDirection = String(out.direction).replace(/\s+/g, ' ').trim().slice(0, 300);
     note(j, `Studio set-up from chat: ${text.slice(0, 80)}`, whoOf(t).email); return { patch, said: String(out.said || 'Changed the set-up.').slice(0, 200) }; }));
+  /* the free first look: words over the real product photo (and a video's shot list); nothing paid runs, nothing is saved */
+  on('POST', '/api/jam2/jams/:jid/studio/sketch', wrap(async (b, t, p) => { const j = await load(t, p.jid), ctx = await ctxOf(t, j), c = await cleanSpec(t, j, ctx, b.spec); if (c.error) return { error: c.error }; return { sketch: await studio.sketch(ctx, c.spec) }; }));
   on('POST', '/api/jam2/jams/:jid/studio/plan', wrap(async (b, t, p) => { const j = await load(t, p.jid), ctx = await ctxOf(t, j), c = await cleanSpec(t, j, ctx, b.spec); if (c.error) return { plan: { error: c.error } }; return { plan: await studio.plan(ctx, c.spec) }; }));
   /* what a Studio take keeps of its set-up, so Redo makes it again the same way */
   const specOf = (sp) => ({ kind: sp.kind || null, style: sp.style || null, set: sp.set || null, product: sp.product || null, sizes: sp.sizes || null, seconds: sp.seconds || null, ask: sp.ask || '', direction: sp.direction || null, cast: sp.cast || null, ref: sp.ref || null, quality: sp.quality || null, count: 1 });
