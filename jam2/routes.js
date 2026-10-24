@@ -46,7 +46,8 @@ export function mountJam2(d) {
     const prod = productFor({ card, catalog, refs, pick: pick || jam.product || null, lanePhoto: null });
     let memory = ''; try { memory = memoryOf ? memoryOf(t, card?.agent && card.agent !== 'brew' ? card.agent : 'creative') || '' : ''; } catch { memory = ''; }
     const cfg = br?.config || {}, market = br ? askMarket({ country: cfg.country, locale: cfg.locale, market: cfg.market }, cfg) : null; /* who the people in a picture or film look like */
-    return { slug, jam, card, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text), market, refs, storeKind: br?.profile?.storeKind || await kindOfStore(slug) };
+    const ref = card && d.refOf ? d.refOf(t, card) : null; /* the reference the card is about (Recreate, viral shorts) */
+    return { slug, jam, card, ref, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text), market, refs, storeKind: br?.profile?.storeKind || await kindOfStore(slug) };
   }
   /* run slow work in the background; the board says what it is doing and any error in plain words */
   /* a job also leaves a mark on the jam (saved with it): after a restart, a mark with no job running says the job was cut off */
@@ -137,7 +138,7 @@ export function mountJam2(d) {
   /* a spec as the server will run it: known sizes only, whole counts, a sane length, a short note, the product checked */
   const cleanSpec = async (t, j, ctx, spec = {}) => { const sp = { ...spec }; const kind = sp.kind === 'video' ? 'video' : 'image';
     sp.sizes = [Array.isArray(sp.sizes) && Object.hasOwn(SIZES, sp.sizes[0]) ? sp.sizes[0] : kind === 'video' ? 'story' : 'ig-portrait'];
-    sp.count = Math.max(1, Math.min(12, Math.floor(+sp.count || 1))); sp.seconds = kind === 'video' && Number.isFinite(+sp.seconds) ? Math.max(3, Math.min(15, Math.round(+sp.seconds))) : null;
+    sp.count = Math.max(1, Math.min(12, Math.floor(+sp.count || 1))); sp.seconds = kind === 'video' && Number.isFinite(+sp.seconds) ? Math.max(3, Math.min(studio.styleOf(sp.style)?.job === 'viral-short' ? 30 : 15, Math.round(+sp.seconds))) : null; /* a viral short runs to 30 s */
     sp.ask = String(sp.ask || '').replace(/\s+/g, ' ').trim().slice(0, 300); for (const [k, n] of [['direction', 900], ['cast', 160], ['ref', 160]]) sp[k] = String(sp[k] || '').replace(/\s+/g, ' ').trim().slice(0, n) || null; sp.quality = ['preview', 'premium'].includes(sp.quality) ? sp.quality : null; sp.fill = !!sp.fill; if (sp.set != null && !Array.isArray(sp.set)) sp.set = null; if (Array.isArray(sp.set)) sp.set = sp.set.map(String).slice(0, 10);
     if (sp.product?.img) { const own = await ownProduct(t, j, ctx, sp.product); if (!own) return { error: 'Pick a product from your catalog or References.' }; sp.product = own; } else sp.product = null;
     return { spec: sp }; };
@@ -174,7 +175,8 @@ export function mountJam2(d) {
     const room = 12 - j.boards.length; if (pl.count - boards.length > room) return { error: room > 0 ? `This jam has room for ${room + boards.length} more. Lower the count, or start a new jam.` : 'This jam has 12 boards. Start a new jam for more.' };
     while (boards.length < pl.count) { const nb = newBoard(recipeId, { label: tidyLabel(`${st?.label || 'Take'} ${boards.length + 1}`), size: spec.sizes?.[0] || null, conceptRev: j.concept.rev }); j.boards.push(nb); boards.push(nb); }
     await store.put(slugOfT(t), j);
-    boards.forEach((bd, i) => runBg(t, j, bd.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i, jobsOf(t, j, bd)); take.studio.spec = specOf(spec); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }, { resume: true, spec, i, confirmUsd: pl.per }));
+    const run = boards.length > 1 ? uid('run') : null; /* a batch: its takes land together in the v1 jam, one strip to keep or drop each */
+    boards.forEach((bd, i) => runBg(t, j, bd.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i, jobsOf(t, j, bd)); take.studio.spec = specOf(spec); if (run) Object.assign(take, { run, runN: boards.length, runI: i }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }, { resume: true, spec, i, confirmUsd: pl.per }));
     note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); v1State(t, j, pl, boards.length); return { jam: out(j), plan: pl, boards: boards.map((x) => x.id) }; }));
   /* one slide of a set: redo it (priced, one take of its style, the rest kept), drop it (free) or add one (priced). Each lands
      as the set's next take and, from v1, as the jam's next version */

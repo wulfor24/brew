@@ -133,3 +133,9 @@ test('a Studio film lands with its cover as the poster, its clean cut, its .srt 
   assert.equal(ch.pkg.video, 'gen/j2-cap.mp4'); assert.equal(ch.pkg.poster, 'gen/j2-cover.jpg'); assert.deepEqual([ch.pkg.film.raw, ch.pkg.film.srt, ch.pkg.film.gif], ['gen/j2-raw.mp4', 'gen/j2-a.srt', 'gen/j2-l.gif']);
   assert.ok(versionsOf(t, id).at(-1).studio.words.includes('Rated 4.9 stars'), 'what is said is checked like what is written');
 });
+
+test('collection and catalog ads show the catalog’s own photos; a catalog ad needs nothing made', async () => {
+  const S = studio({ catalogOf: () => [{ t: 'Warm Balm', img: 'balm.png', price: '499' }, { t: 'Paw Wax', img: 'wax.png', price: '299' }] }), t = tenant(card({ cta: { label: 'Build the catalog ad' }, make: { format: 'catalog ad' } }));
+  const { ch } = await press(S, t, 'Build the catalog ad'); await settle(ch); ch.pkg.productSet = 'Every in-stock best seller';
+  const pub = S.RMX.pubChange(t, ch); assert.match(ch.action, /catalog_ad$/, ch.action); assert.equal(pub.studio, null, 'nothing to make for a catalog ad'); assert.equal(pub.catalogPics.length, 2); assert.equal(pub.catalogPics[0].img, 'balm.png');
+});

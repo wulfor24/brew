@@ -73,3 +73,24 @@ test('a review count in the picture is checked too: "from 226 reviews" passes on
   assert.match(readyOf({ ...base, source: 'customers rate it 4.5 stars' }).checks.find((c) => c.k === 'rating').t, /226 reviews/);
   assert.equal(readyOf({ ...base, source: 'Judge.me: 4.5 stars from 226 reviews' }).checks.find((c) => c.k === 'rating').ok, true);
 });
+
+test('Recreate needs the video the card is about; a viral or rival video card opens on it; a viral short runs to 30 s', async () => {
+  const { blockOf } = await import('../jam2/studio.js');
+  const ctx = { product: { img: 'p.jpg', name: 'Serum' }, bbv: { comfort: { people: 'ai-cast' } } };
+  assert.match(blockOf(styleOf('recreate-swap'), ctx), /remakes a video/); assert.equal(blockOf(styleOf('recreate-swap'), { ...ctx, ref: { video: 'https://x/v.mp4' } }), null);
+  const d = defaults({ ...ctx, card: { title: 'This hook went viral', research: { kind: 'viral' } }, ref: { video: 'https://x/v.mp4' } }, { kind: 'video', recipe: 'reel' }); assert.equal(d.style, 'recreate-swap');
+  const plain = defaults({ ...ctx, card: { title: 'Make the video' } }, { kind: 'video', recipe: 'reel' }); assert.notEqual(plain.style, 'recreate-swap');
+  assert.equal(styleOf('viral-short').seconds, 30); assert.equal(styleOf('viral-short').job, 'viral-short');
+  const { R, t } = mount(); const o = await R['POST /api/jam2/open']({ cardId: 'c1', cta: 'Make the video', v1ch: 'ch1' }, t, {});
+  const pl = (await R['POST /api/jam2/jams/:jid/studio/plan']({ spec: { kind: 'video', style: 'viral-short', seconds: 30, sizes: ['story'], product: { img: 'balm.png', name: 'Balm' } } }, t, { jid: o.jam.id })).plan;
+  assert.ok(!pl.error, pl.error); assert.match(pl.line, /30 s/, 'the 30 s is kept, not cut to 15');
+});
+
+test('a batch (How many above 1) lands its takes as one run the v1 strip can show', { timeout: 120e3 }, async () => {
+  const { R, t, landed } = mount(); const seen = []; 
+  const o = await R['POST /api/jam2/open']({ cardId: 'c1', cta: 'Make the ad', v1ch: 'ch1' }, t, {}); const jid = o.jam.id, bid = o.jam.boards[0].id;
+  const spec = { kind: 'image', style: 'in-use', sizes: ['ig-portrait'], count: 2, product: { img: 'balm.png', name: 'Balm' } };
+  const pl = (await R['POST /api/jam2/jams/:jid/studio/plan']({ spec }, t, { jid })).plan; const mk = await R['POST /api/jam2/jams/:jid/studio/make']({ spec, confirmUsd: pl.usd, bid }, t, { jid }); assert.equal(mk.boards.length, 2);
+  for (const b of mk.boards) await until(R, t, jid, b);
+  const g = await R['GET /api/jam2/jams/:jid']({}, t, { jid }); const runs = g.jam.boards.filter((b) => mk.boards.includes(b.id)).map((b) => b.takes.at(-1)?.run); assert.ok(runs[0] && runs[0] === runs[1], 'one run for the batch');
+});

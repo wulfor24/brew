@@ -64,7 +64,8 @@ export function blockOf(st, ctx = {}) {
   if (p === 'person' && people === 'hands') return `${st.label} shows a person, and your Brand Book says hands only. Pick a hands or product style, or change it in Brand Book → People.`;
   if (p === 'hands' && people === 'none') return `${st.label} shows hands, and your Brand Book says no people on camera. Pick a style without people.`;
   if (p === 'person' && people === 'consented') return `${st.label} would show an AI person, and your Brand Book says only your own people. Pick a hands or product style, or allow AI people in Brand Book → People.`;
-  if ((st.job === 'packshot' || st.designed || st.preset || st.job === 'ugc-video') && !ctx.product?.img) return `${st.label} shows your product: pick a product with a photo, or a style that shows a place or a moment.`;
+  if (st.needsRef === 'video' && !ctx.ref?.video) return `${st.label} remakes a video with your product in it: open it from a viral video or a rival’s video ad card (this card has no video to remake).`;
+  if ((st.job === 'packshot' || st.designed || st.preset || st.job === 'ugc-video' || st.job === 'video-restyle' || st.job === 'viral-short') && !ctx.product?.img) return `${st.label} shows your product: pick a product with a photo, or a style that shows a place or a moment.`;
   if (REVIEWISH(st) && !(ctx.bbv?.reviews || []).length) return `${st.label} needs a real customer review, and there are none in your Brand Book yet.`;
   if (st.says && /review|testimonial/i.test(`${st.id} ${st.look}`) && ctx.bbv?.comfort?.testimonials === 'no') return `${st.label} is a testimonial, and your Brand Book says no testimonials.`;
   return null; }
@@ -85,6 +86,7 @@ export function defaults(ctx, board = null) {
       sizes: R.sizes || [board?.size && SIZES[board.size] ? board.size : 'ig-portrait'], seconds: null, count: set.length, blocked: blockedFor(ctx) }; }
   let picks;
   if (R.picks) picks = R.picks;
+  else if (kind === 'video' && ctx.ref?.video) picks = ['recreate-swap', 'viral-short', 'ugc-review']; /* a viral or rival video: remake it with our product, or a short in its pattern */
   else if (kind === 'video') picks = /\b(reviews?|testimonials?|ugc|creators?|unbox\w*|haul)\b(?! ready)/i.test(text.replace(/ready to review/i, '')) ? ['ugc-review', 'ugc-unbox', 'hypermotion'] : /\bhow to\b|tutorial|routine|\bguide\b/i.test(text) ? ['ugc-tutorial', 'in-life', 'showcase'] : /tiktok|trend|viral|hook/i.test(text) ? ['tt-hook', 'tt-pov', 'hypermotion'] : ['in-life', 'ugc-home', 'showcase'];
   else {
     const grp = /\bvs\b|versus|compare|switch|rival|instead of|than /i.test(text) ? 'Compare & Switch' : /\b(reviews|customer review|stars?|rated|loved|testimonials?)\b/i.test(text) ? 'Social Proof' : /problem|fix|tired of|cold|pain|struggle/i.test(text) ? 'Problem Solved' : /spec|ingredient|feature|why it works|benefit/i.test(text) ? 'Proof & Specs' : 'Hero Spotlight';
@@ -127,6 +129,8 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     if (st.job === 'product-shot') return (shot.usd ?? 0.14) * 1.5 * (ctx.tier === 'premium' ? 2 : ctx.tier === 'preview' ? 0.3 : 1); /* Flare 4K ≈ 2× 2K; 1K preview ≈ 0.3× */ /* one take, a retry about half the time */
     if (st.job === 'type-poster' || st.job === 'brand-graphic') { const o = hf.pick(st.job); const e = await hf.estimate(o.id, { ...o.input, prompt: 'a poster with the brand offer in large type for a product ad', aspect_ratio: hf.nearestRatio(o.id, size.ratio) }); return (e.usd ?? 0.1) * 1.5; /* a retry about half the time */ }
     if (st.job === 'product-motion') { const o = hf.pick('product-motion'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', image_url: 'https://brew.joinsquareup.com/x.jpg', duration: seconds || 5 }); return (shot.usd ?? 0.14) * 1.5 + (e.usd ?? 0.11 * (seconds || 5)); }
+    if (st.job === 'video-restyle') { const o = hf.pick('video-restyle'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', video_url: 'https://brew.joinsquareup.com/x.mp4', image_urls: ['https://brew.joinsquareup.com/x.jpg'] }); return e.usd ?? 0.25 * (seconds || 10); }
+    if (st.job === 'viral-short') { const o = hf.pick('viral-short', ctx.tier || 'default'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', image_urls: ['https://brew.joinsquareup.com/x.jpg'], duration: seconds || 30 }); return e.usd ?? 0.32 * (seconds || 30); }
     if (st.job === 'ugc-video') { const o = hf.pick('ugc-video'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', image_urls: ['https://brew.joinsquareup.com/x.jpg'], duration: seconds || 10 }); return e.usd ?? 0.3 * (seconds || 10); }
     return 0.14;
   }
@@ -220,6 +224,23 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       const e = await hf.estimate(o.id, input), out = await runHF('motion', o.id, input, { maxMs: 20 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.motion', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.55 });
       Object.assign(take, { file, poster: shot.shot.file, shot: shot.shot });
       await finishFilm(take, { words, loop: true }).catch((e) => log.warn?.('[studio] finish', e.message)); /* silent: a cover and a GIF */
+    } else if (st.job === 'video-restyle') { /* Recreate (Ad Multiplier): the reference video as it is, our product swapped in (Genjutsu object swap) */
+      if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); await ensureProfile(ctx);
+      const photos = cr.photosOf(ctx, ctx.profile).slice(0, 4).map((u) => engines.pub(u)), o = hf.pick('video-restyle'), ref = engines.pub(ctx.ref.video);
+      const input = { ...o.input, prompt: tidy([st.look, ctx.product?.name ? `Our product: ${ctx.product.name}. ${cr.productLine(ctx.profile)}` : '', spec.direction || ''].filter(Boolean).join(' '), 2400), video_url: ref, image_urls: photos };
+      const e = await hf.estimate(o.id, input), out = await runHF('swap', o.id, input, { maxMs: 25 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.swap', provider: 'higgsfield', model: o.id, usd: e.usd ?? 2.5 });
+      Object.assign(take, { file, recreated: { from: ctx.ref.url || null, by: ctx.ref.author || ctx.ref.brand || null } });
+      await finishFilm(take, { words, spoken: true }).catch((e2) => log.warn?.('[studio] finish', e2.message)); /* captions from what is said in it, a cover */
+    } else if (st.job === 'viral-short') { /* a viral-style short: several shots, up to 30 s, in the pattern of the reference when there is one */
+      if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); await ensureProfile(ctx);
+      const photos = cr.photosOf(ctx, ctx.profile).map((u) => engines.pub(u)), o = hf.pick('viral-short', ctx.tier || 'default'), secs = Math.max(8, Math.min(30, +spec.seconds || st.seconds || 30));
+      const beats = (ctx.ref?.beats || []).slice(0, 6).map((b, k) => `${k + 1}) ${tidy(b.shot || '', 120)}${b.text ? ` (they say or show: ${tidy(b.text, 80)})` : ''}`).join(' '), line = tidy([words.headline, words.sub].filter(Boolean).join(' '), 260);
+      const d = await cr.direct(ctx, board, words, size, { ...st, people: 'person' }, { film: true }).catch(() => null);
+      const input = { ...o.input, prompt: tidy([st.look, beats ? `Follow this shot pattern from a video that went viral, with our product and our people: ${beats}` : 'Shots: 1) the hook, a problem in one second; 2) the product in use; 3) the result; 4) the reason to buy; 5) an ending that loops.', d?.moment ? `Who and where: ${d.moment}` : '', ctx.product?.name ? `The product (exactly as in the reference photos): ${ctx.product.name}. ${cr.productLine(ctx.profile)}` : '', line ? `What is said: "${line}"` : '', spec.direction || '', 'Vertical phone video, natural light, no on-screen text.'].filter(Boolean).join(' '), 4000),
+        image_urls: photos, duration: secs, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
+      const e = await hf.estimate(o.id, input), out = await runHF('short', o.id, input, { maxMs: 30 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.short', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.32 * secs });
+      Object.assign(take, { file, pattern: beats ? (ctx.ref?.url || 'the reference') : null });
+      await finishFilm(take, { words, line, spoken: true }).catch((e2) => log.warn?.('[studio] finish', e2.message));
     } else { /* UGC / TikTok: a person with the real product, talking, Seedance with the product photos as references */
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); await ensureProfile(ctx);
       const photos = cr.photosOf(ctx, ctx.profile).map((u) => engines.pub(u)), o = hf.pick('ugc-video', ctx.tier || 'default'), line = tidy([words.headline, words.sub].filter(Boolean).join(' '), 220);

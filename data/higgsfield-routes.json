@@ -29,6 +29,7 @@
       "default": { "id": "bytedance/seedance-2.5/video-extend", "input": { "resolution": "720p" }, "why": "continues the same clip" } },
     "video-edit": { "label": "Change something in a clip",
       "default": { "id": "kling-video/o3/video-edit", "input": {}, "why": "edits a clip by instruction, keeps its motion" } },
+    "viral-short": {"label": "A viral-style short, many shots, up to 30 s, with sound", "default": {"id": "bytedance/seedance-2.5/reference-to-video", "input": {"resolution": "720p", "generate_audio": true}, "why": "Seedance 2.5 holds the product across shots for up to 30 s, sound included"}},
     "video-restyle": { "label": "Restyle or swap an object in a clip",
       "default": { "id": "higgsfield/genjutsu/object-swap/v1.0", "input": {}, "why": "Genjutsu swaps an object and keeps the motion" } },
     "motion-copy": { "label": "Copy a viral clip's motion onto our picture",

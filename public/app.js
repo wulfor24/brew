@@ -3683,11 +3683,17 @@
         ${swipe('am-cards', rows.slice(0, lg ? 10 : 3).map((r, i) => `<figure class="am-card"><div class="am-cm">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : `<span class="am-cm-e">${ic('pic', 's16')}</span>`}${i === 0 ? pending : ''}</div><figcaption><b>${esc(r.headline || '')}</b>${r.text ? `<span>${esc(r.text)}</span>` : ''}<em>${esc(p.cta || 'Shop now')}</em></figcaption></figure>`).join(''))}
         <small class="am-count">${rows.length} cards · swipe</small>${morePics}</div>`;
     if (ch.family === 'meta_ad' && (p.products?.length || p.productSet)) {
-      const img = imgOf(ch), coll = !!p.products?.length;
+      const img = imgOf(ch), coll = !!p.products?.length, pics = ch.catalogPics || [];
+      /* a catalog ad is the catalog's own photos, each with the frame line, as Meta shows it; no picture is made for it */
+      if (!coll && pics.length) return `<div class="as as-meta as-coll is-cat${lg ? ' lg' : ''}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${B.brand.name}</b><small>Sponsored</small></div></div>
+        <p class="am-text">${esc(p.primaryText || '')}</p>
+        <div class="am-cat">${pics.slice(0, 4).map((x) => `<figure><span><img src="${esc(x.img)}" alt="">${p.frame ? `<em class="am-frame" style="font-style:normal">${esc(p.frame)}</em>` : ''}</span><figcaption><b>${esc(x.name)}</b>${x.price != null ? `<small>${esc(/^\d/.test(String(x.price)) ? `${B.sym || ''}${x.price}` : x.price)}</small>` : ''}</figcaption></figure>`).join('')}</div>
+        <p class="am-set">${ic('grid', 's14')}<span><b>Product set:</b> ${esc(p.productSet || 'your catalog')} · each person sees the products they are most likely to buy</span></p>
+        <div class="am-foot"><div><small>${B.brand.host}</small>${hlHtml(ch, p, lg)}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div></div>`;
       return `<div class="as as-meta as-coll${lg ? ' lg' : ''}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${B.brand.name}</b><small>Sponsored</small></div></div>
         <p class="am-text">${esc(p.primaryText || '')}</p>
         <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${coll ? '16/9' : '1/1'}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : `<div class="am-empty">${ic('sparkles', 's16')}<span>${coll ? 'The cover is made in the studio' : 'Each person sees products from the set'}</span></div>`}${!coll && p.frame ? `<span class="am-frame">${esc(p.frame)}</span>` : ''}${pending}${!img && lg && !ch.imagePending ? `<div class="am-make"><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the ${coll ? 'cover' : 'sample photo'}</button></div>` : ''}</div>
-        ${coll ? `<div class="am-grid">${p.products.slice(0, 4).map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : `<p class="am-set">${ic('grid', 's14')}<span><b>Product set:</b> ${esc(p.productSet)}</span></p>`}
+        ${coll ? `<div class="am-grid">${p.products.slice(0, 4).map((x) => { const m = pics.find((y) => y.name && (y.name === x || String(y.name).toLowerCase().includes(String(x).toLowerCase().slice(0, 18)))); return m ? `<span class="has-img"><img src="${esc(m.img)}" alt=""><b>${esc(x)}</b></span>` : `<span>${esc(x)}</span>`; }).join('')}</div>` : `<p class="am-set">${ic('grid', 's14')}<span><b>Product set:</b> ${esc(p.productSet)}</span></p>`}
         <div class="am-foot"><div><small>${B.brand.host}</small>${hlHtml(ch, p, lg)}${coll && p.instantPage ? `<span>Opens: ${esc(p.instantPage)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div></div>`;
     }
     if (ch.family === 'social') {
@@ -4460,7 +4466,7 @@
     const pv = !made && !viewing && st?.productImg && !/^gen\//.test(pkgCh.pkg?.image || '') ? { ...pkgCh, pkg: { ...pkgCh.pkg, image: st.productImg } } : pkgCh;
     return `<div class="st-asset cs-stage">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${assetHtml(pv, 'lg')}</div>
       ${made && !viewing ? publishPanel(ch, pkgCh) : ''}${cs ? cs.html(ch) : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
-  window.CreativeStage?.init({ tapi, esc, toast, ic, ch: () => RX.ch,
+  window.CreativeStage?.init({ tapi, esc, toast, ic, ch: () => RX.ch, viewing: () => RX.viewing,
     paint: () => { if (view === 'remix' && RX.ch?.studio) paintStudio(); },
     remount: () => { if (view === 'remix' && RX.ch) paintStudio(); },
     toFeed: () => leaveRemix(),

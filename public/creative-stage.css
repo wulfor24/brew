@@ -115,3 +115,17 @@
 .pp-film figure img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:8px;background:var(--surface-2,#eee)}
 .pp-film figcaption{font-size:11px;color:var(--fg-3,#777);line-height:1.3}.pp-film figcaption b{display:block;color:var(--fg,#111)}
 .pp-film ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
+/* a batch: every take made in one go, one strip; the one on the stage is outlined */
+.cs-batch{display:flex;flex-direction:column;gap:6px;align-items:center;width:min(760px,100%);margin:14px auto 0}
+.cs-batch small{font-size:12px;color:var(--fg-3,#777)}
+.cs-strip button.is-drop{opacity:.4}
+/* collection and catalog ads: the catalog's own photos (real, free) */
+.as-coll .am-grid span.has-img{display:flex;flex-direction:column;gap:4px;padding:0;overflow:hidden}
+.as-coll .am-grid span.has-img img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.as-coll .am-grid span.has-img b{font-size:11px;font-weight:600;padding:0 6px 6px;line-height:1.25}
+.as-coll .am-cat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;background:var(--line,#e6e6e6)}
+.as-coll .am-cat figure{margin:0;background:#fff}
+.as-coll .am-cat figure span{position:relative;display:block}
+.as-coll .am-cat img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.as-coll .am-cat figcaption{display:flex;justify-content:space-between;gap:6px;padding:6px 8px;font-size:12px;color:#111}
+.as-coll .am-cat figcaption small{color:#555}
