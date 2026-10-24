@@ -59,3 +59,10 @@ test('a retailer whose category changes gets the moves that still call it the ma
   assert.deepEqual(stillMaker(moves, 'Apparel', 'apparel'), [], 'no change, nothing flagged');
   assert.deepEqual(stillMaker(moves, '', 'Medical supplies'), []);
 });
+
+test('a move rewritten after its flag never stays flagged, even when a restart cut its cards off', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('../build.js', import.meta.url), 'utf8');
+  const heal = src.slice(src.indexOf('async function healCards(slug)'), src.indexOf('async function resumeRewrite(slug)'));
+  assert.match(heal, /already rewritten after their flag; flag cleared/);
+  assert.match(heal, /delete u\.cardsDue\[n\]; const x = u\.stale\?\.\[n\]; if \(x\?\.at && Date\.parse\(move\?\.meta\?\.rewrittenAt/);
+});

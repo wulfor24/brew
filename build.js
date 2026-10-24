@@ -1260,13 +1260,18 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* a rewritten move whose cards a restart cut off (updates.json cardsDue): its cards are written now, from the saved move,
      so the feed never keeps the old move's cards under the new move */
   async function healCards(slug) {
+    /* a move rewritten after it was flagged is done, whatever cut off its run: the flag goes, or the card keeps "Being updated"
+       and the next rewrite pays for it again (Scrubroom 20 and 33, cut off by deploys while their cards were written, 25 Oct) */
+    if (!blocked(slug) && !st(slug).running) { const u0 = await upd(slug), pub0 = await packs.getJSON(slug, 'moves.json', {}), priv0 = await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({}));
+      const doneN = Object.entries(u0.stale || {}).filter(([n, x]) => !(u0.cardsDue || {})[n] && x?.at && Math.max(Date.parse(pub0?.[n]?.meta?.rewrittenAt || 0) || 0, Date.parse(priv0?.[n]?.meta?.rewrittenAt || 0) || 0) >= x.at).map(([n]) => n);
+      if (doneN.length) { await editUpd(slug, (u) => { for (const n of doneN) delete u.stale[n]; }); log.log(`[rewrite] ${slug}: ${doneN.join(', ')} already rewritten after their flag; flag cleared`); } }
     const due = Object.entries((await upd(slug)).cardsDue || {}); if (!due.length || blocked(slug)) return;
     const profile0 = normalizeProfile(await packs.getJSON(slug, 'profile.json'));
     for (const [k, w] of due) { const n = +k, priv = w === 'p';
       const move = (await packs.getJSON(slug, priv ? 'private/moves.json' : 'moves.json', {}))?.[n];
       const profile = priv ? withLive(profile0, await packs.getJSON(slug, 'private/profile-live.json', null)) : profile0;
       if (move) { log.log(`[rewrite] ${slug}: writing move ${n}'s cards, cut off by a restart`); await cardsFor(slug, move, profile, { replace: true, priv }).catch((e) => log.warn('[rewrite] heal cards', n, e.message)); }
-      await editUpd(slug, (u) => { if (u.cardsDue) delete u.cardsDue[n]; }); }
+      await editUpd(slug, (u) => { if (u.cardsDue) delete u.cardsDue[n]; const x = u.stale?.[n]; if (x?.at && Date.parse(move?.meta?.rewrittenAt || 0) >= x.at) delete u.stale[n]; }); } /* its rewrite is done: the flag goes too */
   }
   async function resumeRewrite(slug) {
     const u = await upd(slug), r = u.rewriting; if (!r || st(slug).running || blocked(slug)) return;
