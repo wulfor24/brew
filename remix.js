@@ -2241,11 +2241,12 @@ export function createRemix(o) {
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
   const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; ch.studioState = { ...st, at: now(t) }; const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };
   /* the product a jam's copy is about (the card's, or the one its words name now), with its catalog photo: Studio shows the same one */
-  /* the product Studio sets up: the one the jam's words name, else the one its first draft's pictures show (a stories jam showed a
-     shampoo on the stage and set up a styling stick: 25 Oct), before the card's words and the brand's first in-stock product */
+  /* the product Studio sets up: the one the jam's words name, else the one the card names, else the one its first draft's pictures
+     show (never a stale draft over the card's own product), and only then the brand's first in-stock product */
   const productOfCh = (t, chId) => { const ch = C(t, chId); if (!ch) return null; const c = t.cards.get(ch.cardId) || {};
-    const dp = ch.pkg?.draft?.product || (ch.v0 === 'draft' ? o.planOf?.(t, c)?.draft?.product : null) || '';
-    const P = productFor(c, FACTS, [pkgWords(ch), dp].filter(Boolean).join('. '));
+    const dp = ch.pkg?.draft?.product || (ch.v0 === 'draft' ? o.planOf?.(t, c)?.draft?.product : null) || '', words = pkgWords(ch), cat0 = catalogOf(t) || [];
+    const named = (() => { try { return (words && matchProduct(words, cat0, { brand: BN() })) || cardProduct(c, cat0, { brand: o.SEED?.brand?.name || '' }); } catch { return null; } })();
+    const P = productFor(c, FACTS, named || !dp ? words : dp);
     const m = (catalogOf(t) || []).find((x) => x?.t && (x.t === P?.name || x.t === P?.full)); const img = m?.img || P?.img || null; return img ? { img, name: m?.t || P.name, from: 'jam' } : null; };
   /* a Work item whose jam was opened as the wrong deliverable before its card was read right (an exclusion card opened "Scale the
      budget": 25 Oct): while nobody has touched that jam (no ask, no edit, no make, nothing sent), it lets go of it, and the card's
