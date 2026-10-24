@@ -51,3 +51,14 @@ test('a video jam can open the same card as a film brief', async () => {
   const app = (await import('node:fs')).readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
   assert.match(app, /data-film-alt/); assert.match(app, /as: 'film', fast: true/);
 });
+
+test('a film brief with no AI draft starts founder-first, with short lines', async () => {
+  const { runIn } = await import('../brand-ctx.js'); const { mockPkg } = await import('../studio.js'); const { catalogOf } = await import('../product-match.js');
+  const long = 'Powered by 3% Redensyl to stimulate dormant follicle stem cells, 3% Procapil to help limit DHT impact at the root, and 5% Kopexil to support stronger anchoring and longer hair';
+  const profile = { catalog: { products: [{ title: 'Hair Growth Serum', priceLabel: '₹943', url: 'https://hair.test/products/serum', img: 'https://cdn.hair.test/1.jpg', claims: [long] }] } };
+  const BR = { slug: 'hair.test', name: 'Hair Co', host: 'hair.test', sym: '₹', catalog: catalogOf(profile), config: { laneProducts: { serum: { name: 'Hair Growth Serum', short: 'the serum', price: '₹943', claim: long, hook: 'Hair that stays', page: 'https://hair.test/', photo: 'The serum' } } }, seed: { brand: { name: 'Hair Co', host: 'hair.test' } } };
+  const pkg = runIn(BR, () => mockPkg('brief', 'creative.film_brief', { title: 'Put a review in our ads', lane: 'serum' }, 0, '', {}));
+  const b = boardOf(film(pkg));
+  assert.equal(b.shots[0].who, 'person'); assert.equal(b.talent, 'The founder');
+  for (const s of b.shots) assert.ok(s.line.length <= 80, `short line: ${s.line}`);
+});

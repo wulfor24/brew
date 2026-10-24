@@ -613,6 +613,7 @@ export function createRemix(o) {
     const opts = (j.options || []).slice(0, n).map((x, i) => { const action = ok.has(x.action) ? x.action : r.actionKeys[0]; const src = mv.find((m) => x.from && (x.from.includes(m.h) || moveTag(m) === x.from)); return { action, angle: clean(x.angle || 'Version'), why: clean(x.why || ''), next: Array.isArray(x.next) ? x.next.map((y) => clean(String(y)).replace(/[.]$/, '')).filter((y) => y && y.length <= 48) : null, from: src ? moveTag(src) : null, pkg: fromKV(familyOf(action), action, x.pkg), fromCard: !like && i === 0 && !!r.primary && action === r.primary }; })
       .filter((x) => !BANNED.test(publicText(familyOf(x.action), x.action, x.pkg).join(' ')))
       .map((x, i) => (c.shift?.from && c.shift?.to && /(^|\.)shift_budget$/.test(x.action) ? { ...x, pkg: mockPkg(familyOf(x.action), x.action, c, i, x.angle, FACTS) } : x)); /* a budget move from the account: the card's two campaigns and amount, never the writer's (Arata 23 Oct: ₹2,084 on the card, ₹578 in the draft) */
+    if (!opts.length) log.warn('[remix writer] nothing usable', r.actionKeys.join(','), `${(j.options || []).length} came back`, (j.options || []).map((x) => `${x.action}: ${String(BANNED.exec(publicText(familyOf(ok.has(x.action) ? x.action : r.actionKeys[0]), x.action, fromKV(familyOf(ok.has(x.action) ? x.action : r.actionKeys[0]), x.action, x.pkg)).join(' '))?.[0] || 'kept')}`).join('; '), j.error || '');
     return { line: clean(j.line || ''), opts };
   };
   // package → the card-sized "after", the money, the checks
@@ -702,7 +703,7 @@ export function createRemix(o) {
      as its picture until new words replace it. Jams opened before this heal while they still hold only their first version */
   const TEXT_DRAFT = /^(email|whatsapp|page|text|catalog)$/;
   const seedV0 = (t, c, ch) => {
-    if (!ch || !c || ch.batchKey || ch.v0 === 'draft') return false;
+    if (!ch || !c || ch.batchKey || ch.v0 === 'draft' || isFilm(ch)) return false; /* a film brief is the founder's storyboard: the card's own picture or video draft is not it */
     /* the card's background draft may not be ready when the jam opens: 'none' is looked at again on every read while the jam
        still holds only its first version and nobody has said anything (it used to stay 'none' for good) */
     if (ch.v0 === 'none' && (versionsOf(t, ch.id).length > 1 || (ch.thread || []).length || ch.imagePending)) return false;
