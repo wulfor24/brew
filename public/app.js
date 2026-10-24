@@ -3610,6 +3610,7 @@
     if (/(^|\.)imgix\.net$/.test(x.hostname) || x.searchParams.has('w')) { x.searchParams.set('w', w); return x.toString(); }
     return u; } catch { return u; } };
   const pmMedia = (ch, p, lg, { ratio = '', video = false } = {}) => {
+    if (/^\s*(?:none|n\/a|no (?:photo|image|picture|media)|text(?: only| reply)?)\b/i.test(p.media || '')) p = { ...p, media: '' }; /* "None (Text reply)" is no picture, never an empty "Photo to add" box */
     const made = imgOf(ch); if (!p.media && !made && !(p.photos || []).length) return lg && view === 'remix' && !/\.(?:reddit_post|quora_answer|comment_reply)$/.test(ch.action || '') /* a thread reply or an answer is words: no empty photo box on it */ ? `<div class="pm-media pm-add"><button class="btn btn-ghost sm" data-ph-open>${ic('pic', 's14')}Add a photo</button></div>` : '';
     if (video && p.video) return `<div class="pm-media sv-media" style="aspect-ratio:9/16"><video class="sv-vid" src="${esc(p.video)}"${p.poster ? ` poster="${esc(p.poster)}"` : ''} muted autoplay loop playsinline preload="metadata" data-sv-play></video>
       <button type="button" class="sv-snd" data-sv-sound aria-label="Turn the sound on" title="Sound">${ic('volOff', 's16')}</button><span class="sv-pbar" aria-hidden="true"><i></i></span></div>`;
@@ -4201,7 +4202,7 @@
      chip (the photo, Post to…, Projected impact, Make it a reel/carousel, more asks) waits behind More, once per jam */
   const v1Chips = (ch) => { const dis = RX.sending ? ' disabled' : '';
     const asks = fitSuggest(ch.suggest).slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip${RX.sending && RX.from === x ? ' is-wait' : ''}" data-say="${esc(x)}"${dis}>${RX.sending && RX.from === x ? '<brew-load class="spin"></brew-load>' : ''}${esc(x)}</button>`);
-    const rest = [...(PH_FAM.includes(ch.family) && !phTools(ch, ch, null) ? [`<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>`] : []),
+    const rest = [...(PH_FAM.includes(ch.family) && !wordsOnly(ch) && !phTools(ch, ch, null) ? [`<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>`] : []),
       ...j2Acts(ch, (attr, icon, label, cls = '') => `<button type="button" class="chip j1-chip${cls}" ${attr}${dis}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`)];
     const all = [...asks, ...rest], first = all.slice(0, 3), more = all.slice(3), open = RX.moreChips === ch.id;
     return `<div class="it-sugg${open ? ' is-open' : ''}">${first.join('')}${more.length ? (open ? more.join('') : `<button type="button" class="chip it-more" data-chips-more aria-expanded="false">${ic('more', 's14')}More</button>`) : ''}</div>`; };
@@ -4350,7 +4351,9 @@
   const extOf = (type, url) => ({ 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'video/mp4': 'mp4', 'image/jpeg': 'jpg' })[type] || (String(url).match(/\.(jpe?g|png|webp|gif|mp4)(\?|$)/i) || [])[1] || 'jpg';
   /* change the photo: the brand's own product photos, an upload, or a new one made with AI from what you describe */
   const PH_FAM = ['meta_ad', 'social', 'post'];
+  const wordsOnly = (ch) => /\.(?:quora_answer|comment_reply)$/.test(ch?.action || '') || (/\.reddit_post$/.test(ch?.action || '') && /^reply/i.test(ch?.actionLabel || '')) || ch?.target?.object === 'Review reply';
   const phTools = (ch, pkgCh, viewing) => { const p = pkgCh.pkg || {}; if (!PH_FAM.includes(ch.family) || viewing || ch.state === 'jam') return '';
+    if (wordsOnly(ch)) return ''; /* a reply or an answer is words: no photo tool under it */
     if (ch.family === 'post' && !p.media && !p.image) return '';
     const fin = ''; /* Make the final is the ship bar's main button now (stepBar); the full sheet is under ··· */
     return `<div class="st-atools"><button class="btn btn-ghost sm" data-ph-open ${ch.imagePending ? 'disabled' : ''}>${ic('pic', 's14')}${ch.imagePending ? (ch.finalPending ? 'Making the final…' : 'Making a new photo…') : p.image || (p.photos || []).length ? 'Change photo' : 'Choose a photo'}</button>${fin}${!ch.imagePending && ch.imageError ? `<small class="st-aerr">${ic('info', 's14')}${esc(/stopped|budget|offline|sloosh|credit|final|quote|space/i.test(ch.imageError) ? ch.imageError : 'The new photo didn’t come through. Make it again.')}</small>` : ''}</div>`; };
