@@ -35,6 +35,8 @@ test('a read without the account (a guest, no Meta) never rewrites the names; it
   const oc = opsCheck({}, ch); assert.equal(oc.soft, true); assert.match(oc.k, /couldn’t check these campaign names/);
   const old = { family: 'meta_ops', action: 'performance.scale_budget', pkg: { items: [{ name: NO_CAMP, was: 'Founder video', pick: true, now: 'x', next: 'y' }] } };
   healOps({}, old, card); assert.equal(old.pkg.items[0].name, 'Founder video', 'the first cut’s “connect Meta” rows get their names back'); assert.equal(old.pkg.items[0].pick, undefined);
+  const gen = { family: 'meta_ops', action: 'performance.exclude_audience', pkg: { items: [{ name: 'Meta', now: 'Past buyers can see it', next: 'Past buyers excluded' }] } };
+  healOps({}, gen, card); assert.equal(gen.pkg.items[0].name, 'The campaigns your team picks', 'a platform is not a campaign name');
   const pickRow = { family: 'meta_ops', action: 'performance.scale_budget', pkg: { items: [{ name: 'Pick the campaign', pick: true, now: 'x', next: 'y' }] } };
   assert.notEqual(budgetMatch(card, pickRow, LEDGER)?.ok, false, 'a row waiting for its name is not called a made-up campaign');
 });

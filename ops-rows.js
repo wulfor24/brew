@@ -8,6 +8,8 @@ const CAMP_ACTS = /\.(?:scale_budget|shift_budget|pause_losers|stop_rule|exclude
 const STOP = new Set(['the', 'and', 'for', 'ads', 'ad', 'set', 'sets', 'campaign', 'campaigns', 'meta', 'tof', 'mof', 'bof', 'conv', 'conversion', 'conversions', 'sales', 'purchase', 'purchases', 'new', 'all', 'with', 'from', 'this', 'that', 'our', 'your', 'brand', 'customers', 'customer', 'existing', 'past', 'buyers']);
 const toks = (s) => String(s || '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !STOP.has(w) && !/^\d+$/.test(w));
 export const NO_CAMP = 'Your campaign (connect Meta to name it)';
+/* a row named after a platform or a kind of campaign ("Meta", "All campaigns", "Prospecting") names no campaign: the team picks it */
+const NO_NAME = /^(?:meta(?: ads)?|facebook|instagram|all(?: campaigns| ad sets)?|campaigns?|ad sets?|prospecting|retargeting|creator campaigns?|your campaigns?)$/i, TEAM_PICKS = 'The campaigns your team picks';
 
 /* the connected account's campaigns this week: name, spend a day and the rest of the ledger line */
 export const ledgerCamps = (t) => { const live = t?.member ? t.liveLedger?.['meta.campaigns.7d'] : null; if (!live || live.stale) return null;
@@ -31,6 +33,7 @@ export const healOps = (t, ch, card = {}) => { if (ch?.family !== 'meta_ops' || 
     /* the writer named one product on two rows: one campaign, never the same thing twice */
     const key = String(row.was || row.name || '').trim().toLowerCase(); if (camps && key && !known(camps, row.name) && orig.has(key)) { changed = true; continue; } orig.add(key);
     for (const k of ['now', 'next']) { const v = setting(row[k]); if (v !== row[k]) { row[k] = v; changed = true; } }
+    if (!camps && NO_NAME.test(String(row.name || '').trim())) { row.was = row.was || row.name; row.name = TEAM_PICKS; changed = true; }
     if (act === 'exclude_audience') { if (!/buyer|purchas|customer|exclu/i.test(row.now || '')) { row.now = 'Past buyers can see it'; changed = true; } if (!/exclu/i.test(row.next || '')) { row.next = 'Past buyers excluded'; changed = true; } }
     if (camps) { if (known(camps, row.name)) { used.add(camps.find((k) => known([k], row.name)).name); out.push(row); continue; }
       const pick = rank(camps, `${text} ${row.name}`, used)[0];
