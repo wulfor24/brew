@@ -67,16 +67,17 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
     }
     return got;
   };
-  const video = async () => { if (p.video) { const v = await addFile(p.video, 'media/video'); if (v) where.push(`media/${path.basename(v.name)}: the video${p.film?.raw ? ', captions burned in for muted feeds' : ''}`); else todo.push('The video: download it from the studio'); }
+  const video = async () => { if (p.video) { const v = await addFile(p.video, 'media/video'); if (v) where.push(`media/${path.basename(v.name)}: the video${p.film?.raw ? ', captions burned in for muted feeds' : ''}`); else todo.push('The video: download it from the studio'); if (!p.film?.cover && (p.poster || p.image)) { const c = await addFile(p.poster || p.image, 'media/cover'); if (c) where.push(`${c.name}: the cover (set it as the video’s cover)`); } }
     /* a Studio film's ready-to-post parts: the clean cut, its captions file, the cover, a looping GIF */
     const fm = p.film || {}; for (const [rel, as, says] of [[fm.raw, 'media/video-no-captions', 'the same film without captions (for a platform that adds its own from captions.srt)'], [fm.cover, 'media/cover', 'the cover (set it as the reel’s cover)'], [fm.gif, 'media/loop', 'a looping GIF of it (email, WhatsApp, banners)']]) { if (!rel) continue; const x = await addFile(rel, as); if (x) where.push(`${x.name}: ${says}`); }
     if (fm.srt) { const sf = await read(fm.srt); if (sf) { put('captions.srt', fs.readFileSync(sf)); where.push(`captions.srt: the words said, timed${fm.captions?.approx ? ' (by estimate: check them once)' : ''}; upload it as the video’s captions`); } } };
 
   switch (family) {
     case 'meta_ad': case 'social': {
-      const imgs = await shapes(p.image, 'media/creative');
+      /* a film is the creative: its cover goes as the cover (in video()), never cut into stills that look like the ad to upload */
+      const imgs = p.video ? [] : await shapes(p.image, 'media/creative');
       if (imgs.length) where.push(`media/creative-*: the creative in each shape — ${Object.keys(SHAPES).map((s) => `${s} for ${SHAPE_USE[s]}`).join('; ')}`);
-      else if (!p.image) todo.push(`The creative is still to be made: ${p.imageBrief || 'see the image brief in copy.txt'}`);
+      else if (!p.image && !p.video) todo.push(`The creative is still to be made: ${p.imageBrief || 'see the image brief in copy.txt'}`);
       const rows = p.cards || p.slides || [];
       for (let i = 0; i < rows.length; i++) { const img = (p.cardImages || [])[i] || (i === 0 ? p.image : null); if (img) { const x = await addFile(img, `media/${p.cards ? 'card' : 'slide'}-${String(i + 1).padStart(2, '0')}`); if (!x) todo.push(`${p.cards ? 'Card' : 'Slide'} ${i + 1} photo: download it from the studio`); } else if (i) todo.push(`${p.cards ? 'Card' : 'Slide'} ${i + 1} photo still to be made${rows[i].imageBrief ? `: ${rows[i].imageBrief}` : ''}`); }
       await video();
@@ -96,7 +97,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       if (p.utm) links.push(p.utm);
       break; }
     case 'post': {
-      if (p.image) { const x = await addFile(p.image, 'media/picture'); if (x) where.push(`${x.name}: the picture to attach`); }
+      if (p.image && !p.video) { const x = await addFile(p.image, 'media/picture'); if (x) where.push(`${x.name}: the picture to attach`); } /* a film's still is its cover (below), not a picture to post */
       for (const [i, u] of (p.photos || []).entries()) if (u !== p.image) await addFile(u, `media/photo-${i + 1}`);
       await video();
       put('copy.txt', lines(p.platform && `PLATFORM\n${p.platform}\n`, p.title && `TITLE\n${p.title}\n`, p.copy && `POST\n${p.copy}\n`, list(p.hashtags).length && `HASHTAGS\n${list(p.hashtags).join(' ')}\n`,
@@ -186,7 +187,9 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       let pdf = null; if (renderPdf) { try { pdf = await renderPdf(html); } catch { pdf = null; } }
       if (pdf) put('print.pdf', pdf); else { put('print.html', html); todo.push('print.pdf couldn’t be made on this server: open print.html in Chrome and Save as PDF'); }
       put('print-spec.txt', lines(`Size and paper: ${p.size || 'to confirm'}`, `Quantity: ${p.quantity ?? 'to confirm'}`, `Goes into: ${p.goesIn || 'to confirm'}`, p.qr && `QR code goes to: ${p.qr}`));
-      where.unshift(`Your printer: send ${pdf ? 'print.pdf' : 'print.html (saved as PDF)'} with print-spec.txt. A printed run can’t be changed, so check the proof first.`);
+      /* the designed front Studio made goes to the printer as the artwork, the words file stays as the back and the proof */
+      const art = p.image ? await addFile(p.image, 'print-front') : null; if (art) where.unshift(`Your printer: ${art.name} is the front artwork; ${pdf ? 'print.pdf' : 'print.html (saved as PDF)'} has the back and the words, with print-spec.txt. A printed run can’t be changed, so check the proof first.`);
+      else where.unshift(`Your printer: send ${pdf ? 'print.pdf' : 'print.html (saved as PDF)'} with print-spec.txt. A printed run can’t be changed, so check the proof first.`);
       break; }
     default:
       put('decision.md', lines(`# ${p.decision || act}`, '', p.why && `## Why\n${p.why}\n`, p.owner && `**Who decides:** ${p.owner}`, '', list(p.changes).length && `## What changes\n${list(p.changes).map((c) => `- ${c}`).join('\n')}`));

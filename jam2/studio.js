@@ -83,7 +83,8 @@ export function defaults(ctx, board = null) {
   const kind = board?.kind === 'video' ? 'video' : ['static', 'carousel'].includes(board?.kind) ? 'image' : VIDEO_RE.test(card.cta?.label || '') || VIDEO_RE.test(card.title || '') ? 'video' : 'image';
   const okPeople = (s) => !blockOf(s, ctx);
   /* a brand that sells by enquiry (services, property) opens on places and moments, never marketplace or product-hero styles */
-  const R = enquiry && BY_RECIPE[board?.recipe]?.set ? { set: ['in-use', 'editorial', 'natural', 'flat-lay'], sizes: BY_RECIPE[board.recipe].sizes } : BY_RECIPE[board?.recipe] || {};
+  const wantsAplus = board?.recipe === 'listing' && /\bA\+|\ba-?plus\b|brand content|\bEBC\b|enhanced (?:brand )?content/i.test(`${card.title || ''} ${card.cta?.label || ''} ${card.sub || ''} ${card.make?.format || ''} ${card.make?.pieces || ''}`); /* a card that asks for Amazon A+ opens on the A+ modules */
+  const R = wantsAplus ? BY_RECIPE.aplus : enquiry && BY_RECIPE[board?.recipe]?.set ? { set: ['in-use', 'editorial', 'natural', 'flat-lay'], sizes: BY_RECIPE[board.recipe].sizes } : BY_RECIPE[board?.recipe] || {};
   if (R.set) { const set = R.set.map(styleOf).filter(Boolean).filter(okPeople);
     if (set.length < 3) set.push(...ALL().filter((s) => s.kind === 'image' && s.groupId === 'product-shot' && okPeople(s) && !set.some((x) => x.id === s.id)).slice(0, 3 - set.length));
     return { kind: 'image', set: set.map((x) => x.id), styles: set.map((x) => x.id), style: set[0]?.id || null, product: ctx.product ? { img: ctx.product.img, name: ctx.product.name || null, handle: ctx.product.handle || null } : null,
@@ -189,8 +190,8 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     const no = blockOf(st, ctx); if (no) throw new Error(no); /* the Brand Book may have changed since the price was shown */
     /* the first take carries the jam's own words (the headline and line the brand already has, checked and edited), so the picture
        and the copy say the same thing; later takes of a batch write their own hooks */
-    const v1 = ctx.v1 || {}, mine = i === 0 && !spec.ask ? tidy(v1.headline || v1.overlay || v1.slides?.[0]?.onSlide || v1.heading || '', 90) : '';
-    const words = mine ? { headline: mine, sub: tidy(String(v1.primaryText || v1.caption || v1.copy || v1.description || '').split(/\n|(?<=[.!?])\s/)[0], 120) || '', cta: v1.cta || '' } : await maker.write(ctx, board, { ask: spec.count > 1 ? `This is take ${i + 1} of ${spec.count}: a different hook and headline from the others${spec.ask ? `; ${spec.ask}` : ''}.` : spec.ask || '' }).catch(() => ({}));
+    const v1 = ctx.v1 || {}, mine = i === 0 && !spec.ask ? tidy(v1.headline || v1.overlay || v1.slides?.[0]?.onSlide || v1.heading || v1.front || '', 90) : '';
+    const words = mine ? { headline: mine, sub: tidy(String(v1.primaryText || v1.caption || v1.copy || v1.description || v1.back || '').split(/\n|(?<=[.!?])\s/)[0], 120) || '', cta: v1.cta || '' } : await maker.write(ctx, board, { ask: spec.count > 1 ? `This is take ${i + 1} of ${spec.count}: a different hook and headline from the others${spec.ask ? `; ${spec.ask}` : ''}.` : spec.ask || '' }).catch(() => ({}));
     const made = [], take = { op: 'studio', by: ctx.by, words, made, studio: { style: st.id, label: st.label, group: st.group, kind: st.kind, size: size.key } };
     if (st.job === 'packshot') { /* a marketplace main image is the real product, never a drawing: cut out of its clearest photo, alone on pure white
          at 85% of the frame (Amazon, Flipkart, Nykaa, Myntra main-image rules); a photo that won't cut out cleanly is said so */

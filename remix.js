@@ -20,7 +20,7 @@ import { ctaName } from './seed-template.js'; /* a renamed button (Publish Campa
 import { withSteps, isBatchCard } from './card-plan.js';
 import { readyOf } from './publish-ready.js';
 import { boardOf, isFilm } from './film-board.js'; // a film brief drawn as the founder's storyboard on the stage // ready to publish: every part the platform needs, and the check
-import { planFor as j2Plan, recipe as j2Recipe } from './jam2/catalogue.js'; import { inStudio } from './jam2/studio.js'; // v1's pictures, sets and videos are made by Brew Studio (priced, on a yes)
+import { planFor as j2Plan, recipe as j2Recipe, SIZES as J2SIZES } from './jam2/catalogue.js'; import { inStudio } from './jam2/studio.js'; // v1's pictures, sets and videos are made by Brew Studio (priced, on a yes)
 import { shopperLine, familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx, isAdVideo, namesLiveTest } from './studio.js';
 import { buildPack } from './publish-pack.js';
 import { impactInputs, projectImpact } from './impact.js';
@@ -808,7 +808,7 @@ export function createRemix(o) {
      written). It lands on that version, never a second one; if the head moved on meanwhile it lands on the head as "Photo
      added", so nothing made is lost. No target: the photo is a new version, as before */
   const genImage = (t, ch, why, { all = false, target = null } = {}) => {
-    if (!canPic(ch)) return false;
+    if (!canPic(ch) || studioOf(t, ch)) return false; /* a Studio jam's picture is made on the stage, priced: no free picture replaces it */
     const p = ch.pkg; const rows = p.cards || p.slides || [];
     const slots = rows.length ? rows.map((_, i) => i).filter((i) => (all ? !(p.cardImages || [])[i] : i === 0)).slice(0, 10) : [0];
     if (!slots.length) return false;
@@ -930,6 +930,7 @@ export function createRemix(o) {
     for (const rel of [...new Set(cands)]) { const f = await readable(rel); if (f) return f; }
     return null; };
   const genVideo = (t, ch, why = 'the script') => {
+    if (studioOf(t, ch)) return false; /* made in Studio, priced */
     if (!isVideoPost(ch) || (isMock() && !o.mediaFake) || !geminiImage || ch.videoPending) return false;
     if (!spend('video')) return false;
     const target = headOf(t, ch)?.id || null, p = { ...ch.pkg }, sc = p.script || [], hook = hookOf(p);
@@ -1778,6 +1779,8 @@ export function createRemix(o) {
       ch.thread.push({ from: 'ai', text: say || 'It’s on the stage. Happy with it? Share the brief. Not right? Say redo, or tell me what to change.', at: now(t) });
       return { change: pubChange(t, ch), learned: learnedOut(t) }; }
     if (!b.fix && !isQuestion(msg) && (REDO_RE.test(msg) || CUTS_RE.test(msg))) { ch.thread.push(youSaid(t, msg)); await redoOne(t, ch, REDO_RE.test(msg) ? '' : msg.replace(CUTS_RE, 'a new take')); return { change: pubChange(t, ch), learned: learnedOut(t) }; }
+    /* a Studio jam's picture or film changes through its set-up, at its price: the chat says so and the set-up opens, never a free picture in its place */
+    if (!b.fix && !isQuestion(msg) && studioOf(t, ch) && (photoAsk(msg) === 'change' || REMAKE_RE.test(msg))) { ch.thread.push(youSaid(t, msg)); ch.thread.push({ from: 'ai', text: 'This one is made by Brew Studio, so its picture changes in the set-up on the stage: I opened it. Change the style, the product, who is on camera or Image / Video there, then Redo it (the price is on the button). Words I can change here.', at: now(t) }); return { change: pubChange(t, ch), openSetup: true, learned: learnedOut(t) }; }
     const rm = !b.fix && !isQuestion(msg) && ['meta_ad', 'social', 'post'].includes(ch.family) ? REMAKE_RE.exec(msg) : null;
     if (rm) { ch.thread.push(youSaid(t, msg)); const r = await remakeOf(t, ch, /carousel/i.test(rm[1]) ? 'carousel' : 'video');
       const why = r.error || (r.making === false ? r.why : null); if (why) ch.thread.push({ from: 'ai', text: why, at: now(t) }); else if (r.version) ch.thread.push({ from: 'ai', text: `Remade it as ${/carousel/i.test(rm[1]) ? 'a carousel' : 'a reel'}: v${r.version.n}. The media lands on it in a minute or two.`, at: now(t), v: r.version.n });
@@ -1845,6 +1848,7 @@ export function createRemix(o) {
   });
   on('POST', '/api/changes/:chid/listing-photos', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    if (studioOf(t, ch)) return { change: pubChange(t, ch), image: false, studio: true, why: 'Listing images are made on the stage: set them up there and press Generate (the price is on the button).' };
     const started = genListingPhotos(t, ch, 'a tap'); return { change: pubChange(t, ch), image: started, why: started ? null : ch.family !== 'listing' ? 'Only a marketplace listing makes a photo set.' : ch.pkg?.photoBrief ? 'No photo could be made here; the shots stay as the photo brief.' : imageWhy(ch) };
   });
   on('POST', '/api/changes/:chid/video', async (b, t, p) => {
@@ -1998,6 +2002,7 @@ export function createRemix(o) {
   const REMAKING = new Set();
   on('POST', '/api/changes/:chid/remake', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    if (studioOf(t, ch)) return { change: pubChange(t, ch), studio: true, error: 'This one is made in Studio: change the set-up on the stage (Image, Video or a set) and press Generate.' };
     return remakeOf(t, ch, String(b.as || '').toLowerCase());
   });
   /* the remake itself, shared by the chip and an OK'd ask from the jam (Brew or its Slack thread) */
@@ -2187,17 +2192,25 @@ export function createRemix(o) {
     /* a set lands whole: an A+ set as its modules (header, tiles, wide image, each with its own words), a listing as its photo
        set, a carousel or stories set as its cards or slides, the rows following the slides one for one */
     const aplus = slides.length && slides.every((x) => /^aplus-/.test(x.style || '')), wd = (x) => x.words || {};
+    const pm = st.spec?.product?.name ? (catalogOf(t) || []).find((x) => x?.t === st.spec.product.name) : null, setLink = pm?.url || null; /* the made product's own page */
     const rows = (old, f) => slides.map((x, k) => ({ ...(old[k] || {}), ...f(x, old[k] || {}) }));
     const media = aplus ? { aplus: slides.map((x) => ({ kind: x.style === 'aplus-hero' ? 'header' : x.style === 'aplus-wide' ? 'wide' : 'tile', image: x.file, style: x.style, headline: tidyL(wd(x).headline, 160), body: tidyL(wd(x).sub, 1000) })), image: slides[0].file }
       : slides.length > 1 ? (ch.family === 'listing' ? { photoSet: slides.map((x) => ({ image: x.file, style: x.style || null })), image: slides[0].file }
-        : { image: slides[0].file, cardImages: slides.map((x) => x.file), ...(ch.family === 'meta_ad' ? { cards: rows(ch.pkg.cards || [], (x, o) => ({ headline: tidyL(wd(x).headline || o.headline, 120), text: tidyL(wd(x).sub || o.text, 200) })) } : { slides: rows(ch.pkg.slides || [], (x, o) => ({ onSlide: tidyL(wd(x).headline || o.onSlide, 120) })) }) })
-      : st.kind === 'video' ? { video: take.file, poster: take.cover || take.poster || take.shot?.file || null, image: take.cover || take.poster || take.shot?.file || ch.pkg.image, wordsIn: take.cover || null, /* ready to post: the film without captions, its .srt, its cover, a GIF */ film: { raw: take.raw || null, srt: take.srt || null, cover: take.cover || null, frame: take.poster || null, gif: take.gif || null, captions: take.captions ? { n: take.captions.n, approx: take.captions.approx, none: take.captions.none, error: take.captions.error } : null } } : { image: take.file, wordsIn: take.file /* a Studio picture carries its own words: the frame lays none over it */ };
+        : { image: slides[0].file, cardImages: slides.map((x) => x.file), ...(ch.family === 'meta_ad' ? { cards: slides.map((x, k) => ({ ...((ch.pkg.cards || [])[k] || {}), headline: tidyL(wd(x).headline || (ch.pkg.cards || [])[k]?.headline, 120), text: tidyL(wd(x).sub, 200), link: setLink || (ch.pkg.cards || [])[k]?.link || null, imageBrief: undefined })) } /* every card shows the made product, so every card taps through to its page */ : { slides: rows(ch.pkg.slides || [], (x, o) => ({ onSlide: tidyL(wd(x).headline || o.onSlide, 120) })) }) })
+      : st.kind === 'video' ? { video: take.file, poster: take.cover || take.poster || take.shot?.file || null, image: take.cover || take.poster || take.shot?.file || ch.pkg.image, wordsIn: take.cover || null, /* ready to post: the film without captions, its .srt, its cover, a GIF */ film: { raw: take.raw || null, srt: take.srt || null, cover: take.cover || null, frame: take.poster || null, gif: take.gif || null, captions: take.captions ? { n: take.captions.n, approx: take.captions.approx, none: take.captions.none, error: take.captions.error } : null } } : { image: take.file, wordsIn: take.file /* a Studio picture carries its own words: the frame lays none over it */,
+        /* the words set on the picture are the ad's words now: the overlay the brief names, and the headline field when the take wrote new ones */
+        ...(take.words?.headline ? { overlay: tidyL(take.words.headline, 90), ...(ch.family === 'meta_ad' && take.words.headline !== ch.pkg.headline ? { headline: (() => { const h = tidyL(take.words.headline, 200); return h.length <= 40 ? h : h.slice(0, 41).replace(/\s+\S*$/, '').replace(/[\s,;:–-]+$/, ''); })() } : {}) } : {}) };
     /* the new take replaces the last one's media: a picture after a film drops the film, a single after a set drops the set's pictures */
-    const base = { ...ch.pkg }; for (const k of ['video', 'poster', 'film', 'photoSet', 'aplus', 'cardImages', 'wordsIn']) delete base[k];
+    /* a listing keeps its photo set and its A+ modules side by side (a marketplace needs both); the card's free first draft gives way to what Studio made */
+    const base = { ...ch.pkg }; for (const k of ['video', 'poster', 'film', 'cardImages', 'wordsIn', 'draft', ...(ch.family === 'listing' ? [] : ['photoSet', 'aplus'])]) delete base[k];
+    if (ch.family === 'listing' && !media.photoSet && !media.aplus && slides.length <= 1) delete base.photoSet; /* a single listing image replaces the set it was made instead of */
+    const fmt = J2SIZES[st.size]?.ratio; if (fmt && ['meta_ad', 'social'].includes(ch.family) && RATIO[fmt]) media.format = fmt; /* the pack and the frame use the shape it was made in */
     ch.pkg = { ...base, ...media }; ch.imageError = null; sync(t, ch);
     const v = version(t, ch, 'brew', `Studio: ${label}${take.cost?.usd ? ` · $${take.cost.usd}` : ''}`, label); const tw = take.words || {}, prod = st.spec?.product || null;
     v.studio = { recreated: take.recreated || null, run: take.run || null, runN: take.runN || null, runI: take.runI ?? null, style: st.style || null, slides: slides.length > 1 || aplus ? slides.map((x) => ({ style: x.style || null, file: x.file })) : null, label, kind: st.kind || null, size: st.size || null, usd: take.cost?.usd || 0, jid: take.jid || null, product: prod ? { name: prod.name || null, img: prod.img || null } : null,
       words: [...new Set([tw.headline, tw.sub, tw.button, tw.badge, tw.proof, ...(Array.isArray(take.check?.words) ? take.check.words : []), ...[take.scene, ...(take.slides || []).map((x) => x.scene)].flatMap((sc) => (sc?.layers || []).map((l) => l?.words || l?.text)) /* every word set on the picture */, ...(take.captions?.segs || []).map((x) => x.text) /* what is said in the film */, ...(take.slides || []).flatMap((x) => [x.words?.headline, x.words?.sub])].filter((x) => typeof x === 'string' && x.trim()).map((x) => x.slice(0, 200)))].slice(0, 80), quality: st.spec?.quality || null, missing: Array.isArray(take.missing) && take.missing.length ? take.missing.slice(0, 10) : null }; /* what the picture itself says (every caption line too: the closing claim is checked): the publish check reads it */
+    /* a batch is made when all its takes have landed: till then the Work item says how many are in (the ready toast waits for the last one) */
+    if (take.run && +take.runN > 1) { const inN = versionsOf(t, chId).filter((x) => x.studio?.run === take.run).length; if (inN < +take.runN) { studioState(t, chId, { state: 'making', line: `${inN} of ${take.runN} made · ${label}`, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; } }
     studioState(t, chId, { state: 'made', line: Array.isArray(take.missing) && take.missing.length ? `${label} · ${take.missing.length} couldn’t be made: open it to add ${take.missing.length > 1 ? 'them' : 'it'}` : label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
   const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; ch.studioState = { ...st, at: now(t) }; const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };

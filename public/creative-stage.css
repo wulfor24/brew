@@ -158,3 +158,5 @@
 .as-print .pr-pic img{display:block;width:100%;height:auto}
 .as-listing .al-photos>div>img{width:min(220px,100%);aspect-ratio:1;object-fit:contain;background:#fff;border:1px solid var(--line,#e6e6e6);border-radius:8px}
 .cs-frame .cs-pick{outline:3px solid var(--accent,#2563eb);outline-offset:2px;border-radius:6px}
+/* a Studio creative is made on the stage, priced: the frame never offers the free picture buttons */
+.cs-frame [data-rx="image"],.cs-frame [data-rx="images-all"],.cs-frame [data-rx="listing-photos"],.cs-frame .am-make{display:none!important}

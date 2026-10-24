@@ -10,7 +10,7 @@ const tidy = (s, n = 400) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0
 const list = (v) => (Array.isArray(v) ? v : String(v || '').split(/[\n,]+/)).map((x) => tidy(x, 80)).filter(Boolean);
 export const META_CTAS = ['Shop now', 'Learn more', 'Order now', 'Get offer', 'Sign up', 'Book now', 'Contact us', 'Send WhatsApp message', 'Get quote', 'Subscribe'];
 /* where each family runs, and the shapes it needs: the pack cuts every one from the one make (publish-pack.js SHAPES) */
-const PLACES = { aplus: [['970×600', 'A+ header'], ['300×300', 'A+ tiles'], ['970×300', 'A+ wide image']], meta_ad: [['4:5', 'Feed'], ['1:1', 'Feed, right column'], ['9:16', 'Stories and Reels']], social: [['4:5', 'Post'], ['1:1', 'Grid'], ['9:16', 'Story']], post: [['9:16', 'Reels, TikTok, Shorts']], listing: [['1:1', 'Listing']], print: [['A5', 'Print']] };
+const PLACES = { story: [['9:16', 'Stories']], aplus: [['970×600', 'A+ header'], ['300×300', 'A+ tiles'], ['970×300', 'A+ wide image']], meta_ad: [['4:5', 'Feed'], ['1:1', 'Feed, right column'], ['9:16', 'Stories and Reels']], social: [['4:5', 'Post'], ['1:1', 'Grid'], ['9:16', 'Story']], post: [['9:16', 'Reels, TikTok, Shorts']], listing: [['1:1', 'Listing']], print: [['A5', 'Print']] };
 const SOURCE = { meta_ad: ['meta', 'paid_social'], social: ['instagram', 'social'], post: ['social', 'social'], listing: ['marketplace', 'listing'], print: ['print', 'insert'] };
 /* a UTM value: lower-case words joined by -, cut at a whole word (never "…-with-ou") */
 const slug = (s) => { const w = tidy(s, 120).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); if (w.length <= 40) return w || 'brew'; const cut = w.slice(0, 41); return cut.slice(0, cut.lastIndexOf('-') > 10 ? cut.lastIndexOf('-') : 40) || 'brew'; };
@@ -74,11 +74,14 @@ function partsOf(family, action, p, extra) {
     (Array.isArray(p.cards) ? p.cards : []).forEach((c, i) => { add(`cards.${i}.headline`, `Card ${i + 1} · headline`, c.headline, { soft: 40, max: 255, req: true }); if (c.text) add(`cards.${i}.text`, `Card ${i + 1} · line`, c.text, { soft: 60, max: 255 }); });
   } else if (family === 'social') {
     (Array.isArray(p.slides) ? p.slides : []).forEach((c, i) => { add(`slides.${i}.onSlide`, `Slide ${i + 1} · words`, c.onSlide, { soft: 60, max: 120 }); });
-    add('caption', 'Caption', p.caption, { soft: 125, max: 2200, req: true, note: 'The first line is what shows before “more”' });
-    add('hashtags', 'Hashtags', list(p.hashtags).join(' '), { req: true, tags: [3, 8] });
+    const story = /ig_story$/.test(action); /* a story has its stickers and words on the slides, no caption and no hashtags under it */
+    if (!story) { add('caption', 'Caption', p.caption, { soft: 125, max: 2200, req: true, note: 'The first line is what shows before “more”' });
+      add('hashtags', 'Hashtags', list(p.hashtags).join(' '), { req: true, tags: [3, 8] }); } else if (p.stickers) add('stickers', 'Sticker', p.stickers, { max: 120 });
   } else if (family === 'post') {
     add('title', 'Title', p.title, { soft: 70, max: 100, req: !/short_video$/.test(action) /* Reels and TikTok have no title; YouTube and posts do */ }); add('copy', 'Caption', p.copy, { soft: 150, max: 2200, req: true });
     add('hashtags', 'Hashtags', list(p.hashtags).join(' '), { tags: [3, 8] });
+  } else if (family === 'print') { /* what is printed: read and checked like any other words, before a run that can't be changed */
+    add('front', 'Front', p.front, { max: 300, req: true }); add('back', 'Back', p.back, { max: 600 });
   } else if (family === 'listing') {
     add('name', 'Title', p.name || p.items?.[0]?.new, { max: 200, req: true }); add('bullets', 'Bullet points', list(p.bullets).join('\n'), { req: true, lines: 5, lineMax: 250 });
     add('searchTerms', 'Search terms', p.searchTerms, { max: 250 });
@@ -126,7 +129,7 @@ export function readyOf({ family, action = '', pkg = {}, card = {}, product = nu
   if (key.length && said.trim() && !key.some((w) => said.includes(w))) checks.push({ k: 'match', ok: false, soft: true, t: `The words don’t mention ${tidy(product.name, 50)}: they may have been written for another idea. Ask Brew to rewrite them from this ${p.video ? 'film' : 'picture'}.` });
   if (cardProduct?.name && product?.name && cardProduct.name !== product.name) checks.push({ k: 'product', ok: false, soft: true, t: `It shows ${tidy(product.name, 50)}; the card is about ${tidy(cardProduct.name, 50)}` });
   else if (product?.name) checks.push({ k: 'product', ok: true, t: `Shows ${tidy(product.name, 60)}, the card’s product` });
-  const places = p.video ? [] /* a film runs in the shape it was made; its cover and GIF are listed with it */ : (PLACES[Array.isArray(p.aplus) && p.aplus.length ? 'aplus' : family] || []).map(([shape, where]) => ({ shape, where }));
+  const places = p.video ? [] /* a film runs in the shape it was made; its cover and GIF are listed with it */ : (PLACES[Array.isArray(p.aplus) && p.aplus.length ? 'aplus' : /ig_story$/.test(action) ? 'story' : family] || []).map(([shape, where]) => ({ shape, where }));
   const bad = parts.filter((x) => !x.ok).length + checks.filter((x) => !x.ok && !x.soft).length, warn = parts.reduce((a, x) => a + x.warn.length, 0) + checks.filter((x) => !x.ok && x.soft).length;
   return { parts, checks, places, ready: bad === 0, bad, warn };
 }

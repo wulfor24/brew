@@ -527,7 +527,7 @@ const genericPkg = (family, action, c, i = 0, angle = '', F = {}) => {
   if (family === 'setup') return { tool: 'Store and ad tracking', what: c.title || 'Change a setting', steps: (c.detail?.how || ['Change the setting', 'Test a full order on mobile', 'Watch for 7 days']).slice(0, 4), verify: 'Before and after, the same number', customerSees: 'Nothing changes for customers' };
   if (family === 'outreach') { const who = outreachTo(c), named = P.name && P.name !== 'the product', line = named ? ` ${P.name}${P.claim ? `: ${P.claim.replace(/[.!]+$/, '')}` : ''}.` : ''; /* no "the product" placeholder in a real email */
     return { to: who.to, company: who.company, subject: wcut(`${N} for ${who.company.toLowerCase()}`, 60), body: `Hi,\n\nI work at ${N}${BH() ? ` (${BH()})` : ''}.${line}\n\nWould you be open to a 15-minute call next week to see if it fits your team?\n\nThanks,\n{your_name}, ${N}` }; }
-  if (family === 'print') return { front: `Thanks for choosing ${N}.`, back: 'Scan for how to get the most from it.', qr: `${BH()}`, size: 'A6 card', goesIn: 'Every order' };
+  if (family === 'print') return { front: `Thanks for choosing ${N}.`, back: 'Scan for how to get the most from it.', qr: `${BH()}`, size: 'A5 card', goesIn: 'Every order' };
   const op = c.options?.[i % (c.options?.length || 1)];
   if (act === 'plan') return { decision: String(c.title || 'The plan'), why: [c.sub, ...(c.detail?.why || [])].filter(Boolean).join(' '), owner: 'Founder', changes: (c.detail?.how || []).slice(0, 5) };
   return { decision: op?.name || 'Pick one answer and use it everywhere', why: op?.effect || op?.says || '', owner: 'Founder', changes: (c.affects || []).slice(0, 4) };

@@ -221,5 +221,6 @@
     S.prefs = r.prefs || S.prefs; H.toast?.(off ? 'Brew won’t always use that any more.' : 'Saved: Brew uses this for every new piece. Change it any time here or in your Brand Book.'); paint(); }
   const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null } : null);
   const reset = () => { clearTimeout(pollT); clearTimeout(planT); S = null; };
-  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, redo: () => go(true), afterPaint: () => toSel(false), ask, adjustHtml };
+  const openSetup = () => { if (!S) return; S.open = true; paint(); setTimeout(() => document.querySelector('.cs-stage .cs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); };
+  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), afterPaint: () => toSel(false), ask, adjustHtml };
 })();

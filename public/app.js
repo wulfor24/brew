@@ -4840,7 +4840,7 @@
     if (r.brief && TBS.for === tbWork()?.id) { TBS.brief = r.brief; TBS.pdf = null; tbWarm(); tbLit(r.changed); if (RX.stage !== 'brief') toast(`${ic('check', 's16')}Brief changed. <button class="linkbtn" data-tb-open>See it</button>`); }
     RX.sending = false; if (r.error) { if (att.length && !RX.att?.length) RX.att = att; /* a failed send keeps its screenshots */ sound('error'); toast(esc(r.error)); return paintStudio(); }
     if (path === 'iterate') sound('reply'); else if (['variants', 'more', 'plan'].includes(path)) sound('ready'); /* the answer, or the new take or plan, is in; a knob stays quiet */
-    RX.ch = r.change; putCh(r.change); RX.resetScroll = true; if (Array.isArray(body?.v) || path === 'variants' || path === 'plan') RX.tab = 'iterate'; if (path === 'plan') pullWork(true); paintStudio(); showLearned(r.learned); if (!r.answered) syncBrief(r.change, msg); /* a question changed nothing: no brief rewrite */ if (r.pickPhotos) openPhotos();
+    RX.ch = r.change; putCh(r.change); RX.resetScroll = true; if (Array.isArray(body?.v) || path === 'variants' || path === 'plan') RX.tab = 'iterate'; if (path === 'plan') pullWork(true); paintStudio(); showLearned(r.learned); if (!r.answered) syncBrief(r.change, msg); /* a question changed nothing: no brief rewrite */ if (r.pickPhotos) openPhotos(); if (r.openSetup) window.CreativeStage?.openSetup?.();
   };
   /* a post for X, LinkedIn, Reddit, Quora, a Facebook group or Pinterest: Brew copies it and opens the exact place; you post it.
      Nothing is posted into a community on anyone's behalf */
