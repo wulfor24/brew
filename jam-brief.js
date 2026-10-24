@@ -362,6 +362,7 @@ export function createJamBrief(o) {
       /* what's still missing is asked first, at once: the catch-up pass runs once they say send anyway (Param, 23 Oct: the ask
          came up late, after the AI pass) */
       if (w.doc.missing.length && !b.force) return { needs: w.doc.missing, work: w };
+      { const ch0 = changeOf(t, w), blk = (ch0?.checks || []).filter((x) => !x.ok && !x.soft && !x.mine).map((x) => `Brew’s check: ${x.k}`); if (blk.length && !b.force) return { needs: blk.slice(0, 4), work: w }; } /* what Brew still flags is asked before it goes, the same as a missing part */
       if (behind(t, w)) await syncHead(t, w).catch((e) => log.warn('[brief sync at send]', e.message));
       if (w.doc.missing.length && !b.force) return { needs: w.doc.missing, work: w };
       if (b.decided !== undefined) w.decided = b.decided || null;

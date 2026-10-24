@@ -62,7 +62,7 @@ export const FIELDS = {
     { k: 'headline', label: 'Headline', type: 'text', pub: true, req: true, hint: 'Under 40 characters, under the creative' },
     { k: 'description', label: 'Description', type: 'text', pub: true },
     { k: 'overlay', label: 'Text on the image', type: 'text', pub: true, hint: 'Up to 7 words, the number first' },
-    { k: 'cta', label: 'Button', type: 'select', req: true, opts: ['Shop now', 'Learn more', 'Order now', 'Send WhatsApp message', 'Get offer'] },
+    { k: 'cta', label: 'Button', type: 'select', req: true, opts: ['Shop now', 'Learn more', 'Order now', 'Send WhatsApp message', 'Get offer', 'Contact us', 'Book now', 'Get quote', 'Sign up'] /* enquiry brands (services, B2B) get their own buttons */ },
     { k: 'chat', label: 'Chat that opens', type: 'rows', pub: true, cols: ['from', 'text'], only: ['whatsapp_ad'], hint: 'from is "in" (customer) or "out" (the brand)' },
     { k: 'cards', label: 'Carousel cards', type: 'rows', cols: ['headline', 'text', 'imageBrief', 'link'], pub: true, req: true, only: ['carousel_ad'], hint: '3-10 cards in the order they swipe: the card headline (under 40 characters), one short line under it, the photo behind it (no text in the photo), and the page it opens' },
     { k: 'products', label: 'Products in the grid', type: 'list', req: true, only: ['collection_ad'], hint: '4-8 real product names from the catalog, in the order they show under the cover' },
@@ -408,6 +408,8 @@ export const LONG_FORMAT = 'Format it for where it appears, from the first draft
 export const fieldsBrief = (family, action) => fieldsFor(family, action).map((f) => `  - ${f.k}: ${f.label}${f.req ? ' (required)' : ''}${f.hint ? '. ' + f.hint : ''}${f.opts ? `. One of: ${f.opts.join(' / ')}` : ''}${f.type === 'long' ? `. ${LONG_FORMAT}` : ''}${f.type === 'list' ? '. One item per line' : ''}${f.type === 'rows' ? `. One row per line: ${f.cols.join(' | ')}` : ''}${f.type === 'number' ? '. A number' : ''}`).join('\n');
 
 const str = (v) => (v == null ? '' : String(v));
+const pickOpt = (opts, v) => { if (opts.includes(v)) return v; const n = (x) => String(x ?? '').toLowerCase().replace(/[^a-z0-9:+%]+/g, ' ').trim(), nv = n(v); if (!nv) return opts[0];
+  return opts.find((o) => n(o) === nv) || opts.find((o) => nv.startsWith(n(o)) || n(o).startsWith(nv)) || opts.find((o) => nv.includes(n(o))) || opts[0]; };
 export const cleanPkg = (family, action, pkg = {}, clean = (s) => s) => {
   const out = {};
   fieldsFor(family, action).forEach((f) => {
@@ -415,7 +417,7 @@ export const cleanPkg = (family, action, pkg = {}, clean = (s) => s) => {
     if (f.type === 'list') out[f.k] = (Array.isArray(v) ? v : String(v).split('\n')).map((x) => clean(str(x)).trim()).filter(Boolean).slice(0, 8);
     else if (f.type === 'rows') out[f.k] = (Array.isArray(v) ? v : []).slice(0, 10).map((r) => Object.fromEntries(f.cols.map((c) => [c, clean(str(r?.[c])).slice(0, 400)])));
     else if (f.type === 'number') { const n = +String(v).replace(/[^\d.-]/g, ''); if (!Number.isNaN(n)) out[f.k] = Math.round(n); }
-    else if (f.type === 'select') out[f.k] = f.opts.includes(v) ? v : f.opts[0];
+    else if (f.type === 'select') out[f.k] = pickOpt(f.opts, v); /* "email" is Email, "9:16 vertical" is 9:16, never silently the first option */
     else out[f.k] = clean(str(v)).slice(0, f.max || (f.type === 'long' ? 900 : 240));
   });
   ['image', 'knobs', 'grade', 'cardImages', 'wordsIn', 'photoSet', 'film'].forEach((k) => { if (pkg[k] != null) out[k] = pkg[k]; });
@@ -519,7 +521,7 @@ const genericPkg = (family, action, c, i = 0, angle = '', F = {}) => {
   if (family === 'store') return { pages: P.page, section: i % 2 ? 'Top of the product description' : 'End of the product description', heading: hook, body: `${P.name}.${claim}`.trim(), bullets: [P.claim].filter(Boolean) }; /* the product's own claim: a card's reasons are notes for the team, never page points (QA J-19) */
   if (family === 'vis') return { file: act === 'llms_txt' ? `${BH()}/llms.txt` : act === 'schema_fix' ? `Product markup (JSON-LD) on ${BH()} product pages` : B()?.config?.platform && B().config.platform !== 'shopify' ? `${BH()} FAQ page` : `${BH()}/pages/faq`, entries: [{ q: c.q || `Is ${P.name} good?`, a: `${P.name}${P.price ? ` costs ${P.price} on ${BH()}` : ''}.${claim}`, source: 'Product page' }], asOf: 'As of today' };
   if (family === 'crm') return { channel: act === 'flow_copy' || act === 'review_ask' ? 'WhatsApp' : 'Email', flow: 'Second order flow, step 1', trigger: 'Day 21 after delivery', segment: 'Opted-in buyers', exclusions: 'Returns, anyone who ordered this week', subject: `How is ${P.short} going?`, message: act === 'review_ask' ? `Hi {first_name}, how is ${P.short} going? A quick review helps others decide.` : `Hi {first_name}, how is ${P.short} going? Need more before it runs out?`, buttons: act === 'review_ask' ? ['Write a review', 'Ask a question'] : ['Reorder', 'Ask a question'] };
-  if (family === 'search') return { adGroup: `${sh && sh !== 'product' ? sh : N} | Problem | Phrase`, keywords: (B().config.terms?.[0] || []).slice(0, 3).map((k) => `"${k}" (phrase)`), negatives: ['free', 'diy'], headlines: [wcut(hook, 30), `${sh}${P.price ? ', ' + P.price : ''}`.slice(0, 30)], descriptions: [`${P.name}.${claim}`.slice(0, 90)], finalUrl: P.page, bidding: 'Maximise conversions, target cost per order from the plan' };
+  if (family === 'search') return { adGroup: `${sh && sh !== 'product' ? sh : N} | Problem | Phrase`, keywords: (B().config.terms?.[0] || []).slice(0, 3).map((k) => `"${k}" (phrase)`), negatives: ['free', 'diy'], headlines: [...new Set([wcut(hook, 30), wcut(`${sh}${P.price ? ', ' + P.price : ''}`, 30), wcut(`Shop ${N}`, 30), wcut(sh, 30)])].filter(Boolean).slice(0, 3), descriptions: [wcut(`${P.name}.${claim}`, 90), wcut(`${N}: ${P.price ? `${P.name} for ${P.price}. ` : ''}Order on ${BH()}.`, 90)], finalUrl: P.page, bidding: 'Maximise conversions, target cost per order from the plan' };
   if (family === 'listing') { const nm = String(P.name).toLowerCase().startsWith(String(N).toLowerCase()) ? P.name : `${N} ${P.name}`; /* never "Arata Arata …" (QA J-19) */ return { product: P.name, name: nm, items: (B().config.marketplaces || ['Amazon']).map((m) => ({ marketplace: m, now: 'As listed today', new: nm })), bullets: [P.claim].filter(Boolean), images: 'The same images on every listing, product first', searchTerms: (B().config.terms?.[0] || []).slice(0, 3).join(', ') }; }
   if (family === 'brief' && /film_brief$/.test(act || '')) { const short = (x) => wcut(String(x || '').split(/(?<=[.!?])\s|[,;:]\s/)[0], 70);
     return { title: `${hook}: a 30-second film`, deliverables: ['One 30s film, 9:16', 'Two 15s cuts, 9:16 and 4:5'], scenes: [{ shot: 'Founder to camera: why we made it', line: `“${short(hook)}”` }, { shot: 'Hands: the product in use', line: short(P.claim) || short(P.name) }, { shot: 'Founder to camera, close', line: `“${short(P.claim ? `This is ${P.short || P.name}` : P.name)}.”`.replace(/\.\.”$/, '.”') }, { shot: 'Pack shot with price', line: `${P.name}${P.price ? ', ' + P.price : ''}.` }], talent: 'The founder', location: '', deadline: 'This week' }; }
@@ -625,6 +627,10 @@ export const ACTION_SPEC = {
 const MONEY_SYM = '(?:₹|rs\\.?\\s?|\\$|us\\$|€|£|¥|aed\\s?|sar\\s?|r\\$)'; /* any market's money, not only rupees */
 const OFFER = new RegExp(`(?:\\b(?:save ${MONEY_SYM}?\\d|off\\b|discount|combo|bundle|add the [a-z]+\\b(?!.*review)|instead of ${MONEY_SYM}|free (?:shipping|delivery)|pack of \\d)|% off|(?:^|[\\s(])${MONEY_SYM}\\s?\\d|\\d+(?:[.,]\\d{1,2})?\\s?(?:€|£))`, 'i');
 export const ACTION_GUARD = {
+  /* Google's own minimums for a responsive search ad: it won't run with fewer, or with a line over the limit */
+  search_ad: (pkg) => { const h = (pkg.headlines || []).filter((x) => String(x || '').trim()), d = (pkg.descriptions || []).filter((x) => String(x || '').trim());
+    if (h.length < 3) return `Google needs at least 3 headlines (this has ${h.length})`; if (d.length < 2) return `Google needs at least 2 descriptions (this has ${d.length})`;
+    const lh = h.find((x) => String(x).length > 30); if (lh) return `A headline is over 30 characters: “${String(lh).slice(0, 40)}”`; const ld = d.find((x) => String(x).length > 90); if (ld) return `A description is over 90 characters`; return null; },
   pdp_block: (pkg) => { const t = [pkg.heading, pkg.body, ...(pkg.bullets || []), pkg.button].filter(Boolean).join(' '); const m = t.match(OFFER); return m ? `A proof block shows evidence, not offers or prices (found “${m[0]}”)` : null; },
   page_copy: (pkg) => { const t = [pkg.heading, pkg.body, ...(pkg.bullets || [])].filter(Boolean).join(' '); const m = t.match(/\b(save ₹?\d|% off|discount|combo is|bundle)\b/i); return m ? `Page copy rewrites the section, it doesn't add an offer (found “${m[0]}”)` : null; },
   shift_budget: (pkg) => (pkg.spendChangeWeek > 0 ? 'Shifting budget keeps total spend the same' : null)

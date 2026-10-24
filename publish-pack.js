@@ -145,18 +145,28 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
     case 'vis': {
       const es = (p.entries || []).filter((e) => e?.q && e?.a), key = String(ch.action || '').split('.').pop();
       if (key === 'llms_txt') put('llms.txt', lines(`# ${name}`, '', `> ${p.asOf ? `As of ${p.asOf}. ` : ''}Facts about ${name}, with sources.`, '', ...es.map((e) => `## ${e.q}\n${e.a}${e.source ? `\nSource: ${e.source}` : ''}\n`)));
-      else if (key === 'schema_fix') put('product-schema.json', JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: p.file && !/\.(txt|json|html?)$/i.test(p.file) ? p.file : (brand.product || name), brand: { '@type': 'Brand', name }, additionalProperty: es.map((e) => ({ '@type': 'PropertyValue', name: e.q, value: e.a })) }, null, 2) + '\n');
+      else if (key === 'schema_fix') { /* product markup from the catalog's own product: its name, price, currency, page and photo (never the file's description as the name) */
+        const it = brand.item || {}, amt = it.price != null ? +String(it.price).replace(/[^\d.]/g, '') : null, cur = brand.currency || null;
+        put('product-schema.json', JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: it.name || brand.product || name, ...(it.img && /^https?:/.test(it.img) ? { image: it.img } : {}), brand: { '@type': 'Brand', name },
+          ...(amt && cur ? { offers: { '@type': 'Offer', price: amt, priceCurrency: cur, availability: `https://schema.org/${it.out ? 'OutOfStock' : 'InStock'}`, ...(it.url ? { url: it.url } : {}) } } : {}),
+          ...(es.length ? { additionalProperty: es.map((e) => ({ '@type': 'PropertyValue', name: e.q, value: e.a })) } : {}) }, null, 2) + '\n');
+        if (!(amt && cur)) todo.push('Add the price and currency to product-schema.json (offers): Brew couldn’t read them for this product.'); }
+      if (key !== 'schema_fix') {
       put('faq.html', `<section class="brew-faq">\n${p.asOf ? `  <p class="as-of">As of ${esc(p.asOf)}</p>\n` : ''}${es.map((e) => `  <details>\n    <summary>${esc(e.q)}</summary>\n    ${wordsHtml(e.a, esc) || '<p></p>'}${e.source ? `\n    <p class="source">Source: ${esc(e.source)}</p>` : ''}\n  </details>`).join('\n')}\n</section>\n`);
       put('faq-jsonld.html', `<script type="application/ld+json">\n${JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: es.map((e) => ({ '@type': 'Question', name: e.q, acceptedAnswer: { '@type': 'Answer', text: e.a } })) }, null, 2)}\n</script>\n`);
-      where.unshift(`${p.file || 'Your site'}: ${key === 'llms_txt' ? 'upload llms.txt to the site root; ' : key === 'schema_fix' ? 'add product-schema.json as JSON-LD on the product page; ' : ''}faq.html is the answers as a page section and faq-jsonld.html the markup AI tools and Google read. Put both on the same page.`);
+      }
+      where.unshift(key === 'schema_fix' ? 'Your product page: add product-schema.json as JSON-LD (in a <script type="application/ld+json"> tag), then test it in Google’s Rich Results Test.' : `${p.file || 'Your site'}: ${key === 'llms_txt' ? 'upload llms.txt to the site root; ' : ''}faq.html is the answers as a page section and faq-jsonld.html the markup AI tools and Google read. Put both on the same page.`);
       break; }
     case 'search': {
       const camp = `${name} · ${p.adGroup || 'Search'}`, hs = list(p.headlines).slice(0, 15), ds = list(p.descriptions).slice(0, 4);
-      const head = ['Campaign', 'Ad group', 'Keyword', 'Criterion Type', ...hs.map((_, i) => `Headline ${i + 1}`), ...ds.map((_, i) => `Description ${i + 1}`), 'Final URL', 'Ad type', 'Budget', 'Bid Strategy Type'];
+      /* Editor's own values: the bid strategy by its name, the campaign as Search and Paused (the README says it comes in paused) */
+      const bid = /target cpa|cost per (?:order|acquisition|first order)|cpa/i.test(p.bidding || '') ? 'Target CPA' : /roas|return on ad spend/i.test(p.bidding || '') ? 'Target ROAS' : /conversion value/i.test(p.bidding || '') ? 'Maximize conversion value' : /click/i.test(p.bidding || '') ? 'Maximize clicks' : 'Maximize conversions';
+      const head = ['Campaign', 'Campaign Type', 'Campaign Status', 'Ad group', 'Ad Group Status', 'Keyword', 'Criterion Type', ...hs.map((_, i) => `Headline ${i + 1}`), ...ds.map((_, i) => `Description ${i + 1}`), 'Final URL', 'Ad type', 'Budget', 'Bid Strategy Type'];
       const blank = (n) => Array(n).fill(''), pad = hs.length + ds.length;
-      const rows = [head, [camp, '', '', '', ...blank(pad), '', '', p.dailyBudget ?? '', p.bidding || ''], [camp, p.adGroup || '', '', '', ...hs, ...ds, p.finalUrl || '', 'Responsive search ad', '', '']];
-      for (const k of list(p.keywords)) { const [kw, mt] = kwRow(k); rows.push([camp, p.adGroup || '', kw, mt, ...blank(pad), '', '', '', '']); }
-      for (const k of list(p.negatives)) { const [kw, mt] = kwRow(k); rows.push([camp, p.adGroup || '', kw, `Negative ${mt}`, ...blank(pad), '', '', '', '']); }
+      const rows = [head, [camp, 'Search', 'Paused', '', '', '', '', ...blank(pad), '', '', p.dailyBudget ?? '', bid], [camp, '', '', p.adGroup || '', 'Enabled', '', '', ...hs, ...ds, p.finalUrl || '', 'Responsive search ad', '', '']];
+      for (const k of list(p.keywords)) { const [kw, mt] = kwRow(k); rows.push([camp, '', '', p.adGroup || '', '', kw, mt, ...blank(pad), '', '', '', '']); }
+      for (const k of list(p.negatives)) { const [kw, mt] = kwRow(k); rows.push([camp, '', '', p.adGroup || '', '', kw, `Negative ${mt}`, ...blank(pad), '', '', '', '']); }
+      if (p.bidding && bid === 'Maximize conversions' && !/maxim/i.test(p.bidding)) todo.push(`Bid strategy: the plan says “${p.bidding}”; the file sets Maximize conversions. Change it in Editor if you want another.`);
       put('google-ads-editor.csv', csv(rows));
       if (p.finalUrl) links.push(p.finalUrl);
       where.unshift('Google Ads Editor: Account › Import › From file, pick google-ads-editor.csv, review the changes, then post them from Editor yourself. The campaign comes in paused until you turn it on.');

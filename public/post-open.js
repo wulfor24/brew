@@ -28,7 +28,10 @@
     const body = tags.length ? `${copy}\n\n${tags.join(' ')}` : copy;
     /* the card the jam came from keeps the thread when a rewrite dropped it (an AI fix may write its own "where" and a title) */
     const cardWhere = [...(card?.post?.where || []), ...(card?.heard?.url ? [{ name: card.heard.where || '', url: card.heard.url, kind: 'thread' }] : [])];
-    const where = [...(p.where || []), ...cardWhere].filter((w) => w && (w.name || w.url)), w0 = where.find((w) => http(w.url)) || null;
+    /* the places the card really found come first; a link the writer typed (never read) is kept only when it is a community's own front page */
+    const known = new Set(cardWhere.map((w) => w.url).filter(Boolean)), front = (u) => /^https?:\/\/(?:www\.|old\.)?reddit\.com\/r\/[\w-]+\/?$|^https?:\/\/(?:www\.)?quora\.com\/?$|^https?:\/\/(?:www\.)?(?:linkedin|x|twitter|pinterest)\.com\/?/i.test(String(u || ''));
+    const pw = (p.where || []).map((w) => (known.size && w?.url && !known.has(w.url) && !front(w.url) ? { ...w, url: null } : w)); /* the card knows its real thread: another link in the package was the writer's */
+    const where = [...cardWhere, ...pw].filter((w) => w && (w.name || w.url)), w0 = where.find((w) => http(w.url)) || null;
     const rule = where.map((w) => w.rule).find(Boolean) || '';
     const out = (label, url, text, filled) => (url ? { kind, label, url, text, filled, rule } : null);
     if (kind === 'reddit_post') {

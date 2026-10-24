@@ -1195,7 +1195,7 @@ export function createRemix(o) {
     return { id: ch.id, family: FAMILY_NAME[ch.family], action: actName(ch.actionLabel), target: `${ch.target.name}${ch.target.object ? ' · ' + actName(ch.target.object) : ''}`, version: head?.n || 1, versions: versionsOf(t, ch.id).length,
       money: ch.money ? (ch.amount > 0 ? `About ${inr(ch.amount)} a week` : ch.costLabel || 'Costs money') : 'No spend', undo: ch.irreversible ? `Can’t be undone: ${ch.irreversible}` : `Rollback: ${ch.rollback}`, angle: ch.angle || '',
       fields, assets: assetsFor(t, ch), thread: (ch.thread || []).map((m) => ({ who: m.from === 'you' ? m.by?.name || m.by?.email || 'You' : `${AGENT[ch.agent] || 'AI'} (studio)`, text: m.text, at: m.at, v: m.v || null })),
-      notes: (ch.notes || []).map((n) => n.text), checks: (ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })), studio: `#remix=${ch.cardId}/${ch.id}` }; };
+      notes: (ch.notes || []).map((n) => n.text), checks: [...(ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })), ...(ch.checks || []).filter((x) => !x.ok && !x.soft && !x.mine).map((x) => ({ text: `Brew’s check: ${x.k}`, done: false, brew: true }))] /* what Brew's own checks still flag travels with the brief: the team never ships it unseen */, studio: `#remix=${ch.cardId}/${ch.id}` }; };
 
   /* hooks from the feed service */
   const onWorkVersion = (t, w, v) => {
@@ -1874,7 +1874,8 @@ export function createRemix(o) {
     const key = 'pack-' + crypto.createHash('sha1').update(`${PACK_V}|${ch.id}|${v?.id || ''}|${JSON.stringify(pkg)}|${ch.family}|${BN()}`).digest('hex').slice(0, 20) + '.zip';
     /* built once per version: the zip and what it holds are kept, so a repeat GET runs no ffmpeg or Chrome */
     ch.packMeta ||= {}; if (ch.packMeta[key] && (await genFile(key))) return { pack: { ...ch.packMeta[key], url: 'gen/' + key } };
-    const chV = { ...ch, pkg }; const brand = { name: BN(), host: BH(), colors: B()?.seed?.brand?.colors || [], product: productFor(t.cards.get(ch.cardId) || {}, FACTS, pkgWords(chV))?.name || '' };
+    const chV = { ...ch, pkg }; const brand = { name: BN(), host: BH(), colors: B()?.seed?.brand?.colors || [], product: productFor(t.cards.get(ch.cardId) || {}, FACTS, pkgWords(chV))?.name || '', currency: B()?.currency || B()?.config?.currency || null };
+    { const pn = brand.product, m = (catalogOf(t) || []).find((x) => x?.t && (x.t === pn || String(x.t).includes(pn))); if (m) brand.item = { name: m.t, price: m.price ?? null, url: m.url || null, img: m.img || null, out: !!m.out }; } /* the catalog's own product for product markup */
     const read = async (rel) => { if (!rel || typeof rel !== 'string') return null; if (/^\/?gen\//.test(rel)) return genFile(rel.replace(/^\/?gen\//, ''));
       const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || photoFile(rel); return f && fs.existsSync(f) && fs.statSync(f).isFile() ? f : null; };
     const renderPdf = ch.family === 'print' && process.env.PACK_PDF !== '0' ? (html) => withBrowser(async (br) => { const pg = await br.newPage(); try { await pg.setContent(html, { waitUntil: 'load' }); return Buffer.from(await pg.pdf({ preferCSSPageSize: true, printBackground: true })); } finally { await pg.close().catch(() => {}); } }) : null;

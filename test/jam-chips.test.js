@@ -38,7 +38,7 @@ test('every studio family gets a pack: README first, its own files, and nothing 
 test('pack contents: Ads Editor rows with match types, a marketplace CSV, FAQ markup and llms.txt, the Ads Manager list', async () => {
   const s = await pack('search', 'search_ad', { adGroup: 'Serum', keywords: ['hair serum (phrase)', '[minoxidil alternative]', 'scalp care'], negatives: ['free (broad)'], headlines: ['A', 'B', 'C'], descriptions: ['D1', 'D2'], finalUrl: 'https://acme.com/p', dailyBudget: 900 });
   const rows = text(s, 'google-ads-editor.csv').trim().split('\n');
-  assert.match(rows[0], /^Campaign,Ad group,Keyword,Criterion Type,Headline 1,Headline 2,Headline 3,Description 1,Description 2,Final URL/);
+  assert.match(rows[0], /^Campaign,Campaign Type,Campaign Status,Ad group,Ad Group Status,Keyword,Criterion Type,Headline 1,Headline 2,Headline 3,Description 1,Description 2,Final URL/); assert.match(rows[1], /,Search,Paused,/); assert.match(rows[1], /Maximize conversions$/);
   assert.ok(rows.some((r) => /,hair serum,Phrase,/.test(r)) && rows.some((r) => /,minoxidil alternative,Exact,/.test(r)) && rows.some((r) => /,scalp care,Broad,/.test(r)) && rows.some((r) => /,free,Negative Broad,/.test(r)));
   assert.ok(rows.some((r) => /Responsive search ad/.test(r) && /https:\/\/acme\.com\/p/.test(r)));
   const l = await pack('listing', 'listing_titles', { product: 'Serum', name: 'Acme Serum', items: [{ marketplace: 'Amazon', now: 'As listed today', new: 'Acme Serum, 30 ml' }], searchTerms: 'hair, serum' });

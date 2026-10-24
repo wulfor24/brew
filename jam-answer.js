@@ -15,9 +15,16 @@ const ASK = /^(?:(?:hey|ok|okay|so|and|but|also)[,\s]+)*(?:what|why|how|which|wh
 
 const SUGGEST = /^(?:(?:hey|ok|okay|so|and|but)[,\s]+)*(?:how|what) about\b|^(?:maybe|perhaps)\b|^(?:what if|why not) (?:we|you)\b/i; /* "how about a Hindi version?": a change asked politely */
 
+/* changes said other ways: "do a Hindi version", "tell me a punchier hook", "can I get a shorter one", "shorter please?" */
+const DO = /^(?:(?:hey|ok|okay|so|and|now|also|please)[,\s]+)*(?:do (?!you\b|we\b|i\b|they\b|it\b|this\b|these\b)|tell me (?:a|an|another|some|more|three|two|\d)\b|(?:can|could|may) (?:i|we) (?:get|have|see) (?:a|an|another|it|the|one|some)\b|(?:shorter|longer|punchier|simpler|warmer|bolder|softer|calmer|brighter|bigger|smaller|sharper|friendlier|funnier|more \w+|less \w+)\b(?=[\s,!?.]|$)(?!.*\b(?:than|or)\b))/i;
+/* questions that start like changes: "can we use this on Amazon?", "will you keep the price?" */
+const ASKS_ABOUT = /^(?:(?:hey|ok|okay|so|and|but)[,\s]+)*(?:(?:can|could) we use (?:this|it|these) (?:on|for|in|as)\b|(?:will|would) you keep\b|(?:can|could) (?:you|we) (?:use|keep) (?:this|it) (?:for|on)\b)/i;
+
 export function isQuestion(text) {
   const s = String(text || '').trim();
   if (!s) return false;
+  if (ASKS_ABOUT.test(s)) return true;
+  if (DO.test(s)) return false;
   if (SUGGEST.test(s)) return false;
   if (POLITE.test(s)) return false; /* "can you make it shorter?", "please add the price": a change, even with a question mark */
   return /\?\s*$/.test(s) || ASK.test(s);

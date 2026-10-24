@@ -85,7 +85,9 @@ test('the publish pack ships code as code: the markup draft as a file, page sect
   const vis = await buildPack({ ch: { action: 'visibility.schema_fix', actionLabel: 'Fix product markup' }, family: 'vis', pkg: { file: 'Product markup (JSON-LD)', entries: [{ q: 'Is it good?', a: 'Use this:\n```json\n{"a":1}\n```' }], draft: { text: true, code: COPY } }, brand: { name: 'Arata' } });
   const f = vis.entries.find((e) => e.name === 'code/markup-1.json'); assert.ok(f, 'the draft\'s JSON-LD as its own file');
   assert.equal(JSON.parse(f.data.toString())['@type'], 'Organization'); assert.match(vis.readme, /code\/markup-1\.json/);
-  const faq = vis.entries.find((e) => e.name === 'faq.html').data.toString(); assert.ok(!faq.includes('```')); assert.match(faq, /<pre class="code" data-lang="json">/);
+  assert.ok(!vis.entries.some((e) => e.name === 'faq.html'), 'product markup ships the markup only (no stray FAQ files)');
+  const fq = await buildPack({ ch: { action: 'visibility.faq_entry', actionLabel: 'Add the answers' }, family: 'vis', pkg: { file: 'FAQ', entries: [{ q: 'Is it good?', a: 'Use this:\n```json\n{"a":1}\n```' }] }, brand: { name: 'Arata' } });
+  const faq = fq.entries.find((e) => e.name === 'faq.html').data.toString(); assert.ok(!faq.includes('```')); assert.match(faq, /<pre class="code" data-lang="json">/);
   const store = await buildPack({ ch: { action: 'store.section' }, family: 'store', pkg: { heading: 'Markup', body: 'Paste in the theme.\n\n```html\n<script type="application/ld+json">{}</script>\n```' }, brand: { name: 'Arata' } });
   const sec = store.entries.find((e) => e.name === 'section.html').data.toString();
   assert.ok(!sec.includes('```')); assert.match(sec, /<pre class="code" data-lang="html"><code>&lt;script type=&quot;application\/ld\+json&quot;&gt;\{\}&lt;\/script&gt;<\/code><\/pre>/);
