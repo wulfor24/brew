@@ -877,11 +877,11 @@ const brandFiles = async (req, res, u) => {
   /* the team's static ads (private/statics/, made from their private Move 21): signed-in members only, never cached by a proxy */
   if (what.startsWith('team/statics/')) return teamStatic(req, res, slug, what.slice(13), { viewerOf, signedIn: (r) => !!auth.user(r), packs, send });
   if (what === 'seed.js' || what === 'facts.js') { const t0 = Date.now(), v0 = packs.version?.(slug); let p = await loadBrand(slug, { fresh: true, share: true }); if (!p) return send(res, 404, '/* unknown brand */', 'text/javascript'), true;
-    const t1 = Date.now(), team = await teamRead(req, slug), t2 = Date.now();
+    const t1 = Date.now();
     /* outside the team on live: the brand's name, mark and look only (the sign-in page needs them), no cards, moves or facts */
-    if (!team) p = { ...p, seed: { ...p.seed, posts: [], scrape: [], steps: [] }, rawSeed: p.rawSeed ? { ...p.rawSeed, posts: [], scrape: [], steps: [] } : undefined, fx: {}, facts: {}, moveDocs: {}, labels: {}, pages: {}, pools: {}, statics: [], staticText: {}, notes: {}, learned: null };
+    if (!(await teamRead(req, slug))) p = { ...p, seed: { ...p.seed, posts: [], scrape: [], steps: [] }, rawSeed: p.rawSeed ? { ...p.rawSeed, posts: [], scrape: [], steps: [] } : undefined, fx: {}, facts: {}, moveDocs: {}, labels: {}, pages: {}, pools: {}, statics: [], staticText: {}, notes: {}, learned: null };
     /* the same pack makes the same script: its ETag lets a reload skip the download (still read fresh, so never stale) */
-    const body = what === 'seed.js' ? packs.clientSeed(p) : packs.clientFacts(p), etag = `"${crypto.createHash('sha1').update(body).digest('base64url').slice(0, 16)}"`, t3 = Date.now();
+    const t2 = Date.now(), body = what === 'seed.js' ? packs.clientSeed(p) : packs.clientFacts(p), etag = `"${crypto.createHash('sha1').update(body).digest('base64url').slice(0, 16)}"`, t3 = Date.now();
     /* where the time goes, visible in the browser's network panel (1.7) */
     const timing = `load;dur=${t1 - t0}, team;dur=${t2 - t1}, render;dur=${t3 - t2}`; if (t3 - t0 > 800) console.log(`[seed] ${slug} ${what} ${timing} v${v0}`);
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, { etag, 'cache-control': 'no-cache', 'server-timing': timing }); res.end(); return true; }
