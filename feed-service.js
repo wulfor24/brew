@@ -1786,7 +1786,7 @@ export function createFeedService(o) {
       .map((c) => ({ id: c.id, title: (process.env.PLAIN_OFF === '1' ? c : PLAIN.apply(slug, c)).title, did: did.get(c.id) || 'You saw it' })); };
   /* the feed is built from cards that change a few times an hour: the same viewer asking again within 20 s, with nothing changed in
      the workspace since, gets the answer it just had (1.7: a fresh load spent 3.7 s on this call, a tab switch as long again) */
-  const FEED_C = new Map();
+  const FEED_C = new Map(), STATE_SIG = new WeakMap(); /* the last saved state each workspace sent (kept in memory only) */
   on('GET', '/api/tenants/:id/feed', async (b, t) => { const who = `${t.id}|${t.rev || 0}|${t.member ? 1 : 0}|${storefrontOn() ? 1 : 0}|${t.viewer?.role || ''}`, ck = `${who}|${t.cards.size}`, hit = FEED_C.get(t.id);
     const store = (v) => { if (!v?.error) { FEED_C.set(t.id, { k: ck, who, at: Date.now(), v }); if (FEED_C.size > 400) FEED_C.delete(FEED_C.keys().next().value); } return v; };
     if (hit && hit.k === ck && Date.now() - hit.at < 20e3) return hit.v;
@@ -2528,10 +2528,13 @@ export function createFeedService(o) {
       /* a team-only card (a connected account's, a move rewritten from the team's numbers) is not found for anyone outside the team */
       if (t && params.cid) { const c = t.cards.get(params.cid); if (c && (!seatOk(t, c) || (isPrivateCard(c) && !t.member))) { send(res, 404, { error: 'not found' }); return true; } }
       if (t) await TUNE.load(t.brandId || DEFAULT_BRAND).catch(() => null); /* the ranker reads tuning without waiting */
-      if (t && r.method !== 'GET') t.rev = (t.rev || 0) + 1; /* anything that changes the workspace: the feed's short cache is stale */
       if (t) { touch(t); const k = `${r.method} ${r.pattern.replace('/api', '')}`; t.api[k] = { n: (t.api[k]?.n || 0) + 1, last: Date.now() }; if (viewer) await applyLive(t, viewer); }
       if (r.pattern === '/api/tenants/:id/onboarding') { await onboardingStream(t, req, res); return true; }
       const b = req.method === 'GET' ? {} : await readBody(req);
+      /* anything that changes the workspace makes the feed's short cache stale; the page's own calls on every open (feed-open, and the
+         saved state sent back unchanged) don't, so a reload is served at once (1.7) */
+      if (t && r.method !== 'GET' && !/\/feed-open$/.test(r.pattern)) { const sig = r.pattern === '/api/tenants/:id/state' ? JSON.stringify(b) : null;
+        if (!sig || sig !== STATE_SIG.get(t)) t.rev = (t.rev || 0) + 1; if (sig) STATE_SIG.set(t, sig); }
       try { const out = await r.fn(b, t, params, u.searchParams); if (!t && out?.id && viewer) await applyLive(tenants.get(out.id), viewer); send(res, Number.isInteger(out?.status) && out.status >= 100 && out.status < 600 ? out.status : 200, out); /* a reply's own status word (Send brief: 'sent') is data, not the HTTP code */ if (store && req.method !== 'GET') store.save(t || (out?.id && tenants.get(out.id))); }
       catch (e) { log.error(`[feed ${r.pattern}]`, e); send(res, 200, { error: e.message, fallback: true }); }
       return true;

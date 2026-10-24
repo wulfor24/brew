@@ -21,3 +21,10 @@ test('the connector writes the sum onto the card and the ids the Ads Manager lin
   assert.match(src, /a fifth of \$\{F\.money\(worst\.spendDay\)\}/, 'Move a day says how it was worked out');
   assert.match(src, /fromAct: worst\.act/); assert.match(src, /fromImg: campImg\(worst\)/);
 });
+test('a budget jam whose card was withdrawn, or that names a campaign the account lacks, is stopped with the reason', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
+  assert.match(src, /live-meta-shift\/\.test\(String\(ch\.cardId \|\| ''\)\) && !card\?\.shift/, 'withdrawn card is checked');
+  assert.match(src, /the budget card was withdrawn on today’s numbers/);
+  assert.match(src, /meta\.campaigns\.7d/, 'names are checked against the live campaign list');
+  assert.match(src, /in your Meta account this week. Use one of yours/);
+});
