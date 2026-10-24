@@ -303,8 +303,12 @@
     if (r.stale) { A.putWork(r.work); toast('Someone else edited the brief. Showing the latest.'); return A.repaintDetail(); }
     if (r.work) { A.putWork(r.work); if (document.activeElement?.closest?.('[data-jm-doc]')) { const k = $('.jm-kind'); if (k) k.textContent = `${r.work.doc.kind} · saved`; } else A.repaintDetail(); }
   };
-  const send = async (text) => {
-    text = String(text || '').trim(); if (!text || JM.busy) return; const w = await ensureWork(); if (!w) return;
+  const send = async (text) => { const was = JM.busy; await send0(text); if (!was && !JM.busy && (JM.queue || []).length) return send(JM.queue.shift()); }; /* a queued message goes next */
+  const send0 = async (text) => {
+    text = String(text || '').trim(); if (!text) return;
+    /* the same rule as the studio (1.9): a message sent while Brew answers is queued and sent next, never dropped */
+    if (JM.busy) { (JM.queue ||= []).push(text); JM.draft = ''; toast('Queued: it goes as soon as this answer lands.'); return paint(); }
+    JM.busy = 'starting'; const w = await ensureWork().catch(() => null); JM.busy = ''; if (!w) return; /* busy before the first await: two quick sends can't both pass */
     // the longest name that the @ starts with
     const target = text.startsWith('@') ? mentionList().filter((x) => text.slice(1).toLowerCase().startsWith(x.name.toLowerCase()) && /^($|[\s,:])/.test(text.slice(1 + x.name.length))).sort((a, b) => b.name.length - a.name.length)[0] : null;
     JM.draft = ''; JM.tab = 'chat';

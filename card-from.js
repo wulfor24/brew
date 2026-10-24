@@ -59,6 +59,9 @@ export function cardFrom(c, moves = {}) {
   if (c.origin === 'told' || c.moveFamily === 'learn') return 'From your team';
   if (c.stream === 'heard' || c.origin === 'listen') {
     if (c.heard?.kind === 'thread') { const p = PLATFORM[String(c.post?.platform || '').toLowerCase()]; return p ? `Asked on ${p}` : 'Asked online'; }
+    /* named plainly (1.10): "From 76 posts on Reddit and YouTube", never a bare "Heard online" when the card knows its count and places */
+    const n = +c.heard?.n || 0, wh = [...new Set((c.heard?.quotes || []).map((q) => String(q?.where || '').replace(/^r\/\S+\s*(?:on\s*)?/i, 'Reddit').split(/[·,(]/)[0].trim()).filter(Boolean))].slice(0, 2);
+    if (n >= 2) return `From ${n} ${c.heard?.kind === 'category' && (c.heard.questions || 0) >= n / 2 ? 'questions' : 'posts'}${wh.length ? ` on ${wh.join(' and ')}` : ' online'}`;
     return 'Heard online';
   }
   /* a workspace keeps its cards with origin "seed" (feed-service), so the card's own id and stream say where it came from */

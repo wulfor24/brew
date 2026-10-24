@@ -144,6 +144,7 @@ export function cleanDraftClaims(j, source = '') {
    (a banner in capitals, "FREE SHIPPING ON ALL ORDERS ABOVE ₹299"). A common word is never "theirs" just because the store
    uses it somewhere: "NOT" shouted is still flagged. */
 const ACRO = /^(?:SPF|PA|UV|UVA|UVB|AHA|BHA|USA|UK|EU|UAE|COD|FAQ|DIY|OTP|SMS|GST|MRP|SKU|ML|KG|CEO|AI|HD|NEW|FREE|SALE|OFF|BOGO|DM|IG|FB|USP|PDP|ASAP|OK|ISO|GMP|FDA|BPA|PETA|RSVP|VIP|USB|LED|XL|XXL|PM|AM|TV|PC|DIY|INR|USD|GBP|EUR|AUD|CAD|SGD|AED|JPY|CHF|NZD|CZK|PLN|SEK|DKK|NOK|HUF|RON|BGN)$/;
+const SHOUT = /^(?:NOT|NOW|YES|NO|BUY|GET|ALL|YOU|OUR|THE|AND|FOR|BEST|ONLY|LAST|WOW|OMG|HUGE|MUST|EVER|JUST|LOVE|STOP|WAIT|HERE|THIS|THAT|WITH|YOUR|MORE|LESS|FAST|EASY|SAVE|WIN|HOT|BIG|TOP)$/;
 const REPEAT_OK = /^(that|this|with|your|more|very|from|have|what|when|each|week|step|days?|again|over|after|by|and)$/;
 const WORDS = new Map(), wordsOf = (x) => { const h = WORDS.get(x); if (h !== undefined) return h; const w = words(x); if (WORDS.size >= 8) WORDS.delete(WORDS.keys().next().value); WORDS.set(x, w); return w; };
 const words = (x) => norm(x).replace(/[^a-z0-9₹%&' ]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -159,7 +160,7 @@ export function copyFlags(text, opts = {}) {
   const banner = (run) => { const p = words(run); return p.split(' ').length >= 2 && !!src && src.includes(p); }; /* a run of two words or more the store writes */
   if (/\\n|\\t/.test(s)) out.push('line breaks show as “\\n” in the text');
   const runs = s.match(/\b[A-Z][A-Z0-9₹%&' -]*[A-Z0-9]\b/g) || [];
-  const caps = runs.filter((r) => !banner(r) && !inName(r)).flatMap((r) => r.match(/\b[A-Z]{3,}\b/g) || []).filter((w) => !ACRO.test(w) && !(w.length <= 5 && theirs(w)) && !nameWords.has(w.toLowerCase()) && /[a-z]/.test(s.replace(/\b[A-Z]{3,}\b/g, '')));
+  const caps = runs.filter((r) => !banner(r) && !inName(r)).flatMap((r) => r.match(/\b[A-Z]{3,}\b/g) || []).filter((w) => !ACRO.test(w) && (w.length > 4 || SHOUT.test(w)) /* a short capital word is an acronym (DHT, PCOS, NAD), never shouting, unless it is a plain word (NOT, NOW) (1.10) */ && !(w.length <= 6 && theirs(w)) && !nameWords.has(w.toLowerCase()) && /[a-z]/.test(s.replace(/\b[A-Z]{3,}\b/g, '')));
   if (caps.length) out.push(`shouting caps (“${caps[0]}”)`);
   if (/\bnot giving\s*[?!.]|\b(?:is|are)\s+(?:not\s+)?giving\s*[?!.]/i.test(s)) out.push('slang that doesn’t read right (“… giving?”)');
   if (/\bup to \d+ days a week\b|\b(?:[8-9]|\d{2,}) days a week\b/i.test(s)) out.push('a time phrase that doesn’t make sense (“days a week”)');

@@ -268,7 +268,7 @@ export const audienceOf = (b) => (b?.personas || []).map((p) => personaLabel(p?.
 const generic = (b) => !!b; // every brand pack is read the same way
 const NEUTRAL = {
   audience: ['New customers', 'Past buyers', 'People like your best buyers'],
-  scene: { meta_ad: ['In the hand', 'In use', 'Plain backdrop', 'Space for a headline'], social: ['In the hand', 'In use', 'Flat lay', 'Space for a headline'] },
+  scene: { meta_ad: ['In the hand', 'In-use shot', 'Plain backdrop', 'Space for a headline'], social: ['In the hand', 'In-use shot', 'Flat lay', 'Space for a headline'] },
   talent: ['Founder', 'Creator', 'Customer', 'Someone from the team'],
   store: { proof: ['Customer review', 'Star rating', 'A number from the page'], tone: ['Plain', 'Warm', 'Punchy'] }
 };

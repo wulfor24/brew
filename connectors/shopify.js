@@ -51,6 +51,10 @@ async function codWindow(c) {
   return out;
 }
 /* a product title cut at a word, never mid-word ("Conditioner - 15") */
+/* a sales channel's name as the team knows it (2.4: Shopify said "Gokwik New"): the known checkout apps by their own names, and an
+   app's version or channel words dropped */
+const APP_NAMES = [[/gokwik/i, 'GoKwik'], [/shopflo/i, 'Shopflo'], [/fastrr|shiprocket/i, 'Shiprocket Checkout'], [/razorpay/i, 'Razorpay Magic Checkout'], [/simpl/i, 'Simpl'], [/snapmint/i, 'Snapmint']];
+const appName = (x) => (APP_NAMES.find(([re]) => re.test(x)) || [])[1] || String(x).replace(/\s+(?:new|v\d+|app|channel|sales channel)$/i, '').trim();
 const cut = (t, n = 44) => { t = String(t || '').trim(); if (t.length <= n) return t; const s = t.slice(0, n - 1), i = s.lastIndexOf(' '); return `${(i > n * 0.6 ? s.slice(0, i) : s).replace(/[\s,–—-]+$/, '')}…`; };
 
 export default {
@@ -140,7 +144,7 @@ export default {
          that app, and its abandoned carts stay in it. Most orders from one such app: Shopify's "checkouts left" is only the rest */
       const via = new Map(); for (const o of o30) { const a = o.app?.name; if (a && !/^(online store|draft orders|point of sale|shopify mobile|shop)$/i.test(a)) via.set(a, (via.get(a) || 0) + 1); }
       const [app1, n1] = [...via.entries()].sort((a, b) => b[1] - a[1])[0] || [];
-      if (app1 && o30.length >= 20 && n1 / o30.length >= 0.5) m.checkoutApp = { name: app1, share: 100 * n1 / o30.length };
+      if (app1 && o30.length >= 20 && n1 / o30.length >= 0.5) m.checkoutApp = { name: appName(app1), share: 100 * n1 / o30.length };
       // COD orders 10 to 40 days old that were cancelled or are still not paid: their own read when the main one stopped short of 40 days
       const inWin = (o) => { const t = Date.parse(o.createdAt); return t < Date.now() - 10 * 864e5 && t >= Date.now() - 40 * 864e5; };
       const older = full90 || oldest <= Date.now() - 40 * 864e5 ? orders : await codWindow(c).catch((e) => { notes.push(`COD orders 10 to 40 days old: ${e.message.slice(0, 100)}`); return []; });

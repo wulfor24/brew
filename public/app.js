@@ -193,7 +193,10 @@
 
   /* ---------- toast ---------- */
   let toastT;
-  const toast = (html) => { $('.toast')?.remove(); const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.innerHTML = html; document.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 2800); };
+  /* a toast never shows a server's insides (1.8): a stack, a status code, a JSON or network error reads as one plain line */
+  const TECH_ERR = /\b(?:TypeError|ReferenceError|SyntaxError|Cannot read propert|undefined is not|is not a function|ECONN\w*|ETIMEDOUT|ENOTFOUND|getaddrinfo|fetch failed|socket hang up|Unexpected token|JSON\.parse|status code \d{3}|HTTP \d{3}|5\d\d Internal|at [\w.<>]+ \(|stack|null pointer)\b/i;
+  const plainToast = (h) => (typeof h === 'string' && TECH_ERR.test(h.replace(/<[^>]+>/g, ' ')) ? 'That didn’t go through. Try again in a moment.' : h);
+  const toast = (html0) => { const html = plainToast(html0); $('.toast')?.remove(); const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.innerHTML = html; document.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 2800); };
   /* a button waiting on the server: a spinner and what it is doing, so a slow answer never reads as a dead click. Returns the
      undo; a button repainted away in the meantime is left alone */
   const busyBtn = (b, label = '') => { if (!b) return () => {}; const html = b.innerHTML; b.disabled = true; b.classList.add('is-wait'); b.setAttribute('aria-busy', 'true'); b.innerHTML = `<brew-load class="spin"></brew-load>${b.matches('.icon-btn') ? '' : esc(label)}`; /* an icon button has no room for words: the spinner alone */
@@ -226,7 +229,8 @@
   let tenantP = null;
   const ensureTenant = (force) => { if (TID && !force) return Promise.resolve(TID); if (tenantP) return tenantP;
     tenantP = api('/api/tenants', { url: B.brand.host, brand: B.slug || BR, snapshot: snapshot() }).then((r) => { TID = r.id; ls.set(`${LSP()}tenant`, TID); lastSync = ''; tenantP = null; return TID; }); return tenantP; };
-  const tapi = async (method, p, body, retry = true) => {
+  let FEED_LOADED = 0; /* when the feed was last read: a tab click within 30 s of it, with nothing changed since, draws from it (1.7) */
+  const tapi = async (method, p, body, retry = true) => { if (method !== 'GET') FEED_LOADED = 0; /* anything that changes something reads the feed again */
     await ensureTenant();
     try {
       const r = await fetch(p.replace(':t', TID), { method, headers: { 'content-type': 'application/json', 'x-tenant': TID, ...(window.Composer?.headers() || {}) }, body: body ? JSON.stringify(body) : undefined }); // the jam's model and memory choice
@@ -343,7 +347,7 @@
   /* ranking lives in the feed service (freshness + impact + affinity + seat − fatigue, then interleave) */
   const loadFeed = async () => {
     await syncNow();
-    const r = await tapi('GET', `/api/tenants/:t/feed${SFQ}`); ringsLater(); if (r.error) return null;
+    const r = await tapi('GET', `/api/tenants/:t/feed${SFQ}`); ringsLater(); if (r.error) return null; FEED_LOADED = Date.now();
     ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.aiRing = r.aiRing || null; SRV.clock = r.clock; SRV.yesterday = r.yesterday || [];
     NEWSET = new Set(r.newIds || []);
     /* saves live on the server (every device); the ones this browser kept before that go up once */
@@ -1027,7 +1031,7 @@
     if (c.from) return c.from; /* what the card rests on (card-from.js, stamped by the server): the move's discipline, where it was heard */
     if (FROM_FAMILY[c.family]) return FROM_FAMILY[c.family];
     if (c.origin === 'told') return 'From your team';
-    if (c.stream === 'heard' || c.origin === 'listen') return c.heard?.kind === 'thread' ? `Asked on ${c.post?.platformLabel || 'Reddit'}` : 'Heard online';
+    if (c.stream === 'heard' || c.origin === 'listen') return c.heard?.kind === 'thread' ? `Asked on ${c.post?.platformLabel || 'Reddit'}` : c.from && /^From \d/.test(c.from) ? c.from : 'Heard online'; /* the card's own count and places (card-from.js) */
     if (c.origin === 'ideas') return 'New idea for you';
     /* the sector names the team that handles a card, not its source: it only stands in when the card's words back it */
     const words = `${c.title || ''} ${c.sub || ''}`;
@@ -1038,7 +1042,7 @@
     return 'From Brew';
   };
   /* the campaign line only when it adds something the label does not already say */
-  const campLine = (c) => (c.campaign && !FROM_CAMPAIGN[c.campaign] ? c.campaign : '');
+  const campLine = (c) => (c.campaign && !FROM_CAMPAIGN[c.campaign] && String(c.campaign).toLowerCase() !== String(fromLabel(c) || '').toLowerCase() ? c.campaign : ''); /* never "Move 08 · Move 08" (1.14) */
   const head = (agent, sub, badge, more = true, title = AGENT[agent]) => `<header class="card-head">${face(agent)}<div class="who"><b>${esc(title)}</b><span>${esc(sub)}</span></div>${badge ? `<span class="badge ${badge[1]}">${esc(String(badge[0]).replace(/\b(\w+)s (\1)\b/gi, '$2'))}</span>` : ''}${more ? `<button class="icon-btn" data-more aria-label="More">${ic('more', 's18')}</button>` : ''}</header>`;
   const srcLine = (c) => c.src ? `<div class="src-line" title="${esc(c.src)}">${c.type === 'competitor' && rivalIn(`${c.src} ${c.title}`) ? rivalLogo(`${c.src} ${c.title}`, 14) : ic('link', 's14')}<span class="src-tx">${esc(c.src)}${c.liveFrom ? ` · <b>live from ${esc(B.connectors[c.liveFrom].name)}</b>` : ''}</span></div>` : '';
 
@@ -1102,10 +1106,10 @@
     return mediaSlot(d.images.map(esc), { alt: d.headline || d.title || 'First draft', portrait: port, extra: lab, fallback: fb }).replace('<div class="media', `<div${bgSt} class="media fd${tall}`) + draftCap(d); };
   /* a Signals card that rests on an account Brew can't read yet says so on the card, in one line with one Connect (QA FEED-ARV-07):
      the account is the one the proof sheet names (feed-service pub: proof.needs), the store first like the column guide */
-  const needOf = (p) => { if (p?.sector !== 'signals') return null; const ids = (p.proof?.needs || []).filter((id) => B.connectors?.[id] && !conn(id));
+  const needOf = (p) => { const tn = (p?.toolNeeds || []).filter((id) => B.connectors?.[id] && !conn(id)); if (tn.length) return tn[0]; /* a card on a platform not connected (2.6) */ if (p?.sector !== 'signals') return null; const ids = (p.proof?.needs || []).filter((id) => B.connectors?.[id] && !conn(id));
     return ids.includes('shopify') ? 'shopify' : ids[0] || null; };
   const needLine = (p) => { const id = needOf(p); if (!id) return ''; const nm = B.connectors[id].name, admin = window.LiveConn?.boss?.() === false;
-    return `<div class="card-need">${ic('plug', 's14')}<span>Connect ${esc(nm)} to see this</span>${admin ? '<small>Your admin connects it</small>' : `<button class="btn btn-ghost sm" data-cx="${esc(id)}">Connect</button>`}</div>`; };
+    return `<div class="card-need">${ic('plug', 's14')}<span>${(p.toolNeeds || []).includes(id) ? `Not connected: these ${esc(nm)} figures are Brew’s estimate. Connect it for your own` : `Connect ${esc(nm)} to see this`}</span>${admin ? '<small>Your admin connects it</small>' : `<button class="btn btn-ghost sm" data-cx="${esc(id)}">Connect</button>`}</div>`; };
   const postCard = (p, i) => {
     const c = cardOf(p);
     const isNew = PINNED.has(p.id);
@@ -1334,7 +1338,7 @@
     $$('[data-qtab]').forEach((b) => b.onclick = () => renderQueue(b.dataset.qtab));
     counts(); window.scrollTo(0, 0);
   };
-  const openGStat = (k) => renderQueue(k);
+  const openGStat = (k) => { nav(`#v=queue&q=${k}`, true, 'view', 'queue'); return renderQueue(k); }; /* each list has its own link (1.14: the address stayed #v=feed) */
   document.addEventListener('click', (e) => { const g = e.target.closest('[data-gstat]'); if (g) openGStat(g.dataset.gstat); });
   const appShell = () => {
     root.innerHTML = `
@@ -1362,8 +1366,8 @@
             <div class="topbar-r"><button class="chip j1-pill" data-team-pill hidden title="Briefs with the ShopOS team">${ic('send', 's14')}<span data-count="team"></span><i class="t2-live" aria-hidden="true"></i></button><button class="icon-btn rb phone-only" aria-label="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button><button class="icon-btn phone-only lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}</button><button class="chip viewing" data-viewing aria-label="Switch the seat you view as">${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}</button>${themeBtn()}</div>
           </div>
           <div id="view"></div>
-          <div class="stk-layer" id="stk"></div>
-          <div class="notes-layer" id="notes"></div>
+          <div class="stk-layer" id="stk" aria-hidden="true"></div>
+          <div class="notes-layer" id="notes" aria-hidden="true"></div> <!-- decorative margin layers: screen readers read each note once, on its card (1.14) -->
         </div>
       </div>
       <button class="fab" aria-label="Jam with the team" data-open-jam>${ic('hand')}</button>`;
@@ -1617,7 +1621,8 @@
     view = 'feed'; document.body.classList.remove('deck-on');
     $$('.seg [role=tab]').forEach((t) => t.setAttribute('aria-selected', t.dataset.nav === 'feed'));
     if (!$('#col')) $('#view').innerHTML = `<div class="feedcol" id="col"><div class="sk" style="height:120px;border-radius:20px"></div><div class="sk" style="height:420px;border-radius:20px"></div></div>`;
-    await Promise.all([loadFeed(), loadMV()]); if (view !== 'feed') return;
+    const warm = !settle && FEED_LOADED && Date.now() - FEED_LOADED < 30e3 && RANKED.length; /* back from another tab a moment later: no second read */
+    if (warm) FEED = RANKED.slice(); else await Promise.all([loadFeed(), loadMV()]); if (view !== 'feed') return; /* another view may have narrowed FEED: the whole ranked feed again */
     if (brewingCard()) FEED = FEED.filter((p) => p.id !== 'build-moves'); /* one progress bar above the first idea, not two */
     /* the first session starts on something to look at: the first card with a first draft (or the static ads) leads, marked Start here */
     START_ID = null; if (S.sessions <= 1) { const k = FEED.findIndex((p) => p.draft?.images?.length || p.draft?.video || p.id === 'statics-batch'); if (k >= 0) { START_ID = FEED[k].id; if (k > 0) FEED.unshift(...FEED.splice(k, 1)); } }
@@ -1680,7 +1685,7 @@
     const top = c.top - st.top, end = top + col.offsetHeight - 260, D = STK();
     ORDER.forEach((k, i) => {
       const y = top + 360 + i * 980; if (y > end) return;
-      const d = D[k]; const cx = gutter / 2 + (i % 2 ? 30 : -30);
+      const d = D[k]; if (k === 'brand' && (!B.brand.mark || /^data:/.test(B.brand.mark))) return; /* a made-up letter tile is not the brand's mark: no lone "A" floating by the feed (1.14) */ const cx = gutter / 2 + (i % 2 ? 30 : -30);
       const x = Math.max(16, Math.min(cx - d.w / 2, gutter - d.w - 48));
       const el = document.createElement('div');
       el.className = `stk ${d.cls || ''}`; el.dataset.corner = 'br';
@@ -1972,7 +1977,7 @@
      so the browser's Back and ours walk the same path. route() makes the screen match the URL. */
   const nav = (hash, push, a, v = view) => { const st = { a, v }; hash = typeof hash === 'string' && hash.startsWith('#') ? location.pathname + hash : hash; if (push) history.pushState(st, '', hash); else history.replaceState(st, '', hash); };
   const VIEWS = () => { const v = VIEWS0(); v.tune = renderTune; return v; };
-  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), refs: (f) => renderReferences(f !== false), done: renderWork, work: renderWork, connectors: renderConnectors, learned: renderLearned, brand: () => renderBrand(), watch: () => renderWatch(), heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue() });
+  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), refs: (f) => renderReferences(f !== false), done: renderWork, work: renderWork, connectors: renderConnectors, learned: renderLearned, brand: () => renderBrand(), watch: () => renderWatch(), heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue(['yes', 'spend', 'board'].includes(hashParams().q) ? hashParams().q : QTAB) });
   const route = () => {
     const hp = hashParams(), rm = location.hash.match(/^#remix=([^/&]+)(?:\/([^&]+))?/);
     if (rm) { const p = byId(decodeURIComponent(rm[1]));
@@ -2433,8 +2438,10 @@
   };
   const colleagueForCard = (p) => p?.owner ? colleague(p.owner) : colleague(p?.sector === 'creatives' || p?.sector === 'visibility' ? 'brandm' : p?.sector === 'ads' ? 'perf' : p?.sector === 'storefront' || p?.sector === 'catalog' ? 'ops' : 'growth');
   /* the chip or send button that asked spins until the answer is in, like Make it yours (the panel's busy line stays too) */
-  const sendComposer = (text, el) => { if (!text) return; const done = el ? busyBtn(el, el.matches('.chip') ? el.textContent.trim() : '') : () => {};
-    return Promise.resolve(sendComposer0(text)).finally(done); };
+  /* the card's chat follows the studio's rule (1.9): one ask at a time, the next queued and sent after it, never sent twice */
+  const sendComposer = (text, el) => { if (!text) return; if (DP.sending) { (DP.queue ||= []).push(text); toast(`${ic('clock', 's16')}Queued: it goes as soon as this answer lands.`); return; }
+    DP.sending = true; const done = el ? busyBtn(el, el.matches('.chip') ? el.textContent.trim() : '') : () => {};
+    return Promise.resolve(sendComposer0(text)).finally(() => { done(); DP.sending = false; const n = (DP.queue || []).shift(); if (n) sendComposer(n); }); };
   const sendComposer0 = async (text) => {
     if (!text) return; const to = DP.to;
     if (to !== 'ai' && (!DP.w || DP.w.with?.kind !== to)) return sendTo(to, text);
@@ -3892,7 +3899,7 @@
      server's step (change.thinking, remix.js think()) every 3 s, the clock every 1.5 s; never a bare spinner */
   const thinkLine = () => { const s = Math.round((Date.now() - (RX.thinkT0 || Date.now())) / 1000);
     const step = RX.think?.step || (RX.fixing ? 'Checking it against the facts, the product and what this change is meant to be' : 'Reading the brief and your note');
-    return `${step} · ${s}s${s >= 35 ? ' · a full answer takes about a minute on this model' : ''}`; };
+    return `${step} · ${s}s${s >= 35 && s < 90 ? ' · a full answer takes about a minute on this model' : s >= 90 ? ' · taking longer than usual: it keeps going if you leave, and lands here' : ''}`; }; /* never promise a minute at 200 s (1.8) */
   const thinkStop = () => { clearInterval(RX.thinkI); RX.thinkI = null; RX.think = null; RX.thinkT0 = null; };
   const thinkStart = (id) => { thinkStop(); RX.thinkT0 = Date.now(); let n = 0;
     RX.thinkI = setInterval(async () => { if (!RX.sending) return thinkStop(); const el = $('#ship-think'); if (++n % 2 === 0) { const q = await tapi('GET', `/api/changes/${id}`).catch(() => null); if (q?.change?.thinking) RX.think = q.change.thinking; } if (el) el.textContent = thinkLine(); }, 1500); };
@@ -3973,6 +3980,10 @@
     if (po && !fix && !job && !/data-rx="post-open"/.test(main)) items.push(['data-rx="post-open"', 'send', po.label, po.filled ? `Opens ${PO_WHERE(po)} with the post filled in.` : `Copies the post and opens ${PO_WHERE(po)}.`]);
     if (!/data-rx="share-shopos"/.test(main)) items.push(['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team, Brew’s build crew, gets it by email and makes it.']);
     items.push(['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']);
+    /* a customer message (WhatsApp, email, SMS) goes out from the brand's own tool: copy its words, or take the template file (2.5) */
+    if (ch.family === 'crm' && (p.message || p.subject)) { const tool = ch.target?.name && !/^a person$/i.test(ch.target.name) ? ch.target.name : 'your messaging tool';
+      items.unshift(['data-msg-copy', 'copy', `Copy the ${/whatsapp/i.test(p.channel || '') ? 'WhatsApp message' : /sms/i.test(p.channel || '') ? 'SMS' : 'email'}`, `Paste it into ${tool}. Buttons and {variables} come with it.`]);
+      if (dlTool(ch, ch)) items.splice(1, 0, ['data-st-dl', 'down', 'Download the templates', 'WhatsApp, email and SMS versions of the same words, ready to submit.']); }
     if (media && !ch.studio && (p.image || p.video || p.draft?.images?.length) && !fp) items.push([`data-fn-studio="${esc(ch.id)}"`, 'sparkles', fin ? 'Change the final…' : 'Choose how the final is made…', 'Pick the photos, the model or a Sloosh Space yourself.']);
     if (dlTool(ch, ch)) items.push(['data-st-dl', 'down', 'Download', 'This version’s files, as they are now.']);
     /* Redo it: one new take beside the one way forward, whenever the version can still change (not while something is being made) */
@@ -4698,7 +4709,14 @@
   document.addEventListener('dragleave', (e) => { if (e.target.closest?.('.st-panel') && !e.relatedTarget?.closest?.('.st-panel')) $('.st-panel.is-drop')?.classList.remove('is-drop'); });
   document.addEventListener('drop', (e) => { const pn = e.target.closest?.('.st-panel'); if (!pn || view !== 'remix' || !RX.ch) return; pn.classList.remove('is-drop'); const fs = [...(e.dataTransfer?.files || [])]; if (!fs.some((f) => /^image\//.test(f.type))) return; e.preventDefault(); stAttach(fs); });
   const stSay = async (msg, path = 'iterate', body) => {
-    const ch = RX.ch; if (!ch || RX.sending) return;
+    const ch = RX.ch; if (!ch) return;
+    /* one rule for every studio (1.9): a message sent while Brew works is kept, shown as queued, and goes as the next ask the
+       moment this one lands; a chip or button pressed while busy waits too, never vanishes */
+    if (RX.sending || RX.saying) { if (path === 'iterate' && String(msg || '').trim()) { (RX.queue ||= []).push({ msg, body }); if ($('#st-in')) $('#st-in').value = ''; RX.draft = ''; toast(`${ic('clock', 's16')}Queued: Brew applies it to the next version.`); paintStudio(); } return; }
+    RX.saying = true; try { await stSay0(ch, msg, path, body); } finally { RX.saying = false; }
+    const next = (RX.queue || []).shift(); if (next && RX.ch?.id === ch.id) return stSay(next.msg, 'iterate', next.body);
+  };
+  const stSay0 = async (ch, msg, path, body) => {
     /* a message that tags someone anywhere in it goes to them and the jam (sendTo: they get an email); the AI hears it only
        when it also asks for a change ("Make the headline shorter @Ana"), and then only that part */
     if (path === 'iterate' && RX.p && (window.JamRoom?.hasTag ? window.JamRoom.hasTag(String(msg || '').trim()) : window.JamRoom?.mentionOf?.(String(msg || '').trim()))) {
@@ -4720,6 +4738,9 @@
   };
   /* a post for X, LinkedIn, Reddit, Quora, a Facebook group or Pinterest: Brew copies it and opens the exact place; you post it.
      Nothing is posted into a community on anyone's behalf */
+  document.addEventListener('click', async (e) => { const b = e.target.closest('[data-msg-copy]'); if (!b || !RX.ch) return; const p = RX.ch.pkg || {};
+    const btns = (p.buttons || []).filter(Boolean), txt = [p.subject && /email/i.test(p.channel || 'email') ? `Subject: ${p.subject}` : '', p.message || '', btns.length ? `\nButtons: ${btns.join(' | ')}` : ''].filter(Boolean).join('\n').trim();
+    try { await navigator.clipboard.writeText(txt); toast(`${ic('check', 's16')}Copied. Paste it into ${esc(RX.ch.target?.name || 'your messaging tool')}.`); } catch { toast('Couldn’t copy here. Select the words in Details and copy them.'); } b.closest('details')?.removeAttribute('open'); });
   const rxAct = async (act, ch, btn) => {
     const id = ch.id;
     if (act === 'open') { const w = WORK.items.find((x) => x.id === ch.workId) || (await tapi('GET', '/api/tenants/:t/work')).items?.find((x) => x.id === ch.workId); if (w) { putWork(w); openDetail({ ...RX.p, _work: w }, { jam: true }); } else openDetail(RX.p, { jam: true }); /* a jam this viewer doesn't hold yet: the normal path joins it, never a dead tap (QA UI) */ return; }

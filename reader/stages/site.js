@@ -19,6 +19,8 @@ const TECH = {
 };
 const SUBS = [['recharge', /rechargepayments|rechargecdn|recharge-/i], ['skio', /skio/i], ['loop', /loopsubscriptions|loop-subscriptions/i], ['appstle', /appstle/i], ['seal', /sealsubscriptions/i], ['bold', /boldapps\.net\/subscriptions|bold-subscriptions/i], ['stay.ai', /stay\.ai|retextion/i], ['ordergroove', /ordergroove/i]];
 const CHAT = [['gorgias', /gorgias/i], ['intercom', /widget\.intercom\.io|intercomSettings/i], ['zendesk', /zdassets\.com|zopim/i], ['tidio', /tidio/i], ['freshchat', /freshchat|wchat\.freshchat/i], ['richpanel', /richpanel/i], ['crisp', /client\.crisp\.chat/i], ['whatsapp', /wa\.me\/|api\.whatsapp\.com\/send|whatsapp-widget|interakt|wati\.io|gallabox/i], ['kustomer', /kustomer/i], ['re:amaze', /reamaze/i], ['livechat', /livechatinc/i], ['tawk', /tawk\.to/i], ['haptik', /haptik/i]];
+const EMAIL_TOOLS = [['klaviyo', /static\.klaviyo\.com|klaviyo\.js|_learnq/i], ['omnisend', /omnisend/i], ['mailchimp', /chimpstatic|mailchimp/i], ['moengage', /moengage/i], ['webengage', /webengage/i], ['clevertap', /clevertap/i], ['netcore', /netcoresmartech|smartech/i], ['privy', /privy\.com|widget\.privy/i], ['wigzo', /wigzo/i], ['brevo', /sendinblue|brevo/i], ['attentive', /attn\.tv|attentivemobile/i], ['postscript', /postscript\.io/i]];
+const WA_TOOLS = [['wati', /wati\.io|wati-widget/i], ['interakt', /interakt/i], ['gallabox', /gallabox/i], ['aisensy', /aisensy/i], ['gupshup', /gupshup/i], ['limechat', /limechat/i], ['bik', /bik\.ai/i], ['zoko', /zoko/i]];
 const CHECKOUT_APPS = [['gokwik', /gokwik/i], ['shopflo', /shopflo/i], ['fastrr (shiprocket)', /fastrr|shiprocket.*checkout/i], ['razorpay magic', /magic-checkout|razorpay.*magic/i], ['simpl', /getsimpl|simpl-checkout/i], ['bold checkout', /boldcommerce.*checkout/i], ['shop pay', /shop-pay|shopify-payment-button/i]];
 /* tags seen firing in the walk's own network requests: a pixel loaded through GTM is not in the page source */
 const NET = { metaPixel: /facebook\.com\/tr[/?]|connect\.facebook\.net\/[^?]*fbevents\.js/i, ga4: /google-analytics\.com\/g\/collect|analytics\.google\.com\/g\/collect|googletagmanager\.com\/gtag\/js\?id=G-/i,
@@ -62,6 +64,9 @@ export function detectTech(html) {
   out.subscriptionApp = SUBS.find(([, re]) => re.test(html))?.[0] || null;
   out.chat = CHAT.find(([, re]) => re.test(html))?.[0] || null;
   out.checkoutApp = CHECKOUT_APPS.filter(([k]) => k !== 'shop pay').find(([, re]) => re.test(html))?.[0] || null;
+  /* the tools that message the brand's customers (2.4: Brew assumed Klaviyo for a brand on GoKwik and WhatsApp) */
+  out.emailTool = EMAIL_TOOLS.find(([, re]) => re.test(html))?.[0] || (out.klaviyo ? 'klaviyo' : null);
+  out.whatsappTool = WA_TOOLS.find(([, re]) => re.test(html))?.[0] || null;
   return out;
 }
 

@@ -835,6 +835,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   // a product page link → its real title, price and photo (Shopify's .js, else JSON-LD)
   async function readProduct(slug, url, p) {
     const u = String(url).split('?')[0].replace(/\/$/, '');
+    /* a product the read already holds (its page link pasted to lead with it, 2.2): taken from the catalog, never fetched again, so a
+       store that blocks a second read can't stop it */
+    { const h = handleOf(u), have = h && (p.catalog?.products || []).find((x) => x.handle === h || String(x.url || '').split('?')[0].replace(/\/$/, '') === u);
+      if (have) return { ...have, addedByBrand: true }; }
     let t = null, price = null, img = null, cur = p.currency, item = null;
     /* Shopify answers <product>.js; every platform's page is read with the reader's own product reader (reader/products.js) */
     if (!p.platform || p.platform === 'shopify' || /\/products\//.test(u)) try { const r = await safeFetch(u + '.js', { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const j = await r.json(); t = j.title; price = (j.price || 0) / 100; img = j.featured_image || j.images?.[0]; } } catch {}
@@ -847,12 +851,18 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (!t) throw new Error('That page did not show a product.');
     if (img && img.startsWith('//')) img = 'https:' + img;
     let asset = null; if (img) try { const r = await safeFetch(img, { headers: UA, signal: AbortSignal.timeout(20e3) }); if (r.ok) { const b = Buffer.from(await r.arrayBuffer()); const n = 'added-' + u.split('/').pop().replace(/[^a-z0-9-]/gi, '').slice(0, 40) + (img.includes('.png') ? '.png' : '.jpg'); await packs.put(slug, 'assets/' + n, b); asset = `/b/${slug}/a/${n}`; } } catch {}
-    return { handle: handleOf(u), title: String(t).trim(), price, currency: cur, /* the same handle the catalog read gives the page (no duplicate) */ img: asset, images: asset ? [asset] : [], url: u, inStock: true, addedByBrand: true, claims: [] };
+    return { handle: handleOf(u), title: String(t).trim(), price, currency: cur, /* the same handle the catalog read gives the page (no duplicate) */ img: asset, images: asset ? [asset] : [], url: u, inStock: item?.inStock ?? item?.available ?? null, addedByBrand: true, claims: [] }; /* as the page says, never assumed in stock (1.11) */
   }
   // a rival's website → name, logo, a few live prices (Shopify), and its live ads by domain
   async function readRival(url, p) {
-    const host = hostOf(url); if (!host) throw new Error('That doesn’t look like a website.');
-    const r = await safeFetch(`https://${host}/`, { headers: UA, signal: AbortSignal.timeout(25e3) }); const h = await r.text();
+    /* a rival is a website: "nike" or a sentence is asked for again in plain words before anything is fetched (1.12), never a raw
+       network error; the brand's own site is not a rival */
+    const raw = String(url || '').trim(), host = /^[^\s]+$/.test(raw) ? hostOf(raw) : null;
+    if (!host || !/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(host)) throw new Error(`“${raw.slice(0, 40)}” isn’t a website. Paste the rival’s site, like rival.com.`);
+    if (p?.host && host.replace(/^www\./, '') === String(p.host).replace(/^www\./, '')) throw new Error('That’s your own site. Paste a rival’s site instead.');
+    let r; try { r = await safeFetch(`https://${host}/`, { headers: UA, signal: AbortSignal.timeout(25e3) }); } catch (e) { throw new Error(`Brew couldn’t open ${host}. Check the address, or try again in a minute.`); }
+    if (!r.ok) throw new Error(r.status === 403 || r.status === 429 ? `${host} blocked our read just now. Try again in a minute.` : `${host} didn’t open (it answered ${r.status}). Check the address.`);
+    const h = await r.text();
     const name = ((h.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)/i) || [])[1] || (h.match(/<title>([^<|–-]+)/i) || [])[1] || host).trim().slice(0, 40);
     const prices = [];
     try { const j = await (await safeFetch(`https://${host}/products.json?limit=12${p.country ? `&country=${p.country}` : ''}`, { headers: UA, signal: AbortSignal.timeout(20e3) })).json(); (j.products || []).filter((x) => !NOT_PRODUCT.test(x.title)).slice(0, 6).forEach((x) => { const v = x.variants?.[0]; if (v?.price) prices.push({ title: x.title, price: +v.price, currency: p.currency, url: `https://${host}/products/${x.handle}` }); }); } catch {}
@@ -876,11 +886,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (Array.isArray(b.hero)) p.catalog.hero = b.hero.slice(0, 12);
     if (Array.isArray(b.removed)) p.catalog.removed = [...new Set([...(p.catalog.removed || []), ...b.removed])];
     for (const u of (b.addProducts || []).slice(0, 6)) { try { const x = await readProduct(slug, u, p); p.catalog.products = [x, ...p.catalog.products.filter((y) => y.handle !== x.handle)]; p.catalog.removed = (p.catalog.removed || []).filter((h) => h !== x.handle); p.catalog.hero = [x.handle, ...(p.catalog.hero || []).filter((h) => h !== x.handle)];
-      if (x.price) L.push({ key: `price.${x.handle}`, label: x.title, v: moneyFmt(x.currency || p.currency, p.locale)(x.price), n: x.price, unit: x.currency, layer: 'observed', src: hostOf(x.url) + new URL(x.url).pathname, url: x.url, at, method: 'product page (added by the brand)' }); } catch (e) { notes.push(`${u}: ${e.message}`); } }
+      if (x.price) L.push({ key: `price.${x.handle}`, label: x.title, v: moneyFmt(x.currency || p.currency, p.locale)(x.price), n: x.price, unit: x.currency, layer: 'observed', src: hostOf(x.url) + new URL(x.url).pathname, url: x.url, at, method: 'product page (added by the brand)' }); } catch (e) { notes.push(e.message); } } /* readProduct says what went wrong in plain words */
     const rivals0 = (p.rivals || []).map((r) => r.name).join('|');
     if (Array.isArray(b.removeRivals)) p.rivals = (p.rivals || []).filter((r) => !b.removeRivals.includes(r.host));
     for (const u of (b.addRivals || []).slice(0, 6)) { try { const r = await readRival(u, p); p.rivals = [...(p.rivals || []).filter((x) => x.host !== r.host), r]; L.push({ key: `rival.${r.host.replace(/\./g, '-')}.found`, label: `Rival: ${r.name}`, v: r.host, layer: 'observed', src: r.host, url: r.url, at, method: 'brand-confirmed' });
-      r.prices.forEach((x, i) => L.push({ key: `rival.${r.host.replace(/\./g, '-')}.price.${i + 1}`, label: `${r.name}: ${x.title}`, v: moneyFmt(p.currency, p.locale)(x.price), n: x.price, unit: p.currency, layer: 'observed', src: r.host, url: x.url, at, method: 'products.json' })); } catch (e) { notes.push(`${u}: ${e.message}`); } }
+      r.prices.forEach((x, i) => L.push({ key: `rival.${r.host.replace(/\./g, '-')}.price.${i + 1}`, label: `${r.name}: ${x.title}`, v: moneyFmt(p.currency, p.locale)(x.price), n: x.price, unit: p.currency, layer: 'observed', src: r.host, url: x.url, at, method: 'products.json' })); } catch (e) { notes.push(e.message); } } /* readRival's words already name the address (1.12) */
     const src = b.sources || {};
     if (src.instagram) { const h = (String(src.instagram).match(/instagram\.com\/([A-Za-z0-9_.]+)/) || [])[1]; if (h) { p.socials ||= {}; p.socials.instagram = { ...(p.socials.instagram || {}), url: `https://www.instagram.com/${h}`, handle: h }; conf('social.instagram.confirmed', 'Instagram (confirmed by the brand)', '@' + h, `https://www.instagram.com/${h}`); } else notes.push('That Instagram link did not look right.'); }
     if (src.adpage) { try { const m = String(src.adpage).match(/facebook\.com\/(?:profile\.php\?id=)?([A-Za-z0-9.\-]+)/); let pageId = /^\d+$/.test(m?.[1] || '') ? m[1] : null;

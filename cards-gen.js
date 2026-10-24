@@ -4,7 +4,8 @@
 import { numbersOf, dayOf } from './pack-numbers.js'; // one number, one source
 import { mockAllowed } from './ai.js'; // a mock card stands in only on a mock run, never after a billing pause
 import { unbacked, allowedFrom, numbersIn, backedNumbers } from './fact-gate.js';
-import { claimFlags, checkCopy, sourceText } from './claims.js'; // card words carry only the brand's own claims
+import { claimFlags, checkCopy, sourceText } from './claims.js';
+const wordCut = (x, n) => { const s = String(x ?? '').replace(/\s+/g, ' ').trim(); return s.length <= n ? s : `${s.slice(0, n - 1).replace(/\s+\S*$/, '')}…`; }; // card words carry only the brand's own claims
 import { CTA, ctaName } from './seed-template.js';
 import * as catalog from './creative-catalog.js'; /* what can be made: formats, the prompt block, generic and repeat checks */
 import { isReferenceCard } from './rival-ad.js'; /* "Make our version" belongs only on a card built on a rival's ad or a viral video */
@@ -268,7 +269,7 @@ ${catalog.promptBlock({ product: heroName })}
         if (MAKES_CREATIVE.test(fam)) { card.sector = 'creatives'; if (card.agent !== 'brew') card.agent = 'creative'; Object.assign(card, fitRoles(card)); }
       }
       else { const m = inferMake(card); if (m) { card.make = { format: m.format, pieces: '' }; fitCta(card); } } /* the model left "make" out but the card names an asset */
-      const rows = (c.rows || []).filter((r) => r?.length >= 2).slice(0, 5).map((r) => [String(r[0]).slice(0, 40), String(r[1]).slice(0, 48)]);
+      const rows = (c.rows || []).filter((r) => r?.length >= 2).slice(0, 5).map((r) => [wordCut(r[0], 40), wordCut(r[1], 72)]); /* never mid-word (1.14: "Hair Gro", "Pack o") */
       if (card.kind === 'rows') card.rows = rows; else { const img = laneImg?.[lane] || Object.values(laneImg || {})[0]; if (img) card.images = [img]; else card.kind = 'rows', card.rows = rows; }
       // the fact gate: a number neither the fact sheet nor the move backs means the card doesn't ship
       const bad = unbacked({ title: card.title, sub: card.sub, rows: card.rows, detail: card.detail, make: card.make }, { has: (n) => ok.has(n) || moveNums.has(n) || fromLedger.has(n) }, { strict: true });

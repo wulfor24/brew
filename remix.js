@@ -28,6 +28,7 @@ import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // a que
 import { EVIDENCE_ASK, proofAnswer } from './evidence.js'; // "what's the evidence?" is answered from the card's own proof
 import { moveNo } from './value.js';
 import { numbersIn } from './fact-gate.js'; // a budget draft's amounts against its card's
+import { safeFetch, stripTags, UA as READ_UA } from './reader/util.js'; // the product page as it reads today, before copy is written
 import { claimFlags, claimCheck, copyFlags, sourceText, CLAIMS_RULE, COPY_RULE, checkCopyIn } from './claims.js'; // invented codes, guarantees, timed results and copy that reads wrong are flagged before shipping
 import { dejargon } from './plain.js'; // jam names in plain words, like the cards
 import { budgetWhy } from './budget.js'; // v2 words/takes: a refused spend is said with its real reason, never a silent fallback
@@ -450,6 +451,14 @@ export function createRemix(o) {
   // what the card's own moves say, so packages follow the plan they came from
   const movePassages = (c, extra = '', k = 4) => (MOVES ? MOVES.passages(c, k, extra) : []);
   const moveTag = (x) => MOVES?.tag ? MOVES.tag(x.n, x.h) : `${moveLabel(x.n)} · ${x.h}`;
+  /* the product page as it reads today (1.10: a draft said 90 days while the live page said 84): its claim lines, read once an hour
+     per page, go into the writer's prompt and back its claims; a page that won't open leaves the saved read in charge */
+  const LIVE_PAGE = new Map();
+  const livePage = async (url) => { if (!url || !/^https?:/.test(url) || isMock()) return ''; const hit = LIVE_PAGE.get(url); if (hit && Date.now() - hit.at < 36e5) return hit.text;
+    let text = ''; try { const r = await safeFetch(url, { headers: { 'user-agent': READ_UA }, signal: AbortSignal.timeout(12e3) }); if (r.ok) { const plain = stripTags(await r.text()).replace(/\s+/g, ' ');
+      text = plain.split(/(?<=[.!?])\s+/).filter((x) => x.length > 20 && x.length < 260 && (/\d/.test(x) || /clinical|tested|proven|derma|natural|safe|results?|days?|weeks?/i.test(x))).slice(0, 14).join(' ').slice(0, 1600); } } catch {}
+    LIVE_PAGE.set(url, { at: Date.now(), text }); if (LIVE_PAGE.size > 200) LIVE_PAGE.delete(LIVE_PAGE.keys().next().value); return text; };
+  const livePageLine = async (c, extra = '') => { try { const P = productFor(c, FACTS, extra), txt = await livePage(P.page); return txt ? `\nTHE PRODUCT PAGE TODAY (${P.page}), read just now; its numbers and claims win over any older line above:\n${txt}\n` : ''; } catch { return ''; } };
   const productLine = (c, extra = '') => { const P = productFor(c, FACTS, extra); return `THE PRODUCT: every public field is about ${P.name} (page ${P.page}${P.price ? `, ${P.price}` : ''}${P.claim ? `; claim: ${P.claim}` : ''}). Stay on this product unless the person asks for another one.`; };
   const pkgWords = (ch) => (ch?.pkg ? [ch.after?.title, ...publicText(ch.family, ch.action, ch.pkg)].filter(Boolean).join('. ') : '');
   const specOf = (key) => ACTION_SPEC[String(key).split('.').pop()] || '';
@@ -523,10 +532,15 @@ export function createRemix(o) {
     const src = brandSource(t, card), cf = claimFlags(shopperText, src, { allowNewCode: /discount_offer$/.test(ch.action || '') });
     checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote) });
     const lf = copyFlags(shopperText, { source: src, names: [BN(), o.SEED?.brand?.name, ...(catalogOf(t) || []).map((x) => x?.t)] }); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
+    /* the product it sells is in stock today (1.11): an ad or message for a sold-out product waits, unless the card is about the restock */
+    { const cat = catalogOf(t) || []; let pr = null; try { pr = cardProduct(card, cat); } catch {}
+      if (pr?.out && !/\b(?:back in stock|restock|sold[ -]?out|out of stock|waitlist|notify me)\b/i.test(`${card.title || ''} ${card.sub || ''} ${shopperText}`)) checks.push({ k: `${pr.t} is out of stock on the store right now: pick an in-stock product, or hold this until it’s back`, ok: false, fix: true, stock: true }); }
     if (ch.imagePending) checks.push({ k: 'The new creative is still rendering', ok: false, soft: true });
     checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. Whoever ships it from the brief should know.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^—/.test(act.rollback), soft: true }); /* "Nothing ships until it is sent" is safe, not a failure (QA J-17) */
     /* a connector check only for a tool this build can connect (Marketplaces is not one any more: QA J-17) */
-    if (act.target.conn && SEED.connectors?.[act.target.conn] && act.target.conn !== 'marketplaces') checks.push({ k: `${SEED.connectors[act.target.conn]?.name || act.target.conn} connected`, ok: !!t.conn[act.target.conn], soft: true, conn: act.target.conn });
+    { const tg = msgTarget(t, ch) || act.target, cn = tg.msgTool ? null : act.target.conn; /* a change on the brand's own tool asks for no Klaviyo (2.4) */
+      if (cn && SEED.connectors?.[cn] && cn !== 'marketplaces') checks.push({ k: `${SEED.connectors[cn]?.name || cn} connected`, ok: !!t.conn[cn], soft: true, conn: cn });
+      if (tg.unknown) checks.push({ k: 'Which tool sends this? Say it in the chat once (“we use GoKwik”) and Brew remembers', ok: true, soft: true }); }
     if (act.money) checks.push({ k: `${ch.amount > 0 ? `Spends about ${inr(ch.amount)} a week` : 'Costs money'}: the brief carries it, the team that runs it sets the budget`, ok: true, money: true });
     checks.push(...ruleChecks(t, act.agent, ch.after));
     L(t).autoChecks.filter((a) => a.on && (JAM_TPL[act.agent] || []).some(([k]) => k === a.k)).forEach((a) => checks.push({ k: `Learned check: ${a.q}`, ok: true, learned: true, auto: true }));
@@ -593,7 +607,7 @@ export function createRemix(o) {
     const ask = like ? `Make ONE new take: a different cut of this package (action ${like.action}): ${JSON.stringify(toKV(like.family, like.action, like.pkg))}` : `${rec}\n\nRemix this card into ${n} complete packages that could be commissioned today. ${r.primary ? `Option 1 MUST be exactly what the card recommends, with action ${r.primary}, built from the card's own how-steps and numbers. Options 2 and 3 are different cuts of the same thing the card asks for (another angle, a smaller first step, a different scope), using the same action unless another listed action clearly does the same job. Never propose a different kind of job than the card's.` : 'Every option must serve the goal the card names; do not drift to unrelated levers.'}`;
     const schema = { type: 'object', required: ['line', 'options'], properties: { line: { type: 'string', description: 'Under 18 words: what you made' },
       options: { type: 'array', items: { type: 'object', required: ['action', 'angle', 'why', 'pkg'], properties: { action: { type: 'string', enum: r.actionKeys }, angle: { type: 'string', description: '2-3 words' }, from: { type: 'string', description: 'The move passage it follows, exactly as in the brackets, or empty' }, why: { type: 'string', description: 'Under 16 words: why this moves the number' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 follow-up asks the person might tap to reshape THIS package, each 2 to 6 words, in their voice, about the card’s own action and case (the products, ads, pages or people it names), never a generic writing tip' }, pkg: kvSchema(allKeys(fams)) } } } } };
-    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer), t)}\n\nYou are the ${AGENT[c.agent] || 'agent'} agent. ${ask}\n${moveBlock}${rivalLine}What the reader wants: "${[intent, prompt].filter(Boolean).join('. ') || r.intents[0]}".\nActions you may use, with the fields each package needs:\n${acts}\n${learned ? '\n' + learned + '\n' : ''}\n${productLine(c)}\nWrite every package exactly as it ships: real copy, real settings, nothing left as a placeholder. Each package must do what its action says it is, nothing else. ${factsLine}`, schema, 4000, 'remix_options');
+    const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer), t)}\n\nYou are the ${AGENT[c.agent] || 'agent'} agent. ${ask}\n${moveBlock}${rivalLine}What the reader wants: "${[intent, prompt].filter(Boolean).join('. ') || r.intents[0]}".\nActions you may use, with the fields each package needs:\n${acts}\n${learned ? '\n' + learned + '\n' : ''}\n${productLine(c)}${await livePageLine(c)}\nWrite every package exactly as it ships: real copy, real settings, nothing left as a placeholder. Each package must do what its action says it is, nothing else. ${factsLine}`, schema, 4000, 'remix_options');
     const ok = new Set(r.actionKeys);
     const opts = (j.options || []).slice(0, n).map((x, i) => { const action = ok.has(x.action) ? x.action : r.actionKeys[0]; const src = mv.find((m) => x.from && (x.from.includes(m.h) || moveTag(m) === x.from)); return { action, angle: clean(x.angle || 'Version'), why: clean(x.why || ''), next: Array.isArray(x.next) ? x.next.map((y) => clean(String(y)).replace(/[.]$/, '')).filter((y) => y && y.length <= 48) : null, from: src ? moveTag(src) : null, pkg: fromKV(familyOf(action), action, x.pkg), fromCard: !like && i === 0 && !!r.primary && action === r.primary }; })
       .filter((x) => !BANNED.test(publicText(familyOf(x.action), x.action, x.pkg).join(' ')))
@@ -648,6 +662,22 @@ export function createRemix(o) {
   const cleanLabel = (x) => { const s = String(x || '').replace(/[."“”]/g, '').trim(); const n = s.split(/\s+/).length; return s && n <= 5 && s.length <= 32 ? s[0].toUpperCase() + s.slice(1) : ''; };
   /* who ships a change: the connected tool when the brand can connect it; off Shopify, a storefront change is the brand's web
      team's job on their own platform (store-facts.js platformLabel), never a Shopify item that can't be ticked */
+  /* the tools that really message this brand's customers (2.4): what the team told Brew first, then a connected account, the
+     checkout app Shopify's orders come through, and the tools seen on the site. Klaviyo is named only when the brand has it */
+  const TOOL_NAME = { klaviyo: 'Klaviyo', omnisend: 'Omnisend', mailchimp: 'Mailchimp', moengage: 'MoEngage', webengage: 'WebEngage', clevertap: 'CleverTap', netcore: 'Netcore', privy: 'Privy', wigzo: 'Wigzo', brevo: 'Brevo', attentive: 'Attentive', postscript: 'Postscript',
+    wati: 'WATI', interakt: 'Interakt', gallabox: 'Gallabox', aisensy: 'AiSensy', gupshup: 'Gupshup', limechat: 'LimeChat', bik: 'Bik', zoko: 'Zoko', gokwik: 'GoKwik', shopflo: 'Shopflo', 'fastrr (shiprocket)': 'Shiprocket Checkout', 'razorpay magic': 'Razorpay Magic Checkout', simpl: 'Simpl' };
+  const nameOfTool = (x) => TOOL_NAME[String(x || '').toLowerCase()] || (x ? String(x) : null);
+  const toolsOf = (t) => { const F = Object.values(FACTS || {}), fv = (k) => F.find((f) => f?.key === k)?.v, yes = (v) => v && v !== 'no' && v !== 'false';
+    const live = t?.member ? t.liveLedger || {} : {}, app = /^(.*?)\s*\(/.exec(String(live['shopify.checkout.app']?.v || ''))?.[1];
+    return { told: t?.msgTool || null, email: t?.conn?.klaviyo ? 'Klaviyo' : nameOfTool(yes(fv('site.tech.emailTool')) ? fv('site.tech.emailTool') : yes(fv('site.tech.klaviyo')) ? 'klaviyo' : null),
+      whatsapp: nameOfTool(yes(fv('site.tech.whatsappTool')) ? fv('site.tech.whatsappTool') : null), checkout: app || nameOfTool(yes(fv('site.tech.checkoutApp')) ? fv('site.tech.checkoutApp') : null) }; };
+  /* a CRM change on Klaviyo for a brand without Klaviyo goes to the tool it has: carts and WhatsApp to the checkout or WhatsApp app,
+     email to its email tool, else "your messaging tool" (and the jam asks once: "which tool sends this?") */
+  const msgTarget = (t, ch) => { if (ch?.target?.conn !== 'klaviyo' && !ch?.target?.msgTool) return ch?.target; const T = toolsOf(t);
+    if (!T.told && (t?.conn?.klaviyo || T.email === 'Klaviyo')) return ch.target;
+    const pkg = ch.pkg || {}, wa = /whatsapp/i.test(pkg.channel || '') || /whatsapp/i.test(ch.actionLabel || ''), cart = /cart|checkout|abandon/i.test(`${pkg.flow || ''} ${pkg.trigger || ''} ${ch.title || ''}`);
+    const name = T.told || (cart ? T.checkout || (wa ? T.whatsapp : T.email) : wa ? T.whatsapp || T.checkout : T.email) || null;
+    return { conn: null, object: ch.target.object, name: name || 'your messaging tool', msgTool: true, unknown: !name }; };
   const targetOf = (tg) => { const cx = tg.conn && SEED.connectors?.[tg.conn];
     if (cx || !tg.conn) return { conn: tg.conn || null, name: tg.name || (cx ? cx.name : 'A person'), object: tg.object };
     const pl = platformLabel(B()?.config?.platform); return { conn: null, name: tg.conn === 'shopify' ? (pl ? `Your web team (${pl})` : 'Your web team') : 'A person', object: tg.object }; };
@@ -716,6 +746,7 @@ export function createRemix(o) {
     healDraftCode(t, ch);
     if (ch.pkg && ch.pkg.landing?.v !== LANDING_V && isLanding(ch, t.cards.get(ch.cardId) || {})) sync(t, ch); /* a jam saved before landing drafts gains its page */
     const opts = optionsOf(t, ch); /* first: healing an old jam can move its stage */
+    { const tg = msgTarget(t, ch); if (tg && tg !== ch.target) ch.target = tg; } /* the brand's own messaging tool (2.4) */
     const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
     /* the jam's own name in plain words ("syncing our Shopify products.json stock levels", final QA pass 19 Oct); the package itself is untouched */
@@ -1294,7 +1325,7 @@ export function createRemix(o) {
      (an error, nothing back, a restart: C() below) never leaves the template looking like the AI's words: the chat says it is a
      starting point and offers Rewrite it */
   const touchedCh = (t, ch) => versionsOf(t, ch.id).length > 1 || (ch.thread || []).length > 0;
-  const startingPoint = (t) => ({ from: 'ai', text: 'This is a starting point: the first draft didn’t get written. Tap Rewrite it and I’ll write it now from the card.', at: now(t), rewrite: true });
+  const startingPoint = (t) => ({ from: 'ai', text: 'This is a starting point: the first draft didn’t get written. Say “rewrite it” and I’ll write it now from the card.', at: now(t), rewrite: true });
   const fillLater = (t, c, ch, write, after = null) => {
     ch.copyPending = Date.now(); FILL_JOBS.add(ch.id);
     (async () => {
@@ -1685,6 +1716,9 @@ export function createRemix(o) {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
     const att = takeAtts(b.images); if (Array.isArray(b.images) && b.images.length && !att) return { error: 'Add a PNG, JPG or WebP image under 6 MB.' };
     const msg = clean(String(b.message || '') || (att ? 'Look at the screenshot: change what it shows.' : '')).slice(0, 400); if (!msg) return { error: 'empty' };
+    /* "we use GoKwik": the team names the tool its messages go out from, once; every messaging jam of the brand uses it (2.4) */
+    { const m = !att && /\b(?:we|i)\s+(?:use|send (?:with|from|through|via)|run (?:it |them |this )?(?:on|in|through))\s+([A-Za-z][\w.+-]*(?:\s[A-Z][\w.+-]*)?)/i.exec(msg);
+      if (m && (ch.target?.msgTool || ch.target?.conn === 'klaviyo')) { t.msgTool = nameOfTool(m[1].trim()); ch.target = msgTarget(t, { ...ch, target: { ...ch.target, conn: 'klaviyo' } }); ch.thread.push(youSaid(t, msg)); ch.thread.push({ from: 'ai', text: `Got it: ${t.msgTool} sends these for ${BN()}. Your message jams name it from now on.`, at: now(t), answer: true }); o.save?.(t); return { change: pubChange(t, evaluate(t, ch)), answered: true }; } }
     /* a message with a screenshot always goes to the AI with its picture (the shortcuts below don't read pictures) */
     if (att) { try { await iterate(t, ch, msg, { att }); return { change: pubChange(t, ch), learned: learnedOut(t), ...(ANSWERED.has(ch) ? { answered: true } : {}) }; } finally { think(ch, null); } }
     /* a line meant for the team brief (said on the Brief side, or naming a fact of the brief: owner, budget, due…) changes the

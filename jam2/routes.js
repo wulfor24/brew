@@ -219,7 +219,7 @@ export function mountJam2(d) {
     const free = !!b.patch?.scene || !!b.patch?.words || !!b.patch?.timeline || b.patch?.slide != null || b.op === 'resize' || b.op === 'line' || b.op === 'redo-words' && isMock();
     if (bd.status === 'stale' && b.op === 'refresh' && headOf(bd)?.studio) return { error: 'Use Redo: it makes it again through Studio, priced first.', jam: out(j) };
     if (bd.status === 'stale' && b.op === 'refresh') { runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd)); return { jam: out(j) }; }
-    if ((b.op === 'first' || !bd.takes.length) && inStudio(bd) && !free && !(isMock() && process.env.STUDIO_AUTO === '1')) return { error: 'Pick a style in the composer: it shows the price before anything is made.', jam: out(j) };
+    if ((b.op === 'first' || !bd.takes.length) && inStudio(bd) && !free && !(isMock() && process.env.STUDIO_AUTO === '1')) return { error: 'Pick a style first: each one shows its price before anything is made.', jam: out(j) };
     /* a paid change (a new take, a new scene, blending, another product) only with the brand's yes on the price it was shown */
     if (['redo', 'background', 'blend', 'swap-product', 'place'].includes(b.op) && !free && !isMock() && b.confirmUsd == null) return { error: 'Confirm the price first.', jam: out(j) };
     if (b.op === 'first' || (!bd.takes.length && !free)) { runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd, { ask: b.ask || '' })); return { jam: out(j) }; }

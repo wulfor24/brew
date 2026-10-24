@@ -115,9 +115,9 @@ test('orders through a checkout app (GoKwik): Shopify’s checkouts left is only
   const s = shop({ pages: [[...Array(30)].map(() => order(2))], products: [] });
   t.mock.method(globalThis, 'fetch', s.fetch);
   const r = await shopify.sync(conn, ctx);
-  assert.equal(r.metrics.checkoutApp.name, 'Gokwik New'); assert.equal(r.metrics.started, undefined);
+  assert.equal(r.metrics.checkoutApp.name, 'GoKwik'); /* named the way the team knows it, never Shopify's raw "Gokwik New" (23 Oct QA 2.4) */ assert.equal(r.metrics.started, undefined);
   const c = r.cards.find((x) => /carts/.test(x.id));
-  assert.match(c.title, /Shopify’s own checkout/); assert.match(c.sub, /100% of your orders come through Gokwik New/);
+  assert.match(c.title, /Shopify’s own checkout/); assert.match(c.sub, /100% of your orders come through GoKwik/);
 });
 
 test('a product with more than 5 variants is read whole before it counts as sold out', async (t) => {
