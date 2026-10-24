@@ -66,3 +66,12 @@ test('a move rewritten after its flag never stays flagged, even when a restart c
   assert.match(heal, /already rewritten after their flag; flag cleared/);
   assert.match(heal, /delete u\.cardsDue\[n\]; const x = u\.stale\?\.\[n\]; if \(x\?\.at && Date\.parse\(move\?\.meta\?\.rewrittenAt/);
 });
+
+test('a retailer’s moves say "store" where a writer called the store itself a brand; other brands and own-label stores are untouched', async () => {
+  const { retailerWords } = await import('../assortment.js');
+  const m = { title: 'Pop-ups', sections: [{ blocks: [{ t: 'p', text: 'For a premium medical apparel brand, events are about proof. Cherokee is a US apparel brand. Scrubroom is a D2C retail brand for doctors.' }] }] };
+  const x = retailerWords(m, { kind: 'retailer' }, ['Scrubroom']);
+  assert.equal(x.sections[0].blocks[0].text, 'For a premium medical apparel store, events are about proof. Cherokee is a US apparel brand. Scrubroom is a D2C retail store for doctors.');
+  assert.equal(retailerWords(m, { kind: 'own' }, ['Scrubroom']), m);
+  assert.equal(retailerWords(x, { kind: 'retailer' }, ['Scrubroom']), x, 'idempotent');
+});

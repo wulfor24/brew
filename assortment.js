@@ -66,3 +66,17 @@ export function stillMaker(moves = {}, was = '', now = '') {
   const re = new RegExp(`\\b${word}\\s+(?:brand|company|label|maker|manufacturer)s?\\b`, 'i');
   return Object.entries(moves || {}).filter(([k, m]) => /^\d+$/.test(k) && +k > 0 && m && typeof m === 'object' && re.test(JSON.stringify({ t: m.title, g: m.gives, s: m.sections }))).map(([k]) => +k);
 }
+
+/* a retailer's moves never call the store a maker, whatever a writer slips in ("For a premium medical apparel brand, events
+   are…", Scrubroom play 27 after two rewrites, 25 Oct): only phrases about the store itself ("For a/As a …", "<Store> is a …")
+   read "store"; a sentence about another brand ("Cherokee is a US apparel brand") is left alone. Runs as moves load */
+export function retailerWords(m, a, names = []) {
+  if (!m || typeof m !== 'object' || !['retailer', 'mixed'].includes(a?.kind)) return m;
+  const who = [...new Set(names.filter((x) => String(x || '').trim().length >= 3))].map((x) => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const adj = String.raw`((?:[\w-]+\s+){0,4}?)`;
+  const res = [new RegExp(String.raw`\b(For|As|Being)\s+(a|an)\s+${adj}(brand|label|maker|manufacturer)\b`, 'g'), ...(who ? [new RegExp(String.raw`\b(${who})(\s+is|'s position as|\s+as)\s+(a|an)\s+${adj}(brand|label|maker|manufacturer)\b`, 'gi')] : [])];
+  const fix = (s) => typeof s !== 'string' ? s : res.reduce((x, re, i) => x.replace(re, i === 0 ? (_, w, art, mid) => `${w} ${/^[aeiou]/i.test(mid) ? 'an' : 'a'} ${mid}store` : (_, nm, verb, art, mid) => `${nm}${verb} ${/^[aeiou]/i.test(mid) ? 'an' : 'a'} ${mid}store`), s);
+  const walk = (o, d = 0) => (d > 8 ? o : typeof o === 'string' ? fix(o) : Array.isArray(o) ? o.map((x) => walk(x, d + 1)) : o && typeof o === 'object' ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, /^(?:url|src|id|kind|t|n|meta|sources|factsUsed|key)$/.test(k) ? v : walk(v, d + 1)])) : o);
+  const out = { ...m, title: fix(m.title), gives: fix(m.gives), live: fix(m.live), sections: walk(m.sections) };
+  return JSON.stringify(out) === JSON.stringify(m) ? m : out;
+}
