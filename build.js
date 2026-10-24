@@ -44,6 +44,7 @@ import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves r
 import { createBookReader } from './brand-book-read.js';
 import { createEnricher } from './brand-enrich.js'; // the Brand Book's fresh posts, reels, TikToks and film words (paid, capped, saved once) // the Brand Book as the read finds it: built after the brief, healed on open
 import { markMoveClaims, sourceText } from './claims.js'; // move PDFs mark a claim the store never made, like the page
+import { COMPANY_V } from './reader/stages/company.js'; // a read from before the about page heals once
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
 // addresses that must never be read or built (wrong links, removals): BUILD_BLOCK=slug;slug (deploy.sh needs ; since its env list is comma-separated)
@@ -751,7 +752,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const outdated = (p.ads && p.ads.v !== ADS_V) || (p.site?.checkout && p.site.checkout.v !== SITE_V) || !['claude', 'brand'].includes(p.descriptorBy) || (!!p.host && !p.site?.pagespeed && speedOn()) || namedStale(p)
         /* reads from before non-Shopify stores were read properly (reader/products.js): an empty or product-page catalog, older reviews, no base name */
         || ((p.catalog?.v || 0) < CATALOG_V && (!p.catalog?.products?.length || /^jsonld/.test(p.catalog?.source || ''))) || (p.reviews && (p.reviews.v || 0) < REVIEWS_V) || (!!p.name && !p.brandName)
-        || ((p.rivals || []).some((r) => r.host && !(r.prices || []).length) && !p.meta?.healTried?.rivalPrices);
+        || ((p.rivals || []).some((r) => r.host && !(r.prices || []).length) && !p.meta?.healTried?.rivalPrices)
+        || ((p.company?.v || 0) < COMPANY_V && !(p.company?.founders || []).length && !p.meta?.healTried?.companyAbout); /* founders from the brand's own about page, once (2.8) */
       const stillBroken = !!p.ads?.own?.error || (p.ads?.rivals || []).some((r) => r.error) || (!p.ai?.answers?.length && !!p.meta?.errors?.answers); /* the AI tools step failed in the read: ask again hourly */
       if (!outdated && p.meta?.healedAt && Date.now() - Date.parse(p.meta.healedAt) < (stillBroken ? 36e5 : 864e5)) return null;
       const reader = makeReader(await load()); if (!reader.heal) return null;

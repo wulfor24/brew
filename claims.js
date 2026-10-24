@@ -30,6 +30,10 @@ const ABSOLUTE = /\b(?:clinically (?:proven|tested|backed|shown|studied|validate
    approved it in the Brand Book's claims we may make */
 const EFFICACY = /\b(?:up to |by |over |nearly |almost )?\d+(?:\.\d+)?\s?(?:%|x|×|times)\s(?:\w+\s){0,3}?(?:more|less|fewer|growth|regrowth|reduction|thicker|stronger|softer|brighter|faster|denser|improvement|better|hair|results?|visible|reduc\w*|increase\w*|boost\w*)\b|\b(?:reduces?|increases?|boosts?|improves?|cuts?|lifts?)\s(?:\w+\s){0,4}?by\s\d+(?:\.\d+)?\s?%/gi;
 const MEASURED = /\b(?:clinical|study|studies|trial|tested on|test(?:ed)? with|participants|subjects|volunteers|users? (?:saw|reported|said|surveyed)|survey(?:ed)?|in-vivo|in vivo|in-vitro|lab results?|certified by|dermatological(?:ly)? test)/i;
+const HEALTH = /derm|clinic|doctor|trichologist|dentist|pediatric|paediatric|vet|lab|scientific|proven/i;
+const CERT = /\b(?:certif\w*|accredit\w*|tested by|test(?:ed)? at|lab report|study|studies|trial|clinical(?:ly)? (?:study|trial)|participants|subjects|volunteers|in-vivo|in vivo|cosmetolog\w*|approved by dr|dr\.\s?[a-z])/i;
+/* the store's words carry the endorsement with its proof: the same phrase within a sentence or two of a study, test or certificate */
+const certifiedIn = (src, phrase) => { const k = String(phrase).toLowerCase(); let i = -1; while ((i = src.indexOf(k, i + 1)) >= 0) { if (CERT.test(src.slice(Math.max(0, i - 220), i + k.length + 220))) return true; } return false; };
 /* the store says this number was measured: the same number within a sentence or two of a study word in its own words */
 const measuredIn = (src, phrase) => { const n = (phrase.match(/\d+(?:\.\d+)?\s?(?:%|x|×|times)/) || [])[0]; if (!n) return false; const k = n.replace(/\s/g, '').toLowerCase();
   let i = -1; const flat = src.replace(/\s(?=%|x\b|×)/g, ''); while ((i = flat.indexOf(k, i + 1)) >= 0) { if (MEASURED.test(flat.slice(Math.max(0, i - 220), i + 220))) return true; } return false; };
@@ -59,7 +63,11 @@ export function claimFlags(text, source = '', { allowNewCode = false } = {}) {
   for (const m of s.matchAll(GUARANTEE)) if (!src.includes(m[0].toLowerCase())) add('guarantee', m[0], m.index, `“${m[0]}” isn’t something your store offers`);
   for (const m of s.matchAll(TIMED)) { const q = around(s, m.index, m[0].length); if (!RESULT.test(q)) continue; const n = (m[0].match(/\d+\s*\w+/) || [m[0]])[0].toLowerCase();
     if (!src.includes(n) && !src.includes(m[0].toLowerCase())) add('timed', m[0].trim(), m.index, `a result promised “${m[0].trim()}” that your store doesn’t claim`); }
-  for (const m of s.matchAll(ABSOLUTE)) { const ph = m[0].toLowerCase(); if (src.includes(ph) || (/^(?:treats?|heals?|cures?|cured|reverses?)$/.test(ph) && !RESULT.test(around(s, m.index, m[0].length)))) continue; /* "treats" a pet store sells is not a health claim */ add('absolute', m[0], m.index, `“${m[0]}” isn’t backed by your store`); }
+  for (const m of s.matchAll(ABSOLUTE)) { const ph = m[0].toLowerCase(); if (/^(?:treats?|heals?|cures?|cured|reverses?)$/.test(ph) && !RESULT.test(around(s, m.index, m[0].length))) continue;
+    /* a health endorsement ("dermat-approved", "clinically tested", "doctor recommended") needs its proof, not just the words: the store
+       names the study, test or certificate beside it, or the team approved it in the Brand Book (23 Oct QA 1.5); other absolutes
+       ("permanent", "100% natural") pass where the store says them */
+    if (HEALTH.test(ph) ? certifiedIn(src, ph) || (APPROVED.test(src) && src.includes(ph)) : src.includes(ph)) continue; /* "treats" a pet store sells is not a health claim */ add('absolute', m[0], m.index, `“${m[0]}” isn’t backed by your store`); }
   for (const m of s.matchAll(EFFICACY)) { const q = around(s, m.index, m[0].length); if (!RESULT.test(q) && !/hair|skin|acne|weight|sleep|pain/i.test(q)) continue;
     if (measuredIn(src, m[0])) continue; /* the same number where the store says it was measured */ if (APPROVED.test(src) && src.includes(norm(m[0]).trim())) continue;
     add('efficacy', m[0].trim(), m.index, `“${m[0].trim()}” is a measured result; your store doesn’t say where it was measured`); }

@@ -27,3 +27,10 @@ test('an answer that makes a claim the evidence doesn’t carry fails the ground
   assert.equal(groundCheck('It is clinically proven to work.', 'The card: refresh the serum ad.').ok, false);
   assert.equal(groundCheck('Refresh the serum ad this week.', 'The card: refresh the serum ad.').ok, true);
 });
+
+test('a health endorsement needs its proof on the store, not just the words (QA audit 24 Oct)', () => {
+  assert.ok(claimFlags('Dermat-approved haircare', 'Our shampoo is dermat-approved and gentle.').length, 'the words alone');
+  assert.equal(claimFlags('Dermat-approved haircare', 'Dermat-approved: tested by an independent lab in a clinical study of 40 volunteers.').length, 0);
+  assert.equal(claimFlags('Dermat-approved haircare', approvedText(['Dermat-approved'])).length, 0, 'the team approved it');
+  assert.equal(claimFlags('100% natural', 'We are 100% natural.').length, 0, 'not a health endorsement');
+});
