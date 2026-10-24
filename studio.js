@@ -622,7 +622,8 @@ export const ACTION_SPEC = {
   plan: 'The plan the team saves: the decision in one line, why, who owns it, and what changes next (each step with an owner and a date).',
   resolution: 'The decision that settles the disagreement, why, who decides, and what changes.'
 };
-const OFFER = /\b(save ₹?\d|% off|\boff\b|discount|combo|bundle|add the [a-z]+\b(?!.*review)|instead of ₹|free shipping|pack of \d|₹\s?\d)/i;
+const MONEY_SYM = '(?:₹|rs\\.?\\s?|\\$|us\\$|€|£|¥|aed\\s?|sar\\s?|r\\$)'; /* any market's money, not only rupees */
+const OFFER = new RegExp(`(?:\\b(?:save ${MONEY_SYM}?\\d|off\\b|discount|combo|bundle|add the [a-z]+\\b(?!.*review)|instead of ${MONEY_SYM}|free (?:shipping|delivery)|pack of \\d)|% off|(?:^|[\\s(])${MONEY_SYM}\\s?\\d|\\d+(?:[.,]\\d{1,2})?\\s?(?:€|£))`, 'i');
 export const ACTION_GUARD = {
   pdp_block: (pkg) => { const t = [pkg.heading, pkg.body, ...(pkg.bullets || []), pkg.button].filter(Boolean).join(' '); const m = t.match(OFFER); return m ? `A proof block shows evidence, not offers or prices (found “${m[0]}”)` : null; },
   page_copy: (pkg) => { const t = [pkg.heading, pkg.body, ...(pkg.bullets || [])].filter(Boolean).join(' '); const m = t.match(/\b(save ₹?\d|% off|discount|combo is|bundle)\b/i); return m ? `Page copy rewrites the section, it doesn't add an offer (found “${m[0]}”)` : null; },

@@ -121,7 +121,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
   async function finishFilm(take, { words = {}, line = '', spoken = false, loop = false } = {}) {
     if (!finish || !take.file) return; const f = await maker.fileOf(take.file).catch(() => null); if (!f || !fs.existsSync(f)) return; const buf = fs.readFileSync(f), out = {};
     if (spoken) { const c = await finish.captions(buf, { script: line }).catch((e) => ({ segs: [], error: e.message }));
-      out.captions = { n: c.segs.length, approx: !!c.approx, none: c.none || null, error: c.error || null, segs: c.segs.slice(0, 40) };
+      out.captions = { n: c.segs.length, approx: !!c.approx, none: c.none || null, error: c.error || null, segs: c.segs.slice(0, 160) }; /* every line of a 30 s or longer film, so a rebuilt .srt is whole */
       if (c.segs.length) { out.srt = engines.keep(Buffer.from(srtOf(c.segs)), 'srt'); const burned = await finish.burn(buf, c.segs).catch(() => null); if (burned) { out.raw = take.file; out.file = engines.keep(burned, 'mp4'); } else out.captions.error = 'The captions couldn’t be set in the film; the .srt has them.'; } }
     const cv = await finish.cover(buf, { headline: words.headline || '' }).catch(() => null); if (cv) { out.cover = engines.keep(cv.cover, 'jpg'); out.poster = take.poster || engines.keep(cv.frame, 'jpg'); }
     if (loop) { const g = await finish.gif(buf, { seconds: 3 }).catch(() => null); if (g) out.gif = engines.keep(g.gif, 'gif'); }
@@ -140,7 +140,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
   /* the price of one take of a style (what Higgsfield will charge, plus the check), in dollars */
   async function perTake(ctx, st, size, seconds) {
     const shot = await engines.quote('still.shot', { slug: ctx.slug }).catch(() => ({ usd: 0.14 }));
-    if (st.job === 'packshot') return 0; /* the real photo cut out and set on white, here */
+    if (st.job === 'packshot') { const q = await engines.quote('cutout', { slug: ctx.slug }).catch(() => null); return +(q?.usd || 0); } /* the real photo cut out and set on white: free on Brew's own cut-out, the paid one's price when that is what runs */
     if (st.job === 'product-shot') return (shot.usd ?? 0.14) * 1.5 * (ctx.tier === 'premium' ? 2 : ctx.tier === 'preview' ? 0.3 : 1); /* Flare 4K ≈ 2× 2K; 1K preview ≈ 0.3× */ /* one take, a retry about half the time */
     if (st.job === 'type-poster' || st.job === 'brand-graphic') { const o = hf.pick(st.job); const e = await hf.estimate(o.id, { ...o.input, prompt: 'a poster with the brand offer in large type for a product ad', aspect_ratio: hf.nearestRatio(o.id, size.ratio) }); return (e.usd ?? 0.1) * 1.5; /* a retry about half the time */ }
     if (st.job === 'product-motion') { const o = hf.pick('product-motion', ctx.tier || 'default'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', image_url: 'https://brew.joinsquareup.com/x.jpg', duration: seconds || 5 }); return (shot.usd ?? 0.14) * 1.5 + (e.usd ?? 0.11 * (seconds || 5)); }
@@ -205,6 +205,8 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     } else if (st.kind === 'image' && st.job === 'product-shot' && !st.preset && !st.designed) {
       const x = await cr.staticAd(ctx, board, words, size, { style: st, noWords: st.type === 'none' }); made.push(...x.made);
       if (!x.scene) throw Object.assign(new Error(x.fail || 'The picture didn’t come out right.'), { made }); /* what it spent still counts */
+      /* a word-free picture whose shape is far from the frame's (an A+ 970×300 wide image from a 21:9 shot, a 3:1 banner) is fitted whole on its own edge colour, never cropped into the product */
+      if (st.type === 'none' && x.scene?.bg?.src && !x.scene.layers?.length) { const ft = await fitOf(x.scene.bg.src, size); if (ft.fit === 'contain') { x.scene = { ...x.scene, bg: { ...x.scene.bg, ...ft } }; x.file = await maker.render(x.scene).catch(() => x.file); } }
       Object.assign(take, { scene: x.scene, file: x.file, shot: x.shot, direction: x.direction });
     } else if (st.preset || st.kind === 'image') { /* Higgsfield's designed ad style (Flare with its preset, the real product photo as image 1), or a
       type-led poster / illustration (Ideogram / Recraft): either way the model draws the words, so they are given exactly and read back */

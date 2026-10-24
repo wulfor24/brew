@@ -191,7 +191,11 @@
     if (e.target.id === 'cs-q') { S.q = e.target.value; const pos = e.target.selectionStart; paint(); const el = document.getElementById('cs-q'); if (el) { el.focus(); el.setSelectionRange(pos, pos); } return true; }
     return false; }
   /* the frame shows the slide picked in the strip, through every repaint (a price coming back redraws the stage) */
-  const toSel = (smooth = false) => { if (!S?.sel) return; const sw = document.querySelector('.cs-frame .as-swipe'), it = sw?.children?.[S.sel]; if (sw && it) sw.scrollTo({ left: it.offsetLeft - sw.children[0].offsetLeft, behavior: smooth ? 'smooth' : 'auto' }); };
+  const toSel = (smooth = false) => { if (S?.sel == null) return; const sw = document.querySelector('.cs-frame .as-swipe'), it = sw?.children?.[S.sel]; if (sw && it) { sw.scrollTo({ left: it.offsetLeft - sw.children[0].offsetLeft, behavior: smooth ? 'smooth' : 'auto' }); return; }
+    /* an A+ page or a listing's photo tiles have no swipe row: the picked slide's own picture is outlined and brought into view */
+    const f = slidesOf(H.ch?.() || {})?.[S.sel]?.file; if (!f) return; const fr = document.querySelector('.cs-frame'); if (!fr) return;
+    fr.querySelectorAll('.cs-pick').forEach((x) => x.classList.remove('cs-pick')); const img = [...fr.querySelectorAll('img')].find((x) => (x.getAttribute('src') || '').replace(/^\//, '') === String(f).replace(/^\//, ''));
+    const box = img?.closest('figure, .az-mod, .al-tile') || img; if (box) { box.classList.add('cs-pick'); if (smooth) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } };
   /* the chat, on a set-up not made yet: the words become slot changes (server: studio/ask), shown as changed chips, re-priced */
   async function ask(text) { if (!S?.jid || !S.spec) return { error: 'The set-up is still opening.' };
     const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/ask`, { text, spec: S.spec }); if (r?.error || !r?.patch) return { error: r?.error || 'That didn’t go through.' };

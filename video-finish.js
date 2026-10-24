@@ -52,7 +52,7 @@ export function createVideoFinish({ ffmpeg = process.env.FFMPEG || 'ffmpeg', ffp
     if (!segs.length || !launchBrowser) return null; const f = tmp('mp4'), out = tmp('mp4'), pngs = []; fs.writeFileSync(f, buf);
     try { const p = await probe(f), br = await launchBrowser();
       try { const page = await br.newPage(); try { await page.setViewport({ width: p.w, height: p.h, deviceScaleFactor: 1 });
-        for (const sg of segs.slice(0, 40)) { await page.setContent(captionHtml({ w: p.w, h: p.h, text: sg.text, font }), { waitUntil: 'load' }); const pf = tmp('png'); fs.writeFileSync(pf, await page.screenshot({ type: 'png', omitBackground: true })); pngs.push({ pf, ...sg }); } } finally { await page.close().catch(() => {}); } }
+        for (const sg of segs.slice(0, 160)) { await page.setContent(captionHtml({ w: p.w, h: p.h, text: sg.text, font }), { waitUntil: 'load' }); const pf = tmp('png'); fs.writeFileSync(pf, await page.screenshot({ type: 'png', omitBackground: true })); pngs.push({ pf, ...sg }); } } finally { await page.close().catch(() => {}); } }
       finally { await br.close?.().catch?.(() => {}); }
       const inputs = pngs.flatMap((x) => ['-i', x.pf]);
       const chain = [...pngs.map((x, i) => `[${i ? `c${i - 1}` : '0:v'}][${i + 1}:v]overlay=0:0:enable='gte(t,${x.from})*lt(t,${x.to})'[c${i}]` /* the end is open: where one line ends and the next begins, only the next shows */), `[c${pngs.length - 1}]format=yuv420p[vo]`].join(';');
