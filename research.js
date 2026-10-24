@@ -471,9 +471,13 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   // last read. Spend, cost per order and frequency need the brand's own Meta account (the Meta connector).
   async function refreshOwn() {
     const now = Date.now(), name = cfg.ownPage || brand.name;
-    const j = await treg('scrapecreators.x.v1-facebook-adlibrary-company-ads', { query: { companyName: name, country: GEO, status: 'ACTIVE' } });
+    /* the page the read found (profile.ads.own: by name, our domain or the site's Facebook link) is read by its id, so a brand
+       whose page isn't named like its store ("PUMA" for PUMA India, 24 Oct) is never tracked as 0 ads. By name only without one */
+    let readOwn = null; try { readOwn = JSON.parse((await gcs('GET', `brands/${brand.slug}/profile.json`)).toString())?.ads?.own || null; } catch (e) { /* no saved read here (a hand-made brand): by name */ }
+    const pageId = !cfg.ownPage && readOwn?.pageId && !readOwn.error ? String(readOwn.pageId) : null;
+    const j = await treg('scrapecreators.x.v1-facebook-adlibrary-company-ads', { query: pageId ? { pageId, country: GEO, status: 'ACTIVE' } : { companyName: name, country: GEO, status: 'ACTIVE' } });
     const want = new RegExp(String(cfg.ownPage || brand.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    const rows = (j.results || []).filter((a) => want.test(a.page_name || a.snapshot?.page_name || ''));
+    const rows = (j.results || []).filter((a) => pageId ? String(a.page_id ?? a.snapshot?.page_id ?? '') === pageId : want.test(a.page_name || a.snapshot?.page_name || ''));
     const g = new Map();
     rows.forEach((a, rank) => { const cp = adCopy(a), m = adMedia(a); const key = (cp.title + '|' + cp.body.slice(0, 90)).toLowerCase();
       if (!g.has(key)) g.set(key, { rank, copy: cp, media: m, versions: 0, start: Infinity, ids: [] });
@@ -491,7 +495,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     if (fresh.length) ev.push({ id: `own-new-${day}`, kind: 'new', items: fresh.slice(0, 5), n: fresh.length, at: now });
     if (prev && Math.abs(live - prev.live) >= Math.max(3, prev.live * 0.2)) ev.push({ id: `own-count-${day}`, kind: 'count', was: prev.live, now: live, at: now });
     if (!items.length) ev.push({ id: `own-none-${day}`, kind: 'none', at: now });
-    snap.own = { fetchedAt: now, page: rows[0]?.page_name || null, live, items: items.slice(0, 40), formats: { video: items.filter((x) => x.video).length, image: items.filter((x) => !x.video).length },
+    snap.own = { fetchedAt: now, page: rows[0]?.page_name || readOwn?.page || null, ...(pageId ? { pageId } : {}), live, items: items.slice(0, 40), formats: { video: items.filter((x) => x.video).length, image: items.filter((x) => !x.video).length },
       history: [...(prev?.history || []), { day, live }].slice(-60), events: [...ev, ...(prev?.events || [])].slice(0, 40), source: `Meta Ad Library · ${CTRY()} · your live ads` };
   }
 

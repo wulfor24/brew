@@ -36,7 +36,8 @@ export function ownAds({ profile, research } = {}) {
   const o = profile?.ads?.own || {}, r = research?.own;
   const read = o.live != null && !o.error ? { n: +o.live, at: ts(profile.ads.at), page: o.page || null, src: 'read' } : null;
   /* the tracker reads the same page; one that found a different page is another brand's count, not a newer one */
-  const tracker = r && r.live != null && !r.error && (!o.page || !r.page || squash(r.page) === squash(o.page)) ? { n: +r.live, at: ts(r.fetchedAt), page: r.page || null, src: 'tracker' } : null;
+  /* a tracker that found no page while the read has one couldn't find the brand's page: that is not 0 ads (PUMA India, 24 Oct) */
+  const tracker = r && r.live != null && !r.error && (!o.page || (!!r.page && squash(r.page) === squash(o.page))) ? { n: +r.live, at: ts(r.fetchedAt), page: r.page || null, src: 'tracker' } : null;
   return fresher(read, tracker) || { n: null, at: 0, page: o.page || null, error: o.error || r?.error || profile?.meta?.errors?.ads || null }; /* a whole ads stage that failed (meta.errors.ads) is an error too */
 }
 

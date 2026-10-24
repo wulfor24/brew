@@ -869,7 +869,9 @@ export function createFeedService(o) {
   const fromOwnAds = (t, n = 2) => {
     const o = research?.get()?.own, out = [], at = o ? new Date(o.fetchedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
     for (const e of o?.events || []) {
-      if (out.length >= n) break; const id = 'ow-' + e.id; if (t.used.has(id) || t.cards.has(id)) continue; t.used.add(id);
+      if (out.length >= n) break; const id = 'ow-' + e.id; if (t.used.has(id) || t.cards.has(id)) continue;
+      if (e.kind === 'none' && +o.live > 0) continue; /* a day the page wasn't found, overtaken by a read that counts live ads */
+      t.used.add(id);
       const base = { id, agent: 'performance', sector: 'creatives', lane: Object.keys(SEED.lanes)[0], roles: ['brand', 'growth', 'founder'], src: `Meta Ad Library · ${CTRY()} · ${at}`, link: { label: 'See it in the Ad Library', url: e.items?.[0]?.url || 'https://www.facebook.com/ads/library/' } };
       const nums = (e.items || []).flatMap((x) => [String(x.days), String(x.versions)]).concat([String(e.n || ''), String(e.was || ''), String(e.now || ''), String(o.live)]);
       if (e.kind === 'long') out.push({ ...base, type: 'decision', kind: (e.items || []).some((x) => x.poster) ? 'media' : 'rows', images: (e.items || []).filter((x) => x.poster).slice(0, 1).map((x) => x.poster), badge: ['Running long', 'warn'], liveNums: nums,
@@ -2388,7 +2390,10 @@ export function createFeedService(o) {
       // a generated brand: cards from moves that landed while this workspace was away
       if (br.kind === 'generated') streamSync(t, SEED.posts);
       if (br.kind === 'generated') { followMoves(t, br); const t0 = now(t); for (const p of SEED.posts) if (!t.cards.has(p.id)) t.cards.set(p.id, { ...clone(p), family: p.family || FAMILY[p.type] || 'idea', state: 'ready', origin: 'move', createdAt: t0, expiresAt: null, history: [['ready', t0]], shownCount: 0, ...(mvOf(br, p.id) ? { mv: mvOf(br, p.id) } : {}) }); }
-      if (healRivalWork(t)) store?.save(t);
+      /* "No live ads" cards from days the tracker couldn't find the brand's page, while the one count says its ads run (PUMA India,
+         Scrubroom, 24 Oct): gone unless someone is working on one */
+      let stale = 0; if (+br.numbers?.ownAds?.n > 0) for (const id of [...t.cards.keys()]) if (/^ow-own-none-/.test(id) && !t.acted?.has?.(id) && !(t.work || []).some((w) => w.cardId === id)) { t.cards.delete(id); stale++; }
+      if (healRivalWork(t) + stale) store?.save(t);
       t.lastSeen = Date.now(); tenants.set(t.id, t); log.log?.(`[store] loaded ${t.id}`); return t;
     });
   };
