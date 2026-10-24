@@ -26,4 +26,4 @@ Still open:
   filed as an image ad, a Reddit question as an Instagram post (cards-gen.js inferMake).
 - A PUMA statics-batch picture from 22 Oct has "PUMA India Product / Scuderia Ferrari Fanwear Baseball Cap" drawn in it;
   the maker is not yet traced.
-- Scrubroom is read as "Apparel" though 68 of its 140 products are resold Littmann stethoscopes.
+- ~~Scrubroom is read as "Apparel" though 68 of its 140 products are resold Littmann stethoscopes.~~ Fixed 25 Oct (e419432, 58b8179): assortment.js reads own label vs other brands for every store; Scrubroom is a curated retailer (74% other brands; own labels ScrubStory, Scrubroom), its line says so, and its plays were rewritten on the weekly pot to speak as where to buy those brands. Guard: test/assortment.test.js.
