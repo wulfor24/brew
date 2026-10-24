@@ -2533,7 +2533,7 @@ export function createFeedService(o) {
       const b = req.method === 'GET' ? {} : await readBody(req);
       /* anything that changes the workspace makes the feed's short cache stale; the page's own calls on every open (feed-open, and the
          saved state sent back unchanged) don't, so a reload is served at once (1.7) */
-      if (t && r.method !== 'GET' && !/\/feed-open$/.test(r.pattern)) { const sig = r.pattern === '/api/tenants/:id/state' ? JSON.stringify(b) : null;
+      if (t && r.method !== 'GET' && !/\/feed-open$/.test(r.pattern)) { const sig = r.pattern === '/api/tenants/:id/state' ? JSON.stringify([b.viewer, b.conn, b.pro]) : null; /* the only parts of it the server keeps */
         if (!sig || sig !== STATE_SIG.get(t)) t.rev = (t.rev || 0) + 1; if (sig) STATE_SIG.set(t, sig); }
       try { const out = await r.fn(b, t, params, u.searchParams); if (!t && out?.id && viewer) await applyLive(tenants.get(out.id), viewer); send(res, Number.isInteger(out?.status) && out.status >= 100 && out.status < 600 ? out.status : 200, out); /* a reply's own status word (Send brief: 'sent') is data, not the HTTP code */ if (store && req.method !== 'GET') store.save(t || (out?.id && tenants.get(out.id))); }
       catch (e) { log.error(`[feed ${r.pattern}]`, e); send(res, 200, { error: e.message, fallback: true }); }
