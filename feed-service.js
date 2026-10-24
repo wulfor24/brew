@@ -561,10 +561,14 @@ export function createFeedService(o) {
   const SECTOR_BY = [['signals', /\b(?:e-?mail|whatsapp|sms|flow|reminder|nudge|re-?order|replenish|win-?back|order confirmation|confirm (?:the )?order|review (?:ask|request)|customers? who|buyers? who|post-?purchase|cod confirm)/i],
     ['ads', /\b(?:budget|campaign|ad set|audience|retarget|lookalike|cost per|frequency|bid|scale (?:the )?(?:ad|winner)|pause (?:the )?ads?|exclude)/i],
     ['visibility', /\b(?:ai answers?|chatgpt|perplexity|gemini|llms?\.txt|search results?|google search|seo|press|citations?|faq block|schema|rank(?:ed|ing)? (?:on|in) google)/i],
-    ['catalog', /\b(?:product page|listing|collection page|landing page|pdp|price|mrp|stock|sold out|bundle|combo page|catalog|amazon|myntra|nykaa|flipkart|quick commerce|blinkit|zepto)/i]];
+    ['catalog', /\b(?:product page|listing|collection page|landing page|pdp|price|mrp|stock|sold out|bundle|combo page|catalog|amazon|myntra|nykaa|flipkart|quick commerce|blinkit|zepto|(?:store |home ?|referral |dedicated |custom |new )?page\b|hero section|section on)/i]];
+  /* a page or section to build is the store's, whatever audience it is for ("a dedicated page for older buyers"): it is read before
+     the message words so a page for buyers never lands under Signals */
+  const PAGE_BUILD = /\b(?:build|launch|add|create|make|design)\b[^.]{0,40}\b(?:page|section|hero)\b/i;
   const ADMAKE = /carousel|collection|catalog ad|instagram|reel|video|image ad|static|post|stories/i;
   const sectorOf = (c) => { if (!c || /^(?:live-|r-ad-|lv-|heard-|static|build-)/.test(String(c.id || '')) || ['ad', 'viral'].includes(c.research?.kind) || c.type === 'report') return c?.sector;
     if (ADMAKE.test(c.make?.format || '')) return 'creatives';
+    if (PAGE_BUILD.test(c.title || '') && !/\b(?:facebook|instagram) page\b/i.test(c.title || '')) return c.sector === 'storefront' && !storefrontOn() ? c.sector : 'catalog';
     const said = `${c.title || ''} ${c.cta?.label || ''}`; for (const [k, re] of SECTOR_BY) if (re.test(said)) return k === 'catalog' && !storefrontOn() && c.sector === 'storefront' ? c.sector : k;
     return c.sector; };
   const visible = (t, c) => seatOk(t, c) && (c.sector !== 'storefront' || storefrontOn()) && !claimHeld(t, c) && !noChange(c) && !(c.origin === 'watcher' && c.type === 'idea' && !titlePricesMatch(c)) && ['ready', 'shown', 'approved', 'done'].includes(c.state) && !t.snoozed[c.id] && (!c.onlyWhen || connOn(t, c.onlyWhen))
