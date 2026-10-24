@@ -1,7 +1,7 @@
 /* The creative stage in the v1 jam (Param, 23 Oct): a picture, a set or a video the card asks for is made by Brew Studio, right
    under the frame it will live in. Every slot arrives filled from what Brew already knows (the card, the Brand Book, the catalog,
    the reference the card is about), each with one line saying why, and every one can be changed. Nothing paid is made before the
-   price is shown and Generate is pressed. The make runs on the server (jam2/studio.js through the card's Studio jam), so the
+   price is shown and Make it is pressed on the bar. The make runs on the server (jam2/studio.js through the card's Studio jam), so the
    person can leave: the take lands in the v1 jam as its next version and the Work tab says when it is ready.
    app.js owns the page; this keeps the composer's state per jam and asks app.js to repaint (init({ paint, landed, ... })). */
 (() => {
@@ -49,7 +49,7 @@
     const pl = S?.plan; if (!pl || pl.error || pl.usd == null || S.working) return; const mine = S; S.working = true; paint();
     const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/make`, { spec: S.spec, confirmUsd: pl.usd, bid: S.bid, redo: redo || S.made });
     if (S !== mine) return; S.working = false;
-    if (r?.needsConfirm) { S.plan = r.plan; paint(); return H.toast?.(`The price changed to ${usd(r.plan.usd)}. Tap Generate again.`); }
+    if (r?.needsConfirm) { S.plan = r.plan; paint(); return H.toast?.(`The price changed to ${usd(r.plan.usd)}. Tap Make it again.`); }
     if (r?.error) { paint(); return H.toast?.(H.esc(r.error)); }
     S.boards = r.jam?.boards?.map((b) => b.id) || S.boards; S.busy = r.jam?.busy || {}; S.making = { line: r.plan.line, usd: r.plan.usd, at: Date.now(), n: (r.boards || []).length || 1, video: S.spec?.kind === 'video' }; S.open = false; S.failed = null;
     H.making?.(S.chId, S.making); paint(); poll();
@@ -118,12 +118,12 @@
       <label class="cs-dir"><small>Direction <span>${H.esc(why('direction'))}</span></small><textarea id="cs-dir" rows="3">${H.esc(sp.direction || '')}</textarea></label>
       ${(S.missing || []).map((m) => `<p class="j2-st-note">${H.esc(m.text)}${m.go === 'brand' ? ` <button class="linkbtn" data-cs-brand>${H.esc(m.fix)}</button>` : ''}</p>`).join('')}${pl?.note ? `<p class="j2-st-note">${H.esc(pl.note)}</p>` : ''}
       ${look()}
-      <div class="j2-st-go"><span>${pl ? H.esc(pl.error || pl.line) : 'Pricing it…'}</span>${setIds ? '' : `<button class="j2-chip" data-cs-look ${S.looking ? 'disabled' : ''} title="Brew’s words on your real product photo${kind === 'video' ? ', with the shot list' : ''}. No picture or video is made, so it costs nothing">${S.looking ? 'Sketching…' : S.look ? 'Another first look · free' : 'First look · free'}</button>`}<button class="j2-pri" data-cs-go ${!pl || pl.error || S.working ? 'disabled' : ''}>${S.working ? 'Starting…' : `Generate${pl?.usd != null ? ` · ${usd(pl.usd)}` : ''}`}</button></div>
+      <div class="j2-st-go"><span>${pl ? H.esc(pl.error || pl.line) : 'Pricing it…'}</span>${setIds ? '' : `<button class="j2-chip" data-cs-look ${S.looking ? 'disabled' : ''} title="Brew’s words on your real product photo${kind === 'video' ? ', with the shot list' : ''}. No picture or video is made, so it costs nothing">${S.looking ? 'Sketching…' : S.look ? 'Another first look · free' : 'First look · free'}</button>`}</div>
       ${st && !setIds ? '' : ''}</div>`;
   }
   /* the free first look (3.4): Brew's words over the real product photo and, for a video, the shots; made before anything is paid */
   const look = () => { const L = S.look; if (!L) return ''; if (L.error) return `<p class="j2-err">${H.esc(L.error)}</p>`;
-    return `<div class="cs-look"><small>First look · free · words and layout only; Generate makes the real ${L.shots?.length ? 'video' : 'picture'}</small><div class="cs-look-row">${L.file ? `<img src="${H.esc(srcOf(L.file))}" alt="First look">` : ''}<div>${L.headline ? `<b>${H.esc(L.headline)}</b>` : ''}${L.sub ? `<p>${H.esc(L.sub)}</p>` : ''}${L.shots?.length ? `<ol>${L.shots.map((x) => `<li><span>${x.sec} s</span> ${H.esc(x.see)}${x.vo ? `<em>“${H.esc(x.vo)}”</em>` : ''}</li>`).join('')}</ol>` : ''}${L.flags?.length ? `<p class="j2-st-note">Needs a source before it runs: ${H.esc(L.flags.join(', '))}. Brew’s check will ask for it, or change the words.</p>` : ''}</div></div></div>`; };
+    return `<div class="cs-look"><small>First look · free · words and layout only; Make it makes the real ${L.shots?.length ? 'video' : 'picture'}</small><div class="cs-look-row">${L.file ? `<img src="${H.esc(srcOf(L.file))}" alt="First look">` : ''}<div>${L.headline ? `<b>${H.esc(L.headline)}</b>` : ''}${L.sub ? `<p>${H.esc(L.sub)}</p>` : ''}${L.shots?.length ? `<ol>${L.shots.map((x) => `<li><span>${x.sec} s</span> ${H.esc(x.see)}${x.vo ? `<em>“${H.esc(x.vo)}”</em>` : ''}</li>`).join('')}</ol>` : ''}${L.flags?.length ? `<p class="j2-st-note">Needs a source before it runs: ${H.esc(L.flags.join(', '))}. Brew’s check will ask for it, or change the words.</p>` : ''}</div></div></div>`; };
   async function sketch() { if (!S?.spec || S.looking) return; const mine = S; S.looking = true; paint();
     const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/sketch`, { spec: S.spec }); if (S !== mine) return; S.looking = false;
     S.look = r?.sketch || { error: r?.error || 'The first look didn’t come out. Try again.' }; paint(); }
@@ -143,7 +143,7 @@
         <div class="cs-strip">${sl.map((x, k) => `<button class="${k === i ? 'on' : ''}" data-cs-sel="${k}" title="${H.esc(styleById(x.style)?.label || '')}"><img src="${H.esc(srcOf(x.file))}" alt=""><span>${k + 1}</span></button>`).join('')}<button class="cs-add" data-cs-addslide title="Add a slide">＋</button></div>
         ${S.adding && S.addStyle ? (() => { const ap = S.slidePlan?.[S.addStyle]; return `<div class="cs-acts cs-addrow"><span>Add a slide: ${H.esc(styleById(S.addStyle)?.label || '')}</span><button class="j2-pri" data-cs-addgo ${!ap || ap.error || S.working ? 'disabled' : ''}>${ap?.error ? H.esc(ap.error) : `Add this slide${ap?.usd != null ? ` · ${usd(ap.usd)}` : ''}`}</button><button class="j2-chip" data-cs-addx>Cancel</button></div>`; })() : ''}
         <div class="cs-acts"><span>Slide ${i + 1} of ${sl.length}${st ? ` · ${H.esc(st.label)}` : ''}</span><button class="j2-chip" data-cs-slide="redo" ${!sp || sp.error ? 'disabled' : ''}>Redo this slide${sp?.usd != null ? ` · ${usd(sp.usd)}` : ''}</button><button class="j2-chip" data-cs-slide="drop" ${sl.length <= 2 ? 'disabled title="A set needs at least two slides"' : ''}>Drop it</button><button class="j2-chip" data-cs-open>Change the set-up</button><button class="j2-pri" data-cs-redo ${!S.plan || S.plan.error ? 'disabled' : ''}>Redo the set${S.plan?.usd != null ? ` · ${usd(S.plan.usd)}` : ''}</button></div></div>`; }
-    if (!S.open) return `${batchHtml}<div class="cs-line">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}<span>${H.esc(S.plan?.line || 'Made by Brew Studio')}</span><button class="j2-chip" data-cs-open>Change the set-up</button><button class="j2-pri" data-cs-redo ${!S.plan || S.plan.error ? 'disabled' : ''}>Redo it${S.plan?.usd != null ? ` · ${usd(S.plan.usd)}` : ''}</button></div>`;
+    if (!S.open) return `${batchHtml}<div class="cs-line">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}<span>${H.esc(S.plan?.line || 'Made by Brew Studio')}</span><button class="j2-chip" data-cs-open>Change the set-up</button></div>` /* Redo it is on the bar under the stage, once */;
     return full();
   }
   /* clicks on the composer: true when handled */
@@ -155,7 +155,7 @@
       const go2 = () => window.BrewGame?.open?.({ progress: () => (S?.making || (anyBusy() ? { line: 'your creative', at: S?.makingAt } : null)), brand: S?.slots?.brand?.value?.colors || [], onSee: () => H.paint?.() });
       if (window.BrewGame) go2(); else { const sc = document.createElement('script'); sc.src = '/brew-game.js'; sc.onload = go2; sc.onerror = () => H.toast?.('The game didn’t load. Your creative keeps being made.'); document.head.appendChild(sc); } return true; }
     const rm = e.target.closest('[data-cs-remember],[data-cs-forget]'); if (rm && S?.spec) { remember(rm.dataset.csRemember || rm.dataset.csForget, rm, !!rm.dataset.csForget); return true; }
-    if (g('[data-cs-open]')) { S.open = true; paint(); setTimeout(() => document.querySelector('.cs-stage .cs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); return true; }
+    if (g('[data-cs-open]')) { S.open = true; H.showSetup?.(); paint(); return true; } /* the set-up is the panel's Set-up tab */
     if (g('[data-cs-redo]')) { go(true); return true; }
     const ld = g('[data-cs-land]'); if (ld) { const mine = S; api('POST', `/api/jam2/jams/${S.jid}/studio/land`, { bid: S.bid, takeId: ld.dataset.csLand }).then((r) => { if (S !== mine) return; if (r?.error) return H.toast?.(H.esc(r.error)); S.made = true; S.open = false; H.landed?.(S.chId, {}); }); return true; }
     const sel = g('[data-cs-sel]'); if (sel) { S.sel = +sel.dataset.csSel; paint(); /* the frame swipes to the slide picked */
@@ -219,8 +219,8 @@
     const value = off ? null : slot === 'product' ? sp.product?.img : slot === 'cast' ? sp.cast || S.slots?.cast?.label : slot === 'size' ? sp.sizes?.[0] : slot === 'quality' ? sp.quality || 'standard' : null;
     const r = await api('POST', '/api/jam2/studio/remember', { slot, value, kind, name: el.dataset.name || sp.product?.name || '' }); if (r?.error) return H.toast?.(H.esc(r.error));
     S.prefs = r.prefs || S.prefs; H.toast?.(off ? 'Brew won’t always use that any more.' : 'Saved: Brew uses this for every new piece. Change it any time here or in your Brand Book.'); paint(); }
-  const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null } : null);
+  const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), working: !!S.working, made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null, frames: Array.isArray(S.spec?.set) ? S.spec.set.length : null /* the stage previews this many frames */, error: S.error || null } : null);
   const reset = () => { clearTimeout(pollT); clearTimeout(planT); S = null; };
-  const openSetup = () => { if (!S) return; S.open = true; paint(); setTimeout(() => document.querySelector('.cs-stage .cs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); };
-  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), afterPaint: () => toSel(false), ask, adjustHtml };
+  const openSetup = () => { if (!S) return; S.open = true; H.showSetup?.(); paint(); };
+  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), make: () => go(false) /* the bar's Make it */, afterPaint: () => toSel(false), ask, adjustHtml };
 })();

@@ -43,7 +43,7 @@ const ASSET = {
   store: (k) => ({ price_change: 'price changes', bundle_offer: 'offer tiles', pdp_block: 'proof blocks', new_section: 'page sections', blog_post: 'blog posts' }[k] || 'page copy versions'),
   vis: (k) => ({ llms_txt: 'AI-tool pages', schema_fix: 'search-friendly product info fixes', new_claim: 'claims', blog_post: 'blog posts' }[k] || 'FAQ answers'),
   search: () => 'search ads', listing: (k) => (k === 'takedown' ? 'takedown requests' : 'listing versions'), print: () => 'insert designs',
-  meta_ops: (k) => ({ pause_losers: 'pause list', pause_pointing: 'pause list', restart_paused: 'restart list', scale_budget: 'budget change', shift_budget: 'budget change', stop_rule: 'stop rule', price_in_ads: 'price update', swap_copy: 'copy swap' }[k] || 'account change'),
+  meta_ops: (k) => ({ pause_losers: 'pause list', pause_pointing: 'pause list', restart_paused: 'restart list', scale_budget: 'budget change', shift_budget: 'budget change', exclude_audience: 'audience change', stop_rule: 'stop rule', price_in_ads: 'price update', swap_copy: 'copy swap' }[k] || 'account change'),
   setup: (k) => ({ fix_links: 'redirect list', tracking_fix: 'tracking fix', store_setting: 'setting change' }[k] || 'change list'),
   brief: (k) => ({ film_brief: 'film brief', buyer_deck: 'buyer deck', creative_brief: 'creative brief' }[k] || 'brief'),
   outreach: () => 'outreach email',
@@ -109,7 +109,7 @@ const STEPS = {
     { k: 'review', t: 'Review it on the stage', s: 'Change it until it’s right' },
     { k: 'ready', t: 'Ready: share the brief with whoever prints it', s: 'The brief has everything the printer needs' }],
   meta_ops: ({ items, k, asset, c, where }) => [
-    { k: 'gather', t: `${k === 'restart_paused' ? 'Find what was paused' : k === 'scale_budget' || k === 'shift_budget' ? 'Find where the budget is' : 'Find the ads it touches'}${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
+    { k: 'gather', t: `${k === 'restart_paused' ? 'Find what was paused' : k === 'scale_budget' || k === 'shift_budget' ? 'Find where the budget is' : k === 'exclude_audience' ? 'Find the campaigns past buyers still see' : 'Find the ads it touches'}${items.length ? `: ${andList(items)}` : ''}`, s: cut(c.sub, 110) },
     { k: 'write', t: `Set the change: ${lc(labelOf(k, c))}`, s: cut((c.detail?.how || [])[0] || 'Small steps, so learning doesn’t reset', 110) },
     { k: 'make', t: `Make the ${asset}`, s: 'Every ad set, before and after' },
     { k: 'review', t: 'Review it on the stage', s: 'Change the amounts or the list until it’s right' },

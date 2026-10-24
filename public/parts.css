@@ -141,3 +141,45 @@
 .feed-today { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 22px 16px; margin: 6px 0 18px; border-top: 1px solid var(--line, #e5e5e5); }
 .feed-today b { font-size: 16px; } .feed-today span { color: var(--muted, #6b6b6b); }
 .sw-card .q-prog, .q-guide .q-prog { width: 100%; justify-self: stretch; } /* the progress bar spans its card (a centred grid shrank it to nothing) */
+
+/* ===== One stage for every deliverable (25 Oct): one name in the header, only the piece on the stage, one next step on the bar,
+   the Studio set-up in the panel. ===== */
+.st-ttl .st-for{all:unset;cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-2)}
+.st-ttl .st-for:hover{color:var(--fg);text-decoration:underline;text-underline-offset:3px}
+.st-ttl .st-for:focus-visible{outline:2px solid var(--fg);outline-offset:2px;border-radius:4px}
+/* the bar's status reads in full: two lines, never one line cut by an ellipsis with the rest behind an (i) */
+.ship.one .ship-l{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:19px}
+.ship.one .ship-l:has(.ship-fixes){display:block;-webkit-line-clamp:unset;overflow:visible}
+.ship-fixes{position:relative}
+.ship-fixes summary{cursor:pointer;list-style:none;color:var(--warn,#b45309);font-weight:600}
+.ship-fixes summary::-webkit-details-marker{display:none}
+.ship-fixes summary::after{content:' ›';font-weight:500}
+.ship-fixes[open] summary::after{content:' ⌄'}
+.ship-fixes ol{position:absolute;left:0;bottom:calc(100% + 10px);z-index:50;width:min(460px,80vw);margin:0;padding:12px 14px 12px 30px;border-radius:12px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line),var(--sh-float,0 8px 30px rgba(0,0,0,.18));font-weight:450;font-size:13.5px;line-height:19px;color:var(--fg);display:grid;gap:6px}
+/* ad account change: what changes first, the campaigns, then when it is checked */
+.am-sum{margin:0 0 12px;font-size:17px;line-height:23px;font-weight:600;text-align:center;color:var(--fg)}
+.am-when{margin:14px 0 0;font-size:13.5px;line-height:19px;color:var(--fg-2)}
+.am-when small{display:block;margin-bottom:4px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3)}
+p.am-when small{display:inline;margin:0 6px 0 0}
+.am-when ol{margin:0;padding-left:20px;display:grid;gap:3px}
+.am2-pick{font-style:normal;color:var(--warn,#b45309)}
+.am2-m{display:block;margin-top:2px;font-weight:450;font-size:12px;color:var(--fg-3)}
+/* a message: when it goes and to whom, under the frame */
+.pm-sent{display:grid;gap:4px;margin:14px auto 0;max-width:420px;font-size:13.5px;line-height:19px}
+.pm-sent div{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px}
+.pm-sent dt{color:var(--fg-3)}
+.pm-sent dd{margin:0;color:var(--fg-2)}
+/* the case in the chat: title and line open, the why and the plan folded */
+.case-why summary{cursor:pointer;list-style:none}.case-why summary::-webkit-details-marker{display:none}
+.case-why summary small::after{content:' · Show';color:var(--fg-3);text-transform:none;letter-spacing:0}.case-why[open] summary small::after{content:''}
+/* the Studio set-up in the panel's Set-up tab: one column, the tiles wrap */
+.cs-panel .cs,.cs-panel .cs-line{width:100%;margin:0}
+.cs-panel .j2-st-styles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cs-panel .cs-slots{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.cs-panel .cs-chip{max-width:100%}
+.cs-panel .j2-st-go{flex-wrap:wrap;gap:8px}
+.cs-panel .j2-st-top{flex-wrap:wrap}
+/* the demo pill sits in the rail on a jam, never over the bar */
+@media (min-width:701px){body[data-view="remix"] .demo-pill{left:10px;bottom:150px;padding:8px}body[data-view="remix"] .demo-pill span{display:none}}
+/* the status and the buttons share one row: the status gives way (two lines at most), the buttons keep their size, on the right */
+@media (min-width:861px){.ship.one .ship-tx.is-step{flex:1 1 240px;min-width:0}.ship.one .ship-btns{flex:0 0 auto;margin-left:auto}}

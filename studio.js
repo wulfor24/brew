@@ -9,7 +9,7 @@ export const FAMILY_OF = {
   add_variants: 'meta_ad', swap_creative: 'meta_ad', swap_copy: 'meta_ad', new_test: 'meta_ad', whatsapp_ad: 'meta_ad', carousel_ad: 'meta_ad', collection_ad: 'meta_ad', catalog_ad: 'meta_ad',
   ig_post: 'social', ig_carousel: 'social', ig_story: 'social',
   x_post: 'post', linkedin_post: 'post', reddit_post: 'post', quora_answer: 'post', fb_group_post: 'post', pinterest_pin: 'post', short_video: 'post',
-  pause_losers: 'meta_ops', stop_rule: 'meta_ops', scale_budget: 'meta_ops', shift_budget: 'meta_ops', pause_pointing: 'meta_ops', restart_paused: 'meta_ops', price_in_ads: 'meta_ops', comment_reply: 'post', fix_links: 'setup',
+  pause_losers: 'meta_ops', stop_rule: 'meta_ops', scale_budget: 'meta_ops', shift_budget: 'meta_ops', exclude_audience: 'meta_ops', pause_pointing: 'meta_ops', restart_paused: 'meta_ops', price_in_ads: 'meta_ops', comment_reply: 'post', fix_links: 'setup',
   page_copy: 'store', pdp_block: 'store', new_section: 'store', price_change: 'store', bundle_offer: 'store',
   faq_entry: 'vis', llms_txt: 'vis', schema_fix: 'vis', new_claim: 'vis',
   flow_copy: 'crm', flow_timing: 'crm', review_ask: 'crm', new_segment: 'crm', paid_broadcast: 'crm', discount_offer: 'crm',
@@ -107,9 +107,9 @@ export const FIELDS = {
   ],
   meta_ops: [
     { k: 'summary', label: 'What changes', type: 'text', req: true },
-    { k: 'items', label: 'Campaigns or ad sets', type: 'rows', cols: ['name', 'now', 'next'], req: true, hint: '1-5 rows: only campaign or ad set names the card gives (never invent one), its state or budget now, and after' },
-    { k: 'rule', label: 'Rule', type: 'text', hint: 'The condition, e.g. cost per first order over the stop line for 48 hours' },
-    { k: 'checkAt', label: 'Checks', type: 'text' },
+    { k: 'items', label: 'Campaigns or ad sets', type: 'rows', cols: ['name', 'now', 'next'], req: true, hint: '1-5 rows: only campaign or ad set names the card or the connected account gives (never a product name, never invent one); now and next say only the setting that changes, in a few words ("₹4,000 a day" then "₹4,800 a day"), never the targeting' },
+    { k: 'rule', label: 'Rule', type: 'text', max: 600, hint: 'The condition, e.g. cost per first order over the stop line for 48 hours' },
+    { k: 'checkAt', label: 'Checks', type: 'text', max: 600, hint: 'When it is checked, e.g. "Day 2: the exclusion is attached. Day 7: decide the next step"' },
     { k: 'spendChangeWeek', label: 'Spend change a week', type: 'number', hint: 'Positive adds spend, negative saves, 0 if none' }
   ],
   store: [
@@ -307,6 +307,7 @@ export const ACTION_CHIPS = {
   pause_losers: ['Only the worst 3', 'Pause for 48 hours first', 'Keep the winners running', 'Show the numbers per ad set'],
   stop_rule: ['Stricter stop line', 'Looser stop line', 'Check every morning', 'Ask me before it scales'],
   scale_budget: ['+20% a day', 'One ad set first', 'Stop if cost per order rises', 'Smaller first step'],
+  exclude_audience: ['Buyers from the last 180 days', 'Prospecting campaigns only', 'Keep retargeting as it is', 'Show the audience size'],
   shift_budget: ['Smaller shift', 'Winners only', 'Keep total spend the same', 'Move it back after 7 days'],
   new_test: ['Smaller budget', 'New audience', 'Read it after 7 days', 'One hook only'],
   swap_copy: ['Shorter', 'Number first', 'Keep the photo', 'A real review as the hook'],
@@ -411,14 +412,14 @@ const str = (v) => (v == null ? '' : String(v));
 const pickOpt = (opts, v) => { if (opts.includes(v)) return v; const n = (x) => String(x ?? '').toLowerCase().replace(/[^a-z0-9:+%]+/g, ' ').trim(), nv = n(v); if (!nv) return opts[0];
   return opts.find((o) => n(o) === nv) || opts.find((o) => nv.startsWith(n(o)) || n(o).startsWith(nv)) || opts.find((o) => nv.includes(n(o))) || opts[0]; };
 export const cleanPkg = (family, action, pkg = {}, clean = (s) => s) => {
-  const out = {};
+  const out = {}, wordCut = (s, n) => (s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '').replace(/[\s,;:–-]+$/, '') + '…' : s);
   fieldsFor(family, action).forEach((f) => {
     const v = pkg[f.k]; if (v == null || v === '') return;
     if (f.type === 'list') out[f.k] = (Array.isArray(v) ? v : String(v).split('\n')).map((x) => clean(str(x)).trim()).filter(Boolean).slice(0, 8);
     else if (f.type === 'rows') out[f.k] = (Array.isArray(v) ? v : []).slice(0, 10).map((r) => Object.fromEntries(f.cols.map((c) => [c, clean(str(r?.[c])).slice(0, 400)])));
     else if (f.type === 'number') { const n = +String(v).replace(/[^\d.-]/g, ''); if (!Number.isNaN(n)) out[f.k] = Math.round(n); }
     else if (f.type === 'select') out[f.k] = pickOpt(f.opts, v); /* "email" is Email, "9:16 vertical" is 9:16, never silently the first option */
-    else out[f.k] = clean(str(v)).slice(0, f.max || (f.type === 'long' ? 900 : 240));
+    else out[f.k] = wordCut(clean(str(v)), f.max || (f.type === 'long' ? 900 : 240)); /* at a whole word: a rule ended "pause the ad set that d" (25 Oct) */
   });
   ['image', 'knobs', 'grade', 'cardImages', 'wordsIn', 'photoSet', 'film'].forEach((k) => { if (pkg[k] != null) out[k] = pkg[k]; });
   /* Amazon A+ modules (Brew Studio): the picture is kept, the words are cleaned to Amazon's lengths */
@@ -525,7 +526,7 @@ const genericPkg = (family, action, c, i = 0, angle = '', F = {}) => {
   /* the campaigns or ad sets the card itself names; without any, one row for the team to fill in, never a made-up ad set name */
   if (family === 'meta_ops') { const named = (c.rows || []).filter((r) => /^(campaigns?|ad sets?|from|to|tired ad)/i.test(String(r?.[0] || '')) && r[1]).slice(0, 5).map((r) => String(r[1]).split(' · ')[0].slice(0, 90));
     return { summary: `${angle && !/^do it\b/i.test(angle) ? angle + ': ' : ''}${ACT_LABEL[act] || 'Change'}${sh ? ` for ${sh}` : ''}` /* never the intent chip (QA J-19) */,
-      items: (named.length ? named : ['The ad sets your team picks']).map((name) => ({ name, now: 'As set today', next: act === 'pause_losers' ? 'Paused if above target' : act === 'scale_budget' ? 'Budget up 20%' : 'Changed by the rule' })),
+      items: (named.length ? named : ['The ad sets your team picks']).map((name) => ({ name, now: act === 'exclude_audience' ? 'Past buyers can see it' : 'As set today', next: act === 'pause_losers' ? 'Paused if above target' : act === 'scale_budget' ? 'Budget up 20%' : act === 'exclude_audience' ? 'Past buyers excluded' : 'Changed by the rule' })),
       rule: OPS_RULE[act] || 'Pause any ad set whose cost per first order stays above target for 48 hours', checkAt: 'Every morning at 9', spendChangeWeek: 0 }; }
   if (family === 'store') return { pages: P.page, section: i % 2 ? 'Top of the product description' : 'End of the product description', heading: hook, body: `${P.name}.${claim}`.trim(), bullets: [P.claim].filter(Boolean) }; /* the product's own claim: a card's reasons are notes for the team, never page points (QA J-19) */
   if (family === 'vis') return { file: act === 'llms_txt' ? `${BH()}/llms.txt` : act === 'schema_fix' ? `Product markup (JSON-LD) on ${BH()} product pages` : B()?.config?.platform && B().config.platform !== 'shopify' ? `${BH()} FAQ page` : `${BH()}/pages/faq`, entries: [{ q: c.q || `Is ${P.name} good?`, a: `${P.name}${P.price ? ` costs ${P.price} on ${BH()}` : ''}.${claim}`, source: 'Product page' }], asOf: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) /* a real date: llms.txt and the FAQ say "As of 24 October 2026" */ };
@@ -560,9 +561,9 @@ const OUT_WHO = [[/\bhr (?:teams?|leads?|heads?)\b|\bcorporate\b/i, 'Head of HR'
   [/\b(?:press|op-?ed|journalists?|reporters?|editors?|media)\b/i, 'Editor', 'Press'], [/\bwholesale|distributors?|stockists?|retailers?|stores?\b/i, 'Buyer', 'Retail partners'], [/\bclinics?|doctors?|derm/i, 'Clinic manager', 'Clinics'],
   [/\bgyms?|studios?\b/i, 'Studio manager', 'Gyms and studios'], [/\bexpo|trade show|fair\b/i, 'Buyer you meet at the show', 'Show visitors'], [/\bproduction|agenc(?:y|ies)\b/i, 'Producer', 'Production companies']];
 export const outreachTo = (c = {}) => { const t = `${c.title || ''} ${c.sub || ''}`; const hit = OUT_WHO.find(([re]) => re.test(t)); return hit ? { to: hit[1], company: hit[2] } : { to: 'The right person at the business', company: 'The business the card names' }; };
-const ACT_LABEL = { pause_losers: 'Pause the weakest ad sets', stop_rule: 'Add a stop rule', scale_budget: 'Scale the winners', shift_budget: 'Shift budget to the winners', pause_pointing: 'Pause the ads on sold-out products', restart_paused: 'Restart the ads paused for stock', price_in_ads: 'Put the new price in the ads' };
+const ACT_LABEL = { pause_losers: 'Pause the weakest ad sets', stop_rule: 'Add a stop rule', scale_budget: 'Scale the winners', exclude_audience: 'Keep past buyers out of these ads', shift_budget: 'Shift budget to the winners', pause_pointing: 'Pause the ads on sold-out products', restart_paused: 'Restart the ads paused for stock', price_in_ads: 'Put the new price in the ads' };
 /* the rule each ad account change runs by */
-const OPS_RULE = { pause_losers: 'Pause any ad set whose cost per first order stays above target for 48 hours', stop_rule: 'Pause any ad set whose cost per first order stays above target for 48 hours', scale_budget: 'Raise a winner by 20% at most every 3 days, while its cost per order holds', shift_budget: 'Read it after 7 days; move it back if cost per purchase rises 15%' };
+const OPS_RULE = { pause_losers: 'Pause any ad set whose cost per first order stays above target for 48 hours', stop_rule: 'Pause any ad set whose cost per first order stays above target for 48 hours', scale_budget: 'Raise a winner by 20% at most every 3 days, while its cost per order holds', exclude_audience: 'Exclude a custom audience of everyone who bought in the last 180 days; budgets and creatives stay as they are', shift_budget: 'Read it after 7 days; move it back if cost per purchase rises 15%' };
 /* a budget card from the team's Meta account (connectors/meta.js `shift`): the two real campaigns, from what they spend a day now
    to after the move. Total spend stays the same, and Brew changes nothing in Ads Manager: the team makes the move */
 const shiftPkg = (c, sym = '') => { const s = c.shift, m = (n) => `${sym}${Math.round(+n || 0).toLocaleString(sym === '₹' ? 'en-IN' : 'en-US')}`;
@@ -622,6 +623,7 @@ export const ACTION_SPEC = {
   pause_losers: 'Pause the ad sets that are over target. List real ad set names, what they spend now and that they get paused.',
   stop_rule: 'An automated rule in Ads Manager that pauses ad sets over target. Name the ad sets it watches.',
   scale_budget: 'Raise the budget on the winning ad sets in +20% steps.',
+  exclude_audience: 'Keep people who already bought out of these campaigns: add an exclusion for a custom audience of past buyers (last 180 days) to each one. One row per campaign the card names: Now, past buyers can see it; After, past buyers excluded. Budgets and creatives stay the same; never a message to customers.',
   shift_budget: 'Move budget from weak ad sets to winning ones. Total spend stays the same.',
   page_copy: 'One short section added to the product description (top or end), in the store’s own voice; the rest of the description stays as it is. Heading, one to three sentences, up to five points. No new offer, no button, no price, no A/B split.',
   pdp_block: 'A PROOF block on the product page: evidence only. The study result with its window, real customer reviews, lab testing, ratings. No discounts, savings, bundles, combos or prices.',

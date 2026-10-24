@@ -45,7 +45,8 @@ test('every studio status line asks the job first (jobOf), so no Ready or Draft 
   const src = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
   assert.match(src, /const jobOf = \(ch\) =>/);
   assert.match(src, /jobOf\(ch\)\) return stepBar\(ch\);[^\n]*\n\s*if \(!ch\.batchKey && ch\.state !== 'jam' && !planMade\(ch\)\)/, 'a job beats the First draft bar');
-  assert.match(src, /const job = jobOf\(ch\), fp = finalGoing\(ch\);\n\s*if \(job && !fp\)/, 'the step bar says the job before Ready or Final ready');
+  assert.match(src, /const job = jobOf\(ch\), fp = finalGoing\(ch\);[\s\S]{0,2000}?else if \(job && !fp\)/, 'the step bar says the job before Ready or Final ready');
+  assert.match(src, /if \(ch\.studio && !sv && !studioMade\(ch\)\) \{[^\n]*\n\s*if \(csS\?\.making\)/, 'a Studio piece being made says so before its price');
   assert.match(src, /if \(formFocus[^\n]*pollJob\(ch\); return; \}/, 'a skipped repaint keeps polling the job');
 });
 

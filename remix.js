@@ -29,6 +29,7 @@ import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // a que
 import { EVIDENCE_ASK, proofAnswer } from './evidence.js'; // "what's the evidence?" is answered from the card's own proof
 import { moveNo } from './value.js';
 import { budgetMatch } from './budget-match.js'; // a budget draft against its card and the account
+import { healOps, opsCheck } from './ops-rows.js'; // an ad account change names the account's real campaigns
 import { safeFetch, stripTags, UA as READ_UA } from './reader/util.js'; // the product page as it reads today, before copy is written
 import { claimFlags, claimCheck, copyFlags, sourceText, CLAIMS_RULE, COPY_RULE, checkCopyIn } from './claims.js'; // invented codes, guarantees, timed results and copy that reads wrong are flagged before shipping
 import { dejargon } from './plain.js'; // jam names in plain words, like the cards
@@ -49,6 +50,9 @@ export const ACTIONS = {
     swap_copy: { label: 'Swap the copy in a live ad', target: { conn: 'meta', object: 'Live ad' }, money: false, rollback: 'Restore the old copy', scope: [[1, 'This ad'], [12, '12 ads with the same hook'], [40, 'All 40 live ads']], preview: 'image', settings: [['Budget', 'Unchanged'], ['Learning', 'Copy only, learning keeps']] },
     scale_budget: { label: 'Scale the budget', target: { conn: 'meta', object: 'Campaign budget' }, money: true, rollback: 'Return to the old daily budget', scope: [[1, 'This campaign']], preview: 'numbers', settings: [['Step', '+20% a day'], ['Where', 'The winning ad set'], ['Stop if', 'Cost per order passes the stop line']] },
     shift_budget: { label: 'Shift budget', target: { conn: 'meta', object: 'Campaign budgets' }, money: false /* the total stays the same: nothing new is spent */, rollback: 'Move the budget back', scope: [[1, 'Two campaigns']], preview: 'numbers', settings: [['From', 'The campaign the card names'], ['To', 'The campaign the card names'], ['Total spend', 'Same, just moved']] },
+    /* keep people who already bought out of an ad's audience ("Exclude existing customers from creator ads"): an audience change
+       in Ads Manager, never a message to those customers (it opened as a Klaviyo flow and as "Scale the budget": 25 Oct) */
+    exclude_audience: { label: 'Exclude past buyers', target: { conn: 'meta', object: 'Ad set audience' }, money: false /* nothing new is spent */, rollback: 'Remove the exclusion', scope: [[1, 'The campaigns the card names']], preview: 'numbers', settings: [['Exclude', 'People who bought in the last 180 days'], ['Where', 'The campaigns the card names'], ['Budget', 'Unchanged']] },
     /* store events (stock, price, removed pages) acted on in the ad account: the rows are the products the card names */
     pause_pointing: { label: 'Pause ads on sold-out products', target: { conn: 'meta', object: 'Ads on sold-out products' }, money: false, rollback: 'Turn the same ads back on', scope: [[1, 'The ads on these products']], preview: 'numbers', settings: [['Pause', 'Every ad that sends people to a sold-out product'], ['Restart', 'When it is back in stock'], ['Spend', 'Goes down, never up']] },
     restart_paused: { label: 'Restart the paused ads', target: { conn: 'meta', object: 'Ads paused for stock' }, money: true, rollback: 'Pause them again', scope: [[1, 'The ads on these products']], preview: 'numbers', settings: [['Restart', 'Only ads paused because the product sold out'], ['Budget', 'As it was before the pause']] },
@@ -213,8 +217,13 @@ const MARKETPLACE = /\b(?:amazon|flipkart|nykaa|myntra|meesho|ajio|tata cliq|jio
    search info, a pitch to a business an outreach email (a person sends it, never a Klaviyo flow), a review request the review ask */
 const TRACK_T = new RegExp(`${TRACKING.source}|\\btrack\\w*\\b[^.]{0,40}\\b(?:clicks?|events?|conversions?|purchases?|orders?|sales)\\b|\\bgoogle analytics\\b`, 'i');
 const EMAIL_FMT = /^(?:email|whatsapp message)$/;
-const OUTREACH = /\b(?:pitch(?:es|ing)?|partner(?:ship)?s?|wholesale|corporate|b2b|press|op-?ed|journalists?|reporters?|editors?|outreach|cold (?:emails?|outreach|calls?)|distributors?|stockists?|retailers?|hotels?|salons?|clinics?|hr (?:teams?|leads?|heads?)|procurement|expo|trade shows?|production compan(?:y|ies)|agencies)\b/i;
+const OUTREACH = /\b(?:pitch(?:es|ing)?|partner(?:ship)?s?|wholesale|corporate|b2b|press|op-?ed|journalists?|reporters?|editors?|outreach|cold (?:emails?|outreach|calls?|gifting|pitch(?:es)?)|distributors?|stockists?|retailers?|hotels?|salons?|clinics?|hr (?:teams?|leads?|heads?|managers?|directors?)|procurement|expo|trade shows?|production compan(?:y|ies)|agencies)\b/i;
 const REVIEW_ASK = /\breview (?:requests?|asks?|emails?|reminders?|nudges?)\b|\bask(?:s|ing)? (?:\w+ ){0,3}for (?:a |photo |more )?reviews?\b|\breviews? after (?:purchase|delivery)\b|\b(?:judge\.?me|loox|okendo|yotpo)\b/i;
+/* a card about keeping past buyers out of ads: an audience exclusion, whoever wrote it ("Exclude existing customers from
+   creator-led campaign targeting", "Stop showing prospecting ads to past purchasers"); a message to them is a flow, not this */
+export const EXCLUDE_T = /\b(?:exclud\w*|suppress\w*|leave out|keep (?:[\w-]+ ){0,4}out of|stop (?:showing|serving) (?:[\w-]+ ){0,4}ads? to)\b[^.]{0,60}\b(?:customers?|buyers?|purchasers?|subscribers?|audiences?)\b|\b(?:customers?|buyers?|purchasers?)\b[^.]{0,30}\bexclusions?\b|\bexclusions?\b[^.]{0,40}\b(?:customers?|buyers?|purchasers?)\b/i;
+const ADS_CTX = /\b(?:ads?|ad sets?|campaigns?|targeting|prospecting|retargeting|audiences?|creators?|meta|facebook|instagram)\b/i, MSG_T = /\b(?:flows?|emails?|whatsapp|sms|klaviyo|newsletter|broadcast)\b/i;
+export const excludeCard = (c = {}) => EXCLUDE_T.test(c.title || '') && ADS_CTX.test(`${c.title || ''} ${c.sub || ''}`) && !MSG_T.test(c.title || '');
 const DECK = /\b(?:buyer|pitch|sales|wholesale|styling|retail|salon) deck\b|\bleave-behind\b|\blookbook\b/i;
 const INSERT = /\b(?:box inserts?|insert cards?|printed (?:cards?|inserts?)|in-box cards?|cards? in (?:every|the) box|print(?:ed)? (?:an? |the )?(?:\w+ )?(?:cards?|leaflets?|flyers?|booklets?|stickers?)|leaflets?|flyers?|booklets?|thank-?you cards?)\b/i; /* "Print a tracker card" is a print piece (25 Oct) */
 const RICH = /\b(?:rich (?:results|snippets)|star ratings? in (?:search|google)|review stars (?:in|on) (?:google|search))\b/i;
@@ -236,6 +245,7 @@ export const titleJob = (c = {}, label = ctaName(c.cta?.label)) => { const t = S
 const primaryOf = (c) => {
   if (c.post?.platform) return ideaAction(c.post); // an idea from the stream opens as the post it is, on its own platform
   if (c.kind === 'chat') return 'creative.whatsapp_ad';
+  if (excludeCard(c)) return 'performance.exclude_audience'; /* past buyers out of an ad's audience, before any other word on the card decides */
   /* a card that names another platform for a post or reply ("Answer authenticity questions on Reddit", "Join LinkedIn conversations")
      opens as that platform's post, with Copy and open, never an Instagram caption (QA J-08) */
   { const lab0 = ctaName(c.cta?.label), social = /^(instagram (?:post|carousel|stories)|reel)$/.test(c.make?.format || '') || /^(Draft the (?:post|carousel post|replies)|Reply as the brand|Post it)$/.test(lab0 || '') || (!c.make?.format && !(lab0 in CTA_ACTION));
@@ -292,7 +302,7 @@ const CROSS = ['creative.add_variants', 'storefront.pdp_block', 'storefront.page
 const SAME_GOAL = {
   listing_titles: ['storefront.listing_content'], listing_content: ['storefront.listing_titles'], takedown: [], buyer_deck: [],
   bundle_offer: [], price_change: ['storefront.bundle_offer'], page_copy: ['storefront.pdp_block'], pdp_block: ['storefront.page_copy'], new_section: ['storefront.pdp_block'], store_setting: [], blog_post: ['visibility.faq_entry'],
-  shift_budget: ['performance.scale_budget'], scale_budget: ['performance.shift_budget'], pause_losers: ['performance.stop_rule'], stop_rule: ['performance.pause_losers'],
+  shift_budget: ['performance.scale_budget'], scale_budget: ['performance.shift_budget'], exclude_audience: [], pause_losers: ['performance.stop_rule'], stop_rule: ['performance.pause_losers'],
   pause_pointing: ['performance.price_in_ads'], restart_paused: [], price_in_ads: ['creative.swap_copy'], fix_links: ['performance.pause_pointing'], comment_reply: [],
   new_test: ['creative.add_variants'], swap_copy: ['creative.swap_creative'], search_ad: [], tracking_fix: [],
   add_variants: ['creative.swap_creative', 'creative.carousel_ad'], swap_creative: ['creative.add_variants'], whatsapp_ad: ['creative.add_variants'],
@@ -306,7 +316,7 @@ const SAME_GOAL = {
 const ACTION_INTENTS = {
   listing_titles: ['Start with one listing', 'Claim first, short'], listing_content: ['Same images everywhere', 'Bullets only'], takedown: ['Firm but polite', 'With evidence'], buyer_deck: ['Shorter deck', 'Lead with the numbers'],
   bundle_offer: ['Two tiles, not three', 'Lead with the routine'], price_change: ['Smaller step', 'Explain the why'], page_copy: ['Shorter', 'Number first'], pdp_block: ['Reviews first', 'Study first'], new_section: ['One moment to start', 'Mobile first'], store_setting: ['Test on one product'], blog_post: ['Shorter', 'More sources'],
-  shift_budget: ['Smaller shift', 'Winners only'], scale_budget: ['+20% step', 'One ad set first'], pause_losers: ['Worst three only', 'Pause for 48 hours'], stop_rule: ['Stricter line', 'Looser line'],
+  shift_budget: ['Smaller shift', 'Winners only'], scale_budget: ['+20% step', 'One ad set first'], exclude_audience: ['Last 180 days of buyers', 'Prospecting campaigns only'], pause_losers: ['Worst three only', 'Pause for 48 hours'], stop_rule: ['Stricter line', 'Looser line'],
   pause_pointing: ['Only the sold-out products', 'Restart when back in stock'], restart_paused: ['Only what was paused for stock', 'Lower budget first'], price_in_ads: ['Every ad that quotes it', 'New price first'], fix_links: ['Closest product', 'The collection page'], comment_reply: ['Answer in one line', 'Friendlier'],
   new_test: ['Smaller budget', 'New audience'], swap_copy: ['Shorter', 'Number first'], search_ad: ['Exact match only', 'Add negatives'], tracking_fix: ['Meta first', 'Google first'],
   add_variants: ['A sharper hook', 'Hindi version'], carousel_ad: ['Five cards', 'One product per card'], collection_ad: ['Best sellers only', 'New arrivals'], catalog_ad: ['Price on the frame', 'Rating on the frame'], ig_post: ['Number first', 'Real review'], ig_carousel: ['Seven slides', 'Myth vs fact'], ig_story: ['Add a poll', 'Three stories'], swap_creative: ['New hook', 'New look'], whatsapp_ad: ['Shorter chat', 'Hinglish'], film_brief: ['Shorter film', 'Phone-shot version'], creative_brief: ['Five angles', 'From real reviews'],
@@ -510,6 +520,7 @@ export function createRemix(o) {
   /* budgetMatch (budget-match.js): a budget draft moves what its card says, between real campaigns */
   const evaluate = (t, ch) => {
     const card = t.cards.get(ch.cardId) || {}; const act = actOf(ch.action); const r = recipeFor(card);
+    if (healOps(t, ch, card)) sync(t, ch); /* rows that name a product or a made-up ad set become the account's own campaigns, on every read */
     const pubT = ch.pkg ? publicText(ch.family, ch.action, ch.pkg) : [];
     const copy = { ...card, type: ch.family === 'post' ? 'post' : 'idea', research: null, title: ch.after.title, sub: ch.after.sub, rows: [], detail: { why: [...(ch.after.bullets || []), ...((ch.after.chat || []).map((x) => x[1])), ch.after.a || '', ...pubT].filter(Boolean) } };
     /* a number quoted from the card's own evidence (a real review, a thread's reply count) is backed, not invented */
@@ -527,7 +538,7 @@ export function createRemix(o) {
     if (ch.pkg) {
       const miss = missing(ch.family, ch.action, ch.pkg).map((l) => (isAdClip(ch) ? ({ Post: 'Ad text', Title: 'Headline' }[l] || l) : l)); checks.unshift({ k: miss.length ? `Missing: ${miss.join(', ')}` : `${isAdClip(ch) ? 'Meta video ad' : FAMILY_NAME[ch.family]} package complete`, ok: !miss.length, pkg: true, fix: true });
       const guard = ACTION_GUARD[String(ch.action).split('.').pop()]?.(ch.pkg); if (guard) checks.unshift({ k: guard, ok: false, fix: true });
-      { const bm = budgetMatch(card, ch, t); if (bm) checks.unshift(bm); } /* a budget draft moves what its card says (Arata 23 Oct) */
+      { const bm = budgetMatch(card, ch, t); if (bm) checks.unshift(bm); const oc = opsCheck(t, ch); if (oc) checks.unshift(oc); } /* a budget draft moves what its card says (Arata 23 Oct) */
       const lk = leaks(ch.family, ch.action, ch.pkg); checks.splice(1, 0, { k: lk.length ? `Reads like an internal note, not to customers (“${lk.slice(0, 3).join('”, “')}”)` : 'Written for customers, not the team', ok: !lk.length, fix: true, leak: true });
     }
     /* what a shopper would read: no invented code, guarantee or timed result, and copy that reads right (QA-25, QA-02) */
@@ -728,7 +739,7 @@ export function createRemix(o) {
     const pl = o.planOf?.(t, c); if (pl && (!ch.plan || ch.plan.v !== pl.v)) ch.plan = pl;
     const d = pl?.draft; if (!d || !(d.images?.length || d.video) || versionsOf(t, ch.id).length > 1) return false;
     const imgs = d.images || [], text = TEXT_DRAFT.test(d.as || '') && !d.video;
-    ch.pkg = { ...ch.pkg, draft: { as: d.as, images: imgs, video: d.video || null, poster: d.poster || null, ratio: d.ratio || null, title: d.title || '', text, ...(text ? { code: d.code || null } : {}) } }; /* code: a draft that is markup or a snippet shows on the stage as code */
+    ch.pkg = { ...ch.pkg, draft: { as: d.as, images: imgs, video: d.video || null, poster: d.poster || null, ratio: d.ratio || null, title: d.title || '', product: d.product || null /* the product the draft's pictures show: Studio sets up the same one */, text, ...(text ? { code: d.code || null } : {}) } }; /* code: a draft that is markup or a snippet shows on the stage as code */
     if (!text) { if (imgs[0]) { ch.pkg.image = imgs[0]; ch.pkg.wordsIn = d.wordsIn && d.wordsIn === imgs[0] ? imgs[0] : null; } if (imgs.length > 1) ch.pkg.cardImages = imgs; if (d.video) { ch.pkg.video = d.video; ch.pkg.poster = d.poster || imgs[0] || null; } if (d.ratio && RATIO[d.ratio] && ['meta_ad', 'social'].includes(ch.family)) ch.pkg.format = d.ratio; }
     ch.v0 = 'draft'; sync(t, ch, c);
     const v0 = versionsOf(t, ch.id)[0]; if (v0) { v0.snapshot = snapOf(ch); v0.reason = 'The first draft on the card'; v0.label = 'First draft'; try { mirror(t, ch, v0); } catch {} }
@@ -2225,7 +2236,19 @@ export function createRemix(o) {
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
   const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; ch.studioState = { ...st, at: now(t) }; const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };
   /* the product a jam's copy is about (the card's, or the one its words name now), with its catalog photo: Studio shows the same one */
-  const productOfCh = (t, chId) => { const ch = C(t, chId); if (!ch) return null; const c = t.cards.get(ch.cardId) || {}; const P = productFor(c, FACTS, pkgWords(ch));
+  /* the product Studio sets up: the one the jam's words name, else the one its first draft's pictures show (a stories jam showed a
+     shampoo on the stage and set up a styling stick: 25 Oct), before the card's words and the brand's first in-stock product */
+  const productOfCh = (t, chId) => { const ch = C(t, chId); if (!ch) return null; const c = t.cards.get(ch.cardId) || {};
+    const dp = ch.pkg?.draft?.product || (ch.v0 === 'draft' ? o.planOf?.(t, c)?.draft?.product : null) || '';
+    const P = productFor(c, FACTS, [pkgWords(ch), dp].filter(Boolean).join('. '));
     const m = (catalogOf(t) || []).find((x) => x?.t && (x.t === P?.name || x.t === P?.full)); const img = m?.img || P?.img || null; return img ? { img, name: m?.t || P.name, from: 'jam' } : null; };
-  return { productOfCh, landStudio, studioOf, studioState, remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
+  /* a Work item whose jam was opened as the wrong deliverable before its card was read right (an exclusion card opened "Scale the
+     budget": 25 Oct): while nobody has touched that jam (no ask, no edit, no make, nothing sent), it lets go of it, and the card's
+     next open makes the jam its card asks for. A touched jam is never dropped: the team's work stays */
+  const retype = (t, w) => { const ch = w?.changeId ? C(t, w.changeId) : null, c = ch && t.cards.get(ch.cardId); if (!ch || !c || ch.batchKey || ch.discarded) return false;
+    if (ch.state !== 'draft' || ['shared', 'team', 'needs_you', 'measuring', 'result'].includes(w.stage) || w.jamBrief?.sentAt) return false;
+    const r = recipeFor(c); if (!r.primary || r.actionKeys.includes(ch.action)) return false;
+    if ((ch.thread || []).some((m) => m.from === 'you') || versionsOf(t, ch.id).some((v) => v.author === 'you' || v.studio || v.final)) return false;
+    ch.discarded = true; ch.discardedWhy = `The card is ${actOf(r.primary).label}, not ${ch.actionLabel}`; w.changeId = null; return true; };
+  return { retype, productOfCh, landStudio, studioOf, studioState, remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
 }
