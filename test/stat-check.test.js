@@ -37,3 +37,9 @@ test('a doubtful cover reads "to confirm" with the reason, once; a backed or wor
   assert.equal(markStat(derived, {}), derived);
   const ok = { stat: '₹1,899', statLabel: 'ENTRY SET PRICE' }; assert.equal(markStat(ok, { products: sets }), ok);
 });
+
+test('a move’s PDF is drawn from the loaded brand, so the cover check runs even right after a deploy', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('../build.js', import.meta.url), 'utf8');
+  assert.match(src, /const pk = packs\.peek\(slug\) \|\| await packs\.load\(slug\)/);
+  assert.doesNotMatch(src, /renderPdf\(slug, m\.pdf, \(packs\.peek\(slug\)\?\.fitMove/);
+});
