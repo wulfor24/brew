@@ -95,11 +95,11 @@ export function mountJam2(d) {
     const cta = String(b.cta || card?.cta?.label || '').slice(0, 60);
     /* a v1 jam has its own Studio jam: two creative jams on one card (a video and a carousel) never share one, so a take always lands
        in the v1 jam that made it; a Studio jam whose board is another kind than the v1 jam now asks for, with nothing paid on it, is set aside */
-    const want = b.recipe && recipe(b.recipe) ? b.recipe : null, paid = (j) => (j.boards || []).some((x) => (x.takes || []).some((k) => +k.cost?.usd > 0));
+    const want = b.recipe && recipe(b.recipe) ? b.recipe : null, kindOf = (id) => recipe(id)?.kind || null;
     let jam = null;
     if (b.v1ch && card && !b.fresh) { const mine = (await store.list(slug, who)).filter((j) => j.v1ch === String(b.v1ch)).sort((a, c) => (c.updatedAt || 0) - (a.updatedAt || 0));
-      jam = mine.find((j) => !want || j.boards?.[0]?.recipe === want || paid(j)) || null;
-      if (!jam) { const old = await store.byCard(slug, card.id, who, cta); if (old && !old.v1ch && (!want || old.boards?.[0]?.recipe === want)) jam = old; } }
+      jam = mine.find((j) => !want || kindOf(j.boards?.[0]?.recipe) === kindOf(want)) || null; /* a Studio jam of another kind (pictures for what is now a video jam) is set aside; what it made already landed in v1 */
+      if (!jam) { const old = await store.byCard(slug, card.id, who, cta); if (old && !old.v1ch && (!want || kindOf(old.boards?.[0]?.recipe) === kindOf(want))) jam = old; } }
     else jam = card && !b.fresh ? await store.byCard(slug, card.id, who, cta) : null;
     if (b.v1ch && !jam && want) b = { ...b, recipe: want };
     /* a batch card ("8 ads from your ad plan, ready to review"): one tab per finished ad, the ads it already holds, nothing made again */

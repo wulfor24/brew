@@ -172,3 +172,11 @@ test('audit 24 Oct: a preview take is never called ready; nothing made yet has n
   S.RMX.landStudio(t, id, { file: 'gen/pv.jpg', words: { headline: 'Warm paws' }, studio: { kind: 'image', label: 'In use', spec: { quality: 'preview' } } });
   assert.ok(S.RMX.pubChange(t, ch).publish.checks.some((c) => c.k === 'preview' && !c.ok), 'the quick preview says to make the full one');
 });
+
+test('audit 24 Oct: a ratio is never a count ("4:5 static" is one picture, not five)', async () => {
+  const { countOf } = await import('../jam2/studio.js');
+  assert.equal(countOf({ cta: { label: 'Make the ad' }, make: { pieces: '4:5 static: the balm on a frosty windowsill' } }), 1);
+  assert.equal(countOf({ cta: { label: 'Make the ad' }, make: { pieces: '9:16 video, 15 s' } }), 1);
+  assert.equal(countOf({ cta: { label: 'Queue the 12' }, make: { pieces: '12 ads' } }), 12);
+  assert.equal(countOf({ title: 'Rival is running 14 ads on dandruff', cta: { label: 'Make the ad' } }), 1, 'a rival’s count is no ask');
+});

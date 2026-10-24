@@ -30,7 +30,7 @@ const ALL = () => { const L = library(); return [...L.image, ...L.video].flatMap
 export const styleOf = (id) => ALL().find((s) => s.id === id) || null;
 
 /* how many the card promises ("8 ads", "Queue the 12", "4 hooks"): that many takes, never more than 12 */
-export function countOf(card) { const m = /\b(\d{1,2})\s+(?:new\s+|more\s+|fresh\s+)?(?:ads?|images?|pictures?|posts?|statics?|creatives?|videos?|reels?|clips?|hooks?|variants?|versions?|takes?|ideas?)\b/i.exec(`${card?.cta?.label || ''} ${card?.make?.pieces || ''} ${/^(ship|make|create|queue|launch|run|test|draft|generate|try|shoot|film|post|publish|build)\b/i.test(String(card?.title || '').trim()) ? card.title : ''}`); /* the button, what the card says to make, and a title that asks to make them ("Ship 8 new ads"); "Rival is running 14 ads" is no ask for 14 */
+export function countOf(card) { const m = /(?<![\d:.,x×/-])\b(\d{1,2})\s+(?:new\s+|more\s+|fresh\s+)?(?:ads?|images?|pictures?|posts?|statics?|creatives?|videos?|reels?|clips?|hooks?|variants?|versions?|takes?|ideas?)\b/i.exec(`${card?.cta?.label || ''} ${card?.make?.pieces || ''} ${/^(ship|make|create|queue|launch|run|test|draft|generate|try|shoot|film|post|publish|build)\b/i.test(String(card?.title || '').trim()) ? card.title : ''}`); /* the button, what the card says to make, and a title that asks to make them ("Ship 8 new ads"); "Rival is running 14 ads" is no ask for 14 */
   const n = m ? +m[1] : 1; return Math.max(1, Math.min(12, n)); }
 /* a card that asks for a film (whole words only: "running shorts", "hair clip" and "cling film" are products, not videos) */
 const VIDEO_RE = /\b(videos?|reels?|tiktoks?|youtube shorts|ugc|unboxing)\b/i;
