@@ -41,3 +41,9 @@ test('ready to publish says whether a film is captioned: on, by estimate, none s
   assert.equal(k({ cover: 'gen/c.jpg', captions: { n: 0, none: 'This video has no speech, so it has no captions.' } }).ok, true);
   assert.equal(k({ cover: 'gen/c.jpg', captions: { n: 0, error: 'The words couldn’t be read' } }).ok, false);
 });
+
+test('a film’s captions file and GIF are stored and served like every other made file', async () => {
+  const G = await import('../gen-store.js'); const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gen-')); G.configureGen({ dir, remote: false, log: { warn() {} } });
+  G.saveGen('j2-abcdef12.srt', Buffer.from('1\n00:00:00,000 --> 00:00:01,000\nHi\n')); G.saveGen('j2-abcdef12.gif', Buffer.from('GIF89a'));
+  assert.ok(await G.genFile('j2-abcdef12.srt'), '.srt served'); assert.ok(await G.genFile('j2-abcdef12.gif'), '.gif served');
+});

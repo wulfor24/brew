@@ -4,7 +4,7 @@
 import { askMarket } from '../market.js';
 import { createStudio, library as studioLibrary, inStudio } from './studio.js';
 import { contextOf } from './context.js';
-import { createVideoFinish, vertexTranscribe } from '../video-finish.js';
+import { createVideoFinish, vertexTranscribe, srtOf } from '../video-finish.js';
 import { gToken } from '../vertex-media.js';
 import { isBatchCard } from '../card-plan.js';
 import { createProfiles } from './profiles.js';
@@ -196,7 +196,11 @@ export function mountJam2(d) {
       const tk = addTake(j, bd, { ...copyOf(slides), made: one.made || [], cost: one.cost || { usd: 0, credits: 0 } }); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); });
     v1State(t, j, { ...pl, line: `${b.op === 'add' ? 'a new slide' : `slide ${i + 1}`} · ${style.label}` }, 1);
     note(j, `Studio: ${b.op === 'add' ? 'added a slide' : `slide ${i + 1} again`} · ${style.label} · $${pl.usd}`, whoOf(t).email); return { jam: out(j), plan: pl }; }));
-  on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); await resumeCut(t, j).catch((e) => log.warn?.('[jam2] resume', e.message)); return { jam: out(j, t), also: alsoFor(j.boards[0]?.recipe) }; }));
+  /* a film's captions file saved before .srt could be stored (24 Oct) is written again from the captions its take kept: the same
+     words give the same name, so the link the jam already holds starts working */
+  const healFiles = async (j) => { for (const bd of j.boards) for (const tk of bd.takes || []) { if (!tk.srt || !tk.captions?.segs?.length || !d.genFile || !d.saveGen) continue;
+    const name = String(tk.srt).replace(/^\/?gen\//, ''); if (await d.genFile(name).catch(() => null)) continue; const buf = Buffer.from(srtOf(tk.captions.segs)); if (engines.keep(buf, 'srt') !== tk.srt) tk.srt = engines.keep(buf, 'srt'); } };
+  on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); await healFiles(j).catch((e) => log.warn?.('[jam2] heal files', e.message)); await resumeCut(t, j).catch((e) => log.warn?.('[jam2] resume', e.message)); return { jam: out(j, t), also: alsoFor(j.boards[0]?.recipe) }; }));
   on('POST', '/api/jam2/jams/:jid/concept', wrap(async (b, t, p) => { const j = await load(t, p.jid); const changed = bumpConcept(j, b || {}, whoOf(t).me); await store.put(slugOfT(t), j); return { jam: out(j), changed }; }));
   on('POST', '/api/jam2/jams/:jid/boards', wrap(async (b, t, p) => { const j = await load(t, p.jid);
     if (b.fromRecipe) { const rc = ((await bb.load(slugOfT(t))).recipes || []).find((x) => x.id === b.fromRecipe); if (!rc) return { error: 'That recipe is gone.' }; Object.assign(b, { recipe: rc.recipe, label: rc.name, ask: rc.ask, how: rc.how }); }
