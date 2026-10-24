@@ -29,6 +29,9 @@ import { createAI, aiPaused, billingError, noteBilling, realNewlines } from './a
 import { createAlerts, noteVertex, noteAlert } from './alerts.js'; // ops emails: Vertex billing/quota, the AI pause, treg balance, 5xx rate
 import { createBudget } from './budget.js'; // the day's AI budget: a ceiling and a share per brand
 import { createTreg, gcsCache } from './treg.js';
+import { createObjects } from './objects.js'; // STORAGE=pg: rows in Postgres, binaries in the bucket
+import { enabled as pgEnabled } from './db/index.js';
+import { migrate } from './db/migrate.js';
 import { setApifyCache, createApify, onAnyApifyCharge } from './apify.js';
 import { watchView } from './watch-view.js';
 import { attachHealthStore, sourceTable, flush as healthFlush } from './source-health.js'; // how well each outside source works // What Brew watches for you: the four blocks
@@ -344,13 +347,17 @@ const routes = {
 
 // brand packs: every brand the build has read (brand-pack.js, build.js), and the Brew default context
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
+/* STORAGE=pg (staging, production): structured objects are Postgres rows, binaries stay in the bucket (objects.js). The
+   schema is brought up to date first; migrations are additive, so the revision still serving keeps working */
+const OBJ = pgEnabled() ? createObjects({ bucket: BUCKET, gToken: process.env.K_SERVICE ? gToken : null, log: console }) : null;
+if (OBJ && process.env.MIGRATE_ON_BOOT !== '0') await migrate();
 // one treg client for everything (24-hour cache in the bucket); research uses it too, so it exists before any brand loads
-const treg = createTreg({ client: 'shopos-feed', cache: process.env.K_SERVICE && !MOCK ? gcsCache({ bucket: BUCKET, gToken }) : null });
-if (process.env.K_SERVICE && !MOCK) setApifyCache(gcsCache({ bucket: BUCKET, gToken, prefix: '_cache/apify/' })); // Apify runs: same rules as treg
+const treg = createTreg({ client: 'shopos-feed', cache: (process.env.K_SERVICE || OBJ) && !MOCK ? gcsCache({ bucket: BUCKET, gToken, objects: OBJ }) : null });
+if ((process.env.K_SERVICE || OBJ) && !MOCK) setApifyCache(gcsCache({ bucket: BUCKET, gToken, prefix: '_cache/apify/', objects: OBJ })); // Apify runs: same rules as treg
 let feedSvc = null; // made below, once the brand plumbing exists
-const retire = createRetire({ bucket: BUCKET, gToken, log: console });
+const retire = createRetire({ bucket: BUCKET, gToken, objects: OBJ, log: console });
 const retireInit = retire.init().catch((e) => console.warn('[retire] init', e.message)); // first, before any brand loads: the stores wait on it
-const packs = createPacks({ ROOT, PUB, bucket: BUCKET, gToken });
+const packs = createPacks({ ROOT, PUB, bucket: BUCKET, gToken, objects: OBJ });
 /* the day's usage survives a restart or a deploy: AI calls by kind (all brands and each brand) and treg dollars, read back before
    anything can spend (the brands, background jobs and the server all start after this line) */
 await budget.load();
@@ -364,7 +371,7 @@ const alerts = createAlerts({ treg, log: console, store: { get: () => packs.getJ
     if (!r.ok) throw new Error(`resend ${r.status}`); } });
 alerts.start();
 configureGen({ dir: GEN, researchDir: path.join(PUB, 'research'), bucket: BUCKET, gToken, log: console });
-const store = createStore({ dir: path.join(ROOT, '.tenants'), bucket: BUCKET, gToken });
+const store = createStore({ dir: path.join(ROOT, '.tenants'), bucket: BUCKET, gToken, objects: OBJ });
 // each brand gets its own research (story rings) and live watchers. A generated brand gets them once its read is in
 // (they need its rivals, search terms, questions and country); until then a quiet stand-in answers.
 const STUB = { get: () => ({}), running: () => [], spent: () => ({}), onRefresh: () => {}, refresh: () => [], mediaFile: async () => null, start: async () => {}, ready: async () => {}, need: () => false };
@@ -386,8 +393,8 @@ const attach = (p) => {
   if (read && (!x || x.key !== key)) {
     if (x) { try { x.live?.stop?.(); x.research?.stop?.(); } catch {} } /* the replaced watchers stop: no duplicate timers or catalog signals */
     const params = (m, max) => ({ ...claudeParams(m, max), system: p.system });
-    x = { key, research: createResearch({ ROOT, PUB, anthropic, claudeParams: params, textOf, geminiImage: countedImage, gToken, clean, factBrief: () => (packs.peek(p.slug) || p).factBrief, brand: p, photoFile, tregClient: treg, videoRead: (m, a) => videoRead[m](a) /* lazy: videoRead is made further down */ }),
-      live: createLiveWatch({ ROOT, anthropic, claudeParams: params, textOf, gToken, brand: p, tregClient: treg, namePass: (as) => namedPass(p, as) }) };
+    x = { key, research: createResearch({ ROOT, PUB, anthropic, claudeParams: params, textOf, geminiImage: countedImage, gToken, clean, factBrief: () => (packs.peek(p.slug) || p).factBrief, brand: p, photoFile, tregClient: treg, objects: OBJ, videoRead: (m, a) => videoRead[m](a) /* lazy: videoRead is made further down */ }),
+      live: createLiveWatch({ ROOT, anthropic, claudeParams: params, textOf, gToken, brand: p, tregClient: treg, objects: OBJ, namePass: (as) => namedPass(p, as) }) };
     INST.set(p.slug, x);
     x.research.start().catch((e) => console.error('[research] start', p.slug, e.message)); x.live.start().catch((e) => console.error('[live] start', p.slug, e.message));
     p.research = x.research; p.live = x.live; feedSvc?.wire(p);
@@ -975,7 +982,7 @@ const server = http.createServer(async (req, res) => {
 process.once('SIGTERM', () => { builder?.stop?.(); /* no new move starts here; the next instance resumes the build */
   movesCadence?.stop?.(); /* the weekly families end before the next one; the next instance carries on */
   const closed = new Promise((r) => { try { server.close(() => r()); server.closeIdleConnections?.(); } catch { r(); } }); /* in-flight requests finish; idle keep-alives go now */
-  const work = Promise.allSettled([feedSvc?.jams?.flush?.(), feedSvc?.jam2?.flush?.(), store.flushPending(), budget.flush(), tregLedger.flush(), apifyLedger.flush(), healthFlush(), visFlush(), jamMail.drain(), closed]);
+  const work = Promise.allSettled([feedSvc?.jams?.flush?.(), feedSvc?.jam2?.flush?.(), store.flushPending(), budget.flush(), tregLedger.flush(), apifyLedger.flush(), healthFlush(), visFlush(), jamMail.drain(), closed]).then(() => OBJ?.mirrored?.()); /* the bucket copies of what was just written (OBJECTS_MIRROR) */
   Promise.race([work, new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
 async function serve(req, res, u) {
   try {

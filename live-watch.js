@@ -29,7 +29,7 @@ const strip = (md) => String(md || '').replace(/!\[[^\]]*\]\([^)]*\)/g, '').repl
 const domainOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
 
 // One instance per brand (server.js makes it with the brand pack). Snapshot: brands/<slug>/live-watch.json.
-export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken, brand, tregClient = null, namePass = null, log = console }) {
+export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken, brand, tregClient = null, namePass = null, objects = null, log = console }) {
   /* asked from the brand's market in its language (market.js askMarket), one rule for every tool: a brand whose market is
      still to confirm is asked from its best candidate, never India by default */
   const cfg = brand.config, AM = askMarket({ country: cfg.country, locale: cfg.locale, market: cfg.market }, cfg), FACTS = brand.facts || {}, HOST = brand.host, IN = DFS_LOC[AM.cc] || cfg.locationCode || 2840, GEO = AM.cc, LANG = AM.lang;
@@ -45,6 +45,7 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
 
   /* ---------- storage ---------- */
   const gcs = async (method, buf) => {
+    if (objects) { if (method === 'PUT') return objects.put(OBJECT, buf, 'application/json'); const b = await objects.get(OBJECT); if (b == null) throw new Error('gcs GET 404'); return b; } /* STORAGE=pg: a row */
     const tk = await gToken();
     const url = method === 'PUT' ? `https://storage.googleapis.com/upload/storage/v1/b/${BUCKET}/o?uploadType=media&name=${encodeURIComponent(OBJECT)}` : `https://storage.googleapis.com/storage/v1/b/${BUCKET}/o/${encodeURIComponent(OBJECT)}?alt=media`;
     const r = await fetch(url, { method: method === 'PUT' ? 'POST' : 'GET', headers: { authorization: `Bearer ${tk}`, ...(buf ? { 'content-type': 'application/json' } : {}) }, body: buf, signal: AbortSignal.timeout(60e3) });

@@ -61,7 +61,7 @@ export const noPaise = (s) => String(s ?? '').replace(/((?:₹|\bRs\.?|\bINR)\s?
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
 // One research instance per brand (server.js makes it when the brand pack loads). Its snapshot lives at
 // brands/<slug>/research.json; downloaded media is shared by hash at research-media/<file> (served as /research/<file>).
-export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, geminiImage, gToken, clean, factBrief = () => '', brand, photoFile = (rel) => path.join(PUB, rel), tregClient = null, videoRead = null, log = console }) {
+export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, geminiImage, gToken, clean, factBrief = () => '', brand, photoFile = (rel) => path.join(PUB, rel), tregClient = null, videoRead = null, objects = null, log = console }) {
   const B = () => brand, BN = () => brand.name, BH = () => brand.host, CTRY = () => brand.config.countryName || 'your market', FESTN = () => brand.config.festival?.name || 'the next sale', FESTD = () => brand.config.festival?.label || 'soon';
   const cfg = brand.config, GEO = cfg.country || 'IN', LOC = cfg.locationCode || 2356;
   /* story text never shows paise: "₹499.00" reads "₹499" (rupee prices are whole; a scraped ".00" is noise) */
@@ -109,6 +109,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
 
   /* ---------- storage: local disk + GCS ---------- */
   const gcs = async (method, name, buf, type) => {
+    if (objects) { if (method === 'PUT') return objects.put(name, buf, type); const b = await objects.get(name); if (b == null) throw new Error(`gcs GET ${name} 404`); return b; } /* STORAGE=pg: snapshot rows, media in the bucket */
     const tk = await gToken();
     const url = method === 'PUT'
       ? `https://storage.googleapis.com/upload/storage/v1/b/${BUCKET}/o?uploadType=media&name=${encodeURIComponent(name)}`

@@ -14,12 +14,13 @@ export const wiping = (slug) => !!slug && wipe.has(String(slug));
 let ready = Promise.resolve(), done = () => {};
 export const retireReady = () => ready;
 
-export function createRetire({ bucket, gToken, log = console, everyMs = 15e3, graceMs = 5e3 }) {
+export function createRetire({ bucket, gToken, objects = null, log = console, everyMs = 15e3, graceMs = 5e3 }) {
   const rev = process.env.K_REVISION || '', n = +((rev.match(/-0*(\d+)-[a-z0-9]+$/) || [])[1] || 0), boot = Date.now();
   const on = !!(process.env.K_SERVICE && bucket && n && process.env.RETIRE_OFF !== '1');
   const obj = 'control/live.json';
   let claimed = false, retired = false, timer = null;
   const read = async () => {
+    if (objects?.pg) { const b = await objects.get(obj); return b ? JSON.parse(b.toString('utf8')) : null; } /* STORAGE=pg: a row */
     const tk = await gToken();
     const r = await f0(`https://storage.googleapis.com/storage/v1/b/${bucket}/o/${encodeURIComponent(obj)}?alt=media`, { headers: { authorization: `Bearer ${tk}` }, signal: AbortSignal.timeout(15e3) });
     if (r.status === 404) return null;
@@ -27,6 +28,7 @@ export function createRetire({ bucket, gToken, log = console, everyMs = 15e3, gr
     return r.json();
   };
   const write = async (m) => {
+    if (objects?.pg) return objects.put(obj, JSON.stringify(m), 'application/json');
     const tk = await gToken();
     const r = await f0(`https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(obj)}`, { method: 'POST', headers: { authorization: `Bearer ${tk}`, 'content-type': 'application/json', 'cache-control': 'no-store' }, body: JSON.stringify(m), signal: AbortSignal.timeout(15e3) });
     if (!r.ok) throw new Error(`live.json put ${r.status}`);

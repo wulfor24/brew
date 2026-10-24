@@ -27,13 +27,18 @@ export const TTL_RULES = [
   [/news|web\.search|shopping|price|best-?sellers|product\.detail|amazon\.search/i, 24]];
 export const ttlHours = (id) => (TTL_RULES.find(([re]) => re.test(id)) || [null, TTL_H])[1];
 /** cache: { get(key) → { at, data } | null, put(key, { at, data }) } */
-export function gcsCache({ bucket, gToken, prefix = '_cache/treg/', log = console }) {
+export function gcsCache({ bucket, gToken, prefix = '_cache/treg/', objects = null, log = console }) {
   const mem = new Map();
   const url = (k) => `https://storage.googleapis.com/storage/v1/b/${bucket}/o/${encodeURIComponent(prefix + k + '.json')}?alt=media`;
+  /* STORAGE=pg: the cache is rows in Postgres, shared by every instance (objects.js) */
+  const getObj = async (k) => { if (objects) { const b = await objects.get(prefix + k + '.json'); return b ? JSON.parse(b.toString('utf8')) : null; }
+    const r = await fetch(url(k), { headers: { authorization: `Bearer ${await gToken()}` }, signal: AbortSignal.timeout(15e3) }); return r.ok ? r.json() : null; };
+  const putObj = async (k, v) => { if (objects) return objects.put(prefix + k + '.json', JSON.stringify(v), 'application/json');
+    await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(prefix + k + '.json')}`, { method: 'POST', headers: { authorization: `Bearer ${await gToken()}`, 'content-type': 'application/json' }, body: JSON.stringify(v), signal: AbortSignal.timeout(30e3) }); };
   return {
-    async get(k) { if (mem.has(k)) return mem.get(k); try { const r = await fetch(url(k), { headers: { authorization: `Bearer ${await gToken()}` }, signal: AbortSignal.timeout(15e3) }); if (!r.ok) return null; const v = await r.json(); mem.set(k, v); return v; } catch { return null; } },
+    async get(k) { if (mem.has(k)) return mem.get(k); try { const v = await getObj(k); if (v) mem.set(k, v); return v; } catch { return null; } },
     async put(k, v) { mem.set(k, v); if (mem.size > 5000) mem.delete(mem.keys().next().value);
-      try { await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(prefix + k + '.json')}`, { method: 'POST', headers: { authorization: `Bearer ${await gToken()}`, 'content-type': 'application/json' }, body: JSON.stringify(v), signal: AbortSignal.timeout(30e3) }); } catch (e) { log.warn?.('[treg] cache put', e.message); } },
+      try { await putObj(k, v); } catch (e) { log.warn?.('[treg] cache put', e.message); } },
   };
 }
 

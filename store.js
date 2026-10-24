@@ -5,21 +5,23 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { wiping, retireReady } from './retire.js'; // a workspace on a brand being reset is neither saved nor loaded
 import { brewText, onceEscaped } from './brew-name.js'; // workspaces saved before the rename say ShopOS
+import { createObjects } from './objects.js';
 
 const enc = (k, v) => (v instanceof Map ? { __m: [...v.entries()] } : v instanceof Set ? { __s: [...v] } : v);
 const dec = (k, v) => (v && typeof v === 'object' && v.__m ? new Map(v.__m) : v && typeof v === 'object' && v.__s ? new Set(v.__s) : v);
 
-export function createStore({ dir, bucket, gToken, log = console }) {
+export function createStore({ dir, bucket, gToken, objects = null, log = console }) {
   fs.mkdirSync(dir, { recursive: true });
-  const remote = !!(process.env.K_SERVICE && bucket && gToken);
+  /* behind this disk: Postgres rows (STORAGE=pg) or the bucket (Cloud Run) */
+  const obj = objects || (process.env.K_SERVICE && bucket && gToken ? createObjects({ bucket, gToken, log }) : null);
+  const remote = !!obj?.remote;
   const timers = new Map();
   const file = (id) => path.join(dir, String(id).replace(/[^a-z0-9_]/gi, '') + '.json');
   const gcs = async (method, id, body) => {
-    const name = `tenants/${String(id).replace(/[^a-z0-9_]/gi, '')}.json`; const tk = await gToken();
-    const url = method === 'PUT' ? `https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(name)}` : `https://storage.googleapis.com/storage/v1/b/${bucket}/o/${encodeURIComponent(name)}?alt=media`;
-    const r = await fetch(url, { method: method === 'PUT' ? 'POST' : 'GET', headers: { authorization: `Bearer ${tk}`, ...(body ? { 'content-type': 'application/json' } : {}) }, body, signal: AbortSignal.timeout(20e3) });
-    if (!r.ok) throw new Error(`gcs ${method} ${name} ${r.status}`);
-    return method === 'PUT' ? true : r.text();
+    const name = `tenants/${String(id).replace(/[^a-z0-9_]/gi, '')}.json`;
+    if (method === 'PUT') return obj.put(name, body, 'application/json');
+    const b = await obj.get(name); if (b == null) throw new Error(`gcs GET ${name} 404`); /* load0 reads a 404 as "no such workspace" */
+    return b.toString('utf8');
   };
   const write = (t) => {
     if (wiping(t?.brandId)) return; fromGcs.add(t.id);
@@ -48,10 +50,7 @@ export function createStore({ dir, bucket, gToken, log = console }) {
   /* every workspace file and when it last changed (the bucket's on Cloud Run, this disk locally), and one read fresh from it:
      the weekly history (history.js) reads each brand's workspaces, whichever instance saved them */
   const scan = async () => { if (!remote) return fs.readdirSync(dir).filter((f) => /^t_[a-f0-9]+\.json$/.test(f)).map((f) => ({ id: f.slice(0, -5), updated: fs.statSync(path.join(dir, f)).mtimeMs }));
-    const tk = await gToken(), out = []; let pt = '';
-    do { const r = await fetch(`https://storage.googleapis.com/storage/v1/b/${bucket}/o?prefix=tenants/&fields=items(name,updated),nextPageToken${pt ? '&pageToken=' + pt : ''}`, { headers: { authorization: `Bearer ${tk}` }, signal: AbortSignal.timeout(20e3) });
-      if (!r.ok) throw new Error(`gcs list tenants ${r.status}`); const j = await r.json(); for (const x of j.items || []) { const m = /^tenants\/(t_[a-f0-9]+)\.json$/.exec(x.name); if (m) out.push({ id: m[1], updated: x.updated }); } pt = j.nextPageToken || ''; } while (pt);
-    return out; };
+    return (await obj.list('tenants/')).map((x) => { const m = /^tenants\/(t_[a-f0-9]+)\.json$/.exec(x.name); return m ? { id: m[1], updated: x.updated } : null; }).filter(Boolean); };
   const readFresh = async (id) => { if (!remote) return load0(id); if (!/^t_[a-f0-9]+$/.test(id || '')) return null; return parse(await gcs('GET', id)); };
   // drops pending writes (tests, resets); flushPending writes them now and waits for GCS (SIGTERM on Cloud Run)
   const flush = () => { for (const [id, tm] of timers) clearTimeout(tm); timers.clear(); pending.clear(); };

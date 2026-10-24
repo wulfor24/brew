@@ -1,0 +1,45 @@
+// Postgres for Brew (STORAGE=pg): one pool per process for queries, and one dedicated connection that LISTENs, because
+// a listener must keep its own session (a pooled connection forgets LISTEN when it goes back to the pool).
+// DATABASE_URL, or the PG* variables (PGHOST, PGUSER, PGPASSWORD, PGDATABASE). PG_POOL_MAX sizes the pool per instance:
+// web 5, worker 10 (keep instances × pool under the server's max_connections).
+import pg from 'pg';
+
+let pool = null, listener = null, closing = false;
+const handlers = new Map(); // channel → Set(fn)
+const conf = () => ({ ...(process.env.DATABASE_URL ? { connectionString: process.env.DATABASE_URL } : {}),
+  max: +process.env.PG_POOL_MAX || 5, idleTimeoutMillis: 30e3, connectionTimeoutMillis: 10e3,
+  statement_timeout: +process.env.PG_STATEMENT_MS || 30e3, application_name: `brew-${process.env.ROLE || 'all'}` });
+
+export const enabled = () => process.env.STORAGE === 'pg';
+export function db() {
+  if (!pool) { pool = new pg.Pool(conf()); pool.on('error', (e) => console.warn('[db] idle client', e.message)); }
+  return pool;
+}
+export const q = (text, params) => db().query(text, params);
+/* fn(client) inside BEGIN … COMMIT; any throw rolls back */
+export async function tx(fn) {
+  const c = await db().connect();
+  try { await c.query('BEGIN'); const out = await fn(c); await c.query('COMMIT'); return out; }
+  catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; }
+  finally { c.release(); }
+}
+
+/* LISTEN on its own connection, reconnecting with backoff; every channel asked for is listened to again after a reconnect */
+async function connectListener(tries = 0) {
+  if (closing) return;
+  const c = new pg.Client(conf());
+  c.on('notification', (m) => { for (const fn of handlers.get(m.channel) || []) { try { fn(m.payload); } catch (e) { console.warn('[db] listener', m.channel, e.message); } } });
+  const again = () => { if (listener === c) listener = null; if (!closing) setTimeout(() => connectListener(tries + 1), Math.min(30e3, 500 * 2 ** tries)).unref?.(); };
+  c.on('error', (e) => { console.warn('[db] listen connection', e.message); c.end().catch(() => {}); });
+  c.on('end', again);
+  try { await c.connect(); listener = c; for (const ch of handlers.keys()) await c.query(`LISTEN "${ch}"`); tries = 0; }
+  catch (e) { console.warn('[db] listen connect', e.message); again(); }
+}
+export async function listen(channel, fn) {
+  if (!/^[a-z_]+$/.test(channel)) throw new Error('bad channel');
+  const first = !handlers.has(channel); if (first) handlers.set(channel, new Set());
+  handlers.get(channel).add(fn);
+  if (!listener) await connectListener(); else if (first) await listener.query(`LISTEN "${channel}"`);
+  return () => handlers.get(channel)?.delete(fn);
+}
+export async function close() { closing = true; await listener?.end().catch(() => {}); await pool?.end().catch(() => {}); pool = null; listener = null; handlers.clear(); closing = false; }

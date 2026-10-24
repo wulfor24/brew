@@ -30,6 +30,7 @@ import { markMoveClaims, sourceText } from './claims.js'; // saved moves: a clai
 import { pastOf, liveStat } from './festival-past.js'; // a festival move after its festival: marked past, its cards off the feed
 import { sellable } from './product-match.js'; // a listing a shopper can buy (never a test or duplicate listing)
 import { markStat, reviewTexts } from './stat-check.js'; // a cover number means what its label says, or reads "to confirm"
+import { createObjects } from './objects.js'; // where packs live: Postgres rows + the bucket for binaries, or the bucket alone
 
 /* the raw material of a hook, for every draft plan (drafts.js hookBlock), for every brand: real review lines (top 5, at most
    120 characters, the read's chosen quotes first, no low ratings) and the three rival ads live longest (days, format, their
@@ -149,7 +150,7 @@ export function fitPhotos(seed, profile) {
   return seed;
 }
 import { wiping, retireReady } from './retire.js'; // a brand being reset is never read, written or listed
-export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
+export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = console }) {
   const DIR = path.join(ROOT, '.brands'); fs.mkdirSync(DIR, { recursive: true });
   const cache = new Map();
   /* every write to a pack moves its version on (put, drop): a fresh load is reused while nothing was written to the pack */
@@ -161,10 +162,15 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   /* notes.json and move-value.json are written in the background a few seconds after every load (server attach): they show within
      FRESH_MS, and never force the next page load to rebuild the whole pack */
   const BUILT_FROM = /^(?:seed|status|profile|facts|brief|config|moves|labels|learned|pages|pools|rival-reads|statics|updates|demo|brandbook-read|ledger|findings)\.(?:json|md)$|^(?:moves|docs|drafts|pulse)\/|^private\/(?:brandbook|shop-brand|facts|profile-live|moves|statics)/; /* private/connections.json is rewritten by every connector read and the pack only asks it whether Shopify is connected: a real connect drops the pack itself */
-  const remote = !!(process.env.K_SERVICE && bucket && gToken);
-  const gcsGet = async (name) => { const tk = await gToken(); const r = await fetch(`https://storage.googleapis.com/storage/v1/b/${bucket}/o/${encodeURIComponent(name)}?alt=media`, { headers: { authorization: `Bearer ${tk}` }, signal: AbortSignal.timeout(30e3) }); if (r.status === 404) return null; if (!r.ok) throw new Error(`gcs get ${name} ${r.status}`); return Buffer.from(await r.arrayBuffer()); };
-  const gcsPut = async (name, buf, type = 'application/json') => { const tk = await gToken(); const r = await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(name)}`, { method: 'POST', headers: { authorization: `Bearer ${tk}`, 'content-type': type }, body: buf, signal: AbortSignal.timeout(60e3) }); if (!r.ok) throw new Error(`gcs put ${name} ${r.status}`); };
-  const gcsList = async (prefix) => { const tk = await gToken(); const out = []; let pt = ''; do { const r = await fetch(`https://storage.googleapis.com/storage/v1/b/${bucket}/o?prefix=${encodeURIComponent(prefix)}&fields=items(name,updated),nextPageToken${pt ? '&pageToken=' + pt : ''}`, { headers: { authorization: `Bearer ${tk}` } }); if (!r.ok) throw new Error(`gcs list ${r.status}`); const j = await r.json(); out.push(...(j.items || [])); pt = j.nextPageToken || ''; } while (pt); return out; };
+  /* where packs live behind this disk: Postgres rows + the bucket for binaries (STORAGE=pg), or the bucket (Cloud Run) */
+  const obj = objects || (process.env.K_SERVICE && bucket && gToken ? createObjects({ bucket, gToken, log }) : null);
+  const remote = !!obj?.remote;
+  const pgRow = (name) => !!obj?.isRow(`brands/x/${name}`); /* a structured file read fresh from Postgres, never from this disk */
+  const gcsGet = (name) => obj.get(name);
+  const gcsPut = (name, buf, type) => obj.put(name, buf, type);
+  const gcsList = (prefix) => obj.list(prefix);
+  /* another instance wrote to a pack: the next fresh load here reads it (pg NOTIFY) */
+  obj?.onChange?.((key) => { const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (m && BUILT_FROM.test(m[2])) bump(m[1]); }).catch((e) => log.warn('[packs] listen', e.message));
 
   /* ---------- the files of a pack (local first, GCS behind) ---------- */
   const dirOf = (slug) => path.join(DIR, slug);
@@ -190,8 +196,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const getRaw = async (slug, name) => {
     if (!inside(slug, name)) return null;
     const f = fileOf(slug, name);
-    if (fs.existsSync(f)) return brewFile(name, fs.readFileSync(f));
-    if (!remote) return null;
+    if (!pgRow(name) && fs.existsSync(f)) return brewFile(name, fs.readFileSync(f));
+    if (!remote) return pgRow(name) && fs.existsSync(f) ? brewFile(name, fs.readFileSync(f)) : null;
     const b = await gcsGet(`brands/${slug}/${name}`).catch((e) => { log.warn('[packs] gcs get', name, e.message); return null; });
     if (b) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, b); }
     return brewFile(name, b);
@@ -201,7 +207,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const readJSON = async (slug, name0) => {
     await retireReady(); const name = sandboxName(name0) || name0; /* Demo Mode: a session's own copy */ if (wiping(slug) || !inside(slug, name)) return { ok: true, data: null };
     const f = fileOf(slug, name);
-    try { if (fs.existsSync(f)) return { ok: true, data: JSON.parse(fs.readFileSync(f, 'utf8')) };
+    try { if ((!pgRow(name) || !remote) && fs.existsSync(f)) return { ok: true, data: JSON.parse(fs.readFileSync(f, 'utf8')) };
       if (!remote) return { ok: true, data: null };
       const b = await gcsGet(`brands/${slug}/${name}`); if (b == null) return { ok: true, data: null };
       const data = JSON.parse(b.toString('utf8')); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, b); return { ok: true, data };
@@ -450,5 +456,12 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   }
   /* the first drafts of every loaded brand, re-read from the bucket: a draft made on another instance shows here too, the same on every refresh */
   const refreshDrafts = async () => { for (const [slug, p] of cache) { if (p?.kind !== 'generated') continue; const d = await getFreshJSON(slug, 'drafts/cards.json', null).catch(() => null); if (d && typeof d === 'object') p.firstDrafts = d; } };
-  return { load, peek, put, putStrict, get, getJSON, readJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => { bump(slug); for (const k of freshP.keys()) if (k.startsWith(`${slug}|`)) freshP.delete(k); return cache.delete(slug); }, version: ver, remote };
+  /* read-modify-write of one JSON file that no other request or instance can interleave (members, connections, learned…):
+     fn(current or null) → next, or undefined to leave it. Locked in Postgres on STORAGE=pg; on the bucket, one instance */
+  const update = async (slug, name0, fn) => { await retireReady(); const name = sandboxName(name0) || name0; if (wiping(slug)) return null;
+    const f = fileOf(slug, name);
+    if (!obj?.pg) { const cur = await getJSON(slug, name, null); const next = await fn(cur); if (next !== undefined) await putStrict(slug, name, next); return next === undefined ? cur : next; }
+    const out = await obj.update(`brands/${slug}/${name}`, fn);
+    fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(out, null, 1)); bump(slug); return out; };
+  return { load, peek, put, putStrict, update, get, getJSON, readJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => { bump(slug); for (const k of freshP.keys()) if (k.startsWith(`${slug}|`)) freshP.delete(k); return cache.delete(slug); }, version: ver, remote };
 }

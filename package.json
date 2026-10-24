@@ -1,1 +1,1 @@
-{"name":"brew-feed","private":true,"type":"module","scripts":{"start":"node server.js"},"engines":{"node":">=20"},"dependencies":{"@anthropic-ai/sdk":"^0.133.0","@imgly/background-removal-node":"^1.4.5","date-holidays":"^3.37.0","puppeteer-core":"^23.11.1"}}
+{"name":"brew-feed","private":true,"type":"module","scripts":{"start":"node server.js"},"engines":{"node":">=20"},"dependencies":{"@anthropic-ai/sdk":"^0.133.0","@imgly/background-removal-node":"^1.4.5","date-holidays":"^3.37.0","pg":"^8.23.1","puppeteer-core":"^23.11.1"}}
