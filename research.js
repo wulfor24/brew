@@ -143,7 +143,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     gcs('PUT', SNAP, buf, 'application/json').catch((e) => log.warn('[research] gcs snapshot', e.message));
   };
   /* another instance (the background leader) saved a newer snapshot: this one serves it (Postgres NOTIFY) */
-  objects?.onChange?.((k) => { if (k === SNAP && !isLeader()) load().catch(() => {}); })?.catch?.(() => {});
+  let unwatch = null; objects?.onChange?.((k) => { if ((k === SNAP || k === '*') && !isLeader() && !stopped) load().catch(() => {}); })?.then?.((u) => { unwatch = u; })?.catch?.(() => {});
   const load = async () => {
     let s = null;
     try { s = JSON.parse((await gcs('GET', SNAP)).toString()); } catch (e) { log.warn('[research] no gcs snapshot:', e.message); }
@@ -560,7 +560,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     needAt[k] = Date.now(); log.log(`[research] ${brand.slug} ${k}: ring has nothing fresh, reading again`); refresh([k]).catch(() => {}); return true; };
   /* a replaced instance stops its timers */
   let stopped = false; const timers = {};
-  const stop = () => { stopped = true; clearTimeout(timers.t); clearInterval(timers.i); };
+  const stop = () => { stopped = true; clearTimeout(timers.t); clearInterval(timers.i); unwatch?.(); };
 
   return { start, ready: () => loaded, need, failures: () => Object.fromEntries(Object.entries(failed).map(([k, at]) => [k, { at }])), stop, refresh, rollup, mediaFile, due, get: () => snap, onRefresh: (f) => listeners.push(f), running: () => [...running], spent: () => ({ ...spent }) };
 }

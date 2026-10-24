@@ -332,6 +332,11 @@ export function createFeedService(o) {
   /* the person acting in this request ({ email, name, pic }), or null (a visitor, the background clock) */
   const meOf = (t) => { const r = reqOf(t); if (!r) return null; if (r.member && r.email) return { email: r.email, name: r.name || null, pic: r.pic || null, ...(o.isStaff?.(r.email) ? { staff: true } : {}) }; if (r.guest?.email) return { email: r.guest.email, name: r.guest.name || null, pic: r.guest.pic || null }; return null; };
   const tenants = new (class extends Map { set(k, t) { MC.guard(t); JAMS.guard(t); return super.set(k, t); } })();
+  /* Postgres: another instance wrote a workspace this one holds. An idle copy here (nobody on it for 30 s, nothing waiting
+     to be saved) is dropped, so the next request reads the newer one; a copy in use stays, and its saves carry only its own
+     changes (store.js) */
+  store?.onRemote?.((id) => { const drop = (t) => { if (!t || Date.now() - (t.lastSeen || 0) < 30e3 || store.pending?.(t.id)) return; tenants.delete(t.id); store.forget?.(t.id); };
+    if (id === '*') { for (const t of [...tenants.values()]) drop(t); } else drop(tenants.get(id)); });
   /* jam emails to the team (jam-mail.js); the demo site never sends */
   const mailEv = (t, w, ev) => { if (!o.jamMail || process.env.DEMO_MODE === '1') return; const ct = t.cards?.get?.(w.cardId)?.title; /* the email names the jam as the jam shows it (its card), never a draft's own headline */ o.jamMail.event(t.brandId || DEFAULT_BRAND, ct && ct !== w.title ? { ...w, title: ct } : w, ev).catch((e) => log.warn?.('[jam-mail]', e.message)); };
   const nameOf = (p) => p?.name || p?.email || 'Someone';

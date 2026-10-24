@@ -1,9 +1,8 @@
 // What one instance tells the others (Postgres): a message is a row, NOTIFY wakes every instance, each reads it and hands it
 // to its handlers; the instance that sent it never hears its own. Messages stay a day. Off without Postgres.
-import os from 'node:os';
+import { ME } from './instance.js'; // one id per process
 import { enabled as pgOn, q, listen } from './db/index.js';
 
-const ME = `${process.env.K_REVISION || os.hostname()}:${process.pid}`;
 export function createBus({ pg = pgOn(), log = console } = {}) {
   if (!pg) return null;
   const subs = new Map(); let started = null;

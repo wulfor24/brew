@@ -13,11 +13,18 @@ export const wiping = (slug) => !!slug && wipe.has(String(slug));
 // the stores wait for the first check, so a fresh instance never loads a brand that is mid-reset
 let ready = Promise.resolve(), done = () => {};
 export const retireReady = () => ready;
+/* this instance was replaced: besides outbound calls, its database writes are refused (objects.js), so an old revision's
+   in-memory state never lands over the live one's (the bucket was protected by the fetch block alone) */
+let gone = false;
+export const isRetired = () => gone;
+export const markRetired = () => { gone = true; };
 
 export function createRetire({ bucket, gToken, objects = null, log = console, everyMs = 15e3, graceMs = 5e3 }) {
   const rev = process.env.K_REVISION || '', n = +((rev.match(/-0*(\d+)-[a-z0-9]+$/) || [])[1] || 0), boot = Date.now();
   const on = !!(process.env.K_SERVICE && bucket && n && process.env.RETIRE_OFF !== '1');
-  const obj = 'control/live.json';
+  /* one marker per Cloud Run service: a web service and a worker service count revisions separately, so neither may read
+     the other's revision number as newer (staging's single service keeps the old name) */
+  const obj = process.env.RETIRE_KEY || (!process.env.K_SERVICE || process.env.K_SERVICE === 'shopos-feed' ? 'control/live.json' : `control/live-${process.env.K_SERVICE}.json`);
   let claimed = false, retired = false, timer = null;
   const read = async () => {
     if (objects?.pg) { const b = await objects.get(obj); return b ? JSON.parse(b.toString('utf8')) : null; } /* STORAGE=pg: a row */
@@ -36,7 +43,7 @@ export function createRetire({ bucket, gToken, objects = null, log = console, ev
   const stale = (m) => !!m && (m.n > n || (m.rev === 'stop' && m.n >= n && m.at > boot));
   const apply = (m) => { wipe.clear(); for (const s of m?.wipe || []) wipe.add(String(s)); };
   const retire = (m) => {
-    if (retired) return; retired = true; clearInterval(timer);
+    if (retired) return; retired = true; markRetired(); clearInterval(timer);
     log.warn(`[retire] ${rev} is replaced (${m.rev} #${m.n}): no more outbound calls, exiting in ${graceMs / 1000}s`);
     globalThis.fetch = async (u, ...a) => { if (String(u?.url || u).startsWith('http://metadata.google.internal')) return f0(u, ...a); throw new Error('this instance is retired'); };
     setTimeout(() => process.exit(0), graceMs);

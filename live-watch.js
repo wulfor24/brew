@@ -55,7 +55,7 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
   };
   const persist = () => { const buf = Buffer.from(JSON.stringify(snap)); fs.writeFileSync(path.join(LOCAL, 'live-watch.json'), buf); gcs('PUT', buf).catch((e) => log.warn('[live] gcs save', e.message)); };
   /* another instance (the background leader) saved a newer snapshot: this one serves it (Postgres NOTIFY) */
-  objects?.onChange?.((k) => { if (k === OBJECT && !isLeader()) load().catch(() => {}); })?.catch?.(() => {});
+  let unwatch = null; objects?.onChange?.((k) => { if ((k === OBJECT || k === '*') && !isLeader() && !stopped) load().catch(() => {}); })?.then?.((u) => { unwatch = u; })?.catch?.(() => {});
   const load = async () => {
     let s = null;
     try { s = JSON.parse((await gcs('GET')).toString()); } catch (e) { log.warn('[live] no gcs snapshot:', e.message); }
@@ -254,6 +254,6 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
   };
   /* a replaced watcher (the brand's rivals, terms or catalog changed) stops: no second timer, no stale listeners */
   let stopped = false; const timers = {};
-  const stop = () => { stopped = true; clearTimeout(timers.t); clearInterval(timers.i); listeners.length = 0; };
+  const stop = () => { stopped = true; clearTimeout(timers.t); clearInterval(timers.i); listeners.length = 0; unwatch?.(); };
   return { start, stop, refresh, due, askOne, get: () => snap, onRefresh: (f) => listeners.push(f), running: () => [...running], spent: () => ({ ...spent }) };
 }

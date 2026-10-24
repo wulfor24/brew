@@ -66,9 +66,8 @@ export const daysLeft = (s, now = Date.now()) => (s?.expiresAt ? Math.floor((s.e
 // DUMMY: simulated on the demo site (DEMO_MODE=1)
 export const simOnly = (id) => DEMO || !REAL[id];
 
-/* brands whose live connections are never dropped or replaced by accident (a client going live) */
-export const PROTECTED = () => new Set(String(process.env.PROTECTED_CONNECTIONS ?? 'arata-in').split(',').map((x) => x.trim()).filter(Boolean));
-export const isProtected = (slug) => PROTECTED().has(String(slug || ''));
+import { PROTECTED, isProtected } from './protected.js'; // brands whose live connections are never dropped or replaced by accident
+export { PROTECTED, isProtected };
 const PROTECTED_WHY = 'This brand’s connections are protected while it is live with a client. Ask a Brew admin if it really has to change.';
 export function createConnectors({ packs, auth, builder, treg = null, log = console, onLive = () => {} }) {
   const SIM = createSim({ packs, log }), vault = createVault(packs), deps = { treg };
@@ -141,7 +140,13 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       const c = await conns(s).catch(() => ({})); for (const k of ['ga4', 'google']) if (c?.[k] && !c[k].sim && String(c[k].account?.id || '').split(' ').includes(property)) return s; }
     return null;
   }
-  async function finish(slug, id, creds, me, { override = false } = {}) {
+  /* a protected brand's connection that exists (live, syncing, stale or needing a reconnect) is never replaced by a new
+     sign-in, key or account pick unless a Brew admin forces it; checked here, where every path that connects ends */
+  const rootAdmin = (me) => !!(auth.isRootAdmin ? auth.isRootAdmin(me) : auth.isAdmin?.(me)); /* only Brew's named admins may force a protected brand */
+  const exists = (c) => !!c && (c.state === 'live' || c.state === 'syncing' || !!c.lastSync || !!c.account);
+  const replaceRefused = async (slug, id, me, force) => isProtected(slug) && !(force && rootAdmin(me)) && exists((await conns(slug))[id]);
+  async function finish(slug, id, creds, me, { override = false, force = false } = {}) {
+    if (await replaceRefused(slug, id, me, force)) { log.warn(`[connect] ${slug} ${id}: protected connection kept (a new connect was refused for ${me?.email || 'someone'})`); return { ok: false, state: 'protected', protected: true, error: PROTECTED_WHY }; }
     /* a property through Brew's service account is checked before anything is kept, or the brand claimed by this connect */
     let sa = null;
     if (creds?.sa && !simOnly(id)) {
@@ -171,7 +176,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     let proof = sa ? sa.proof : { ok: false, why: '' };
     if (!sa) try { proof = C.owns ? await C.owns(creds, ctx) : { ok: true }; } catch (e) { proof = { ok: false, why: e.message.slice(0, 160) }; }
     /* otherwise proof is a sanity check, shown to the team, never ownership: ownership is the team (or the claim) above */
-    if (!PUBLIC.has(id)) await vault.save(slug, id, creds);
+    if (!PUBLIC.has(id)) await vault.save(slug, id, creds, { force: force && rootAdmin(me) }); /* finish already refused a replacement unless an admin forced it */
     if (id === 'slack') teams.clear(); /* the workspace may have moved to this brand */
     /* a team account connected for the first time: the moves' rewrite waits for its first read (build.js connectPending) */
     if (!PUBLIC.has(id) && id !== 'slack' && !(await conns(slug))[id]?.lastSync) await builder.connectPending?.(slug, id).catch(() => {});
@@ -200,7 +205,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     /* a refresh that Google or Shopify refuses (invalid_grant, 401) is a dead sign-in: the admins are told to connect it again */
     /* refresh under the vault row's lock (Postgres): the second instance waits, reads the token the first one just got, and
        asks the provider nothing; a refused refresh keeps the old token (the connection goes stale, never disconnected) */
-    if (C.fresh) { try { creds = vault.refresh ? await vault.refresh(slug, id, (c) => C.fresh(c)) : await (async () => { const f = await C.fresh(creds); if (f !== creds) await vault.save(slug, id, f); return f; })(); } catch (e) { dead(e); } }
+    if (C.fresh) { try { creds = vault.refresh ? await vault.refresh(slug, id, (c) => C.fresh(c)) : await (async () => { const f = await C.fresh(creds); if (f !== creds) await vault.save(slug, id, f, { refresh: true }); return f; })(); } catch (e) { dead(e); }
+      if (!creds) throw new Error('Not connected: connect it again.'); } /* removed on another instance while this read ran */
     const exp = C.expires ? { expiresAt: +creds.exp || null, refreshedAt: creds.refreshedAt || null } : null; /* when the sign-in runs out (Meta) */
     const ctx = await ctxOf(slug);
     /* an account not yet matched to the brand is checked again on each read: the brand may have fixed its links since */
@@ -226,7 +232,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   }
   const sync = (slug, id) => perBrand(slug, () => sync0(slug, id));
   async function sync0(slug, id) {
-    await editC(slug, (c) => { c[id] = { ...(c[id] || {}), state: 'syncing', syncAt: Date.now() }; });
+    await editC(slug, (c) => { if (!c[id] && !simOnly(id)) return; c[id] = { ...(c[id] || {}), state: 'syncing', syncAt: Date.now() }; }); /* a connection removed meanwhile is never brought back by a read */
     try {
       const d = await read(slug, id);
       const data = { at: Date.now(), account: d.account || (await conns(slug))[id]?.account || null, ...(Array.isArray(d.accounts) ? { accounts: d.accounts } : {}), stats: d.stats || [], changed: d.changed || [], cards: d.cards || [], ledger: d.ledger || [], notes: d.notes || [], ...(d.ownPageId ? { ownPageId: d.ownPageId } : {}), ...(d.sim ? { sim: true } : {}) };
@@ -235,7 +241,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       /* an account's `ok` and `why` are the ownership check's verdict (owns); the read's own per-account result never overwrites them */
       const merged = (x) => data.accounts.map((a) => { const prev = (x.accounts || []).find((y) => String(y.id) === String(a.id)) || {}, { ok: readOk, error: readErr, ...rest } = a;
         return { ...prev, ...rest, ...(readOk === false ? { readError: readErr || 'not read' } : { readError: null }) }; });
-      await editC(slug, (c) => { const x = c[id] || {}; c[id] = { ...x, state: 'live', lastSync: data.at, error: null, account: data.account || x.account, ...(data.accounts ? { accounts: merged(x) } : {}), notes: data.notes,
+      await editC(slug, (c) => { if (!c[id] && !simOnly(id)) return; const x = c[id] || {}; c[id] = { ...x, state: 'live', lastSync: data.at, error: null, account: data.account || x.account, ...(data.accounts ? { accounts: merged(x) } : {}), notes: data.notes,
         fails: 0, retryAt: null, rateLimited: false, stale: false, staleWhy: null, needsReconnect: false, ...(d.exp ? { expiresAt: d.exp.expiresAt, refreshedAt: d.exp.refreshedAt || x.refreshedAt || null, ...(d.exp.expiresAt !== x.expiresAt ? { expiryWarned: null } : {}) } : {}) }; });
       cache.delete(sk(slug));
       await builder.liveConnected?.(slug, id, data.ledger, true, { public: PUBLIC.has(id) }).catch((e) => log.warn('[connect] moves', e.message));
@@ -246,7 +252,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       log.warn('[connect] sync', slug, id, e.message);
       /* an account that read before keeps its last read and says what went wrong; a new one shows the error */
       let wentStale = null, fx = {};
-      await editC(slug, (c) => { const x = c[id] || {}, f = failure(x, e, Date.now(), Math.random, id); fx = f; if (f.stale && !x.stale) wentStale = f.staleWhy;
+      await editC(slug, (c) => { if (!c[id] && !simOnly(id)) return; const x = c[id] || {}, f = failure(x, e, Date.now(), Math.random, id); fx = f; if (f.stale && !x.stale) wentStale = f.staleWhy;
         c[id] = { ...x, state: x.lastSync ? 'live' : 'error', error: e.message.slice(0, 200), errorAt: Date.now(), ...f }; });
       cache.delete(sk(slug));
       /* its numbers stay on the fact sheet, marked stale, and stop being evidence for the moves, cards and answers */
@@ -417,14 +423,14 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         if (s?.state === 'syncing' && Date.now() - (s.syncAt || 0) < 10 * 60e3) return json(res, 200, { ok: true, state: 'syncing', busy: true, note: 'Already reading it. This takes a minute.' }), true;
         if (s?.state === 'live' && !s.error && s.lastSync && Date.now() - s.lastSync < SYNC_GAP) return json(res, 200, { ok: true, state: 'live', recent: true, lastSync: s.lastSync, note: `Read ${Math.max(1, Math.round((Date.now() - s.lastSync) / 60e3))} min ago. You can read it again in ${Math.max(1, Math.ceil((SYNC_GAP - (Date.now() - s.lastSync)) / 60e3))} min.` }), true;
         return json(res, 200, await sync(slug, id)), true; }
-      if (isProtected(slug) && ['disconnect', 'select', 'key', 'connect'].includes(b.action) && (b.action === 'disconnect' || (await conns(slug))[id]?.state === 'live') && !(b.force === true && auth.isAdmin(me)))
+      if (isProtected(slug) && ['disconnect', 'select', 'key', 'connect'].includes(b.action) && (b.action === 'disconnect' || exists((await conns(slug))[id])) && !(b.force === true && rootAdmin(me)))
         return json(res, 409, { error: PROTECTED_WHY, protected: true }), true;
-      if (b.action === 'disconnect') { if (!member) return json(res, 403, { error: 'Only the brand’s team can disconnect it.' }), true; return json(res, 200, await disconnect(slug, id, { force: b.force === true && auth.isAdmin(me) })), true; }
+      if (b.action === 'disconnect') { if (!member) return json(res, 403, { error: 'Only the brand’s team can disconnect it.' }), true; return json(res, 200, await disconnect(slug, id, { force: b.force === true && rootAdmin(me) })), true; }
       if (!C) { if (['demo', 'key', 'select', 'connect'].includes(b.action)) return json(res, 200, await finish(slug, id, null, me)), true; return json(res, 400, { error: 'unknown action' }), true; }
       if (b.action === 'key') { if (!C.fromKey) return json(res, 400, { error: 'This one connects by signing in.' }), true;
         /* a pasted key or ID asks Google whether Brew can see it: a few tries per person, so nobody walks through IDs */
         if (!keyTry(me.email, id)) return json(res, 429, { ok: false, error: 'Too many tries. Wait a few minutes, then paste it again.' }), true;
-        try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me, { override: b.override === true })), true; } catch (e) {
+        try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me, { override: b.override === true, force: b.force === true })), true; } catch (e) {
           /* an app from another Shopify organization: keep the keys (pending, PENDING_MS) and send this person to the store's approve screen */
           if (e.approve && C.ownAuthorize) { await savePending(slug, `${id}-own`, me.email, e.approve);
             const state = auth.sign({ slug, id, email: me.email, n: crypto.randomBytes(9).toString('base64url') }, 900, 'connect-own');
@@ -434,8 +440,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { ok: false, error: 'Connect again: the sign-in expired.' }), true;
         await vault.drop(slug, pendKey(id, me.email));
         /* one Google sign-in for Google Ads can also connect the Google Analytics property picked with it */
-        const more = C.also ? C.also(pend, b.choice || {}) : [], r0 = (C.select(pend, b.choice || {}).customer === null && more.length) ? null : await finish(slug, id, C.select(pend, b.choice || {}), me);
-        const also = {}; for (const x of more) also[x.id] = await finish(slug, x.id, x.creds, me).catch((e) => ({ ok: false, error: e.message.slice(0, 160) }));
+        const more = C.also ? C.also(pend, b.choice || {}) : [], r0 = (C.select(pend, b.choice || {}).customer === null && more.length) ? null : await finish(slug, id, C.select(pend, b.choice || {}), me, { force: b.force === true });
+        const also = {}; for (const x of more) also[x.id] = await finish(slug, x.id, x.creds, me, { force: b.force === true }).catch((e) => ({ ok: false, error: e.message.slice(0, 160) }));
         return json(res, 200, r0 ? { ...r0, also } : { ...(also[more[0].id] || { ok: false }), also, moved: more[0].id }), true; }
       if (b.action === 'connect' && PUBLIC.has(id)) return json(res, 200, await finish(slug, id, {}, me)), true;
       return json(res, 400, { error: 'unknown action' }), true;
@@ -546,7 +552,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   /* how a brand's Shopify is connected: 'brew' (Brew's own app), 'own' / 'own-oauth' (the brand's app) or 'token'; null when not */
   const shopApp = async (slug) => (await vault.load(slug, 'shopify').catch(() => null))?.app || null;
   /* Slack says the app was removed or its token revoked: the brand's Slack is disconnected */
-  async function slackGone(team) { const slug = await slackSlug(team); teams.delete(team); if (slug) await disconnect(slug, 'slack').catch(() => {}); return slug; }
+  async function slackGone(team) { const slug = await slackSlug(team); teams.delete(team); if (slug) { const r = await disconnect(slug, 'slack').catch(() => null); if (r?.protected) log.warn(`[slack] ${slug}: Slack says the app was removed; the brand is protected, so its connection is kept`); } return slug; }
   async function slackRoutes(req, res, u) {
     const m = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/slack\/(channels|post)$/); if (!m) return false;
     const [, slug, what] = m, me = auth.user(req); if (!me) return json(res, 401, { error: 'Sign in with Google first.', signin: true }), true;

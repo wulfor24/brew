@@ -4,16 +4,15 @@
 // own idempotency keys, as finals already do). Two queues: 'interactive' (someone clicked and waits) and 'batch', worked by
 // separate loops so batch work never holds up a click.
 // Without Postgres (demo, local, tests) a job runs at once in this process, as the code always did.
-import os from 'node:os';
+import { ME } from './instance.js'; // one id per process
 import { enabled as pgOn, q, listen } from './db/index.js';
 import { isWorker } from './roles.js';
 
-const ME = `${process.env.K_REVISION || os.hostname()}:${process.pid}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export function createJobs({ log = console, leaseMs = 120e3, pollMs = 5e3, pg = pgOn(), worker = isWorker() } = {}) {
   const handlers = new Map(); // name → { fn, queue, maxTries }
-  const waiters = new Map(); // job id → resolve
+  const waiters = new Map(); // job id → Set(resolve): several callers may wait on one keyed job
   let running = 0, stopped = false;
   const define = (name, fn, { queue = 'batch', maxTries = 3 } = {}) => { handlers.set(name, { fn, queue, maxTries }); };
 
@@ -29,15 +28,15 @@ export function createJobs({ log = console, leaseMs = 120e3, pollMs = 5e3, pg = 
     return { id: open.rows[0] ? +open.rows[0].id : null, joined: true };
   }
   /* ask and wait for the answer (a web instance asking the worker): resolves with the handler's result, throws its error */
-  async function call(name, data = {}, { key = null, timeoutMs = 60e3, queue = 'interactive' } = {}) {
-    const j = await enqueue(name, data, { key, queue });
+  async function call(name, data = {}, { key = null, timeoutMs = 60e3, queue = 'interactive', maxTries } = {}) {
+    const j = await enqueue(name, data, { key, queue, maxTries });
     if (j.local) return j.local;
     if (!j.id) throw new Error(`${name}: not queued`);
     return wait(j.id, timeoutMs);
   }
   async function wait(id, timeoutMs = 60e3) {
-    const done = new Promise((resolve) => waiters.set(id, resolve));
-    const check = async () => { const r = (await q('SELECT state, result, error FROM jobs WHERE id = $1', [id])).rows[0]; if (r && (r.state === 'done' || r.state === 'failed')) waiters.get(id)?.(r); };
+    let mine; const done = new Promise((resolve) => { mine = resolve; if (!waiters.has(id)) waiters.set(id, new Set()); waiters.get(id).add(resolve); });
+    const check = async () => { const r = (await q('SELECT state, result, error FROM jobs WHERE id = $1', [id])).rows[0]; if (r && (r.state === 'done' || r.state === 'failed')) mine(r); };
     await check(); /* it may have finished before we listened */
     const poll = setInterval(() => check().catch(() => {}), 2000); poll.unref?.();
     try {
@@ -45,7 +44,7 @@ export function createJobs({ log = console, leaseMs = 120e3, pollMs = 5e3, pg = 
       if (!r) throw Object.assign(new Error('That is taking longer than it should. It carries on in the background.'), { timeout: true, jobId: id });
       if (r.state === 'failed') throw Object.assign(new Error(r.error || 'job failed'), { jobId: id });
       return r.result?.v;
-    } finally { clearInterval(poll); waiters.delete(id); }
+    } finally { clearInterval(poll); const w = waiters.get(id); w?.delete(mine); if (!w?.size) waiters.delete(id); }
   }
 
   /* ---------- the worker side ---------- */
@@ -60,9 +59,12 @@ export function createJobs({ log = console, leaseMs = 120e3, pollMs = 5e3, pg = 
     const h = handlers.get(job.name); running++;
     const beat = setInterval(() => q(`UPDATE jobs SET locked_until = now() + make_interval(secs => $2) WHERE id = $1 AND locked_by = $3`, [job.id, leaseMs / 1e3, ME]).catch(() => {}), leaseMs / 3); beat.unref?.();
     try {
-      const v = await h.fn(job.data || {}, { id: +job.id, tries: job.tries });
-      await q(`UPDATE jobs SET state = 'done', result = $2, done_at = now(), locked_until = NULL WHERE id = $1`, [job.id, JSON.stringify({ v: v === undefined ? null : v })]);
+      const v = await h.fn(job.data || {}, { id: +job.id, tries: job.tries }), res = JSON.stringify({ v: v === undefined ? null : v });
+      /* the work is done: the result is written however many tries it takes, so a database blip never runs the job again */
+      for (let i = 0; ; i++) { try { await q(`UPDATE jobs SET state = 'done', result = $2, done_at = now(), locked_until = NULL WHERE id = $1 AND locked_by = $3`, [job.id, res, ME]); break; }
+        catch (e) { if (i >= 5) throw Object.assign(e, { afterDone: true }); await sleep(500 * 2 ** i); } }
     } catch (e) {
+      if (e.afterDone) { log.warn?.(`[jobs] ${job.name} #${job.id} done but its result could not be saved: ${e.message}`); return; }
       const last = job.tries >= job.max_tries;
       log.warn?.(`[jobs] ${job.name} #${job.id} try ${job.tries}/${job.max_tries}: ${e.message}`);
       await q(last ? `UPDATE jobs SET state = 'failed', error = $2, done_at = now(), locked_until = NULL WHERE id = $1`
@@ -88,10 +90,11 @@ export function createJobs({ log = console, leaseMs = 120e3, pollMs = 5e3, pg = 
   }
   async function start({ interactive = 4, batch = 4 } = {}) {
     if (!pg) return;
-    await listen('jobs_done', (id) => { const w = waiters.get(+id); if (w) q('SELECT state, result, error FROM jobs WHERE id = $1', [+id]).then((r) => r.rows[0] && w(r.rows[0])).catch(() => {}); });
+    await listen('jobs_done', (id) => { const w = waiters.get(+id); if (w?.size) q('SELECT state, result, error FROM jobs WHERE id = $1', [+id]).then((r) => { if (r.rows[0]) for (const f of [...w]) f(r.rows[0]); }).catch(() => {}); });
     if (!worker) return;
     const r = setInterval(reap, 30e3), p = setInterval(purge, 3600e3); r.unref?.(); p.unref?.(); reap();
-    loop(['interactive'], interactive); loop(['batch'], batch);
+    const keep = (qs, n) => loop(qs, n).catch((e) => { log.warn?.('[jobs] loop', qs[0], e.message); if (!stopped) setTimeout(() => keep(qs, n), 5000).unref?.(); }); /* a loop that fails starts again */
+    keep(['interactive'], interactive); keep(['batch'], batch);
     log.log?.(`[jobs] worker ${ME} on interactive (${interactive}) and batch (${batch})`);
   }
   const stop = () => { stopped = true; };

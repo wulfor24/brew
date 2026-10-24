@@ -171,7 +171,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   const gcsPut = (name, buf, type) => obj.put(name, buf, type);
   const gcsList = (prefix) => obj.list(prefix);
   /* another instance wrote to a pack: the next fresh load here reads it (pg NOTIFY) */
-  obj?.onChange?.((key) => { const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (m && BUILT_FROM.test(m[2])) bump(m[1]); }).catch((e) => log.warn('[packs] listen', e.message));
+  obj?.onChange?.((key) => { if (key === '*') { for (const sl of new Set([...vers.keys(), ...cache.keys()])) bump(sl); return; } /* notices may have been missed: every pack loads fresh */
+    const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (m && BUILT_FROM.test(m[2])) bump(m[1]); }).catch((e) => log.warn('[packs] listen', e.message));
 
   /* ---------- the files of a pack (local first, GCS behind) ---------- */
   const dirOf = (slug) => path.join(DIR, slug);
@@ -185,7 +186,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     // bytes may come as a Uint8Array (a browser screenshot), not a Buffer: never JSON them
     const buf = Buffer.isBuffer(data) ? data : data instanceof Uint8Array || data instanceof ArrayBuffer ? Buffer.from(data) : Buffer.from(typeof data === 'string' ? data : JSON.stringify(data, null, 1));
     fs.writeFileSync(f, buf); if (BUILT_FROM.test(name)) bump(slug); /* only a file the pack is built from makes the next load fresh (1.7: page-open logs and caches rebuilt the seed on every load, 2.8 s); anything else is picked up within FRESH_MS */
-    if (remote) await gcsPut(`brands/${slug}/${name}`, buf, type || (name.endsWith('.json') ? 'application/json' : undefined)).catch((e) => log.warn('[packs] gcs put', name, e.message));
+    if (remote) await gcsPut(`brands/${slug}/${name}`, buf, type || (name.endsWith('.json') ? 'application/json' : undefined)).catch((e) => { log.warn('[packs] gcs put', name, e.message); if (obj?.pg && pgRow(name)) throw e; }); /* Postgres: a lost write is an error, never a quiet disk-only copy */
     return f;
   };
   const get = async (slug, name) => {
@@ -199,7 +200,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     const f = fileOf(slug, name);
     if (!pgRow(name) && fs.existsSync(f)) return brewFile(name, fs.readFileSync(f));
     if (!remote) return pgRow(name) && fs.existsSync(f) ? brewFile(name, fs.readFileSync(f)) : null;
-    const b = await gcsGet(`brands/${slug}/${name}`).catch((e) => { log.warn('[packs] gcs get', name, e.message); return null; });
+    /* Postgres: a read that fails is tried once more, then throws: "couldn't read" is never taken for "not there" (the disk copy
+       isn't a fallback for rows, it may be older) */
+    const b = obj?.pg && pgRow(name) ? await gcsGet(`brands/${slug}/${name}`).catch(() => gcsGet(`brands/${slug}/${name}`)) : await gcsGet(`brands/${slug}/${name}`).catch((e) => { log.warn('[packs] gcs get', name, e.message); return null; });
     if (b) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, b); }
     return brewFile(name, b);
   };
@@ -465,9 +468,10 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     const out = await obj.update(`brands/${slug}/${name}`, fn);
     fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(out, null, 1)); bump(slug); return out; };
   /* fn(slug, name) when any instance writes a pack file (Postgres NOTIFY); nothing without Postgres */
-  const onChange = (fn) => obj?.onChange?.((key) => { const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (m) fn(m[1], m[2]); }).catch((e) => log.warn('[packs] listen', e.message));
+  /* fn('*', '*') after missed notices: catch up on everything held */
+  const onChange = (fn) => obj?.onChange?.((key) => { if (key === '*') return fn('*', '*'); const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (m) fn(m[1], m[2]); }).catch((e) => log.warn('[packs] listen', e.message));
   /* parted documents (objects.js PARTED) on Postgres: read and change single parts, for stores two instances write at once */
-  const getParts = obj?.pg ? (slug, name) => obj.getParts(`brands/${slug}/${name}`) : null;
-  const patchParts = obj?.pg ? (slug, name, set, del) => obj.patchParts(`brands/${slug}/${name}`, set, del) : null;
+  const getParts = obj?.pg ? async (slug, name) => { await retireReady(); if (wiping(slug) || !inside(slug, name)) return null; return obj.getParts(`brands/${slug}/${name}`); } : null;
+  const patchParts = obj?.pg ? async (slug, name, set, del, o) => { await retireReady(); if (wiping(slug) || !inside(slug, name)) return null; /* a brand being reset is never written */ return obj.patchParts(`brands/${slug}/${name}`, set, del, o); } : null;
   return { load, peek, put, putStrict, update, onChange, getParts, patchParts, get, getJSON, readJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => { bump(slug); for (const k of freshP.keys()) if (k.startsWith(`${slug}|`)) freshP.delete(k); return cache.delete(slug); }, version: ver, remote };
 }

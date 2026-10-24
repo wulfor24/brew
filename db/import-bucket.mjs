@@ -5,7 +5,7 @@
 //   node db/import-bucket.mjs [--prefix tenants/ --prefix brands/arata-in/] [--dry] [--cache-days 2]
 // Binaries (pictures, video, PDFs) stay in the bucket and are skipped. _cache/ entries older than --cache-days are skipped.
 import { isRow } from '../objects.js';
-import { q, close } from '../db/index.js';
+import { q, tx, close } from '../db/index.js';
 import { migrate } from '../db/migrate.js';
 
 const args = process.argv.slice(2), flag = (k) => args.includes(k), vals = (k) => args.flatMap((a, i) => (a === k ? [args[i + 1]] : []));
@@ -33,17 +33,23 @@ const typeOf = (k) => (/\.json$/i.test(k) ? 'application/json' : /\.md$/i.test(k
 if (!DRY) await migrate();
 const seen = { listed: 0, rows: 0, copied: 0, newerInDb: 0, skipped: 0, bytes: 0, failed: 0 };
 const queue = [];
+/* a row the import wrote (src 'import') is replaced by any newer bucket copy; a row the app wrote only by a bucket copy clearly
+   newer than it (the mirror copies each app write to the bucket a moment later, so a near-equal time is that echo) */
 const work = async (x) => {
   try {
     const at = new Date(x.updated);
-    const cur = (await q('SELECT updated_at FROM objects WHERE key = $1', [x.name])).rows[0];
-    if (cur && cur.updated_at.getTime() + LAG_MS >= at.getTime()) { seen.newerInDb++; return; }
+    const cur = (await q('SELECT updated_at, src FROM objects WHERE key = $1', [x.name])).rows[0];
+    const lag = cur?.src === 'import' ? 0 : LAG_MS;
+    if (cur && cur.updated_at.getTime() + lag >= at.getTime()) { seen.newerInDb++; return; }
     if (DRY) { seen.copied++; seen.bytes += +x.size || 0; return; }
     const body = await get(x.name); if (!body) return;
-    const r = await q(`INSERT INTO objects (key, body, content_type, updated_at) VALUES ($1, $2, $3, $4)
-      ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, version = objects.version + 1, updated_at = EXCLUDED.updated_at
-      WHERE objects.updated_at + make_interval(secs => $5) < EXCLUDED.updated_at`, [x.name, body, typeOf(x.name), at, LAG_MS / 1e3]);
-    if (r.rowCount) { seen.copied++; seen.bytes += body.length; } else seen.newerInDb++;
+    const n = await tx(async (c) => {
+      const r = await c.query(`INSERT INTO objects (key, body, content_type, updated_at, src) VALUES ($1, $2, $3, $4, 'import')
+        ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, version = objects.version + 1, updated_at = EXCLUDED.updated_at, src = 'import'
+        WHERE objects.updated_at + make_interval(secs => CASE WHEN objects.src = 'import' THEN 0 ELSE $5 END) < EXCLUDED.updated_at`, [x.name, body, typeOf(x.name), at, LAG_MS / 1e3]);
+      if (r.rowCount) await c.query('DELETE FROM doc_parts WHERE key = $1', [x.name]); /* a parted document taken from the bucket is whole again */
+      return r.rowCount; });
+    if (n) { seen.copied++; seen.bytes += body.length; } else seen.newerInDb++;
   } catch (e) { seen.failed++; console.warn('[import]', x.name, e.message); }
 };
 for (const prefix of PREFIXES) {

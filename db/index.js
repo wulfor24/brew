@@ -4,7 +4,7 @@
 // web 5, worker 10 (keep instances × pool under the server's max_connections).
 import pg from 'pg';
 
-let pool = null, listener = null, closing = false, connecting = null;
+let pool = null, listener = null, closing = false, connecting = null, everConnected = false;
 const handlers = new Map(); // channel → Set(fn)
 const conf = () => ({ ...(process.env.DATABASE_URL ? { connectionString: process.env.DATABASE_URL } : {}),
   max: +process.env.PG_POOL_MAX || 5, idleTimeoutMillis: 30e3, allowExitOnIdle: true, connectionTimeoutMillis: 10e3,
@@ -30,10 +30,13 @@ async function connectListener(tries = 0) {
   if (closing) return;
   const c = new pg.Client(conf());
   c.on('notification', (m) => { for (const fn of handlers.get(m.channel) || []) { try { fn(m.payload); } catch (e) { console.warn('[db] listener', m.channel, e.message); } } });
-  const again = () => { if (listener === c) listener = null; if (!closing) setTimeout(() => connectListener(tries + 1), Math.min(30e3, 500 * 2 ** tries)).unref?.(); };
+  let gone = false; const again = () => { if (gone) return; gone = true; if (listener === c) listener = null; if (!closing) setTimeout(() => connectListener(tries + 1), Math.min(30e3, 500 * 2 ** tries)).unref?.(); }; /* once per connection, however many ways it ends */
   c.on('error', (e) => { console.warn('[db] listen connection', e.message); c.end().catch(() => {}); });
   c.on('end', again);
-  try { await c.connect(); listener = c; for (const ch of handlers.keys()) await c.query(`LISTEN "${ch}"`); tries = 0; }
+  try { await c.connect(); listener = c; for (const ch of handlers.keys()) await c.query(`LISTEN "${ch}"`);
+    /* back after a drop: notices sent meanwhile are gone, so every listener is told to catch up ('*') */
+    if (everConnected) for (const set of handlers.values()) for (const fn of set) { try { fn('*'); } catch (e) { console.warn('[db] resync', e.message); } }
+    everConnected = true; tries = 0; }
   catch (e) { console.warn('[db] listen connect', e.message); again(); }
 }
 export async function listen(channel, fn) {

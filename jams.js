@@ -51,15 +51,16 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
     for (const b of BR.values()) {
       if (!b.loaded || (only && b.slug !== only)) continue;
       let s; try { s = JSON.stringify({ work: b.work, changes: b.changes, vg: b.vg }); } catch (e) { log.warn?.('[jams] serialise', e.message); continue; }
+      if (b.sync) { await (b.chain = b.chain.then(() => b.sync.push(b)).catch((e) => log.warn?.('[jams] save', b.slug, e.message))); continue; } /* push writes only what changed since the last sync, so it always runs (a pull never hides an edit) */
       if (s === b.last) continue; b.last = s;
-      if (b.sync) { await (b.chain = b.chain.then(() => b.sync.push(b)).catch((e) => { b.last = null; log.warn?.('[jams] save', b.slug, e.message); })); continue; }
       await (packs.putStrict || packs.put)(b.slug, FILE, { at: Date.now(), work: b.work, changes: b.changes, vg: b.vg }).catch((e) => { b.last = null; log.warn?.('[jams] save', b.slug, e.message); });
     }
   };
   const timer = packs?.put && everyMs ? setInterval(() => flush().catch(() => {}), packs.patchParts ? Math.min(everyMs, 1500) : everyMs) : null; timer?.unref?.();
   /* another instance wrote the team's jams: this one takes what it hasn't changed itself, in place */
-  packs?.onChange?.((slug, name) => { const b = BR.get(slug); if (name !== FILE || !b?.sync) return;
-    b.chain = b.chain.then(async () => { const n = await b.sync.pull(b); if (n) b.last = JSON.stringify({ work: b.work, changes: b.changes, vg: b.vg }); }).catch((e) => log.warn?.('[jams] pull', slug, e.message)); });
+  const pullBox = (b) => { b.chain = b.chain.then(() => b.sync.pull(b)).catch((e) => log.warn?.('[jams] pull', b.slug, e.message)); };
+  packs?.onChange?.((slug, name) => { if (slug === '*') { for (const b of BR.values()) if (b.sync) pullBox(b); return; } /* notices missed: catch up */
+    const b = BR.get(slug); if (name === FILE && b?.sync) pullBox(b); });
 
   const slugOf = (t) => t.brandId || null;
   /* does this workspace read the team's jams right now: the request's viewer is on the team or a guest of one of its jams,

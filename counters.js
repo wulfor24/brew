@@ -9,19 +9,18 @@ const dayOf = (ms = Date.now()) => new Date(ms).toISOString().slice(0, 10);
 export function createCounters({ pg = pgOn(), flushMs = 1000, pullMs = 2000, log = console, now = () => Date.now() } = {}) {
   let day = dayOf(now()), seen = new Map(), mine = new Map(), flushT = null, pullT = null;
   const k = (scope, key) => `${scope}\u0001${key}`;
-  const roll = () => { const d = dayOf(now()); if (d !== day) { day = d; seen = new Map(); mine = new Map(); } };
+  const roll = () => { const d = dayOf(now()); if (d !== day) { const old = mine, oldDay = day; day = d; seen = new Map(); mine = new Map(); if (old.size) write(oldDay, [...old.entries()]).catch((e) => log.warn?.('[counters] last of the day', e.message)); } }; /* yesterday's last unwritten counts still land on yesterday */
   function add(scope, key, n = 1) {
     if (!pg || !n) return; roll();
     mine.set(k(scope, key), (mine.get(k(scope, key)) || 0) + n);
     if (!flushT) { flushT = setTimeout(() => { flushT = null; flush().catch((e) => log.warn?.('[counters] flush', e.message)); }, flushMs); flushT.unref?.(); }
   }
+  const write = (d, rows) => q(`INSERT INTO counters (day, scope, key, n) SELECT $1::date, s, k, n FROM unnest($2::text[], $3::text[], $4::float8[]) AS x(s, k, n)
+    ON CONFLICT (day, scope, key) DO UPDATE SET n = counters.n + EXCLUDED.n`, [d, rows.map(([x]) => x.split('\u0001')[0]), rows.map(([x]) => x.split('\u0001')[1]), rows.map(([, n]) => n)]);
   async function flush() {
     if (!mine.size) return; const d = day, rows = [...mine.entries()]; mine = new Map();
-    try {
-      await q(`INSERT INTO counters (day, scope, key, n) SELECT $1::date, s, k, n FROM unnest($2::text[], $3::text[], $4::float8[]) AS x(s, k, n)
-        ON CONFLICT (day, scope, key) DO UPDATE SET n = counters.n + EXCLUDED.n`, [d, rows.map(([x]) => x.split('\u0001')[0]), rows.map(([x]) => x.split('\u0001')[1]), rows.map(([, n]) => n)]);
-      for (const [x, n] of rows) seen.set(x, (seen.get(x) || 0) + n); /* until the next pull */
-    } catch (e) { for (const [x, n] of rows) mine.set(x, (mine.get(x) || 0) + n); throw e; } /* kept: the next flush tries again */
+    try { await write(d, rows); if (d === day) for (const [x, n] of rows) seen.set(x, (seen.get(x) || 0) + n); /* until the next pull */ }
+    catch (e) { if (d === day) for (const [x, n] of rows) mine.set(x, (mine.get(x) || 0) + n); throw e; } /* kept: the next flush tries again */
   }
   async function pull() { roll(); const r = await q('SELECT scope, key, n FROM counters WHERE day = $1', [day]); const m = new Map(); for (const x of r.rows) m.set(k(x.scope, x.key), +x.n); seen = m; }
   const total = (scope, key) => { roll(); return (seen.get(k(scope, key)) || 0) + (mine.get(k(scope, key)) || 0); };

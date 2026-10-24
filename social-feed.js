@@ -311,14 +311,20 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
   const cfg = socialConfig(env);
   const P = 'social/state.json', mem = new Map(), opens = new Map(), rotDay = new Map();
   /* a run still marked running when this instance first reads the state was another instance's, cut off by its stop: killed */
-  const stateOf = async (slug) => { if (mem.has(slug)) return mem.get(slug); const s = (await packs.getJSON(slug, P, null).catch(() => null)) || {};
+  /* when the brand was last opened is written by whichever instance served the page (a web instance in production): it is
+     read fresh each time and merged, never taken from a copy held since boot, and a save never puts an older one back */
+  const stateOf = async (slug) => { if (mem.has(slug)) { const s = mem.get(slug); if (packs.update) { const cur = await packs.getJSON(slug, P, null).catch(() => null); if (cur?.lastOpen > (s.lastOpen || 0)) s.lastOpen = cur.lastOpen; } return s; }
+    const s = (await packs.getJSON(slug, P, null).catch(() => null)) || {};
     if (s.listen?.state === 'running') s.listen.killed = true; mem.set(slug, s); return s; };
-  const save = async (slug, s) => { mem.set(slug, s); await packs.put(slug, P, s).catch((e) => log.warn?.('[social] state', slug, e.message)); };
+  const save = async (slug, s) => { mem.set(slug, s);
+    if (packs.update) { await packs.update(slug, P, (cur) => ({ ...s, lastOpen: Math.max(+cur?.lastOpen || 0, +s.lastOpen || 0) || s.lastOpen })).catch((e) => log.warn?.('[social] state', slug, e.message)); return; }
+    await packs.put(slug, P, s).catch((e) => log.warn?.('[social] state', slug, e.message)); };
   const charge = (s, usd) => { const d = today(now()); if (s.spend?.day !== d) s.spend = { day: d, usd: 0 }; s.spend.usd = +((s.spend.usd || 0) + (usd || 0)).toFixed(4); };
   // someone opened this brand's feed (kept in memory, written at most once an hour)
   async function opened(slug) {
     if (!slug) return; const t = now(), last = opens.get(slug) || 0; opens.set(slug, t); if (t - last < H) return;
-    try { const s = await stateOf(slug); s.lastOpen = t; await save(slug, s); } catch {}
+    try { if (packs.update) { await packs.update(slug, P, (cur) => ({ ...(cur || {}), lastOpen: Math.max(+cur?.lastOpen || 0, t) })); if (mem.has(slug)) mem.get(slug).lastOpen = t; return; } /* only lastOpen changes: the worker's listening state stays its own */
+      const s = await stateOf(slug); s.lastOpen = t; await save(slug, s); } catch {}
   }
   const W = make.listen || ((slug) => createListenWatch({ slug, packs, treg, ai, log }));
   const I = make.ideas || ((slug, o = {}) => createIdeas({ slug, packs, ai, treg: cfg.tregOff ? null : treg, log, member: !!o.member }));

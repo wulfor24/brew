@@ -43,7 +43,9 @@ const WHAT = {
   sloosh: 'Make the final is using Gemini instead of Sloosh until this is fixed. Reconnect at brew.joinsquareup.com/api/ops/sloosh/connect, or check the daily agent limit and credits on sloosh.ai/settings/mcp.'
 };
 
-export function createAlerts({ env = process.env, store = null, treg = null, sendMail = null, now = () => Date.now(), log = console } = {}) {
+/* store.claim(issue, day) → true for the one instance that may send (Postgres: a locked edit of the day's file), so every
+   instance together still sends each alert once a day. shared: counters.js, so the 5xx rate counts every instance */
+export function createAlerts({ env = process.env, store = null, treg = null, sendMail = null, shared = null, now = () => Date.now(), log = console } = {}) {
   const on = env.ALERTS === '1' || (env.ALERTS !== '0' && !!env.K_SERVICE && env.AI_MOCK !== '1' && env.DEMO_MODE !== '1');
   const cfg = { to: env.ALERT_EMAIL || 'hello@joinsquareup.com', quotaN: +env.VERTEX_429_ALERT || 5, tregLow: +(env.TREG_LOW_USD ?? 10), rate: +(env.ALERT_5XX_RATE ?? 0.05), minReq: +env.ALERT_5XX_MIN || 50 };
   const day = () => new Date(now()).toISOString().slice(0, 10);
@@ -54,7 +56,8 @@ export function createAlerts({ env = process.env, store = null, treg = null, sen
     await ready; if (sent.day !== day()) sent = { day: day(), issues: {} };
     if (sent.issues[issue]) return false; /* once per issue per day */
     sent.issues[issue] = new Date(now()).toISOString();
-    if (on) await store?.put(sent).catch((e) => log.warn?.('[alerts] save', e.message));
+    if (on && store?.claim) { if (!(await store.claim(issue, sent.day).catch(() => false))) return false; } /* another instance sent it today */
+    else if (on) await store?.put(sent).catch((e) => log.warn?.('[alerts] save', e.message));
     log.warn?.(`[alerts] ${issue}: ${detail}`);
     if (!on || !sendMail) return true;
     const title = TITLE[issue] || issue, html = emailHtml({ eyebrow: 'Brew ops', title, preheader: WHAT[issue] || detail,
@@ -67,11 +70,14 @@ export function createAlerts({ env = process.env, store = null, treg = null, sen
     return fire(kind, detail);
   }
   /* every response: counted for the 5xx rate */
-  function response(status) { reqs.push([now(), +status >= 500]); if (reqs.length > 20000) reqs = reqs.slice(-10000); }
+  const slot = (t) => Math.floor(t / WINDOW); /* 10-minute slots, shared by every instance */
+  function response(status) { reqs.push([now(), +status >= 500]); if (reqs.length > 20000) reqs = reqs.slice(-10000);
+    if (shared?.on) { const k = slot(now()); shared.add('http', `req|${k}`, 1); if (+status >= 500) shared.add('http', `5xx|${k}`, 1); } }
   async function check() {
     const t = now(); reqs = reqs.filter(([at]) => t - at < WINDOW);
-    const bad = reqs.filter(([, b]) => b).length;
-    if (reqs.length >= cfg.minReq && bad / reqs.length >= cfg.rate) await fire('5xx', `${bad} of ${reqs.length} responses in the last 10 minutes were 5xx`);
+    let bad = reqs.filter(([, b]) => b).length, all = reqs.length;
+    if (shared?.on) { const k = slot(t) - 1; all = shared.total('http', `req|${k}`); bad = shared.total('http', `5xx|${k}`); } /* the last full slot, every instance */
+    if (all >= cfg.minReq && bad / all >= cfg.rate) await fire('5xx', `${bad} of ${all} responses in the last 10 minutes were 5xx`);
     if (treg?.balance && cfg.tregLow > 0) { const b = await treg.balance().catch((e) => ({ error: e.message }));
       if (b && b.usd != null && b.usd < cfg.tregLow) await fire('treg-low', `Balance $${b.usd.toFixed(2)}, under $${cfg.tregLow}.`); }
   }

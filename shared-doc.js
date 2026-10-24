@@ -19,7 +19,7 @@ export function createDocSync({ packs, slug, name, fields, log = console }) {
     parts.forEach(([p, b], ord) => { if (base.get(p) !== now.get(p)) set.push([p, b, ord]); });
     for (const p of base.keys()) if (!now.has(p)) del.push(p);
     if (!set.length && !del.length) return 0;
-    await packs.patchParts(slug, name, set, del); base = now; return set.length + del.length;
+    await packs.patchParts(slug, name, set, del, { order: parts.map(([p]) => p) }); base = now; return set.length + del.length;
   }
   /* another instance wrote: take every part this one hasn't changed since its last sync, in place (the arrays and objects
      the workspaces hold stay the same objects) */
@@ -30,9 +30,13 @@ export function createDocSync({ packs, slug, name, fields, log = console }) {
     for (const f of fields) {
       const v = state[f], pre = `${f}${SEP}`;
       if (Array.isArray(v)) {
+        /* stored whole (an item without an id): taken as a whole when this instance hasn't changed it */
+        const whole = remote.get(f), wv = whole ? JSON.parse(whole.body.toString('utf8')) : null;
+        if (Array.isArray(wv)) { if (!dirty(f) && local.get(f) !== md5(whole.body.toString('utf8'))) { v.splice(0, v.length, ...wv); took++; } continue; }
         const mine = new Map(v.map((x) => [String(x?.id), x])), next = [], seen = new Set();
         for (const r of rows.filter((x) => x.part.startsWith(`${pre}a${SEP}`))) { const id = r.part.slice(pre.length + 2); seen.add(id);
-          if (dirty(r.part) && mine.has(id)) next.push(mine.get(id)); else { next.push(JSON.parse(r.body.toString('utf8'))); if (local.get(r.part) !== md5(r.body.toString('utf8'))) took++; } }
+          if (dirty(r.part)) { if (mine.has(id)) next.push(mine.get(id)); continue; } /* changed or removed here: this instance's version stands */
+          next.push(JSON.parse(r.body.toString('utf8'))); if (local.get(r.part) !== md5(r.body.toString('utf8'))) took++; }
         for (const x of v) { const id = String(x?.id), p = `${pre}a${SEP}${id}`; if (!seen.has(id) && (dirty(p) || !was.has(p))) next.push(x); else if (!seen.has(id)) took++; } /* new here: kept; gone there and unchanged here: gone */
         v.splice(0, v.length, ...next);
       } else if (v && typeof v === 'object') {

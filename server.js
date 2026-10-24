@@ -357,6 +357,8 @@ const routes = {
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
 /* STORAGE=pg (staging, production): structured objects are Postgres rows, binaries stay in the bucket (objects.js). The
    schema is brought up to date first; migrations are additive, so the revision still serving keeps working */
+/* a web-only instance hands all background work to a worker through Postgres: without it nothing would ever run */
+if (!isWorker() && !pgEnabled()) { console.error('ROLE=web needs STORAGE=pg (a worker does the background work through Postgres)'); process.exit(1); }
 const OBJ = pgEnabled() ? createObjects({ bucket: BUCKET, gToken: process.env.K_SERVICE ? gToken : null, log: console }) : null;
 if (OBJ && process.env.MIGRATE_ON_BOOT !== '0') await migrate();
 if (OBJ) await COUNTERS.start();
@@ -376,7 +378,9 @@ await packs.getJSON('_brew', 'usage-day.json', null).then((j) => { const d = new
   if (j?.treg?.day === d && j.treg.day === treg.meter.day) treg.meter.dayUsd = Math.max(treg.meter.dayUsd, +j.treg.usd || 0); }).catch(() => {});
 treg.onCharge(() => budget.touch());
 /* ops alerts to the ShopOS team (alerts.js): once per issue per day, the day's list in the bucket */
-const alerts = createAlerts({ treg, log: console, store: { get: () => packs.getJSON('_brew', 'alerts.json', null), put: (x) => packs.put('_brew', 'alerts.json', x) },
+const alerts = createAlerts({ treg, log: console, shared: COUNTERS, store: { get: () => packs.getJSON('_brew', 'alerts.json', null), put: (x) => packs.put('_brew', 'alerts.json', x),
+    /* Postgres: the day's alert list edited under its row lock, so only one instance sends each alert */
+    claim: OBJ ? async (issue, day) => { let mine = false; await packs.update('_brew', 'alerts.json', (cur) => { const x = cur?.day === day ? cur : { day, issues: {} }; if (x.issues?.[issue]) return undefined; mine = true; return { ...x, issues: { ...(x.issues || {}), [issue]: new Date().toISOString() } }; }); return mine; } : null },
   sendMail: async ({ to, subject, html, text }) => { const key = process.env.RESEND_API_KEY; if (!key) throw new Error('no RESEND_API_KEY');
     const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Brew <hello@send.joinsquareup.com>', to: [to], subject, html, text }) });
     if (!r.ok) throw new Error(`resend ${r.status}`); } });
@@ -408,6 +412,7 @@ const attach = (p) => {
       live: createLiveWatch({ ROOT, anthropic, claudeParams: params, textOf, gToken, brand: p, tregClient: treg, objects: OBJ, namePass: (as) => namedPass(p, as) }) };
     INST.set(p.slug, x);
     x.research.start().catch((e) => console.error('[research] start', p.slug, e.message)); x.live.start().catch((e) => console.error('[live] start', p.slug, e.message));
+    { const need = x.research.need; x.research.need = (k) => { if (isLeader()) return need(k); BUS?.publish('research.need', { slug: p.slug, k }); return false; }; } /* asked of the leader */
     p.research = x.research; p.live = x.live; feedSvc?.wire(p);
     // the catalog watch saw something new: the builder decides if the moves need a fresh look
     x.live.onRefresh((done) => { if (!done.includes('catalog')) return; try { const c = x.live.get().catalog; builder.signal(p.slug, (c?.events || []).filter((e) => e.at === c.fetchedAt)).catch(() => {});
@@ -464,16 +469,22 @@ const builder0 = createBuilder({ shared: COUNTERS, events: createBuildEvents({ l
   // a pack changed on disk (new seed, facts, moves): reload it, keep its research/live instances
   onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); },
   onCards: (slug, cards, o) => { if (o?.private) connectors?.drop(slug); feedSvc?.addCards(slug, cards, o); } });
-/* ROLE=web (production web instances): what starts or changes a build is asked of the worker (jobs.js) and answered when it
-   is done there; reads (status, events, lists) stay here, fresh from Postgres. A worker, or one instance doing both, uses the
-   builder directly. Asked once (maxTries 1): a click is never done twice */
-const BUILD_ASKS = new Set(['start', 'retry', 'rewrite', 'goPro', 'confirm', 'checkUpdates', 'applyCheck', 'setAuto', 'feedOpened', 'addEmail', 'teamStatics', 'signal', 'pdfFor', 'pdfOn', 'bookAfter', 'seen']);
-whenLeader(() => JOBS.define('builder', async ({ m, args }) => { if (!BUILD_ASKS.has(m)) throw new Error(`builder.${m} is not asked of the worker`);
+/* ROLE=web (production web instances): the builder's work belongs to the worker. Only reads stay here (status, events, lists,
+   fresh from Postgres) and the hooks this instance registers; every other method is asked of the worker (jobs.js), so no
+   paid read, heal, rewrite or connect run ever starts on a web instance. Clicks are asked once (maxTries 1) and waited on;
+   the fire-and-forget nudges (seen, bookAfter, signal) go to the batch queue, one open job per brand, and nobody waits */
+const BUILD_LOCAL = new Set(['status', 'events', 'subscribe', 'list', 'summary', 'peek', 'spent', 'spentToday', 'paidWork', 'setHooks', 'onBook', 'buildInfo', 'stop']);
+const BUILD_NUDGE = new Set(['seen', 'bookAfter', 'signal', 'heal', 'feedOpened']); /* heal on every feed open: the worker heals, the page reads the result when it lands (NOTIFY) */
+const SEEN_AT = new Map(); /* a page view nudges the worker once an hour a brand, not on every view */
+whenLeader(() => JOBS.define('builder', async ({ m, args }) => { if (BUILD_LOCAL.has(m) || typeof builder0[m] !== 'function') throw new Error(`builder.${m} is not asked of the worker`);
   const r = await builder0[m](...(args || [])); return m === 'pdfOn' && r ? { name: r.name } : r; }, { queue: 'interactive', maxTries: 1 }));
-const builder = isWorker() ? builder0 : new Proxy(builder0, { get(t, k) { if (!BUILD_ASKS.has(k)) return t[k];
-  return (...args) => { const p = JOBS.call('builder', { m: k, args }, { timeoutMs: String(k).startsWith('pdf') ? 180e3 : 90e3 })
-    .then(async (r) => (k === 'pdfOn' && r?.name ? { name: r.name, buf: await packs.get(args[0], 'pdf/' + r.name) } : r)); /* the PDF itself is in the bucket */
-    if (k === 'seen' || k === 'bookAfter') p.catch((e) => console.warn(`[build] ${k}`, e.message)); /* nobody awaits these */
+const builder = isWorker() ? builder0 : new Proxy(builder0, { get(t, k) { const v = t[k]; if (typeof v !== 'function' || BUILD_LOCAL.has(k)) return v;
+  return (...args) => {
+    if (k === 'seen') { const at = SEEN_AT.get(args[0]) || 0; if (Date.now() - at < 3600e3) return Promise.resolve(); SEEN_AT.set(args[0], Date.now()); }
+    if (BUILD_NUDGE.has(k) && k !== 'feedOpened') { const p = JOBS.enqueue('builder', { m: k, args }, { key: `${k}:${args[0]}`, queue: 'batch', maxTries: 1 }); p.catch((e) => console.warn(`[build] ${k}`, e.message)); return p.then(() => undefined); }
+    const p = JOBS.call('builder', { m: k, args }, { timeoutMs: String(k).startsWith('pdf') ? 180e3 : 90e3, maxTries: 1 })
+      .then(async (r) => (k === 'pdfOn' && r?.name ? { name: r.name, buf: await packs.get(args[0], 'pdf/' + r.name) } : r)); /* the PDF itself is in the bucket */
+    p.catch((e) => console.warn(`[build] ${k}`, e.message)); /* a caller that doesn't wait never leaves the rejection unhandled */
     return p; }; } });
 /* ---------- brand memory (brand-memory.js): shared per-brand memory, read into every jam prompt. BRAND_MEMORY=0 turns it off ---------- */
 const MEMORY_ON = () => process.env.BRAND_MEMORY !== '0';
@@ -701,16 +712,20 @@ feedSvc = createFeedService({ ai, /* Drop anything here reads PDFs and photos wi
   /* membership checked from the signed-in user on every request and on the background clock (feed-service.js REQ / bgTeam) */
   isMemberEmail: (slug, email) => auth.isMember(slug, { email: String(email || '').toLowerCase() }), roleOf: (slug, email) => auth.roleOf(slug, { email: String(email || '').toLowerCase() }) });
 feedSvc.wire(B());
+/* the lease came after the watchers started (a deploy's overlap): their first beat runs now, not 15–30 minutes later */
+whenLeader(() => { for (const x of INST.values()) { x.research?.start?.().catch(() => {}); x.live?.start?.().catch(() => {}); } });
 /* Postgres: what reaches open workspaces on this instance (a build's new cards, cards a rewrite retired, a connected account read
    again) reaches the workspaces open on every other instance too; each applies it to its own */
 const BUS = createBus({ log: console });
-if (BUS) { for (const m of ['addCards', 'dropCards', 'refreshLive']) { const f = feedSvc[m]; if (typeof f !== 'function') continue;
+if (BUS) { for (const m of ['addCards', 'dropCards', 'refreshLive', 'syncSocial']) { const f = feedSvc[m]; if (typeof f !== 'function') continue;
     feedSvc[m] = (...a) => { const r = f(...a); BUS.publish(`feed.${m}`, a); return r; };
-    BUS.on(`feed.${m}`, (a) => { if (m === 'refreshLive') { MEMO.clear(); connectors?.drop?.(a[0]); } return f(...(a || [])); }); }
-  whenLeader(() => { const t = setInterval(() => { BUS.purge(); dbq(`DELETE FROM build_events WHERE at < now() - interval '3 days'`).catch(() => {}); }, 3600e3); t.unref?.(); }); }
+    BUS.on(`feed.${m}`, (a) => { if (m === 'refreshLive') { MEMO.clear(); connectors?.drop?.(a[0]); } if (m === 'syncSocial') forgetSocial(a[0]); return f(...(a || [])); }); }
+  /* a story ring with nothing fresh, on a web instance: the background leader reads that source again (research.need) */
+  BUS.on('research.need', ({ slug, k } = {}) => { if (isLeader()) INST.get(slug)?.research?.need?.(k); });
+  whenLeader(() => { const t = setInterval(() => { BUS.purge(); SESSIONS.purge(); dbq(`DELETE FROM build_events WHERE at < now() - interval '3 days'`).catch(() => {}); }, 3600e3); t.unref?.(); }); }
 /* Postgres: the job queue (web instances hear answers; workers do the work) and the background lease; the lease holder runs
    everything gated by whenLeader / leaderOnly (resume, ticks, paid watchers). Without Postgres this instance leads at once */
-if (OBJ) { await JOBS.start({ interactive: +process.env.JOBS_INTERACTIVE || 4, batch: +process.env.JOBS_BATCH || 4 }); await startLease({ log: console }); }
+if (OBJ) { await JOBS.start({ interactive: +process.env.JOBS_INTERACTIVE || 4, batch: +process.env.JOBS_BATCH || 4 }); await startLease({ log: console, exit: (c) => shutdown(c) }); } /* a lost lease saves everything first */
 retireInit.finally(() => whenLeader(() => { if (!process.env.BUILD_RESUME_OFF) builder.resumeAll().catch((e) => console.error('[build] resumeAll', e.message)); }));
 retireInit.finally(() => whenLeader(() => { if (!process.env.BUILD_RESUME_OFF) finals.reconcileAll().then((n) => { if (n) console.log(`[finals] ${n} run(s) picked up after the restart`); }).catch((e) => console.error('[finals] reconcileAll', e.message)); })); // resume off for a local server reading the live bucket
 
@@ -786,9 +801,9 @@ const brandRoutes = async (req, res, u) => {
   // admins: tools treg added this week that Brew doesn't use yet, and this month's treg spend for a brand
   /* sign-ins (Postgres): GET /api/admin/sessions?email= lists them; POST /api/admin/sessions/end { email } signs that person out
      everywhere (every instance, at once) */
-  if (u.pathname === '/api/admin/sessions' && req.method === 'GET') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
+  if (u.pathname === '/api/admin/sessions' && req.method === 'GET') { if (!auth.isRootAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
     return send(res, 200, { sessions: await SESSIONS.list(u.searchParams.get('email') || '') }), true; }
-  if (u.pathname === '/api/admin/sessions/end' && req.method === 'POST') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
+  if (u.pathname === '/api/admin/sessions/end' && req.method === 'POST') { if (!auth.isRootAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
     const b = await readBody(req); if (!b.email) return send(res, 400, { error: 'email' }), true; return send(res, 200, { ended: await SESSIONS.endAll(b.email), email: b.email }), true; }
   /* who opened which brand (visSeen): newest first; ?slug= one brand, ?blocked=1 only the ones kept out */
   if (req.method === 'GET' && u.pathname === '/api/admin/visitors') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
@@ -1028,13 +1043,31 @@ const server = http.createServer(async (req, res) => {
 /* Cloud Run stops an instance with SIGTERM (deploys, scale to zero): the team's jams, any workspace still inside its 1.5 s
    save debounce, the day's budget counters, the treg spend ledger and the batched jam emails are written (or sent) before it
    goes, and the listener closes so in-flight requests finish, all inside 6 s */
-process.once('SIGTERM', () => { builder?.stop?.(); /* no new move starts here; the next instance resumes the build */
+/* a promise nobody waited on that fails (a background save, a nudge) is logged, never allowed to stop the server */
+process.on('unhandledRejection', (e) => { console.error('[unhandled]', e?.stack?.split('\n').slice(0, 3).join(' | ') || e); });
+/* one way to stop, whatever the reason (Cloud Run's SIGTERM, the background lease lost): nothing new starts here, everything in
+   memory is saved, then the process exits (Cloud Run starts a fresh one) */
+let shuttingDown = false;
+function shutdown(code = 0) { if (shuttingDown) return; shuttingDown = true; builder?.stop?.(); /* no new move starts here; the next instance resumes the build */
   movesCadence?.stop?.(); /* the weekly families end before the next one; the next instance carries on */
   const closed = new Promise((r) => { try { server.close(() => r()); server.closeIdleConnections?.(); } catch { r(); } }); /* in-flight requests finish; idle keep-alives go now */
   const work = Promise.allSettled([feedSvc?.jams?.flush?.(), feedSvc?.jam2?.flush?.(), store.flushPending(), budget.flush(), tregLedger.flush(), apifyLedger.flush(), healthFlush(), visFlush(), jamMail.drain(), closed, COUNTERS.stop()]).then(() => OBJ?.mirrored?.()); JOBS.stop(); /* the bucket copies of what was just written (OBJECTS_MIRROR) */
-  Promise.race([work, new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
+  Promise.race([work, new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(code)); }
+process.once('SIGTERM', () => shutdown(0));
+/* a change asked from another site (a sibling subdomain included) with this site's cookie is refused: state-changing requests
+   must come from Brew's own pages. Webhooks (Slack, Shopify) and the Shopify admin's bearer-token calls aren't cookie-based */
+const OWN_ORIGINS = new Set([process.env.PUBLIC_URL, 'http://localhost:' + (process.env.PORT || 4200)].filter(Boolean).map((x) => { try { return new URL(x).origin; } catch { return null; } }).filter(Boolean));
+const NO_CSRF = /^\/(?:slack\/(?:events|actions|commands)|shopify\/webhooks)/;
+const crossSite = (req, u) => {
+  if (!/^(POST|PUT|PATCH|DELETE)$/.test(req.method) || NO_CSRF.test(u.pathname) || /^Bearer /i.test(req.headers.authorization || '') || !/(?:^|;\s*)fs_s=/.test(req.headers.cookie || '')) return false;
+  const origin = req.headers.origin, site = String(req.headers['sec-fetch-site'] || '');
+  const own = new Set([...OWN_ORIGINS, `https://${req.headers.host}`, `http://${req.headers.host}`]);
+  if (origin) return !own.has(origin);
+  return site === 'cross-site' || site === 'same-site';
+};
 async function serve(req, res, u) {
   try {
+    if (crossSite(req, u)) { res.writeHead(403, { 'content-type': 'application/json', 'cache-control': 'no-store' }); return res.end(JSON.stringify({ error: 'This change has to come from Brew itself.' })); }
     if (demoRoutes && await demoRoutes(req, res, u)) return;
     if (shopifyApp) { await shopifyApp.attach(req, u); if (await shopifyApp.handle(req, res, u)) return; } // a request from inside the Shopify admin carries a session token, not a cookie
     if (await auth.handle(req, res, u)) return;

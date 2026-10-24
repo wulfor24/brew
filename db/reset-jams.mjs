@@ -9,11 +9,12 @@ import { createObjects } from '../objects.js';
 import { q, close } from '../db/index.js';
 
 const args = process.argv.slice(2), vals = (k) => args.flatMap((a, i) => (a === k ? [args[i + 1]] : []));
-const ALL = args.includes('--all'), N = +vals('--rev-n')[0], URL0 = vals('--url')[0] || process.env.PUBLIC_URL || 'https://brew.joinsquareup.com';
+const ALL = args.includes('--all'), N = +vals('--rev-n')[0], CONTROL = vals('--control')[0] || 'control/live.json' /* the service's retire marker (retire.js) */, URL0 = vals('--url')[0] || process.env.PUBLIC_URL || 'https://brew.joinsquareup.com';
 if (!N) throw new Error('--rev-n <live revision number> is needed (the stop marker must match the live revision)');
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
 const token = async () => (process.env.GCS_TOKEN || (await (await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token', { headers: { 'Metadata-Flavor': 'Google' } })).json()).access_token);
-const O = createObjects({ bucket: BUCKET, gToken: token, mirror: true, readThrough: false, log: console }); /* the bucket keeps a copy, as the app does */
+const O = createObjects({ bucket: BUCKET, gToken: token, pg: true, mirror: true, readThrough: false, log: console }); /* the bucket keeps a copy, as the app does */
+if (!O.pg || !process.env.DATABASE_URL) throw new Error('reset-jams runs against Postgres: DATABASE_URL is needed');
 export const PROTECTED = /(^|\/)(private\/connections\.json|private\/vault\/|live\/|private\/live\/)/;
 const put = async (key, v) => { if (PROTECTED.test(key)) throw new Error(`refusing to write ${key}`); await O.put(key, typeof v === 'string' ? v : JSON.stringify(v)); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -32,7 +33,7 @@ for (const s of slugs) for (const f of ['private/jams.json', 'private/jams-v2.js
 for (const { key, t } of tenants) await put(`${ARCH}/${key}`, JSON.stringify(t));
 
 console.log('2/5 stop the live revision, hide the brands');
-await O.put('control/live.json', { rev: 'stop', n: N, at: Date.now(), wipe: slugs }); await sleep(+process.env.RESET_WAIT_MS || 25e3); await poke(); await sleep(+process.env.RESET_WAIT_MS || 8e3);
+await O.put(CONTROL, { rev: 'stop', n: N, at: Date.now(), wipe: slugs }); await sleep(+process.env.RESET_WAIT_MS || 25e3); await poke(); await sleep(+process.env.RESET_WAIT_MS || 8e3);
 
 console.log('3/5 empty the jams, strip jam and remix state from the workspaces');
 for (const s of slugs) { await put(`brands/${s}/private/jams.json`, { at: Date.now(), work: [], changes: {}, vg: {} }); await put(`brands/${s}/private/jams-v2.json`, { at: Date.now(), jams: {} }); }
@@ -49,7 +50,7 @@ for (const { key } of tenants) {
 console.log(`   ${takes} remix takes removed from cards`);
 
 console.log('4/5 stop once more, nothing hidden');
-await O.put('control/live.json', { rev: 'stop', n: N, at: Date.now(), wipe: [] }); await sleep(+process.env.RESET_WAIT_MS || 25e3); await poke(); await sleep(+process.env.RESET_WAIT_MS || 20e3);
+await O.put(CONTROL, { rev: 'stop', n: N, at: Date.now(), wipe: [] }); await sleep(+process.env.RESET_WAIT_MS || 25e3); await poke(); await sleep(+process.env.RESET_WAIT_MS || 20e3);
 
 console.log('5/5 verify');
 for (const s of slugs) { const j = JSON.parse((await O.get(`brands/${s}/private/jams.json`)).toString()), v2 = JSON.parse((await O.get(`brands/${s}/private/jams-v2.json`)).toString());

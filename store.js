@@ -19,28 +19,41 @@ export function createStore({ dir, bucket, gToken, objects = null, log = console
   const timers = new Map();
   const file = (id) => path.join(dir, String(id).replace(/[^a-z0-9_]/gi, '') + '.json');
   /* Postgres keeps a workspace in parts (objects.js PARTED): this instance writes only the parts it changed since it last read
-     or wrote them, so a copy another instance holds never writes its older parts over newer ones */
-  const base = new Map(); // id → Map(part → md5)
-  const partsMap = (str) => { try { return new Map(splitDoc(JSON.parse(str)).map(([p, b]) => [p, crypto.createHash('md5').update(b).digest("hex")])); } catch { return null; } };
+     or wrote them, so a copy another instance holds never writes its older parts over newer ones. On the bucket (STORAGE
+     unset) a workspace is one file, as before */
+  const parted = !!obj?.pg;
+  const base = new Map(); // id → Map(part → md5) as this instance last read or wrote it
+  const mine = new Map(); // id → the version of this instance's last write (a notice with another version is another instance)
+  const md5 = (b) => crypto.createHash('md5').update(b).digest('hex');
+  const partsMap = (str) => { try { return new Map(splitDoc(JSON.parse(str)).map(([p, b]) => [p, md5(b)])); } catch { return null; } };
   const gcs = async (method, id, body) => {
     const name = `tenants/${String(id).replace(/[^a-z0-9_]/gi, '')}.json`;
-    if (method === 'PUT' && obj.patchParts) { const prev = puts.get(id) || Promise.resolve(); const run = prev.catch(() => {}).then(() => putNow(name, id, body)); puts.set(id, run); run.finally(() => { if (puts.get(id) === run) puts.delete(id); }).catch(() => {}); return run; }
+    if (method === 'PUT' && parted) { const prev = puts.get(id) || Promise.resolve(); const run = prev.catch(() => {}).then(() => putNow(name, id, body)); puts.set(id, run); run.finally(() => { if (puts.get(id) === run) puts.delete(id); }).catch(() => {}); return run; }
     if (method === 'PUT') return obj.put(name, body, 'application/json');
     return getNow(name, id);
   };
   const puts = new Map(); /* one write at a time per workspace, in order */
   const putNow = async (name, id, body) => {
-    {
-      if (base.has(id)) { const doc = JSON.parse(body), parts = splitDoc(doc), was = base.get(id), now = new Map(), set = [], del = [];
-        parts.forEach(([p, b], ord) => { const h = crypto.createHash('md5').update(b).digest('hex'); now.set(p, h); if (was.get(p) !== h) set.push([p, b, ord]); });
-        for (const p of was.keys()) if (!now.has(p)) del.push(p);
-        if (set.length || del.length) await obj.patchParts(name, set, del); base.set(id, now); return true; }
-      const r = await obj.put(name, body, 'application/json'); base.set(id, partsMap(body) || new Map()); return r; }
+    if (!base.has(id)) { await obj.put(name, body, 'application/json'); base.set(id, partsMap(body) || new Map()); return true; } /* a workspace made here: written whole once */
+    const parts = splitDoc(JSON.parse(body)), was = base.get(id), now = new Map(), set = [], del = [];
+    parts.forEach(([p, b], ord) => { const h = md5(b); now.set(p, h); if (was.get(p) !== h) set.push([p, b, ord]); });
+    for (const p of was.keys()) if (!now.has(p)) del.push(p);
+    if (set.length || del.length) { const v = await obj.patchParts(name, set, del, { order: parts.map(([p]) => p) }); if (v) mine.set(id, v); }
+    base.set(id, now); return true;
   };
   const getNow = async (name, id) => {
     const b = await obj.get(name); if (b == null) throw new Error(`gcs GET ${name} 404`); /* load0 reads a 404 as "no such workspace" */
-    const str = b.toString('utf8'); if (obj.patchParts) { const m = partsMap(str); if (m) base.set(id, m); } return str;
+    const str = b.toString('utf8'); if (parted) { const m = partsMap(str); if (m) base.set(id, m); } return str;
   };
+  /* fn(id) when another instance wrote this workspace (or '*' after missed notices): the holder decides whether to load it
+     again (feed-service drops an idle copy, so the next request reads the newer one) */
+  const remoteFns = [];
+  if (parted) obj.onChange((key, version) => { if (key === '*') { for (const f of remoteFns) f('*'); return; }
+    const m = /^tenants\/(t_[a-f0-9]+)\.json$/.exec(key || ''); if (!m || (version && mine.get(m[1]) === version)) return; for (const f of remoteFns) f(m[1]); }).catch((e) => log.warn('[store] listen', e.message));
+  const onRemote = (fn) => { remoteFns.push(fn); };
+  /* drop what this instance knows of a workspace (it reads it fresh from the database next time) */
+  const forget = (id) => { base.delete(id); mine.delete(id); fromGcs.delete(id); };
+
   const write = (t) => {
     if (wiping(t?.brandId)) return; fromGcs.add(t.id);
     let s; try { s = JSON.stringify(t, enc); } catch (e) { log.warn('[store] serialise', e.message); return; }
@@ -73,5 +86,5 @@ export function createStore({ dir, bucket, gToken, objects = null, log = console
   // drops pending writes (tests, resets); flushPending writes them now and waits for GCS (SIGTERM on Cloud Run)
   const flush = () => { for (const [id, tm] of timers) clearTimeout(tm); timers.clear(); pending.clear(); };
   const flushPending = () => { const ts = [...pending.values()]; flush(); return Promise.all(ts.map(write)); };
-  return { save, load, write, flush, flushPending, scan, readFresh };
+  return { save, load, write, flush, flushPending, scan, readFresh, onRemote, forget, pending: (id) => pending.has(id) || puts.has(id) };
 }

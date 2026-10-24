@@ -105,7 +105,7 @@ test('deploy scripts have no guard and no wait; the builder stops on SIGTERM and
   const b = fs.readFileSync(path.join(ROOT, 'build.js'), 'utf8'), srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
   assert.match(b, /let stopping = false; const stop = \(\) => \{ stopping = true; \};/); assert.match(b, /canSpend: \(\) => !stopping && !capHit\(slug\)/); assert.match(b, /canSpend: \(\) => !stopping && !blocked\(slug\)/);
   assert.match(b, /if \(stopping && \(res\.applicable \|\| \[\]\)\.some\(\(n\) => !cache\[n\]\)\)[\s\S]{0,400}return;/, 'a stopped build is left unfinished, never marked done or capped');
-  assert.match(srv, /process\.once\('SIGTERM', \(\) => \{ builder\?\.stop\?\.\(\);/); assert.match(srv, /builder\.resumeAll\(\)/);
+  assert.match(srv, /function shutdown\(code = 0\) \{[^\n]*builder\?\.stop\?\.\(\);/); assert.match(srv, /process\.once\('SIGTERM', \(\) => shutdown\(0\)\)/); /* one stop path for SIGTERM and a lost lease */ assert.match(srv, /builder\.resumeAll\(\)/);
 });
 
 /* ---------- 4. alerts ---------- */

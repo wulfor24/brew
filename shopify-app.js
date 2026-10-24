@@ -198,7 +198,10 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
       if (slug && since > Date.now() - REDACT_AFTER) log.log?.(`[shopify-app] ${slug}: shop/redact skipped, Brew was installed again since`);
       /* Brew's app going says nothing about the brand's own app or token: that connection stays */
       else if (slug && route && route !== 'brew') log.log?.(`[shopify-app] ${slug}: ${topic} skipped, Shopify is connected with the brand's own app (${route})`);
-      else if (slug) await connectors.disconnect(slug, 'shopify').then(() => log.log?.(`[shopify-app] ${slug}: Shopify disconnected (${topic})`)).catch((e) => log.warn('[shopify-app] disconnect', slug, e.message));
+      /* shop/redact is Shopify's order to erase: honoured even on a protected brand. An uninstall on a protected brand keeps the
+         connection (it shows the read failing and asks for a reconnect) and says so */
+      else if (slug) await connectors.disconnect(slug, 'shopify', { force: topic === 'shop/redact' })
+        .then((r) => log.log?.(r?.protected ? `[shopify-app] ${slug}: ${topic} on a protected brand: the connection is kept, not disconnected` : `[shopify-app] ${slug}: Shopify disconnected (${topic})`)).catch((e) => log.warn('[shopify-app] disconnect', slug, e.message));
     }
     /* customers/data_request, customers/redact: Brew stores order counts and shares, never a customer's record, so nothing to send or erase */
     return true;
@@ -235,7 +238,8 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
     }
     if (p === '/shopify/hop' && req.method === 'GET') { /* the new tab: a Brew session for the person the admin vouched for, then on */
       const h = auth.verify(u.searchParams.get('t'), 'shopify-hop'); if (!h?.email) return html(res, 400, page('Link expired', '<p>That link expired. Go back to Shopify and tap it again.</p>'), null), true;
-      auth.setCookie(res, 'fs_s', auth.sign({ email: h.email, name: h.name || null, pic: null, sub: h.sub || null }, 7 * 86400, 'session'), 7 * 86400);
+      const ses = (await auth.newSession?.(h.email, 7 * 86400, req)) || {}; /* a session row, so signing out ends it (sessions.js) */
+      auth.setCookie(res, 'fs_s', auth.sign({ email: h.email, name: h.name || null, pic: null, sub: h.sub || null, ...ses }, 7 * 86400, 'session'), 7 * 86400);
       res.writeHead(302, { location: safeNext(h.next), 'cache-control': 'no-store' }); return res.end(), true;
     }
     if (p.startsWith('/shopify/api/') && req.method === 'POST') {

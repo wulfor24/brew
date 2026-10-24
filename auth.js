@@ -84,6 +84,11 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     if (packs.update) await packs.update(slug, MF, async (cur) => { const m = { owner: null, members: [], invites: [], ...(cur || {}), requests: [] }; r = await f(m); ownerFix(m); r = r ?? m; return m; });
     else { const m = await getM(slug); r = await f(m); ownerFix(m); await packs.put(slug, MF, m); r = r ?? m; }
     try { onTeamChange(slug); } catch {} return r; }); lock = run.catch(() => {}); return run; };
+  /* a session row for a new sign-in (Postgres): { sid, iat } for the cookie, once the row is written */
+  const newSession = async (email, ttlSec, req) => { if (!sessions) return {}; const s = sessions.open(email, { ttlSec, ua: req?.headers?.['user-agent'] }); await s.saved; return { sid: s.sid, iat: s.iat }; };
+  /* Brew's own admins by name (ADMIN_EMAILS; on production param@joinsquareup.com only): the few things above staff, such as
+     signing someone out everywhere or forcing a change to a protected brand's connection */
+  const isRootAdmin = (u) => !!u?.email && ADMINS.has(String(u.email).toLowerCase());
   const isAdmin = (u) => !!u && (ADMINS.has(u.email) || fullDomain(u.email));
   // who this person is to the brand: owner | member | admin | null
   async function roleOf(slug, u) {
@@ -228,8 +233,11 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       const tk = await r.json(); let c; try { c = JSON.parse(unb64(String(tk.id_token).split('.')[1])); } catch { return fail('id_token'); }
       if (c.aud !== CID || !['accounts.google.com', 'https://accounts.google.com'].includes(c.iss) || !(c.exp > Date.now() / 1e3) || c.nonce !== hs.n) return fail('claims');
       if (!(c.email_verified === true || c.email_verified === 'true') || !c.email) return fail('email not verified');
+      /* production (STAFF_REQUIRE_HD=1): a staff-domain address counts only from that domain's own Google Workspace (the hd claim),
+         never from a personal Google account created with that address */
+      if (process.env.STAFF_REQUIRE_HD === '1' && fullDomain(String(c.email).toLowerCase()) && String(c.hd || '').toLowerCase() !== domainOf(String(c.email).toLowerCase())) return fail('Sign in with your company Google Workspace account');
       const me = { email: String(c.email).toLowerCase(), name: c.name || null, pic: c.picture || null, sub: c.sub || null };
-      const ses = sessions?.open(me.email, { ttlSec: 30 * 86400, ua: req.headers['user-agent'], ip: null }) || {}; /* a session row: signing out ends it for real */
+      const ses = await newSession(me.email, 30 * 86400, req); /* a session row: signing out ends it for real */
       setCookie(res, 'fs_s', sign({ ...me, ...ses }, 30 * 86400, 'session'), 30 * 86400);
       log.log?.(`[auth] signed in ${me.email}`);
       return redirect(res, st.next || '/'), true;
@@ -240,7 +248,10 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       setCookie(res, 'fs_s', sign({ email, name: u.searchParams.get('name') || email.replace(/@.*/, ''), pic: null, sub: 'dev' }, 86400, 'session'), 86400);
       return redirect(res, safeNext(u.searchParams.get('next'))), true;
     }
-    if (p === '/auth/logout') { const was = verify(cookies(req).fs_s, 'session'); if (was?.sid) await sessions?.end(was.sid); setCookie(res, 'fs_s', '', 0); if (req.method === 'GET') return redirect(res, safeNext(u.searchParams.get('next'))), true; return json(res, 200, { ok: true }), true; }
+    if (p === '/auth/logout') { /* our own page (a link on Brew, the address bar, a POST) signs out for real, on every instance; a link
+         from another site does nothing (Sec-Fetch-Site), so nobody can be signed out from elsewhere */
+      const site = String(req.headers['sec-fetch-site'] || 'none'); if (req.method === 'GET' && site === 'cross-site') return redirect(res, safeNext(u.searchParams.get('next'))), true;
+      const was = verify(cookies(req).fs_s, 'session'); if (was?.sid) await sessions?.end(was); setCookie(res, 'fs_s', '', 0); if (req.method === 'GET') return redirect(res, safeNext(u.searchParams.get('next'))), true; return json(res, 200, { ok: true }), true; }
     /* old one-tap approve links (asking for access is gone): the owner invites them instead */
     if (p === '/auth/approve' && (req.method === 'GET' || req.method === 'POST')) {
       const t = verify(u.searchParams.get('t'), 'approve');
@@ -295,5 +306,5 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   }
   const page = (h, p, slug, extra = '') => smallPage(h, p, { extra, link: slug ? { href: `/${slug}`, label: 'Open the brand' } : null });
 
-  return { handle, signinOn: () => !!(CID && SECRET), user, roleOf, seatsOf, isMember, isAdmin, claim, claimInfo, accessOf: claimInfo, addMember, invite, teamOp, getMembers: getM, sign, verify, baseOf, setCookie, cookies, mail };
+  return { handle, newSession, isRootAdmin, signinOn: () => !!(CID && SECRET), user, roleOf, seatsOf, isMember, isAdmin, claim, claimInfo, accessOf: claimInfo, addMember, invite, teamOp, getMembers: getM, sign, verify, baseOf, setCookie, cookies, mail };
 }

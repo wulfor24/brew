@@ -146,17 +146,31 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   let stopping = false; const stop = () => { stopping = true; };
   const st = (slug) => { let x = S.get(slug); if (!x) S.set(slug, x = { events: [], listeners: new Set(), status: null, confirmed: null, running: false, inflight: new Map(), failed: new Map() }); return x; };
   const deliver = (slug, e) => { const x = st(slug); x.events.push(e); if (x.events.length > 2000) x.events.shift(); x.listeners.forEach((f) => { try { f(e); } catch {} }); };
-  const emit = (slug, ev) => { const e = { ...ev, at: Date.now() }; st(slug).heard = true; deliver(slug, e); events?.persist(slug, e); };
-  /* Postgres (build-events.js): a line the worker wrote reaches this instance's listeners, and a page that opens here after the
-     build began gets the lines so far before the live ones */
-  events?.onRemote((slug, e) => { st(slug).heard = true; deliver(slug, e); }).catch((e) => log.warn('[build] events listen', e.message));
+  const emit = (slug, ev) => { const e = { ...ev, at: Date.now() }; st(slug).mine = true; deliver(slug, e); events?.persist(slug, e); };
+  /* Postgres (build-events.js): a line the worker wrote reaches this instance's listeners once (lines carry their row id), and
+     a page that opens here after the build began gets the lines so far, then the live ones, nothing twice or out of order.
+     A fresh read on the worker ('_reset') starts the story over here too */
+  const remote = (slug, e) => { const x = st(slug); x.ids ||= new Set();
+    if (e._id != null && e._id <= (x.maxId || 0)) return; /* already in hand (the history, or a notice that arrived late) */
+    if (e._id != null) { if (x.ids.has(e._id)) return; x.ids.add(e._id); }
+    if (e.k === '_reset') { x.events.length = 0; x.ids.clear(); x.early = []; x.maxId = e._id || x.maxId; x.loaded = true; return; }
+    if (!x.loaded) { (x.early ||= []).push(e); return; } /* the history is on its way: merged with it, in order */
+    if (e._id != null) x.maxId = Math.max(x.maxId || 0, e._id);
+    deliver(slug, e); };
+  events?.onRemote(remote).catch((e) => log.warn('[build] events listen', e.message));
+  const loadHistory = (slug) => { const x = st(slug); if (x.loaded || x.mine || !events) return Promise.resolve();
+    return (x.loading ||= events.history(slug).then((h) => { x.ids ||= new Set(); const all = [...h, ...(x.early || [])].filter((e, i, arr) => e._id == null || arr.findIndex((y) => y._id === e._id) === i).sort((a, b) => (a._id ?? 0) - (b._id ?? 0));
+      x.early = []; const cut = all.map((e) => e.k).lastIndexOf('_reset'); for (const e of all.slice(cut + 1)) { if (e._id != null) x.ids.add(e._id); x.events.push(e); }
+      x.maxId = Math.max(x.maxId || 0, ...all.map((e) => e._id || 0)); x.loaded = true; })
+      .catch((e) => { log.warn('[build] events history', slug, e.message); x.loaded = true; }).finally(() => { x.loading = null; })); };
   const subscribe = (slug, f, { replay = true } = {}) => { const x = st(slug);
-    if (replay && events && !x.heard && !x.events.length) { x.heard = true; events.history(slug).then((h) => { if (!x.events.length) { x.events.push(...h); h.forEach((e) => { try { f(e); } catch {} }); } }).catch(() => {}); }
-    else if (replay) x.events.forEach(f);
+    if (events && !x.mine && !x.loaded) { let on = true; loadHistory(slug).then(() => { if (!on) return; if (replay) x.events.forEach((e) => { try { f(e); } catch {} }); x.listeners.add(f); });
+      return () => { on = false; x.listeners.delete(f); }; }
+    if (replay) x.events.forEach(f);
     x.listeners.add(f); return () => x.listeners.delete(f); };
   const status = async (slug) => st(slug).status || (st(slug).status = await packs.getJSON(slug, 'status.json', null));
   /* Postgres: status.json written on another instance (the worker) is read again here on the next ask */
-  packs.onChange?.((slug, name) => { if (name === 'status.json' && S.has(slug) && !isLeader()) S.get(slug).status = null; }); /* the leader writes it (and may hold it in hand) */
+  packs.onChange?.((slug, name) => { if (isLeader()) return; if (slug === '*') { for (const x of S.values()) x.status = null; return; } if (name === 'status.json' && S.has(slug)) S.get(slug).status = null; }); /* the leader writes it (and may hold it in hand) */
   const setStatus = async (slug, patch) => {
     if (blocked(slug)) return {};
     const cur = (await status(slug)) || {};
@@ -212,6 +226,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (user) byUser.set(user.email, [...mine, Date.now()]); else if (ip) byIp.set(ip, Date.now());
     await packs.put(slug, LOCK, { at: Date.now(), by: INSTANCE }); /* first, before the starter files: the other instances join */
     st(slug).events.length = 0; /* a new read starts a new story: viewers replay only this run's events */
+    events?.reset(slug); /* and on every other instance, before any line of the new run */
     if (prev && fresh) await resetPack(slug);
     st(slug).status = {}; /* a new status, not merged over the last run's stages, PDFs and counts */
     /* the starter files go up together: one after another kept the person on the landing for 3-5s */
