@@ -40,7 +40,10 @@
   const anyBusy = () => !!S && Object.values(S.busy || {}).some((b) => b && b.op && !b.error);
   function price() { clearTimeout(planT); if (!S?.spec) return; S.plan = null; paint(); const mine = S, spec = S.spec;
     planT = setTimeout(async () => { const r = await api('POST', `/api/jam2/jams/${mine.jid}/studio/plan`, { spec }); if (S === mine && S.spec === spec) { S.plan = r?.plan || { error: r?.error || 'No price yet.' }; paint(); } }, 250); }
-  const set = (patch) => { S.spec = { ...S.spec, ...patch }; S.pop = null; price(); };
+  /* who is on camera changes in the direction too: its sentence about the old cast becomes the new one (never two that disagree) */
+  const set = (patch) => { if ('cast' in patch && S.spec?.direction) { const was = S.spec.cast || S.slots?.cast?.label || '', now = patch.cast || '';
+      if (was && S.spec.direction.includes(was)) patch = { ...patch, direction: S.spec.direction.replace(`${was}.`, now ? `${now}.` : '').replace(was, now).replace(/\s{2,}/g, ' ').trim() }; }
+    S.spec = { ...S.spec, ...patch }; S.pop = null; price(); };
 
   async function go(redo = false) {
     const pl = S?.plan; if (!pl || pl.error || pl.usd == null || S.working) return; const mine = S; S.working = true; paint();
@@ -181,7 +184,7 @@
   /* the chat, on a set-up not made yet: the words become slot changes (server: studio/ask), shown as changed chips, re-priced */
   async function ask(text) { if (!S?.jid || !S.spec) return { error: 'The set-up is still opening.' };
     const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/ask`, { text, spec: S.spec }); if (r?.error || !r?.patch) return { error: r?.error || 'That didn’t go through.' };
-    const { addDirection, ...pt } = r.patch; if (addDirection) pt.direction = [S.spec.direction, addDirection].filter(Boolean).join(' ');
+    const { addDirection, ...pt } = r.patch; if ('cast' in pt) { set({ cast: pt.cast }); delete pt.cast; } if (addDirection) pt.direction = [S.spec.direction, addDirection].filter(Boolean).join(' ');
     if (pt.style && !S.picks.includes(pt.style)) S.picks = [pt.style, ...S.picks.slice(0, 2)]; S.changed = Object.keys(pt); S.open = true; set(pt); return { said: r.said }; }
   /* the Adjust tab on a creative: every slot, what it is now, why, and "Always use this for <brand>" */
   function adjustHtml(ch) { if (!S || S.chId !== ch.id || !S.spec) return '<p class="hs-tip">Setting it up from the card…</p>';
