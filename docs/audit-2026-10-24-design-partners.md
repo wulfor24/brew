@@ -22,8 +22,7 @@ their drafts and claim checks; no sideways scroll on a phone for any of the five
 backed by a review ("more than 60 working days").
 
 Still open:
-- 4 cards with an empty asset line (Arata m28-2; Mana m1001-1, m282-1, m132-1). Two look mis-typed: a printed tracker card
-  filed as an image ad, a Reddit question as an Instagram post (cards-gen.js inferMake).
+- ~~4 cards with an empty asset line … (cards-gen.js inferMake).~~ Fixed 25 Oct (50cc01a): the cause was a class, not 4 cards. A post bound for Reddit, Quora or a forum was forced into the Instagram post format (124 open cards across 7 brands, workspace copies included); fitMedium now drops the format, keeps a post button and the jam opens the platform's post with Copy and open; a printed card is a print piece with 'Draft the print card'. Guards: test/card-medium.test.js, 'wrong medium' in tools/audit-card-fit.mjs (0 as served).
 - A PUMA statics-batch picture from 22 Oct has "PUMA India Product / Scuderia Ferrari Fanwear Baseball Cap" drawn in it;
   the maker is not yet traced.
 - ~~Scrubroom is read as "Apparel" though 68 of its 140 products are resold Littmann stethoscopes.~~ Fixed 25 Oct (e419432, 58b8179): assortment.js reads own label vs other brands for every store; Scrubroom is a curated retailer (74% other brands; own labels ScrubStory, Scrubroom), its line says so, and its plays were rewritten on the weekly pot to speak as where to buy those brands. Guard: test/assortment.test.js.
