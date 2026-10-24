@@ -346,8 +346,10 @@
 
   /* ranking lives in the feed service (freshness + impact + affinity + seat − fatigue, then interleave) */
   const loadFeed = async () => {
-    await syncNow();
-    const r = await tapi('GET', `/api/tenants/:t/feed${SFQ}`); ringsLater(); if (r.error) return null; FEED_LOADED = Date.now();
+    const pre = window.__feedPre; window.__feedPre = null; /* the page's own early request (index.html), once, while it is fresh */
+    const early = pre && pre.tid === TID && !SFQ && Date.now() - pre.at < 15e3 ? await pre.p : null;
+    if (!early) await syncNow();
+    const r = early && !early.error && early.order ? early : await tapi('GET', `/api/tenants/:t/feed${SFQ}`); ringsLater(); if (r.error) return null; FEED_LOADED = Date.now();
     ALL = r.cards; SCORES = r.scores || {}; LIMIT = r.limit; PINNED = new Set(r.pinned || []); SRV.health = r.health || {}; SRV.healthLive = r.healthLive || {}; SRV.aiRing = r.aiRing || null; SRV.clock = r.clock; SRV.yesterday = r.yesterday || [];
     NEWSET = new Set(r.newIds || []);
     /* saves live on the server (every device); the ones this browser kept before that go up once */
@@ -897,7 +899,7 @@
       <div class="counts">${n ? `<div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>` : ''}${mvTile()}<div><b class="tnum">${na}</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>${nc === 1 ? 'account' : 'accounts'} connected</div>` : ''}</div>
       ${ny || ns ? `<p class="ready-next">First, on your feed: ${[ny && `${ny} ${ny === 1 ? 'call needs' : 'calls need'} your yes`, ns && `${ns} ${ns === 1 ? 'card costs' : 'cards cost'} ad money`].filter(Boolean).join(' and ')}. ${ny ? 'Start with the yes calls.' : ''}</p>` : ''}
       ${window.BREW_NUMBERS?.storeNote ? `<p class="ready-note">${esc(window.BREW_NUMBERS.storeNote)}</p>` : ''}
-      <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">Open my feed ${ic('right', 's18')}</span></span></button>
+      <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">${!S.swiped && (RANKED.length || rank().length) >= 4 ? 'Tune it, then open my feed' : ny ? `See your ${ny} ${ny === 1 ? 'call' : 'calls'}` : 'Open my feed'} ${ic('right', 's18')}</span></span></button> <!-- the button names the next screen (1.2) -->
     </div></div>`);
     $('#open-feed').onclick = () => { $$('.ready').forEach((x) => x.remove()); if (!S.swiped && (RANKED.length || rank().length) >= 4) return swipeTuner(feed); feed(); };
     $('#open-feed').focus();
@@ -1509,7 +1511,8 @@
     const go = () => Object.keys(CUES).forEach((k) => fetch(`/sfx/${k}.mp3`).then((r) => r.ok ? r.arrayBuffer() : Promise.reject()).then((a) => new Promise((ok, no) => dc.decodeAudioData(a, ok, no))).then((b) => { SND.buf[k] = b; }).catch(() => {}));
     (window.requestIdleCallback || setTimeout)(go, { timeout: 2000 }); };
   const sfxOut = (c) => { if (SND.out?.context !== c) { SND.out = c.createGain(); SND.out.gain.value = .8; SND.out.connect(c.destination); } return SND.out; };
-  if (SND.on) addEventListener('load', () => setTimeout(loadSfx, 800), { once: true });
+  /* the sounds wait for the first screen (1.7: 29 files downloaded on open): the first tap or key, else 12 s after load */
+  if (SND.on) { const first = () => { removeEventListener('pointerdown', first, true); removeEventListener('keydown', first, true); loadSfx(); }; addEventListener('pointerdown', first, true); addEventListener('keydown', first, true); addEventListener('load', () => setTimeout(first, 12e3), { once: true }); }
   const SOFT = new Set(['sheetUp', 'sheetDown', 'step', 'swish']); // background cues: one tap is one sound, so these give way to any cue just played
   const sound = (k) => { if (!SND.on || !CUES[k] || document.hidden) return; const now = Date.now(); if (now - (SND.last[k] || 0) < (CUES[k][2] ?? 250)) return; if (SOFT.has(k) && now - (SND.any || 0) < 150) return; SND.last[k] = SND.any = now;
     const c = actx(); if (c) try { const b = SND.buf[k]; if (b) { const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = .97 + Math.random() * .06; s.connect(sfxOut(c)); s.start(); } else { loadSfx(); CUES[k][0](c); } } catch (e) {} // a hair of pitch drift, so repeats never sound stamped
@@ -1825,6 +1828,7 @@
     const bar = e.target.closest('.card .bar, [data-cp-cta] .bar'); if (!bar || bar.hasAttribute('data-cx') || bar.classList.contains('is-busy')) return;
     const label = bar.dataset.label, card = barBox(bar);
     if (NAV_CTA[label]) return NAV_CTA[label]();
+    if (/^Connect /.test(label)) { const id = Object.keys(B.connectors || {}).find((k) => label === `Connect ${B.connectors[k].name}`); if (id) return openConnect(id); } /* a card on a platform not connected yet (2.6) */
     const p = card.dataset.post ? FEED[+card.dataset.post] : null; if (!p) return;
     openCardJam(p);
   });
@@ -1968,7 +1972,12 @@
   const byTeam = (s) => /^(the )?(brew|shopos) team$/i.test(String(s || ''));
   const teamFix = (w) => { if (w?.with?.kind === 'brew' && byTeam(w.with.name)) w.with = { ...w.with, name: 'ShopOS team' }; if (w?.deploy && byTeam(w.deploy.by)) w.deploy = { ...w.deploy, by: 'ShopOS team' }; return w; };
   const putWork = (w) => { if (!w) return; teamFix(w); const i = WORK.items.findIndex((x) => x.id === w.id); if (i < 0) WORK.items.unshift(w); else WORK.items[i] = w; };
-  const pullWork = async (quiet) => {
+  /* one read of the work list at a time, and none again within 5 s of the last one unless something changed since (1.7: fetched
+     3 to 4 times on open) */
+  let WORK_P = null, WORK_AT = 0, WORK_REV = 0;
+  const pullWork = async (quiet) => { if (WORK_P) return WORK_P; if (Date.now() - WORK_AT < 5000 && FEED_LOADED && WORK_REV === FEED_LOADED) return;
+    WORK_P = pullWork0(quiet).finally(() => { WORK_P = null; WORK_AT = Date.now(); WORK_REV = FEED_LOADED; }); return WORK_P; };
+  const pullWork0 = async (quiet) => {
     const r = await tapi('GET', '/api/tenants/:t/work'); if (r.error) return;
     const known = new Set(WORK.notes.map((n) => n.id)), first = !WORK.loaded;
     // anything that moved: a lane change, a new reading, a new version, read state. Not every move posts a note (readings never do)

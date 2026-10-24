@@ -31,3 +31,8 @@ test('six moves planning the same reorder nudge show once; scale and tired on on
   const live = { id: 'live-meta-shift', title: 'Move ₹500 a day to Summer Sale', rows: [['From', 'Old Promo · 1.2x'], ['To', 'Summer Sale · 3.1x']] }, tired = { id: 'm4-c', title: 'Summer Sale ad is tired: refresh it', rows: [['Campaign', 'Summer Sale']] };
   assert.equal(conflicts([live, tired]).get('m4-c')?.by, 'live-meta-shift');
 });
+
+import { sameJob } from '../same-ask.js';
+test('the same reorder job groups when only one card names its channel (QA audit 24 Oct)', () => {
+  assert.equal(sameJob('reorder:whatsapp', 'reorder:any'), true); assert.equal(sameJob('reorder:email', 'reorder:whatsapp'), false); assert.equal(sameJob('cart:any', 'reorder:any'), false);
+});

@@ -37,7 +37,7 @@ export const replacing = (key, has) => { const out = []; let seen = false; for (
    the account's number for a member (card-nums.js). Exact names only, never a target or a baseline */
 export const NAMES = {
   'shopify.orders.30d': ['orders', 'orders last 30 days', 'completed orders', 'recent orders', 'orders this month'], 'shopify.aov': ['aov', 'average order', 'average order value', 'avg order value'],
-  'shopify.revenue.30d': ['revenue', 'revenue last 30 days', 'monthly revenue', 'recent revenue'], 'shopify.repeat.90d': ['repeat rate', 'repeat customers', 'repeat customer rate', 'customers with 2+ orders'],
+  'shopify.revenue.30d': ['revenue', 'revenue last 30 days', 'monthly revenue', 'recent revenue'], 'shopify.repeat.90d': ['repeat rate', 'repeat customers', 'repeat customer rate', 'customers with 2+ orders', 'repeat buyer rate', 'repeat purchase rate', 'repeat buyers'],
   'shopify.checkout.left': ['checkouts left', 'abandoned checkouts', 'checkouts not finished'], 'shopify.cod.share': ['cod share', 'cash on delivery share', 'cod orders'], 'shopify.cod.cancelled': ['cod cancelled', 'cancelled cod orders'], 'shopify.cod.unpaid': ['cod unpaid', 'unpaid cod orders'],
   'shopify.products.active': ['active products', 'active skus', 'products in catalog', 'products in the catalog', 'products on site', 'live products'], 'shopify.products.out_of_stock': ['out of stock', 'out of stock products', 'products out of stock', 'sold out products'],
   'ga4.sessions.30d': ['sessions', 'recent sessions', 'monthly sessions', 'site sessions', 'sessions last 30 days', 'visits last 30 days', 'monthly visits'], 'ga4.conversion': ['conversion', 'conversion rate', 'store conversion', 'site conversion', 'purchase conversion'],

@@ -12,6 +12,7 @@ async function aboutPage(ctx) {
   return null;
 }
 
+export const COMPANY_V = 2; /* 2: the brand's own about page is read first */
 export async function company(ctx) {
   const { profile, ledger } = ctx;
   if (!ctx.aiOn) return;
@@ -26,7 +27,7 @@ export async function company(ctx) {
   // keep a fact only when its URL is one the search really returned
   const facts = (r.json?.facts || []).filter((f) => f.url && f.value && cited.has(norm(f.url)));
   const dropped = (r.json?.facts || []).length - facts.length;
-  const c = profile.company = { founders: [], founded: null, hq: null, funding: [], revenue: [], press: [], investors: [], dropped };
+  const c = profile.company = { v: COMPANY_V, founders: [], founded: null, hq: null, funding: [], revenue: [], press: [], investors: [], dropped };
   const add = (key, label, f, extra = {}) => ledger.add({ key, label, v: String(f.value).slice(0, 200), url: f.url, method: 'claude:web_search', layer: 'observed',  note: [f.date ? `dated ${f.date}` : null, f.quote ? `"${String(f.quote).slice(0, 200)}"` : null].filter(Boolean).join(' · ') || undefined, ...extra });
   for (const f of facts) {
     if (f.field === 'founder') { c.founders.push({ name: f.value, url: f.url }); add(`company.founder.${c.founders.length}`, 'Founder', f); }

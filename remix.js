@@ -676,7 +676,8 @@ export function createRemix(o) {
   const msgTarget = (t, ch) => { if (ch?.target?.conn !== 'klaviyo' && !ch?.target?.msgTool) return ch?.target; const T = toolsOf(t);
     if (!T.told && (t?.conn?.klaviyo || T.email === 'Klaviyo')) return ch.target;
     const pkg = ch.pkg || {}, wa = /whatsapp/i.test(pkg.channel || '') || /whatsapp/i.test(ch.actionLabel || ''), cart = /cart|checkout|abandon/i.test(`${pkg.flow || ''} ${pkg.trigger || ''} ${ch.title || ''}`);
-    const name = T.told || (cart ? T.checkout || (wa ? T.whatsapp : T.email) : wa ? T.whatsapp || T.checkout : T.email) || null;
+    const msgApp = /gokwik|shopflo/i.test(T.checkout || '') ? T.checkout : null; /* a checkout app that also sends messages (GoKwik Engage, Shopflo): the brand's channel when no other tool is seen (2.4) */
+    const name = T.told || (cart ? T.checkout || (wa ? T.whatsapp : T.email) : wa ? T.whatsapp || T.checkout : T.email) || msgApp || null;
     return { conn: null, object: ch.target.object, name: name || 'your messaging tool', msgTool: true, unknown: !name }; };
   const targetOf = (tg) => { const cx = tg.conn && SEED.connectors?.[tg.conn];
     if (cx || !tg.conn) return { conn: tg.conn || null, name: tg.name || (cx ? cx.name : 'A person'), object: tg.object };

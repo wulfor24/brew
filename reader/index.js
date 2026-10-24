@@ -18,7 +18,7 @@ import { pageSpeed, keepSpeed } from '../health.js';
 import { answers, inferCategory, writeLine, rescoreNamed } from './stages/answers.js';
 import { socials } from './stages/socials.js';
 import { named, namedStale } from './stages/named.js';
-import { company } from './stages/company.js';
+import { company, COMPANY_V } from './stages/company.js';
 import { openAdmin, CLOSED_STAGE, reopenCheck } from './stages/admin.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -205,6 +205,9 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
        profile and the home page, once a day per stage (meta.healTried), so "No reviews found" never stands for a failed check */
     const tried = profile.meta?.healTried || {};
     const failedStages = Object.keys(profile.meta?.errors || {}).filter((k) => RERUN[k] && !!profile.host && (!tried[k] || Date.now() - Date.parse(tried[k]) >= 864e5));
+    /* a read from before the about page was read (company.js COMPANY_V) with no founders found: once, so founders and the founding
+       year come from the brand's own page (23 Oct QA 2.8) */
+    if (!failedStages.includes('company') && !!profile.host && !profile.closed && (profile.company?.v || 0) < COMPANY_V && !(profile.company?.founders || []).length && !tried.companyAbout) { failedStages.push('company'); profile.meta = { ...(profile.meta || {}), healTried: { ...(profile.meta?.healTried || {}), companyAbout: new Date().toISOString() } }; }
     /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
     const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.triedAt || ps.at || 0) >= 864e5)); /* triedAt: a kept reading's last failed try */
     if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length && !catalogStale && !reviewsStale && !nameMissing && !rivalPricesStale) return null;

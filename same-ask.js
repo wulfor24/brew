@@ -57,7 +57,7 @@ export function askLeaders(cards, { moveOf, value, noise } = {}) {
   const root = (i) => (up[i] === i ? i : (up[i] = root(up[i])));
   const jobs = list.map(jobOf); /* the same job (the reorder nudge, the cart reminder) on the same channel, written by several moves */
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++)
-    if (moveOf(list[i]) !== moveOf(list[j]) && (sameAsk(asks[i], asks[j]) || (jobs[i] && jobs[i] === jobs[j]))) up[root(i)] = root(j);
+    if (moveOf(list[i]) !== moveOf(list[j]) && (sameAsk(asks[i], asks[j]) || sameJob(jobs[i], jobs[j]))) up[root(i)] = root(j);
   const best = new Map();
   list.forEach((c, i) => { const r = root(i), b = best.get(r); if (!b || value(c) > value(b) || (value(c) === value(b) && String(c.id) < String(b.id))) best.set(r, c); });
   return new Map(list.map((c, i) => [c.id, best.get(root(i))]));
@@ -87,6 +87,9 @@ const TOPICS = [['reorder', /\b(?:re-?order|replenish|refill|runs? out|running o
   ['budget', /\b(?:shift|move|reallocate)\b[^.]{0,30}\bbudget\b|\bbudget\b[^.]{0,20}\b(?:shift|move)\b/i], ['price', /\b(?:price (?:mismatch|gap|drift)|wrong price|costs more than)\b/i]];
 const CHANNELS = [['whatsapp', /whatsapp/i], ['email', /\be-?mail|klaviyo|newsletter/i], ['sms', /\bsms|text message/i], ['ads', /\b(?:meta|facebook|instagram|google) ads?\b|\bads?\b|campaign|ad set/i], ['page', /\bpage|site|store\b/i]];
 const textOf = (c) => [c?.title, c?.sub, ...(c?.detail?.how || []), ...(c?.rows || []).flat(), c?.cta?.label].filter((x) => typeof x === 'string').join(' ');
+/* one job: the same topic, on the same channel or where one card names no channel (the reorder nudge "before bottles run out"
+   and the reorder WhatsApp on day 25 are one job) */
+export const sameJob = (a, b) => { if (!a || !b) return false; const [ta, ca] = a.split(':'), [tb, cb] = b.split(':'); return ta === tb && (ca === cb || ca === 'any' || cb === 'any'); };
 export function jobOf(c) { const t = textOf(c), topic = (TOPICS.find(([, re]) => re.test(t)) || [])[0]; if (!topic) return null; const ch = (CHANNELS.find(([, re]) => re.test(t)) || [])[0] || 'any'; return `${topic}:${ch}`; }
 
 /* what a card does to a named ad or campaign: grow it, or stop it */

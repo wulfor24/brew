@@ -797,9 +797,12 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const hero = new Set((p.catalog?.hero || []).filter((h) => prods.some((x) => x.handle === h)));
     if (!hero.size) prods.slice(0, 4).forEach((x) => hero.add(x.handle));
     const removed = new Set(p.catalog?.removed || []);
-    const items = prods.filter((x) => !removed.has(x.handle)).sort((a, b) => (hero.has(b.handle) - hero.has(a.handle))).slice(0, 12)
+    const heroAt = [...hero], at = (h) => { const i = heroAt.indexOf(h); return i < 0 ? 1e6 : i; }; /* in the heroes' own order: Shopify's best sellers first for the team (2.2), never the catalog's */
+    const items = prods.filter((x) => !removed.has(x.handle)).sort((a, b) => at(a.handle) - at(b.handle)).slice(0, 12)
       .map((x) => ({ handle: x.handle, title: x.title, price: x.priceLabel || '', img: x.img || (x.images || []).find((u) => /^https?:/.test(u)) || null, url: x.url || null, hero: hero.has(x.handle), added: !!x.addedByBrand }));
     const own = p.ads?.own || {}, ig = p.socials?.instagram, rv = p.reviews || {};
+    /* the connected ad account's own count beside the page's (2.7), for the team */
+    const liveAds = member ? realRows((await packs.getJSON(slug, 'private/connected-ledger.json', []).catch(() => [])) || []).find((e) => e?.key === 'meta.ads.live' && !e.stale)?.v || null : null;
     const N = await numbersFor(packs.getJSON, slug, { 'profile.json': p }); /* the same numbers every other screen shows */
     const s0 = (await status(slug)) || {};
     return {
@@ -817,7 +820,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       /* the one rival list, each with the freshest count of its live ads (pack-numbers.js rivals): the read and the stories say the same */
       rivals: (p.rivals || []).map((r) => { const x = N.rivals.find((y) => (r.host && y.host === r.host) || y.name === r.name); return { name: r.name, host: r.host, how: r.how || r.why || '', logo: r.logo || `https://www.google.com/s2/favicons?domain=${r.host}&sz=64`, prices: (r.prices || []).length, live: x?.live ?? null, liveAt: x?.at ? new Date(x.at).toISOString().slice(0, 10) : null, url: r.url || `https://${r.host}` }; }),
       sources: [
-        { key: 'adpage', label: 'Facebook page that runs your ads', v: own.page ? `${own.page} · ${(N.ownAds.n ?? 0).toLocaleString('en-IN')} live ads` : own.error || N.ownAds.error || p.meta?.errors?.ads ? 'Couldn’t check this time' : 'Not found', /* a failed ads stage is not "Not found" */ url: own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : null, hint: 'Paste your Facebook page link if this is wrong', found: !!own.page },
+        { key: 'adpage', label: 'Facebook page that runs your ads', v: own.page ? `${own.page} · ${(N.ownAds.n ?? 0).toLocaleString('en-IN')} live ads on the page, every ad account${liveAds ? ` · your connected account runs ${liveAds}` : ''}` : own.error || N.ownAds.error || p.meta?.errors?.ads ? 'Couldn’t check this time' : 'Not found', /* a failed ads stage is not "Not found" */ url: own.pageId ? `https://www.facebook.com/ads/library/?view_all_page_id=${own.pageId}` : null, hint: 'Paste your Facebook page link if this is wrong', found: !!own.page },
         { key: 'instagram', label: 'Instagram', v: ig?.handle ? '@' + ig.handle : ig?.error || p.meta?.errors?.socials ? 'Couldn’t check this time' : 'Not found', /* a failed socials stage is not "Not found" */ url: ig?.url || null, hint: 'Paste your Instagram profile link', found: !!ig?.handle },
         { key: 'reviews', label: 'Reviews and ratings', v: reviewsCap(N)?.replace(/\.$/, '') || (N.reviews.n != null ? `${N.reviews.n.toLocaleString('en-IN')} reviews and ratings` : N.reviews.error ? 'Couldn’t check this time' : 'No reviews found') /* N.reviews.error carries a failed or timed-out reviews stage (pack-numbers.js) */, url: (rv.platforms || [])[0]?.url || null, hint: 'Paste the page where your reviews live (Judge.me, Loox, Amazon…)', found: N.reviews.n != null }
       ],
