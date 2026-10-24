@@ -102,3 +102,11 @@ test('a Recreate take is a hard stop in the publish check: someone else’s face
   const r = readyOf({ family: 'post', pkg: { title: 'Curly gel', copy: 'Crunchy?', video: 'gen/j2-v.mp4', film: { cover: 'gen/c.jpg', captions: { n: 0, none: 'No words are spoken in it.' } } }, brand: 'Acme', host: 'acme.com', recreated: { by: 'Michaela Vernice' } });
   assert.equal(r.ready, false); assert.match(r.checks[0].t, /Michaela Vernice’s video with your product swapped in/);
 });
+
+test('a film never casts an AI expert and never says an unbacked endorsement; a caption that doesn’t name the product is flagged', async () => {
+  const src = fs.readFileSync(new URL('../jam2/studio.js', import.meta.url), 'utf8');
+  assert.match(src, /no doctor, dermatologist, scientist, pharmacist or other expert, no lab coat/); assert.equal((src.match(/expertOk\(ctx\) \? '' : NO_EXPERT/g) || []).length, 2, 'the UGC film and the viral short');
+  const r = readyOf({ family: 'post', pkg: { title: 'Stop shower hair fall', copy: 'Tired of clumps of hair in your shower?', video: 'gen/j2-v.mp4', film: { srt: 'gen/a.srt', cover: 'gen/c.jpg', captions: { n: 3 } } }, product: { name: 'Seal Deal Curl Gel - 50 ml' }, brand: 'Arata', host: 'arata.in' });
+  assert.ok(r.checks.find((c) => c.k === 'match' && !c.ok && c.soft), 'words written for another idea');
+  assert.ok(!readyOf({ family: 'post', pkg: { title: 'Curls that hold', copy: 'Seal Deal Curl Gel keeps curls defined.', video: 'v', film: { srt: 'a', cover: 'c', captions: { n: 2 } } }, product: { name: 'Seal Deal Curl Gel - 50 ml' }, brand: 'Arata', host: 'arata.in' }).checks.some((c) => c.k === 'match'));
+});

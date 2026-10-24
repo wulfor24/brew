@@ -116,6 +116,10 @@ export function readyOf({ family, action = '', pkg = {}, card = {}, product = nu
   if (p.video && p.film) { const c = p.film.captions || {};
     checks.push(c.none ? { k: 'captions', ok: true, t: c.none } : c.n && p.film.srt ? { k: 'captions', ok: !c.approx, soft: !!c.approx, t: c.approx ? 'Captions are set from the script, timed by estimate: watch it once before it goes up' : `Captions on (${c.n} lines), and an .srt for the platform’s own captions` } : { k: 'captions', ok: false, t: c.error || 'No captions: muted feeds will play it without words' });
     if (!p.film.cover) checks.push({ k: 'cover', ok: false, soft: true, t: 'No cover picked: the platform will take a frame' }); }
+  /* the words were written for this piece: they name the product it shows (a caption written for another idea before the film was made reads wrong) */
+  const key = String(product?.name || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w.length >= 4 && !/^(pack|with|from|this|that|combo|bottle|tube)$/.test(w)).slice(0, 3);
+  const said = parts.filter((x) => ['caption', 'copy', 'primaryText', 'title', 'headline'].includes(x.k)).map((x) => String(x.value || '')).join(' ').toLowerCase();
+  if (key.length && said.trim() && !key.some((w) => said.includes(w))) checks.push({ k: 'match', ok: false, soft: true, t: `The words don’t mention ${tidy(product.name, 50)}: they may have been written for another idea. Ask Brew to rewrite them from this ${p.video ? 'film' : 'picture'}.` });
   if (cardProduct?.name && product?.name && cardProduct.name !== product.name) checks.push({ k: 'product', ok: false, soft: true, t: `It shows ${tidy(product.name, 50)}; the card is about ${tidy(cardProduct.name, 50)}` });
   else if (product?.name) checks.push({ k: 'product', ok: true, t: `Shows ${tidy(product.name, 60)}, the card’s product` });
   const places = p.video ? [] /* a film runs in the shape it was made; its cover and GIF are listed with it */ : (PLACES[Array.isArray(p.aplus) && p.aplus.length ? 'aplus' : family] || []).map(([shape, where]) => ({ shape, where }));

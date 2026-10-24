@@ -6,6 +6,7 @@
 import fs from 'node:fs'; import path from 'node:path';
 import { SIZES } from './catalogue.js';
 import { srtOf } from '../video-finish.js';
+import { claimFlags } from '../claims.js';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(HERE, '..', 'data', f), 'utf8')); } catch { return d; } };
@@ -103,6 +104,13 @@ export function defaults(ctx, board = null) {
     sizes, seconds: kind === 'video' ? R.seconds || picks[0]?.seconds || 10 : null, count: countOf(card), blocked: blockedFor(ctx) };
 }
 
+/* who may appear in a film: an everyday customer, never shown as a doctor, dermatologist, scientist or other expert (an AI person
+   in a lab coat is a fake endorsement: Arata 24 Oct, a viral short copied a real dermatologist's post with an AI one), unless the
+   Brand Book holds the brand's own, consented expert */
+const NO_EXPERT = 'Everyone on camera is an everyday customer: no doctor, dermatologist, scientist, pharmacist or other expert, no lab coat, scrubs, clinic or laboratory, and nobody presented as a professional or as endorsing the product.';
+const expertOk = (ctx) => (ctx.bbv?.cast || []).some((c) => c.kind === 'real' && /doctor|dermatolog|expert|scientist|founder/i.test(`${c.label || ''}`));
+/* what is said in a film: a claim the store doesn't make is taken out before the model ever hears it */
+const sayable = (line, ctx) => { const flags = claimFlags(line, ctx.source || ''); if (!flags.length) return line; let out = line; for (const f of flags) out = out.split(/(?<=[.!?])\s+/).filter((sn) => !sn.toLowerCase().includes(String(f.phrase).toLowerCase())).join(' '); return out.replace(/\b(dermatologist|doctor)[- ](approved|recommended|tested)\b/gi, '').replace(/\s{2,}/g, ' ').trim(); };
 export function createStudio({ engines, maker, profileOf = async () => null, isMock = () => false, spend = () => true, finish = null, log = console }) {
   /* a film made ready to post (video-finish.js): spoken words as captions (an .srt, and burned in for muted feeds), a cover with the
      headline, a looping GIF for a short silent clip. Local and nearly free; a step that can't run leaves the film as it is and says why */
@@ -239,20 +247,22 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     } else if (st.job === 'viral-short') { /* a viral-style short: several shots, up to 30 s, in the pattern of the reference when there is one */
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); await ensureProfile(ctx);
       const photos = cr.photosOf(ctx, ctx.profile).map((u) => engines.pub(u)), o = hf.pick('viral-short', ctx.tier || 'default'), secs = Math.max(8, Math.min(30, +spec.seconds || st.seconds || 30));
-      const beats = (ctx.ref?.beats || []).slice(0, 6).map((b, k) => `${k + 1}) ${tidy(b.shot || '', 120)}${b.text ? ` (they say or show: ${tidy(b.text, 80)})` : ''}`).join(' '), line = tidy([words.headline, words.sub].filter(Boolean).join(' '), 260);
+      const beats = (ctx.ref?.beats || []).slice(0, 6).map((b, k) => `${k + 1}) ${tidy(b.shot || '', 120)}${b.text ? ` (they say or show: ${tidy(b.text, 80)})` : ''}`).join(' '), line = sayable(tidy([words.headline, words.sub].filter(Boolean).join(' '), 260), ctx);
+      if (!expertOk(ctx) && !(ctx.notes || []).includes(NO_EXPERT)) ctx.notes = [...(ctx.notes || []), NO_EXPERT]; /* the art direction never casts an expert */
       const d = await cr.direct(ctx, board, words, size, { ...st, people: 'person' }, { film: true }).catch(() => null);
-      const input = { ...o.input, prompt: tidy([st.look, beats ? `Follow this shot pattern from a video that went viral, with our product and our people: ${beats}` : 'Shots: 1) the hook, a problem in one second; 2) the product in use; 3) the result; 4) the reason to buy; 5) an ending that loops.', d?.moment ? `Who and where: ${d.moment}` : '', ctx.product?.name ? `The product (exactly as in the reference photos): ${ctx.product.name}. ${cr.productLine(ctx.profile)}` : '', line ? `What is said: "${line}"` : '', spec.direction || '', 'Vertical phone video, natural light, no on-screen text.'].filter(Boolean).join(' '), 4000),
+      const input = { ...o.input, prompt: tidy([st.look, beats ? `Follow this shot pattern from a video that went viral, with our product and our people: ${beats}` : 'Shots: 1) the hook, a problem in one second; 2) the product in use; 3) the result; 4) the reason to buy; 5) an ending that loops.', d?.moment ? `Who and where: ${d.moment}` : '', ctx.product?.name ? `The product (exactly as in the reference photos): ${ctx.product.name}. ${cr.productLine(ctx.profile)}` : '', line ? `What is said: "${line}"` : '', spec.direction || '', expertOk(ctx) ? '' : NO_EXPERT, 'Vertical phone video, natural light, no on-screen text.'].filter(Boolean).join(' '), 4000),
         image_urls: photos, duration: secs, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
       const e = await hf.estimate(o.id, input), out = await runHF('short', o.id, input, { maxMs: 30 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.short', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.32 * secs });
       Object.assign(take, { file, pattern: beats ? (ctx.ref?.url || 'the reference') : null });
       await finishFilm(take, { words, line, spoken: true }).catch((e2) => log.warn?.('[studio] finish', e2.message));
     } else { /* UGC / TikTok: a person with the real product, talking, Seedance with the product photos as references */
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); await ensureProfile(ctx);
-      const photos = cr.photosOf(ctx, ctx.profile).map((u) => engines.pub(u)), o = hf.pick('ugc-video', ctx.tier || 'default'), line = tidy([words.headline, words.sub].filter(Boolean).join(' '), 220);
+      const photos = cr.photosOf(ctx, ctx.profile).map((u) => engines.pub(u)), o = hf.pick('ugc-video', ctx.tier || 'default'), line = sayable(tidy([words.headline, words.sub].filter(Boolean).join(' '), 220), ctx);
       /* the same art direction as a photo: the brand's market, cast, places and taste decide who is on camera and where (23 Oct, Arata:
          the look alone gave a Western presenter for an Indian hair brand) */
+      if (!expertOk(ctx) && !(ctx.notes || []).includes(NO_EXPERT)) ctx.notes = [...(ctx.notes || []), NO_EXPERT]; /* the art direction never casts an expert */
       const d = await cr.direct(ctx, board, words, size, { ...st, people: 'person' }, { film: true }).catch(() => null);
-      const input = { ...o.input, prompt: tidy([st.look, d?.moment ? `Who, where and how: ${d.moment}` : '', ctx.product?.name ? `The product (exactly as in the reference photos): ${ctx.product.name}. ${cr.productLine(ctx.profile)}` : '', st.says && line ? `They say: "${line}"` : '', 'Vertical phone video, natural light, real person, no on-screen text.'].filter(Boolean).join(' '), 2400),
+      const input = { ...o.input, prompt: tidy([st.look, d?.moment ? `Who, where and how: ${d.moment}` : '', ctx.product?.name ? `The product (exactly as in the reference photos): ${ctx.product.name}. ${cr.productLine(ctx.profile)}` : '', st.says && line ? `They say: "${line}"` : '', expertOk(ctx) ? '' : NO_EXPERT, 'Vertical phone video, natural light, real person, no on-screen text.'].filter(Boolean).join(' '), 2400),
         image_urls: photos, duration: +spec.seconds || st.seconds || 10, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
       const e = await hf.estimate(o.id, input), out = await runHF('ugc', o.id, input, { maxMs: 25 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.ugc', provider: 'higgsfield', model: o.id, usd: e.usd ?? 3 });
       Object.assign(take, { file });
