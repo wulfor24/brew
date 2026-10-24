@@ -160,7 +160,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   events?.onRemote(remote).catch((e) => log.warn('[build] events listen', e.message));
   const loadHistory = (slug) => { const x = st(slug); if (x.loaded || x.mine || !events) return Promise.resolve();
     return (x.loading ||= events.history(slug).then((h) => { x.ids ||= new Set(); const all = [...h, ...(x.early || [])].filter((e, i, arr) => e._id == null || arr.findIndex((y) => y._id === e._id) === i).sort((a, b) => (a._id ?? 0) - (b._id ?? 0));
-      x.early = []; const cut = all.map((e) => e.k).lastIndexOf('_reset'); for (const e of all.slice(cut + 1)) { if (e._id != null) x.ids.add(e._id); x.events.push(e); }
+      x.early = []; const cut = all.map((e) => e.k).lastIndexOf('_reset'); for (const e of all.slice(cut + 1)) { if (e._id != null) { if (x.ids.has(e._id) && x.events.some((y) => y._id === e._id)) continue; x.ids.add(e._id); } x.events.push(e); } /* a line a notice already brought (a reset that landed first) is never added twice */
+      x.events.sort((a2, b2) => (a2._id ?? 0) - (b2._id ?? 0));
       x.maxId = Math.max(x.maxId || 0, ...all.map((e) => e._id || 0)); x.loaded = true; })
       .catch((e) => { log.warn('[build] events history', slug, e.message); x.loaded = true; }).finally(() => { x.loading = null; })); };
   const subscribe = (slug, f, { replay = true } = {}) => { const x = st(slug);

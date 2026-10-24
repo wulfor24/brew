@@ -39,3 +39,16 @@ test('Postgres group', { skip: !url && 'no Postgres' }, async (t) => {
   });
   await db.close();
 });
+
+test('build progress: a reset and a line that land while the history is on its way are never shown twice', async () => {
+  process.env.BUILD_RESUME_OFF = '1';
+  const { createBuilder } = await import('../build.js');
+  let remote = null, release = null; const hist = new Promise((r) => { release = r; });
+  const events = { persist() {}, reset() {}, onRemote: async (fn) => { remote = fn; }, history: () => hist };
+  const b = createBuilder({ ROOT: fs.mkdtempSync(path.join(os.tmpdir(), 'qv2b-')), packs: { getJSON: async () => null, put: async () => {}, list: async () => [] }, ai: { live: false }, treg: { onCharge() {}, call: async () => ({}), meter: { dayUsd: 0 } }, events, log: quiet });
+  const got = []; b.subscribe('zz-race', (e) => got.push(e.k));
+  remote('zz-race', { k: '_reset', _id: 4 }); remote('zz-race', { k: 'read', _id: 5 });
+  release([{ k: 'old', _id: 3 }, { k: '_reset', _id: 4 }, { k: 'read', _id: 5 }]); await new Promise((r) => setTimeout(r, 50));
+  remote('zz-race', { k: 'read', _id: 5 }); remote('zz-race', { k: 'moves', _id: 6 });
+  assert.deepEqual(got, ['read', 'moves']);
+});
