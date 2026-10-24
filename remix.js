@@ -28,7 +28,7 @@ import { realRows, acctRows } from './connectors/common.js';
 import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // a question gets an answer, never a version; "keep the photo" never makes one
 import { EVIDENCE_ASK, proofAnswer } from './evidence.js'; // "what's the evidence?" is answered from the card's own proof
 import { moveNo } from './value.js';
-import { numbersIn } from './fact-gate.js'; // a budget draft's amounts against its card's
+import { budgetMatch } from './budget-match.js'; // a budget draft against its card and the account
 import { safeFetch, stripTags, UA as READ_UA } from './reader/util.js'; // the product page as it reads today, before copy is written
 import { claimFlags, claimCheck, copyFlags, sourceText, CLAIMS_RULE, COPY_RULE, checkCopyIn } from './claims.js'; // invented codes, guarantees, timed results and copy that reads wrong are flagged before shipping
 import { dejargon } from './plain.js'; // jam names in plain words, like the cards
@@ -503,19 +503,7 @@ export function createRemix(o) {
     return `${base}\n${sourceText(card.post?.evidence || [], card.evidence || [], card.liveOnly || /^live-/.test(card.id || '') ? [card.title, card.sub, card.rows] : [])}`; };
   /* the card's amounts (₹/$ in its title, body and rows) against the draft's: a budget move whose draft moves another amount,
      or between campaigns the card doesn't name, fails until the draft says what the card says */
-  const budgetMatch = (card, ch, t = null) => { if (ch.family !== 'meta_ops' || !/(shift|scale)_budget$/.test(ch.action || '')) return null;
-    /* the account's own budget card is gone (today's numbers no longer support the move): the saved draft can't ship as it is */
-    if (/^live-meta-shift/.test(String(ch.cardId || '')) && !card?.shift) return { k: 'Your Meta account no longer supports this move: the budget card was withdrawn on today’s numbers. Check the campaigns in Ads Manager before moving anything.', ok: false };
-    /* every campaign or ad set the draft moves is a real one in the connected account, never a made-up name (2.6) */
-    const live = t?.member ? t.liveLedger?.['meta.campaigns.7d'] : null, known = live && !live.stale ? String(live.v).split(/;\s*/).map((x) => x.split(':')[0].trim().toLowerCase()).filter(Boolean) : [];
-    const names = (ch.pkg?.items || []).map((x) => String(x?.name || '').trim()).filter(Boolean), unknown = known.length ? [...new Set(names.filter((n) => !known.some((k) => k === n.toLowerCase() || k.includes(n.toLowerCase()) || n.toLowerCase().includes(k))))] : [];
-    if (unknown.length) return { k: `${unknown.slice(0, 2).map((n) => `“${n.slice(0, 60)}”`).join(' and ')} ${unknown.length === 1 ? 'isn’t a campaign' : 'aren’t campaigns'} in your Meta account this week. Use one of yours: ${known.slice(0, 3).map((k) => k.slice(0, 40)).join('; ')}`, ok: false, fix: true };
-    const money = (x) => numbersIn(JSON.stringify(x ?? '')).filter((n) => /^[^\d%]+\d/.test(n));
-    const said = [...new Set(money([card.title, card.sub, card.shift ? [card.shift.perDay] : []]))], made = new Set(money(ch.pkg));
-    const camps = card.shift ? [card.shift.from, card.shift.to] : [], txt = JSON.stringify(ch.pkg || {});
-    const offAmt = said.length && !said.some((n) => made.has(n)), offCamp = camps.filter((x) => x && !txt.includes(x));
-    if (!offAmt && !offCamp.length) return { k: 'The draft moves what the card says', ok: true };
-    return { k: offAmt ? `The card says ${said.join(' or ')}; the draft moves ${[...made].join(', ') || 'no amount'}` : `The draft doesn't name ${offCamp.join(' and ')}, the campaigns the card moves`, ok: false, fix: true }; };
+  /* budgetMatch (budget-match.js): a budget draft moves what its card says, between real campaigns */
   const evaluate = (t, ch) => {
     const card = t.cards.get(ch.cardId) || {}; const act = actOf(ch.action); const r = recipeFor(card);
     const pubT = ch.pkg ? publicText(ch.family, ch.action, ch.pkg) : [];
@@ -743,7 +731,15 @@ export function createRemix(o) {
   // old changes (made before packages) get one built from their copy
   /* the spend a saved change shows, made again from its package (changes saved before the budget floor came out heal on open) */
   const healCost = (ch) => { const act = actOf(ch.action); if (!act?.money) return; ch.amount = amountOf(act, ch.family, ch.pkg); ch.costLabel = ch.amount > 0 ? `About ${inr(ch.amount)} a week` : ['meta_ad', 'search', 'meta_ops'].includes(ch.family) ? 'A budget to confirm' : 'A one-off cost to confirm'; };
-  const ensurePkg = (t, ch) => { if (ch.pkg) { healCost(ch); return ch; } const c = t.cards.get(ch.cardId) || {}; ch.family = familyOf(ch.action); ch.pkg = cleanPkg(ch.family, ch.action, mockPkg(ch.family, ch.action, c, 0, ch.angle, FACTS), clean); ch.pkg.knobs = {}; ch.thread ||= []; return sync(t, ch, c); };
+  /* a budget draft's campaigns and amounts are the account's card, never a model's guess: one that no longer matches its card
+     (saved before the card carried its move: other campaigns, or no amounts) takes the card's move again when the jam opens (1.1).
+     A smaller move the team asked for stays theirs; the budget check still says when it differs from the card. Free */
+  const healShift = (t, ch) => { if (ch.family !== 'meta_ops' || !/(^|\.)shift_budget$/.test(ch.action || '')) return; const c = t.cards.get(ch.cardId);
+    if (!c?.shift?.from || !c.shift.to) return; const items = ch.pkg?.items || [], names = items.map((x) => String(x?.name || ''));
+    const amounts = items.some((x) => /\d/.test(`${x?.now || ''}${x?.next || ''}`)); /* a smaller move the team asked for keeps its own amount */
+    if (names.includes(c.shift.from) && names.includes(c.shift.to) && amounts) return; const m = mockPkg('meta_ops', ch.action, c, 0, '', FACTS);
+    ch.pkg = { ...ch.pkg, summary: m.summary, items: m.items, rule: m.rule, checkAt: m.checkAt, spendChangeWeek: 0 }; };
+  const ensurePkg = (t, ch) => { if (ch.pkg) { healShift(t, ch); healCost(ch); return ch; } const c = t.cards.get(ch.cardId) || {}; ch.family = familyOf(ch.action); ch.pkg = cleanPkg(ch.family, ch.action, mockPkg(ch.family, ch.action, c, 0, ch.angle, FACTS), clean); ch.pkg.knobs = {}; ch.thread ||= []; return sync(t, ch, c); };
   /* a Studio jam's ready-to-publish parts and check (publish-ready.js), from the version on the stage */
   const publishFor = (t, ch) => { if (!studioOf(t, ch)) return null; try {
     const head = headOf(t, ch), sv = head?.studio || null, card = t.cards.get(ch.cardId) || {}, cat = catalogOf(t) || [];

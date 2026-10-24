@@ -97,7 +97,8 @@
 .am3-b b { overflow-wrap: anywhere; } .am3-b small { color: var(--muted, #6b6b6b); }
 .am3-bar { position: relative; height: 18px; display: grid; gap: 3px; }
 .am3-bar span { display: block; height: 7px; border-radius: 4px; }
-.am3-bar .is-now { background: var(--line, #d4d4d4); } .am3-bar .is-next { background: var(--ink, #111); }
+/* drawn in the text's own colour, so both bars read on a light or a dark card (they vanished on the dark stage) */
+.am3-bar .is-now { background: color-mix(in srgb, currentColor 28%, transparent); } .am3-bar .is-next { background: currentColor; }
 .am3-v { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; } .am3-v span { color: var(--muted, #6b6b6b); }
 .am2-note { font-size: 13px; color: var(--muted, #6b6b6b); margin: 4px 0 0; }
 

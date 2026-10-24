@@ -6,7 +6,7 @@
 import { moneyFmt } from './brand-pack.js';
 import { roasX } from './connectors/common.js';
 
-export const DEMO_V = 4; /* 4: Google Analytics and Google Ads are separate accounts */
+export const DEMO_V = 6; /* 4: Google Analytics and Google Ads are separate accounts; 5: the budget card carries its shift (3.9) */
 const seeded = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909), (h >>> 0) / 4294967296)); };
 const round = (x, to = 1) => Math.round(x / to) * to;
 const pct = (x, d = 0) => `${(+x).toFixed(d)}%`;
@@ -67,7 +67,7 @@ export function demoFor(profile, seed = {}) {
 
   /* the cards each account unlocks (hidden until it is connected: onlyWhen) */
   const D = 'demo account';
-  const card = (id, k, o) => ({ id: `demo-${k}-${id}`, onlyWhen: k, demo: true, lane, roles: o.roles, agent: o.agent, sector: o.sector, type: o.type, kind: 'rows', time: o.time || '6 min', src: `${CONN_NAME[k]} · ${D}`, title: o.title, sub: o.sub, rows: o.rows, badge: o.badge, detail: o.detail, cta: { label: o.cta } });
+  const card = (id, k, o) => ({ id: `demo-${k}-${id}`, onlyWhen: k, demo: true, lane, roles: o.roles, agent: o.agent, sector: o.sector, type: o.type, kind: 'rows', time: o.time || '6 min', src: `${CONN_NAME[k]} · ${D}`, title: o.title, sub: o.sub, rows: o.rows, badge: o.badge, detail: o.detail, cta: { label: o.cta }, ...(o.shift ? { shift: o.shift } : {}) });
   const sp = (x) => money(round(x, india ? 100 : 1));
   const worst = camp[0], best = camp[1], rt = camp[2];
   const cards = [
@@ -88,7 +88,10 @@ export function demoFor(profile, seed = {}) {
       rows: [['Campaign', rt.name], ['Frequency, 7 days', rt.freq.toFixed(1)], ['Spend a day', sp(rt.spend)], ['Tired ads', n0(meta.tired)]], detail: { why: ['Above 3.5 a week, clicks fall and cost rises.', 'Fresh versions of winners reset it fastest.'], how: ['Pick the 3 best ads by cost per order', 'Make 2 new versions of each', 'Pause the tired ones as the new ones go live'] } }),
     card('shift', 'meta', { agent: 'performance', sector: 'ads', type: 'decision', roles: ['growth', 'founder'], badge: [`${roasX(best.roas)}`, 'ok'], cta: 'Shift budget',
       title: `Move ${sp(worst.spend * 0.2)} a day to ${best.name.split(' | ')[0]}`, sub: `${best.name} returns ${roasX(best.roas)} and ${worst.name} ${roasX(worst.roas)}. Moving a fifth of the weaker budget, in one step, keeps learning intact.`,
-      rows: [['From', `${worst.name} · ${roasX(worst.roas)}`], ['To', `${best.name} · ${roasX(best.roas)}`], ['Move a day', sp(worst.spend * 0.2)], ['Cost per first order', money(round(cpa, india ? 10 : 1))]], detail: { why: [`The catalog campaign earns more per ${india ? 'rupee' : 'dollar'}.`, 'One step of 20% keeps the learning phase.'], how: ['Move the budget tomorrow at 7 am', 'Read it after 7 days', 'Move it back if cost per order rises 15%'] } }),
+      rows: [['From', `${worst.name} · ${roasX(worst.roas)}`], ['To', `${best.name} · ${roasX(best.roas)}`], ['Move a day', `${sp(worst.spend * 0.2)} (a fifth of ${sp(worst.spend)})`], [`${worst.name.slice(0, 28)} a day`, `${sp(worst.spend)} → ${sp(worst.spend * 0.8)}`], [`${best.name.slice(0, 28)} a day`, `${sp(best.spend)} → ${sp(best.spend + worst.spend * 0.2)}`]],
+      /* the same budget data a real account's card carries (connectors/meta.js), so the simulated accounts show the budget screen too (3.9) */
+      shift: { from: worst.name, to: best.name, fromRoas: +worst.roas.toFixed(2), toRoas: +best.roas.toFixed(2), perDay: round(worst.spend * 0.2, india ? 100 : 1), fromDay: worst.spend, toDay: best.spend, fromId: null, toId: null, fromAct: null, toAct: null, fromImg: null, toImg: null },
+      detail: { why: [`The catalog campaign earns more per ${india ? 'rupee' : 'dollar'}.`, 'One step of 20% keeps the learning phase.'], how: ['Move the budget tomorrow at 7 am', 'Read it after 7 days', 'Move it back if cost per order rises 15%'] } }),
     card('brand', 'google', { agent: 'performance', sector: 'ads', type: 'idea', roles: ['growth', 'founder', 'ecom'], badge: [pct(branded), 'info'], cta: 'Launch the ad group',
       title: `${pct(branded)} of your search clicks are people typing ${name}`, sub: `Searches like ${terms[0] ? `“${terms[0]}”` : 'your category'} bring few clicks, so new buyers who don’t know ${name} yet rarely find you. One category ad group tests it on a small budget.`,
       rows: [['Searches for your name', pct(branded)], ['Category searches', pct(100 - branded)], ['Search spend, 30 days', big(gspend)], ['Term to test', terms[0] || 'your category']], detail: { why: ['Branded clicks would mostly come anyway.', 'Category searches are where new buyers start.'], how: [`Start with ${terms.slice(0, 3).map((t) => `“${t}”`).join(', ') || 'three category terms'}`, 'Send them to the best-selling product page', 'Read cost per first order after 14 days'] } }),

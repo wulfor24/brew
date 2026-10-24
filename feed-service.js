@@ -597,7 +597,10 @@ export function createFeedService(o) {
       if (have) { /* a saved copy heals: the photo, asset and button as the card's words now call for (never over a picture made in the jam) */
         if (p.images && !(have.images || []).some((u) => /^\/?gen\//.test(u)) && JSON.stringify(have.images) !== JSON.stringify(p.images)) have.images = clone(p.images);
         if (p.make && JSON.stringify(have.make) !== JSON.stringify(p.make)) have.make = clone(p.make);
-        if (p.cta?.label && have.cta?.label !== p.cta.label) have.cta = clone(p.cta); } }
+        if (p.cta?.label && have.cta?.label !== p.cta.label) have.cta = clone(p.cta);
+        /* a budget card's move (campaigns, amounts, ids) and the figures it may quote follow today's read, or go when the read has none:
+           a saved copy kept yesterday's move, so its draft could move another amount than the card said (1.1) */
+        for (const k of ['shift', 'liveNums']) { if (p[k] !== undefined) { if (JSON.stringify(have[k]) !== JSON.stringify(p[k])) have[k] = clone(p[k]); } else if (have[k] !== undefined) delete have[k]; } } }
   };
   /* cards that read as the same thing: one move's cards; one live check's readings (catalog ones collapse to the newest); one
      template of live card (AI-answer gaps); research from one rival, or one more trend or how-to */
