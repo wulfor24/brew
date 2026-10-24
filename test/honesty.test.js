@@ -75,7 +75,7 @@ test('PDFs are drawn on download: once per move version (a failed render is trie
   const b = createBuilder({ ROOT, packs: P, ai: { onCharge() {} }, treg: { onCharge() {} }, log: quiet, modules: { reader: null, brief: null, moves: null, pdf } });
   await b.healPdfs(slug);
   let st = await P.getJSON(slug, 'status.json');
-  assert.deepEqual(st.pdfs, {}, 'a rule change forgets the saved PDFs instead of drawing them all'); assert.equal(st.pdfV, 9); assert.deepEqual(drawn, []);
+  assert.deepEqual(st.pdfs, {}, 'a rule change forgets the saved PDFs instead of drawing them all'); assert.equal(st.pdfV, 10); assert.deepEqual(drawn, []);
   const r = await b.pdfOn(slug, 2); assert.equal(r.name, '2 Two.pdf'); assert.ok(r.buf?.length);
   assert.deepEqual(drawn, [2], 'drawn on its first download, after one retry');
   await b.pdfOn(slug, 2); assert.deepEqual(drawn, [2], 'the second download is served from the pack');

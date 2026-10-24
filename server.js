@@ -897,6 +897,8 @@ const brandFiles = async (req, res, u) => {
   /* /b/<slug>/pdf/move-<n>.pdf: the move's PDF, drawn on this first download and kept until the move changes */
   const mn = what.slice(4).match(/^move-(\d{1,4})\.pdf$/i);
   if (mn) { const v = await viewerOf(req, slug); let pp = v.member ? (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]] : null, pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null;
+    /* a team PDF drawn under older PDF rules (builder.pdfV) is drawn again from the team's copy, like the shared ones are */
+    if (pb && builder.pdfV && (await packs.getJSON(slug, 'private/pdf-ver.json', {}).catch(() => ({})))?.[+mn[1]] !== builder.pdfV) pb = null;
     /* a team-only move with no PDF yet (a weekly private run) is drawn now from the team's copy, never the shared one */
     const pmv0 = v.member && !pb ? (await packs.getJSON(slug, 'private/moves.json', {}).catch(() => ({})))?.[+mn[1]] : null, pk0 = pmv0 ? await loadBrand(slug).catch(() => null) : null, pmv = pmv0 ? (pk0?.fitMove ? pk0.fitMove(pmv0) : markMoveClaims(pmv0, packSource(pk0))) : null;
     if (pmv) { try { await builder.pdfFor(slug, pmv, { priv: true }); pp = (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]]; pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null; } catch (e) { console.warn('[pdf] private', slug, mn[1], e.message); }

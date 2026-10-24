@@ -29,6 +29,7 @@ import { sandboxName, virtualFile, demoSid } from './demo-mode.js'; // Demo Mode
 import { markMoveClaims, sourceText } from './claims.js'; // saved moves: a claim the store never made is marked as the team's call
 import { pastOf, liveStat } from './festival-past.js'; // a festival move after its festival: marked past, its cards off the feed
 import { sellable } from './product-match.js'; // a listing a shopper can buy (never a test or duplicate listing)
+import { markStat, reviewTexts } from './stat-check.js'; // a cover number means what its label says, or reads "to confirm"
 
 /* the raw material of a hook, for every draft plan (drafts.js hookBlock), for every brand: real review lines (top 5, at most
    120 characters, the read's chosen quotes first, no low ratings) and the three rival ads live longest (days, format, their
@@ -286,7 +287,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const PLAIN_SEC = new Set(['plan', 'found']);
   const plainLine = (x) => (typeof x === 'string' && x ? dejargon(x) : x);
   const fitIndexIn = (docs0) => { const docs = tidyStats(docs0); return docs?.[0] ? { ...docs, 0: fitIndex(docs[0], docs) } : docs; }; /* no zero or repeated cover numbers across the brand's moves */ /* Move 00 rebuilt from the moves as they are now (move-index.js) */
-  const fitMoves = (ms, keep, claimSrc = '', banned = null, cur = '') => Object.fromEntries(Object.entries(ms || {}).map(([n, m1]) => { const m0 = tidyMove(cur ? usdDeep(m1, cur) /* SEO tools' dollars read in the brand's currency (QA 20 Oct) */ : m1) /* one date stamp, no machine lines or empty blocks (move-tidy.js) */; const m = claimSrc || banned ? markMoveClaims(m0, claimSrc, { banned }) : m0; /* a code or guarantee the store never made reads as the team's call (QA-25); a claim in a title, cover or table and a banned word go to "To confirm" (QA 20 Oct) */ return [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(plainLine(m.title), keep), gives: plainLine(m.gives), live: plainLine(m.live), statLabel: plainLine(m.statLabel), ...festivalNow(m) /* a festival plan after its festival says so; its countdown counts from today */,
+  const fitMoves = (ms, keep, claimSrc = '', banned = null, cur = '', statCtx = null) => Object.fromEntries(Object.entries(ms || {}).map(([n, m1]) => { const m0 = tidyMove(cur ? usdDeep(m1, cur) /* SEO tools' dollars read in the brand's currency (QA 20 Oct) */ : m1) /* one date stamp, no machine lines or empty blocks (move-tidy.js) */; const m2 = claimSrc || banned ? markMoveClaims(m0, claimSrc, { banned }) : m0, m = statCtx && +n > 0 ? markStat(m2, statCtx) : m2; /* a code or guarantee the store never made reads as the team's call (QA-25); a claim in a title, cover or table and a banned word go to "To confirm" (QA 20 Oct) */ return [n, m && typeof m === 'object' && m.title ? { ...m, title: sentenceCase(plainLine(m.title), keep), gives: plainLine(m.gives), live: plainLine(m.live), statLabel: plainLine(m.statLabel), ...festivalNow(m) /* a festival plan after its festival says so; its countdown counts from today */,
     ...(Array.isArray(m.sections) ? { sections: m.sections.map((sec) => ({ ...sec, blocks: (sec.blocks || []).map((b) => (b?.rows ? { ...b, rows: b.rows.map(ipRow) } : PLAIN_SEC.has(sec.kind) && b?.t === 'h3' ? { ...b, text: plainLine(b.text) } : PLAIN_SEC.has(sec.kind) && b?.t === 'list' && Array.isArray(b.items) ? { ...b, items: b.items.map(plainLine) } : b)) })) } : {}), /* the plan's and the findings' headings and points in plain words; code in examples stays (moves audit 20 Oct) */
     ...(Array.isArray(m.sources) ? { sources: m.sources.map((x) => (x && typeof x === 'object' && x.label ? { ...x, label: dejargon(x.label), url: linkOf(x.url) } : x)) } : {}),
     ...(Array.isArray(m.meta?.cites) ? { meta: { ...m.meta, cites: m.meta.cites.map((c) => (c && typeof c === 'object' ? { ...c, url: linkOf(c.url) } : c)) } } : {}) } : m]; })); /* source names in plain words (QA FEED-ARV-06: "catalogue (products.json)") */
@@ -379,7 +380,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     const moveSrc = sourceText(Object.values(facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), catalogOf(profile), hooks.reviewQuotes, config?.about || '', seed?.brand?.about || '');
     let bannedRe = null; try { bannedRe = config?.banned ? new RegExp(config.banned, 'i') : null; } catch { bannedRe = null; }
     const neverSay = [...new Set([...(book.neverSay || []), ...blockWords(book.rulebook || [])])].filter((w) => String(w).trim().length >= 3); /* a blocking rule's words join the banned check */
-    const moveDocs = fitIndexIn(fitMoves(moves, keepOf({ profile, config, seed }), moveSrc, bannedRe, config?.currency));
+    /* what a cover number is checked against (stat-check.js): the catalog's prices and every review the read kept */
+    const statCtx = profile ? { products: (profile.catalog?.products || []).map((x) => ({ title: x.title, type: x.type, price: x.price })), reviews: reviewTexts(profile), currency: config?.currency || profile.currency, brand: profile.brandName || profile.name } : null;
+    const moveDocs = fitIndexIn(fitMoves(moves, keepOf({ profile, config, seed }), moveSrc, bannedRe, config?.currency, statCtx));
     const seedD = moveBadges(fitCards(withDemo(fitPhotos(socialize(visualize(seed, { slug, config, staticText: statics, profile }), social, { profile }), profile), demo), { profile, config, seed, status }), moves, staleMoves);
     return finish({
       slug, kind: 'generated', ready: !!status.ready, status, demo, numbers,
@@ -390,7 +393,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
       statics: config.statics || [], lanePhoto: config.lanePhoto || {},
       moveDocs, labels, pages,
       /* the team's private moves (private/moves.json) get the same load-time fixes as the shared ones (moves audit 20 Oct) */
-      fitMove: (m) => { if (!m || typeof m !== 'object') return m; const f = fitMoves({ [m.n || 0]: m }, keepOf({ profile, config, seed }), moveSrc, bannedRe, config?.currency)[m.n || 0]; return +m.n === 0 ? fitIndex(f, moveDocs) : f; },
+      fitMove: (m) => { if (!m || typeof m !== 'object') return m; const f = fitMoves({ [m.n || 0]: m }, keepOf({ profile, config, seed }), moveSrc, bannedRe, config?.currency, statCtx)[m.n || 0]; return +m.n === 0 ? fitIndex(f, moveDocs) : f; },
       staticText: statics,
       /* cards that never sat in the seed (the team's private rewrites, private/cards.json; connector cards) get the same fitting
          at load: the photo of the product they name (title, then asset line), the button of the asset they make */

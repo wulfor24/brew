@@ -33,9 +33,13 @@ for (const a of c.accounts || []) {
   const spend = +tot?.spend || 0, buys = pick(tot?.actions, PURCHASE), value = pick(tot?.action_values, PURCHASE);
   r.last30 = { spend, purchases: buys, value, cpa: buys ? +(spend / buys).toFixed(2) : null, roas: value ? +(value / spend).toFixed(3) : null };
   const wk = await all(`${A}/insights`, { date_preset: 'last_7d', level: 'ad', fields: 'ad_id,ad_name,campaign_id,campaign_name,frequency,spend,action_values', limit: 200 });
-  const camp = new Map(); for (const x of wk.rows) { const k = x.campaign_id; const o = camp.get(k) || { name: x.campaign_name, s: 0, v: 0, fw: 0 }; o.s += +x.spend || 0; o.v += pick(x.action_values, PURCHASE) || 0; o.fw += (+x.spend || 0) * (+x.frequency || 0); camp.set(k, o); }
+  /* each campaign's own frequency (impressions over its reach), as connectors/meta.js reads it; the ads' spend-weighted average
+     reads low (the same people see several ads of one campaign) and made the audit disagree with Brew (Arata 1.7 vs 4.1, 24 Oct) */
+  const cf = await all(`${A}/insights`, { date_preset: 'last_7d', level: 'campaign', fields: 'campaign_id,frequency', limit: 200 }).catch(() => ({ rows: [] }));
+  const cfreq = new Map(cf.rows.map((x) => [String(x.campaign_id), +x.frequency]));
+  const camp = new Map(); for (const x of wk.rows) { const k = x.campaign_id; const o = camp.get(k) || { id: String(k), name: x.campaign_name, s: 0, v: 0, fw: 0 }; o.s += +x.spend || 0; o.v += pick(x.action_values, PURCHASE) || 0; o.fw += (+x.spend || 0) * (+x.frequency || 0); camp.set(k, o); }
   r.week = { adRows: wk.rows.length, capped: wk.capped, campaignsWithSpend: [...camp.values()].filter((x) => x.s > 0).length,
-    campaigns: [...camp.values()].filter((x) => x.s > 0).sort((p, q2) => q2.s - p.s).map((x) => ({ name: x.name, spendDay: Math.round(x.s / 7), roas: x.s ? +(x.v / x.s).toFixed(2) : null, freq: x.s ? +(x.fw / x.s).toFixed(2) : 0 })),
+    campaigns: [...camp.values()].filter((x) => x.s > 0).sort((p, q2) => q2.s - p.s).map((x) => ({ name: x.name, spendDay: Math.round(x.s / 7), roas: x.s ? +(x.v / x.s).toFixed(2) : null, freq: cfreq.get(x.id) > 0 ? +cfreq.get(x.id).toFixed(2) : x.s ? +(x.fw / x.s).toFixed(2) : 0, adsAvgFreq: x.s ? +(x.fw / x.s).toFixed(2) : 0 })),
     tired: wk.rows.filter((x) => +x.frequency >= 3.5 && +x.spend > 0).map((x) => ({ ad: x.ad_name, freq: +(+x.frequency).toFixed(2) })) };
   r.activeCampaigns = await all(`${A}/campaigns`, { fields: 'id,effective_status', limit: 200, effective_status: '["ACTIVE"]' }).then((x) => x.rows.length).catch((e) => e.message);
   out[A] = r;

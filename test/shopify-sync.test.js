@@ -47,6 +47,9 @@ test('a store with more orders than one read: Shopify counts the 30 days, the ne
   const keys = r.ledger.map((e) => e.key); assert.ok(keys.includes('shopify.cod.cancelled') && keys.includes('shopify.cod.unpaid') && !keys.includes('shopify.cod.failed'), keys.join(','));
   assert.ok(r.notes.some((n) => /Store description/.test(n)), 'a failed description read is said, not silent');
   assert.match(r.cards.find((c) => /repeat/.test(c.id))?.title || 'recent', /recent/);
+  /* a card's title never states a share its own rows and words don't add up to (COD: cancelled + unpaid, 24 Oct) */
+  const cod = r.cards.find((c) => /cod/.test(c.id)); if (cod) { assert.match(cod.title, /cancelled or still/); assert.ok(cod.rows.some(([k]) => /Cancelled/.test(k)) && cod.rows.some(([k]) => /still unpaid/.test(k))); }
+  for (const c of r.cards) for (const p of (c.title.match(/\d+%/g) || [])) assert.ok([c.sub, ...(c.rows || []).flat(), ...(c.badge || [])].join(' ').includes(p) , `${c.id}: ${p} in the title is shown nowhere below it`);
 });
 
 test('a small store reads its whole 30 days: no count call, no sample note', async (t) => {
