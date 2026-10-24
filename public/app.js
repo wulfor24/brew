@@ -483,7 +483,7 @@
     if (c.kind === 'film' || c.kind === 'ad') body = `${c.img ? `<div class="fc-media"><img src="${c.img}" alt="" loading="lazy">${c.kind === 'film' ? `<i>${ic('play', 's16')}</i>` : ''}</div>` : ''}${c.copy ? `<p class="fc-p">${esc(c.copy)}</p>` : ''}`;
     if (c.kind === 'answer') body = `<div class="fc-ans"><span class="fc-q">${ic('chat', 's14')}${esc(c.q)}</span><p class="fc-p">${esc(c.a)}</p></div>`;
     const href = srcHref(c.src), cap = c.cap || c.foot;
-    return `<article class="scr fc" data-gist="${esc(gist(c))}"><header><h5>${esc(c.t)}</h5>${c.src ? `<${href ? `a href="${esc(href)}" target="_blank" rel="noopener"` : 'span'} class="fc-src" title="${esc(c.src)}">${ic('link', 's14')}${esc(srcShort(c.src))}</${href ? 'a' : 'span'}>` : ''}</header>${body}${cap ? `<footer>${esc(cap)}</footer>` : ''}</article>`;
+    return `<article class="scr fc" data-key="${esc(`${c.kind}|${c.t}`)}" data-gist="${esc(gist(c))}"><header><h5>${esc(c.t)}</h5>${c.src ? `<${href ? `a href="${esc(href)}" target="_blank" rel="noopener"` : 'span'} class="fc-src" title="${esc(c.src)}">${ic('link', 's14')}${esc(srcShort(c.src))}</${href ? 'a' : 'span'}>` : ''}</header>${body}${cap ? `<footer>${esc(cap)}</footer>` : ''}</article>`;
   };
   const cursorSvg = () => `<svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="var(--fg)" stroke="var(--bg)" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
   // on the setup read the mouse itself is a Brew-style cursor: the black arrow with its label pill (fine pointers only; touch keeps nothing)
@@ -580,14 +580,18 @@
         $$('.agent-row').forEach((r) => { r.classList.remove('on'); r.querySelector('.st').textContent = 'Nothing read'; }); /* nothing was read, so no agent has ideas */
         document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-done"><div><b>We couldn’t read ${esc(B.brand.name)}.</b><span>${esc(readFail(ev.msg))}</span></div><button class="btn btn-primary lg" id="su-next">Back to the start</button></div>`);
         $('#su-next').onclick = () => { location.href = '/'; }; return; }
-      if (ev.type === 'ready') { es.close(); if (ev.name && ev.name !== B.brand.name) { B.brand.name = ev.name; const h = $('.su-head h2'); if (h) h.textContent = `Reading ${ev.name}`; document.title = document.title.replace(/^[^·]*·/, `${ev.name} ·`); } finishRead(); }
+      if (ev.type === 'ready') { es.close(); if (ev.name && ev.name !== B.brand.name) { B.brand.name = ev.name; const h = $('.su-head h2'); if (h) h.textContent = `Reading ${ev.name}`; document.title = document.title.replace(/^[^·]*·/, `${ev.name} ·`); } finishRead(ev); }
     };
-    const finishRead = async () => {
+    const finishRead = async (ev = {}) => {
       if (readIn) return; readIn = true; $$('.agent-row').forEach((r) => { r.classList.add('on'); r.querySelector('.st').textContent = 'Has ideas ready'; });
       buddy.style.opacity = 0; await wait(500); if (skipped) return; buddy.remove();
       // a brand read earlier can say "ready" before any step: show what was read, not seven "Queued" rows and 0 findings
-      steps.forEach((x, i) => { const el = $(`.step[data-i="${i}"]`); if (el && !el.classList.contains('done')) { const empty = x.state === 'empty'; el.classList.remove('reading'); el.classList.add('done'); el.classList.toggle('empty', empty); el.querySelector('.dot').innerHTML = ic(empty ? 'minus' : 'check', 's14'); el.querySelector('span:last-child').textContent = stepLine(x.done) || (empty ? 'Nothing found' : 'Done'); } });
+      /* the stream may have dropped mid-read (a deploy restarts the instance): ready carries the saved read, so every step gets its
+         real line and every card the read saved is on the page, once */
+      const fin = ev.steps?.length === steps.length ? ev.steps : steps;
+      fin.forEach((x, i) => { const el = $(`.step[data-i="${i}"]`); if (el && !el.classList.contains('done')) { const empty = x.state === 'empty'; el.classList.remove('reading'); el.classList.add('done'); el.classList.toggle('empty', empty); el.querySelector('.dot').innerHTML = ic(empty ? 'minus' : 'check', 's14'); el.querySelector('span:last-child').textContent = stepLine(x.done) || (empty ? 'Nothing found' : 'Done'); } });
       if (!$$('#scr .scr').length && cards.length) $('#scr').innerHTML = cards.map(scrCard).join('');
+      if (ev.scrape?.length) { const shown = new Set($$('#scr .scr').map((x) => x.dataset.key)); ev.scrape.filter((c) => !shown.has(`${c.kind}|${c.t}`)).forEach((c) => $('#scr').insertAdjacentHTML('beforeend', scrCard(c))); }
       qPaint(); askBar(); readyGo();
     };
     // stop here: the presenter moves on when the room has taken it in
@@ -605,7 +609,7 @@
     Promise.all([readP, qP]).then(([, q]) => showDone(q));
     /* the stream drops (a restart): while questions are open, the status poll says when the read is in; otherwise on to the seat, as before */
     const poll = async () => { if (skipped || readIn) return; const s = await api(`/api/brands/${B.slug || BR}/status`).catch(() => null);
-      if (s?.stages?.read?.state === 'done') { toQ({ type: 'ready' }); return finishRead(); } setTimeout(poll, 8000); };
+      if (s?.stages?.read?.state === 'done') { toQ({ type: 'ready' }); const f = await api(`/api/brands/${B.slug || BR}/findings`).catch(() => null); return finishRead({ steps: f?.steps, scrape: f?.cards }); } setTimeout(poll, 8000); };
     es.onerror = () => { if (skipped || readIn) return; es.close(); if (QM && GEN) return poll(); buddy.remove(); if (signWall('who')) return; afterRead(); };
   };
 

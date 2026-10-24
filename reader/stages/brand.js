@@ -12,7 +12,10 @@ export async function brand(ctx) {
   ctx.tick('brand', '/');
 
   /* logo */
-  const header = (html.match(/<header\b[\s\S]*?<\/header>/i) || [''])[0] || html.slice(0, 60000);
+  /* the site header, not the first <header> tag: themes put small ones in drawer and popup templates above it (scrubroom.in, 24 Oct),
+     so the header holding a logo wins, then the biggest one */
+  const hdrs = html.match(/<header\b[\s\S]*?<\/header>/gi) || [];
+  const header = hdrs.find((h) => /<(?:img|svg)\b[^>]*logo|logo[^>]*>\s*<(?:img|svg)\b/i.test(h)) || [...hdrs].sort((a, b) => b.length - a.length)[0] || html.slice(0, 60000);
   const cands = [];
   for (const t of tags(header, 'img')) {
     const src = attr(t, 'src') || attr(t, 'data-src') || (attr(t, 'srcset') || '').split(/[\s,]+/)[0];
