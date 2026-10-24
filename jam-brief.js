@@ -26,11 +26,16 @@ const NEEDS = {
   vis: [['Sources for every claim', /\b(source|study|claims list|cited|as of)\b/i]],
   brief: [['Deliverables', /\b(film|cut|reel|video|stills?|deliverables?|\d+s\b|seconds)\b/i], ['Budget', /(₹|\bbudget\b|\bcost\b)/i]],
   decision: [['What changes once decided', /\b(changes?|then|next|follow|after)\b/i]],
+  search: [['Keywords', /\b(keywords?|search terms?|phrase|exact|broad)\b/i], ['Budget', /(₹|\$|€|£|\bbudget\b|\bspend\b|per day|a day)/i]],
+  social: [['Where it posts', /\b(instagram|reddit|linkedin|quora|tiktok|youtube|facebook|pinterest|community|group|\bx\b|twitter|thread)\b/i], ['When it posts', /\b(mon|tues|wednes|thurs|fri|satur|sun)day\b|\b\d{1,2}\s*(am|pm)\b|\btoday\b|\btomorrow\b|\bthis week\b/i]],
+  outreach: [['Who it goes to', /\b(to:|buyer|contact|founder|manager|head of|team at|company|retailer|distributor|press|editor)\b/i]],
+  setup: [['Where it changes', /\b(settings?|admin|tool|tag|pixel|ga4|analytics|events? manager|tag manager|shopify|theme|app)\b/i]],
+  print: [['Size and quantity', /\b(a4|a5|a6|size|cards?|copies|quantity|\d+\s*(pcs|units|prints))\b/i], ['Who prints it', /\b(printer|print shop|vendor|supplier)\b/i]],
   general: []
 };
 const profileOf = (c = {}, ch) => {
   const fam = ch?.family;
-  if (fam) return { meta_ad: 'ad', meta_ops: 'ops', store: 'store', crm: 'crm', vis: 'vis', brief: 'brief', decision: 'decision', listing: 'catalog' }[fam] || 'general';
+  if (fam) return { meta_ad: 'ad', meta_ops: 'ops', store: 'store', crm: 'crm', vis: 'vis', brief: 'brief', decision: 'decision', listing: 'catalog', search: 'search', social: 'social', post: ch?.target?.conn === 'meta' ? 'ad' : 'social', outreach: 'outreach', setup: 'setup', print: 'print' }[fam] || 'general';
   if (c.kind === 'conflict' || (c.type === 'decision' && c.options)) return 'decision';
   if (c.kind === 'film') return 'brief';
   // a Brew plan or report is a decision, not a message to customers
@@ -44,7 +49,7 @@ const profileOf = (c = {}, ch) => {
   if (c.sector === 'ads' || c.sector === 'creatives') return 'ad';
   return 'general';
 };
-const KIND = { ad: 'Ad brief', ops: 'Ad account brief', store: 'Store change brief', crm: 'Customer message brief', catalog: 'Listing brief', vis: 'AI answers brief', brief: 'Production brief', decision: 'Decision brief', general: 'Brief' };
+const KIND = { ad: 'Ad brief', ops: 'Ad account brief', store: 'Store change brief', crm: 'Customer message brief', catalog: 'Listing brief', vis: 'AI answers brief', brief: 'Production brief', decision: 'Decision brief', search: 'Search ad brief', social: 'Post brief', outreach: 'Outreach brief', setup: 'Setup brief', print: 'Print brief', general: 'Brief' };
 // the plan at a glance: for each thing this kind of brief needs, the line in the brief that says it
 const plainLine = (l) => String(l).replace(/^\s*(?:[-*]|\d+[.)])\s+/, '').replace(/\*\*|__|`/g, '').replace(/^[^:]{2,40}:\s+(?=\S)/, (m) => m).trim();
 const clip = (s, n) => s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, '') + '…';

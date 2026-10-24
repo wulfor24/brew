@@ -54,7 +54,7 @@ export function mountJam2(d) {
     const evidence = card ? [...(card.post?.evidence || []), ...(card.evidence || [])].map((e) => (typeof e === 'string' ? e : e?.text || e?.quote || '')).filter(Boolean).join(' · ') : '';
     /* what the v1 jam's team said (its notes, its own checks, its last asks): Studio's art direction follows them too */
     const ch1 = jam.v1ch ? t.changes?.[jam.v1ch] : null, v1notes = ch1 ? [...(ch1.notes || []).map((n) => n.text || n), ...(ch1.myChecks || []).filter((m) => !m.done).map((m) => `Check: ${m.text}`), ...(ch1.thread || []).filter((m) => m.from === 'you').slice(-3).map((m) => `The team asked: ${m.text}`)].filter((x) => typeof x === 'string' && x.trim()).map((x) => x.slice(0, 200)) : [];
-    return { slug, jam, card, ref, v1, facts, evidence, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: [...(jam.notes || []).map((n) => n.text), ...v1notes], market, refs, storeKind: br?.profile?.storeKind || await kindOfStore(slug) };
+    return { slug, jam, card, ref, v1, v1act: ch1?.action || null, facts, evidence, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: [...(jam.notes || []).map((n) => n.text), ...v1notes], market, refs, storeKind: br?.profile?.storeKind || await kindOfStore(slug) };
   }
   /* run slow work in the background; the board says what it is doing and any error in plain words */
   /* a job also leaves a mark on the jam (saved with it): after a restart, a mark with no job running says the job was cut off */

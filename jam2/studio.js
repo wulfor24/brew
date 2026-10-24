@@ -84,7 +84,8 @@ export function defaults(ctx, board = null) {
   const okPeople = (s) => !blockOf(s, ctx);
   /* a brand that sells by enquiry (services, property) opens on places and moments, never marketplace or product-hero styles */
   const wantsAplus = board?.recipe === 'listing' && /\bA\+|\ba-?plus\b|brand content|\bEBC\b|enhanced (?:brand )?content/i.test(`${card.title || ''} ${card.cta?.label || ''} ${card.sub || ''} ${card.make?.format || ''} ${card.make?.pieces || ''}`); /* a card that asks for Amazon A+ opens on the A+ modules */
-  const R = wantsAplus ? BY_RECIPE.aplus : enquiry && BY_RECIPE[board?.recipe]?.set ? { set: ['in-use', 'editorial', 'natural', 'flat-lay'], sizes: BY_RECIPE[board.recipe].sizes } : BY_RECIPE[board?.recipe] || {};
+  const coll = /collection_ad$/.test(ctx.v1act || ''); /* a collection ad's cover: made square, the cover shape Meta runs above the product grid */
+  const R = coll ? { ...(BY_RECIPE[board?.recipe] || {}), sizes: ['ig-square'] } : wantsAplus ? BY_RECIPE.aplus : enquiry && BY_RECIPE[board?.recipe]?.set ? { set: ['in-use', 'editorial', 'natural', 'flat-lay'], sizes: BY_RECIPE[board.recipe].sizes } : BY_RECIPE[board?.recipe] || {};
   if (R.set) { const set = R.set.map(styleOf).filter(Boolean).filter(okPeople);
     if (set.length < 3) set.push(...ALL().filter((s) => s.kind === 'image' && s.groupId === 'product-shot' && okPeople(s) && !set.some((x) => x.id === s.id)).slice(0, 3 - set.length));
     return { kind: 'image', set: set.map((x) => x.id), styles: set.map((x) => x.id), style: set[0]?.id || null, product: ctx.product ? { img: ctx.product.img, name: ctx.product.name || null, handle: ctx.product.handle || null } : null,

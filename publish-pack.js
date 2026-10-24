@@ -60,7 +60,8 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
   const shapes = async (rel, base, made = p.format || '4:5') => {
     const f = rel && !/^https?:/.test(rel) ? await read(rel) : null; if (!f) { if (rel) (/^https?:/.test(rel) ? links : todo).push(/^https?:/.test(rel) ? rel : `${base}: the picture couldn’t be read for the pack; download it from the studio`); return []; }
     const got = [];
-    for (const s of Object.keys(SHAPES)) {
+    const want = /collection_ad$/.test(ch?.action || '') ? ['1:1'] /* a collection cover runs square, above the product grid */ : Object.keys(SHAPES);
+    for (const s of want) {
       if (s === made) { const n = `${base}-${s.replace(':', 'x')}.${extOf(f)}`; put(n, fs.readFileSync(f)); got.push(n); continue; }
       const buf = hasWords(rel, p) ? await fit(f, s) || await crop(f, s) : await crop(f, s); if (buf) { const n = `${base}-${s.replace(':', 'x')}.jpg`; put(n, buf); got.push(n); }
       else todo.push(`${base} at ${s}: crop it from the ${made} file (this server couldn’t)`);

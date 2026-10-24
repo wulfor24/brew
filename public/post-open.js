@@ -44,7 +44,9 @@
       return out(sub ? `Open r/${sub} to post` : 'Open Reddit to post', url, body, true);
     }
     if (kind === 'x_post') { const posts = xPosts(copy); if (tags.length) posts[posts.length - 1] += `\n\n${tags.join(' ')}`;
-      return out('Open X to post', `https://x.com/intent/post?text=${enc(posts[0].slice(0, 1000))}`, posts.join('\n\n'), true); }
+      /* X fills one post: a thread opens on its first post, the whole thread is copied, and the button says how many more to add as replies */
+      const o1 = out(posts.length > 1 ? `Open X with post 1 of ${posts.length}` : 'Open X to post', `https://x.com/intent/post?text=${enc(posts[0].slice(0, 1000))}`, posts.map((x, i) => (posts.length > 1 ? `${i + 1}/${posts.length} ${x}` : x)).join('\n\n'), true);
+      return o1 && { ...o1, more: posts.length - 1, long: posts.filter((x) => x.length > 280).length }; }
     if (kind === 'linkedin_post') return out('Open LinkedIn to post', `https://www.linkedin.com/feed/?shareActive=true&text=${enc(body.slice(0, 3000))}`, body, true);
     if (kind === 'pinterest_pin') { const img = http(image), site = http(brandUrl);
       if (img && site) return out('Open Pinterest to pin', `https://www.pinterest.com/pin/create/button/?url=${enc(site)}&media=${enc(img)}&description=${enc([p.title, body].filter(Boolean).join('\n\n').slice(0, 500))}`, body, true);
@@ -54,6 +56,6 @@
     return w0 ? out('Copy and open the thread', w0.url, body, false) : null; // a comment reply: the video or post it answers
   }
   /* what the toast says after the tab opens */
-  const said = (o) => o.filled ? `Copied too. Check it in the new tab and post.${o.rule ? ` ${o.rule}` : ''}` : `Copied. Paste it in the new tab and post.${o.rule ? ` ${o.rule}` : ''}`;
+  const said = (o) => o.more ? `Post 1 is filled in; the whole thread is copied. Post it, then reply to it with posts 2 to ${o.more + 1}.${o.long ? ` ${o.long} ${o.long > 1 ? 'posts are' : 'post is'} over 280 characters: shorten ${o.long > 1 ? 'them' : 'it'} first.` : ''}` : o.long ? `Over 280 characters: X will cut it. Shorten it first.` : o.filled ? `Copied too. Check it in the new tab and post.${o.rule ? ` ${o.rule}` : ''}` : `Copied. Paste it in the new tab and post.${o.rule ? ` ${o.rule}` : ''}`;
   root.PostOpen = { of, said, kindOf, thread: xPosts };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -92,7 +92,7 @@ export const ACTIONS = {
   },
   visibility: {
     blog_post: { label: 'Publish a blog post', target: { conn: 'shopify', object: 'Blog post' }, money: false, rollback: 'Unpublish the post', scope: [[1, 'One post']], preview: 'copy' },
-    faq_entry: { label: 'Publish an FAQ answer', target: { conn: 'shopify', object: 'FAQ page' }, money: false, rollback: 'Unpublish the entry', scope: [[1, 'One question'], [5, '5 questions'], [20, 'All 20 tracked questions']], preview: 'answer', settings: [['Where', 'The site’s FAQ page, with the “as of” date'], ['Re-check', 'Next weekly AI read']] },
+    faq_entry: { label: 'Publish an FAQ answer', target: { conn: 'shopify', object: 'FAQ page' }, money: false, rollback: 'Unpublish the entry', scope: [[1, 'One question'], [5, '5 questions'], [10, 'The top 10 tracked questions']], preview: 'answer', settings: [['Where', 'The site’s FAQ page, with the “as of” date'], ['Re-check', 'Next weekly AI read']] },
     llms_txt: { label: 'Update the page for AI tools and the claims list', target: { conn: 'shopify', object: 'Page for AI tools' }, money: false, rollback: 'Restore the previous page', scope: [[1, 'One page']], preview: 'checklist', settings: [['Page', 'The page for AI tools on your site'], ['Re-check', 'Next weekly AI read']] },
     schema_fix: { label: 'Add search info to product pages', target: { conn: 'shopify', object: 'Search info on product pages' }, money: false, rollback: 'Restore the old page code', scope: [[1, 'One product'], [12, 'All 12 products']], preview: 'checklist', settings: [['Adds', 'Price, rating and study facts'], ['Re-check', 'Next weekly AI read']] },
     new_claim: { label: 'Publish a new claim', target: { conn: 'shopify', object: 'Claims page' }, money: false, jam: 'A new claim needs a source and legal', rollback: 'Unpublish', scope: [[1, 'One page']], preview: 'copy' }
@@ -798,11 +798,11 @@ export function createRemix(o) {
      the only picture the model gets; their ad arrives as its written composition and look, and our words go where theirs sit */
   /* c: the card. Its scene (sceneOf: make.pieces, else its picture how-step) rides on every picture of the jam unless someone
      set a scene of their own or the brief already says it, so a rewrite of the words never drops what the card promised */
-  const picPrompt = (ch, p, i, pic = null, extra = '', c = null) => { const rows = p.cards || p.slides || [], scene = p.knobs?.scene;
+  const picPrompt = (ch, p, i, pic = null, extra = '', c = null, t = null) => { const noPeople = !!(t && o.noPeople?.(t)); /* the Brand Book says no people on camera: the free picture keeps to it too */ const rows = p.cards || p.slides || [], scene = p.knobs?.scene;
     const what = ch.family === 'social' ? 'an Instagram post' : ch.family === 'post' ? `a ${p.platform || 'social'} post` : 'a Meta ad';
     const brief = (rows.length ? rows[i]?.imageBrief : p.imageBrief) || p.imageBrief || 'The product on a clean surface, soft daylight.';
     const sc = !scene && !pic?.visual && c && !isRivalCard(c) ? sceneOf(c) : '', card = sc && !brief.toLowerCase().includes(sc.toLowerCase().slice(0, 24)) ? ` The picture must show what the card promises: ${sc}.` : '';
-    return buildDraft({ kind: 'image', title: what, visual: `${brief}${card}${pic?.visual ? ` ${pic.visual}` : ''}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''}${extra}`, ...(pic?.visual ? { refs: [{ ...pic.refs[0], label: `${BN()}'s ${B().config.product?.noun || 'product'}` }] } : {}), ...(pic?.text?.length && i === 0 ? { text: pic.text } : {}), index: rows.length > 1 ? i + 1 : undefined, count: rows.length > 1 ? rows.length : undefined, topSpace: !(pic?.text?.length && i === 0), hasSrc: true, ratio: RATIO[p.format] || '4:5', product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}), ...(pic?.look ? { style: pic.look } : {}) } }).prompt; }; /* one brief for drafts and finals (sloosh-prompt.js); a remake takes the rival's look */
+    return buildDraft({ kind: 'image', ...(noPeople ? { people: false } : {}), title: what, visual: `${noPeople ? 'No people, faces or bodies: only the product and its setting (hands only if the brand allows them). ' : ''}${brief}${card}${pic?.visual ? ` ${pic.visual}` : ''}${scene ? ` Scene: ${scene}.` : ''}${p.knobs?.audience ? ` It should feel right for ${p.knobs.audience}.` : ''}${extra}`, ...(pic?.visual ? { refs: [{ ...pic.refs[0], label: `${BN()}'s ${B().config.product?.noun || 'product'}` }] } : {}), ...(pic?.text?.length && i === 0 ? { text: pic.text } : {}), index: rows.length > 1 ? i + 1 : undefined, count: rows.length > 1 ? rows.length : undefined, topSpace: !(pic?.text?.length && i === 0), hasSrc: true, ratio: RATIO[p.format] || '4:5', product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}), ...(pic?.look ? { style: pic.look } : {}) } }).prompt; }; /* one brief for drafts and finals (sloosh-prompt.js); a remake takes the rival's look */
   const rivalPic = async (t, ch, p) => { const rv = await rivalRead(t, t.cards.get(ch.cardId) || {}).catch(() => null);
     return rv?.style ? rivalPicture(rv.ad, rv.style, { headline: p.overlay || p.headline || p.title || '', sub: String(p.primaryText || '').split(/(?<=[.!?])\s/)[0], button: p.cta }) : null; };
   /* one picture, made once per brief (the same brief again comes from the gen store, free). pay: asked before a new one is made;
@@ -827,7 +827,7 @@ export function createRemix(o) {
       try {
         const src = await picSrc(t, ch, p); if (!src) throw new Error('no product photo could be read for this picture');
         const pic = await rivalPic(t, ch, p);
-        const one = (i) => drawPic(src, picPrompt(ch, p, i, pic, '', t.cards.get(ch.cardId)), p.format, pic, i !== slots[0] ? () => spend('image') : null);
+        const one = (i) => drawPic(src, picPrompt(ch, p, i, pic, '', t.cards.get(ch.cardId), t), p.format, pic, i !== slots[0] ? () => spend('image') : null);
         const made = [];
         for (let k = 0; k < slots.length; k += 3) made.push(...(await Promise.all(slots.slice(k, k + 3).map((i) => one(i).catch((e) => { log.warn('[studio image]', e.message); return null; })))));
         const imgs = [...(ch.pkg.cardImages || [])]; slots.forEach((i, k) => { if (made[k]) imgs[i] = made[k]; });
@@ -906,7 +906,7 @@ export function createRemix(o) {
         const src = await picSrc(t, ch); if (!src) throw new Error('no product photo could be read for these photos');
         for (const [k, v] of vs.entries()) {
           const pv = pkgOfVersion(t, ch, v), pic = await rivalPic(t, ch, pv), head = pv.headline || pv.title || pv.heading || v.snapshot?.title || '';
-          const img = await drawPic(src, picPrompt(ch, pv, 0, pic, head ? ` The photo goes with the headline “${String(head).slice(0, 120)}”.` : '', t.cards.get(ch.cardId)), pv.format, pic, k ? () => spend('image') : null).catch((e) => { log.warn('[cut photo]', e.message); return undefined; });
+          const img = await drawPic(src, picPrompt(ch, pv, 0, pic, head ? ` The photo goes with the headline “${String(head).slice(0, 120)}”.` : '', t.cards.get(ch.cardId), t), pv.format, pic, k ? () => spend('image') : null).catch((e) => { log.warn('[cut photo]', e.message); return undefined; });
           if (img === null) { stopped = true; break; } if (!img) continue;
           const media = { image: img, ...((pv.cards || pv.slides || []).length ? { cardImages: [img, ...(pv.cardImages || []).slice(1)] } : {}) };
           landMedia(t, ch, v, media); sync(t, ch); done++; /* its own option; the stage only when it is that cut or grew from it */
@@ -1496,7 +1496,7 @@ export function createRemix(o) {
         const src = await picSrc(t, ch, p); if (!src) throw new Error('no product photo could be read for this picture');
         const pic = await rivalPic(t, ch, p);
         const extra = `${head ? ` The photo goes with the headline “${String(head).slice(0, 120)}”.` : ''}${ask ? ` The team asked: ${String(ask).slice(0, 200)}.` : ''} A fresh take, different from the last picture (take ${v.n}).`;
-        const url = await drawPic(src, picPrompt(ch, p, 0, pic, extra, t.cards.get(ch.cardId)), p.format, pic, null, maker); if (!url) throw new Error('no image came back');
+        const url = await drawPic(src, picPrompt(ch, p, 0, pic, extra, t.cards.get(ch.cardId), t), p.format, pic, null, maker); if (!url) throw new Error('no image came back');
         land(url);
       } catch (e) { log.warn('[take]', e.message); if (v.drawing) failTake(t, c, ch, v, `The picture didn’t come through (${String(e.message).slice(0, 120)}). Ask for another take.`); }
     })();

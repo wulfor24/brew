@@ -124,7 +124,7 @@ export const FIELDS = {
   ],
   vis: [
     { k: 'file', label: 'Page or file', type: 'text', req: true },
-    { k: 'entries', label: 'Entries', type: 'rows', cols: ['q', 'a', 'source'], pub: true, req: true, hint: '1-5 entries: the buyer question, the answer, the claims-list source' },
+    { k: 'entries', label: 'Entries', type: 'rows', cols: ['q', 'a', 'source'], pub: true, req: true, hint: '1-10 entries (as many as the Questions knob asks): the buyer question, the answer, the claims-list source' },
     { k: 'asOf', label: 'As of', type: 'text' }
   ],
   crm: [
@@ -213,7 +213,7 @@ export const KNOBS = {
     { k: 'layout', label: 'Layout', kind: 'copy', opts: ['Short paragraph', 'Heading and points'] }
   ],
   vis: [
-    { k: 'qs', label: 'Questions', kind: 'copy', opts: ['Just this one', 'Top 5', 'All 20'] },
+    { k: 'qs', label: 'Questions', kind: 'copy', opts: ['Just this one', 'Top 5', 'Top 10'] /* a package holds 10 entries at most */ },
     { k: 'style', label: 'Answer style', kind: 'copy', opts: ['Short', 'Detailed', 'Comparison table'] },
     { k: 'lang', label: 'Language', kind: 'copy', opts: ['English', 'Hindi'] }
   ],
@@ -632,7 +632,7 @@ export const ACTION_SPEC = {
   llms_txt: 'Lines for the site’s llms.txt: plain facts about the products, each with a source.',
   schema_fix: 'Product markup (JSON-LD) fields to add: price, rating, study facts.',
   new_claim: 'A new public claim with its source, for legal to check.',
-  flow_copy: 'The message sent at one step of an existing Klaviyo/WhatsApp flow.',
+  flow_copy: 'The customer message the card asks for, on the brand’s own messaging tool: one step of an automated flow (cart, welcome, win-back, reorder) when the card is about a flow, or a one-off send (a newsletter, a launch, a campaign) when it is about one moment. Name the flow or say it is a one-off.',
   flow_timing: 'When an existing flow sends, and how often at most. The message can stay as it is.',
   review_ask: 'A message asking a recent buyer for a review, ideally with a photo.',
   new_segment: 'A new customer segment: who is in, who is left out, how many.',
@@ -646,6 +646,8 @@ export const ACTION_SPEC = {
 const MONEY_SYM = '(?:₹|rs\\.?\\s?|\\$|us\\$|€|£|¥|aed\\s?|sar\\s?|r\\$)'; /* any market's money, not only rupees */
 const OFFER = new RegExp(`(?:\\b(?:save ${MONEY_SYM}?\\d|off\\b|discount|combo|bundle|add the [a-z]+\\b(?!.*review)|instead of ${MONEY_SYM}|free (?:shipping|delivery)|pack of \\d)|% off|(?:^|[\\s(])${MONEY_SYM}\\s?\\d|\\d+(?:[.,]\\d{1,2})?\\s?(?:€|£))`, 'i');
 export const ACTION_GUARD = {
+  /* every post of an X thread fits X's 280 characters (it cuts the rest) */
+  x_post: (pkg) => { const t0 = String(pkg.copy || '').trim(), parts = t0.split(/\n\s*\n(?=\s*\d{1,2}\s*[/.)]\s)/), posts = (parts.length > 1 ? parts.map((x) => x.replace(/^\s*\d{1,2}\s*[/.)]\s*/, '').trim()) : [t0]).filter(Boolean); /* split as the X button does: numbered posts only */ const k = posts.findIndex((x) => x.length > 280); return k >= 0 ? `${posts.length > 1 ? `Post ${k + 1}` : 'The post'} is ${posts[k].length} characters; X takes 280` : null; },
   /* Google's own minimums for a responsive search ad: it won't run with fewer, or with a line over the limit */
   search_ad: (pkg) => { const h = (pkg.headlines || []).filter((x) => String(x || '').trim()), d = (pkg.descriptions || []).filter((x) => String(x || '').trim());
     if (h.length < 3) return `Google needs at least 3 headlines (this has ${h.length})`; if (d.length < 2) return `Google needs at least 2 descriptions (this has ${d.length})`;

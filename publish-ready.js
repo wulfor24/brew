@@ -10,7 +10,7 @@ const tidy = (s, n = 400) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0
 const list = (v) => (Array.isArray(v) ? v : String(v || '').split(/[\n,]+/)).map((x) => tidy(x, 80)).filter(Boolean);
 export const META_CTAS = ['Shop now', 'Learn more', 'Order now', 'Get offer', 'Sign up', 'Book now', 'Contact us', 'Send WhatsApp message', 'Get quote', 'Subscribe'];
 /* where each family runs, and the shapes it needs: the pack cuts every one from the one make (publish-pack.js SHAPES) */
-const PLACES = { story: [['9:16', 'Stories']], aplus: [['970×600', 'A+ header'], ['300×300', 'A+ tiles'], ['970×300', 'A+ wide image']], meta_ad: [['4:5', 'Feed'], ['1:1', 'Feed, right column'], ['9:16', 'Stories and Reels']], social: [['4:5', 'Post'], ['1:1', 'Grid'], ['9:16', 'Story']], post: [['9:16', 'Reels, TikTok, Shorts']], listing: [['1:1', 'Listing']], print: [['A5', 'Print']] };
+const PLACES = { story: [['9:16', 'Stories']], collection: [['1:1', 'Collection cover, above the product grid']], aplus: [['970×600', 'A+ header'], ['300×300', 'A+ tiles'], ['970×300', 'A+ wide image']], meta_ad: [['4:5', 'Feed'], ['1:1', 'Feed, right column'], ['9:16', 'Stories and Reels']], social: [['4:5', 'Post'], ['1:1', 'Grid'], ['9:16', 'Story']], post: [['9:16', 'Reels, TikTok, Shorts']], listing: [['1:1', 'Listing']], print: [['A5', 'Print']] };
 const SOURCE = { meta_ad: ['meta', 'paid_social'], social: ['instagram', 'social'], post: ['social', 'social'], listing: ['marketplace', 'listing'], print: ['print', 'insert'] };
 /* a UTM value: lower-case words joined by -, cut at a whole word (never "…-with-ou") */
 const slug = (s) => { const w = tidy(s, 120).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); if (w.length <= 40) return w || 'brew'; const cut = w.slice(0, 41); return cut.slice(0, cut.lastIndexOf('-') > 10 ? cut.lastIndexOf('-') : 40) || 'brew'; };
@@ -129,7 +129,7 @@ export function readyOf({ family, action = '', pkg = {}, card = {}, product = nu
   if (key.length && said.trim() && !key.some((w) => said.includes(w))) checks.push({ k: 'match', ok: false, soft: true, t: `The words don’t mention ${tidy(product.name, 50)}: they may have been written for another idea. Ask Brew to rewrite them from this ${p.video ? 'film' : 'picture'}.` });
   if (cardProduct?.name && product?.name && cardProduct.name !== product.name) checks.push({ k: 'product', ok: false, soft: true, t: `It shows ${tidy(product.name, 50)}; the card is about ${tidy(cardProduct.name, 50)}` });
   else if (product?.name) checks.push({ k: 'product', ok: true, t: `Shows ${tidy(product.name, 60)}, the card’s product` });
-  const places = p.video ? [] /* a film runs in the shape it was made; its cover and GIF are listed with it */ : (PLACES[Array.isArray(p.aplus) && p.aplus.length ? 'aplus' : /ig_story$/.test(action) ? 'story' : family] || []).map(([shape, where]) => ({ shape, where }));
+  const places = p.video ? [] /* a film runs in the shape it was made; its cover and GIF are listed with it */ : (PLACES[Array.isArray(p.aplus) && p.aplus.length ? 'aplus' : /ig_story$/.test(action) ? 'story' : /collection_ad$/.test(action) ? 'collection' : family] || []).map(([shape, where]) => ({ shape, where }));
   const bad = parts.filter((x) => !x.ok).length + checks.filter((x) => !x.ok && !x.soft).length, warn = parts.reduce((a, x) => a + x.warn.length, 0) + checks.filter((x) => !x.ok && x.soft).length;
   return { parts, checks, places, ready: bad === 0, bad, warn };
 }
