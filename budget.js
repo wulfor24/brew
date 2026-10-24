@@ -19,7 +19,8 @@ export function capsFrom(env = process.env) {
 let current = null; /* the server's budget, for modules that only need to say why a spend was refused (drafts.js) */
 
 /* store: { get: async () => saved | null, put: async (state) => {} } */
-export function createBudget({ env = process.env, store = null, now = () => Date.now(), log = console, debounceMs = 3000 } = {}) {
+/* shared: counters.js on Postgres, so every instance counts against the same day (the saved file stays as a record) */
+export function createBudget({ env = process.env, store = null, shared = null, now = () => Date.now(), log = console, debounceMs = 3000 } = {}) {
   const caps = capsFrom(env);
   const fresh = () => ({ day: dayOf(now()), all: Object.fromEntries(KINDS.map((k) => [k, 0])), brands: {} });
   let s = fresh(), loaded = false, t = null;
@@ -28,6 +29,9 @@ export function createBudget({ env = process.env, store = null, now = () => Date
   const slugNow = (slug) => slug === undefined ? (B()?.kind === 'default' ? null : B()?.slug || null) : slug || null;
   const mine = (slug) => (s.brands[slug] ||= Object.fromEntries(KINDS.map((k) => [k, 0])));
   const snapshot = () => ({ ...JSON.parse(JSON.stringify(s)), at: new Date(now()).toISOString() });
+  const sh = shared?.on ? shared : null;
+  const usedAll = (k) => (sh ? Math.max(s.all[k], sh.total('ai', `${k}|*`)) : s.all[k]);
+  const usedBrand = (slug, k) => (sh ? Math.max(mine(slug)[k], sh.total('ai', `${k}|${slug}`)) : mine(slug)[k]);
 
   /* the saved day, merged (a counter never goes down): awaited before the first call */
   async function load() {
@@ -42,26 +46,26 @@ export function createBudget({ env = process.env, store = null, now = () => Date
   /* why a spend of n units would be refused now: null when it can go (credits are weighted: a final costs what Sloosh quotes) */
   function refusal(kind, slug, n = 1) {
     roll(); slug = slugNow(slug); n = Math.max(0, +n || 0) || 1;
-    if (s.all[kind] + n > caps.all[kind]) return 'all';
-    if (slug && mine(slug)[kind] + n > caps.brand[kind]) return 'brand';
+    if (usedAll(kind) + n > caps.all[kind]) return 'all';
+    if (slug && usedBrand(slug, kind) + n > caps.brand[kind]) return 'brand';
     return null;
   }
   /* n units of kind (default one) for this brand (default: the brand of the request or job in hand): false when its share or the ceiling is used */
   function spend(kind, slug, n = 1) {
     if (!KINDS.includes(kind)) return true;
     slug = slugNow(slug); n = Math.max(0, +n || 0) || 1; if (refusal(kind, slug, n)) return false;
-    s.all[kind] += n; if (slug) mine(slug)[kind] += n; save(); return true;
+    s.all[kind] += n; if (slug) mine(slug)[kind] += n; if (sh) { sh.add('ai', `${kind}|*`, n); if (slug) sh.add('ai', `${kind}|${slug}`, n); } save(); return true;
   }
   /* what is left today for a brand, for the page and /api/config */
   function left(slug) {
     roll(); slug = slugNow(slug); const m = slug ? mine(slug) : null;
-    return Object.fromEntries(KINDS.map((k) => { const brandLeft = m ? caps.brand[k] - m[k] : Infinity, allLeft = caps.all[k] - s.all[k];
-      return [k, { used: m ? m[k] : s.all[k], cap: m ? caps.brand[k] : caps.all[k], left: Math.max(0, Math.min(brandLeft, allLeft)), out: brandLeft <= 0 ? 'brand' : allLeft <= 0 ? 'all' : null }]; }));
+    return Object.fromEntries(KINDS.map((k) => { const ub = m ? usedBrand(slug, k) : 0, brandLeft = m ? caps.brand[k] - ub : Infinity, allLeft = caps.all[k] - usedAll(k);
+      return [k, { used: m ? ub : usedAll(k), cap: m ? caps.brand[k] : caps.all[k], left: Math.max(0, Math.min(brandLeft, allLeft)), out: brandLeft <= 0 ? 'brand' : allLeft <= 0 ? 'all' : null }]; }));
   }
   /* a plain sentence for the UI when a spend was refused */
   function why(kind, slug, name = null, units = 1) {
     const r = refusal(kind, slug, units), n = NOUN[kind] || kind;
-    if (r === 'brand') { const have = Math.max(0, caps.brand[kind] - mine(slugNow(slug))[kind]); /* a final that costs more than what is left is not "used up" */
+    if (r === 'brand') { const have = Math.max(0, caps.brand[kind] - usedBrand(slugNow(slug), kind)); /* a final that costs more than what is left is not "used up" */
       return units > 1 && have > 0 ? `This costs ${Math.ceil(units)} ${n}s and ${name || 'this brand'} has ${Math.floor(have)} of ${caps.brand[kind]} left today. It resets at midnight UTC.` : `${name || 'This brand'}’s ${n} share for today is used up (${caps.brand[kind]} a day). It resets at midnight UTC.`; }
     if (r === 'all') return `Brew’s ${n} budget for today is used up across all brands. It resets at midnight UTC.`;
     return null;

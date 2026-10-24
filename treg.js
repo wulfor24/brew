@@ -44,6 +44,7 @@ export function gcsCache({ bucket, gToken, prefix = '_cache/treg/', objects = nu
 
 export function createTreg({ client = 'shopos-feed', dayCapUsd = +process.env.TREG_DAY_CAP_USD || 25, cache = null, log = console } = {}) {
   const meter = { usd: 0, calls: 0, day: new Date().toDateString(), dayUsd: 0, byTag: {} };
+  let shared = null; /* counters.js on Postgres: the day cap counts every instance */
   const listeners = [];
   const auth = () => {
     if (process.env.TREG_TOKEN) return { token: process.env.TREG_TOKEN, org: process.env.TREG_ORG || 'squareup' };
@@ -78,7 +79,7 @@ export function createTreg({ client = 'shopos-feed', dayCapUsd = +process.env.TR
   async function live0(id, { query, body, timeout = 150e3, tag } = {}) {
     const a = auth(); if (!a?.token) throw new Error('no TREG_TOKEN');
     const d = new Date().toDateString(); if (meter.day !== d) Object.assign(meter, { day: d, dayUsd: 0 });
-    if (meter.dayUsd >= dayCapUsd) throw new Error(`treg day cap $${dayCapUsd} reached`);
+    if (Math.max(meter.dayUsd, shared?.total('treg', 'usd') || 0) >= dayCapUsd) throw new Error(`treg day cap $${dayCapUsd} reached`); /* every instance's spend today (counters.js) */
     const u = new URL(`https://treg.to/call/${id}`);
     Object.entries(query || {}).forEach(([k, v]) => v != null && u.searchParams.set(k, v));
     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -86,7 +87,7 @@ export function createTreg({ client = 'shopos-feed', dayCapUsd = +process.env.TR
         headers: { 'X-Treg-Token': a.token, 'X-Treg-Org': a.org, 'X-Treg-Client': client, ...(body ? { 'content-type': 'application/json' } : {}) },
         body: body ? JSON.stringify(body) : undefined });
       const usd = +(r.headers.get('x-treg-cost-micro') || 0) / 1e6;
-      meter.usd += usd; meter.dayUsd += usd; meter.calls++; meter.byTag[tag || id] = (meter.byTag[tag || id] || 0) + usd;
+      meter.usd += usd; meter.dayUsd += usd; meter.calls++; shared?.add('treg', 'usd', usd); meter.byTag[tag || id] = (meter.byTag[tag || id] || 0) + usd;
       listeners.forEach((f) => f(tag || id, usd, meter));
       if (r.ok) return r.json();
       const t = (await r.text()).slice(0, 240);
@@ -111,7 +112,7 @@ export function createTreg({ client = 'shopos-feed', dayCapUsd = +process.env.TR
     const b = await fetch(`${base}/orgs/${o.id}/balance?limit=1`, { headers: h, signal: AbortSignal.timeout(20e3) }); if (!b.ok) throw new Error(`treg balance ${b.status}`);
     const x = await b.json(); bal = { usd: +(x.balance_micro || 0) / 1e6, at: Date.now() }; return bal;
   }
-  return { call, dfs, balance, meter, onCharge: (f) => listeners.push(f), live: !off && !!auth()?.token };
+  return { call, dfs, balance, meter, onCharge: (f) => listeners.push(f), share: (c) => { shared = c?.on ? c : null; }, live: !off && !!auth()?.token };
 }
 
 // what a tag is for, and whose brand it was: `pulse-wearcomet-com` → { what: 'pulse', slug: 'wearcomet-com' }

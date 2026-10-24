@@ -9,6 +9,7 @@
 //   sloosh          Sloosh cannot make finals (needs a reconnect, no daily limit, the day's allowance or the wallet short): finals
 //                   quietly fall back to Gemini, so staff hear it (server.js checks hourly)
 // On Cloud Run only (ALERTS=1 turns it on locally, ALERTS=0 off), never under AI_MOCK or on the demo site.
+import { leaderOnly } from './roles.js'; // timers run their work on the background lease holder only
 import { emailHtml, p as mailP, list as mailList } from './mail-layout.js';
 
 const WINDOW = 10 * 60e3;
@@ -74,7 +75,7 @@ export function createAlerts({ env = process.env, store = null, treg = null, sen
     if (treg?.balance && cfg.tregLow > 0) { const b = await treg.balance().catch((e) => ({ error: e.message }));
       if (b && b.usd != null && b.usd < cfg.tregLow) await fire('treg-low', `Balance $${b.usd.toFixed(2)}, under $${cfg.tregLow}.`); }
   }
-  function start(everyMs = WINDOW) { if (!on || timer) return; timer = setInterval(() => check().catch((e) => log.warn?.('[alerts] check', e.message)), everyMs); timer.unref?.(); setTimeout(() => check().catch(() => {}), 60e3).unref?.(); }
+  function start(everyMs = WINDOW) { if (!on || timer) return; timer = setInterval(() => leaderOnly(check).catch((e) => log.warn?.('[alerts] check', e.message)), everyMs); timer.unref?.(); setTimeout(() => leaderOnly(check).catch(() => {}), 60e3).unref?.(); }
   const api = { on, cfg, note, fire, response, check, start, ready, get sent() { return sent; }, get loaded() { return loaded; } };
   sink = api;
   return api;

@@ -3,6 +3,7 @@
 // and stock in line with the store's public products.json, and connected accounts become the source of truth for what
 // they measure (members only). Every change rebuilds facts.json, is recorded in facts-edits.json ({ at, by, what }),
 // flags the moves that quote the old value as out of date, and reloads the pack so cards and the fact gate use it at once.
+import { leaderOnly } from './roles.js'; // timers run their work on the background lease holder only
 import { keyOf } from './derive.js';
 import { numbersIn, canon } from './fact-gate.js';
 import { moneyFmt } from './brand-pack.js';
@@ -375,7 +376,7 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
       const due = (await Promise.all(built.map(async (b) => (Date.now() - (b.status.seenAt || 0) < 7 * D || await liveAccount(b.slug)) ? b.slug : null))).filter(Boolean);
       for (const slug of due) { try { await daily(slug); } catch (e) { log.warn('[facts] daily', slug, e.message); } } }
     finally { T.busy = false; } }
-  const start = () => { if (off()) return; T.timers.push(setTimeout(() => tick().catch(() => {}), 4 * 60e3), setInterval(() => tick().catch(() => {}), 60 * 60e3)); T.timers.forEach((t) => t.unref?.()); };
+  const start = () => { if (off()) return; T.timers.push(setTimeout(() => leaderOnly(tick).catch(() => {}), 4 * 60e3), setInterval(() => leaderOnly(tick).catch(() => {}), 60 * 60e3)); T.timers.forEach((t) => t.unref?.()); };
   const stop = () => T.timers.forEach((t) => { clearTimeout(t); clearInterval(t); });
   return { view, edit, daily, connected, memberFacts, truth, sheet, start, stop, tick };
 }

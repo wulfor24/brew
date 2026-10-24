@@ -23,6 +23,7 @@
 // first 3 seconds too), never drawn by the image model. A picture the day's budget refused is made after midnight UTC from the
 // saved prompt (d.imgRetry, no new plan). Cards are drafted by value (value.js), a brand whose read just turned ready first;
 // the top two make cards get one new take a day (the last take kept, d.prev) and the top make card without a clip gets one.
+import { leaderOnly } from './roles.js'; // timers run their work on the background lease holder only
 import crypto from 'node:crypto';
 import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
 import fs from 'node:fs';
@@ -473,8 +474,8 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   async function watch() { if (ticking) return { busy: true }; const list = await packs.list().catch(() => []); const fresh = await freshReady(list); return fresh.length ? tick({ list, first: fresh, onlyFirst: true }) : { ran: [] }; }
   let timer = null, watcher = null;
   const start = () => { if (timer || cfg.killed || cfg.mock || cfg.local) { log.log?.(`[drafts-bg] first drafts ${cfg.killed ? 'off (DRAFTS_BG_OFF)' : cfg.mock ? 'off (AI mock)' : cfg.local ? 'off here (local)' : 'already on'}`); return false; }
-    timer = setTimeout(function go() { tick().catch((e) => log.warn?.('[drafts-bg] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.();
-    if (cfg.readyMs > 0) { watcher = setInterval(() => { watch().catch((e) => log.warn?.('[drafts-bg] ready watch', e.message)); }, cfg.readyMs); watcher.unref?.(); }
+    timer = setTimeout(function go() { leaderOnly(tick).catch((e) => log.warn?.('[drafts-bg] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.();
+    if (cfg.readyMs > 0) { watcher = setInterval(() => { leaderOnly(watch).catch((e) => log.warn?.('[drafts-bg] ready watch', e.message)); }, cfg.readyMs); watcher.unref?.(); }
     return true; };
   return { cfg, tick, watch, start, runOne, opened, stateOf, cacheOf, busy: () => busy.size };
 }

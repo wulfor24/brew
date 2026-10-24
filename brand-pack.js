@@ -463,5 +463,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     if (!obj?.pg) { const cur = await getJSON(slug, name, null); const next = await fn(cur); if (next !== undefined) await putStrict(slug, name, next); return next === undefined ? cur : next; }
     const out = await obj.update(`brands/${slug}/${name}`, fn);
     fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(out, null, 1)); bump(slug); return out; };
-  return { load, peek, put, putStrict, update, get, getJSON, readJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => { bump(slug); for (const k of freshP.keys()) if (k.startsWith(`${slug}|`)) freshP.delete(k); return cache.delete(slug); }, version: ver, remote };
+  /* fn(slug, name) when any instance writes a pack file (Postgres NOTIFY); nothing without Postgres */
+  const onChange = (fn) => obj?.onChange?.((key) => { const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (m) fn(m[1], m[2]); }).catch((e) => log.warn('[packs] listen', e.message));
+  return { load, peek, put, putStrict, update, onChange, get, getJSON, readJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => { bump(slug); for (const k of freshP.keys()) if (k.startsWith(`${slug}|`)) freshP.delete(k); return cache.delete(slug); }, version: ver, remote };
 }

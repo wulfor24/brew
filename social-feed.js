@@ -8,6 +8,7 @@
 //   heardView(listen, name)       the "Heard" section of What Brew learned
 //   createSocialScheduler(...)    listen every ~24h per built brand (asked threads re-read with it), ideas at most daily for brands opened in 3 days
 // Nothing is invented here: every thread, quote, count and community comes from the files listen-watch.js and ideas.js wrote.
+import { leaderOnly } from './roles.js'; // timers run their work on the background lease holder only
 import { createListenWatch, sourceName } from './listen-watch.js';
 import { createIdeas, PLATFORMS } from './ideas.js';
 import { usableThread, usableCommunity, topicStems, repliesText, isQuoraQuestion, inMarket } from './community-gate.js'; // which threads any brand may be pointed at
@@ -380,11 +381,11 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
   }
   let timer = null;
   const start = () => { if (timer || cfg.off || cfg.mock) { log.log?.(`[social] background listening and ideas ${cfg.off ? 'off here' : cfg.mock ? 'off (AI mock)' : 'already on'}`); return false; }
-    timer = setTimeout(function go() { tick().catch((e) => log.warn?.('[social] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.(); return true; };
+    timer = setTimeout(function go() { leaderOnly(tick).catch((e) => log.warn?.('[social] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.(); return true; };
   /* a brand just became ready (its moves landed): listen now rather than on the next half-hour tick; at most once in 5 minutes */
   let kickedAt = 0, kickTimer = null;
   /* a nudge inside the 5 minutes is kept for when they end, never dropped (the read's last update came 2 minutes after its first) */
   const kick = () => { if (cfg.off || cfg.mock || kickTimer) return false; const wait = Math.max(10e3, kickedAt + 5 * 60e3 - now());
-    kickTimer = setTimeout(() => { kickTimer = null; kickedAt = now(); tick().catch((e) => log.warn?.('[social] kick', e.message)); }, wait); kickTimer.unref?.(); return true; };
+    kickTimer = setTimeout(() => { kickTimer = null; kickedAt = now(); leaderOnly(tick).catch((e) => log.warn?.('[social] kick', e.message)); }, wait); kickTimer.unref?.(); return true; };
   return { cfg, tick, start, kick, opened, runOne, stateOf, due: async (slug, ready = true) => dueFor(await stateOf(slug), cfg, { now: now(), aiLive: ai?.live !== false, ready }) };
 }

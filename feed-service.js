@@ -3,6 +3,7 @@
 // budget, feedback, action runs behind a weekly spend limit, versions, jam router + deployment
 // workbench, stories, deck layout, always-on watchers with a QA agent, brand memory and metrics.
 // State is in memory per tenant; the client re-creates its tenant from a snapshot after a restart.
+import { isLeader } from './roles.js'; // paid background reads belong to the background lease holder
 import { budgetWhy } from './budget.js'; // whose daily share ran out, in plain words
 import { countsOf, freshCounts } from './card-nums.js'; /* a card's counts follow today's fact sheet */
 import { numberRows } from './pack-numbers.js';
@@ -1047,7 +1048,7 @@ export function createFeedService(o) {
       for (const x of order) { const c = researchCard('viral', x.id); if (!c || t.used.has(c.id) || t.cards.has(c.id)) continue; t.used.add(c.id); out.push(c); break; } }
     return out;
   };
-  const wireResearch = (b) => { if (b?.research) setTimeout(() => runIn?.(b, () => prereadRivals(b))?.catch?.(() => {}), 90e3).unref?.(); return b.research?.onRefresh((done) => {
+  const wireResearch = (b) => { if (b?.research) setTimeout(() => { if (isLeader()) runIn?.(b, () => prereadRivals(b))?.catch?.(() => {}); }, 90e3).unref?.(); return b.research?.onRefresh((done) => {
     if (done.includes('ads')) Promise.resolve(runIn ? runIn(b, () => prereadRivals(b)) : prereadRivals(b)).catch((e) => log.warn('[rival preread]', b.slug, e.message));
     for (const t of brandTenants(b)) {
       if (done.includes('trends') && t.watchers.trends) t.watchers.trends.nextRun = now(t) + 15e3;

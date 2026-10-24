@@ -6,6 +6,7 @@
 // Slack is real on the live site too (2026-10-16): it posts what the team sends and brings thread replies back; it is never
 // evidence (no cards, no ledger). Simulated rows are marked demo and are never evidence.
 // Connecting is also the easiest way to claim a brand: the first work email at its domain to connect becomes its admin.
+import { leaderOnly } from '../roles.js'; // timers run their work on the background lease holder only
 import crypto from 'node:crypto';
 import { safeFetch } from '../reader/util.js'; // a Meta winner's picture, saved once for the Brand Book
 import shopify from './shopify.js';
@@ -472,7 +473,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     log.log?.(`[connect] ${slug} ${id}: sign-in ${stage} (${left} days), told ${to.length}`);
     return { stage, to };
   }
-  if (!DEMO && !process.env.BUILD_RESUME_OFF) { const t = setInterval(() => tick().catch((e) => log.warn('[connect] tick', e.message)), 3600e3); t.unref?.(); setTimeout(() => tick().catch(() => {}), 90e3).unref?.(); }
+  if (!DEMO && !process.env.BUILD_RESUME_OFF) { const t = setInterval(() => leaderOnly(tick).catch((e) => log.warn('[connect] tick', e.message)), 3600e3); t.unref?.(); setTimeout(() => leaderOnly(tick).catch(() => {}), 90e3).unref?.(); }
 
   /* ---------- Slack: post what the team sends, find the brand a Slack event belongs to ---------- */
   /* the brand's Slack, when it is really connected (live, not simulated): its token and the channel picked on Slack's screen */

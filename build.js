@@ -2,6 +2,8 @@
 // core "Know the brand" set first), turns each move into feed cards as it lands, and renders the Brew PDFs.
 // Every stage writes to the brand pack (brand-pack.js) and to status.json, so a restart resumes where it was.
 // Events are kept per brand and replayed, so the onboarding screen and anyone opening later see the same read.
+
+import { isLeader } from './roles.js'; // only the background leader runs builds; other instances read their status fresh
 import { safeFetch, links as rlinks } from './reader/util.js';
 import { productFromPage, offeringFromPage, findProductUrls, sitemapUrls, handleOf } from './reader/products.js'; // user-pasted links reach only the public internet
 import { emailHtml, esc as mailEsc, p as mailP, list as mailList, images as mailImages } from './mail-layout.js';
@@ -106,7 +108,7 @@ const FIELD_WORDS = { name: 'the brand name', descriptor: 'the one-line descript
 const andList = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0] || '');
 const RETRY_MAX = +(process.env.BUILD_RETRY_MAX || 6); // tries for moves that failed twice before the brand is Ready without them
 
-export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = () => {}, onCards = () => {}, log = console, caps = {}, modules = null, signGate = () => false }) {
+export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = () => {}, onCards = () => {}, log = console, caps = {}, modules = null, signGate = () => false, shared = null, events = null }) {
   const BUILD_CAP = +process.env.BUILD_CAP_USD || caps.build || 60; // every move at Opus medium effort with the shared brand cache: about $25-35
   const DAY_CAP = +process.env.DAILY_BUILD_CAP_USD || caps.day || 200;
   const PRO_CAP = +process.env.BUILD_CAP_PRO_USD || caps.buildPro || Math.max(150, BUILD_CAP * 2.5); // a Pro brand: every move written
@@ -118,7 +120,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const dayKey = () => new Date().toISOString().slice(0, 10);
   const day = { d: dayKey(), usd: 0, loaded: false };
   const today = () => { const d = dayKey(); if (day.d !== d) Object.assign(day, { d, usd: 0 }); return day; };
-  const dayUsd = () => today().usd;
+  const dayUsd = () => Math.max(today().usd, shared?.on ? shared.total('build', 'usd') : 0); /* every instance's build spend today (counters.js) */
   const loadDay = async () => { if (day.loaded) return; day.loaded = true; const j = await Promise.resolve().then(() => packs.getJSON('_brew', 'spend-day.json', null)).catch(() => null); if (j?.d === today().d) day.usd = Math.max(day.usd, +j.usd || 0); };
   let daySave = null;
   const saveDay = () => { if (daySave) return; daySave = setTimeout(() => { daySave = null; Promise.resolve().then(() => packs.put('_brew', 'spend-day.json', { d: day.d, usd: +day.usd.toFixed(3) })).catch(() => {}); }, 5000); daySave.unref?.(); };
@@ -143,9 +145,18 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
      moves in flight at that second are written again, so a deploy never has to wait for a build. */
   let stopping = false; const stop = () => { stopping = true; };
   const st = (slug) => { let x = S.get(slug); if (!x) S.set(slug, x = { events: [], listeners: new Set(), status: null, confirmed: null, running: false, inflight: new Map(), failed: new Map() }); return x; };
-  const emit = (slug, ev) => { const x = st(slug); const e = { ...ev, at: Date.now() }; x.events.push(e); if (x.events.length > 2000) x.events.shift(); x.listeners.forEach((f) => { try { f(e); } catch {} }); };
-  const subscribe = (slug, f, { replay = true } = {}) => { const x = st(slug); if (replay) x.events.forEach(f); x.listeners.add(f); return () => x.listeners.delete(f); };
+  const deliver = (slug, e) => { const x = st(slug); x.events.push(e); if (x.events.length > 2000) x.events.shift(); x.listeners.forEach((f) => { try { f(e); } catch {} }); };
+  const emit = (slug, ev) => { const e = { ...ev, at: Date.now() }; st(slug).heard = true; deliver(slug, e); events?.persist(slug, e); };
+  /* Postgres (build-events.js): a line the worker wrote reaches this instance's listeners, and a page that opens here after the
+     build began gets the lines so far before the live ones */
+  events?.onRemote((slug, e) => { st(slug).heard = true; deliver(slug, e); }).catch((e) => log.warn('[build] events listen', e.message));
+  const subscribe = (slug, f, { replay = true } = {}) => { const x = st(slug);
+    if (replay && events && !x.heard && !x.events.length) { x.heard = true; events.history(slug).then((h) => { if (!x.events.length) { x.events.push(...h); h.forEach((e) => { try { f(e); } catch {} }); } }).catch(() => {}); }
+    else if (replay) x.events.forEach(f);
+    x.listeners.add(f); return () => x.listeners.delete(f); };
   const status = async (slug) => st(slug).status || (st(slug).status = await packs.getJSON(slug, 'status.json', null));
+  /* Postgres: status.json written on another instance (the worker) is read again here on the next ask */
+  packs.onChange?.((slug, name) => { if (name === 'status.json' && S.has(slug) && !isLeader()) S.get(slug).status = null; }); /* the leader writes it (and may hold it in hand) */
   const setStatus = async (slug, patch) => {
     if (blocked(slug)) return {};
     const cur = (await status(slug)) || {};
@@ -155,7 +166,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   const stage = (slug, k, state, extra = {}) => setStatus(slug, { stages: { [k]: { state, at: Date.now(), ...extra } } });
   // spend: one meter per brand, from both clients; a build stops cleanly at its cap
   const spentFor = (slug) => (st(slug).usd || 0);
-  const charge = (slug) => (tag, usd) => { const x = st(slug); x.usd = (x.usd || 0) + usd; today().usd += usd; saveDay(); };
+  const charge = (slug) => (tag, usd) => { const x = st(slug); x.usd = (x.usd || 0) + usd; today().usd += usd; shared?.add?.('build', 'usd', usd); saveDay(); };
   const capOf = (slug) => (st(slug).status?.pro ? PRO_CAP : BUILD_CAP);
   const capHit = (slug) => blocked(slug) || spentFor(slug) >= capOf(slug) || dayUsd() >= DAY_CAP || !!st(slug).cancelled;
   // a stopped build (wrong site, abuse): cancel.json in the pack; checked before every paid stage
@@ -1598,7 +1609,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   function autoRefresh() {
     if (process.env.BUILD_RESUME_OFF) return;
     const autoOn = process.env.REFRESH_AUTO !== '0';
-    const tick = async () => { for (const b of await packs.list().catch(() => [])) {
+    const tick = async () => { if (!isLeader()) return; for (const b of await packs.list().catch(() => [])) {
       const s0 = b.status;
       /* a late check that waited (the day's budget, a billing pause, a busy brand) is tried again */
       if (s0?.recheck?.at && !st(b.slug).running && !st(b.slug).checking && !blocked(b.slug)) await drain(b.slug).catch((e) => log.warn('[check] late', b.slug, e.message));

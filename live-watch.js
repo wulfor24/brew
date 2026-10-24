@@ -6,6 +6,7 @@
 //                    the brand is named, which rivals are, and which sites the answers cite, and compare with last week.
 // One shared snapshot for every tenant, kept on disk and in GCS so a deploy refetches nothing.
 // Watchers turn events into cards; a tenant sees each event once.
+import { isLeader } from './roles.js'; // only the background lease holder reads; other instances serve the snapshot
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -53,6 +54,8 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
     return method === 'PUT' ? true : Buffer.from(await r.arrayBuffer());
   };
   const persist = () => { const buf = Buffer.from(JSON.stringify(snap)); fs.writeFileSync(path.join(LOCAL, 'live-watch.json'), buf); gcs('PUT', buf).catch((e) => log.warn('[live] gcs save', e.message)); };
+  /* another instance (the background leader) saved a newer snapshot: this one serves it (Postgres NOTIFY) */
+  objects?.onChange?.((k) => { if (k === OBJECT && !isLeader()) load().catch(() => {}); })?.catch?.(() => {});
   const load = async () => {
     let s = null;
     try { s = JSON.parse((await gcs('GET')).toString()); } catch (e) { log.warn('[live] no gcs snapshot:', e.message); }
@@ -245,7 +248,7 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
     await load();
     /* a run from before the brands pass gets it once (one fast-model call), so the AI answers card compares against who it names */
     const r0 = snap.visibility?.runs?.[0]; if (r0?.answers?.length && !r0.brandsPass && namePass && !process.env.LIVE_OFF) brandsOf(r0.answers).then((x) => { if (x) { r0.brandsPass = x; persist(); listeners.forEach((f) => f(['visibility'])); } });
-    const tick = () => { const d = due(); if (d.length && !process.env.LIVE_OFF) refresh(d); };
+    const tick = () => { if (!isLeader()) return; const d = due(); if (d.length && !process.env.LIVE_OFF) refresh(d); };
     stopped = false; clearTimeout(timers.t); clearInterval(timers.i);
     timers.t = setTimeout(() => { if (!stopped) tick(); }, 8000); timers.i = setInterval(() => { if (!stopped) tick(); }, 15 * 60e3); timers.i.unref?.();
   };

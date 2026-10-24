@@ -13,6 +13,7 @@
 // team only: the same families written from the read plus the account numbers (the paid area scored from the Meta account,
 // routines picked from the Klaviyo flows that are on or off). It goes to private/moves.json, private/moves/, private/cards.json
 // (ids ending -p, privateOf the move number) and private/audit/scorecard.json; the public run and its files never change.
+import { leaderOnly } from './roles.js'; // timers run their work on the background lease holder only
 import { allowedFromLedger, scanNumbers } from './moves-engine.js';
 import { closedLine } from './reader/closed.js';
 import { catalogSourceUrl, catalogTotal, sellsByEnquiry } from './store-facts.js';
@@ -606,6 +607,6 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
   };
   let timer = null;
   const start = () => { if (timer || cfg.killed || cfg.mock || cfg.local) { log.log?.(`[moves-cadence] weekly moves ${cfg.killed ? 'off (MOVES_REFRESH_OFF)' : cfg.mock ? 'off (AI mock)' : cfg.local ? 'off here (local)' : 'already on'}`); return false; }
-    timer = setTimeout(function go() { tick().catch((e) => log.warn?.('[moves-cadence] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.(); return true; };
+    timer = setTimeout(function go() { leaderOnly(tick).catch((e) => log.warn?.('[moves-cadence] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.(); return true; };
   return { cfg, tick, start, stop, runOne, stateOf, due: dueOf, routes, retire, scorecardFor, busy: () => busy.size };
 }

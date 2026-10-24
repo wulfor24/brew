@@ -13,6 +13,7 @@
 //
 // Recipients: private/created.json (who started the read) and the owners in private/members.json. A brand nobody signed
 // in for has no one to remind; it still shows "waiting for you" to whoever opens it.
+import { leaderOnly } from './roles.js'; // timers run their work on the background lease holder only
 import { emailHtml, p as mailP, esc as mailEsc } from './mail-layout.js';
 import { officialFor } from './auth.js';
 
@@ -132,6 +133,6 @@ export function createConfirmRemind({ packs, mail, log = console, now = () => Da
     finally { busy = false; }
     return out;
   }
-  const start = ({ every = 15 * 60e3, first = 3 * 60e3 } = {}) => { const a = setTimeout(() => tick().catch(() => {}), first), b = setInterval(() => tick().catch(() => {}), every); a.unref?.(); b.unref?.(); return () => { clearTimeout(a); clearInterval(b); }; };
+  const start = ({ every = 15 * 60e3, first = 3 * 60e3 } = {}) => { const a = setTimeout(() => leaderOnly(tick).catch(() => {}), first), b = setInterval(() => leaderOnly(tick).catch(() => {}), every); a.unref?.(); b.unref?.(); return () => { clearTimeout(a); clearInterval(b); }; };
   return { tick, start, remindOne, remindFeed };
 }

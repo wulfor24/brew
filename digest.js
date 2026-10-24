@@ -13,6 +13,7 @@
 // once seven calendar days have passed since the last one (the first one seven days after the brand became Ready).
 // Live site only (server.js starts it on Cloud Run), never on the demo site. If the brand's Slack is connected, the same
 // lines go to its channel once.
+import { leaderOnly } from './roles.js'; // timers run their work on the background lease holder only
 import { emailHtml, esc, p as mailP, list as mailList, heading, images as mailImages, footLink } from './mail-layout.js';
 import { officialFor } from './auth.js'; // the read's starter hears about the brand only on its official email
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
@@ -205,8 +206,8 @@ export function createDigest({ packs, mail, slack = () => null, prefLink = null,
       await digestFor(slug, { force: true }).then((r) => log.log?.(`[digest] ${slug} now: ${JSON.stringify(r).slice(0, 160)}`)).catch((e) => log.warn?.('[digest] now', slug, e.message)); }
   }
   const start = ({ every = 3600e3, first = 5 * 60e3 } = {}) => {
-    const a = setTimeout(() => { now1(String(process.env.DIGEST_NOW || '').split(',').map((x) => x.trim()).filter(Boolean)).catch(() => {}).finally(() => tick().catch(() => {})); }, first);
-    const b = setInterval(() => tick().catch(() => {}), every); a.unref?.(); b.unref?.(); return () => { clearTimeout(a); clearInterval(b); };
+    const a = setTimeout(() => { leaderOnly(() => now1(String(process.env.DIGEST_NOW || '').split(',').map((x) => x.trim()).filter(Boolean))).catch(() => {}).finally(() => leaderOnly(tick).catch(() => {})); }, first);
+    const b = setInterval(() => leaderOnly(tick).catch(() => {}), every); a.unref?.(); b.unref?.(); return () => { clearTimeout(a); clearInterval(b); };
   };
   return { tick, start, digestFor };
 }

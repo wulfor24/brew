@@ -11,6 +11,7 @@ const conf = () => ({ ...(process.env.DATABASE_URL ? { connectionString: process
   statement_timeout: +process.env.PG_STATEMENT_MS || 30e3, application_name: `brew-${process.env.ROLE || 'all'}` });
 
 export const enabled = () => process.env.STORAGE === 'pg';
+export const clientConf = conf; /* a connection of its own (the background lease) */
 export function db() {
   if (!pool) { pool = new pg.Pool(conf()); pool.on('error', (e) => console.warn('[db] idle client', e.message)); }
   return pool;

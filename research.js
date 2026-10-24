@@ -8,6 +8,7 @@
 // sources are re-read through the day (EVERY below) so new items keep arriving; feed-service ranks them and drops weak ones. Media is
 // downloaded because Ad Library URLs expire. Snapshot + media persist to GCS so a restart or a deploy
 // refetches nothing; the last good data stays up if a refresh fails.
+import { isLeader } from './roles.js'; // only the background lease holder reads sources and pays; other instances serve the snapshot
 import { mimeOf } from './img-norm.js';
 import fs from 'node:fs';
 import { buildDraft } from './sloosh-prompt.js';
@@ -141,6 +142,8 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     fs.writeFileSync(path.join(LOCAL, 'snapshot.json'), buf);
     gcs('PUT', SNAP, buf, 'application/json').catch((e) => log.warn('[research] gcs snapshot', e.message));
   };
+  /* another instance (the background leader) saved a newer snapshot: this one serves it (Postgres NOTIFY) */
+  objects?.onChange?.((k) => { if (k === SNAP && !isLeader()) load().catch(() => {}); })?.catch?.(() => {});
   const load = async () => {
     let s = null;
     try { s = JSON.parse((await gcs('GET', SNAP)).toString()); } catch (e) { log.warn('[research] no gcs snapshot:', e.message); }
@@ -545,7 +548,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     } finally { healing = false; } }
   const start = async () => {
     await (loaded = load());
-    const tick = () => { const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); healClips().catch(() => {}); };
+    const tick = () => { if (!isLeader()) return; const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); healClips().catch(() => {}); };
     stopped = false; clearTimeout(timers.t); clearInterval(timers.i);
     timers.t = setTimeout(() => { if (!stopped) tick(); }, 5000); timers.i = setInterval(() => { if (!stopped) tick(); }, 30 * 60e3); timers.i.unref?.();
   };
@@ -553,7 +556,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
      ones): that source is re-read at once instead of waiting for its EVERY slot. At most once every 2 hours a source, never
      while it runs or within the hour after a failure, never with RESEARCH_OFF */
   const needAt = {};
-  const need = (k) => { if (!JOBS[k] || process.env.RESEARCH_OFF || running.has(k) || Date.now() - failedAt(k) < H || Date.now() - (needAt[k] || 0) < 2 * H) return false;
+  const need = (k) => { if (!isLeader() || !JOBS[k] || process.env.RESEARCH_OFF || running.has(k) || Date.now() - failedAt(k) < H || Date.now() - (needAt[k] || 0) < 2 * H) return false;
     needAt[k] = Date.now(); log.log(`[research] ${brand.slug} ${k}: ring has nothing fresh, reading again`); refresh([k]).catch(() => {}); return true; };
   /* a replaced instance stops its timers */
   let stopped = false; const timers = {};

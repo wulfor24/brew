@@ -32,6 +32,10 @@ import { createTreg, gcsCache } from './treg.js';
 import { createObjects } from './objects.js'; // STORAGE=pg: rows in Postgres, binaries in the bucket
 import { enabled as pgEnabled } from './db/index.js';
 import { migrate } from './db/migrate.js';
+import { isWorker, isLeader, whenLeader, leaderOnly, startLease } from './roles.js'; // ROLE=web|worker; the background lease
+import { createJobs } from './jobs.js'; // work any instance asks for and one worker does
+import { createCounters } from './counters.js'; // the day's spend, shared by every instance
+import { createBuildEvents } from './build-events.js'; // a build's progress, followed from any instance
 import { setApifyCache, createApify, onAnyApifyCharge } from './apify.js';
 import { watchView } from './watch-view.js';
 import { attachHealthStore, sourceTable, flush as healthFlush } from './source-health.js'; // how well each outside source works // What Brew watches for you: the four blocks
@@ -108,7 +112,8 @@ const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 let MOCK = process.env.AI_MOCK === '1' || (PROVIDER === 'anthropic' && !ANTHROPIC_KEY); // Gemini needs only Google sign-in
 /* the day's AI budget (budget.js): one ceiling for the server and a share for each brand (DAILY_BRAND_SHARE, BRAND_<KIND>_CAP),
    kept in the bucket with treg's day total and loaded before the first call (await budget.load() below) */
-const budget = createBudget({ store: { get: () => packs.getJSON('_brew', 'usage-day.json', null), put: (x) => packs.put('_brew', 'usage-day.json', { ...x, treg: { day: treg.meter.day, usd: treg.meter.dayUsd } }) }, log: console });
+const COUNTERS = createCounters({ log: console }); /* Postgres: caps count every instance (started once the schema is up) */
+const budget = createBudget({ shared: COUNTERS, store: { get: () => packs.getJSON('_brew', 'usage-day.json', null), put: (x) => packs.put('_brew', 'usage-day.json', { ...x, treg: { day: treg.meter.day, usd: treg.meter.dayUsd } }) }, log: console });
 const CAPS = budget.caps.all;
 const spend = (k, slug, n) => budget.spend(k, slug, n);
 // the system prompt is the active brand's brief (the generated brief.md)
@@ -351,8 +356,11 @@ const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
    schema is brought up to date first; migrations are additive, so the revision still serving keeps working */
 const OBJ = pgEnabled() ? createObjects({ bucket: BUCKET, gToken: process.env.K_SERVICE ? gToken : null, log: console }) : null;
 if (OBJ && process.env.MIGRATE_ON_BOOT !== '0') await migrate();
+if (OBJ) await COUNTERS.start();
+const JOBS = createJobs({ log: console });
 // one treg client for everything (24-hour cache in the bucket); research uses it too, so it exists before any brand loads
 const treg = createTreg({ client: 'shopos-feed', cache: (process.env.K_SERVICE || OBJ) && !MOCK ? gcsCache({ bucket: BUCKET, gToken, objects: OBJ }) : null });
+treg.share(COUNTERS); /* the treg day cap counts every instance */
 if ((process.env.K_SERVICE || OBJ) && !MOCK) setApifyCache(gcsCache({ bucket: BUCKET, gToken, prefix: '_cache/apify/', objects: OBJ })); // Apify runs: same rules as treg
 let feedSvc = null; // made below, once the brand plumbing exists
 const retire = createRetire({ bucket: BUCKET, gToken, objects: OBJ, log: console });
@@ -378,8 +386,8 @@ const STUB = { get: () => ({}), running: () => [], spent: () => ({}), onRefresh:
 const INST = new Map(); // slug → { key, research, live }
 const attach = (p) => {
   if (!p) return p;
-  if (p.kind === 'generated') setTimeout(() => notesSvc?.fill(p).catch((e) => console.warn('[notes]', p.slug, e.message)), 5000); /* margin notes for cards that never had one */
-  if (p.kind === 'generated') setTimeout(() => valueSvc?.fill(p).catch((e) => console.warn('[move-value]', p.slug, e.message)), 8000); /* grades for moves new or rewritten since the last grading */
+  if (p.kind === 'generated') setTimeout(() => leaderOnly(() => notesSvc?.fill(p)).catch((e) => console.warn('[notes]', p.slug, e.message)), 5000); /* margin notes for cards that never had one */
+  if (p.kind === 'generated') setTimeout(() => leaderOnly(() => valueSvc?.fill(p)).catch((e) => console.warn('[move-value]', p.slug, e.message)), 8000); /* grades for moves new or rewritten since the last grading */
   const c = p.config || {}, key = JSON.stringify([c.rivals, c.terms, c.questions, c.country, c.catalogUrl, p.name]);
   /* a brand waiting on "Check what we read" runs no research or watchers: nobody has asked for the moves yet, and a restart
      must not pay for them again (confirm-remind.js reminds the team instead) */
@@ -414,7 +422,7 @@ const loadBrand = async (slug, o) => blocked(slug) ? null : attach(await packs.l
 let AIQ = null; const QHEAL = new Map(), QDONE = new Set(); /* QDONE: the heal ended (sourced or not), so the watchers start either way */ const aiq = () => (AIQ ||= createAiQuestions({ packs, treg, ai, log: console })); /* made on first use: `ai` is declared further down */
 /* true while the brand's questions still need sourcing (the caller waits on QDONE before starting its watchers) */
 const questionsHeal = (p) => {
-  if (MOCK || process.env.DEMO_MODE === '1' || process.env.QUESTIONS_OFF === '1' || p.config?.questionsV === Q_V) return false;
+  if (MOCK || process.env.DEMO_MODE === '1' || process.env.QUESTIONS_OFF === '1' || p.config?.questionsV === Q_V || !isLeader()) return false; /* paid: the background leader's */
   const slug = p.slug; if (Date.now() - (QHEAL.get(slug) || 0) < 6 * 3600e3) return !QDONE.has(slug); QHEAL.set(slug, Date.now()); QDONE.delete(slug);
   const done = () => { if (QDONE.has(slug)) return; QDONE.add(slug); packs.drop(slug); loadBrand(slug).catch(() => {}); }; /* the watchers start, sourced or not */
   const guard = setTimeout(done, 4 * 60e3); guard.unref?.(); /* a sourcing that hangs never keeps a brand's watchers off */
@@ -449,10 +457,21 @@ const apifyLedger = spendLedger({ onCharge: (f) => onAnyApifyCharge((tag, usd) =
 const apifyPulse = createApify({ log: console });
 attachHealthStore(packs).catch((e) => console.warn('[sources] health store', e.message));
 const calendar = createCalendar({ packs, ai, log: console });
-const builder = createBuilder({ ROOT, packs, ai, treg, image: countedImage, log: console, signGate: () => !!(process.env.GOOGLE_CLIENT_ID && process.env.FEED_SIGNIN !== '0' && process.env.BUILD_SIGNIN !== '0'),
+const builder0 = createBuilder({ shared: COUNTERS, events: createBuildEvents({ log: console }), ROOT, packs, ai, treg, image: countedImage, log: console, signGate: () => !!(process.env.GOOGLE_CLIENT_ID && process.env.FEED_SIGNIN !== '0' && process.env.BUILD_SIGNIN !== '0'),
   // a pack changed on disk (new seed, facts, moves): reload it, keep its research/live instances
   onPack: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); },
   onCards: (slug, cards, o) => { if (o?.private) connectors?.drop(slug); feedSvc?.addCards(slug, cards, o); } });
+/* ROLE=web (production web instances): what starts or changes a build is asked of the worker (jobs.js) and answered when it
+   is done there; reads (status, events, lists) stay here, fresh from Postgres. A worker, or one instance doing both, uses the
+   builder directly. Asked once (maxTries 1): a click is never done twice */
+const BUILD_ASKS = new Set(['start', 'retry', 'rewrite', 'goPro', 'confirm', 'checkUpdates', 'applyCheck', 'setAuto', 'feedOpened', 'addEmail', 'teamStatics', 'signal', 'pdfFor', 'pdfOn', 'bookAfter', 'seen']);
+whenLeader(() => JOBS.define('builder', async ({ m, args }) => { if (!BUILD_ASKS.has(m)) throw new Error(`builder.${m} is not asked of the worker`);
+  const r = await builder0[m](...(args || [])); return m === 'pdfOn' && r ? { name: r.name } : r; }, { queue: 'interactive', maxTries: 1 }));
+const builder = isWorker() ? builder0 : new Proxy(builder0, { get(t, k) { if (!BUILD_ASKS.has(k)) return t[k];
+  return (...args) => { const p = JOBS.call('builder', { m: k, args }, { timeoutMs: String(k).startsWith('pdf') ? 180e3 : 90e3 })
+    .then(async (r) => (k === 'pdfOn' && r?.name ? { name: r.name, buf: await packs.get(args[0], 'pdf/' + r.name) } : r)); /* the PDF itself is in the bucket */
+    if (k === 'seen' || k === 'bookAfter') p.catch((e) => console.warn(`[build] ${k}`, e.message)); /* nobody awaits these */
+    return p; }; } });
 /* ---------- brand memory (brand-memory.js): shared per-brand memory, read into every jam prompt. BRAND_MEMORY=0 turns it off ---------- */
 const MEMORY_ON = () => process.env.BRAND_MEMORY !== '0';
 const memory = createBrandMemory({ ai, packs, embed: vertexEmbedder({ gToken, project: GPROJECT }), allow: () => !MOCK, log: console });
@@ -486,7 +505,7 @@ async function evidenceTick() {
     const cs = await packs.getJSON('_brew', 'calendar/confirm-state.json', null).catch(() => null);
     if (!cs || Date.now() - (cs.at || 0) > 7 * 864e5) { const r = await calendar.confirmDates({ treg }).catch((e) => ({ error: e.message })); await packs.put('_brew', 'calendar/confirm-state.json', { at: Date.now(), last: r }); console.log('[calendar] confirm', JSON.stringify(r).slice(0, 200)); }
   } finally { EV.busy = false; } }
-setInterval(() => evidenceTick().catch((e) => console.warn('[evidence]', e.message)), 30 * 60e3).unref?.(); setTimeout(() => evidenceTick().catch(() => {}), 5 * 60e3).unref?.();
+setInterval(() => leaderOnly(evidenceTick).catch((e) => console.warn('[evidence]', e.message)), 30 * 60e3).unref?.(); setTimeout(() => leaderOnly(evidenceTick).catch(() => {}), 5 * 60e3).unref?.();
 /* ---------- moves on a cadence (moves-cadence.js): audit, listening and automation moves for every built brand, weekly. Cap MOVES_WEEK_CAP_USD (default $3 a brand a week),
    kill switch MOVES_REFRESH_OFF=1; off under AI_MOCK and on local servers unless MOVES_BG=1. Manual: POST /api/brands/:slug/moves/refresh (team-only on claimed brands) ---------- */
 const movesCadence = createMovesScheduler({ packs, ai, memory: MEMORY_ON() ? memory : null, cardsGen: createCardsGen, log: console,
@@ -507,7 +526,7 @@ async function teamProbe(slug) {
   connectors?.drop(slug); await feedSvc?.refreshLive(slug).catch(() => {});
   await packs.put(slug, M, { ...out, doneAt: Date.now() });
 }
-if (process.env.OPS_TEAM_PROBE && !MOCK) setTimeout(() => { (async () => { for (const sl of String(process.env.OPS_TEAM_PROBE).split(',').map((x) => x.trim()).filter(Boolean)) await teamProbe(sl).catch((e) => console.error('[ops] team probe', sl, e.message)); })(); }, 120e3).unref?.();
+if (process.env.OPS_TEAM_PROBE && !MOCK) whenLeader(() => setTimeout(() => { (async () => { for (const sl of String(process.env.OPS_TEAM_PROBE).split(',').map((x) => x.trim()).filter(Boolean)) await teamProbe(sl).catch((e) => console.error('[ops] team probe', sl, e.message)); })(); }, 120e3).unref?.());
 /* ---------- brand learnings (brand-learnings.js): the team pastes a call transcript, notes or emails into a jam; Brew learns the essence,
    goals, beliefs and facts (each with its source), updates the brief, memory and system prompt, flags and rewrites the moves it changes
    (build.js rewrite caps, LEARN_REWRITE_MAX, default 4) and writes new ones (the cadence "learn" family, under MOVES_WEEK_CAP_USD).
@@ -528,7 +547,7 @@ const storiesWarm = async () => { if (process.env.STORIES_BG === '0' || process.
   for (const b of await builder.list().catch(() => [])) { if (!(b.state === 'Ready' || /moves/.test(b.state || '')) || INST.has(b.slug)) continue;
     const lo = (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0; if (Date.now() - lo > 3 * 864e5) continue;
     try { attach(await packs.load(b.slug)); console.log('[stories] warm', b.slug); } catch (e) { console.warn('[stories] warm', b.slug, e.message); } } };
-setTimeout(() => storiesWarm().catch(() => {}), 90e3).unref?.(); setInterval(() => storiesWarm().catch(() => {}), 60 * 60e3).unref?.();
+setTimeout(() => leaderOnly(storiesWarm).catch(() => {}), 90e3).unref?.(); setInterval(() => leaderOnly(storiesWarm).catch(() => {}), 60 * 60e3).unref?.();
 /* background first drafts never use the last of a brand's day: a share is kept for what people ask for in the jam (on 17 Oct
    background clips used every video before anyone asked for one). BG_RESERVE_<KIND> overrides */
 const BG_RESERVE = { image: +(process.env.BG_RESERVE_IMAGE ?? 40), video: +(process.env.BG_RESERVE_VIDEO ?? 8), voice: +(process.env.BG_RESERVE_VOICE ?? 10) };
@@ -539,7 +558,7 @@ const draftsBg = createDraftsBg({ packs, ai, geminiImage: bgImage, saveGen, genF
 draftsBg.start();
 /* first drafts are made by whichever instance's background job ran: every instance re-reads them from the bucket every 3 minutes,
    so a refresh that lands on another instance shows the same drafts (pack files are otherwise served from this instance's disk first) */
-if (packs.remote) setInterval(() => packs.refreshDrafts().catch((e) => console.warn('[drafts] refresh', e.message)), 3 * 60e3).unref?.();
+if (packs.remote && !OBJ) setInterval(() => packs.refreshDrafts().catch((e) => console.warn('[drafts] refresh', e.message)), 3 * 60e3).unref?.();
 // Google sign-in, claiming a brand, its team (auth.js); real connected accounts (connectors/)
 const hostOf = async (slug) => { if (!slug || blocked(slug)) return null; const s0 = await packs.getJSON(slug, 'status.json', null); return s0?.host || null; };
 /* seat key → title for invite emails and the approve page (the brand's own roles; every generated brand shares the template's) */
@@ -558,7 +577,7 @@ const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlu
   makeVideo: async (frame, prompt, { ratio = '9:16', seconds = 6, slug } = {}) => { if (!spend('video', slug)) throw Object.assign(new Error(budget.why('video', slug) || 'The video budget for today is used up.'), { soft: true, budget: true }); return makeVideo(frame, prompt, { ratio, seconds }, console); } });
 /* Sloosh's health for the ops alerts: when it needs a reconnect or can't pay, finals quietly go to Gemini, so staff hear it once a day */
 if (process.env.K_SERVICE && process.env.DEMO_MODE !== '1' && process.env.AI_MOCK !== '1') { const slooshCheck = () => finals.status({ fresh: true }).then((st) => { if (!st.ok && !st.dummy) noteAlert('sloosh', st.fallbackWhy || st.why || 'not ready'); }).catch((e) => noteAlert('sloosh', e.message));
-  setTimeout(slooshCheck, 120e3).unref?.(); setInterval(slooshCheck, 3600e3).unref?.(); }
+  setTimeout(() => leaderOnly(slooshCheck), 120e3).unref?.(); setInterval(() => leaderOnly(slooshCheck), 3600e3).unref?.(); }
 /* GET /api/ops/sloosh (staff): the connection, the workspace and what Sloosh says about today's limit and credits */
 const slooshStaff = (req) => auth.isAdmin(auth.user(req)) || (!auth.signinOn() && !process.env.K_SERVICE); /* staff, or a local server with sign-in off */
 const slooshOps = async (req) => {
@@ -670,8 +689,11 @@ feedSvc = createFeedService({ ai, /* Drop anything here reads PDFs and photos wi
   /* membership checked from the signed-in user on every request and on the background clock (feed-service.js REQ / bgTeam) */
   isMemberEmail: (slug, email) => auth.isMember(slug, { email: String(email || '').toLowerCase() }), roleOf: (slug, email) => auth.roleOf(slug, { email: String(email || '').toLowerCase() }) });
 feedSvc.wire(B());
-retireInit.finally(() => { if (!process.env.BUILD_RESUME_OFF) builder.resumeAll().catch((e) => console.error('[build] resumeAll', e.message)); });
-retireInit.finally(() => { if (!process.env.BUILD_RESUME_OFF) finals.reconcileAll().then((n) => { if (n) console.log(`[finals] ${n} run(s) picked up after the restart`); }).catch((e) => console.error('[finals] reconcileAll', e.message)); }); // resume off for a local server reading the live bucket
+/* Postgres: the job queue (web instances hear answers; workers do the work) and the background lease; the lease holder runs
+   everything gated by whenLeader / leaderOnly (resume, ticks, paid watchers). Without Postgres this instance leads at once */
+if (OBJ) { await JOBS.start({ interactive: +process.env.JOBS_INTERACTIVE || 4, batch: +process.env.JOBS_BATCH || 4 }); await startLease({ log: console }); }
+retireInit.finally(() => whenLeader(() => { if (!process.env.BUILD_RESUME_OFF) builder.resumeAll().catch((e) => console.error('[build] resumeAll', e.message)); }));
+retireInit.finally(() => whenLeader(() => { if (!process.env.BUILD_RESUME_OFF) finals.reconcileAll().then((n) => { if (n) console.log(`[finals] ${n} run(s) picked up after the restart`); }).catch((e) => console.error('[finals] reconcileAll', e.message)); })); // resume off for a local server reading the live bucket
 
 /* ---------- brand routes: start a read, its status and live events, "check what we read", moves and PDFs ---------- */
 /* On live, a brand's moves, PDFs, read, facts, Heard and stories are for its team (members, SquareUp, or the brand's own work
@@ -982,7 +1004,7 @@ const server = http.createServer(async (req, res) => {
 process.once('SIGTERM', () => { builder?.stop?.(); /* no new move starts here; the next instance resumes the build */
   movesCadence?.stop?.(); /* the weekly families end before the next one; the next instance carries on */
   const closed = new Promise((r) => { try { server.close(() => r()); server.closeIdleConnections?.(); } catch { r(); } }); /* in-flight requests finish; idle keep-alives go now */
-  const work = Promise.allSettled([feedSvc?.jams?.flush?.(), feedSvc?.jam2?.flush?.(), store.flushPending(), budget.flush(), tregLedger.flush(), apifyLedger.flush(), healthFlush(), visFlush(), jamMail.drain(), closed]).then(() => OBJ?.mirrored?.()); /* the bucket copies of what was just written (OBJECTS_MIRROR) */
+  const work = Promise.allSettled([feedSvc?.jams?.flush?.(), feedSvc?.jam2?.flush?.(), store.flushPending(), budget.flush(), tregLedger.flush(), apifyLedger.flush(), healthFlush(), visFlush(), jamMail.drain(), closed, COUNTERS.stop()]).then(() => OBJ?.mirrored?.()); JOBS.stop(); /* the bucket copies of what was just written (OBJECTS_MIRROR) */
   Promise.race([work, new Promise((r) => setTimeout(r, 6000))]).finally(() => process.exit(0)); });
 async function serve(req, res, u) {
   try {
