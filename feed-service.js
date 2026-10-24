@@ -2392,7 +2392,10 @@ export function createFeedService(o) {
     return runIn(br, () => {
       // seed and pool cards follow the current copy (descriptions get rewritten); runtime cards keep their own
       const SRC = new Map([...SEED.posts, ...Object.values(POOLS).flat()].map((x) => [x.id, x]));
-      for (const c of t.cards?.values?.() || []) { const src = SRC.get(c.id); if (!src) continue; if (typeof src.sub === 'string') c.sub = src.sub; if (src.byRole) c.byRole = clone(src.byRole); }
+      for (const c of t.cards?.values?.() || []) { const src = SRC.get(c.id); if (!src) continue; if (typeof src.sub === 'string') c.sub = src.sub; if (src.byRole) c.byRole = clone(src.byRole);
+        /* a move card's status badge ("Being updated", "Updated") follows the move now, never the day the card was copied: a flag
+           cleared after a restart left "Being updated" on every workspace's copy (Scrubroom m20-1, 25 Oct) */
+        if (/^m\d+-\d+$/.test(String(c.id))) { const sb = src.badge, cb = c.badge; if (sb && ['Being updated', 'Updated'].includes(sb[0])) c.badge = clone(sb); else if (cb && ['Being updated', 'Updated'].includes(cb[0])) delete c.badge; } }
       // a generated brand: cards from moves that landed while this workspace was away
       if (br.kind === 'generated') streamSync(t, SEED.posts);
       if (br.kind === 'generated') { followMoves(t, br); const t0 = now(t); for (const p of SEED.posts) if (!t.cards.has(p.id)) t.cards.set(p.id, { ...clone(p), family: p.family || FAMILY[p.type] || 'idea', state: 'ready', origin: 'move', createdAt: t0, expiresAt: null, history: [['ready', t0]], shownCount: 0, ...(mvOf(br, p.id) ? { mv: mvOf(br, p.id) } : {}) }); }

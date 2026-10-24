@@ -75,3 +75,9 @@ test('a retailer’s moves say "store" where a writer called the store itself a 
   assert.equal(retailerWords(m, { kind: 'own' }, ['Scrubroom']), m);
   assert.equal(retailerWords(x, { kind: 'retailer' }, ['Scrubroom']), x, 'idempotent');
 });
+
+test('a workspace move card takes its status badge from the move now, so a cleared flag never leaves "Being updated" behind', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  const load = src.slice(src.indexOf('const getTenant = async (id) => {'), src.indexOf('healRivalWork(t)', src.indexOf('const getTenant = async (id) => {')));
+  assert.match(load, /\['Being updated', 'Updated'\]\.includes\(sb\[0\]\)\) c\.badge = clone\(sb\); else if \(cb && \['Being updated', 'Updated'\]\.includes\(cb\[0\]\)\) delete c\.badge;/);
+});
