@@ -611,7 +611,7 @@ export const ACTION_SPEC = {
   new_segment: 'A new customer segment: who is in, who is left out, how many.',
   paid_broadcast: 'A one-off WhatsApp broadcast to opted-in customers.',
   discount_offer: 'A retention offer: a discount code, who gets it, when it expires.',
-  film_brief: 'A production brief for a short film: deliverables, shots with lines, talent, location.',
+  film_brief: 'A production brief for a short film the brand films for real (often the founder to camera): deliverables with the length and ratio, shots that each say who or what is seen ("Founder to camera…", "Hands…", "Pack shot…") with the line said to camera in quotes or shown on screen, talent, location. Never an AI or stand-in founder.',
   creative_brief: 'A brief for the next creatives: deliverables, angles, references.',
   plan: 'The plan the team saves: the decision in one line, why, who owns it, and what changes next (each step with an owner and a date).',
   resolution: 'The decision that settles the disagreement, why, who decides, and what changes.'

@@ -4568,6 +4568,7 @@
     const pv = !made && !viewing && st?.productImg && !/^gen\//.test(pkgCh.pkg?.image || '') ? { ...pkgCh, pkg: { ...pkgCh.pkg, image: st.productImg } } : pkgCh;
     return `<div class="st-asset cs-stage">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${assetHtml(pv, 'lg')}</div>
       ${made && !viewing ? publishPanel(ch, pkgCh) : ''}${cs ? cs.html(ch) : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
+  window.FilmBoard?.init({ tapi, esc, toast, sound, ch: () => RX.ch, paint: () => { if (view === 'remix' && RX.ch) paintStudio(); }, saved: (c) => { RX.ch = c; putCh(c); if (view === 'remix') paintStudio(); } });
   window.CreativeStage?.init({ tapi, esc, toast, ic, ch: () => RX.ch, viewing: () => RX.viewing,
     paint: () => { if (view === 'remix' && RX.ch?.studio) paintStudio(); },
     remount: () => { if (view === 'remix' && RX.ch) paintStudio(); },
@@ -4584,7 +4585,7 @@
     if ($('#st-in')) RX.draft = $('#st-in').value;
     const viewing = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((v) => v.id === RX.viewing) : null; if (!viewing) RX.viewing = null;
     const pkgCh = asPkg(ch, viewing), edit = ch.state !== 'jam', tab = RX.tab && RX.tab !== 'history' ? RX.tab : 'iterate'; /* history is the dropdown on the History button now */
-    const formFocus = document.activeElement?.closest?.('#st-spec') || document.activeElement?.closest?.('.cs') || document.activeElement?.matches?.('.pp [contenteditable]');
+    const formFocus = window.FilmBoard?.editing() || document.activeElement?.closest?.('#st-spec') || document.activeElement?.closest?.('.cs') || document.activeElement?.matches?.('.pp [contenteditable]');
     if (formFocus || document.activeElement?.id === 'bf-ed' || document.activeElement?.id === 'tbm-ed' || document.activeElement?.id === 'bf-cm-in' || bfPop.el?.classList.contains('is-form') || document.activeElement?.matches?.('[data-hl-edit][contenteditable]')) { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
     const logScroll = $('.st-panel-b')?.scrollTop, tbmScroll = $('.tbm-scroll')?.scrollTop || 0; /* brief mode keeps its place through a repaint */
     /* an open panel stays open through a repaint (the jam's 3-second poll, a video landing): Param, 19 Oct, "What Brew read" closed in 2 s */
@@ -4595,7 +4596,7 @@
         <div class="st-ttl"><b>${esc(ch.actionLabel)}${ch.target.conn && ch.target.name ? ` <span>on ${esc(ch.target.name)}</span>` : ''}</b><small>${face(ch.agent)}${esc(ch.familyName)} · ${studioFrom(ch)}</small></div>${tbSwitch()}${studioJamCtl()}
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
       <div class="st-body">
-        <main class="st-canvas${RX.stage === 'brief' ? ' is-brief' : ''}">${RX.stage === 'brief' ? `<div class="tbm-scroll">${tbStage(ch)}</div>` : `${refBtnHtml(ch)}${rivalReadHtml(ch)}${optTabs(ch, viewing)}${ch.studio ? studioStage(ch, pkgCh, viewing) : `<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>${esc(ch.ctaPending)}…</p>` : ''}${assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}`}`}</main>
+        <main class="st-canvas${RX.stage === 'brief' ? ' is-brief' : ''}">${RX.stage === 'brief' ? `<div class="tbm-scroll">${tbStage(ch)}</div>` : `${refBtnHtml(ch)}${rivalReadHtml(ch)}${optTabs(ch, viewing)}${ch.studio ? studioStage(ch, pkgCh, viewing) : `<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>${esc(ch.ctaPending)}…</p>` : ''}${ch.film && window.FilmBoard && (!viewing || viewing === ch.head) ? window.FilmBoard.html(ch) : assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}`}`}</main>
         <aside class="st-panel"><div class="st-tabs" role="tablist">${[['iterate', 'Chat'], ['adjust', 'Adjust'], ['details', 'Brief']].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}</div>
           <div class="st-panel-b${tab === 'iterate' ? ' is-chat' : ''}">${tab === 'iterate' ? chatTab(ch, edit) : tab === 'adjust' ? adjustTab(ch, edit) : tab === 'details' ? detailsTab(ch, pkgCh, edit) : chatTab(ch, edit)}</div></aside>
       </div>`;
@@ -4863,6 +4864,7 @@
     const so = e.target.closest('[data-st-open]'); if (so) { e.stopPropagation(); const p = byId(so.dataset.stOpen); if (p) openDetail(p); return; }
     const lc = e.target.closest('[data-livech]'); if (lc) { e.stopPropagation(); const p = byId(lc.dataset.card); const ch = p?.liveChange?.changeId; if (p) openRemix(p, ch); return; }
     if (view !== 'remix') return;
+    if (window.FilmBoard?.click(e)) return; /* the founder storyboard and its teleprompter (film-board.js) */
     if (window.CreativeStage?.click(e)) return; /* the creative stage's composer (creative-stage.js) */
     if (e.target.closest('[data-vmenu]')) { RX.vmenu = !RX.vmenu; return paintStudio(); }
     { const k = e.target.closest('[data-j2-pack],[data-j2-impact],[data-j2-remake]'); if (k && RX.ch) return j2Run(k.hasAttribute('data-j2-pack') ? 'pack' : k.hasAttribute('data-j2-impact') ? 'impact' : 'remake', RX.ch, k.dataset.j2Remake); }

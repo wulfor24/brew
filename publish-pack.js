@@ -9,6 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { emailHtml } from './draft-mocks.js';
+import { boardOf } from './film-board.js'; // a film brief's storyboard: timed shots, the founder's script, captions
 import { splitCode, codeBlocks, codeExt, wordsHtml } from './code-md.js'; // fenced code stays code in every file
 
 const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -168,7 +169,10 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       break;
     case 'brief':
       put('shot-list.md', lines(`# ${p.title || act}`, '', list(p.deliverables).length && `## Deliverables\n${list(p.deliverables).map((d) => `- ${d}`).join('\n')}\n`, '## Shots', ...(p.scenes || []).map((x, i) => `${i + 1}. **${x.shot}** — ${x.line}`), '', [['Talent', p.talent], ['Location', p.location], ['Deadline', p.deadline]].filter((x) => x[1]).map(([k, v]) => `**${k}:** ${v}`).join('  \n')));
-      where.unshift('Your crew or creator: shot-list.md is the brief to shoot from.');
+      { const fb = boardOf({ ...(ch || {}), family, pkg: p }); /* a film brief: the timed storyboard, the script to read on camera and the captions */
+        if (fb) { put('storyboard.md', lines(`# ${p.title || 'Storyboard'}`, '', `${fb.total} s · ${fb.format} · On camera: ${fb.talent}`, '', ...fb.shots.map((x) => `${x.n}. **${x.from}–${x.to} s · ${x.shot}**${x.line ? `\n   ${x.say ? 'Says' : fb.vo ? 'Voiceover' : 'On screen'}: ${x.line}` : ''}`)));
+          if (fb.script) put('script.txt', fb.script + '\n'); if (fb.srt) put('captions.srt', fb.srt); }
+        where.unshift(fb ? 'Your crew or creator: shot-list.md is the brief to shoot from; storyboard.md times every shot, script.txt is what is said on camera and captions.srt drops onto the cut.' : 'Your crew or creator: shot-list.md is the brief to shoot from.'); }
       break;
     case 'meta_ops':
       put('ads-manager-changes.csv', csv([['ad_set_or_ad', 'now', 'change_to', 'rule', 'checks'], ...(p.items || []).map((r) => [r.name, r.now, r.next, p.rule || '', p.checkAt || ''])]));
