@@ -153,7 +153,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const cache = new Map();
   /* every write to a pack moves its version on (put, drop): a fresh load is reused while nothing was written to the pack */
   const vers = new Map(), ver = (slug) => vers.get(slug) || 0, bump = (slug) => vers.set(slug, ver(slug) + 1);
-  const BUILT_FROM = /^(?:seed|status|profile|facts|brief|config|moves|labels|learned|move-value|notes|pages|pools|rival-reads|statics|updates|demo|brandbook-read|ledger|findings)\.(?:json|md)$|^(?:moves|docs|drafts|pulse)\/|^private\/(?:brandbook|connections|shop-brand|facts|profile-live|moves|statics)/;
+  /* notes.json and move-value.json are written in the background a few seconds after every load (server attach): they show within
+     FRESH_MS, and never force the next page load to rebuild the whole pack */
+  const BUILT_FROM = /^(?:seed|status|profile|facts|brief|config|moves|labels|learned|pages|pools|rival-reads|statics|updates|demo|brandbook-read|ledger|findings)\.(?:json|md)$|^(?:moves|docs|drafts|pulse)\/|^private\/(?:brandbook|connections|shop-brand|facts|profile-live|moves|statics)/;
   const remote = !!(process.env.K_SERVICE && bucket && gToken);
   const gcsGet = async (name) => { const tk = await gToken(); const r = await fetch(`https://storage.googleapis.com/storage/v1/b/${bucket}/o/${encodeURIComponent(name)}?alt=media`, { headers: { authorization: `Bearer ${tk}` }, signal: AbortSignal.timeout(30e3) }); if (r.status === 404) return null; if (!r.ok) throw new Error(`gcs get ${name} ${r.status}`); return Buffer.from(await r.arrayBuffer()); };
   const gcsPut = async (name, buf, type = 'application/json') => { const tk = await gToken(); const r = await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(name)}`, { method: 'POST', headers: { authorization: `Bearer ${tk}`, 'content-type': type }, body: buf, signal: AbortSignal.timeout(60e3) }); if (!r.ok) throw new Error(`gcs put ${name} ${r.status}`); };
