@@ -419,7 +419,7 @@ export const cleanPkg = (family, action, pkg = {}, clean = (s) => s) => {
     else if (f.type === 'rows') out[f.k] = (Array.isArray(v) ? v : []).slice(0, 10).map((r) => Object.fromEntries(f.cols.map((c) => [c, clean(str(r?.[c])).slice(0, 400)])));
     else if (f.type === 'number') { const n = +String(v).replace(/[^\d.-]/g, ''); if (!Number.isNaN(n)) out[f.k] = Math.round(n); }
     else if (f.type === 'select') out[f.k] = pickOpt(f.opts, v); /* "email" is Email, "9:16 vertical" is 9:16, never silently the first option */
-    else out[f.k] = wordCut(clean(str(v)), f.max || (f.type === 'long' ? 900 : 240)); /* at a whole word: a rule ended "pause the ad set that d" (25 Oct) */
+    else out[f.k] = (f.k === 'button' ? btnCase : (x) => x)(wordCut(clean(str(v)), f.max || (f.type === 'long' ? 900 : 240))); /* at a whole word: a rule ended "pause the ad set that d" (25 Oct) */
   });
   ['image', 'knobs', 'grade', 'cardImages', 'wordsIn', 'photoSet', 'film'].forEach((k) => { if (pkg[k] != null) out[k] = pkg[k]; });
   /* Amazon A+ modules (Brew Studio): the picture is kept, the words are cleaned to Amazon's lengths */
@@ -672,7 +672,7 @@ const AD_TALK = /\b(?:meta|facebook|instagram)\s+(?:video\s+)?ads?\b|\bvideo\s+a
 /* our version of a rival's video ad is a paid ad too, whatever format the card carries (it opened as an organic Reel: QA J-10) */
 /* a card that posts a video on a platform's own feed ("Post a short family comedy video on YouTube") is organic, whatever its evidence says about ads */
 const ORGANIC_T = (t) => /\b(?:post|upload|publish|share)\b/i.test(t) && /\b(?:youtube|tiktok|shorts|reels?|instagram)\b/i.test(t) && !/\bads?\b|\bpaid\b|\bboost/i.test(t);
-export const isAdVideo = (c = {}) => !!c && !c.post && !(c.make?.format !== 'video ad' && ORGANIC_T(String(c.title || ''))) && (c.make?.format === 'video ad' || c.research?.kind === 'ad' || c.make?.from === 'rival' || (c.make?.format !== 'reel' && AD_TALK.test(cardWords(c))));
+export const isAdVideo = (c = {}) => !!c && !c.post && !ORGANIC_T(String(c.title || '')) /* the title's own place wins over a generic "video ad" format */ && (c.make?.format === 'video ad' || c.research?.kind === 'ad' || c.make?.from === 'rival' || (c.make?.format !== 'reel' && AD_TALK.test(cardWords(c))));
 /* "Add to the live test" only when the card is about a test that runs; any other ad idea makes new ads */
 export const namesLiveTest = (c = {}) => /\b(?:live|running|current|existing|ongoing)\s+(?:meta\s+)?(?:ad\s+)?tests?\b|\btest\s+(?:ad\s+set|campaign|budget)\b|META_Test|\b(?:in|to|into)\s+the\s+(?:meta\s+)?test\b|\bA\/B\b/i.test(cardWords(c)) || (c.images || []).length >= 3;
 /* a store claim as the site prints it can carry footnote marks ("growth in 84 days 1 and", "by up to 95% 2 .."): they go, so

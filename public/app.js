@@ -4091,7 +4091,7 @@
     else if (media) { head = `${sv ? (ch.publish?.made ? (ch.publish.ready ? 'Ready to publish' : `Needs a look · ${ch.publish.bad}`) : 'Made by Brew Studio') : 'Final ready'}${nm}`; tip = 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and posts or runs it. Its status shows in the top bar.'; main = send; }
     else if (po) { head = `Ready${nm}`; tip = `${po.filled ? `Opens ${PO_WHERE(po)} with the post filled in, and copies it too.` : `Copies the post and opens ${PO_WHERE(po)}; paste it there.`} You post it yourself; Brew never posts in communities for you.${po.rule ? ` ${po.rule}` : ''}`; main = poBtn(po, true); }
     /* a post with no thread to open: its main button copies the post (it said "you post it yourself" over a Send brief button: QA J-20) */
-    else if (ch.family === 'post' && ch.target?.conn !== 'meta' && (p.copy || p.title)) { head = `Ready${nm}`; tip = 'Copy the post and paste it where it goes. You post it yourself; Brew never posts in communities for you. The brief carries it too.'; main = `<button class="btn btn-primary ship-go" data-rx="copy-post">${ic('copy', 's16')}Copy the post</button>`; }
+    else if (ch.family === 'post' && ch.target?.conn !== 'meta' && (p.copy || p.title)) { head = `Ready${nm}`; tip = 'Copy the post and paste it where it goes. You post it yourself; Brew never posts in communities for you. The brief carries it too.'; main = `<button class="btn btn-primary ship-go" data-rx="copy-post">${ic('copy', 's16')}${ch.target?.object === 'Review reply' ? 'Copy the reply' : 'Copy the post'}</button>`; }
     else { head = `Ready${nm}`; tip = `${ch.verdict === 'jam' && (ch.reasons || [])[0] ? `${esc(ch.reasons[0])}: the brief carries everything the team needs. ` : ''}Send brief: the ShopOS team, Brew’s build crew, gets it by email and runs it. Its status shows in the top bar.`; main = send; }
     const items = [];
     /* a final reel or picture is post-ready: its caption and hashtags one tap away, beside Download (Param, 21 Oct) */
@@ -4631,7 +4631,7 @@
   const stWhere = (ch) => { const lab = String(ch.actionLabel || ''), a = String(ch.action || '').split('.').pop(), p = ch.pkg || {};
     const plat = String(p.platform || '').replace(/\s+(?:comment reply|replies|reply|post|thread|answer|short video|video|pin)$/i, '').trim(); /* "YouTube comment reply" is on YouTube */
     const w = ch.family === 'social' ? 'Instagram' : ch.family === 'post' ? (a === 'comment_reply' && ch.target?.name ? ch.target.name : a === 'short_video' ? (ch.target?.conn === 'meta' ? 'Meta Ads' : plat) : plat || PM_NAME[a] || '') : ch.target?.conn && ch.target?.name ? ch.target.name : '';
-    return w && !/\bon [A-Z]/.test(lab) && !/^comment reply$/i.test(w) ? w : ''; };
+    return w && !/\bon [A-Z]/.test(lab) && !/^comment reply$/i.test(w) ? w.replace(/^Your /, 'your ') /* "on your reviews app" */ : ''; };
   const cutW = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : x; };
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;

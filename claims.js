@@ -162,7 +162,9 @@ const words = (x) => norm(x).replace(/[^a-z0-9₹%&' ]+/g, ' ').replace(/\s+/g, 
 export function copyFlags(text, opts = {}) {
   const o = typeof opts === 'string' ? { source: opts } : opts || {};
   /* a quoted span is someone else's words (a shopper's question, a thread title): never flagged as ours (QA J-05) */
-  const s = String(text || '').replace(/“[^”]{0,240}”|"[^"\n]{0,240}"/g, ' '), out = [], src = wordsOf(srcNorm(o.source || ''));
+  /* a call to action in capitals standing on its own ("SHOP NOW" as the last line, "… on arata.in. SHOP NOW.") is the convention for a
+     button or an end line; inside a sentence ("BUY NOW before it ends") it is still shouting */
+  const s = String(text || '').replace(/“[^”]{0,240}”|"[^"\n]{0,240}"/g, ' ').replace(/(^|[\n.!?]\s*)(?:SHOP|BUY|ORDER|GET|TRY|BOOK|CLAIM|GRAB)\s+(?:NOW|IT NOW|TODAY|YOURS)[.!]?(?=\s*(?:\n|$))/g, '$1 '), out = [], src = wordsOf(srcNorm(o.source || ''));
   const rawSrc = String(o.source || ''), theirs = (w) => /^[A-Z0-9]+$/.test(w) && new RegExp(`(^|[^A-Za-z])${w}([^A-Za-z]|$)`).test(rawSrc); /* an acronym the store itself writes in capitals ("DHT"), never a common word it writes in lower case ("not") */
   const names = (o.names || []).filter((x) => typeof x === 'string' && x.trim()).map(words), nameWords = new Set(names.flatMap((n) => n.split(' ')));
   const shortName = new Set(names.filter((n) => n.split(' ').length <= 2).flatMap((n) => n.split(' ')));

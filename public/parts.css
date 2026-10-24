@@ -182,4 +182,8 @@ p.am-when small{display:inline;margin:0 6px 0 0}
 /* the demo pill sits in the rail on a jam, never over the bar */
 @media (min-width:701px){body[data-view="remix"] .demo-pill{left:10px;bottom:150px;padding:8px}body[data-view="remix"] .demo-pill span{display:none}}
 /* the status and the buttons share one row: the status gives way (two lines at most), the buttons keep their size, on the right */
-@media (min-width:861px){.ship.one .ship-tx.is-step{flex:1 1 240px;min-width:0}.ship.one .ship-btns{flex:0 0 auto;margin-left:auto}}
+@container canvas (min-width:641px){.ship.one .ship-tx.is-step{flex:1 1 240px;min-width:0}.ship.one .ship-btns{flex:0 0 auto;margin-left:auto}} /* by the stage's own width, so a narrow stage never gets a row rule */
+@media (max-width:700px){body[data-view="remix"] .demo-pill{bottom:auto;top:64px;left:auto;right:8px}} /* on a phone's jam: by the header, never over the bar */
+/* a narrow stage (the Shopify admin, a small window): the bar stacks as one column, never wrapping into side-by-side columns */
+@container canvas (max-width:640px){.ship.one{flex-wrap:nowrap}.ship.one .ship-steps{flex:0 0 auto;margin:0}.ship.one .ship-tx.is-step{flex:0 0 auto;min-width:0}.ship.one .ship-btns{margin-left:0;justify-content:flex-end}}
+.cs-panel .cs-acts{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.cs-panel .cs-acts>span{flex:1 0 100%;font-size:13px;color:var(--fg-2)}

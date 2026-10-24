@@ -69,3 +69,11 @@ test('QA 25 Oct: organic videos, pack offers, review replies, capital buttons an
   assert.match(app, /const drShape = /, 'a frame takes the shape of its draft pictures'); assert.match(app, /\(drShape \|\| p\.format \|\| '1:1'\)/);
   assert.match(fn('stWhere'), /comment reply\|replies\|reply\|post\|thread\|answer\|short video/, '"YouTube comment reply" is on YouTube');
 });
+
+test('a capital call to action on its own line is a button, inside a sentence it is shouting', async () => {
+  const { copyFlags } = await import('../claims.js');
+  assert.deepEqual(copyFlags('Swap real weekly routines.\n\nSHOP NOW', {}), []);
+  assert.deepEqual(copyFlags('Get your Pack of 3 on arata.in. SHOP NOW.', {}), []);
+  assert.ok(copyFlags('BUY NOW before it ends.', {}).length);
+  assert.match(fs.readFileSync(new URL('../public/parts.css', import.meta.url), 'utf8'), /@container canvas \(max-width:640px\)\{\.ship\.one\{flex-wrap:nowrap\}/, 'a narrow stage stacks the bar in one column');
+});
