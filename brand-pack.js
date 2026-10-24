@@ -176,7 +176,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     const f = fileOf(slug, name); fs.mkdirSync(path.dirname(f), { recursive: true });
     // bytes may come as a Uint8Array (a browser screenshot), not a Buffer: never JSON them
     const buf = Buffer.isBuffer(data) ? data : data instanceof Uint8Array || data instanceof ArrayBuffer ? Buffer.from(data) : Buffer.from(typeof data === 'string' ? data : JSON.stringify(data, null, 1));
-    fs.writeFileSync(f, buf); if (BUILT_FROM.test(name)) bump(slug); /* only a file the pack is built from makes the next load fresh (1.7: page-open logs and caches rebuilt the seed on every load, 2.8 s); anything else is picked up within FRESH_MS */
+    fs.writeFileSync(f, buf); if (BUILT_FROM.test(name)) { bump(slug); if (process.env.PACK_BUMP_LOG === '1' || freshP?.has?.(`${slug}|`)) log.info?.(`[pack] bump ${slug} ${name} ${new Error().stack.split('\n').slice(2, 5).map((l) => l.trim().replace(/^at /, '').replace(/\(file:.*\/([^/]+:\d+):\d+\)/, '($1)')).join(' < ')}`); } /* only a file the pack is built from makes the next load fresh (1.7: page-open logs and caches rebuilt the seed on every load, 2.8 s); anything else is picked up within FRESH_MS */
     if (remote) await gcsPut(`brands/${slug}/${name}`, buf, type || (name.endsWith('.json') ? 'application/json' : undefined)).catch((e) => log.warn('[packs] gcs put', name, e.message));
     return f;
   };
@@ -207,7 +207,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     } catch (e) { log.warn('[packs] read', slug, name, e.message); return { ok: false, error: e.message }; } };
   /* the same file written so a failed bucket write throws (the caller keeps it dirty and tries again) */
   const putStrict = async (slug, name0, data) => { await retireReady(); const name = sandboxName(name0) || name0; if (wiping(slug)) return null; const f = fileOf(slug, name); fs.mkdirSync(path.dirname(f), { recursive: true });
-    const buf = Buffer.from(JSON.stringify(data, null, 1)); fs.writeFileSync(f, buf); if (BUILT_FROM.test(name)) bump(slug); if (remote) await gcsPut(`brands/${slug}/${name}`, buf, 'application/json'); return f; };
+    const buf = Buffer.from(JSON.stringify(data, null, 1)); fs.writeFileSync(f, buf); if (BUILT_FROM.test(name)) { bump(slug); if (freshP?.has?.(`${slug}|`)) log.info?.(`[pack] bump ${slug} ${name} (strict)`); } if (remote) await gcsPut(`brands/${slug}/${name}`, buf, 'application/json'); return f; };
   const getJSON = async (slug, name, d = null) => { const b = await get(slug, name); if (!b) return d; try { return JSON.parse(b.toString('utf8')); } catch { return d; } };
   /* a file other instances write while this one runs (first drafts, made by whichever instance's background job ran): the
      bucket's copy first, kept on disk; this instance's disk only when the bucket can't be reached. get() serves the disk
