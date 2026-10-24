@@ -62,3 +62,11 @@ test('a film brief with no AI draft starts founder-first, with short lines', asy
   assert.equal(b.shots[0].who, 'person'); assert.equal(b.talent, 'The founder');
   for (const s of b.shots) assert.ok(s.line.length <= 80, `short line: ${s.line}`);
 });
+
+test('every shot in one row is read back as one row per shot', () => {
+  const row = { shot: "Shot 1: Founder to camera holding the roller. Line: 'If your serum isn't enough, the missing step is the scalp.' | Shot 2: Close-up of the roller. Line: 'It opens tiny channels.' | Shot 3: Pack shot of the combo. Line: 'Get the combo.'", line: '' };
+  const b = boardOf(film({ ...PKG, scenes: [row] }));
+  assert.equal(b.shots.length, 3); assert.deepEqual(b.shots.map((s) => s.who), ['person', 'product', 'product']);
+  assert.equal(b.shots[0].shot, 'Founder to camera holding the roller'); assert.match(b.shots[0].line, /^“If your serum isn't enough/);
+  assert.equal(b.shots[2].line, 'Get the combo.');
+});

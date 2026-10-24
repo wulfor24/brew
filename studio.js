@@ -150,7 +150,7 @@ export const FIELDS = {
   brief: [
     { k: 'title', label: 'Working title', type: 'text', req: true },
     { k: 'deliverables', label: 'Deliverables', type: 'list', req: true },
-    { k: 'scenes', label: 'Scenes', type: 'rows', cols: ['shot', 'line'], req: true, pub: true, hint: '3-6 shots, each with the on-screen or spoken line' },
+    { k: 'scenes', label: 'Scenes', type: 'rows', cols: ['shot', 'line'], req: true, pub: true, hint: '3-6 shots, one shot per row: shot = what we see and who is on camera ("Founder to camera…", "Hands…", "Pack shot…"), line = the words said to camera in quotes, or shown on screen. Never put several shots in one row' },
     { k: 'talent', label: 'Talent', type: 'text' },
     { k: 'location', label: 'Location', type: 'text' },
     { k: 'deadline', label: 'Deadline', type: 'text' }

@@ -21,10 +21,18 @@ export const whoOf = (shot, line = '') => (PERSON.test(shot) ? 'person' : HANDS.
 
 const stamp = (s) => { const ms = Math.round(s * 1000), h = Math.floor(ms / 3600e3), m = Math.floor(ms / 60e3) % 60, x = Math.floor(ms / 1000) % 60, r = ms % 1000; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')},${String(r).padStart(3, '0')}`; };
 
+/* a writer that put every shot in one row ("Shot 1: Founder to camera. Line: '…' | Shot 2: …") is read back as one row per shot */
+const SHOT = /(?:^|\s|\|)\s*Shot\s*\d+\s*[:.-]\s*/i;
+export const splitRows = (rows) => rows.flatMap((r) => { const all = [r?.shot, r?.line].filter(Boolean).join(' | ');
+  if (!r || (all.match(new RegExp(SHOT.source, 'gi')) || []).length < 2) return [r];
+  return all.split(new RegExp(SHOT.source, 'i')).map((x) => x.replace(/^\s*\|\s*|\s*\|\s*$/g, '').trim()).filter(Boolean).map((x) => {
+    const m = /^(.*?)[.\s|]*\bLine\s*:\s*(.*)$/is.exec(x); const shot = (m ? m[1] : x).replace(/[.\s|]+$/, '').trim(), line = (m ? m[2] : '').replace(/^\s*['‘]|['’]\s*\.?\s*$/g, '').trim();
+    return { shot, line: line && /^[A-Z]/.test(line) && PERSON.test(shot) ? `“${line.replace(/^["“]|["”]$/g, '')}”` : line }; }); });
+
 /* the board: shots timed to the length (longer lines get more time: ~2.5 spoken words a second, at least 2 s a shot) */
 export function boardOf(ch, { card = {} } = {}) {
   if (!isFilm(ch)) return null;
-  const p = ch.pkg || {}, rows = (Array.isArray(p.scenes) ? p.scenes : []).filter((r) => r && (r.shot || r.line)).slice(0, 10);
+  const p = ch.pkg || {}, rows = splitRows(Array.isArray(p.scenes) ? p.scenes : []).filter((r) => r && (r.shot || r.line)).slice(0, 10);
   if (!rows.length) return null;
   const total = lengthOf(ch), all = [p.title, p.talent, card.title, card.subtitle, ...rows.map((r) => r.shot)].join(' ');
   const founder = /\bfounders?\b|co-?founder/i.test(all);

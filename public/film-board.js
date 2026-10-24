@@ -38,7 +38,7 @@
     const r = await H.tapi('POST', `/api/changes/${ch.id}/edit`, { pkg, reason }).catch((e) => ({ error: e?.message || 'That didn’t save.' }));
     if (r.error) { H.toast?.(H.esc(r.error)); H.sound?.('error'); return H.paint(); }
     H.saved(r.change); H.sound?.('tick'); }
-  const scenes = () => (H.ch()?.pkg?.scenes || []).map((x) => ({ ...x }));
+  const scenes = () => (H.ch()?.film?.shots || []).map((x) => ({ shot: x.shot, line: x.line })); /* the shots as the board reads them (a row holding several shots is split), so an edit saves them split */
   function commit(el) { const k = el.dataset.fbEdit, now = el.innerText.replace(/\s+/g, ' ').trim(), was = el.dataset.was ?? ''; el.removeAttribute('contenteditable'); delete el.dataset.was;
     if (now === was) return H.paint();
     if (k === 'title') return save({ title: now || was }, 'Working title changed');
