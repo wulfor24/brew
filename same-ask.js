@@ -55,8 +55,9 @@ export const noiseOf = (...names) => new Set(names.flatMap((x) => words(x)).filt
 export function askLeaders(cards, { moveOf, value, noise } = {}) {
   const list = cards.filter((c) => moveOf(c) != null), asks = list.map((c) => askOf(c, noise)), up = list.map((_, i) => i);
   const root = (i) => (up[i] === i ? i : (up[i] = root(up[i])));
+  const jobs = list.map(jobOf); /* the same job (the reorder nudge, the cart reminder) on the same channel, written by several moves */
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++)
-    if (moveOf(list[i]) !== moveOf(list[j]) && sameAsk(asks[i], asks[j])) up[root(i)] = root(j);
+    if (moveOf(list[i]) !== moveOf(list[j]) && (sameAsk(asks[i], asks[j]) || (jobs[i] && jobs[i] === jobs[j]))) up[root(i)] = root(j);
   const best = new Map();
   list.forEach((c, i) => { const r = root(i), b = best.get(r); if (!b || value(c) > value(b) || (value(c) === value(b) && String(c.id) < String(b.id))) best.set(r, c); });
   return new Map(list.map((c, i) => [c.id, best.get(root(i))]));
@@ -75,4 +76,33 @@ export function oneAsk(ranked, { moveOf, value, noise, keep = () => false }) {
     else tail.push(c);
   }
   return { list: [...out, ...tail], sunk: new Set(tail.map((c) => c.id)) };
+}
+
+/* ---------- the same job written by several moves, and cards that say opposite things (23 Oct QA, 1.4) ---------- */
+/* the job a card plans, whatever its words: six moves each planning "the reorder nudge" on day 18, 21 or 25 are one job */
+const TOPICS = [['reorder', /\b(?:re-?order|replenish|refill|runs? out|running out|second order|repeat (?:purchase|order|buy)|top[- ]?up)\b/i],
+  ['cart', /\b(?:abandon\w*|left (?:in )?(?:the )?(?:cart|checkout)|checkouts? (?:left|not finished)|cart (?:reminder|recovery))\b/i],
+  ['reviews', /\b(?:review (?:ask|request)|ask(?:ing)? for (?:a )?reviews?|collect reviews|get more reviews)\b/i], ['winback', /\b(?:win[- ]?back|lapsed|haven[’']?t (?:ordered|bought)|come back)\b/i],
+  ['restock', /\b(?:back in stock|restock|sold out|out of stock)\b/i], ['fatigue', /\b(?:tired|fatigue\w*|frequency|same people .* times|refresh (?:the )?(?:ad|creative)|rotate (?:the )?creative)\b/i],
+  ['budget', /\b(?:shift|move|reallocate)\b[^.]{0,30}\bbudget\b|\bbudget\b[^.]{0,20}\b(?:shift|move)\b/i], ['price', /\b(?:price (?:mismatch|gap|drift)|wrong price|costs more than)\b/i]];
+const CHANNELS = [['whatsapp', /whatsapp/i], ['email', /\be-?mail|klaviyo|newsletter/i], ['sms', /\bsms|text message/i], ['ads', /\b(?:meta|facebook|instagram|google) ads?\b|\bads?\b|campaign|ad set/i], ['page', /\bpage|site|store\b/i]];
+const textOf = (c) => [c?.title, c?.sub, ...(c?.detail?.how || []), ...(c?.rows || []).flat(), c?.cta?.label].filter((x) => typeof x === 'string').join(' ');
+export function jobOf(c) { const t = textOf(c), topic = (TOPICS.find(([, re]) => re.test(t)) || [])[0]; if (!topic) return null; const ch = (CHANNELS.find(([, re]) => re.test(t)) || [])[0] || 'any'; return `${topic}:${ch}`; }
+
+/* what a card does to a named ad or campaign: grow it, or stop it */
+const GROW = /\b(?:scale|boost|raise|increase|more budget|move [^.]{0,40}\bto\b|double down|put more)\b/i, STOP_IT = /\b(?:pause|stop|tired|fatigue\w*|refresh|rotate|swap|turn off|cut)\b/i;
+const NAMED = /^(?:campaign|ad set|ad|to|from|tired ad(?: \d+)?|winner|loser|best ad|worst ad)$/i;
+const namesOf = (c) => { const out = new Set(); for (const r of c?.rows || []) if (Array.isArray(r) && NAMED.test(String(r[0] || '').trim())) { const n = String(r[1] || '').split(' · ')[0].trim().toLowerCase(); if (n.length >= 4) out.add(n); } for (const m of String(c?.title || '').matchAll(/[“"]([^”"]{4,60})[”"]/g)) out.add(m[1].toLowerCase()); return out; };
+const sideOf = (c, name) => { const t = `${c?.title || ''} ${c?.sub || ''}`, row = (c?.rows || []).find((r) => Array.isArray(r) && String(r[1] || '').toLowerCase().startsWith(name));
+  const label = String(row?.[0] || '').toLowerCase(); if (/^to$|winner|best/.test(label)) return 'grow'; if (/^from$|tired|loser|worst/.test(label)) return 'stop';
+  return GROW.test(t) && !STOP_IT.test(t) ? 'grow' : STOP_IT.test(t) && !GROW.test(t) ? 'stop' : null; };
+/* pairs of cards that tell the team opposite things about the same ad or campaign ("scale it" and "it's tired"): the card resting on
+   the account's own numbers wins, else the better-graded one; the other is held back with the reason. → Map(loser id → { by, why }) */
+export function conflicts(cards, { value = () => 0, live = (c) => /^live-/.test(String(c?.id || '')) } = {}) {
+  const out = new Map(), named = cards.map((c) => [c, namesOf(c)]).filter(([, n]) => n.size);
+  for (let i = 0; i < named.length; i++) for (let j = i + 1; j < named.length; j++) { const [a, na] = named[i], [b, nb] = named[j];
+    for (const n of na) { if (!nb.has(n)) continue; const sa = sideOf(a, n), sb = sideOf(b, n); if (!sa || !sb || sa === sb) continue;
+      const win = live(a) !== live(b) ? (live(a) ? a : b) : value(a) >= value(b) ? a : b, lose = win === a ? b : a;
+      if (!out.has(lose.id)) out.set(lose.id, { by: win.id, why: `Another card says to ${sideOf(win, n) === 'grow' ? 'grow' : 'stop'} ${n}; Brew kept the one ${live(win) ? 'read from your account today' : 'with the stronger evidence'}.` }); break; } }
+  return out;
 }

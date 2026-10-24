@@ -965,6 +965,7 @@ export function createRemix(o) {
   };
   /* what the studio is doing while a reply takes its time (a minute on Flash): the waiting person sees the step and the clock
      (app.js polls the change while it waits), never a bare spinner */
+  const ITER_JOBS = new Map(), ITER_MAX_MS = +process.env.ITER_MAX_MS || 4 * 60e3; /* revisions in flight on this instance; one longer than this stops with a plain message */
   const think = (ch, step) => { ch.thinking = step ? { step, at: ch.thinking?.at || Date.now(), stepAt: Date.now() } : null; };
   const iterate = async (t, ch, message, { knob, quiet, show, fix, att = null } = {}) => {
     const c = t.cards.get(ch.cardId) || {};
@@ -1212,6 +1213,7 @@ export function createRemix(o) {
     for (const v of versionsOf(t, ch.id)) if (v.snapshot?.draft?.pending) v.snapshot = { ...v.snapshot, draft: off(v.snapshot.draft) };
     return n; };
   const C = (t, id) => { const ch = changes(t)[id]; if (!ch) return ch;
+    if (ch.job && !ITER_JOBS.has(ch.job.id)) { const job = ch.job; delete ch.job; ch.thinking = null; ch.thread = [...(ch.thread || []), { from: 'ai', text: 'Brew restarted while I was working on that, so nothing changed. Try again.', at: Date.now(), retry: job.ask || '' }]; } /* a revision a restart cut off says so, never spins for ever */
     if (ch.pkg && ch.pkg.wordsIn === undefined && ch.lastFinal?.versionId && /^gen\/fin-/.test(ch.pkg.image || '') && ch.pkg.overlay) ch.pkg.wordsIn = ch.pkg.image; /* a final made before 18 Oct: its words are set in the picture */
     if (ch.pkg && ch.pkg.wordsIn === undefined && /^gen\//.test(ch.pkg.image || '') && ch.cardId && o.planOf) { const w = o.planOf(t, t.cards?.get?.(ch.cardId) || {})?.draft?.wordsIn; ch.pkg.wordsIn = w && w === ch.pkg.image ? w : null; } /* a jam opened from a first draft before 20 Oct: its picture may already carry the headline */
     if (ch.imagePending && !IMG_JOBS.has(ch.id)) { ch.imagePending = false; ch.imageError = 'The photo stopped before it finished. Make it again.'; }
@@ -1708,14 +1710,26 @@ export function createRemix(o) {
       ch.thread.push({ from: 'ai', text: started ? 'Making a new photo now. It lands as a new version in a minute. Rather use one of your own product photos, or upload one? The photo picker is open.' : realOnly(ch) ? `${ch.pkg.platform || 'This community'} wants real photos, not AI ones. Pick one of your product photos or upload your own: the photo picker is open.` : 'Pick one of your product photos or upload your own: the photo picker is open. Want a new one made instead? Describe it there.', at: now(t) });
       return { change: pubChange(t, ch), pickPhotos: true, image: started };
     }
-    try {
+    const run = async () => {
       await iterate(t, ch, msg, { show: b.show ? clean(String(b.show)).slice(0, 300) : null, fix: !!b.fix });
-      if (ANSWERED.has(ch)) return { change: pubChange(t, ch), answered: true }; /* a question: answered, nothing changed, no version */
+      if (ANSWERED.has(ch)) return { answered: true }; /* a question: answered, nothing changed, no version */
       // fixing: re-check, and if anything is still wrong, try again with the exact problems (twice at most)
       for (let i = 0; b.fix && i < 2 && ch.fixes?.length && !isMock(); i++) await iterate(t, ch, `Still not fixed: ${ch.fixes.join('; ')}. Fix exactly these and change nothing else.`, { quiet: true });
       if (b.fix && ch.fixes?.length) ch.thread.push({ from: 'ai', text: `I couldn’t fix everything: ${ch.fixes.join('; ')}. Edit it in Details, or tell me how you want it.`, at: now(t) });
-      return { change: pubChange(t, ch), learned: learnedOut(t) };
-    } finally { think(ch, null); }
+      return {};
+    };
+    /* a revision is a job (1.6): it runs on the server whether or not the page stays open, says its step while it works, and lands
+       as the next version or a plain failure with Try again; the page polls /api/changes/:chid until ch.job is gone. A test or a
+       caller that asks to wait (b.wait) gets the old answer-in-the-response */
+    if (b.wait || isMock()) { try { const r = await run(); return { change: pubChange(t, ch), ...(r.answered ? { answered: true } : { learned: learnedOut(t) }) }; } finally { think(ch, null); } }
+    if (ch.job && ITER_JOBS.has(ch.job.id)) return { change: pubChange(t, ch), working: true, queued: true, error: null };
+    const id = `it_${Date.now().toString(36)}`; ch.job = { id, kind: 'iterate', at: Date.now(), ask: msg.slice(0, 160) }; think(ch, 'Reading the brief and your note');
+    const p0 = Promise.race([run(), new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), { timeout: true })), ITER_MAX_MS))])
+      .then((r) => { if (r?.answered) ch.job.answered = true; })
+      .catch((e) => { log.warn('[iterate job]', ch.id, e.message); ch.thread.push({ from: 'ai', text: e.timeout ? `That took over ${Math.round(ITER_MAX_MS / 60e3)} minutes, so I stopped. Nothing changed. Try again, or say it in fewer words.` : `That didn’t go through (${String(e.message).slice(0, 100)}). Nothing changed. Try again.`, at: now(t), retry: msg.slice(0, 400) }); })
+      .finally(() => { ITER_JOBS.delete(id); if (ch.job?.id === id) ch.lastJob = { id, at: Date.now(), answered: !!ch.job.answered }; delete ch.job; think(ch, null); bump(t, ch); o.save?.(t); });
+    ITER_JOBS.set(id, p0); o.save?.(t);
+    return { change: pubChange(t, ch), working: true };
   });
   // a knob: instant for a look, a new creative for the image, AI for the words
   on('POST', '/api/changes/:chid/knob', async (b, t, p) => {

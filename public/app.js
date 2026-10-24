@@ -801,7 +801,7 @@
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Connect your tools</h1><p class="ob2-lede">${window.LiveConn?.boss?.() === false ? 'Your admin connects these. Once they’re on, cards swap targets for your real numbers.' : 'Cards swap targets for your real numbers. Optional, and you can do it later from any card.'}</p>
       <div class="ob2-cx">${ids.map((id) => cxRow(id)).join('')}</div>
-      <p class="ob2-foot">${ic('lock', 's14')} ${window.LIVE?.dummy === false ? `Read-only. Brew never changes your accounts${ids.includes('slack') ? '; Slack posts only to the channel you pick' : ''}.` : 'Demo workspace. No real account is touched.'}</p>
+      <p class="ob2-foot">${ic('lock', 's14')} ${window.LIVE?.dummy === false ? `Read-only. Brew never changes your accounts: every budget or ad change it suggests is a brief your team makes${ids.includes('slack') ? '; Slack posts only to the channel you pick' : ''}.` : 'Demo workspace. No real account is touched.'}</p>
       ${obNav('Next', true)}`, 3);
     obPreview();
     $('#ob-back').onclick = wantWhat; $('#ob-next').onclick = () => (S.viewer.teamSize === 'me' ? finishOnboarding() : teamStep()); /* "Just me" on the reading screen: no invite step */
@@ -874,7 +874,11 @@
     /* the cards count is the feed's own: before the feed has loaded, load it (a few seconds at most), so it never says 0 */
     finishOnboarding.busy = true; if (!rank().length) await Promise.race([loadFeed().catch(() => null), wait(4000)]); finishOnboarding.busy = false; if ($('#ready')) return;
     const n = rank().length || (B.posts || []).filter((p) => !p.onlyWhen).length, R = ROLE();
-    const nc = Object.keys(S.conn).filter(conn).length;
+    /* the accounts really connected now (the server's live state when it has it, never a stale or demo entry in this browser), and
+       the agents this workspace runs: the ready screen and the feed's tiles count the same things (1.2) */
+    const live = window.LIVE?.conns && window.LIVE.dummy === false ? Object.entries(window.LIVE.conns).filter(([id, x]) => x?.state === 'live' && id !== 'slack').length : null;
+    const nc = live != null ? live : Object.keys(S.conn).filter(conn).length, na = AGENTS_ON.length;
+    const rk = RANKED.length ? RANKED : rank(), ny = yesOf(rk).length, ns = todayOf(rk).filter((p) => B.spends.includes(p.cta?.label)).length; /* the same lists the feed's tiles open (gLists) */
     const mvTile = () => { const m = movesInPlan(); return `<div data-mv-tile${m ? '' : ' hidden'}><b class="tnum">${m}</b>${MOVES_WORD(m)}</div>`; }; /* no 0 tile (quiet UI) */
     if (GEN && !BREW) loadMV().then(() => { const el = $('#ready [data-mv-tile]'); if (el) el.outerHTML = mvTile(); }).catch(() => {});
     document.body.insertAdjacentHTML('beforeend', `<div class="ready" id="ready"><div class="ready-card">
@@ -883,7 +887,8 @@
       <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a move in your plan. Tap any card to see more.</p>`
       : `<h3>Your cards are on their way${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
       <p>Brew starts writing the moves your cards come from when you open your feed. Each card lands there as its move is done.</p>`}
-      <div class="counts">${n ? `<div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>` : ''}${mvTile()}<div><b class="tnum">5</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>connected</div>` : ''}</div>
+      <div class="counts">${n ? `<div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>` : ''}${mvTile()}<div><b class="tnum">${na}</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>${nc === 1 ? 'account' : 'accounts'} connected</div>` : ''}</div>
+      ${ny || ns ? `<p class="ready-next">First, on your feed: ${[ny && `${ny} ${ny === 1 ? 'call needs' : 'calls need'} your yes`, ns && `${ns} ${ns === 1 ? 'card costs' : 'cards cost'} ad money`].filter(Boolean).join(' and ')}. ${ny ? 'Start with the yes calls.' : ''}</p>` : ''}
       ${window.BREW_NUMBERS?.storeNote ? `<p class="ready-note">${esc(window.BREW_NUMBERS.storeNote)}</p>` : ''}
       <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">Open my feed ${ic('right', 's18')}</span></span></button>
     </div></div>`);
@@ -1277,7 +1282,7 @@
     return { yes: yesOf(RANKED), spend: vis.filter((p) => B.spends.includes(p.cta?.label)), board: WORK.items.filter(needsMe).sort((a, b) => b.updatedAt - a.updatedAt) }; };
   const QHEAD = {
     yes: ['Need your yes', 'Calls only you can make', 'Calls only you can make. Each opens its jam: the plan, the draft, then your yes.', 'check'],
-    spend: ['Spend money', 'Budgets, campaigns and the site', 'These change budgets, campaigns or the site. Each opens its jam; nothing goes live until you approve it there.', 'wallet'],
+    spend: ['Costs ad money', 'Budgets and campaigns', 'These cost ad money. Each opens its jam with the brief; your team makes the change in your own tools. Brew never spends or changes anything.', 'wallet'],
     board: ['On your board', 'Work sent back for your OK', 'Work your team or Brew sent back. Each one waits on you before it can ship.', 'board']
   };
   /* the greeting's tiles, from the same lists the pages behind them read (gLists: yesOf on the ranked feed). Drawn again on every
@@ -3053,7 +3058,7 @@
     view = 'saved';
     const list = S.saved.map(byId).filter(Boolean); FEED = [];
     const row = (p) => { const c = cardOf(p); return tile({ attr: `data-lsaved="${esc(p.id)}"`, img: p.images?.[0], agent: p.agent, icon: 'bookmark', eyebrow: esc(fromLabel(c)), when: esc(p.time || ''),
-      title: c.title, line: esc(plain(c.sub || '')), who: p.cta?.label ? `${ic('right', 's14')}${esc(p.cta.label)}` : '', pill: B.spends.includes(p.cta?.label) ? pillOf('Spends money', 'warn') : '' }); };
+      title: c.title, line: esc(plain(c.sub || '')), who: p.cta?.label ? `${ic('right', 's14')}${esc(p.cta.label)}` : '', pill: B.spends.includes(p.cta?.label) ? pillOf('Costs ad money', 'warn') : '' }); };
     const agents = [...new Set(list.map((p) => p.agent))];
     const cats = agents.map((a) => ({ k: a, name: AGENT[a] || a, items: list.filter((p) => p.agent === a).map(row) }));
     libPage('saved', 'Cards you kept for later. Open one, jam on them together, or send the brief to the ShopOS team.',
@@ -4007,7 +4012,7 @@
     if (!ch.batchKey && ch.state !== 'jam') return stepBar(ch);
     if (ch.state === 'jam') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}Being planned in a jam</b><span>Answer the open questions there, then it ships.</span></div><div class="ship-btns">${postOpenOf(ch) ? poBtn(postOpenOf(ch), false) /* a ready post can still be copied out while the jam plans it */ : ''}<button class="btn btn-primary" data-rx="open">Open the jam</button></div></div>`;
     const R = RXROUTE[ch.verdict] || RXROUTE.jam, blocks = ch.checks.filter((x) => !x.ok && !x.soft);
-    const what = ch.verdict === 'confirm' ? `Tick your own checks first: ${esc((ch.confirm || []).join('; '))}.` : ch.verdict === 'fix' ? `Before it can ship: ${esc((ch.fixes || []).join('; '))}.` : ch.verdict === 'live' ? `Brew updates ${esc(ch.target.object.toLowerCase())} on ${esc(ch.target.name)} automatically, watches the result, and can roll it back.` : ch.verdict === 'deploy' ? `${esc(ch.teamWhy || 'It needs a person')}, so the ShopOS team ships it. You send them a brief with everything they need${ch.money && ch.amount > 0 ? `: about ${inrS(ch.amount)} a week` : ''}.` : esc(blocks[0]?.k || ch.reasons[0] || 'A person needs to plan or decide this first.');
+    const what = ch.verdict === 'confirm' ? `Tick your own checks first: ${esc((ch.confirm || []).join('; '))}.` : ch.verdict === 'fix' ? `Before it can ship: ${esc((ch.fixes || []).join('; '))}.` : ch.verdict === 'live' ? `Ready for your team: they make this change in ${esc(ch.target.name)} from the brief. Brew reads your accounts and never changes them.` /* read-only, always (2.3) */ : ch.verdict === 'deploy' ? `${esc(ch.teamWhy || 'It needs a person')}, so the ShopOS team ships it. You send them a brief with everything they need${ch.money && ch.amount > 0 ? `: about ${inrS(ch.amount)} a week` : ''}.` : esc(blocks[0]?.k || ch.reasons[0] || 'A person needs to plan or decide this first.');
     const scopes = ch.verdict === 'live' && ch.scope.length > 1 ? `<div class="ship-scope"><small>Run on</small>${ch.scope.map((s) => `<button class="chip" data-scope="${s.n}" aria-pressed="${(RX.scope[ch.id] || ch.scope[0].n) === s.n}" title="${s.locked ? `Above ${esc(ch.trust.name)} trust, so it goes to a jam` : ''}">${s.locked ? ic('lock', 's14') : ''}${esc(s.label)}</button>`).join('')}</div>` : '';
     return `<div class="ship ${R.tone}"><div class="ship-tx"><b>${ic(R.icon, 's16')}${R.tag}: v${curN(ch)}</b><span>${what}</span>${scopes}</div>
       <div class="ship-btns">${ch.verdict !== 'jam' ? `<button class="btn btn-ghost" data-rx="jam">${ic('hand', 's16')}Jam with my team</button>` : ''}${ch.verdict === 'fix' ? `<button class="btn btn-ghost" data-tab="details">Edit details</button>` : ''}<button class="btn btn-primary ship-go" data-rx="${ch.verdict === 'fix' ? 'fix' : ch.verdict === 'confirm' ? 'mychecks' : 'share'}">${ic(R.icon, 's16')}${ch.verdict === 'fix' && (ch.thread || []).slice(-1)[0]?.text?.startsWith('I couldn’t fix') ? 'Try again' : R.btn}</button></div></div>`;
@@ -4070,7 +4075,7 @@
   const chatTab = (ch, edit) => {
     const msgs = ch.thread || [], vById = (id) => ch.versions.find((v) => v.id === id), JR = window.JamRoom, w = RX.p ? workOfCard(RX.p.id) : null, me = String(ME()?.email || '').toLowerCase();
     const one = (m) => m.from === 'you' ? (me && m.by?.email && String(m.by.email).toLowerCase() !== me && JR?.teamMsg /* a teammate's ask, with their face and name */ ? `<div class="st-jm">${JR.teamMsg({ from: 'me', by: m.by, body: m.text }, w || {})}</div>` : `<div class="lgm you">${(m.imgs || []).length ? `<div class="st-msg-imgs">${m.imgs.map((u) => `<a href="${esc(/^(data:|https?:|\/)/.test(u) ? u : '/' + u)}" target="_blank" rel="noopener"><img src="${esc(/^(data:|https?:|\/)/.test(u) ? u : '/' + u)}" alt="Attached screenshot"></a>`).join('')}</div>` : ''}<p>${esc(m.text)}</p></div>`)
-      : `<div class="lgm ai">${face(ch.agent)}<div>${m.proof ? proofMsg(m) : `<p>${esc(m.text)}</p>`}${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length && !(ch.options && m.vs.every((id) => ch.options.list.some((x) => x.id === id))) /* options show as tabs above the stage */ ? (m.cuts && PH_FAM.includes(ch.family) ? cutsStrip(ch, m.vs.map(vById).filter(Boolean)) : madeNote(ch, m.vs.map(vById).filter(Boolean))) : ''}${m.rewrite && edit ? `<button type="button" class="chip j1-chip" data-say="Rewrite it"${RX.sending ? ' disabled' : ''}>${ic('sparkles', 's14')}Rewrite it</button>` : ''}${m.remakeAgain && edit && !ch.remakePending && !ch.realOnly ? `<button type="button" class="chip j1-chip" data-j2-remake="${esc(m.remakeAgain)}"${RX.sending ? ' disabled' : ''}>${ic('refresh', 's14')}Make it again</button>` : ''}</div></div>`;
+      : `<div class="lgm ai">${face(ch.agent)}<div>${m.proof ? proofMsg(m) : `<p>${esc(m.text)}</p>`}${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length && !(ch.options && m.vs.every((id) => ch.options.list.some((x) => x.id === id))) /* options show as tabs above the stage */ ? (m.cuts && PH_FAM.includes(ch.family) ? cutsStrip(ch, m.vs.map(vById).filter(Boolean)) : madeNote(ch, m.vs.map(vById).filter(Boolean))) : ''}${m.rewrite && edit ? `<button type="button" class="chip j1-chip" data-say="Rewrite it"${RX.sending ? ' disabled' : ''}>${ic('sparkles', 's14')}Rewrite it</button>` : ''}${m.remakeAgain && edit && !ch.remakePending && !ch.realOnly ? `<button type="button" class="chip j1-chip" data-j2-remake="${esc(m.remakeAgain)}"${RX.sending ? ' disabled' : ''}>${ic('refresh', 's14')}Make it again</button>` : ''}${m.retry && edit && m === msgs[msgs.length - 1] ? `<button type="button" class="chip j1-chip" data-say="${esc(m.retry)}"${RX.sending ? ' disabled' : ''}>${ic('refresh', 's14')}Try again</button>` : '' /* a revision that failed or timed out: the same ask again, one tap (1.6) */}</div></div>`;
     const jam = w && JR?.teamMsg ? (w.thread || []).filter((m) => m && m.id !== 'tmp' && !m.learn && (m.from !== 'system' || m.edited?.length || JAM_SYS.test(m.body || ''))).map((m, i) => ({ at: m.at || 0, i: 1e4 + i, html: `<div class="st-jm" data-st-jam>${JR.teamMsg(m, w)}</div>` })) : [];
     const log = [...msgs.map((m, i) => ({ at: m.at || 0, i, html: one(m) })), ...jam].sort((a, b) => a.at - b.at || a.i - b.i).map((x) => x.html).join('') + (w && JR?.typingHtml ? JR.typingHtml(w) : '');
     /* the ShopOS team asked for something: what they need sits on the composer until it is answered */
@@ -4578,7 +4583,14 @@
     if (r?.text) { text = r.text; wa(); } };
   window.__paintStudio = () => paintStudio(); /* the composer's menus repaint the studio */
   const findCh = (id) => (RX.ch?.id === id ? RX.ch : null) || RX.list.concat(RX.earlier).find((x) => x.id === id);
-  const putCh = (ch) => { if (!ch) return; for (const arr of [RX.list, RX.earlier]) { const i = arr.findIndex((x) => x.id === ch.id); if (i >= 0) arr[i] = ch; } if (RX.ch?.id === ch.id) RX.ch = ch; };
+  const putCh = (ch) => { if (!ch) return; for (const arr of [RX.list, RX.earlier]) { const i = arr.findIndex((x) => x.id === ch.id); if (i >= 0) arr[i] = ch; } if (RX.ch?.id === ch.id) { RX.ch = ch; if (ch.job && !RX.sending && !JOBW.has(ch.id)) resumeJob(ch); } };
+  /* a revision running on the server: poll the change every 3 s until its job is gone, then it is the answer (null: the studio moved
+     on to another jam, which leaves the job running and picks it up again when this jam opens) */
+  const JOBW = new Set();
+  const jobDone = async (id) => { JOBW.add(id); try { for (let i = 0; i < 160; i++) { await wait(3000); if (RX.ch?.id !== id) return null;
+      const q = await tapi('GET', `/api/changes/${id}`).catch(() => null); if (q?.change?.thinking) RX.think = q.change.thinking;
+      if (q?.change && !q.change.job) return { change: q.change, answered: !!q.change.lastJob?.answered }; } return { error: 'Still working on it. Check back in a minute.' }; } finally { JOBW.delete(id); } };
+  const resumeJob = async (ch) => { RX.sending = 'Working on it…'; RX.from = ch.job?.ask || null; thinkStart(ch.id); paintStudio(); const r = await jobDone(ch.id); RX.sending = false; thinkStop(); if (!r) return; if (r.change) { RX.ch = r.change; putCh(r.change); sound('reply'); } else if (r.error) toast(esc(r.error)); paintStudio(); };
   const paintRemix = () => (RX.ch ? paintStudio() : RX.batch ? paintBatch() : paintStart());
   const runRemix = async () => {
     if (RX.busy) return; const prompt = $('#rx-in')?.value.trim() || '';
@@ -4595,6 +4607,8 @@
     Object.assign(RX, { ch, viewing: null, cmp: [], tab: 'iterate', editing: false, draft: '', knobSel: {}, briefEdit: false, sending: null, att: [], stage: 'creative', tbEdit: null }); /* a reply still running in another jam never freezes this one */ tapi('POST', `/api/changes/${ch.id}/open`, {}); REMIXES = null; if (!o.fromHistory) nav(`#remix=${RX.p.id}/${ch.id}`, !o.replace, o.deep ? 'rx-deep' : 'rx-ch'); /* from the card page it replaces the card: Back goes to the feed, not round again */
     $('#view').innerHTML = `<div class="std"></div>`; window.scrollTo(0, 0); paintStudio();
     autoImage(ch);
+    /* a revision still running from before (the person left and came back): the bar shows it working and the answer lands here */
+    if (ch.job) resumeJob(ch); else tapi('GET', `/api/changes/${id}`).then((g) => { if (g?.change?.job && RX.ch?.id === ch.id && !RX.sending) putCh(g.change); }).catch(() => {});
   };
   // a Meta ad without its own creative gets one on the way in (once per package), after its first copy is written
   const autoImage = async (ch) => {
@@ -4696,7 +4710,9 @@
     RX.sending = path === 'variants' || path === 'more' ? 'Writing a new take…' : path === 'plan' ? planBusy(ch) : path === 'knob' ? `Applying ${msg}…` : body?.fix ? 'Fixing it…' : 'Working on it…';
     if (path === 'iterate') { ch.thread = [...(ch.thread || []), { from: 'you', text: msg || 'Look at the screenshot', imgs: att, at: 9e15 /* last in the timeline until the server's copy lands */ }]; RX.draft = ''; if ($('#st-in')) $('#st-in').value = ''; RX.tab = 'iterate'; }
     RX.viewing = null; RX.resetScroll = true; paintStudio(); if (path === 'iterate') sound('send');
-    const r = await tapi('POST', `/api/changes/${ch.id}/${path}`, body || { message: msg });
+    let r = await tapi('POST', `/api/changes/${ch.id}/${path}`, body || { message: msg });
+    /* a revision is a job on the server (1.6): the bar keeps its step while it works, here or after leaving and coming back */
+    if (r.working && r.change) { putCh(r.change); paintStudio(); r = await jobDone(ch.id); if (!r) { RX.sending = false; return; } }
     if (r.brief && TBS.for === tbWork()?.id) { TBS.brief = r.brief; TBS.pdf = null; tbWarm(); tbLit(r.changed); if (RX.stage !== 'brief') toast(`${ic('check', 's16')}Brief changed. <button class="linkbtn" data-tb-open>See it</button>`); }
     RX.sending = false; if (r.error) { if (att.length && !RX.att?.length) RX.att = att; /* a failed send keeps its screenshots */ sound('error'); toast(esc(r.error)); return paintStudio(); }
     if (path === 'iterate') sound('reply'); else if (['variants', 'more', 'plan'].includes(path)) sound('ready'); /* the answer, or the new take or plan, is in; a knob stays quiet */

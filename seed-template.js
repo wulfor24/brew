@@ -12,12 +12,12 @@ const andList = (xs) => xs.length <= 1 ? xs.join('') : xs.slice(0, -1).join(', '
 import { fontName } from './reader/stages/brand.js';
 
 export const CTA = {
-  'Publish the campaign': ['Publishing', 'Campaign is live on Meta'], 'Shift budget': ['Moving budget', 'Budget moved to the winners'], 'Rotate creative': ['Swapping ads', 'Fresh versions are live'],
+  'Publish the campaign': ['Writing the brief', 'Campaign brief ready for your team'], 'Shift budget': ['Writing the brief', 'Budget brief ready: your team moves it in Ads Manager'], 'Rotate creative': ['Making versions', 'Fresh versions ready for your team'],
   'Update landing page': ['Updating pages', 'The pages are updated'], 'Publish the page': ['Publishing', 'The page is live'], 'Make the ad': ['Making', 'The ad is on the way'], 'Generate versions': ['Generating', 'Versions on the way'],
   'Draft the listing': ['Drafting', 'Listing drafted'], 'Fix tracking': ['Fixing tracking', 'Tracking fixes queued'], 'Turn on the journey': ['Turning it on', 'The journey is on'],
-  'Approve the flows': ['Saving', 'Flows saved as drafts'], 'Draft the email': ['Drafting', 'The email is drafted'], 'Draft the message': ['Drafting', 'The message is drafted'], 'Pause the ads for these': ['Pausing', 'Ads on these are paused'], 'Send the review ask': ['Sending', 'Review ask is going out'], 'Make the video': ['Starting', 'The video is in production'],
+  'Approve the flows': ['Saving', 'Flows saved as drafts'], 'Draft the email': ['Drafting', 'The email is drafted'], 'Draft the message': ['Drafting', 'The message is drafted'], 'Pause the ads for these': ['Listing them', 'The ads to pause are listed for your team'], 'Send the review ask': ['Sending', 'Review ask is going out'], 'Make the video': ['Starting', 'The video is in production'],
   'Brief the shoot': ['Briefing', 'Shoot brief sent to the team'], 'Shortlist creators': ['Shortlisting', 'Creators shortlisted'], 'Start the tests': ['Starting tests', 'The tests are running'],
-  'Add the search info': ['Adding', 'Search info added'], 'Publish the claims ledger': ['Publishing', 'The claims list and the page for AI tools are public'], 'Launch the ad group': ['Launching', 'The search ads are live'],
+  'Add the search info': ['Adding', 'Search info added'], 'Publish the claims ledger': ['Publishing', 'The claims list and the page for AI tools are public'], 'Launch the ad group': ['Writing the brief', 'Search ads brief ready for your team'],
   'Turn on guest checkout': ['Turning it on', 'Guest checkout is on'], 'Agree with the call': ['Saving', 'Decision saved'], 'Set up the rules': ['Saving', 'The rules are in the team plan'], 'Open the scoreboard': ['Opening', 'Scoreboard is open'],
   'Draft the buyer deck': ['Drafting', 'Buyer deck drafted'], 'Make our version': ['Drafting', 'Our version is drafted'], 'Review draft': ['Opening', 'Draft is ready to review'],
   'Push the titles': ['Pushing', 'New titles pushed'], 'Open the moves': ['Opening', 'Moves page open'], 'Queue the ads': ['Queueing', 'The kept ads are queued as one test'], 'Approve the offers': ['Saving', 'Offers saved as drafts'],
@@ -28,7 +28,7 @@ export const CTA = {
 /* buttons renamed since they were saved: a saved card, jam or work item says the new name, and every map reads it (FEED-QA-20) */
 export const CTA_RENAME = { 'Publish Campaign': 'Publish the campaign', 'Fix the markup': 'Add the search info', 'List what points there': 'Pause the ads for these', 'Pause what points there': 'Pause the ads for these', 'Plan the restart': 'Restart what was paused' };
 export const ctaName = (l) => { const s = String(l ?? '').trim(); return CTA_RENAME[s] || s; };
-export const SPENDS = ['Publish Campaign', 'Publish the campaign', 'Shift budget', 'Launch the ad group', 'Queue the ads'];
+export const SPENDS = ['Publish Campaign', 'Publish the campaign', 'Launch the ad group', 'Queue the ads']; /* a budget shift keeps total spend the same: not money spent (2.3) */
 export const PERSON = ['Brief the shoot', 'Draft the buyer deck', 'Open the scoreboard', 'Review draft', 'Open report'];
 
 const STEPS = [
