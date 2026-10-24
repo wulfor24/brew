@@ -1342,7 +1342,7 @@
     QTAB = k; view = 'queue'; document.body.classList.remove('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
     $$('.seg [role=tab]').forEach((t) => t.setAttribute('aria-selected', 'false'));
     if (!$('.qpage')) $('#view').innerHTML = `<div class="qpage"><div class="sk" style="height:140px;border-radius:20px"></div><div class="sk" style="height:160px;border-radius:20px"></div></div>`;
-    await Promise.all([loadFeed(), pullWork(true)]); if (view !== 'queue') return;
+    await ensureTenant().catch(() => null); await Promise.race([Promise.all([loadFeed(), pullWork(true)]), wait(12000)]); if (view !== 'queue') return; /* a link opened cold has no workspace yet: make it first, never a skeleton for ever */
     const L = gLists(); GSTAT = L;
     const list = L[k]; if (k !== 'board') FEED = list;
     /* the first time the yes calls open, they come one at a time (3.2): what it is, why in one line, the two buttons, and how far along */
