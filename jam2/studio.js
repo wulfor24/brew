@@ -149,7 +149,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     /* a style that shows every side says so before anything is spent when no photo shows the back (it would be drawn by AI) */
     let note = null; if (st.allSides && ctx.product?.img) { const prof = await ensureProfile(ctx);
       if (prof && !(prof.sides || []).some((x) => /back/.test(x))) note = 'No photo shows its back yet, so the back would be drawn by AI. Add one in Brand Book → Products → Add photos.'; }
-    const line = `${n > 1 ? `${n} ` : ''}${st.kind === 'video' ? `${secs} s ${st.group} video${n > 1 ? 's' : ''}` : `${st.group.toLowerCase()} picture${n > 1 ? 's' : ''}`} · ${st.label}${prod ? ` · ${tidy(prod, 60)}` : ''} · ${size.label}`;
+    const line = `${n > 1 ? `${n} ` : ''}${st.job === 'video-restyle' ? `the reference video, remade${n > 1 ? ` ×${n}` : ''}` : st.kind === 'video' ? `${secs} s ${st.group} video${n > 1 ? 's' : ''}` : `${st.group.toLowerCase()} picture${n > 1 ? 's' : ''}`} · ${st.label}${prod ? ` · ${tidy(prod, 60)}` : ''} · ${size.label}`;
     if (!note && ctx.priceNote) note = ctx.priceNote; /* a price Higgsfield couldn't give is said to be an estimate */
     return { line, usd, per: +per.toFixed(3), count: n, kind: st.kind, style: st.id, note };
   }
