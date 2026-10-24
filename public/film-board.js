@@ -14,7 +14,7 @@
   const ed = (k, v, ph) => `<span class="fb-ed" data-fb-edit="${k}" tabindex="0">${v ? H.esc(v) : `<em>${H.esc(ph)}</em>`}</span>`;
 
   function frame(f, s, i) {
-    const pic = s.who === 'person' ? sketch(f.talent.replace(/^the /i, '').slice(0, 16) || 'On camera')
+    const pic = s.who === 'person' ? sketch(f.talent.replace(/^the /i, '').replace(/\s*[(,].*$/, '').slice(0, 18) || 'On camera')
       : f.img && s.who !== 'scene' ? `<img src="${H.esc(srcOf(f.img))}" alt="">${s.who === 'hands' ? hand : ''}`
       : `<span class="fb-scene">${H.esc(s.shot.slice(0, 60))}</span>`;
     const said = s.say ? 'Said to camera' : f.vo ? 'Voiceover' : 'On screen';
