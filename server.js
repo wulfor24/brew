@@ -1044,12 +1044,12 @@ const server = http.createServer(async (req, res) => {
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => timed(req, res, u, () => serve(req, res, u))); }
   return timed(req, res, u, () => serve(req, res, u));
 }).listen(PORT, () => console.log(`Brew Feed on http://localhost:${PORT} · AI ${MOCK ? "mock" : `live (${PROVIDER})`} · env ${fs.existsSync(envFile) ? envFile : 'none'}${DEMO ? ' · DEMO MODE' : ''}`));
-/* every web instance starts with the brands people use already built in memory (opened in the last 14 days), one after
+/* every web instance starts with every ready brand already built in memory (most recently opened first), one after
    another in the background, so the first visitor after a deploy or a scale-up never waits for a pack build (Phase 4) */
 if (isWeb() && process.env.WARM_OFF !== '1') setTimeout(async () => { const t0 = Date.now(); let n = 0;
-  for (const b of (await builder.list().catch(() => [])).filter((x) => x.slug && x.status?.ready !== false)) {
-    if (n >= (+process.env.WARM_BRANDS || 30)) break;
-    const lo = (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0; if (Date.now() - lo > 14 * 864e5) continue;
+  const all = (await builder.list().catch(() => [])).filter((x) => x.slug && x.status?.ready !== false);
+  const lo = new Map(await Promise.all(all.map(async (b) => [b.slug, (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0])));
+  for (const b of all.sort((x, y) => lo.get(y.slug) - lo.get(x.slug)).slice(0, +process.env.WARM_BRANDS || 40)) { /* most recently opened first */
     try { await loadBrand(b.slug, { fresh: true, share: true }); n++; } catch (e) { console.warn('[warm]', b.slug, e.message); } }
   if (n) console.log(`[warm] ${n} brand(s) ready in memory in ${Date.now() - t0} ms`); }, +process.env.WARM_DELAY_MS || 3000).unref?.();
 /* Cloud Run stops an instance with SIGTERM (deploys, scale to zero): the team's jams, any workspace still inside its 1.5 s
