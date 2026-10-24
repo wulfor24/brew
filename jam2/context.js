@@ -44,8 +44,13 @@ export function contextOf(ctx = {}, d0 = {}) {
   const kit = bbv.kit || {}, brand = { value: { logo: kit.logo || null, colors: (kit.colors || []).slice(0, 5), fonts: kit.fonts || {}, tone: tidy(bbv.tone?.summary || bbv.tone?.line || (typeof bbv.tone === 'string' ? bbv.tone : ''), 80) || null }, why: 'Your Brand Book: logo, colours, type and tone.' };
   if (!kit.logo) missing.push({ text: 'No logo in your Brand Book, so the ad goes out without one.', fix: 'Add your logo', go: 'brand' });
   /* the words on it: the card's own claim and today's price, a real review only */
-  const review = (bbv.reviews || [])[0] || null;
-  const words = { value: { headline: tidy(card.headline || card.title, 90), line: tidy(card.sub, 140), review: review ? tidy(review.text || review.quote || review, 160) : null }, why: review ? 'The card’s claim, and a real review from your Brand Book.' : 'The card’s claim. No review is quoted: none are in your Brand Book yet.' };
+  const pn = String(ctx.product?.name || '').toLowerCase(), rp = (r) => String(r?.product || '').toLowerCase(); /* only this product's review, or one about the whole brand */
+  const review = (bbv.reviews || []).find((r) => pn && rp(r) && (pn.includes(rp(r)) || rp(r).includes(pn))) || (bbv.reviews || []).find((r) => !rp(r)) || null;
+  /* the words on it come from the jam's own copy (the ad's headline, the post's first line), never the card's title: that is Brew's note to the team ("Browse emails are off") */
+  const v1 = ctx.v1 || {}, first = (x) => tidy(String(x || '').split(/\n|(?<=[.!?])\s/)[0], 140);
+  const head0 = v1.headline || v1.overlay || v1.slides?.[0]?.onSlide || v1.cards?.[0]?.headline || v1.heading || card.make?.hook || card.hook || '';
+  const line0 = v1.primaryText || v1.caption || v1.copy || v1.description || v1.body || '';
+  const words = { value: { headline: tidy(head0, 90), line: first(line0) || null, review: review ? tidy(review.text || review.quote || review, 160) : null }, why: review ? 'The card’s claim, and a real review from your Brand Book.' : 'The card’s claim. No review is quoted: none are in your Brand Book yet.' };
   /* the direction: one paragraph a person can read and change */
   const look = (set ? set.map((x) => x.look || x.label).join('; ') : st?.look || st?.label || '').replace(/[.\s]+$/, '');
   const direction = { value: tidy([p?.name ? `${p.name}, exactly as in its photos.` : '', look ? `${look}.` : '', words.value.headline ? `Built around: “${words.value.headline}”.` : '', cast.shown && people !== 'none' ? `${cast.label}.` : people === 'none' ? 'No people.' : '', kit.colors?.length ? `In the brand colours ${kit.colors.slice(0, 3).join(', ')}.` : '', (bbv.never || []).length ? `Never: ${(bbv.never || []).slice(0, 3).join('; ')}.` : ''].filter(Boolean).join(' '), 600), why: 'Written by Brew from everything above. Change anything; it is what the maker reads.' };

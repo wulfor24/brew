@@ -68,16 +68,16 @@ function partsOf(family, action, p, extra) {
     add('headline', 'Headline', p.headline, { soft: 40, max: 255, req: true, note: 'Meta cuts it at about 40 on phones' });
     add('description', 'Description', p.description, { soft: 30, max: 255 });
     add('cta', 'Button', p.cta, { req: true, opts: META_CTAS });
-    (Array.isArray(p.cards) ? p.cards : []).forEach((c, i) => { add(`cards.${i}.headline`, `Card ${i + 1} · headline`, c.headline, { soft: 40, max: 255, req: true }); });
+    (Array.isArray(p.cards) ? p.cards : []).forEach((c, i) => { add(`cards.${i}.headline`, `Card ${i + 1} · headline`, c.headline, { soft: 40, max: 255, req: true }); if (c.text) add(`cards.${i}.text`, `Card ${i + 1} · line`, c.text, { soft: 60, max: 255 }); });
   } else if (family === 'social') {
     (Array.isArray(p.slides) ? p.slides : []).forEach((c, i) => { add(`slides.${i}.onSlide`, `Slide ${i + 1} · words`, c.onSlide, { soft: 60, max: 120 }); });
     add('caption', 'Caption', p.caption, { soft: 125, max: 2200, req: true, note: 'The first line is what shows before “more”' });
     add('hashtags', 'Hashtags', list(p.hashtags).join(' '), { req: true, tags: [3, 8] });
   } else if (family === 'post') {
-    add('title', 'Title', p.title, { soft: 70, max: 100, req: true }); add('copy', 'Caption', p.copy, { soft: 150, max: 2200, req: true });
+    add('title', 'Title', p.title, { soft: 70, max: 100, req: !/short_video$/.test(action) /* Reels and TikTok have no title; YouTube and posts do */ }); add('copy', 'Caption', p.copy, { soft: 150, max: 2200, req: true });
     add('hashtags', 'Hashtags', list(p.hashtags).join(' '), { tags: [3, 8] });
   } else if (family === 'listing') {
-    add('title', 'Title', p.title, { max: 200, req: true }); add('bullets', 'Bullet points', list(p.bullets).join('\n'), { req: true, lines: 5, lineMax: 250 });
+    add('name', 'Title', p.name || p.items?.[0]?.new, { max: 200, req: true }); add('bullets', 'Bullet points', list(p.bullets).join('\n'), { req: true, lines: 5, lineMax: 250 });
     add('searchTerms', 'Search terms', p.searchTerms, { max: 250 });
   }
   if (family !== 'listing' && family !== 'print') add('link', 'Link', pub.link || extra.link, { req: true, link: true, made: !pub.link });
@@ -85,7 +85,7 @@ function partsOf(family, action, p, extra) {
   return P;
 }
 
-export function readyOf({ family, action = '', pkg = {}, card = {}, product = null, cardProduct = null, catalog = [], brand = '', host = '', source = '', words = [], wordsRead = true, recreated = null, style = null, version = 1 }) {
+export function readyOf({ family, action = '', pkg = {}, card = {}, product = null, cardProduct = null, catalog = [], brand = '', host = '', source = '', words = [], wordsRead = true, recreated = null, style = null, version = 1, quality = null }) {
   const p = pkg || {}, look = style?.label || '';
   const extra = { link: linkOf({ family, product, host, campaign: card.title || card.id || brand, content: `${style?.id || 'creative'}-v${version}` }), alt: altOf({ product: product?.name || cardProduct?.name || '', look: style?.look || look, brand }) };
   const parts = partsOf(family, action, p, extra).map((x) => {
@@ -104,13 +104,14 @@ export function readyOf({ family, action = '', pkg = {}, card = {}, product = nu
   const seen = [...parts.filter((x) => !x.link).map((x) => x.value), p.overlay, ...(words || [])].filter(Boolean).join('\n');
   const checks = [];
   const cf = claimFlags(seen, source); checks.push({ k: 'claims', ok: !cf.length, t: cf.length ? `Claims your store doesn’t make: ${cf.slice(0, 3).map((f) => f.why).join('; ')}` : 'No made-up codes, guarantees or timed results' });
-  const written = parts.filter((x) => !x.link && !x.opts).map((x) => x.value).filter(Boolean).join('\n'); /* a button in caps in the picture is an ad's button, not shouting */
+  const written = parts.filter((x) => !x.link && !x.opts && !x.tags && x.k !== 'alt').map((x) => x.value).filter(Boolean).join('\n\n'); /* hashtags and alt text are not sentences: "#Arata" then "Arata Curl Serum" is no repeated word */ /* a button in caps in the picture is an ad's button, not shouting */
   const lf = copyFlags(written, { source, names: [brand, ...(catalog || []).map((x) => x?.t || x?.title)].filter(Boolean) }); checks.push({ k: 'copy', ok: !lf.length, t: lf.length ? `Reads wrong: ${lf.slice(0, 2).join('; ')}` : 'Reads right' });
   const bp = pricesOk(seen, source, catalog); checks.push({ k: 'price', ok: !bp.length, t: bp.length ? `${bp.join(', ')} isn’t a price on your store today` : 'Every price is today’s' });
   const br = ratingsOk(seen, source); checks.push({ k: 'rating', ok: !br.length, t: br.length ? `“${br.join('”, “')}” isn’t from your own reviews` : 'No rating that isn’t yours', fix: br.length ? 'redo' : null });
   /* a picture whose words Brew didn't keep (made before it kept them) was never read: say so, never "no problems" */
   if (!wordsRead) { const i = checks.findIndex((c) => c.k === 'price'); for (const c of checks) if (['price', 'rating', 'claims'].includes(c.k) && c.ok) c.t = `${c.t} in the words above`; checks.splice(i, 0, { k: 'picture', ok: false, soft: true, t: 'The words in the picture weren’t read for this version: check its prices, ratings and claims yourself, or Redo it' }); }
   /* someone else's footage with the product swapped in keeps their people, faces, voices and words: never the brand's to post */
+  if (quality === 'preview') checks.unshift({ k: 'preview', ok: false, soft: true, fix: 'redo', t: 'This is the quick preview, at low resolution: make the full one before you post it' });
   if (recreated) checks.unshift({ k: 'rights', ok: false, t: `This is ${recreated.by ? `${recreated.by}’s` : 'someone else’s'} video with your product swapped in: their face, voice and words are still in it. Don’t post it without their written permission; make a Viral short in its pattern instead.` });
   /* a film: its spoken words are captioned (most feeds play muted), and an approximate timing is said */
   if (p.video && p.film) { const c = p.film.captions || {};

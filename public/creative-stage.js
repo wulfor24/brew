@@ -23,7 +23,7 @@
   async function mount(ch, card) {
     if (S && S.chId === ch.id && !S.error) return; clearTimeout(pollT);
     const mine = S = { chId: ch.id, loading: true, open: true, pop: null, recipe: ch.studio || null, sel: 0 };
-    const [o, L, C] = await Promise.all([api('POST', '/api/jam2/open', { cardId: ch.cardId, cta: ch.studioLabel || card?.cta?.label || '', v1ch: ch.id }), LIB ? { library: LIB } : api('GET', '/api/jam2/studio/library'), SIZES ? { sizes: SIZES } : api('GET', '/api/jam2/catalogue')]);
+    const [o, L, C] = await Promise.all([api('POST', '/api/jam2/open', { cardId: ch.cardId, cta: ch.studioLabel || card?.cta?.label || '', v1ch: ch.id, recipe: ch.studio }), LIB ? { library: LIB } : api('GET', '/api/jam2/studio/library'), SIZES ? { sizes: SIZES } : api('GET', '/api/jam2/catalogue')]);
     if (S !== mine) return; LIB = L?.library || LIB; SIZES = C?.sizes || SIZES;
     const jam = o?.jam, bd = jam?.boards?.[0];
     if (!jam || !bd) { S.loading = false; S.error = o?.error || 'The studio couldn’t open just now.'; return paint(); }
@@ -71,7 +71,7 @@
     pollT = setTimeout(async () => { if (S !== mine) return; const r = await api('GET', `/api/jam2/jams/${S.jid}`); if (S !== mine) return; if (!r?.jam) { pollT = setTimeout(poll, 6000); return; }
       S.busy = r.jam.busy || {}; S.boards = r.jam.boards.map((b) => b.id); const err = Object.values(S.busy).find((b) => b?.error);
       if (anyBusy()) { paint(); return poll(); }
-      const was = S.making; S.making = null; S.made = S.made || !err; /* made here once a take of this press lands */ if (err) S.failed = err.error; else S.failed = null;
+      const was = S.making; S.making = null; S.made = S.made || !err; /* made here once a take of this press lands */ if (err) { S.failed = err.error; if (!slidesOf(H.ch?.() || {})?.length && !H.ch?.()?.versions?.some((v) => v.studio)) S.open = true; /* nothing made yet: the set-up stays open with the reason */ } else S.failed = null;
       window.BrewGame?.done?.(); /* a game open over the stage stops and says it's ready */
       H.landed?.(S.chId, { failed: S.failed, was }); }, 3000); }
 
@@ -137,7 +137,7 @@
     const head0 = ch.versions?.find((v) => v.id === ch.head)?.studio, run = [...(ch.versions || [])].reverse().find((v) => v.studio?.run)?.studio?.run, batch = run ? (ch.versions || []).filter((v) => v.studio?.run === run) : [];
     const batchHtml = batch.length > 1 ? `<div class="cs-batch"><small>${batch.length}${batch[0].studio.runN > batch.length ? ` of ${batch[0].studio.runN}` : ''} made in one go · tap one to look at it, then Use it</small><div class="cs-strip">${batch.map((v) => { const s0 = v.snapshot || {}; return `<button class="${(H.viewing?.() || ch.head) === v.id ? 'on' : ''}${v.passed ? ' is-drop' : ''}" data-v-view="${H.esc(v.id)}" title="v${v.n}"><img src="${H.esc(srcOf(s0.poster || s0.image || ''))}" alt=""><span>${v.n}</span></button>`; }).join('')}</div></div>` : '';
     /* Redo the set makes the set as it is now (after a drop or an add), so its price follows the slides on the stage */
-    if (sl?.length > 1 && Array.isArray(S.spec?.set) && sl.map((x) => x.style).join() !== S.spec.set.join() && !S.making) { S.spec = { ...S.spec, set: sl.map((x) => x.style) }; S.sel = Math.min(S.sel || 0, sl.length - 1); setTimeout(price, 0); }
+    if (sl?.length > 1 && Array.isArray(S.spec?.set) && sl.map((x) => x.style).join() !== S.spec.set.join() && !S.making && !S.open) { S.spec = { ...S.spec, set: sl.map((x) => x.style) }; S.sel = Math.min(S.sel || 0, sl.length - 1); setTimeout(price, 0); }
     if (!S.open && sl?.length > 1) { const i = Math.min(S.sel || 0, sl.length - 1), cur = sl[i], st = styleById(cur.style); slidePrice(cur.style); const sp = S.slidePlan?.[cur.style];
       return `${batchHtml}<div class="cs-line cs-set">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}${S.gallery && S.adding ? `<div class="j2-studio cs cs-addgal">${gallery()}</div>` : ''}
         <div class="cs-strip">${sl.map((x, k) => `<button class="${k === i ? 'on' : ''}" data-cs-sel="${k}" title="${H.esc(styleById(x.style)?.label || '')}"><img src="${H.esc(srcOf(x.file))}" alt=""><span>${k + 1}</span></button>`).join('')}<button class="cs-add" data-cs-addslide title="Add a slide">＋</button></div>

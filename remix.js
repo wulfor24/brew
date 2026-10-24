@@ -471,10 +471,15 @@ export function createRemix(o) {
      made on a yes (Param, 23 Oct). Nothing is drawn free on open. Returns the Studio recipe, or null for words, messages, batches.
      V1_STUDIO=0 brings back the free Gemini draft */
   const STUDIO_FAM = new Set(['meta_ad', 'social', 'post', 'listing', 'print']);
+  const STUDIO_ACT = { short_video: 'reel', ig_carousel: 'ig-carousel', ig_story: 'stories', carousel_ad: 'carousel-ad', listing_content: 'listing', ig_post: 'ig-post' };
   const studioOf = (t, ch, label = null, c = null) => { if (process.env.V1_STUDIO === '0' || process.env.DEMO_MODE === '1' /* the demo has no Studio */ || !ch || ch.batchKey || !STUDIO_FAM.has(ch.family)) return null; c ||= t.cards?.get?.(ch.cardId); if (!c || isBatchCard(c)) return null;
     if (ch.family === 'post' && !isVideoPost(ch)) return null;
     if (/catalog_ad$/.test(ch.action || '')) return null; /* Meta builds a catalog ad from the catalog itself: real photos, the frame line; nothing to make */
-    try { const r = j2Recipe(j2Plan(c, String(label || ch.studioLabel || ch.ctaMade?.label || c.cta?.label || '').slice(0, 60))[0]?.recipe); return r && inStudio({ kind: r.kind, recipe: r.id }) ? r.id : null; } catch { return null; } };
+    if (/\.(listing_titles|takedown)$/.test(ch.action || '')) return null; /* words only: marketplace titles and takedown notices have no picture to make */
+    try { let r = j2Recipe(j2Plan(c, String(label || ch.studioLabel || ch.ctaMade?.label || c.cta?.label || '').slice(0, 60))[0]?.recipe);
+      /* the jam's own action decides what kind of thing is made: a short-video jam on a card whose button says "Make the ad" makes a video, a carousel jam a set */
+      const want = STUDIO_ACT[String(ch.action || '').split('.').pop()], w = want && j2Recipe(want); if (w && (!r || r.kind !== w.kind)) r = w;
+      return r && inStudio({ kind: r.kind, recipe: r.id }) ? r.id : null; } catch { return null; } };
   const bump = (t, ch) => { try { const w = ch && jamOf(t, ch); if (w) w.updatedAt = now(t); } catch {} };
   const on = (m, pat, fn) => on0(m, pat, m === 'GET' || !/:chid/.test(pat) ? fn : async (b, t, p, q) => { try { return await fn(b, t, p, q); } finally { bump(t, changes(t)?.[p?.chid]); } });
   const changes = (t) => (t.changes ||= {});
@@ -666,7 +671,11 @@ export function createRemix(o) {
     w.versions ||= []; const i = w.versions.findIndex((x) => x.changeVersionId === v.id), j = i < 0 ? w.versions.findIndex((x) => x.n === v.n && !x.changeVersionId) : -1;
     if (i >= 0) w.versions[i] = { ...w.versions[i], ...row }; else if (j >= 0) w.versions[j] = { ...w.versions[j], ...row }; else w.versions.push(row);
     if (headOf(t, ch)?.id === v.id) { w.current = v.n; if (sn.title) w.title = sn.title; if (img) w.img = img; } w.updatedAt = now(t); };
-  const version = (t, ch, author, reason, label) => { const v = addV(t, 'change', ch.id, snapOf(ch), { author, reason, parent: headOf(t, ch)?.id }); v.label = cleanLabel(label) || versionLabel(reason, { first: v.n === 1 }); ch.headVersionId = v.id; try { mirror(t, ch, v); } catch (e) { log.warn('[studio] jam mirror', e.message); } return v; };
+  /* a version that only changes the words keeps what Studio made it from (its slides, quality, picture words, price): the
+     ready-to-publish panel, the slide strip and the check follow the picture, not who last typed */
+  const mediaKey = (p = {}) => JSON.stringify([p.image || null, p.video || null, p.cardImages || null, (p.photoSet || []).map((x) => x.image), (p.aplus || []).map((x) => x.image)]);
+  const version = (t, ch, author, reason, label) => { const par = headOf(t, ch), v = addV(t, 'change', ch.id, snapOf(ch), { author, reason, parent: par?.id });
+    if (par?.studio && mediaKey(par.snapshot || {}) === mediaKey(v.snapshot || {})) v.studio = par.studio; v.label = cleanLabel(label) || versionLabel(reason, { first: v.n === 1 }); ch.headVersionId = v.id; try { mirror(t, ch, v); } catch (e) { log.warn('[studio] jam mirror', e.message); } return v; };
   // a version's name in the strip and History: the AI's 2-4 words when it gave them, else the rule-based name
   const cleanLabel = (x) => { const s = String(x || '').replace(/[."“”]/g, '').trim(); const n = s.split(/\s+/).length; return s && n <= 5 && s.length <= 32 ? s[0].toUpperCase() + s.slice(1) : ''; };
   /* who ships a change: the connected tool when the brand can connect it; off Shopify, a storefront change is the brand's web
@@ -740,7 +749,7 @@ export function createRemix(o) {
     const head = headOf(t, ch), sv = head?.studio || null, card = t.cards.get(ch.cardId) || {}, cat = catalogOf(t) || [];
     const name = sv?.product?.name || null, pe = name ? cat.find((x) => x.t === name) || cat.find((x) => sv.product.img && (x.img === sv.product.img || (x.imgs || []).includes(sv.product.img))) : null;
     const cp = (() => { try { return cardProduct(card, cat); } catch { return null; } })();
-    return { made: !!sv, ...readyOf({ family: ch.family, action: ch.action, pkg: ch.pkg, card, product: name ? { name, url: pe?.url || null } : cp ? { name: cp.t, url: cp.url || null } : null, cardProduct: cp ? { name: cp.t } : null, catalog: cat, brand: BN(), host: BH(), source: brandSource(t, card), words: sv?.words || [], wordsRead: Array.isArray(sv?.words), recreated: sv?.recreated || (sv?.style === 'recreate-swap' ? {} : null), style: sv ? (sv.slides?.length > 1 ? { id: 'set', label: `${sv.slides.length} ${ch.family === 'meta_ad' ? 'carousel cards' : ch.family === 'listing' ? 'listing images' : 'slides'}`, look: `${sv.slides.length} ${ch.family === 'meta_ad' ? 'carousel cards' : ch.family === 'listing' ? 'listing images' : 'slides'}` } : { id: sv.style, label: sv.label }) : null, version: head?.n || 1 }) };
+    return { made: !!sv, ...readyOf({ family: ch.family, action: ch.action, pkg: ch.pkg, card, product: name ? { name, url: pe?.url || null } : cp ? { name: cp.t, url: cp.url || null } : null, cardProduct: cp ? { name: cp.t } : null, catalog: cat, brand: BN(), host: BH(), source: brandSource(t, card), words: sv?.words || [], wordsRead: !sv || Array.isArray(sv.words) /* nothing made yet: no picture to read */, quality: sv?.quality || null, recreated: sv?.recreated || (sv?.style === 'recreate-swap' ? {} : null), style: sv ? (sv.slides?.length > 1 ? { id: 'set', label: `${sv.slides.length} ${ch.family === 'meta_ad' ? 'carousel cards' : ch.family === 'listing' ? 'listing images' : 'slides'}`, look: `${sv.slides.length} ${ch.family === 'meta_ad' ? 'carousel cards' : ch.family === 'listing' ? 'listing images' : 'slides'}` } : { id: sv.style, label: sv.label }) : null, version: head?.n || 1 }) };
   } catch (e) { log.warn('[publish]', e.message); return null; } };
   /* a collection ad's grid and a catalog ad's products: the catalog's own photos (real, free), matched by name for a collection */
   const catalogPics = (t, ch) => { const p = ch.pkg || {}; if (ch.family !== 'meta_ad' || !(p.products?.length || p.productSet)) return null; const cat = (catalogOf(t) || []).filter((x) => x?.img && !x.out);
@@ -1340,7 +1349,9 @@ export function createRemix(o) {
     ch.copyPending = Date.now(); FILL_JOBS.add(ch.id);
     (async () => {
       let ok = false;
-      try { const x = await write(); const touched = touchedCh(t, ch);
+      try { let x = null; try { x = await write(); } catch (e) { log.warn('[remix later] first try', e.message); }
+        if (!x && !touchedCh(t, ch)) { await new Promise((r) => setTimeout(r, 2500)); x = await write(); } /* the writer sometimes comes back empty: one more try before the brand is left with a starting point */
+        const touched = touchedCh(t, ch);
         if (touched) ok = true; /* someone already changed it: their work stands */
         else if (x && Object.keys(x.pkg || {}).length && ch.action === x.action) { ch.pkg = { ...rulePkg(t, ch.agent, ch.family, cleanPkg(ch.family, ch.action, x.pkg, clean)), ...keepMedia({ ...ch.pkg, knobs: ch.pkg.knobs || {} }, true) };
           if (x.angle) ch.angle = x.angle; if (x.why) ch.why = x.why; if (x.from) ch.from = x.from; sync(t, ch, c); const v0 = versionsOf(t, ch.id)[0]; if (v0) { v0.snapshot = snapOf(ch); try { mirror(t, ch, v0); } catch {} } ok = true; }
@@ -1702,7 +1713,7 @@ export function createRemix(o) {
       try {
         await waitFor(() => ch.imagePending || ch.remakePending || FILL_JOBS.has(ch.id)); /* a picture already in flight (the first photo, our version) lands first */
         say = await makeOne(t, ch, c, label);
-      } catch (e) { log.warn('[cta make]', e.message); say = `That didn’t come through (${String(e.message).slice(0, 100)}). Tap the button again in a minute.`; }
+      } catch (e) { log.warn('[cta make]', e.message); ch.ctaMade = null; /* the button can be pressed again */ say = `That didn’t come through (${String(e.message).slice(0, 100)}). Tap the button again in a minute.`; }
       finally { think(ch, null); ch.ctaPending = null; CTA_JOBS.delete(ch.id); if (say) ch.thread.push({ from: 'ai', text: say, at: now(t) }); bump(t, ch); o.save?.(t); }
     })();
     return true;
@@ -1712,6 +1723,8 @@ export function createRemix(o) {
     const c = t.cards.get(ch.cardId) || {}, label = String(b.label || c.cta?.label || '').slice(0, 60);
     if (studioOf(t, ch, label, c)) { ch.studioLabel = label; return { change: pubChange(t, ch), making: false, studio: true }; } /* the stage's composer makes it, priced */
     if (!ctaMakes(t, label, ch, c) || editable(ch) || (isMock() && !(ch.family === 'listing' && /photo|image/i.test(label)) /* AI offline: only a listing's photos still land (the store's own, listingFromCatalog) */)) return { change: pubChange(t, ch), making: false };
+    /* a make that failed or that a restart cut off left nothing: the button works again (it used to stay dead for that jam) */
+    if (ch.ctaMade && !CTA_JOBS.has(ch.id) && !FILL_JOBS.has(ch.id) && !ch.ctaQueued && !ch.imagePending && !ch.videoPending && now(t) - (ch.ctaMade.at || 0) > 60e3 && !versionsOf(t, ch.id).some((v) => (v.at || 0) >= (ch.ctaMade.at || 0))) ch.ctaMade = null;
     if (ch.ctaMade) return { change: pubChange(t, ch), making: false, already: true }; /* once per jam: the next press just opens it */
     ch.ctaMade = { label, at: now(t) };
     if (isReferenceCard(c) && (ch.imagePending || ch.videoPending || ch.remakePending || FILL_JOBS.has(ch.id))) return { change: pubChange(t, ch), making: true }; /* our version is already being drawn */
@@ -2164,11 +2177,13 @@ export function createRemix(o) {
       : slides.length > 1 ? (ch.family === 'listing' ? { photoSet: slides.map((x) => ({ image: x.file, style: x.style || null })), image: slides[0].file }
         : { image: slides[0].file, cardImages: slides.map((x) => x.file), ...(ch.family === 'meta_ad' ? { cards: rows(ch.pkg.cards || [], (x, o) => ({ headline: tidyL(wd(x).headline || o.headline, 120), text: tidyL(wd(x).sub || o.text, 200) })) } : { slides: rows(ch.pkg.slides || [], (x, o) => ({ onSlide: tidyL(wd(x).headline || o.onSlide, 120) })) }) })
       : st.kind === 'video' ? { video: take.file, poster: take.cover || take.poster || take.shot?.file || null, image: take.cover || take.poster || take.shot?.file || ch.pkg.image, wordsIn: take.cover || null, /* ready to post: the film without captions, its .srt, its cover, a GIF */ film: { raw: take.raw || null, srt: take.srt || null, cover: take.cover || null, frame: take.poster || null, gif: take.gif || null, captions: take.captions ? { n: take.captions.n, approx: take.captions.approx, none: take.captions.none, error: take.captions.error } : null } } : { image: take.file, wordsIn: take.file /* a Studio picture carries its own words: the frame lays none over it */ };
-    ch.pkg = { ...ch.pkg, ...media }; ch.imageError = null; sync(t, ch);
+    /* the new take replaces the last one's media: a picture after a film drops the film, a single after a set drops the set's pictures */
+    const base = { ...ch.pkg }; for (const k of ['video', 'poster', 'film', 'photoSet', 'aplus', 'cardImages', 'wordsIn']) delete base[k];
+    ch.pkg = { ...base, ...media }; ch.imageError = null; sync(t, ch);
     const v = version(t, ch, 'brew', `Studio: ${label}${take.cost?.usd ? ` · $${take.cost.usd}` : ''}`, label); const tw = take.words || {}, prod = st.spec?.product || null;
     v.studio = { recreated: take.recreated || null, run: take.run || null, runN: take.runN || null, runI: take.runI ?? null, style: st.style || null, slides: slides.length > 1 || aplus ? slides.map((x) => ({ style: x.style || null, file: x.file })) : null, label, kind: st.kind || null, size: st.size || null, usd: take.cost?.usd || 0, jid: take.jid || null, product: prod ? { name: prod.name || null, img: prod.img || null } : null,
-      words: [...new Set([tw.headline, tw.sub, tw.button, tw.badge, tw.proof, ...(Array.isArray(take.check?.words) ? take.check.words : []), ...[take.scene, ...(take.slides || []).map((x) => x.scene)].flatMap((sc) => (sc?.layers || []).map((l) => l?.words || l?.text)) /* every word set on the picture */, ...(take.captions?.segs || []).map((x) => x.text) /* what is said in the film */, ...(take.slides || []).flatMap((x) => [x.words?.headline, x.words?.sub])].filter((x) => typeof x === 'string' && x.trim()).map((x) => x.slice(0, 200)))].slice(0, 20) }; /* what the picture itself says: the publish check reads it */
-    studioState(t, chId, { state: 'made', line: label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
+      words: [...new Set([tw.headline, tw.sub, tw.button, tw.badge, tw.proof, ...(Array.isArray(take.check?.words) ? take.check.words : []), ...[take.scene, ...(take.slides || []).map((x) => x.scene)].flatMap((sc) => (sc?.layers || []).map((l) => l?.words || l?.text)) /* every word set on the picture */, ...(take.captions?.segs || []).map((x) => x.text) /* what is said in the film */, ...(take.slides || []).flatMap((x) => [x.words?.headline, x.words?.sub])].filter((x) => typeof x === 'string' && x.trim()).map((x) => x.slice(0, 200)))].slice(0, 80), quality: st.spec?.quality || null, missing: Array.isArray(take.missing) && take.missing.length ? take.missing.slice(0, 10) : null }; /* what the picture itself says (every caption line too: the closing claim is checked): the publish check reads it */
+    studioState(t, chId, { state: 'made', line: Array.isArray(take.missing) && take.missing.length ? `${label} · ${take.missing.length} couldn’t be made: open it to add ${take.missing.length > 1 ? 'them' : 'it'}` : label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
   const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; ch.studioState = { ...st, at: now(t) }; const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };
   return { landStudio, studioOf, studioState, remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };

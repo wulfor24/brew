@@ -47,7 +47,8 @@ export function mountJam2(d) {
     let memory = ''; try { memory = memoryOf ? memoryOf(t, card?.agent && card.agent !== 'brew' ? card.agent : 'creative') || '' : ''; } catch { memory = ''; }
     const cfg = br?.config || {}, market = br ? askMarket({ country: cfg.country, locale: cfg.locale, market: cfg.market }, cfg) : null; /* who the people in a picture or film look like */
     const ref = card && d.refOf ? d.refOf(t, card) : null; /* the reference the card is about (Recreate, viral shorts) */
-    return { slug, jam, card, ref, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text), market, refs, storeKind: br?.profile?.storeKind || await kindOfStore(slug) };
+    const v1 = jam.v1ch ? t.changes?.[jam.v1ch]?.pkg || null : null; /* the v1 jam's own words (headline, caption): what the ad says, never the card's internal title */
+    return { slug, jam, card, ref, v1, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text), market, refs, storeKind: br?.profile?.storeKind || await kindOfStore(slug) };
   }
   /* run slow work in the background; the board says what it is doing and any error in plain words */
   /* a job also leaves a mark on the jam (saved with it): after a restart, a mark with no job running says the job was cut off */
@@ -56,8 +57,15 @@ export function mountJam2(d) {
   const plainErr = (e) => { const m = String(e?.message || e || ''); if (e?.plain) return m.slice(0, 300); /* already said for a person */ if (e?.moderated || /\bnsfw\b|content safety|safety (filter|restriction)|moderat/i.test(m)) return 'The image makers’ safety filters refused this one (they sometimes misread hair, skin or close-ups). Nothing was charged for it. Press it again, or try another style or drop the reference.';
     if (/still being made after/i.test(m)) return 'It’s taking longer than usual. It will land here on its own; nothing is paid twice.';
     return m.replace(/\bHiggsfield\s+[a-z0-9-]+(?:\/[a-z0-9.-]+)+\s*(failed|error|canceled|cancelled)?:?\s*/gi, '').slice(0, 240) || 'That didn’t come through. Press it again.'; };
+  /* filling in the slides left out: the new ones join the slides already made, in the set's order; only the new ones were paid for (the make and a restart's resume alike) */
+  const fillMerge = (host, take, spec) => { const prev = spec?.fill ? headOf(host) : null; if (!(prev?.slides?.length && prev.studio?.spec?.set && take?.slides)) return take;
+    const order = prev.studio.spec.set, all = [...prev.slides, ...take.slides].sort((a, c) => order.indexOf(a.style) - order.indexOf(c.style));
+    Object.assign(take, { slides: all, file: all[0].file, scene: all[0].scene, words: all[0].words || take.words, missing: take.missing, missingIds: take.missingIds }); take.studio = { ...take.studio, set: all.map((x) => x.style), label: all.map((x) => studio.styleOf(x.style)?.label).filter(Boolean).join(', '), spec: { ...prev.studio.spec } }; return take; };
   const runBg = (t, jam, bid, op, fn, mark = {}) => { const k = `${jam.id}:${bid}`; if (busy.get(k)?.op && !busy.get(k).error) return false; busy.set(k, { op, at: Date.now() }); (jam.running ||= {})[bid] = { ...mark, op, at: Date.now() };
-    Promise.resolve().then(fn).then(() => { busy.delete(k); if (jam.running) delete jam.running[bid]; }).catch((e) => { log.warn?.('[jam2]', op, e.message); if (op === 'studio' && jam.v1ch) try { d.onStudioState?.(t, jam.v1ch, { state: 'failed', error: plainErr(e).slice(0, 240), jid: jam.id }); } catch {}
+    Promise.resolve().then(fn).then(() => { busy.delete(k); if (jam.running) delete jam.running[bid]; }).catch((e) => { log.warn?.('[jam2]', op, e.message);
+      /* still being made at the engine (paid, not lost): keep the run's mark so it is polled again (resumeCut: on the next open, the composer's poll or in a minute), never an error */
+      const m0 = jam.running?.[bid]; if (e.open && m0 && (m0.spec || ['render', 'reshot'].includes(op)) && (m0.tries || 0) < 6) { busy.delete(k); jam.running[bid] = { ...m0, resume: true, at: Date.now(), slow: plainErr(e) }; setTimeout(() => resumeCut(t, jam).catch(() => {}), 60e3).unref?.(); return; }
+      if (op === 'studio' && jam.v1ch) try { d.onStudioState?.(t, jam.v1ch, { state: 'failed', error: plainErr(e).slice(0, 240), jid: jam.id }); } catch {}
       /* what a failed run already spent is kept on the board (a check that failed twice still paid for two pictures) */
       const spent = (e.made || []).filter((m) => m.usd); const bd0 = jam.boards.find((x) => x.id === bid); if (spent.length && bd0) bd0.spent = [...(bd0.spent || []), { at: Date.now(), op, usd: +spent.reduce((a, m) => a + m.usd, 0).toFixed(3), made: spent.slice(0, 8), error: String(e.message).slice(0, 160) }].slice(-20); const error = e.budget ? e.message : e.open ? plainErr(e) : plainErr(e); busy.set(k, { op, at: Date.now(), error }); if (jam.running?.[bid]) jam.running[bid] = { op, at: Date.now(), error }; /* the error outlives a restart */ })
       .finally(() => { jam.updatedAt = Date.now(); return store.put(slugOfT(t), jam); }).catch((e) => log.warn?.('[jam2] save after', op, e.message)); return true; };
@@ -65,7 +73,7 @@ export function mountJam2(d) {
   const priceAlerts = (t, jam) => { const cat = brandOfT(t)?.catalog || []; for (const b of jam.boards) { const m = headOf(b)?.made4; b.priceAlert = null; if (!m?.price) continue;
     const c = cat.find((x) => (m.handle && x.handle === m.handle) || (m.name && (x.t || x.title) === m.name)); if (c?.price != null && String(c.price) !== m.price) b.priceAlert = { name: m.name, was: m.price, now: String(c.price) }; } };
   const out = (jam, t = null) => { if (t) try { priceAlerts(t, jam); } catch {} const v = jamView(jam); /* a job a restart cut off: its mark (saved with the jam) shows as the board's state until it is resumed or tried again */
-    v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || (jam.running?.[b.id] ? { op: jam.running[b.id].op, at: jam.running[b.id].at, error: jam.running[b.id].error || 'Brew restarted while this was being made. Press it again.' } : null)])); delete v.running; delete v.cuts; return v; };
+    v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || (jam.running?.[b.id] ? (jam.running[b.id].resume && !jam.running[b.id].error ? { op: jam.running[b.id].op, at: jam.running[b.id].at, line: jam.running[b.id].slow || 'Still being made; it picks up where it was' } /* waiting to be polled again: still making, never an error */ : { op: jam.running[b.id].op, at: jam.running[b.id].at, error: jam.running[b.id].error || 'Brew restarted while this was being made. Press it again.' }) : null)])); delete v.running; delete v.cuts; return v; };
   const load = async (t, jid) => { const j = await store.get(slugOfT(t), jid, whoOf(t)); if (!j) throw Object.assign(new Error('not found'), { status: 404 }); return j; };
   /* every jam call reads the brand's pack (catalog, config): right after a restart it may not be loaded yet, so it is loaded first
      (23 Oct: the first Studio make after a deploy refused the brand's own product as "not from your catalog") */
@@ -85,7 +93,15 @@ export function mountJam2(d) {
   on('POST', '/api/jam2/open', wrap(async (b, t) => {
     const slug = slugOfT(t), who = whoOf(t), card = b.cardId ? cardOf(t, b.cardId) : null; if (b.cardId && !card) return { error: 'That card is gone.' };
     const cta = String(b.cta || card?.cta?.label || '').slice(0, 60);
-    let jam = card && !b.fresh ? await store.byCard(slug, card.id, who, cta) : null;
+    /* a v1 jam has its own Studio jam: two creative jams on one card (a video and a carousel) never share one, so a take always lands
+       in the v1 jam that made it; a Studio jam whose board is another kind than the v1 jam now asks for, with nothing paid on it, is set aside */
+    const want = b.recipe && recipe(b.recipe) ? b.recipe : null, paid = (j) => (j.boards || []).some((x) => (x.takes || []).some((k) => +k.cost?.usd > 0));
+    let jam = null;
+    if (b.v1ch && card && !b.fresh) { const mine = (await store.list(slug, who)).filter((j) => j.v1ch === String(b.v1ch)).sort((a, c) => (c.updatedAt || 0) - (a.updatedAt || 0));
+      jam = mine.find((j) => !want || j.boards?.[0]?.recipe === want || paid(j)) || null;
+      if (!jam) { const old = await store.byCard(slug, card.id, who, cta); if (old && !old.v1ch && (!want || old.boards?.[0]?.recipe === want)) jam = old; } }
+    else jam = card && !b.fresh ? await store.byCard(slug, card.id, who, cta) : null;
+    if (b.v1ch && !jam && want) b = { ...b, recipe: want };
     /* a batch card ("8 ads from your ad plan, ready to review"): one tab per finished ad, the ads it already holds, nothing made again */
     if (!jam && card && isBatchCard(card)) { const view = bb.view(await bb.load(slug)), team = card.images.some((x) => /\/team\/statics\//.test(x)), text = (await (d.staticTextOf?.(t, team) || {})) || {};
       jam = newJam({ card, owner: store.ownerOf(who), by: who.me, bb: view, plan: [{ recipe: 'image-ad' }], cta }); jam.batch = true;
@@ -117,7 +133,7 @@ export function mountJam2(d) {
     if (m.op === 'render') runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: m.confirmUsd, tries });
     /* a shot change resumes only on the video it was asked for (a newer take means someone moved on) */
     else if (m.op === 'reshot' && headOf(bd)?.id === m.head) runBg(t, j, bd.id, 'reshot', async () => { const r = await maker.reshot(ctx, bd, { i: m.i, ask: m.ask, region: m.region, confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { ...m, tries });
-    else if (m.op === 'studio' && m.spec) runBg(t, j, bd.id, 'studio', async () => { const take = m.spec.set ? await studio.makeSet(ctx, bd, m.spec, jobsOf(t, j, bd)) : await studio.make(ctx, bd, m.spec, m.i || 0, jobsOf(t, j, bd)); take.studio.spec = specOf(m.spec); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }, { ...m, tries });
+    else if (m.op === 'studio' && m.spec) runBg(t, j, bd.id, 'studio', async () => { const take = m.spec.set ? await studio.makeSet(ctx, bd, m.spec, jobsOf(t, j, bd)) : await studio.make(ctx, bd, m.spec, m.i || 0, jobsOf(t, j, bd)); take.studio.spec = specOf(m.spec); if (m.spec.set) fillMerge(bd, take, m.spec); if (m.run) Object.assign(take, { run: m.run, runN: m.runN, runI: m.runI }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }, { ...m, tries });
     else if (m.op === 'all' && boardOf(j, bd.allOf)) runBg(t, j, bd.id, 'all', async () => maker.allProducts(ctx, bd, boardOf(j, bd.allOf)), { resume: true, tries });
     else m.error = 'Brew restarted while this was being made. Press it again.'; } };
   /* a Studio jam opened from a v1 jam (its stage's composer) hands each finished take to that v1 jam as its next version, so the
@@ -202,8 +218,7 @@ export function mountJam2(d) {
       if (!host || (host.takes.length && !b.redo && !spec.fill) || host.kind !== 'carousel') { if (j.boards.length >= 12) return { error: 'This jam has 12 boards. Start a new jam for more.' }; host = newBoard('ig-carousel', { label: 'Carousel', size: spec.sizes?.[0] || null, conceptRev: j.concept.rev }); j.boards.push(host); }
       await store.put(slugOfT(t), j); runBg(t, j, host.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.makeSet(ctx, host, spec, jobsOf(t, j, host)); take.studio.spec = specOf(spec);
         /* filling in the slides left out: the new ones join the slides already made, in the set's order; only the new ones were paid for */
-        const prev = spec.fill ? headOf(host) : null; if (prev?.slides?.length && prev.studio?.spec?.set) { const order = prev.studio.spec.set, all = [...prev.slides, ...take.slides].sort((a, c) => order.indexOf(a.style) - order.indexOf(c.style));
-          Object.assign(take, { slides: all, file: all[0].file, scene: all[0].scene, words: all[0].words || take.words, missing: take.missing, missingIds: take.missingIds }); take.studio = { ...take.studio, set: all.map((x) => x.style), label: all.map((x) => studio.styleOf(x.style)?.label).filter(Boolean).join(', ') }; take.studio.spec = { ...prev.studio.spec }; } const tk = addTake(j, host, take); tk.gate = maker.gate(ctx, tk, host); toV1(t, j, tk); }, { resume: true, spec, i: 0, confirmUsd: pl.usd });
+        fillMerge(host, take, spec); const tk = addTake(j, host, take); tk.gate = maker.gate(ctx, tk, host); toV1(t, j, tk); }, { resume: true, spec, i: 0, confirmUsd: pl.usd });
       note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); v1State(t, j, pl, 1); return { jam: out(j), plan: pl, boards: [host.id] }; }
     const recipeId = pl.kind === 'video' ? 'reel' : 'image-ad', st = studio.styleOf(spec.style), boards = [];
     /* the empty board the composer sat on takes the first one (and becomes what is made on it: a video on a picture board is a video
@@ -215,7 +230,7 @@ export function mountJam2(d) {
     while (boards.length < pl.count) { const nb = newBoard(recipeId, { label: tidyLabel(`${st?.label || 'Take'} ${boards.length + 1}`), size: spec.sizes?.[0] || null, conceptRev: j.concept.rev }); j.boards.push(nb); boards.push(nb); }
     await store.put(slugOfT(t), j);
     const run = boards.length > 1 ? uid('run') : null; /* a batch: its takes land together in the v1 jam, one strip to keep or drop each */
-    boards.forEach((bd, i) => runBg(t, j, bd.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i, jobsOf(t, j, bd)); take.studio.spec = specOf(spec); if (run) Object.assign(take, { run, runN: boards.length, runI: i }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }, { resume: true, spec, i, confirmUsd: pl.per }));
+    boards.forEach((bd, i) => runBg(t, j, bd.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i, jobsOf(t, j, bd)); take.studio.spec = specOf(spec); if (run) Object.assign(take, { run, runN: boards.length, runI: i }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }, { resume: true, spec, i, confirmUsd: pl.per, ...(run ? { run, runN: boards.length, runI: i } : {}) }));
     note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); v1State(t, j, pl, boards.length); return { jam: out(j), plan: pl, boards: boards.map((x) => x.id) }; }));
   /* one slide of a set: redo it (priced, one take of its style, the rest kept), drop it (free) or add one (priced). Each lands
      as the set's next take and, from v1, as the jam's next version */

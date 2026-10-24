@@ -153,3 +153,7 @@
 .cs-look-row li span{color:var(--mute,#777);margin-right:4px}
 .cs-look-row li em{display:block;font-style:normal;color:var(--mute,#777)}
 .j2-st-go .j2-chip{margin-left:auto}
+/* a Studio flyer or poster, and a single listing image, show on their frames */
+.as-print .pr-pic{margin:0 0 10px;border-radius:10px;overflow:hidden;border:1px solid var(--line,#e6e6e6)}
+.as-print .pr-pic img{display:block;width:100%;height:auto}
+.as-listing .al-photos>div>img{width:min(220px,100%);aspect-ratio:1;object-fit:contain;background:#fff;border:1px solid var(--line,#e6e6e6);border-radius:8px}
