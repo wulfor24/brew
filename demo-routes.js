@@ -24,7 +24,7 @@ export function simStatus(st, s) {
   const pdfKeys = Object.keys(st.pdfs || {}).sort((a, b) => +a - +b).slice(0, n);
   return { ...st, stages: { ...st.stages, confirm: c ? { state: 'done', at: c } : { state: 'waiting' }, brief: t >= BRIEF_S ? { state: 'done', at: c + BRIEF_S * 1e3 } : { state: c ? 'running' : 'waiting' },
     moves: n >= N ? { state: 'done', at: Date.now() } : { state: f ? 'running' : 'waiting' } }, movesDone: n, pdfs: Object.fromEntries(pdfKeys.map((k) => [k, st.pdfs[k]])),
-    done: n >= N, ready: n >= 10, state: n >= N ? 'Ready' : f ? `Writing the moves: ${n} of ${N}` : c && t >= BRIEF_S ? 'Your moves start when you open your feed' : c ? 'Writing the brand brief' : 'Read', zips: n >= N ? st.zips : [] };
+    done: n >= N, ready: n >= 10, state: n >= N ? 'Ready' : f ? `Writing the plays: ${n} of ${N}` : c && t >= BRIEF_S ? 'Your plays start when you open your feed' : c ? 'Writing the brand brief' : 'Read', zips: n >= N ? st.zips : [] };
 }
 
 export function createDemoRoutes({ packs, builder, auth, connectors, readBody, send, loadBrand, social = null, draftsBg = null, onSession = () => {}, log = console }) {

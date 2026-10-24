@@ -66,7 +66,7 @@ test('the build’s "all moves ready" email goes to the whole team with a ?go=fe
     await b.resume(slug);
     assert.equal((await b.status(slug)).done, true);
     assert.deepEqual(sent.map((x) => x.to[0]).sort(), ['ana@acme.in', 'opt@acme.in', 'raj@acme.in', 'sam@acme.in']);
-    assert.equal(sent[0].subject, 'All of Acme’s moves are ready');
+    assert.equal(sent[0].subject, 'All of Acme’s plays are ready');
     assert.match(sent[0].html, /href="https:\/\/brew\.test\/acme-in\?go=feed"/); assert.match(sent[0].text, /Open the feed: https:\/\/brew\.test\/acme-in\?go=feed/);
     await b.addEmail(slug, 'opt@acme.in'); assert.equal(sent.length, 4, 'never twice');
   });
@@ -80,8 +80,8 @@ test('a capped build sends the honest count once it stops, not "finished all"', 
     await b.resume(slug);
     const s = await b.status(slug); assert.equal(s.capped, true); assert.notEqual(s.done, true);
     assert.ok(sent.length >= 1, 'the team hears when a capped build stops');
-    assert.equal(sent[0].subject, '1 of 3 moves for Acme are ready');
-    assert.match(sent[0].text, /written 1 of 3 moves/); assert.match(sent[0].text, /spending cap/); assert.doesNotMatch(sent[0].text, /finished all/);
+    assert.equal(sent[0].subject, '1 of 3 plays for Acme are ready');
+    assert.match(sent[0].text, /written 1 of 3 plays/); assert.match(sent[0].text, /spending cap/); assert.doesNotMatch(sent[0].text, /finished all/);
   });
 });
 

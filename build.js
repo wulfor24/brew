@@ -330,7 +330,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
 
       await halt(slug); await instant;
       /* 4a. a brand's first read writes its moves only once someone opens the feed after onboarding (status.feedGate, feedOpened) */
-      if (await waitsOnFeed(slug)) { await setStatus(slug, { state: 'Your moves start when you open your feed', ...((await status(slug))?.feedWaitSince ? {} : { feedWaitSince: Date.now() }) }); /* stamped once: confirm-remind.js reminds from it */ await waitForFeed(slug); await halt(slug);
+      if (await waitsOnFeed(slug)) { await setStatus(slug, { state: 'Your plays start when you open your feed', ...((await status(slug))?.feedWaitSince ? {} : { feedWaitSince: Date.now() }) }); /* stamped once: confirm-remind.js reminds from it */ await waitForFeed(slug); await halt(slug);
         /* corrections made on the check page while it waited: the moves are written from them, and from a brief that has them */
         const p2 = await packs.getJSON(slug, 'profile.json'); if (p2) profile = normalizeProfile(p2); ledger = await packs.getJSON(slug, 'ledger.json', []);
         const s2 = await status(slug); if (s2?.recheck?.at && +s2.stages?.brief?.at < s2.recheck.at) { if (await budgetPause(slug, 0)) return;
@@ -941,13 +941,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const sentKey = kind === 'update' ? `update-${extra.at}` : partial ? 'all-partial' : kind; /* a partial "all" then a full one: both, each once */
     const todo = to.filter((e) => !n.sent[`${sentKey}:${e}`] && (!extra.only || e === String(extra.only).toLowerCase())); if (!todo.length) return;
     const href = `${base}/${slug}?go=feed`, movesHref = `${base}/${slug}?go=feed#v=moves`;
-    const subject = kind === 'update' ? `${extra.moves.length} of ${name}’s moves were updated` : kind === 'all' ? (partial ? `${done} of ${total} moves for ${name} are ready` : `All of ${name}’s moves are ready`) : `Your first moves for ${name} are ready`;
+    const subject = kind === 'update' ? `${extra.moves.length} of ${name}’s plays were updated` : kind === 'all' ? (partial ? `${done} of ${total} plays for ${name} are ready` : `All of ${name}’s plays are ready`) : `Your first plays for ${name} are ready`;
     const lead = extra.lead || `Something changed for ${name}, so Brew rewrote the plans it affects`;
     const first = kind === 'first' ? WAVE_A.filter((k) => moves[k]?.title).sort((a, b) => a - b).map((k) => `${moveLabel(k)} · ${moves[k].title}`) : [];
     const left = Math.max(0, total - done);
-    const allLine = partial ? `Brew has written ${done} of ${total} moves for ${name}: every plan with its sources, a 30-day rollout and what to watch.` : `Brew has finished all ${total} moves for ${name}: every plan with its sources, a 30-day rollout and what to watch.`;
+    const allLine = partial ? `Brew has written ${done} of ${total} plays for ${name}: every plan with its sources, a 30-day rollout and what to watch.` : `Brew has finished all ${total} plays for ${name}: every plan with its sources, a 30-day rollout and what to watch.`;
     const whyPart = capped ? `The other ${left} are paused at this brand’s spending cap; open Brew to carry on.` : missing ? `${missing} could not be written this time; the Moves page names them.` : '';
-    const firstLine = `Brew has written the first ${first.length || 10} moves for ${name}: positioning, customers, rivals, pricing, offers and measurement.`;
+    const firstLine = `Brew has written the first ${first.length || 10} plays for ${name}: positioning, customers, rivals, pricing, offers and measurement.`;
     const firstNext = `Their ideas are in your feed now, and the other ${left} land one by one; we’ll email again when they’re all in.`;
     const line = kind === 'update' ? `${lead}: ${extra.moves.map((x) => `${moveLabel(x.n)} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `${allLine} ${whyPart} Each one downloads as a PDF, and your feed is built from them.`.replace(/\s+/g, ' ') : `${firstLine} ${firstNext}`;
     /* the "all" email shows a few of the brand's static ads (public files) */
@@ -956,8 +956,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       ? mailP(`${mailEsc(lead)}:`) + mailList(extra.moves.slice(0, 12).map((x) => `${moveLabel(x.n)} · ${x.title}`)) + (extra.because ? mailP(mailEsc(extra.because)) : '')
       : kind === 'all' ? mailP(mailEsc(allLine)) + (whyPart ? mailP(mailEsc(whyPart)) : '') + mailP('Each one downloads as a PDF, and your feed is built from them.') + (statics.length ? mailP(mailEsc(`${statics.length === 1 ? 'An ad' : `${statics.length} of the ads`} Brew made from your ad plan:`)) + mailImages(statics, { href, alt: `${name} ad` }) : '')
       : mailP(mailEsc(firstLine)) + (first.length ? mailList(first) : '') + mailP(mailEsc(firstNext));
-    const html = emailHtml({ title: subject, eyebrow: name, preheader: line.slice(0, 140), body, cta: { href, label: 'Open the feed' }, secondary: { href: movesHref, label: 'Read the moves' }, after: mailP('Every number in them has a source. Anything we could not confirm is marked “to confirm”.', { muted: true, small: true }), base });
-    const text = `${subject}\n\n${line}${first.length ? `\n\n${first.join('\n')}` : ''}\n\nOpen the feed: ${href}\nRead the moves: ${movesHref}`;
+    const html = emailHtml({ title: subject, eyebrow: name, preheader: line.slice(0, 140), body, cta: { href, label: 'Open the feed' }, secondary: { href: movesHref, label: 'Read the plays' }, after: mailP('Every number in them has a source. Anything we could not confirm is marked “to confirm”.', { muted: true, small: true }), base });
+    const text = `${subject}\n\n${line}${first.length ? `\n\n${first.join('\n')}` : ''}\n\nOpen the feed: ${href}\nRead the plays: ${movesHref}`;
     for (const e of todo) {
       const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Brew <hello@send.joinsquareup.com>', to: [e], subject, html, text }) }).catch((err) => ({ ok: false, status: 0, text: async () => err.message }));
       if (r.ok) n.sent[`${sentKey}:${e}`] = Date.now(); else log.warn('[notify] resend', r.status, (await r.text()).slice(0, 200));

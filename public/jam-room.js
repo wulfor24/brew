@@ -5,7 +5,7 @@
    Design: the feed system's paper and tokens. No score, no locks, no effects; a quiet list of what's still missing. */
 (() => {
   const A = window.__BREW; if (!A) return;
-  const mvLabel = (n) => (+n > 1000 ? `Weekly move ${+n - 1000}` : +n >= 100 ? 'Timely move' : `Move ${String(n).padStart(2, '0')}`); /* weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12) */
+  const mvLabel = (n) => (+n > 1000 ? `Weekly play ${+n - 1000}` : +n >= 100 ? 'Timely play' : `Play ${String(n).padStart(2, '0')}`); /* moves are called Plays (3.10) */ /* weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12) */
   const { $, $$, esc, ic, face, avatar, toast, AGENT } = A;
   const BNAME = () => window.FEED_DATA?.[window.BRAND]?.brand?.name || 'the brand'; // the brand this page is for
   const EARLY = ['drafting', 'team', 'needs_you', 'shared'];
@@ -292,7 +292,7 @@
       ${m.passages?.length ? `<section><h4>What it says about this card</h4>${m.passages.map((x) => `<div class="mv-pass"><small>${esc(x.h)}</small><p>${esc(x.text)}</p><button class="btn btn-ghost sm" data-add="${esc(x.text)}" data-from="${esc(tag(x.h))}">${ic('plus', 's14')}Add to brief</button></div>`).join('')}</section>` : ''}
       ${m.why ? `<section><h4>Why it matters</h4><p>${esc(m.why)}</p></section>` : ''}
       ${m.measure ? `<section><h4>How it’s measured</h4><p>${esc(m.measure)}</p><button class="btn btn-ghost sm" data-add="${esc(m.measure)}" data-from="${esc(tag('How we measure'))}">${ic('plus', 's14')}Add to brief</button></section>` : ''}
-      ${m.sections?.length ? `<section><h4>Everything in the move</h4><ul class="mv-secs">${m.sections.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></section>` : ''}</div>`);
+      ${m.sections?.length ? `<section><h4>Everything in the play</h4><ul class="mv-secs">${m.sections.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></section>` : ''}</div>`);
   };
 
   /* ---------- actions ---------- */

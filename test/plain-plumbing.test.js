@@ -57,13 +57,13 @@ test('brand-facing labels: source lines, fact rows and the campaign button in pl
 /* final QA pass 19 Oct: what was still technical on live cards (Mamaearth, Arata, demo): fact rows, asset lines and the move name under a card */
 test('a card’s fact rows, asset line and source line read plainly, for every brand', () => {
   const pl = createPlain({ ai: null, store: null });
-  const c = pl.apply('x', { id: 'm64-1', title: 'Remind buyers to reorder', sub: 'x', src: 'Move 64 · Loop 3: SKU-Specific Reorder Clocks',
+  const c = pl.apply('x', { id: 'm64-1', title: 'Remind buyers to reorder', sub: 'x', src: 'Play 64 · Loop 3: SKU-Specific Reorder Clocks',
     rows: [['Total catalog SKUs', '913'], ['SKUs with Schema', '81'], ['Sitemap files', '7'], ['Headless Platform', 'shopify']], make: { format: 'page section', pieces: 'Homepage title, meta description, H1 and organisation markup' } });
-  assert.equal(c.src, 'Move 64 · Product-Specific Reorder Clocks');
-  assert.equal(pl.apply('x', { id: 'm28-1', title: 'a', src: 'Move 28 · Phase 1 and 2: Internal alpha' }).src, 'Move 28 · Internal alpha');
+  assert.equal(c.src, 'Play 64 · Product-Specific Reorder Clocks');
+  assert.equal(pl.apply('x', { id: 'm28-1', title: 'a', src: 'Play 28 · Phase 1 and 2: Internal alpha' }).src, 'Play 28 · Internal alpha');
   assert.deepEqual(c.rows.map((r) => r[0]), ['Total catalog products', 'Products with search-friendly product info', 'Page lists for Google', 'Store platform']);
   assert.equal(c.make.pieces, 'Homepage title, search snippet, main heading and organisation info for Google');
-  assert.equal(pl.apply('x', { id: 'm1011-1', title: 'a', src: 'Move 1011 · Automation' }).src, 'Weekly move 11 · Automation');
+  assert.equal(pl.apply('x', { id: 'm1011-1', title: 'a', src: 'Move 1011 · Automation' }).src, 'Weekly play 11 · Automation');
   assert.equal(dejargon('Hold markup on failing packs'), 'Hold markup on failing packs', 'a price markup is not page code');
 });
 

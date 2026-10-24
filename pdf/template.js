@@ -61,8 +61,8 @@ function lockup() {
 /* the cover line: the discipline, then the move's own name ("Move 05", "Weekly move 4", "Timely move"), once and with no total
    (the kicker already ended in "· MOVE NN", so covers read "MOVE 05 · MOVE 05 OF 50": QA 20 Oct) */
 const coverKicker = (move, isIndex) => {
-  const base = String(move.kicker || '').replace(/\s*·\s*(?:MOVE|INDEX)\b.*$/i, '').trim();
-  return isIndex ? `${up(base || 'THE PLAYBOOK')} · INDEX` : `${up(base || 'MOVE')} · ${up(moveLabel(move.n))}`;
+  const base = String(move.kicker || '').replace(/\s*·\s*(?:MOVE|PLAY|INDEX)\b.*$/i, '').trim();
+  return isIndex ? `${up(base || 'THE PLAYBOOK')} · INDEX` : `${up(base || 'PLAY')} · ${up(moveLabel(move.n))}`;
 };
 function cover(move, brand, isIndex) {
   const kicker = coverKicker(move, isIndex);
@@ -199,7 +199,7 @@ function indexSections(move, opts) {
     if (!list.length) continue;
     const G = GROUPS[g];
     out.push(`<section class="sec sec-index">${h1(G.h)}
-<h2>${esc(up(G.sub))} · ${list.length} MOVE${list.length === 1 ? '' : 'S'}</h2>
+<h2>${esc(up(G.sub))} · ${list.length} PLAY${list.length === 1 ? '' : 'S'}</h2>
 ${indexRows(list)}</section>`);
   }
   return out.join('\n');

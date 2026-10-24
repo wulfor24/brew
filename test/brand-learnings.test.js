@@ -158,7 +158,7 @@ test('a pasted call updates the brief, memory and system prompt, reports the con
   for (const h of ['\n**Essence**\n', '\n**Goals**\n', '\n**Beliefs**\n', '\n**Facts**\n']) assert.ok(r.reply.includes(h), h);
   assert.match(r.reply, /They are in the brief and Brew’s memory/);
   assert.match(r.reply, /\*\*Not saved: the fact sheet wins on numbers\*\*\n- It says 12 products; Products in the catalog reads 11 from Shopify \(connected\)\. Connected accounts are the source of truth/);
-  assert.match(r.reply, /\*\*Moves\*\*\n- Rewriting now: Move 03 and Move 09 \(2, 10 to 15 minutes, about \$1\.2\)\.\n- 1 new move from what you told us, once the rewrite is in\./);
+  assert.match(r.reply, /\*\*Moves\*\*\n- Rewriting now: Play 03 and Play 09 \(2, 10 to 15 minutes, about \$1\.2\)\.\n- 1 new move from what you told us, once the rewrite is in\./);
   // the same paste again: nothing learned twice, nothing spent
   const n0 = calls.length, again = await L.run(slug, { text: `${CALL}\n`, by: 'Sam' });
   assert.ok(again.dup && again.draft); assert.equal(calls.length, n0, 'no new read'); assert.match(again.reply, /\*\*Already saved on .* by Priya\*\*[\s\S]*1\. A skincare brand[\s\S]*“save”/);
@@ -249,7 +249,7 @@ test('first learnings: past the upload’s dollar cap they wait for a yes, with 
   const L = createLearnings({ ai: scripted(), packs: P, builder: B, log: quiet, env: { LEARN_CAP_USD: '0.6', LEARN_MOVE_EST_USD: '0.6' } }); /* a cap of one move, so the call's 2 moves go over it */
   const r = await saved(L, slug, { text: CALL, by: 'p@glow.in', byShort: 'p@glow.in' });
   assert.equal(asked.length, 0, 'nothing starts before the yes');
-  assert.match(r.reply, /- 2 moves change in a way that matters \(Move 03 and Move 09\)\. Rewriting all of them costs about \$1\.2, over the \$0\.6 an upload spends on its own\./);
+  assert.match(r.reply, /- 2 moves change in a way that matters \(Play 03 and Play 09\)\. Rewriting all of them costs about \$1\.2, over the \$0\.6 an upload spends on its own\./);
   assert.match(r.reply, /Reply “go ahead” to rewrite all 2 \(10 to 15 minutes\), or “just the top ones” for the 1 that matter most, within \$0\.6\./);
   assert.equal(await L.confirm(slug, 'what about the ads?'), null, 'anything else is a normal chat');
   const c = await L.confirm(slug, 'just the top ones please'); assert.deepEqual(asked, [[3]]); assert.match(c.reply, /Refreshing 1 move/);
@@ -265,7 +265,7 @@ test('the setup box (ask: false): the first learnings rewrite the top moves now 
   const L = createLearnings({ ai: scripted(), packs: P, builder: B, log: quiet, env: { LEARN_CAP_USD: '0.6', LEARN_MOVE_EST_USD: '0.6' } });
   const r = await L.run(slug, { text: CALL, by: 'p@glow.in', byShort: 'p@glow.in', why: 'setup', ask: false });
   assert.deepEqual(asked, [[3]], 'the most affected move rewrites straight away');
-  assert.ok(!/first time|go ahead/.test(r.reply)); assert.match(r.reply, /- In the weekly run: Move 09 \(past this upload’s budget\)\./);
+  assert.ok(!/first time|go ahead/.test(r.reply)); assert.match(r.reply, /- In the weekly run: Play 09 \(past this upload’s budget\)\./);
   assert.equal(await L.confirm(slug, 'go ahead'), null, 'nothing waits for a yes');
 });
 
@@ -276,7 +276,7 @@ test('the weekly pot: learnings rewrite what it covers at today’s cost per mov
   const r = await L.run(slug, { text: CALL, by: 'p@glow.in', byShort: 'p@glow.in', why: 'setup', ask: false });
   assert.deepEqual(asked, [[3]], 'one move fits the pot');
   assert.match(r.reply, /about \$0\.1\)/, 'priced at today’s model, not the Opus-era $0.6');
-  assert.match(r.reply, /- In the weekly run: Move 09 \(past this week’s rewrite budget\)\./);
+  assert.match(r.reply, /- In the weekly run: Play 09 \(past this week’s rewrite budget\)\./);
   assert.equal((await P.getJSON(slug, 'updates.json')).stale[9].via, 'learnings', 'it keeps its flag for the weekly run');
 });
 
@@ -316,8 +316,8 @@ test('an upload: moves by impact within the dollar cap (no count limit), the res
   const L = createLearnings({ ai, packs: P, builder: B, feed: { addCards: async (s, cs) => added.push(...cs) }, log: quiet, env: {}, onPack: async (s) => P.drop(s) });
   const r = await saved(L, slug, { text: CALL, by: 'p@glow.in', byShort: 'Priya' });
   assert.deepEqual(asked, [[[3, 9], 'learnings']], 'high first, then medium; a low one and a fresh one wait');
-  assert.match(r.reply, /- Rewriting now: Move 03 and Move 09 \(2, 10 to 15 minutes, about \$1\.2\)\./);
-  assert.match(r.reply, /- In the weekly run: Move 12 and Move 20 \(rewritten in the last day, a small change\)\./);
+  assert.match(r.reply, /- Rewriting now: Play 03 and Play 09 \(2, 10 to 15 minutes, about \$1\.2\)\./);
+  assert.match(r.reply, /- In the weekly run: Play 12 and Play 20 \(rewritten in the last day, a small change\)\./);
   const st = (await P.getJSON(slug, 'updates.json')).stale;
   assert.equal(st[20].weekly, true); assert.equal(st[12].weekly, true); assert.equal(st[3].weekly, false); assert.equal(st[20].via, 'learnings');
   // the feed, at once
@@ -341,7 +341,7 @@ test('a high-impact move rewrites now even if it was rewritten today (that rewri
   ai.call = async (o) => o.tag !== 'learn-plan' ? call0(o) : { usd: 0.01, json: { stale: [{ n: 3, impact: 'high', why: 'Ruled out.', uses: [] }, { n: 9, impact: 'medium', why: 'Goal first.', uses: [] }], fresh: [], cards: {} } };
   const L = createLearnings({ ai, packs: P, builder: { flagStale: builder.flagStale, busy: () => false, rewrite: async (s, ns) => { asked.push(ns); return { ok: true }; } }, log: quiet, env: {} });
   const r = await saved(L, slug, { text: CALL, by: 'p@glow.in', byShort: 'Priya' });
-  assert.deepEqual(asked, [[3]]); assert.match(r.reply, /- In the weekly run: Move 09 \(rewritten in the last day\)\./);
+  assert.deepEqual(asked, [[3]]); assert.match(r.reply, /- In the weekly run: Play 09 \(rewritten in the last day\)\./);
 });
 
 test('a card is hidden only on a clear contradiction: a hedged reason keeps it', async () => {

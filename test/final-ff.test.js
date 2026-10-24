@@ -32,14 +32,14 @@ test('card chat and studio: the evidence ask is answered before routing, and the
 import { moveSay, moveLabel, moveNum } from '../move-label.js';
 import { dejargon, plainSrc } from '../plain.js';
 import { noteOk, NO_NOTE } from '../notes.js';
-test('timely moves (100–999 by hash) read "Timely move"; notes, sources and the build log use the label', () => {
-  assert.equal(moveLabel(966), 'Timely move'); assert.equal(moveNum(966), 'T'); assert.equal(moveLabel(7), 'Move 07'); assert.equal(moveLabel(1011), 'Weekly move 11');
-  assert.equal(moveSay('move 1006'), 'Weekly move 6', 'a margin note’s eyebrow'); assert.equal(moveSay('MOVE 1006'), 'Weekly move 6');
-  assert.equal(moveSay('Move 966 · Diwali gifting'), 'Timely move · Diwali gifting'); assert.equal(plainSrc('Move 432 · Loop 2: Diwali'), 'Timely move · Diwali');
-  assert.equal(moveSay('Moves 05 and 966'), 'Move 05 and timely move'); assert.equal(moveSay('Move 05 · 1999 rupees'), 'Move 05 · 1999 rupees');
+test('timely moves (100–999 by hash) read "Timely play"; notes, sources and the build log use the label', () => {
+  assert.equal(moveLabel(966), 'Timely play'); assert.equal(moveNum(966), 'T'); assert.equal(moveLabel(7), 'Play 07'); assert.equal(moveLabel(1011), 'Weekly play 11');
+  assert.equal(moveSay('move 1006'), 'Weekly play 6', 'a margin note’s eyebrow'); assert.equal(moveSay('MOVE 1006'), 'Weekly play 6');
+  assert.equal(moveSay('Move 966 · Diwali gifting'), 'Timely play · Diwali gifting'); assert.equal(plainSrc('Move 432 · Loop 2: Diwali'), 'Timely play · Diwali');
+  assert.equal(moveSay('Moves 05 and 966'), 'Play 05 and timely play'); assert.equal(moveSay('Move 05 · 1999 rupees'), 'Move 05 · 1999 rupees');
   assert.match(src('feed-service.js'), /k: nt\.k === nt\.k\.toLowerCase\(\) \? moveSay\(nt\.k\)\.toLowerCase\(\) : moveSay\(nt\.k\)/);
   assert.doesNotMatch(src('build.js'), /from Move \$\{pad\(e\.n\)\}/);
-  for (const f of ['public/app.js', 'public/jam-room.js']) assert.match(src(f), /\+n >= 100 \? 'Timely move'/, f);
+  for (const f of ['public/app.js', 'public/jam-room.js']) assert.match(src(f), /\+n >= 100 \? 'Timely play'/, f);
 });
 test('a count before a singular SKU or PDP reads plural', () => {
   assert.equal(dejargon('373 of 913 SKU are live'), '373 of 913 products are live'); assert.equal(dejargon('913 PDP'), '913 product pages'); assert.equal(dejargon('1 SKU is out'), '1 product is out');

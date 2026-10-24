@@ -314,7 +314,7 @@
   const AGENTS5 = ['creative', 'performance', 'storefront', 'visibility', 'crm'], AGENTS_ON = AGENTS5.filter((a) => a !== 'storefront' || SF_ON);
   /* how a move's number is said (QA FEED-QA-12, move-label.js on the server): weekly moves are numbered from 1001 inside Brew and
      read "Weekly move 11" (badge "W11"), never "Move 1011" */
-  const mvLabel = (n) => (+n > 1000 ? `Weekly move ${+n - 1000}` : +n >= 100 ? 'Timely move' : `Move ${String(n).padStart(2, '0')}`), mvNum = (n) => (+n > 1000 ? `W${+n - 1000}` : +n >= 100 ? 'T' : String(n).padStart(2, '0')); /* timely moves (100–999 by hash) carry no number (move-label.js) */
+  const mvLabel = (n) => (+n > 1000 ? `Weekly play ${+n - 1000}` : +n >= 100 ? 'Timely play' : `Play ${String(n).padStart(2, '0')}`) /* moves are called Plays (23 Oct QA 3.10) */, mvNum = (n) => (+n > 1000 ? `W${+n - 1000}` : +n >= 100 ? 'T' : String(n).padStart(2, '0')); /* timely moves (100–999 by hash) carry no number (move-label.js) */
   let GO_LINK = false; /* opened from a Brew email (?go=feed): the feed itself, never the morning stack first */
 
   /* card as the viewer sees it: role copy, then live numbers for connected sources */
@@ -679,22 +679,22 @@
     const stages = (s) => { const g = s?.stages || {}, n = s?.movesDone || 0, N = +s?.total || 0; /* one count: the brand's playbook (status.total); none until the engine has counted it */
       const row = (state, t, sub) => `<li class="is-${state}"><i>${state === 'done' ? ic('check', 's14') : state === 'run' ? '<brew-load class="spin"></brew-load>' : ''}</i><div><b>${t}</b>${sub ? `<span>${sub}</span>` : ''}</div></li>`;
       return `<ol class="wt2-steps">${row('done', 'Read your site', 'Products, reviews, ads, rivals, AI answers')}${row(g.brief?.state === 'done' ? 'done' : g.confirm?.state === 'done' ? 'run' : 'wait', 'Write the brand brief', '')}
-        ${row(n >= 10 ? 'done' : g.brief?.state === 'done' ? 'run' : 'wait', 'The first 10 moves', `${Math.min(n, 10)} of 10 · positioning, customers, rivals, pricing`)}${row(N && n >= N ? 'done' : n >= 10 ? 'run' : 'wait', N ? `All ${N} moves` : 'The rest of the moves', N ? `${n} of ${N} written${etaOf(s)}` : `${n} written`)}</ol>
+        ${row(n >= 10 ? 'done' : g.brief?.state === 'done' ? 'run' : 'wait', 'The first 10 moves', `${Math.min(n, 10)} of 10 · positioning, customers, rivals, pricing`)}${row(N && n >= N ? 'done' : n >= 10 ? 'run' : 'wait', N ? `All ${N} moves` : 'The rest of the plays', N ? `${n} of ${N} written${etaOf(s)}` : `${n} written`)}</ol>
         <div class="wt2-bar"><i style="width:${Math.max(4, N ? Math.round(100 * Math.min(n, N) / N) : 0)}%"></i></div>`; };
     const mailBox = (em) => mailMe() && !window.BREW_DEMO && ls.get(`${LSP()}mail-mute`) !== mailMe() ? mailOnHtml(mailMe(), 'wt2-mailed') /* signed in: already on, with Mute */
       : em ? `<div class="wt2-mailed">${ic('check', 's16')}<span>We’ll email <b>${esc(em)}</b> when they’re ready.</span><button class="linkbtn" id="wt-change">Change</button></div>`
-      : window.BREW_DEMO ? '<p class="wt2-note">The demo sends no email. Open what we have now; new moves land in the feed.</p>' /* the demo's visitor has no real address */
+      : window.BREW_DEMO ? '<p class="wt2-note">The demo sends no email. Open what we have now; new plays land in the feed.</p>' /* the demo's visitor has no real address */
       : mailMe() ? `<form class="wt2-mail" id="wt-mail"><input type="hidden" id="wt-email" value="${esc(mailMe())}"><button class="btn btn-primary sm" type="submit">${ic('bell', 's14')}Email me when they’re ready</button><small class="wt2-to">To ${esc(mailMe())}</small></form>` /* signed in: we know the address */
       : `<form class="wt2-mail" id="wt-mail"><label for="wt-email">Get an email when they’re ready</label><div class="wt2-in"><input type="email" id="wt-email" required placeholder="you@${esc(B.brand.host || 'brand.com')}" autocomplete="email"><button class="btn btn-primary sm" type="submit">Notify me</button></div></form>`;
     root.innerHTML = `<main class="screen wt2"><div class="wt2-wrap">
       <aside class="wt2-side"><div class="wt2-panel">
         <div class="wt2-brand">${B.brand.logo ? `<span class="ck2-logo"><img src="${esc(st?.logo ? '/' + String(st.logo).replace(/^\//, '') : B.brand.logo)}" alt=""></span>` : ''}<span class="wt2-live"><span class="dot"></span>Working</span></div>
-        <h1>Figuring out the best moves for ${nm}</h1>
+        <h1>Figuring out the best plays for ${nm}</h1>
         <p>${+st?.total ? `${+st.total} plans` : 'A set of plans'}, each with its sources, a 30-day rollout and what to watch. They land one by one; the time left shows once we can measure the pace.${st?.stages?.confirm?.state === 'waiting' ? ` ${writeAtLine(st)}` : ''}</p>
         <div id="wt-stages">${stages(st)}</div>
         <div id="wt-mailbox">${mailBox(mail)}</div>
         <button class="btn btn-primary lg wt2-go" id="wt-go">Open what we have now ${ic('right', 's18')}</button>
-        <small class="wt2-note">Your feed already has what we found. New cards land as each move is written.</small>
+        <small class="wt2-note">Your feed already has what we found. New cards land as each play is written.</small>
       </div></aside>
       <section class="wt2-main"><h2>What we already found <small>${cards.length} findings, each with its source</small></h2><div class="wt2-grid">${cards.map(scrCard).join('')}</div></section>
     </div></main>`;
@@ -870,7 +870,7 @@
     $('#ob-back').onclick = connectWhat; $('#ob-next').onclick = finishOnboarding;
   };
   /* the two counts, named the same everywhere: the cards the feed shows, and the moves (plans) they come from */
-  const CARDS_WORD = (n) => `card${n === 1 ? '' : 's'} in your feed`, MOVES_WORD = (n) => `move${n === 1 ? '' : 's'} in your plan`;
+  const CARDS_WORD = (n) => `card${n === 1 ? '' : 's'} in your feed`, MOVES_WORD = (n) => `play${n === 1 ? '' : 's'} in your plan`;
   const movesInPlan = () => { const n = +BREW?.movesDone || +window.MOVES_WRITTEN || 0, t = +BREW?.total || +window.MOVES_TOTAL || 0; return t ? Math.min(n, t) : n; }; /* the seed's count (pack-numbers.js) until status loads: always a number */
   const finishOnboarding = async () => {
     if ($('#ready') || finishOnboarding.busy) return; // a double-click on Next must not stack a second ready card
@@ -888,9 +888,9 @@
     document.body.insertAdjacentHTML('beforeend', `<div class="ready" id="ready"><div class="ready-card">
       <span class="so-mark" style="width:30px;height:30px">${SO()}</span>
       ${n ? `<h3>Your feed is ready${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
-      <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a move in your plan. Tap any card to see more.</p>`
+      <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a play in your plan. Tap any card to see more.</p>`
       : `<h3>Your cards are on their way${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
-      <p>Brew starts writing the moves your cards come from when you open your feed. Each card lands there as its move is done.</p>`}
+      <p>Brew starts writing the plays your cards come from when you open your feed. Each card lands there as its play is done.</p>`}
       <div class="counts">${n ? `<div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>` : ''}${mvTile()}<div><b class="tnum">${na}</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>${nc === 1 ? 'account' : 'accounts'} connected</div>` : ''}</div>
       ${ny || ns ? `<p class="ready-next">First, on your feed: ${[ny && `${ny} ${ny === 1 ? 'call needs' : 'calls need'} your yes`, ns && `${ns} ${ns === 1 ? 'card costs' : 'cards cost'} ad money`].filter(Boolean).join(' and ')}. ${ny ? 'Start with the yes calls.' : ''}</p>` : ''}
       ${window.BREW_NUMBERS?.storeNote ? `<p class="ready-note">${esc(window.BREW_NUMBERS.storeNote)}</p>` : ''}
@@ -929,7 +929,7 @@
       <span class="sp"></span>
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>${p.proof?.seen ? `<button class="pf-seen" data-act="proof" aria-label="Seen in ${esc(p.proof.seen)}: open the proof">${ic('search', 's14')}<span>Seen in ${esc(p.proof.seen)}</span></button>` : ''}`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
-  const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 moves are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="Why this card, and the proof" title="Why Brew suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n}</span>` : ''}</button>`; };
+  const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 plays are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="Why this card, and the proof" title="Why Brew suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n}</span>` : ''}</button>`; };
   const pfDay = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
   /* the sheet says only what a brand needs: the one reason, the few numbers behind it (each with where it came from) and the plan it
      belongs to. Kind labels, move source lists and repeats stay out; the full plan is one tap away */
@@ -1156,7 +1156,7 @@
   const hcFix = (low) => { if (!low || low.read === false || !HC_MOVES?.length) return null; const map = HC_SKILLS[low.k] || {}, w = hcWeak(low);
     for (const sk of [...(w && map[w.k] || []), ...(map._ || [])]) { const m = HC_MOVES.find((x) => x.skill === sk); if (m) return m; } return null; };
   const hcCta = (low) => { const m = hcFix(low);
-    return m ? `<p class="hc-fix">${ic('doc', 's14')}<span>The fix · ${mvLabel(m.n)}</span><b>${esc((window.fx || ((x) => x))(m.title))}</b></p><button class="bar" data-hc-move="${esc(m.n)}"><span class="lead">${ic('right', 's16')}Open the move</span>${ic('right', 's16 chev')}</button>`
+    return m ? `<p class="hc-fix">${ic('doc', 's14')}<span>The fix · ${mvLabel(m.n)}</span><b>${esc((window.fx || ((x) => x))(m.title))}</b></p><button class="bar" data-hc-move="${esc(m.n)}"><span class="lead">${ic('right', 's16')}Open the play</span>${ic('right', 's16 chev')}</button>`
       : `<button class="bar" data-hc-how><span class="lead">${ic('info', 's16')}How each ring is scored</span>${ic('right', 's16 chev')}</button>`; };
   /* AI answers: where the brand and its rivals stand (ai-standing.js), from the read's answers or the weekly check, whichever
      is newer. Counted where the shopper named no brand (that is where new buyers come from); an unread source says so */
@@ -1387,7 +1387,7 @@
   };
   /* phones: a native tab bar like Instagram (Feed, Deck, new jam, Work, Library) and the section's name in the header */
   const TABS = [['feed', 'feed', 'Feed'], ['deck', 'deck', 'Deck'], ['+', 'plus', 'New jam'], ['work', 'board', 'Work'], ['saved', 'bookmark', 'Library']];
-  const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', refs: 'Library', learned: 'Learned', moves: 'Moves', move: 'Move', connectors: 'Connectors', tune: 'Your feed', queue: `${B.brand.name}`, remix: 'Remix' };
+  const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', refs: 'Library', learned: 'Learned', moves: 'Plays', move: 'Play', connectors: 'Connectors', tune: 'Your feed', queue: `${B.brand.name}`, remix: 'Remix' };
   const paintTabbar = () => {
     document.body.dataset.view = BOOT_RX ? 'remix' : view; /* a studio link is the studio from the first paint, even while the feed boots underneath */
     /* the feed's stickers and margin notes sit in layers outside the page: leaving the feed clears them, or they float over the next page (a brand sticker covered the move page's number) */
@@ -1545,11 +1545,11 @@
   /* the moves stopped (a daily cap, a pause, retries, AI paused): say what happened and offer to write the rest, never "Brewing" forever */
   const brewStuck = () => !!(BREW && (BREW.capped || BREW.pausedDay || BREW.retryMoves || BREW.aiPausedAt));
   /* signed in: the moves-ready email is already on for them (the server emails the creator and the team), with a way to mute it */
-  const mailOnHtml = (em, cls) => `<p class="${cls}" data-mailon>${ic('check', 's14')}<span>We’ll email <b>${esc(em)}</b> when your moves are ready.</span> <button class="linkbtn" type="button" data-mailmute>Mute</button></p>`;
+  const mailOnHtml = (em, cls) => `<p class="${cls}" data-mailon>${ic('check', 's14')}<span>We’ll email <b>${esc(em)}</b> when your plays are ready.</span> <button class="linkbtn" type="button" data-mailmute>Mute</button></p>`;
   const brewingInner = () => { const n = BREW?.movesDone || 0, N = +BREW?.total || 50, em = ls.get(`${LSP()}mail`), stuck = brewStuck();
     return `<div class="bw-art"><img src="assets/brew/moves-brewing.jpg" alt="" decoding="async"><span class="bw-k"><span class="dot"></span>${stuck ? 'Paused' : 'Brewing'}</span></div>
-      <div class="body">${stuck ? `<h3>${esc(BREW.state || 'The moves are paused')}</h3><p>${n} of ${N} moves in your plan are written. The cards from them are in your feed now.</p>`
-        : `<h3>New cards land here as each move is written</h3><p>${n} of ${N} moves in your plan written${etaOf(BREW)}. Start with the top ad.</p>`}${BREW?.recheck?.words && !BREW.recheckDone ? `<p class="bw-meta">${ic('refresh', 's14')}Rewriting the brief and your first moves with ${esc(BREW.recheck.words)}</p>` : ''}
+      <div class="body">${stuck ? `<h3>${esc(BREW.state || 'The moves are paused')}</h3><p>${n} of ${N} plays in your plan are written. The cards from them are in your feed now.</p>`
+        : `<h3>New cards land here as each play is written</h3><p>${n} of ${N} plays in your plan written${etaOf(BREW)}. Start with the top ad.</p>`}${BREW?.recheck?.words && !BREW.recheckDone ? `<p class="bw-meta">${ic('refresh', 's14')}Rewriting the brief and your first plays with ${esc(BREW.recheck.words)}</p>` : ''}
         <div class="bw-bar"><i style="width:${Math.max(3, Math.round(100 * Math.min(n, N) / N))}%"></i></div>${stuck ? `<button class="btn btn-primary sm" type="button" data-mvpro>${PAYWALL ? 'Continue with Pro' : 'Write the rest'}</button>` : ''}
         ${window.BREW_DEMO ? '' /* the demo sends no email, and its visitor has no real address */
           : mailMe() && ls.get(`${LSP()}mail-mute`) !== mailMe() ? mailOnHtml(mailMe(), 'bw-mailed')
@@ -1566,7 +1566,7 @@
     if (!S.pro && PAYWALL) return openPlan('moves', go); const done = busyBtn(b, 'Starting…'); if (await go()) { toast('Writing the rest of the moves.'); BREW = null; await loadMV(); const el = $('[data-brewing]'); if (el) { const h = brewingCard(); if (h) el.outerHTML = h; else el.remove(); } done(); b.disabled = true; } else done(); }); /* started: it stays off, so the rest is never asked for twice */
   /* the read waits a little for a person to check it; then Brew starts writing with what it read (status.writeAt, local time) */
   const checkWaitCard = () => GEN && waitsOnCheck(BREW) ? `<article class="card brew-wait is-check" data-brewing><div class="body"><span class="bw-k2">${ic('clock', 's14')}Waiting for you${BREW.waitingSince ? ` · ${ago(BREW.waitingSince)}` : ''}</span>
-      <h3>Check what we read for ${esc(B.brand.name)}</h3><p>The brand brief and the moves are written from what you confirm. ${writeAtLine(BREW)}</p>
+      <h3>Check what we read for ${esc(B.brand.name)}</h3><p>The brand brief and the plays are written from what you confirm. ${writeAtLine(BREW)}</p>
       <button class="btn btn-primary sm" type="button" data-checkread>Check what we read ${ic('right', 's14')}</button></div></article>` : '';
   /* one count with the feed's own "moves" card: the strip shows only while status says moves are still being written */
   const brewingCard = () => checkWaitCard() || (GEN && BREW && !BREW.done && +BREW.total && (BREW.movesDone || 0) < +BREW.total && !BREW.cancelled ? `<article class="card brew-wait" data-brewing>${brewingInner()}</article>` : '');
@@ -2907,7 +2907,7 @@
   const openDemoSite = async () => { const ses = await api(`/api/demo/${DSLUG()}/session`).catch(() => null); const on = new Set(ses?.connected || []);
     modal(`<div class="sheet pick-sheet demo"><b class="sh-t">Demo controls</b><p class="sh-p">This is a demo of ${esc(B.brand.name)}. Moves, PDFs and drafts are ready; connected accounts are demo accounts built from ${esc(B.brand.host || 'the store')}'s real products and prices. Everything else is live.</p>
       <h4>Start again</h4><div class="row2"><button class="btn btn-primary sm" data-x="onboarding">From onboarding</button><button class="btn btn-ghost sm" data-x="feed">Straight to the connected feed</button></div>
-      <h4>Jump to</h4><div class="row2"><button class="btn btn-ghost sm" data-x="j-setup">The read</button><button class="btn btn-ghost sm" data-x="j-check">Check what we read</button><button class="btn btn-ghost sm" data-x="j-wait">Moves being written</button><button class="btn btn-ghost sm" data-x="j-feed">Feed</button><button class="btn btn-ghost sm" data-x="j-moves">Moves</button><button class="btn btn-ghost sm" data-x="j-cx">Connectors</button></div>
+      <h4>Jump to</h4><div class="row2"><button class="btn btn-ghost sm" data-x="j-setup">The read</button><button class="btn btn-ghost sm" data-x="j-check">Check what we read</button><button class="btn btn-ghost sm" data-x="j-wait">Plays being written</button><button class="btn btn-ghost sm" data-x="j-feed">Feed</button><button class="btn btn-ghost sm" data-x="j-moves">Plays</button><button class="btn btn-ghost sm" data-x="j-cx">Connectors</button></div>
       <h4>Accounts</h4><div class="sugg">${(ses?.all || []).filter((k) => B.connectors[k] || ['slack', 'linear', 'asana', 'notion'].includes(k)).map((k) => `<button class="chip" data-dcx="${k}" aria-pressed="${on.has(k)}">${esc(B.connectors[k]?.name || k[0].toUpperCase() + k.slice(1))}</button>`).join('')}</div>
       <div class="row2"><button class="btn btn-ghost sm" data-x="all">Connect all</button><button class="btn btn-ghost sm" data-x="none">Disconnect all</button></div>
       <h4>Seat</h4><div class="sugg">${seatEntries().map(([k, r]) => `<button class="chip" data-d-role="${k}" aria-pressed="${S.viewer.role === k}">${esc(r.name)}</button>`).join('')}</div>
@@ -4915,7 +4915,7 @@
     const buildHtml = !b ? `<div class="bd-empty">${GEN ? 'Build details are not available yet.' : `${poss(B.brand.name)} moves were written by the Brew team by hand, so there is no live build to show.`}</div>` : `
       ${stepper(b)}
       <div class="q-stack">
-        ${!b.inflight.length && !b.failed.length && !b.queue.length && b.done >= (+b.total || 50) ? `<section class="bd-card bd-fin"><h3>${ic('check', 's16')}All ${b.done} moves are written</h3><p>Each one opens as a PDF when you download it, and Updates rewrites the ones that go out of date.</p><div class="bd-fin-b"><button class="btn btn-ghost sm" data-mvt="moves">See the moves</button>${GEN ? '<button class="btn btn-ghost sm" data-mvt="updates">Updates</button>' : ''}</div></section>` : ''}
+        ${!b.inflight.length && !b.failed.length && !b.queue.length && b.done >= (+b.total || 50) ? `<section class="bd-card bd-fin"><h3>${ic('check', 's16')}All ${b.done} plays are written</h3><p>Each one opens as a PDF when you download it, and Updates rewrites the ones that go out of date.</p><div class="bd-fin-b"><button class="btn btn-ghost sm" data-mvt="moves">See the plays</button>${GEN ? '<button class="btn btn-ghost sm" data-mvt="updates">Updates</button>' : ''}</div></section>` : ''}
         ${b.inflight.length ? `<section class="bd-card"><h3>Writing now</h3>${b.inflight.map((x) => `<div class="bd-run"><brew-load class="spin"></brew-load><div><b>${mvLabel(x.n)} · ${esc(x.title)}</b><span>${mins(x.secs)} so far · usually 6 to 9</span></div></div>`).join('')}</section>` : ''}
         ${b.failed.length ? `<section class="bd-card is-fail"><h3>Stopped <small>they get another try</small><button class="btn btn-ghost sm" data-bgretry>Retry now</button></h3>${b.failed.map((x) => `<div class="bd-row"><b>${mvLabel(x.n)} · ${esc(x.title)}</b><span>${esc(x.msg)}</span></div>`).join('')}</section>` : ''}
         ${b.queue.length ? `<section class="bd-card"><h3>Up next</h3><ol class="bd-q">${b.queue.map((x) => `<li><span>${mvNum(x.n)}</span>${esc(x.title)}</li>`).join('')}</ol></section>` : ''}
@@ -4929,7 +4929,7 @@
         <p>${esc(x.why)}</p></div></label>`).join('');
       return `<div class="up q-stack">
         <section class="up-hero"><div class="up-hl"><h3>${chk ? 'Checking now…' : lc ? `Last checked ${fmtWhen(lc.at)}` : 'Not checked yet'}</h3>
-          <p>${chk ? `<brew-load class="spin"></brew-load> Reading ${esc(B.brand.name)} again. About 3 minutes.` : lc ? esc(lc.summary || 'Nothing material changed.') : 'Brew re-reads the site, reviews, ads and rivals, then rewrites only the moves that quote what changed.'}</p>
+          <p>${chk ? `<brew-load class="spin"></brew-load> Reading ${esc(B.brand.name)} again. About 3 minutes.` : lc ? esc(lc.summary || 'Nothing material changed.') : 'Brew re-reads the site, reviews, ads and rivals, then rewrites only the plays that quote what changed.'}</p>
           ${U.lastError && !chk ? `<p class="up-err">The last check stopped: ${esc(U.lastError.msg)}</p>` : ''}</div>
           <button class="btn btn-ghost" data-upcheck ${chk || !U.canRewrite ? 'disabled' : ''} title="${U.building ? 'Opens once the core moves are written' : 'About 3 min · about $1'}">${ic('refresh', 's16')}${chk ? 'Checking…' : 'Check now'}</button>
           <label class="up-auto"><input type="checkbox" data-upauto ${U.auto ? 'checked' : ''}><span class="up-sw"></span><span><b>Keep them current on their own</b><small>${U.auto ? `Weekly${U.next ? `, next ${fmtDay(U.next)}` : ''}, and the day your catalog changes, within a weekly budget.` : 'Off. Nothing is checked or rewritten unless you ask.'}</small></span></label></section>
@@ -4952,7 +4952,7 @@
       <header class="mv2-head"><button class="rd-back" data-nav="learned">${ic('right', 's16')}<span>What Brew learned</span></button><h2>The moves</h2><p>${(() => { const core = ms.filter((m) => m.n >= 1 && m.n < 1000).length, wk = fam.length; /* one count everywhere: the playbook (status.total), never the index (00) or weekly moves (1001+), which count apart */
           return building ? `${core} of ${+st.total || 50} moves written for ${esc(B.brand.name)} so far.` : `${+st.total || core} moves for ${esc(B.brand.name)}${wk ? `, plus ${wk} new this week` : ''}. Every card in your feed comes from one of them.`; })()}</p>
         <div class="mv2-meta">${by[0] ? '<button class="linkbtn" data-mv="0">Read the index</button>' : ''}<button class="linkbtn" data-nav="facts">Fact sheet</button>${!showBuild && b ? '<button class="linkbtn" data-mvt="build">Build log</button>' : ''}</div></header>
-      <div class="mv2-seg" role="tablist"><button role="tab" data-mvt="moves" aria-selected="${MVT.tab === 'moves'}">Moves</button>${GEN ? `<button role="tab" data-mvt="updates" aria-selected="${MVT.tab === 'updates'}">Updates${nStale ? `<span class="cnt">${nStale}</span>` : U?.checking || U?.rewriting ? '<span class="dot"></span>' : ''}</button>` : ''}${showBuild ? `<button role="tab" data-mvt="build" aria-selected="${MVT.tab === 'build'}">Build${building ? '<span class="dot"></span>' : ''}</button>` : ''}</div>
+      <div class="mv2-seg" role="tablist"><button role="tab" data-mvt="moves" aria-selected="${MVT.tab === 'moves'}">Plays</button>${GEN ? `<button role="tab" data-mvt="updates" aria-selected="${MVT.tab === 'updates'}">Updates${nStale ? `<span class="cnt">${nStale}</span>` : U?.checking || U?.rewriting ? '<span class="dot"></span>' : ''}</button>` : ''}${showBuild ? `<button role="tab" data-mvt="build" aria-selected="${MVT.tab === 'build'}">Build${building ? '<span class="dot"></span>' : ''}</button>` : ''}</div>
       ${nStale && MVT.tab === 'moves' ? `<button class="up-banner" data-mvt="updates"><b>${nStale} move${nStale === 1 ? ' is' : 's are'} out of date</b><i>Review ${ic('right', 's14')}</i></button>` : ''}
       ${MVT.tab === 'moves' ? `<nav class="mv2-nav">${famHtml ? '<a href="#mvg-fam" data-mvjump="fam">This week</a>' : ''}${MV_GROUPS.map(([k, name, a, z]) => { const w = Array.from({ length: z - a + 1 }, (_, i) => a + i).filter((n) => by[n]).length; return `<a href="#mvg-${k}" data-mvjump="${k}">${esc(name)}${w < z - a + 1 ? `<em>${w}/${z - a + 1}</em>` : ''}</a>`; }).join('')}</nav>${famHtml ? `<div id="mvg-fam">${famHtml}</div>` : ''}${groupsHtml}${histHtml}` : MVT.tab === 'updates' ? upHtml : `<div class="bd">${buildHtml}</div>`}
     </div>`;
@@ -4984,7 +4984,7 @@
     $('#view').innerHTML = `<div class="rd"><div class="sk" style="height:60vh;border-radius:24px"></div></div>`; window.scrollTo(0, 0);
     const [m, list, up] = await Promise.all([api(`/api/brands/${slug}/moves/${n}`), api(`/api/brands/${slug}/moves`), GEN ? api(`/api/brands/${slug}/updates`) : null]); if (view !== 'move') return;
     const stl = (up?.stale || []).find((x) => x.n === n), rwing = (up?.rewriting || []).find((x) => x.n === n && !x.done);
-    if (!m || m.error) { $('#view').innerHTML = `<div class="rd"><div class="bd-empty">${mvLabel(n)} is not written yet. <button class="linkbtn" data-nav="moves">Back to the moves</button></div></div>`; return; }
+    if (!m || m.error) { $('#view').innerHTML = `<div class="rd"><div class="bd-empty">${mvLabel(n)} is not written yet. <button class="linkbtn" data-nav="moves">Back to the plays</button></div></div>`; return; }
     const pdfs = list?.pdfs || {}, all = (list?.moves || []).map((x) => x.n).sort((a, b) => a - b), at = all.indexOf(n), prev = all[at - 1], next = all[at + 1];
     const byN = Object.fromEntries((list?.moves || []).map((x) => [x.n, x]));
     const grp = MV_GROUPS.find(([, , a, z]) => n >= a && n <= z), kick = String(m.kicker || '').replace(/\s*·\s*move\s+\d+\s+of\s+\d+\s*$/i, '');
@@ -5005,7 +5005,7 @@
     const liveIdx = n === 0 && written.length ? `<section id="rd-all" class="rd-all"><h2>Every move so far <small>${written.length}</small></h2>${[...MV_GROUPS, ['new', 'Added since', 51, 9999]].map(([, name, lo, hi]) => { const g = allW.filter((x) => x.n >= lo && x.n <= hi); return g.length ? `<h3>${esc(name)}</h3><ol class="rd-all-l">${g.map((x) => `<li><button data-goto="${x.n}"><span>${mvNum(x.n)}</span><b>${esc(x.title || '')}</b>${x.n > 50 ? '<em>New</em>' : ''}</button></li>`).join('')}</ol>` : ''; }).join('')}</section>` : '';
     const feedCards = allPosts().filter((p) => new RegExp(`^moves?\\s[^·]*\\b0?${n}\\b`, 'i').test(p.src || '')).slice(0, 4);
     $('#view').innerHTML = `<div class="rd">
-      <div class="rd-bar rd2-bar"><button class="rd-back" data-nav="moves">${ic('right', 's16')}<span>All moves</span></button>
+      <div class="rd-bar rd2-bar"><button class="rd-back" data-nav="moves">${ic('right', 's16')}<span>All plays</span></button>
         <div class="rd-acts"><span class="rd-pn"><button ${prev == null ? 'disabled' : `data-goto="${prev}"`} title="Previous move" aria-label="Previous move">${ic('right', 's16')}</button><button ${next == null ? 'disabled' : `data-goto="${next}"`} title="Next move" aria-label="Next move">${ic('right', 's16')}</button></span>
           ${n != null ? `<a class="btn btn-primary sm" href="${pdfUrl(`move-${n}.pdf`)}" target="_blank" rel="noopener">${ic('doc', 's16')}Open the PDF</a>
           <details class="rd2-more"><summary class="icon-btn" aria-label="More for this move" title="More">${ic('more', 's16')}</summary><div class="rd2-menu"><a href="${pdfUrl(`move-${n}.pdf`, 1)}">${ic('down', 's16')}Download the PDF</a>${GEN && n ? `<button data-rdrw ${!up?.canRewrite || rwing ? 'disabled' : ''} title="${up?.building ? 'Opens once the moves are written' : 'Writes this move again from the latest evidence'}">${rwing ? '<brew-load class="spin"></brew-load>Rewriting…' : `${ic('refresh', 's16')}Rewrite with the latest`}</button>` : ''}</div></details>` : ''}</div></div>
@@ -5034,13 +5034,13 @@
           ${g.measure ? `<div class="rd2-blk"><h2>How we’ll know it worked</h2><div class="rd2-goal"><p>${esc(g.measure.metric)}</p>${g.measure.big ? `<div class="rd2-ft"><span><small>Today</small><b>${esc(g.measure.from)}</b></span>${ic('right', 's16')}<span><small>${esc(g.measure.when)}</small><b>${esc(g.measure.to)}</b></span></div>` : `<dl class="rd2-ft2"><div><dt>Today</dt><dd>${esc(g.measure.from)}</dd></div><div><dt>${esc(g.measure.when)}</dt><dd>${esc(g.measure.to)}</dd></div></dl>`}</div></div>` : ''}</div>` : ''}
         <div class="rd2-foot">${m.meta?.verified ? `<p class="rd2-trust is-ok">${ic('check', 's14')}Every number checked</p>` : claims.length ? `<details class="rd2-trust"><summary>${ic('check', 's14')}Numbers checked · ${claims.length} ${claims.length === 1 ? 'line' : 'lines'} to confirm${ic('right', 's14 chev')}</summary><ul>${claims.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p>Read these as the writer’s view until someone confirms them.</p></details>` : ''}
           ${!stl && m.meta?.version > 1 ? `<p class="rd2-ver">Updated ${fmtDay(m.meta.rewrittenAt)}${m.meta.because ? `: ${esc(m.meta.because)}` : ''}</p>` : ''}</div>
-        ${secs.length ? `<p class="rd2-full">The full move<small>Every finding, table and source</small></p>` : ''}</header>`; })()}
+        ${secs.length ? `<p class="rd2-full">The full play<small>Every finding, table and source</small></p>` : ''}</header>`; })()}
       <div class="rd-main"><nav class="rd-toc" aria-label="Contents"><small>On this page</small>${liveIdx ? '<a href="#rd-all" data-toc="all">Every move so far</a>' : ''}${secs.map((x, i) => `<a href="#${sid(i)}" data-toc="${i}">${esc(x.h)}</a>`).join('')}${(m.sources || []).length && !hasSrc ? `<a href="#rd-src" data-toc="src">Sources</a>` : ''}</nav>
         <article class="rd-art">${liveIdx}${secs.map((x, i) => `<section id="${sid(i)}"><h2>${esc(x.h)}</h2>${legacy ? (x.paras || []).map((p) => `<p>${t(p)}</p>`).join('') : (x.blocks || []).map(block).join('')}</section>`).join('')}
           ${(m.toConfirm || []).length ? `<section class="rd-tc"><h2>To confirm with ${esc(B.brand.name)}</h2><ul>${m.toConfirm.map((x) => `<li>${t(x)}</li>`).join('')}</ul></section>` : ''}
           ${(m.sources || []).length && !hasSrc ? `<section id="rd-src" class="rd-src"><h2>Sources</h2><ol>${m.sources.map((x) => `<li>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label || x.url)}</a>` : esc(x.label)}${x.at ? `<time>${esc(x.at)}</time>` : ''}</li>`).join('')}</ol></section>` : ''}
           ${hasSrc && (m.meta?.cites || []).some((c) => c.kind === 'ledger' || c.kind === 'signal') ? `<section class="rd-src"><h2>Evidence lines</h2><ol>${m.meta.cites.filter((c) => c.kind === 'ledger' || c.kind === 'signal').map((c) => `<li>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(`${c.label}: ${c.v}`)}</a>` : esc(`${c.label}: ${c.v}${c.src ? ` (${c.src})` : ''}`)}${c.at ? `<time>${esc(c.at)}</time>` : ''}</li>`).join('')}</ol></section>` : ''}
-          ${feedCards.length ? `<section class="rd-feed"><h2>In your feed from this move</h2><div>${feedCards.map((p) => `<button data-opencard="${esc(p.id)}">${face(p.agent)}<span><b>${esc(p.title)}</b><small>${esc(p.cta?.label || 'Open')}</small></span>${ic('right', 's16')}</button>`).join('')}</div></section>` : ''}
+          ${feedCards.length ? `<section class="rd-feed"><h2>In your feed from this play</h2><div>${feedCards.map((p) => `<button data-opencard="${esc(p.id)}">${face(p.agent)}<span><b>${esc(p.title)}</b><small>${esc(p.cta?.label || 'Open')}</small></span>${ic('right', 's16')}</button>`).join('')}</div></section>` : ''}
           <nav class="rd-next">${prev != null ? `<button data-goto="${prev}"><small>Previous</small><b>${mvLabel(prev)} · ${esc(byN[prev]?.title || '')}</b></button>` : '<span></span>'}${next != null ? `<button data-goto="${next}" class="is-next"><small>Next</small><b>${mvLabel(next)} · ${esc(byN[next]?.title || '')}</b></button>` : ''}</nav>
         </article></div></div>`;
     $$('[data-goto]', $('#view')).forEach((x) => x.onclick = () => openMove(+x.dataset.goto));
@@ -5259,7 +5259,7 @@
     // the brand's own upcoming moments (its markets only), each with when Brew starts planning it
     const evs = (CAL?.events || []).slice(0, 4), dd = (t) => Math.round((new Date(t) - (SRV.clock || Date.now())) / 864e5);
     const calHtml = evs.length ? `<section class="lx-sec">${lxHead('lx-cal', 'Coming up', '', '')}
-      <ul class="hd-cal">${evs.map((e) => { const d = dd(e.date), p = e.planAt ? dd(e.planAt) : null; return `<li><span class="hd-cal-d"><b>${new Date(e.date).toLocaleDateString([], { day: 'numeric' })}</b><small>${new Date(e.date).toLocaleDateString([], { month: 'short' })}</small></span><div><b>${esc(e.name)}</b><small>${d > 0 ? `in ${d} day${d === 1 ? '' : 's'}` : e.end && e.end !== e.date ? `on now, until ${new Date(e.end).toLocaleDateString([], { day: 'numeric', month: 'short' })}` : 'today'}${d > 0 && p != null ? ` · ${p <= 0 ? (e.move ? 'move ready' : 'planning now') : `planning in ${p} day${p === 1 ? '' : 's'}`}` : ''}</small></div>${e.move?.n != null ? `<button class="linkbtn" data-goto-move="${e.move.n}">Open move</button>` : ''}</li>`; }).join('')}</ul></section>` : '';
+      <ul class="hd-cal">${evs.map((e) => { const d = dd(e.date), p = e.planAt ? dd(e.planAt) : null; return `<li><span class="hd-cal-d"><b>${new Date(e.date).toLocaleDateString([], { day: 'numeric' })}</b><small>${new Date(e.date).toLocaleDateString([], { month: 'short' })}</small></span><div><b>${esc(e.name)}</b><small>${d > 0 ? `in ${d} day${d === 1 ? '' : 's'}` : e.end && e.end !== e.date ? `on now, until ${new Date(e.end).toLocaleDateString([], { day: 'numeric', month: 'short' })}` : 'today'}${d > 0 && p != null ? ` · ${p <= 0 ? (e.move ? 'move ready' : 'planning now') : `planning in ${p} day${p === 1 ? '' : 's'}`}` : ''}</small></div>${e.move?.n != null ? `<button class="linkbtn" data-goto-move="${e.move.n}">Open play</button>` : ''}</li>`; }).join('')}</ul></section>` : '';
     /* trust: one line while every agent sits at the same level; the list only once they differ */
     const tl = agents.map((a) => L.trust[a]), same = tl.length && tl.every((t) => t.level === tl[0].level && !t.clean);
     const trustHtml = !agents.length ? '' : same ? `<p class="q-note">${tl[0].level < tl[0].max ? `Every agent is at ${esc(tl[0].name)}: ${L.cleanToLevelUp} clean launches move one up, an undo moves it down.` : `Every agent is at the top level.`}</p>`
@@ -5268,7 +5268,7 @@
     const mvAll = MVS?.moves || [], mvCore = mvAll.filter((m) => m.n >= 1 && m.n < 1000).length, mvWk = mvAll.filter((m) => m.n >= 1000).length, mvStale = UPS?.stale?.length || 0;
     /* while the moves are still being written, the row says how far along (one line and a thin bar), from the build status */
     const mvSt = GEN ? MVS?.status : null, mvBuilding = !!mvSt && !mvSt.done && !mvSt.error && !mvSt.cancelled;
-    const movesHtml = mvAll.length || mvBuilding ? `<section class="lx-sec">${lxHead('lx-moves', 'The moves', '', '')}<button class="lx-heard-row" data-nav="moves"><span class="lg-ic">${ic('doc', 's16')}</span><span><b>${mvCore} move${mvCore === 1 ? '' : 's'} for ${esc(B.brand.name)}${mvWk ? `, plus ${mvWk} new this week` : ''}</b>${mvBuilding ? lxBuild(mvSt) : `<small>${mvStale ? `${mvStale} out of date · ` : ''}Every card in your feed comes from one of them</small>`}</span>${ic('right', 's16')}</button>${mvBuilding && mvSt.capped ? `<div class="lx-pro"><button class="btn btn-primary sm" data-mvpro>${PAYWALL ? 'Continue with Pro' : 'Write the rest'}</button></div>` : ''}</section>` : '';
+    const movesHtml = mvAll.length || mvBuilding ? `<section class="lx-sec">${lxHead('lx-moves', 'The plays', '', '')}<button class="lx-heard-row" data-nav="moves"><span class="lg-ic">${ic('doc', 's16')}</span><span><b>${mvCore} move${mvCore === 1 ? '' : 's'} for ${esc(B.brand.name)}${mvWk ? `, plus ${mvWk} new this week` : ''}</b>${mvBuilding ? lxBuild(mvSt) : `<small>${mvStale ? `${mvStale} out of date · ` : ''}Every card in your feed comes from one of them</small>`}</span>${ic('right', 's16')}</button>${mvBuilding && mvSt.capped ? `<div class="lx-pro"><button class="btn btn-primary sm" data-mvpro>${PAYWALL ? 'Continue with Pro' : 'Write the rest'}</button></div>` : ''}</section>` : '';
     clearTimeout(lxBuild.t); if (mvBuilding) lxBuild.t = setTimeout(lxBuildPoll, 15e3);
     // What your team told Brew (brand-learnings.js, learned.json): goals, beliefs and facts from the calls, notes and emails the team added; about 6 show, the rest fold
     const told = TOLD?.told, toldRows = told ? [['essence', 'Essence'], ['goals', 'Goals and plans'], ['beliefs', 'Beliefs'], ['tried', 'What they tried'], ['facts', 'Facts they stated']].flatMap(([k, h]) => (told[k] || []).map((x) => ({ ...x, h }))) : [];
@@ -5281,7 +5281,7 @@
     /* ui=1: one row of what Brew holds, each tile opens its part; a tile with nothing in it never shows */
     const lxOverview = () => { const t = (attr, n, k, sub) => `<button class="lx-ov-t" ${attr}><b>${n}</b><span>${k}</span>${sub ? `<small>${sub}</small>` : ''}</button>`;
       const ppl = heard ? Number(heard.total ?? heard.items ?? 0) : 0, learnedN = moved.length + lessons.length;
-      const tiles = [mvCore && t('data-nav="moves"', mvCore, 'Moves', mvWk ? `+${mvWk} this week` : mvStale ? `${mvStale} out of date` : 'Every card comes from one'),
+      const tiles = [mvCore && t('data-nav="moves"', mvCore, 'Plays', mvWk ? `+${mvWk} this week` : mvStale ? `${mvStale} out of date` : 'Every card comes from one'),
         toldRows.length && t('data-lx-jump="lx-told"', toldRows.length, 'Team notes', 'Calls, notes and emails'),
         learnedN && t('data-lx-jump="lx-lessons"', learnedN, 'Lessons', 'From what you ship'),
         L.rules.length && t('data-lx-jump="lx-rules"', L.rules.length, L.rules.length === 1 ? 'Rule' : 'Rules', 'Every agent follows'),
@@ -5376,13 +5376,13 @@
         head(`Saved to ${B.brand.name}’s brand context`, `${c.learned} learning${c.learned === 1 ? '' : 's'}${c.again ? ` · ${c.again} it already knew` : ''}${c.conflicts ? ` · ${c.conflicts} left to the fact sheet` : ''}`);
         const mv = (x) => `<li><span class="dz-mn">${esc(mvNum(x.n))}</span><span>${esc(x.title || mvLabel(x.n))}</span></li>`, t = (x) => `<li><span>${esc(x.title || x)}</span>${x.why ? `<small>${esc(x.why)}</small>` : ''}</li>`;
         const moves = [c.rewrite.length ? `<p class="dz-k">${c.queued ? 'Rewriting next, after the work running now' : 'Rewriting now'} · ${c.rewrite.length}</p><ul class="dz-ul">${c.rewrite.map(mv).join('')}</ul>` : '',
-          r.pending ? `<p class="dz-k">${r.pending.all} moves change with this</p><p class="dz-note">Rewrite all of them, or the ${r.pending.top} that matter most within this upload’s budget.</p><div class="dz-acts"><button class="btn btn-primary sm" data-dl-say="go ahead">Rewrite all ${r.pending.all}</button><button class="btn btn-ghost sm" data-dl-say="just the top ones">Just the top ${r.pending.top}</button></div>` : '',
+          r.pending ? `<p class="dz-k">${r.pending.all} plays change with this</p><p class="dz-note">Rewrite all of them, or the ${r.pending.top} that matter most within this upload’s budget.</p><div class="dz-acts"><button class="btn btn-primary sm" data-dl-say="go ahead">Rewrite all ${r.pending.all}</button><button class="btn btn-ghost sm" data-dl-say="just the top ones">Just the top ${r.pending.top}</button></div>` : '',
           c.weekly.length ? `<details class="dz-more"><summary>${c.weekly.length} more in the weekly run</summary><ul class="dz-ul">${c.weekly.map(mv).join('')}</ul></details>` : '',
-          c.fresh ? `<p class="dz-k">New moves · up to ${c.fresh}</p><p class="dz-note">Written from this in a few minutes, once the rewrite is in.</p>` : c.freshWhy ? `<p class="dz-note">New moves from this ${esc(c.freshWhy)}.</p>` : '',
+          c.fresh ? `<p class="dz-k">New plays · up to ${c.fresh}</p><p class="dz-note">Written from this in a few minutes, once the rewrite is in.</p>` : c.freshWhy ? `<p class="dz-note">New plays from this ${esc(c.freshWhy)}.</p>` : '',
           c.rewriteError ? `<p class="dz-note is-warn">The rewrite can’t start now: ${esc(c.rewriteError)}. The moves are marked on the Moves tab.</p>` : ''].join('') || '<p class="dz-note">No move needed changing.</p>';
         const feed = [c.add.length ? `<p class="dz-k">New on your feed · ${c.add.length}</p><ul class="dz-ul">${c.add.map(t).join('')}</ul>` : '', c.up.length ? `<p class="dz-k">Moved to the top · ${c.up.length}</p><ul class="dz-ul">${c.up.map(t).join('')}</ul>` : '', c.hide.length ? `<p class="dz-k">Off the top · ${c.hide.length}</p><ul class="dz-ul">${c.hide.map(t).join('')}</ul>` : ''].join('') || `<p class="dz-note">${c.rewrite.length || r.pending ? 'The feed reorders as the rewritten moves land.' : 'No card needed to move.'}</p>`;
         paint(`<div class="dz-res"><section class="dz-card"><h4>${ic('book', 's16')}Brief and memory</h4><p class="dz-note">Every move, card and jam reads these now, each with its source. They sit on this page under What the team told Brew.</p></section>
-          <section class="dz-card"><h4>${ic('layers', 's16')}Moves</h4>${moves}</section><section class="dz-card"><h4>${ic('feed', 's16')}Your feed</h4>${feed}<p class="dz-note">Cards built on this carry “From what your team told Brew”.</p></section></div>`,
+          <section class="dz-card"><h4>${ic('layers', 's16')}Plays</h4>${moves}</section><section class="dz-card"><h4>${ic('feed', 's16')}Your feed</h4>${feed}<p class="dz-note">Cards built on this carry “From what your team told Brew”.</p></section></div>`,
           `<span></span><button class="btn btn-ghost sm" data-close>Done</button><button class="btn btn-primary sm" data-dz-feed>Open the feed</button>`);
         loadFeed().catch(() => {}); after();
         $('[data-dz-feed]', sheet)?.addEventListener('click', () => { closeModal(); location.hash = ''; location.reload(); });
@@ -5396,7 +5396,7 @@
           <nav class="dz-chips">${ks.map((k) => `<a href="#dz-${k}" data-dz-jump="${k}">${KIND_H[k]}<b>${d.items.filter((x) => x.kind === k).length}</b></a>`).join('')}</nav>
           ${ks.map((k) => `<section class="dz-sec" id="dz-${k}"><header><h4>${KIND_H[k]}</h4><button class="linkbtn" data-dz-all="${k}">Untick all</button></header><ul>${d.items.map((x, i) => [x, i]).filter(([x]) => x.kind === k).map(([x, i]) => row(x, i)).join('')}</ul></section>`).join('')}
           ${d.conflicts?.length ? `<section class="dz-sec"><header><h4>Left out: the fact sheet wins on numbers</h4></header>${d.conflicts.map((c) => `<p class="dz-note">It says ${esc(c.says)}; ${esc(c.label || 'the fact sheet')} reads ${esc(String(c.v))}${c.src ? ` from ${esc(c.src)}` : ''}.</p>`).join('')}</section>` : ''}`,
-          `<p class="dz-why">Save updates the brief, rewrites the moves this changes and reorders your feed.</p><button class="btn btn-ghost sm" data-dl-cancel>Cancel</button><button class="btn btn-primary sm" data-dl-save>Save ${n}</button>`);
+          `<p class="dz-why">Save updates the brief, rewrites the plays this changes and reorders your feed.</p><button class="btn btn-ghost sm" data-dl-cancel>Cancel</button><button class="btn btn-primary sm" data-dl-save>Save ${n}</button>`);
         body.scrollTop = 0;
         const sync = () => { const k = n - gone.size, b = $('[data-dl-save]', sheet); b.textContent = k ? `Save ${k}${gone.size ? ` of ${n}` : ''}` : 'Nothing to save'; b.disabled = !k;
           $$('[data-dz-all]', body).forEach((a) => { const rows = $$(`#dz-${a.dataset.dzAll} .dz-row`, body); a.textContent = rows.every((r0) => gone.has(+r0.dataset.i)) ? 'Tick all' : 'Untick all'; }); };
@@ -5603,7 +5603,7 @@
       const body = sl.kind === 'summary' ? `<ul class="sv-tally">${(sl.tally || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`
         : `${sl.p ? `<p>${esc(sl.p)}</p>` : ''}${(sl.rows || []).length > 1 || sl.conn || !(sl.rows || [])[0] ? `<div class="sv-rcs">${(sl.rows || []).map(row).join('')}</div>` : ''}`;
       const one = (sl.rows || []).length === 1 && !sl.conn ? sl.rows[0] : null;
-      const btn = sl.conn ? `<button class="sv-btn pri" data-sv-conn>See your accounts ${ic('right', 's14')}</button>` : one?.workId ? `<button class="sv-btn pri" data-sv-work="${esc(one.workId)}">Open the jam ${ic('right', 's14')}</button>` : one?.cardId ? `<button class="sv-btn pri" data-sv-open="${esc(one.cardId)}">Open the card ${ic('right', 's14')}</button>` : one?.move != null ? `<button class="sv-btn pri" data-sv-move="${one.move}">Read the move ${ic('right', 's14')}</button>` : '';
+      const btn = sl.conn ? `<button class="sv-btn pri" data-sv-conn>See your accounts ${ic('right', 's14')}</button>` : one?.workId ? `<button class="sv-btn pri" data-sv-work="${esc(one.workId)}">Open the jam ${ic('right', 's14')}</button>` : one?.cardId ? `<button class="sv-btn pri" data-sv-open="${esc(one.cardId)}">Open the card ${ic('right', 's14')}</button>` : one?.move != null ? `<button class="sv-btn pri" data-sv-move="${one.move}">Read the play ${ic('right', 's14')}</button>` : '';
       return `${sl.img ? `<img src="${esc(sl.img)}" alt="">` : `${svBack(sl)}${sl.big ? `<div class="sv-hero stat"><span><small>${esc(sl.bigLabel || '')}</small><b>${sl.big}</b></span></div>` : ''}`}
       <div class="sv-tx sv-recap"><span class="sv-chip">${esc(sl.chip)}</span><h3>${esc(sl.h)}</h3>${body}
         ${btn ? `<div class="sv-acts">${btn}</div>` : ''}${src(`${B.brand.name} · ${s.source || 'since your last visit'}`)}</div>`; }

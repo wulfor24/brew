@@ -37,7 +37,7 @@ test('a first read: the brief is written after the check, the moves wait for the
   const P = tmpPacks(), slug = 'gate-example-com';
   const { b, calls } = await brand(P, slug, { feedGate: true, confirmedAt: Date.now() });
   const run = b.resume(slug);
-  assert.ok(await until(async () => (await b.status(slug))?.state === 'Your moves start when you open your feed'), 'says what it waits for');
+  assert.ok(await until(async () => (await b.status(slug))?.state === 'Your plays start when you open your feed'), 'says what it waits for');
   assert.equal(calls.brief, 1, 'the brief is written'); assert.equal(calls.runAll, 0, 'no move before the feed opens');
   assert.ok((await b.status(slug)).feedWaitSince > 0, 'the wait is stamped for the reminder emails');
   const r = await b.feedOpened(slug); assert.deepEqual(r, { ok: true, started: true, woke: true });
@@ -57,7 +57,7 @@ test('a correction made while the moves wait reaches the brief before the moves'
   const P = tmpPacks(), slug = 'fix-example-com';
   const { b, calls } = await brand(P, slug, { feedGate: true, confirmedAt: Date.now() });
   const run = b.resume(slug);
-  assert.ok(await until(async () => (await b.status(slug))?.state === 'Your moves start when you open your feed'));
+  assert.ok(await until(async () => (await b.status(slug))?.state === 'Your plays start when you open your feed'));
   await sleep(5); /* the correction comes after the brief */
   const r = await b.confirm(slug, [{ key: 'name', v: 'Acme Labs' }]); assert.ok(r.recheck, 'the check page notes it as a late correction');
   await b.feedOpened(slug); await run;
