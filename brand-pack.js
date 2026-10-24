@@ -152,7 +152,11 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
   const DIR = path.join(ROOT, '.brands'); fs.mkdirSync(DIR, { recursive: true });
   const cache = new Map();
   /* every write to a pack moves its version on (put, drop): a fresh load is reused while nothing was written to the pack */
-  const vers = new Map(), ver = (slug) => vers.get(slug) || 0, bump = (slug) => vers.set(slug, ver(slug) + 1);
+  const vers = new Map(), ver = (slug) => vers.get(slug) || 0, bump = (slug) => { vers.set(slug, ver(slug) + 1); warmSoon(slug); };
+  /* a pack a page loaded lately is rebuilt in the background a moment after it changes, so the next page load finds it ready instead of
+     waiting 2+ s for the rebuild (1.7); a load that comes first shares that same build */
+  const warmT = new Map();
+  const warmSoon = (slug) => { if (!slug || !freshP?.has?.(`${slug}|`) || process.env.NODE_TEST_CONTEXT) return; clearTimeout(warmT.get(slug)); warmT.set(slug, setTimeout(() => { warmT.delete(slug); load(slug, { fresh: true, share: true }).catch(() => {}); }, 1500)); };
   /* notes.json and move-value.json are written in the background a few seconds after every load (server attach): they show within
      FRESH_MS, and never force the next page load to rebuild the whole pack */
   const BUILT_FROM = /^(?:seed|status|profile|facts|brief|config|moves|labels|learned|pages|pools|rival-reads|statics|updates|demo|brandbook-read|ledger|findings)\.(?:json|md)$|^(?:moves|docs|drafts|pulse)\/|^private\/(?:brandbook|connections|shop-brand|facts|profile-live|moves|statics)/;
