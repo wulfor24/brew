@@ -27,9 +27,10 @@
     if (!jam || !bd) { S.loading = false; S.error = o?.error || 'The studio couldn’t open just now.'; return paint(); }
     const d = await api('GET', `/api/jam2/jams/${jam.id}/studio?bid=${encodeURIComponent(bd.id)}`); if (S !== mine) return;
     if (!d?.defaults) { S.loading = false; S.error = d?.error || 'The studio couldn’t open just now.'; return paint(); }
-    const D = d.defaults, X = d.context?.slots || {};
+    /* a board already made opens on the set-up its newest take was made with, so Redo makes that again at its price */
+    const made0 = (bd.takes || []).at(-1)?.studio?.spec || null, D = made0 ? { ...d.defaults, ...Object.fromEntries(Object.entries(made0).filter(([, v]) => v != null && v !== '')), count: 1, styles: d.defaults.styles?.includes(made0.style) || !made0.style ? d.defaults.styles : [made0.style, ...(d.defaults.styles || []).slice(0, 2)] } : d.defaults, X = d.context?.slots || {};
     Object.assign(S, { loading: false, jid: jam.id, bid: bd.id, boards: jam.boards.map((b) => b.id), products: d.products || [], slots: X, missing: d.context?.missing || [], blocked: D.blocked || {}, picks: D.styles || [],
-      spec: { ...D, ask: '', direction: X.direction?.value || '', cast: X.cast?.shown && X.cast.value !== 'none' ? X.cast.label : X.cast?.value === 'none' ? 'No people' : null, ref: X.reference?.value?.label || null, quality: 'standard' },
+      spec: { ...D, ask: D.ask || '', direction: D.direction || X.direction?.value || '', cast: D.cast || (X.cast?.shown && X.cast.value !== 'none' ? X.cast.label : X.cast?.value === 'none' ? 'No people' : null), ref: made0 ? made0.ref || null : X.reference?.value?.label || null, quality: D.quality || 'standard' },
       busy: jam.busy || {}, made: (bd.takes || []).length > 0, failed: Object.values(jam.busy || {}).find((b) => b?.error)?.error || null }); /* a make that stopped says so after a reload too */
     S.open = !ch.versions?.some((v) => v.studio) && !S.made; /* made already: the set-up folds into one line under the frame */
     paint(); price(); if (anyBusy()) poll();
