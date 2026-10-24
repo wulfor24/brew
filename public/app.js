@@ -740,6 +740,7 @@
     const live = all.filter((p) => /^live-/.test(String(p.id || ''))); if (live.length) cards = [...live.slice(0, 3), ...cards.filter((p) => !live.includes(p))];
     paint(cards, all);
     if (live.length && $('#ob-show .pv-cap')) $('#ob-show .pv-cap').textContent = `Built from your ${[...new Set(live.map((p) => B.connectors?.[String(p.id).split('-')[1]]?.name).filter(Boolean))].join(' and ') || 'connected'} numbers`;
+    else if (!live.length && view === 'ob' && Object.keys(S.conn || {}).some((k) => k !== 'slack' && conn(k)) && $('#ob-show .pv-cap')) $('#ob-show .pv-cap').textContent = 'Your connected numbers land in these cards as each account is read'; /* connected, nothing read yet: says so (3.8) */
   };
   const LANE_IMG = B.laneImg || {};
   const obNav = (next, back) => `<div class="ob2-nav">${back ? `<button class="btn btn-ghost lg" id="ob-back">${ic('left', 's18')} Back</button>` : '<span></span>'}<button class="btn btn-primary lg" id="ob-next">${next} ${ic('right', 's18')}</button></div>`;
@@ -808,7 +809,7 @@
     /* the tools picked on the reading screen come first (each still needs its own sign-in, so nothing is preselected) */
     const ids = [...new Set([...(S.viewer.tools || []), ...ROLE().connectors])].filter((k) => B.connectors?.[k]); if (!S.onboarded) obAt('connect');
     window.scrollTo(0, 0); root.innerHTML = shell(`
-      <h1 class="ob2-h">Connect your tools</h1><p class="ob2-lede">${window.LiveConn?.boss?.() === false ? 'Your admin connects these. Once they’re on, cards swap targets for your real numbers.' : 'Cards swap targets for your real numbers. Optional, and you can do it later from any card.'}</p>
+      <h1 class="ob2-h">Connect your tools</h1><p class="ob2-lede">${window.LiveConn?.boss?.() === false ? 'Your admin connects these. Once they’re on, your cards use your own numbers instead of estimates.' : 'Connected, your cards use your own numbers instead of estimates. Optional: you can do it later from any card.'}</p>
       <div class="ob2-cx">${ids.map((id) => cxRow(id)).join('')}</div>
       <p class="ob2-foot">${ic('lock', 's14')} ${window.LIVE?.dummy === false ? `Read-only. Brew never changes your accounts: every budget or ad change it suggests is a brief your team makes${ids.includes('slack') ? '; Slack posts only to the channel you pick' : ''}.` : 'Demo workspace. No real account is touched.'}</p>
       ${obNav('Next', true)}`, 3);
@@ -950,7 +951,7 @@
       <span class="sp"></span>
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>${p.proof?.seen ? `<button class="pf-seen" data-act="proof" aria-label="Seen in ${esc(p.proof.seen)}: open the proof">${ic('search', 's14')}<span>Seen in ${esc(p.proof.seen)}</span></button>` : ''}`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
-  const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 plays are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="Why this card, and the proof" title="Why Brew suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n}</span>` : ''}</button>`; };
+  const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 plays are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="${n ? `${n} ${n === 1 ? 'proof' : 'proofs'} behind this card` : 'Why this card, and the proof'}" title="Why Brew suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n} ${n === 1 ? 'proof' : 'proofs'}</span>` : ''}</button>`; }; /* a number on a card always says what it counts (1.14) */
   const pfDay = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
   /* the sheet says only what a brand needs: the one reason, the few numbers behind it (each with where it came from) and the plan it
      belongs to. Kind labels, move source lists and repeats stay out; the full plan is one tap away */
@@ -1290,7 +1291,7 @@
   const connectCard = (id, why) => { const c = B.connectors[id];
     return `<article class="card is-connect" data-connect-card="${id}">${head('brew', 'Needs access', null, false)}
       <div class="cn-body"><div class="cn-top">${glyph(id, 40)}<h3>See this with real numbers</h3></div>
-        <p>${esc(why || `Connect ${c.name} to swap targets for your real numbers.`)}</p>
+        <p>${esc(why || `Connect ${c.name} and this card uses your own numbers instead of estimates.`)}</p>
         <ul class="cn-list">${c.changed.map((t) => `<li>${ic('sparkles', 's14')}${esc(t)}</li>`).join('')}</ul></div>
       <button class="bar" data-cx="${id}"><span class="lead">${ic('plug', 's16')}Connect ${esc(c.name)}</span>${ic('right', 's16')}</button></article>`; };
 
@@ -1664,6 +1665,9 @@
     }
     if (end >= FEED.length) while (X.wait.length) out.push(connectCard(X.wait.shift())); /* a short feed still gets its connect card, last */
     return out.join(''); };
+  const TODAY_N = 10; let TODAY_OPEN = false;
+  const todayHtml = (n) => `<section class="feed-today" id="feed-today"><b>That’s today’s ${TODAY_N}</b><span>${n} more ideas are ranked behind them, best first.</span><button class="btn btn-ghost" data-today-more>See the next ${Math.min(FEED_PAGE, n)} ${ic('down', 's16')}</button></section>`;
+  document.addEventListener('click', (e) => { if (!e.target.closest('[data-today-more]')) return; TODAY_OPEN = true; const t = $('#feed-today'); if (!t) return; t.outerHTML = '<div class="feed-more" id="feed-more" aria-hidden="true"></div>'; feedMore(); armMore(); });
   const feedMore = () => { const s = $('#feed-more'); if (!s || view !== 'feed') return; const from = FEED_AT; FEED_AT = Math.min(FEED.length, FEED_AT + FEED_PAGE);
     s.insertAdjacentHTML('beforebegin', feedRun(from, FEED_AT)); if (FEED_AT >= FEED.length) { moreIO?.disconnect(); s.outerHTML = feedEndHtml(); }
     requestAnimationFrame(() => { placeStickers(); placeNotes(); trackImpressions(true); }); };
@@ -1685,9 +1689,12 @@
     const parts = [greeting(), `<div id="newpill" class="newpill" hidden></div>`, storiesHtml(), brewingCard()];
     if (!GEN || B.health.score) parts.push(healthCard()); // a generated brand shows a score only once something real was measured
     parts.push(newLineHtml());
-    FEED_X = { asked: new Set(), wait: [] }; FEED_AT = Math.min(FEED.length, Math.max(FEED_PAGE, keepN));
+    /* today's 10 (1.4: "rank what's left and show about 10 a day"): the ten best first, then a clear stop that says how many more are
+       ranked behind; one tap carries on through all of them (nothing is held back or paid for, the old daily cap stays cut) */
+    const today = !TODAY_OPEN && !keepN && FEED.length > TODAY_N + 2;
+    FEED_X = { asked: new Set(), wait: [] }; FEED_AT = today ? TODAY_N : Math.min(FEED.length, Math.max(FEED_PAGE, keepN));
     parts.push(feedRun(0, FEED_AT));
-    parts.push(FEED_AT < FEED.length ? '<div class="feed-more" id="feed-more" aria-hidden="true"></div>' : feedEndHtml());
+    parts.push(today ? todayHtml(FEED.length - FEED_AT) : FEED_AT < FEED.length ? '<div class="feed-more" id="feed-more" aria-hidden="true"></div>' : feedEndHtml());
     if (!$('#view')) return; // the page changed while the feed loaded
     $('#view').innerHTML = `<div class="feedcol${settle ? ' settle' : ''}" id="col">${parts.join('')}</div>`;
     counts(); save(); pulseSince = SRV.clock;

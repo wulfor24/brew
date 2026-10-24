@@ -86,7 +86,11 @@ export function metricSwaps(card, counts = []) {
   for (const c of live) {
     const name = new RegExp(`\\b${esc(c.phrase)}\\b`, 'i');
     const apply = (text) => (typeof text !== 'string' ? text : text.split(/(?<=[.!?])\s+/).map((sent) => { if (!name.test(sent)) return sent;
-      const re = new RegExp(KIND_RE[c.kind].source, 'g'), hits = sent.match(re) || []; if (hits.length !== 1 || same(hits[0], c.v, c.kind)) return sent;
+      const re = new RegExp(KIND_RE[c.kind].source, 'g'), hits = sent.match(re) || [];
+      /* a range stated as a reading ("the repeat rate is 20% to 30%") is data, not a plan: it takes the account's number. "From 12% to
+         20%" and "to reach 25%" stay: those are plans */
+      if (hits.length === 2 && c.kind === 'pct') { const rg = new RegExp(`\\b(?:is|are|was|at|around|about|of|sits at)\\s+(${esc(hits[0])})\\s*(?:to|-|–)\\s*(${esc(hits[1])})`, 'i').exec(sent); if (rg && !/\bfrom\s*$/i.test(sent.slice(0, rg.index + 1))) return sent.replace(`${rg[1]}${sent.slice(sent.indexOf(rg[1]) + rg[1].length, sent.indexOf(rg[2], sent.indexOf(rg[1])))}${rg[2]}`, String(c.v)); }
+      if (hits.length !== 1 || same(hits[0], c.v, c.kind)) return sent;
       if (c.kind === 'money' && hits[0].trim()[0] !== String(c.v).trim()[0]) return sent; /* another currency is another measure */
       return sent.replace(hits[0], String(c.v)); }).join(' '));
     const all = [card.title, card.sub, card.because, ...(card.detail?.why || []), ...(card.detail?.how || [])];

@@ -418,8 +418,12 @@ export function createPacks({ ROOT, PUB, bucket, gToken, log = console }) {
     const key = `${slug}|${demoSid() || ''}`; /* the demo site: each visitor's sandbox is its own */
     const f0 = share && freshP.get(key); if (f0 && (Date.now() - f0.at < 3000 || (f0.v === ver(slug) && Date.now() - f0.at < FRESH_MS))) return f0.p;
     const v0 = ver(slug);
+    /* nothing written to the pack since it was built: the page gets it at once and a fresh build runs behind (1.7: a cold page load
+       waited 1.7 s on seed.js rebuilding the whole pack every minute) */
+    if (share && f0 && f0.v === v0 && f0.done) { if (!f0.refreshing) { f0.refreshing = true; const p1 = (async () => { const p = slug === DEFAULT ? loadDefault() : await loadGenerated(slug); if (p) cache.set(slug, p); return p; })();
+      p1.then((p) => { if (p && ver(slug) === v0) freshP.set(key, { at: Date.now(), p: Promise.resolve(p), v: v0, done: true }); }).catch(() => {}).finally(() => { f0.refreshing = false; }); } return f0.p; }
     const p0 = (async () => { const p = slug === DEFAULT ? loadDefault() : await loadGenerated(slug); if (p) cache.set(slug, p); return p; })();
-    if (share) { freshP.set(key, { at: Date.now(), p: p0, v: v0 }); p0.catch(() => freshP.delete(key)); if (freshP.size > 200) freshP.clear(); }
+    if (share) { const e = { at: Date.now(), p: p0, v: v0 }; freshP.set(key, e); p0.then((p) => { if (p) e.done = true; }).catch(() => freshP.delete(key)); if (freshP.size > 200) freshP.clear(); }
     return p0;
   }
   const peek = (slug) => cache.get(slug) || null;
