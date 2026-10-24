@@ -101,7 +101,10 @@ export async function catalog(ctx) {
   const sellable = products.filter((p) => p.price > 0 || p.kind === 'offering'); /* an offering may not print a price */
   const ranked = [...sellable].sort((a, b) => rank(a) - rank(b));
   const singles = ranked.filter((p) => !p.pack);
-  const hero = [...singles, ...ranked.filter((p) => p.pack)].slice(0, 8);
+  /* the store's own best sellers lead, pack or kit or not (Arata 23 Oct: its best-selling kit fell out of the list); after them,
+     single products before packs, so the packshots show one product */
+  const lead = order ? ranked.filter((p) => order.includes(p.handle)).slice(0, 3) : [];
+  const hero = [...new Set([...lead, ...singles, ...ranked.filter((p) => p.pack)])].slice(0, 8);
 
   // packshots
   ctx.tick('catalog', 'packshots');

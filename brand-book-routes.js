@@ -13,6 +13,7 @@ import { REF_FAMILIES } from './brand-book-read.js';
 import { GROUPS, CHANNELS } from './jam2/rules.js';
 import { fontMeta, faceLabel, mergeFaces } from './font-meta.js';
 import { safeFetch, stripTags, UA } from './reader/util.js';
+import { bookNumbers } from './facts-desk.js'; // the book's numbers are the fact sheet's
 
 const FONT = /\.(ttf|otf|woff2?)$/i, LOGO = /\.(svg|png|jpe?g|webp)$/i;
 const tidy = (s, n = 400) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -79,7 +80,7 @@ const kitOf = (j = {}) => ({ colors: (j.colors || []).filter((c) => /^#[0-9a-f]{
 /* without the AI (mock runs, a paused account) a document still gives its colour codes: never a made-up rest */
 export const hexesIn = (text) => [...new Set((String(text).match(/#[0-9a-f]{6}\b/gi) || []).map((x) => x.toLowerCase()))].slice(0, 8);
 
-export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock = () => false, spend = () => true, ai = null, builder = null, refreshPack = async () => {}, render = null, log = console, DEFAULT_BRAND = null }) {
+export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, factsOf = () => null, isMock = () => false, spend = () => true, ai = null, builder = null, refreshPack = async () => {}, render = null, log = console, DEFAULT_BRAND = null }) {
   const slugOf = (t, p) => { const s = t.brandId || DEFAULT_BRAND; return p.slug === s ? s : null; };
   const member = (t) => !!reqOf(t)?.member || process.env.DEMO_MODE === '1';
   const teamNo = (t, what) => member(t) ? null : { status: reqOf(t)?.email ? 403 : 401, error: `Only this brand’s team can ${what}.`, team: true };
@@ -87,6 +88,7 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, isMock 
     const raw = await BOOK.load(slug), v = BOOK.view(raw, { scope: member(t) ? 'member' : 'share' });
     const building = !!builder?.book?.running?.(slug), stale = builder?.book ? await builder.book.stale(slug).catch(() => false) : false;
     if (stale && !building && !isMock()) builder.bookAfter?.(slug); /* a missing or older read layer is written now, in the background */
+    { const tr = factsOf(t); if (tr) v.numbers = bookNumbers(tr); } /* the numbers chapter: today's fact sheet, this viewer's truth (a member's connected accounts) */
     return { book: v, building: building || stale, canEdit: member(t), readiness: BOOK.readiness(v, { products: (v.products?.heroes || []).length }),
       options: { comfort: COMFORT, narrators: NARRATORS, moods: MOODS, voices: VOICES, families: REF_FAMILIES, groups: GROUPS, channels: CHANNELS }, share: { page: `/${slug}/brand`, md: `/${slug}/brand.md`, json: `/${slug}/brand.json`, llms: `/${slug}/llms.txt`, zip: `/${slug}/brand-kit.zip`, pdf: `/${slug}/brand.pdf` } };
   };

@@ -785,11 +785,14 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       out.set(k, { key: k, label: SELL_LABEL[k], v: own.length ? `${own.length} listed${city}${own.some((x) => x.inStock === false) ? `, ${own.filter((x) => x.inStock === false).length} out of stock` : ''}` : `Not listed${city}`, url: own[0]?.url || null, found: own.length > 0 }); }
     return [...out.values()].sort((a, b) => (b.found ? 1 : 0) - (a.found ? 1 : 0));
   }
-  async function checkData(slug, { heal: doHeal = true, opened = false } = {}) {
+  async function checkData(slug, { heal: doHeal = true, opened = false, member = false } = {}) {
     if (doHeal) heal(slug).catch(() => {});
     if (opened) await checkOpened(slug).catch((e) => log.warn?.('[check] opened', slug, e.message));
-    const p = await packs.getJSON(slug, 'profile.json'), L = await packs.getJSON(slug, 'ledger.json', []); if (!p) return { error: 'not read yet' };
-    normalizeProfile(p);
+    const p0 = await packs.getJSON(slug, 'profile.json'), L = await packs.getJSON(slug, 'ledger.json', []); if (!p0) return { error: 'not read yet' };
+    normalizeProfile(p0);
+    /* the team sees what its connected accounts say (2.1): Shopify's best sellers by units lead the product list, and the connected
+       facts answer what the site read only guessed. A visitor sees the site read */
+    const live = member ? await packs.getJSON(slug, 'private/profile-live.json', null).catch(() => null) : null, p = live ? withLive(p0, live) : p0;
     const prods = (p.catalog?.products || []).filter((x) => !NOT_PRODUCT.test(x.title || ''));
     const hero = new Set((p.catalog?.hero || []).filter((h) => prods.some((x) => x.handle === h)));
     if (!hero.size) prods.slice(0, 4).forEach((x) => hero.add(x.handle));
@@ -823,7 +826,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       sells: await sellsOf(slug, p),
       company: [
         { key: 'founders', label: 'Founders', v: (p.company?.founders || []).map((x) => (typeof x === 'string' ? x : x?.name)).filter(Boolean).join(', '), type: 'text', ...srcOf(L, ['company.founders', 'company.founder']) },
-        { key: 'founded', label: 'Founded', v: String((typeof p.company?.founded === 'object' ? p.company?.founded?.v : p.company?.founded) || ''), type: 'text', ...srcOf(L, ['company.founded']) }
+        { key: 'founded', label: 'Founded', v: String((typeof p.company?.founded === 'object' ? p.company?.founded?.v : p.company?.founded) || ''), type: 'text', ...srcOf(L, ['company.founded']),
+          /* two sources, two years: both are shown and the team picks (2.8), never one picked silently */
+          ...(() => { const ys = [...new Set((p.company?.foundedAll || []).map((x) => (String(x.v).match(/\b(19|20)\d{2}\b/) || [])[0]).filter(Boolean))]; return ys.length > 1 ? { options: ys, hint: `Sources disagree (${ys.join(' or ')}): which is right?` } : {}; })() }
       ]
     };
   }

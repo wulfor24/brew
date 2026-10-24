@@ -12,7 +12,7 @@ const words = (s, drop = new Set()) => new Set((String(s || '').toLowerCase().re
 const COUNT = /^\d{1,3}(?:,\d{2,3})*$|^\d+$/; /* "12", "1,337", "1,23,456": a plain count, nothing else */
 const toN = (x) => +String(x).replace(/,/g, '');
 /* a value's kind: a plain count, a share, money or a return ("2.1x"); anything else (lists, "0 of 5") is never swapped */
-const kindOf = (v) => (COUNT.test(v) ? 'count' : /^-?\d+(?:\.\d+)?%$/.test(v) ? 'pct' : /^[₹$£€]\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:L|Cr|k|K|M))?$/.test(v) ? 'money' : /^\d+(?:\.\d+)?x$/i.test(v) ? 'x' : null);
+const kindOf = (v) => (COUNT.test(v) ? 'count' : /^-?\d+(?:\.\d+)?%$/.test(v) ? 'pct' : /^[₹$£€]\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:L|Cr|k|K|M))?$/.test(v) ? 'money' : /^\d+(?:\.\d+)?x$/i.test(v) ? 'x' : /^\d+\.\d+$/.test(v) ? 'dec' : null); /* dec: a plain decimal measure ("2.4" ad frequency) */
 const numOf = (v) => +String(v).replace(/[^\d.-]/g, '');
 const fmt = (n, like) => (!/,/.test(like) && n >= 1000 ? String(n) : /,\d{2},/.test(like) ? n.toLocaleString('en-IN') : n.toLocaleString('en-US')); /* written the way the card wrote it */
 
@@ -29,7 +29,7 @@ export function countsOf(facts = {}, rows = [], brandName = '') {
      money, shares and returns too. The account is the truth, so it wins over any site count of the same words */
   for (const f of Object.values(facts || {})) { if (!f?.connected || f.stale || f.demo) continue; const v = String(f.v ?? '').trim(), kind = kindOf(v); if (!kind) continue;
     const n = kind === 'count' ? toN(v) : numOf(v); if (!Number.isFinite(n)) continue;
-    for (const label of [String(f.label || ''), ...(f.names || [])]) { const w = words(label, drop); if (!w.size) continue; out.set([...w].sort().join(' '), { words: w, n, v, kind, t: Infinity, owner: null, live: true }); } }
+    for (const label of [String(f.label || ''), ...(f.names || [])]) { const w = words(label, drop); if (!w.size) continue; out.set([...w].sort().join(' '), { words: w, n, v, kind, t: Infinity, owner: null, live: true, phrase: String(label).toLowerCase().replace(/\s*\([^)]*\)\s*$/, '').trim() }); } }
   return [...out.values()];
 }
 /* the one count a row's label names: the same words first ("Live Meta ads" is the brand's own, not "Pilgrim: live Meta ads"),
@@ -62,11 +62,35 @@ export function freshCounts(card, counts, { live = false } = {}) {
     if (m.n === toN(v)) return r;
     if (!m.owner && others.length) return r;
     const was = toN(v); if (!m.n || !was || Math.max(m.n, was) > 5 * Math.min(m.n, was)) return r; /* to or from none changes what the card means: it waits for its rewrite */ /* a jump this big is another measure or a read that failed, never a quiet edit */ const now = fmt(m.n, v); swaps.push({ from: v, to: now, key: words(r[0]) }); return [r[0], now, ...r.slice(2)]; });
-  if (!swaps.length) return card;
-  const fix = (x) => swaps.reduce((t, s) => swapIn(t, s.from, s.to, s.key), x);
+  /* a connected measure named in the card's words with another number of its kind ("ad frequency is 3.1" when the account says
+     2.4, Arata 23 Oct) takes the account's number: the fact sheet is the one truth for that metric, on every card and screen */
+  const textSwaps = live && !/^live-/.test(String(card.id || '')) ? metricSwaps(card, counts) : []; /* a connector's own card is written from the account itself (one ad's frequency is not the campaign's) */
+  if (!swaps.length && !textSwaps.length) return card;
+  const fix = (x) => textSwaps.reduce((t, s) => s.apply(t), swaps.reduce((t, s) => swapIn(t, s.from, s.to, s.key), x));
   const out = { ...card, rows, title: fix(card.title), sub: fix(card.sub) };
   if (card.detail) out.detail = { ...card.detail, why: (card.detail.why || []).map(fix), how: (card.detail.how || []).map(fix) };
   if (card.because) out.because = fix(card.because);
-  out.liveNums = [...new Set([...(card.liveNums || []), ...swaps.map((s) => s.to)])]; /* the proof sheet backs the new numbers */
+  out.liveNums = [...new Set([...(card.liveNums || []), ...swaps.map((s) => s.to), ...textSwaps.map((s) => s.to)])]; /* the proof sheet backs the new numbers */
+  return out;
+}
+
+/* the numbers of one kind in a sentence, as written: "18%", "₹2,084", "3.1x", and a plain decimal ("frequency 3.1") */
+const KIND_RE = { pct: /(?<![\d.])-?\d+(?:\.\d+)?\s?%/g, money: /[₹$£€]\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:L|Cr|k|K|M)\b)?/g, x: /(?<![\d.,₹$£€])\d+(?:\.\d+)?\s?x\b/gi, dec: /(?<![\d.,₹$£€])\d+\.\d+(?![\d%x]|\.\d)/g };
+const same = (a, b, kind) => (kind === 'money' ? numOf(a) === numOf(b) : Math.abs(numOf(a) - numOf(b)) < 0.05);
+/* → [{ to, apply(text) }]: in each sentence that names a connected measure by one of its exact phrases and carries exactly one
+   number of that measure's kind, a different number becomes the account's. Two numbers ("from 18% to 25%") are a plan, never touched */
+export function metricSwaps(card, counts = []) {
+  const live = (counts || []).filter((c) => c.live && c.phrase && c.phrase.length >= 4 && ['pct', 'money', 'x', 'dec'].includes(c.kind));
+  if (!live.length) return [];
+  const out = [];
+  for (const c of live) {
+    const name = new RegExp(`\\b${esc(c.phrase)}\\b`, 'i');
+    const apply = (text) => (typeof text !== 'string' ? text : text.split(/(?<=[.!?])\s+/).map((sent) => { if (!name.test(sent)) return sent;
+      const re = new RegExp(KIND_RE[c.kind].source, 'g'), hits = sent.match(re) || []; if (hits.length !== 1 || same(hits[0], c.v, c.kind)) return sent;
+      if (c.kind === 'money' && hits[0].trim()[0] !== String(c.v).trim()[0]) return sent; /* another currency is another measure */
+      return sent.replace(hits[0], String(c.v)); }).join(' '));
+    const all = [card.title, card.sub, card.because, ...(card.detail?.why || []), ...(card.detail?.how || [])];
+    if (all.some((t) => typeof t === 'string' && apply(t) !== t)) out.push({ to: String(c.v), apply });
+  }
   return out;
 }

@@ -151,7 +151,8 @@ export default {
         m.codFail = 100 * settled.filter((o) => o.cancelledAt || !paid(o)).length / settled.length; m.codCancel = 100 * settled.filter((o) => o.cancelledAt).length / settled.length; m.codUnpaid = m.codFail - m.codCancel; }
       if (withCust) { const cs = new Map(); for (const o of live) if (o.customer?.id) cs.set(o.customer.id, o.customer.numberOfOrders); if (cs.size >= 30) m.repeat = 100 * [...cs.values()].filter((n) => +n >= 2).length / cs.size; }
       const units = new Map(); for (const o of o30) for (const li of o.lineItems.nodes) units.set(li.title, (units.get(li.title) || 0) + li.quantity);
-      m.top = [...units.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([title, u]) => ({ title, units: u }));
+      m.units = [...units.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([title, u]) => ({ title, units: u })); /* every product that sold, for the product list and the shelf (2.2) */
+      m.top = m.units.slice(0, 5);
     }
     /* where the orders ship, 90 days: the brand's real selling market (market.js), which beats the read's guess from the site.
        Its own query (an address field may need Shopify's protected-data approval): a refusal leaves every other number alone */
@@ -203,6 +204,9 @@ export default {
       m.shipTo?.length && L('shopify.orders.countries', 'Orders by shipping country, 90 days', m.shipTo.map(([x, s]) => `${x} ${s.toFixed(0)}%`).join('; '), m.shipToN, src),
       has(m.products) && L('shopify.products.active', 'Active products (Shopify admin)', n0(m.products), m.products, src), /* beats the public products.json count on the fact sheet (facts-desk.js PRECEDENCE) */
       has(m.oos) && L('shopify.products.out_of_stock', 'Out of stock products (Shopify admin)', n0(m.oos), m.oos, src), /* beats the site's out-of-stock count (facts-desk.js PRECEDENCE) */
+      m.units?.length > 5 && L('shopify.units.30d', m.sampled ? `Units sold by product, last ${m.readDays} days (newest orders)` : 'Units sold by product, 30 days', m.units.map((x) => `${x.title} (${x.units})`).join('; '), m.units.reduce((t, x) => t + x.units, 0), src),
+      m.checkoutApp && L('shopify.checkout.app', 'Checkout app most orders come through, 30 days', `${m.checkoutApp.name} (${pct(m.checkoutApp.share)} of orders)`, m.checkoutApp.share, src), /* the brand's tools (2.4): its cart reminders live there */
+      m.low?.length && L('shopify.stock.low', 'Products sold out or with 5 or fewer units left (Shopify admin)', m.low.slice(0, 12).map((x) => `${x.title} (${x.left <= 0 ? 'sold out' : `${n0(x.left)} left`})`).join('; '), m.low.length, src),
       m.top?.length && L('shopify.top.30d', m.sampled ? `Best sellers by units, last ${m.readDays} days (newest orders)` : 'Best sellers by units, 30 days', m.top.map((x) => `${x.title} (${x.units})`).join('; '), null, src)].filter(Boolean);
     if (cur) ledger.push(L('shopify.currency', 'Shop currency (Shopify admin)', cur, null, src)); /* beats the site's /meta.json currency on the fact sheet */
     if (cur) for (const r of ledger) r.cur = cur;

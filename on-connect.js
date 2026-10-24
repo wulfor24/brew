@@ -22,8 +22,12 @@ export const bandOf = (rev30) => rev30 == null ? null : rev30 < 1e5 ? 'early' : 
 /* the profile fields a connected account corrects, laid over profile.json for the team (private/profile-live.json) */
 export function profileLive(rows, profile = {}) {
   const L = by(rows), out = { at: new Date().toISOString(), from: [...new Set(Object.keys(L).map((k) => k.split('.')[0]))] };
-  const top = topSellers(L['shopify.top.30d']?.v), hero = [...new Set(top.map((x) => handleOf(x.title, profile.catalog?.products || [])).filter(Boolean))];
-  if (hero.length) { out.hero = hero.slice(0, 8); out.bestSellers = top.slice(0, 8); }
+  const top = topSellers((L['shopify.units.30d'] || L['shopify.top.30d'])?.v), hero = [...new Set(top.map((x) => handleOf(x.title, profile.catalog?.products || [])).filter(Boolean))]; /* every product that sold, ranked by units (2.2) */
+  if (hero.length) { out.hero = hero.slice(0, 12); out.bestSellers = top.slice(0, 12); }
+  /* the tools the brand really runs (2.4): its checkout app holds abandoned carts, its email tool its flows */
+  const tools = {}; const app = /^(.*?)\s*\(/.exec(String(L['shopify.checkout.app']?.v || ''))?.[1]; if (app) tools.checkout = app;
+  if (L['klaviyo.list'] || L['klaviyo.flows.live']) tools.email = 'Klaviyo';
+  if (Object.keys(tools).length) out.tools = tools;
   if (L['shopify.aov']) out.aov = { v: L['shopify.aov'].v, n: num(L['shopify.aov']) };
   if (L['shopify.revenue.30d']) out.revenueBand = bandOf(num(L['shopify.revenue.30d']));
   if (L['shopify.cod.share']) out.codShare = num(L['shopify.cod.share']);
@@ -36,7 +40,7 @@ export function profileLive(rows, profile = {}) {
 /* the profile a member's rewrite writes from: best sellers lead the catalog's heroes, and the corrected fields ride along */
 export function withLive(profile, live) {
   if (!profile || !live) return profile;
-  const p = { ...profile, live: { aov: live.aov, revenueBand: live.revenueBand, codShare: live.codShare, channelMix: live.channelMix, adsLive: live.adsLive, emailFlows: live.emailFlows, bestSellers: live.bestSellers } };
+  const p = { ...profile, live: { aov: live.aov, revenueBand: live.revenueBand, codShare: live.codShare, channelMix: live.channelMix, adsLive: live.adsLive, emailFlows: live.emailFlows, bestSellers: live.bestSellers, tools: live.tools } };
   if (live.hero?.length && p.catalog) p.catalog = { ...p.catalog, hero: [...new Set([...live.hero, ...(p.catalog.hero || [])])].slice(0, 12), order: 'best sellers (Shopify, 30 days)' };
   return p;
 }

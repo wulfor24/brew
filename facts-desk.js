@@ -379,3 +379,13 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
   const stop = () => T.timers.forEach((t) => { clearTimeout(t); clearInterval(t); });
   return { view, edit, daily, connected, memberFacts, truth, sheet, start, stop, tick };
 }
+
+/* the Brand Book's numbers chapter: the stats every maker quotes, read from the viewer's truth (truthOf) each time the book
+   opens, so the book, the fact sheet and the cards always say the same number with the same source and day. Prices stay on the
+   fact sheet (one per product); counts, rates, accounts, reviews and ads are here, connected ones first */
+export function bookNumbers(truth = {}, { max = 40 } = {}) {
+  const rows = Object.entries(truth || {}).filter(([, f]) => SHOWN(f) && f.v != null && String(f.v).length <= 160 && !/^(price|mrp)\./.test(f.key || '') && /\d/.test(String(f.v)))
+    .map(([k, f]) => ({ key: f.key || k, group: groupOf(k, f), label: f.label, v: String(f.v), src: f.src || null, at: f.at || null, ...(f.connected ? { connected: f.connected } : {}), ...(f.stale ? { stale: true } : {}) }));
+  const order = new Map(GROUPS.map(([g], i) => [g, g === 'accounts' ? -1 : i]));
+  return rows.sort((a, b) => (order.get(a.group) ?? 9) - (order.get(b.group) ?? 9)).slice(0, max);
+}

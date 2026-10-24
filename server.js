@@ -156,7 +156,8 @@ const claudeTool = async (prompt, schema, max = 3000, name = 'reply') => {
 };
 // the active brand's fact sheet: every number Claude writes must come from it, or QA drops the card
 const FACT_BRIEF = () => B()?.factBrief || '';
-const cardBrief = (c, role) => `${FACT_BRIEF()}\n\nCard (by the ${c.agent} agent, from ${c.src || 'the move documents'}):\nTitle: ${c.title}\nBody: ${c.sub}\n${(c.rows || []).map((r) => `- ${r[0]}: ${r[1]}`).join('\n')}\nThe person reading is the ${role || 'founder'}.`;
+/* brief: the viewer's own fact brief (a member's truth, feed-service packFor), else the public one */
+const cardBrief = (c, role, brief) => `${brief || FACT_BRIEF()}\n\nCard (by the ${c.agent} agent, from ${c.src || 'the move documents'}):\nTitle: ${c.title}\nBody: ${c.sub}\n${(c.rows || []).map((r) => `- ${r[0]}: ${r[1]}`).join('\n')}\nThe person reading is the ${role || 'founder'}.`;
 
 // ---------- Vertex Gemini image ----------
 let tok = { v: '', exp: 0 };
@@ -815,7 +816,7 @@ const brandRoutes = async (req, res, u) => {
     return send(res, 200, r), true; }
   if (what === 'retry' && req.method === 'POST') return send(res, 200, await builder.retry(slug)), true;
   if (what === 'pro' && req.method === 'POST') { const me = auth.user(req); return send(res, 200, await builder.goPro(slug, { by: me?.email || v.email || null })), true; } // the paused build carries on to every move
-  if (what === 'check' && req.method === 'GET') return send(res, 200, await builder.checkData(slug, { heal: !auth.signinOn() || !!auth.user(req), opened: !!auth.user(req) && !!(v.member || v.eligible) })), true; // a paid repair of the saved read only for someone signed in; the team opening it gets the full wait from now (build.js checkOpened)
+  if (what === 'check' && req.method === 'GET') return send(res, 200, await builder.checkData(slug, { heal: !auth.signinOn() || !!auth.user(req), opened: !!auth.user(req) && !!(v.member || v.eligible), member: !!auth.user(req) && !!v.member })), true; // a paid repair of the saved read only for someone signed in; the team opening it gets the full wait from now (build.js checkOpened)
   if (what === 'check' && req.method === 'POST') { const g = await signGate(); if (g) return send(res, 401, g), true; const b = await readBody(req); return send(res, 200, await builder.applyCheck(slug, b)), true; }
   if (what === 'moves') { const p = await loadBrand(slug); const ids = v.member ? await connectors.connectedIds(slug) : [], pm = v.member ? Object.fromEntries(Object.entries((await packs.getJSON(slug, 'private/moves.json', {})) || {}).filter(([k, x]) => connectedOk(x?.meta, ids, +k))) : {}, ms = { ...(p?.moveDocs || {}), ...Object.fromEntries(Object.entries(pm || {}).map(([k, x]) => [k, p?.fitMove ? p.fitMove(x) : x])) };
     const stale = Object.fromEntries(Object.entries((await packs.getJSON(slug, 'updates.json', null))?.stale || {}).filter(([, x]) => (v.member || !x.private) && staleTrue(x, p))), ppdf = v.member ? await packs.getJSON(slug, 'private/pdfs.json', {}) : {};

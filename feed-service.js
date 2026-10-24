@@ -270,7 +270,7 @@ export function createFeedService(o) {
   /* every card's plan (card-plan.js): the ground-work steps toward its action, with its first draft as v0. Worked out from
      the card itself, so saved cards get it without new spend; every prompt that reads a card reads its plan too */
   const planOfCard = (c) => { if (!c?.id || !c.title) return null; try { return planFor(c, { draft: draftView(draftFor(c, B()?.firstDrafts), c) }); } catch (e) { log.warn?.('[plan]', e.message); return null; } };
-  const cardBrief = (c, role) => `${o.cardBrief(c, role)}${planPrompt(planOfCard(c))}`;
+  const cardBrief = (c, role, t = null) => `${o.cardBrief(c, role, t?.member ? packFor(t)?.factBrief : null)}${planPrompt(planOfCard(c))}`; /* a member's writers quote the team's truth (their connected accounts), a visitor's the public sheet */
   /* demo mode: a request from someone who may not make fresh work runs every AI path as mock (nothing spent, the plain
      version shown); the background clock and the team's requests are unchanged */
   const isMock = () => !!o.isMock?.() || demoReq(), spend = (k, n) => !demoReq() && (o.spend ? o.spend(k, undefined, n) : true);
@@ -991,7 +991,7 @@ export function createFeedService(o) {
   const quotedOf = () => { const pages = new Map((B()?.config?.catalogPages || []).map((x) => { try { const u = new URL(x.url); return [u.hostname.replace(/^www\./, '') + u.pathname.replace(/\/$/, ''), x.handle]; } catch { return ['', null]; } }));
     return new Set(Object.values(B()?.facts || {}).filter((f) => f && f.kind === 'price').map((f) => { const src = String(f.src || '').replace(/^www\./, '').replace(/\/$/, ''); return pages.get(src) || (/\/products\//.test(src) ? src.split('/').pop() : null); }).filter(Boolean)); };
   const nameOfItem = (i) => { const f = /^[\w.-]+$/.test(String(i?.title || '')) ? B()?.facts?.[i.title] : null; return f?.label ? String(f.label).replace(/\s+(price|mrp)$/i, '') : String(i?.title || ''); }; /* a removed product saved as its fact key reads as its name */
-  const unitsOf = (t) => { const e = t?.member ? t.liveLedger?.['shopify.top.30d'] : null; return e && !e.demo && !e.stale ? unitsFrom(e.v) : new Map(); }; /* the team's own Shopify, never a simulated one */
+  const unitsOf = (t) => { const e = t?.member ? t.liveLedger?.['shopify.units.30d'] || t.liveLedger?.['shopify.top.30d'] : null; /* every product that sold, else the top 5 */ return e && !e.demo && !e.stale ? unitsFrom(e.v) : new Map(); }; /* the team's own Shopify, never a simulated one */
   const salesRank = (x, t, quoted) => salesRank0(x, { rank: B()?.catalogRank || {}, units: unitsOf(t), quoted });
   const liveCard = (wid, e, t = null) => {
     const at = new Date(e.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -1108,7 +1108,7 @@ export function createFeedService(o) {
     (async () => {
       setState(t, child, 'qa');
       let vs, how = 'mock';
-      if (!isMock() && spend('text')) { try { const j = await claudeJSON(`${cardBrief(parent, seatLine(t.viewer))}\n\nThe reader hearted this card. Write ONE new feed card in the same direction, a different cut (persona, format or hook) from the card above. JSON: {"variants":[{"angle":"2-3 words","title":"under 60 chars, point first, plain words","sub":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names; numbers only from the facts"}]}`); vs = j.variants; how = 'live'; } catch (e) { log.warn('[heart]', e.message); } }
+      if (!isMock() && spend('text')) { try { const j = await claudeJSON(`${cardBrief(parent, seatLine(t.viewer), t)}\n\nThe reader hearted this card. Write ONE new feed card in the same direction, a different cut (persona, format or hook) from the card above. JSON: {"variants":[{"angle":"2-3 words","title":"under 60 chars, point first, plain words","sub":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names; numbers only from the facts"}]}`); vs = j.variants; how = 'live'; } catch (e) { log.warn('[heart]', e.message); } }
       vs = (vs || mockVariants(parent)).slice(0, 1).map((v) => ({ ...v, title: clean(v.title), sub: clean(v.sub) })).filter((v) => !BANNED.test(v.title + v.sub) && variantOk(parent, v));
       child.variants = vs.length ? vs : mockVariants(parent).slice(0, 1); child.loading = false;
       child.sub = how === 'live' ? `Written just now from “${parent.title}”. Redo it in the jam if it isn’t right.` : `Same idea as “${parent.title}”, one new cut. Redo it in the jam if it isn’t right.`;
@@ -1137,7 +1137,7 @@ export function createFeedService(o) {
   const makeVersions = async (t, c, prompt, extra = '') => {
     if (!isMock() && spend('text')) {
       try {
-        const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer))}\n\nThe reader wants: "${prompt || 'a new angle'}". ${extra}\n${promptBlock(t, c.agent === 'brew' ? 'creative' : c.agent)}\nReply as the ${AGENT[c.agent] || 'agent'}: one short line, then ONE version of this card that do exactly that. Plain words, only numbers from the facts.`,
+        const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer), t)}\n\nThe reader wants: "${prompt || 'a new angle'}". ${extra}\n${promptBlock(t, c.agent === 'brew' ? 'creative' : c.agent)}\nReply as the ${AGENT[c.agent] || 'agent'}: one short line, then ONE version of this card that do exactly that. Plain words, only numbers from the facts.`,
           { type: 'object', required: ['line', 'versions'], properties: { line: { type: 'string', description: 'Under 20 words' }, versions: { type: 'array', items: { type: 'object', required: ['angle', 'title', 'sub'], properties: { angle: { type: 'string', description: '2-3 words' }, title: { type: 'string', description: 'Under 60 characters' }, sub: { type: 'string', description: 'Under 100 characters, one exact number from the facts' } } } } } }, 1500, 'versions');
         const vs = (j.versions || []).slice(0, 1).map((v) => ({ ...v, title: clean(v.title), sub: clean(v.sub) })).filter((v) => !BANNED.test(v.title + v.sub) && qaCheck({ ...c, ...v }).every((x) => x.ok || x.k === 'Names a number'));
         if (vs.length) return { line: clean(j.line || 'Here it is.'), versions: vs, live: true };
@@ -1491,7 +1491,7 @@ export function createFeedService(o) {
         try {
           const card = t.cards.get(w.cardId) || { title: w.title, sub: curV(w)?.sub || '', agent: w.agent };
           const convo = (w.thread || []).filter((m) => m.from !== 'system').slice(-8).map((m) => `${m.from === 'me' ? 'Colleague' : m.who || (m.from === 'ai' ? 'AI' : 'Brew')}: ${m.body}`).join('\n');
-          r = await claudeTool(`${cardBrief({ ...card, ...curV(w), agent: w.agent }, seatLine(t.viewer))}\n\nYou are ${who}, ${BN()}'s ${role}, replying in Slack ${w.with.channel || ''} to a colleague about this work. You care most about ${ROLE_ANGLE[id] || `getting it right for ${BN()}`}.\nThe brief now:\n"""\n${String(w.doc?.md || '').slice(0, 2500)}\n"""\nThe thread so far:\n${convo || '(nothing yet)'}\n\nTheir latest message: "${last}"\n\nReply like a busy, friendly teammate: 1 to 3 short sentences, plain words, no greetings. Answer exactly what they asked, from your role, with one concrete point taken from the brief or the card (a number, a condition, a risk). Never invent numbers. Then decide the verdict: "approve" only if they asked for a sign-off and nothing in your area blocks it (if you already raised a point and they answered it, approve); "question" if you need one thing answered first; "changes" if something must change; "answer" if they asked a question that is not a sign-off.`,
+          r = await claudeTool(`${cardBrief({ ...card, ...curV(w), agent: w.agent }, seatLine(t.viewer), t)}\n\nYou are ${who}, ${BN()}'s ${role}, replying in Slack ${w.with.channel || ''} to a colleague about this work. You care most about ${ROLE_ANGLE[id] || `getting it right for ${BN()}`}.\nThe brief now:\n"""\n${String(w.doc?.md || '').slice(0, 2500)}\n"""\nThe thread so far:\n${convo || '(nothing yet)'}\n\nTheir latest message: "${last}"\n\nReply like a busy, friendly teammate: 1 to 3 short sentences, plain words, no greetings. Answer exactly what they asked, from your role, with one concrete point taken from the brief or the card (a number, a condition, a risk). Never invent numbers. Then decide the verdict: "approve" only if they asked for a sign-off and nothing in your area blocks it (if you already raised a point and they answered it, approve); "question" if you need one thing answered first; "changes" if something must change; "answer" if they asked a question that is not a sign-off.`,
             { type: 'object', required: ['reply', 'verdict'], properties: { reply: { type: 'string', description: '1 to 3 short sentences, in character' }, verdict: { type: 'string', description: 'approve, question, changes or answer' } } }, 700, 'colleague');
           if (r?.reply) r = { reply: clean(r.reply), verdict: String(r.verdict || '').toLowerCase() }; else r = null;
         } catch (e) { log.warn('[colleague]', e.message); r = null; }
@@ -1516,7 +1516,7 @@ export function createFeedService(o) {
     if (EVIDENCE_ASK.test(body)) { const pa = proofSay(t, w.cardId); if (pa) return pa; } /* "what's the evidence?": the card's own proof */
     if (!isMock() && spend('text')) { try { const acct = acctRows(t).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
       const j = await answerGrounded({ ai: (pr, sc, mx, tag) => claudeTool(pr, sc, mx, tag), question: body, who: AGENT[w.agent] || 'Brew',
-        evidence: `${cardBrief({ ...(t.cards.get(w.cardId) || {}), ...curV(w), agent: w.agent }, seatLine(t.viewer))}${acct.length ? `\n\nConnected accounts:\n${acct.map((e) => `- ${e.label}: ${e.v}`).join('\n')}` : '\n\nConnected accounts: none with results for this yet.'}` });
+        evidence: `${cardBrief({ ...(t.cards.get(w.cardId) || {}), ...curV(w), agent: w.agent }, seatLine(t.viewer), t)}${acct.length ? `\n\nConnected accounts:\n${acct.map((e) => `- ${e.label}: ${e.v}`).join('\n')}` : '\n\nConnected accounts: none with results for this yet.'}` });
       if (j.answer) return clean(j.answer); } catch (e) { log.warn('[answer]', e.message); if (e.billing) return 'I can’t answer right now: Brew’s writing is paused for a while. Your question stays here in the jam; ask again later, or tag a teammate.'; } }
     return 'I couldn’t answer that just now. Your question stays here in the jam; try again in a minute, or tag a teammate.'; /* never a canned yes (DUMMY.md: no canned answers) */
   };
@@ -1755,7 +1755,7 @@ export function createFeedService(o) {
      unzipped here, text as it is). A photo or MP4 dropped for the brand also joins its References, which the generators work
      from (the team only, like the References page). The text comes back to the sheet, which sends it on with step 2 */
   const teamNo = (t, what) => { const r = reqOf(t); return r?.member || process.env.DEMO_MODE === '1' ? null : { status: r?.email ? 403 : 401, error: `Only this brand’s team can ${what}.`, team: true }; };
-  mountBrandBook({ on, BOOK, GP, reqOf, meOf, isMock, spend: (k) => spend(k), ai: o.ai, builder, refreshPack: async (slug) => builder?.refreshPack?.(slug), render: (u) => fetcherWith(o.treg)(u).then((r) => r.html), log, DEFAULT_BRAND });
+  mountBrandBook({ on, BOOK, GP, reqOf, meOf, factsOf: (t) => packFor(t)?.facts || null, isMock, spend: (k) => spend(k), ai: o.ai, builder, refreshPack: async (slug) => builder?.refreshPack?.(slug), render: (u) => fetcherWith(o.treg)(u).then((r) => r.html), log, DEFAULT_BRAND });
   on('POST', '/api/brands/:slug/drop/read', async (b, t, p) => {
     const slug = t.brandId || DEFAULT_BRAND; if (p.slug !== slug) return { status: 400, error: 'This workspace is for another brand.' };
     const forBrand = b.dest === 'memory'; if (forBrand) { const no = teamNo(t, 'add to its memory'); if (no) return no; }
