@@ -33,8 +33,8 @@
     const made0 = (bd.takes || []).at(-1)?.studio?.spec || null, D = made0 ? { ...d.defaults, ...Object.fromEntries(Object.entries(made0).filter(([, v]) => v != null && v !== '')), count: 1, styles: d.defaults.styles?.includes(made0.style) || !made0.style ? d.defaults.styles : [made0.style, ...(d.defaults.styles || []).slice(0, 2)] } : d.defaults, X = d.context?.slots || {};
     Object.assign(S, { loading: false, jid: jam.id, bid: bd.id, boards: jam.boards.map((b) => b.id), products: d.products || [], slots: X, missing: d.context?.missing || [], blocked: D.blocked || {}, picks: D.styles || [],
       spec: { ...D, ask: D.ask || '', direction: D.direction || X.direction?.value || '', cast: D.cast || (X.cast?.shown && X.cast.value !== 'none' ? X.cast.label : X.cast?.value === 'none' ? 'No people' : null), ref: made0 ? made0.ref || null : X.reference?.value?.label || null, quality: D.quality || ((bd.takes || []).length ? 'standard' : 'preview') /* the first take is a cheap low-res preview of the idea (3.4); the full one comes after it looks right */ },
-      prefs: d.prefs || {}, kept: d.kept || {}, brand: d.context?.slots?.brand ? (window.B?.brand?.name || '') : '', busy: jam.busy || {}, made: (bd.takes || []).length > 0, failed: Object.values(jam.busy || {}).find((b) => b?.error)?.error || null }); /* a make that stopped says so after a reload too */
-    S.open = !ch.versions?.some((v) => v.studio) && !S.made; /* made already: the set-up folds into one line under the frame */
+      prefs: d.prefs || {}, kept: d.kept || {}, brand: d.context?.slots?.brand ? (window.B?.brand?.name || '') : '', busy: jam.busy || {}, made: !!ch.versions?.some((v) => v.studio) /* made here: a Studio version in this v1 jam */, earlier: (bd.takes || []).filter((x) => x.file).slice(-3).reverse().map((x) => ({ id: x.id, file: x.studio?.kind === 'video' ? (x.cover || x.poster || x.file) : x.file, video: x.studio?.kind === 'video', label: x.studio?.label || 'A take', at: x.at })), failed: Object.values(jam.busy || {}).find((b) => b?.error)?.error || null }); /* a make that stopped says so after a reload too */
+    S.open = !S.made; /* made already: the set-up folds into one line under the frame */
     paint(); price(); if (anyBusy()) poll();
   }
   const anyBusy = () => !!S && Object.values(S.busy || {}).some((b) => b && b.op && !b.error);
@@ -68,7 +68,7 @@
     pollT = setTimeout(async () => { if (S !== mine) return; const r = await api('GET', `/api/jam2/jams/${S.jid}`); if (S !== mine) return; if (!r?.jam) { pollT = setTimeout(poll, 6000); return; }
       S.busy = r.jam.busy || {}; S.boards = r.jam.boards.map((b) => b.id); const err = Object.values(S.busy).find((b) => b?.error);
       if (anyBusy()) { paint(); return poll(); }
-      const was = S.making; S.making = null; S.made = r.jam.boards.some((b) => (b.takes || []).length); if (err) S.failed = err.error; else S.failed = null;
+      const was = S.making; S.making = null; S.made = S.made || !err; /* made here once a take of this press lands */ if (err) S.failed = err.error; else S.failed = null;
       H.landed?.(S.chId, { failed: S.failed, was }); }, 3000); }
 
   /* ---------- the composer ---------- */
@@ -95,7 +95,8 @@
     const total = groups().filter((g) => g.kind === kind).reduce((a, g) => a + g.styles.length, 0), pl = S.plan, st = styleById(sp.style);
     /* who is on camera: only for a style that shows people (a motion clip or a packshot has none) */
     const castOn = setIds ? (setIds.map(styleById).some((x) => x && x.people && !['none'].includes(x.people))) : !!st && !!st.people && st.people !== 'none';
-    return `<div class="j2-studio cs">${S.gallery ? gallery() : ''}${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}
+    const early = !S.made && (S.earlier || []).length ? `<div class="cs-early"><small>Made earlier in Studio for this card · already paid for</small><div>${S.earlier.map((x) => `<figure><img src="${H.esc(srcOf(x.file))}" alt=""><figcaption><b>${H.esc(x.label)}</b>${x.video ? 'Video' : 'Picture'}</figcaption><button class="j2-chip" data-cs-land="${H.esc(x.id)}">Use it</button></figure>`).join('')}</div></div>` : '';
+    return `<div class="j2-studio cs">${S.gallery ? gallery() : ''}${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}${early}
       <div class="j2-st-top">${setIds && LISTING.has(S.recipe) ? `<div class="j2-seg"><button data-cs-mk="listing" class="${isAplus(setIds) ? '' : 'on'}">Listing images</button><button data-cs-mk="aplus" class="${isAplus(setIds) ? 'on' : ''}">Amazon A+</button></div><b>${setIds.length} ${isAplus(setIds) ? 'modules' : 'images'}</b>` : setIds ? `<b>${setIds.length} slides</b>` : `<div class="j2-seg"><button data-cs-kind="image" class="${kind === 'image' ? 'on' : ''}">Image</button><button data-cs-kind="video" class="${kind === 'video' ? 'on' : ''}">Video</button></div>`}<span class="j2-st-hint">${H.ic?.('sparkles', 's14') || ''}Filled in by Brew from the card and your Brand Book · change anything</span></div>
       <p class="cs-why cs-why-top">${H.esc(why('style'))}</p>
       <div class="j2-st-styles">${shown.map(tile).join('')}<button class="j2-sti more" data-cs-gal><span class="j2-sti-art">＋</span><b>Browse templates</b><small>${total} in all</small></button></div>
@@ -143,6 +144,7 @@
     const rm = e.target.closest('[data-cs-remember],[data-cs-forget]'); if (rm && S?.spec) { remember(rm.dataset.csRemember || rm.dataset.csForget, rm, !!rm.dataset.csForget); return true; }
     if (g('[data-cs-open]')) { S.open = true; paint(); setTimeout(() => document.querySelector('.cs-stage .cs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); return true; }
     if (g('[data-cs-redo]')) { go(true); return true; }
+    const ld = g('[data-cs-land]'); if (ld) { const mine = S; api('POST', `/api/jam2/jams/${S.jid}/studio/land`, { bid: S.bid, takeId: ld.dataset.csLand }).then((r) => { if (S !== mine) return; if (r?.error) return H.toast?.(H.esc(r.error)); S.made = true; S.open = false; H.landed?.(S.chId, {}); }); return true; }
     const sel = g('[data-cs-sel]'); if (sel) { S.sel = +sel.dataset.csSel; paint(); /* the frame swipes to the slide picked */
       requestAnimationFrame(() => toSel(true)); return true; }
     if (g('[data-cs-addslide]')) { S.adding = true; S.gallery = true; paint(); return true; }

@@ -155,6 +155,9 @@ export function mountJam2(d) {
     for (const [k, slot] of [['quality', 'quality'], ['size', 'size'], ['cast', 'cast'], ['product', 'products']]) if (kept[k] && cx.slots[slot]) cx.slots[slot].why = `You asked Brew to always use this for ${BN0}.`;
     return { defaults: d0, products: tiles, context: cx, prefs: pr, kept }; })); /* each slot filled from what Brew knows, with why */
   /* "Always use this for <brand>": a composer pick saved to the Brand Book's Studio picks (the brand's team only) */
+  /* a take made earlier in Studio (v2) for this card, landed in the v1 jam it now sits on: free, it is already paid for */
+  on('POST', '/api/jam2/jams/:jid/studio/land', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, b.bid), tk = bd && (bd.takes || []).find((x) => x.id === b.takeId);
+    if (!tk) return { error: 'That take is gone.' }; if (!j.v1ch) return { error: 'This jam isn’t linked to a v1 jam.' }; toV1(t, j, tk); return { ok: true }; }));
   on('POST', '/api/jam2/studio/remember', wrap(async (b, t) => { const w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can change what Brew always uses.' };
     const k = String(b.slot || ''), v = b.value ?? null, patch = k === 'quality' ? { quality: v } : k === 'size' ? { size: { kind: b.kind === 'video' ? 'video' : 'image', key: v } } : k === 'cast' ? { cast: v } : k === 'product' ? { photo: { name: b.name, img: v } } : null;
     if (!patch) return { error: 'That can’t be remembered.' };

@@ -136,3 +136,9 @@
 .cs-adj b{font-size:13.5px;font-weight:600;color:var(--fg,#111);line-height:1.4}
 .cs-adj .linkbtn{align-self:flex-start;font-size:12.5px}
 .cs-saved{font-size:12.5px;color:var(--ok,#1a7f37)}
+/* takes made earlier in Studio for the card (v2), offered here free */
+.cs-early small{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-3,#777)}
+.cs-early>div{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
+.cs-early figure{margin:0;width:104px;display:flex;flex-direction:column;gap:4px}
+.cs-early img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:10px;background:var(--surface-2,#eee)}
+.cs-early figcaption{font-size:11px;color:var(--fg-3,#777);line-height:1.3}.cs-early figcaption b{display:block;color:var(--fg,#111)}
