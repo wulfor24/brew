@@ -83,3 +83,8 @@ test('the plan’s copy of the first draft keeps its product, so Studio sets up 
   assert.match(cp, /copy: draft\.copy \|\| '', product: draft\.product \|\| null/);
   assert.match(fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8'), /const dp = ch\.pkg\?\.draft\?\.product \|\| \(ch\.v0 === 'draft' \? o\.planOf\?\.\(t, c\)\?\.draft\?\.product : null\)/);
 });
+
+test('the draft view keeps the product its pictures show', async () => {
+  const { draftView } = await import('../drafts-bg.js');
+  assert.equal(draftView({ as: 'carousel', kind: 'stories', slides: [{ image: 'gen/a.jpg' }], product: 'Anti-Hair Fall Intensive Shampoo', title: 'x' }).product, 'Anti-Hair Fall Intensive Shampoo');
+});
