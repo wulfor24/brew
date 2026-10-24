@@ -53,7 +53,7 @@ export function mountJam2(d) {
   /* a job also leaves a mark on the jam (saved with it): after a restart, a mark with no job running says the job was cut off */
   const tidyLabel = (s) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 40);
   /* what a person reads when a make fails: plain words, never a model id or a provider's status code */
-  const plainErr = (e) => { const m = String(e?.message || e || ''); if (e?.moderated || /\bnsfw\b|content safety|safety (filter|restriction)|moderat/i.test(m)) return 'The image makers’ safety filters refused this one (they sometimes misread hair, skin or close-ups). Nothing was charged for it. Press it again, or try another style or drop the reference.';
+  const plainErr = (e) => { const m = String(e?.message || e || ''); if (e?.plain) return m.slice(0, 300); /* already said for a person */ if (e?.moderated || /\bnsfw\b|content safety|safety (filter|restriction)|moderat/i.test(m)) return 'The image makers’ safety filters refused this one (they sometimes misread hair, skin or close-ups). Nothing was charged for it. Press it again, or try another style or drop the reference.';
     if (/still being made after/i.test(m)) return 'It’s taking longer than usual. It will land here on its own; nothing is paid twice.';
     return m.replace(/\bHiggsfield\s+[a-z0-9-]+(?:\/[a-z0-9.-]+)+\s*(failed|error|canceled|cancelled)?:?\s*/gi, '').slice(0, 240) || 'That didn’t come through. Press it again.'; };
   const runBg = (t, jam, bid, op, fn, mark = {}) => { const k = `${jam.id}:${bid}`; if (busy.get(k)?.op && !busy.get(k).error) return false; busy.set(k, { op, at: Date.now() }); (jam.running ||= {})[bid] = { ...mark, op, at: Date.now() };
