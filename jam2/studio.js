@@ -129,7 +129,8 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     if (st.job === 'product-shot') return (shot.usd ?? 0.14) * 1.5 * (ctx.tier === 'premium' ? 2 : ctx.tier === 'preview' ? 0.3 : 1); /* Flare 4K ≈ 2× 2K; 1K preview ≈ 0.3× */ /* one take, a retry about half the time */
     if (st.job === 'type-poster' || st.job === 'brand-graphic') { const o = hf.pick(st.job); const e = await hf.estimate(o.id, { ...o.input, prompt: 'a poster with the brand offer in large type for a product ad', aspect_ratio: hf.nearestRatio(o.id, size.ratio) }); return (e.usd ?? 0.1) * 1.5; /* a retry about half the time */ }
     if (st.job === 'product-motion') { const o = hf.pick('product-motion'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', image_url: 'https://brew.joinsquareup.com/x.jpg', duration: seconds || 5 }); return (shot.usd ?? 0.14) * 1.5 + (e.usd ?? 0.11 * (seconds || 5)); }
-    if (st.job === 'video-restyle') { const o = hf.pick('video-restyle'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', video_url: 'https://brew.joinsquareup.com/x.mp4', image_urls: ['https://brew.joinsquareup.com/x.jpg'] }); return e.usd ?? 0.25 * (seconds || 10); }
+    if (st.job === 'video-restyle') { const o = hf.pick('video-restyle'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', video_url: ctx.ref?.video ? engines.pub(ctx.ref.video) : 'https://brew.joinsquareup.com/x.mp4', image_urls: [ctx.product?.img ? engines.pub(ctx.product.img) : 'https://brew.joinsquareup.com/x.jpg'] }); /* priced on the real reference: Higgsfield charges by its length */
+      if (e.usd == null) { ctx.priceNote = 'Higgsfield couldn’t price this one exactly, so this is Brew’s estimate from its usual rate; the real charge can differ.'; return 0.25 * (seconds || 10); } return e.usd; }
     if (st.job === 'viral-short') { const o = hf.pick('viral-short', ctx.tier || 'default'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', image_urls: ['https://brew.joinsquareup.com/x.jpg'], duration: seconds || 30 }); return e.usd ?? 0.32 * (seconds || 30); }
     if (st.job === 'ugc-video') { const o = hf.pick('ugc-video'); const e = await hf.estimate(o.id, { ...o.input, prompt: 'p', image_urls: ['https://brew.joinsquareup.com/x.jpg'], duration: seconds || 10 }); return e.usd ?? 0.3 * (seconds || 10); }
     return 0.14;
@@ -149,6 +150,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     let note = null; if (st.allSides && ctx.product?.img) { const prof = await ensureProfile(ctx);
       if (prof && !(prof.sides || []).some((x) => /back/.test(x))) note = 'No photo shows its back yet, so the back would be drawn by AI. Add one in Brand Book → Products → Add photos.'; }
     const line = `${n > 1 ? `${n} ` : ''}${st.kind === 'video' ? `${secs} s ${st.group} video${n > 1 ? 's' : ''}` : `${st.group.toLowerCase()} picture${n > 1 ? 's' : ''}`} · ${st.label}${prod ? ` · ${tidy(prod, 60)}` : ''} · ${size.label}`;
+    if (!note && ctx.priceNote) note = ctx.priceNote; /* a price Higgsfield couldn't give is said to be an estimate */
     return { line, usd, per: +per.toFixed(3), count: n, kind: st.kind, style: st.id, note };
   }
 

@@ -57,10 +57,10 @@
       { "id": "unveil", "label": "Unveil", "people": "none", "job": "product-motion", "seconds": 5, "look": "A soft fabric or shadow slides away to reveal the product, slow and premium, one moving light." }
     ]},
     { "id": "recreate", "label": "Recreate", "styles": [
-      { "id": "recreate-swap", "label": "Recreate it", "people": "any", "job": "video-restyle", "needsRef": "video", "seconds": 10, "look": "The reference video kept as it is (its moves, its people, its timing), with our product in place of theirs, exactly as in our photos. No other brand's name, logo or product is left in it." },
-      { "id": "viral-short", "label": "Viral short (30 s)", "people": "person", "job": "viral-short", "seconds": 30, "says": true, "look": "A fast multi-shot vertical short: a hook in the first second, the product in real use, one clear reason to buy, and an ending that loops back to the start. Natural light, real people, no on-screen text." }
+      { "id": "recreate-swap", "label": "Recreate it", "people": "any", "job": "video-restyle", "needsRef": "video", "seconds": 10, "look": "The reference video kept as it is (its moves, its people, its timing), with our product in place of theirs, exactly as in our photos. No other brand's name, logo or product is left in it." }
     ] },
     { "id": "tiktok", "label": "TikTok", "styles": [
+      { "id": "viral-short", "label": "Viral short (30 s)", "people": "person", "job": "viral-short", "seconds": 30, "says": true, "look": "A fast multi-shot vertical short: a hook in the first second, the product in real use, one clear reason to buy, and an ending that loops back to the start. Natural light, real people, no on-screen text." },
       { "id": "tt-hook", "label": "Hook + demo", "people": "person", "job": "ugc-video", "seconds": 12, "look": "A TikTok: a strong first-second hook to camera, then a quick demo of the product, vertical, fast cuts, natural sound.", "says": true},
       { "id": "tt-pov", "label": "POV", "people": "person", "job": "ugc-video", "seconds": 10, "look": "A POV TikTok showing the product in a relatable moment, phone filmed, natural sound.", "says": true}
     ]}
