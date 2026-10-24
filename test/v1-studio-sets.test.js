@@ -74,11 +74,14 @@ test('a review count in the picture is checked too: "from 226 reviews" passes on
   assert.equal(readyOf({ ...base, source: 'Judge.me: 4.5 stars from 226 reviews' }).checks.find((c) => c.k === 'rating').ok, true);
 });
 
-test('Recreate needs the video the card is about; a viral or rival video card opens on it; a viral short runs to 30 s', async () => {
+test('Recreate runs only on the brand’s own videos; a creator’s or rival’s video opens on a viral short in its pattern, up to 30 s', async () => {
   const { blockOf } = await import('../jam2/studio.js');
   const ctx = { product: { img: 'p.jpg', name: 'Serum' }, bbv: { comfort: { people: 'ai-cast' } } };
-  assert.match(blockOf(styleOf('recreate-swap'), ctx), /remakes a video/); assert.equal(blockOf(styleOf('recreate-swap'), { ...ctx, ref: { video: 'https://x/v.mp4' } }), null);
-  const d = defaults({ ...ctx, card: { title: 'This hook went viral', research: { kind: 'viral' } }, ref: { video: 'https://x/v.mp4' } }, { kind: 'video', recipe: 'reel' }); assert.equal(d.style, 'recreate-swap');
+  assert.match(blockOf(styleOf('recreate-swap'), ctx), /your own videos/);
+  /* someone else's video (a creator's, a rival's): never recreated, their people and words would be in the brand's ad */
+  assert.match(blockOf(styleOf('recreate-swap'), { ...ctx, ref: { video: 'https://x/v.mp4', author: 'Michaela' } }), /Michaela’s own people, face, voice and words/);
+  assert.equal(blockOf(styleOf('recreate-swap'), { ...ctx, ref: { video: 'https://x/v.mp4', own: true } }), null, 'the brand’s own video can be recreated');
+  const d = defaults({ ...ctx, card: { title: 'This hook went viral', research: { kind: 'viral' } }, ref: { video: 'https://x/v.mp4' } }, { kind: 'video', recipe: 'reel' }); assert.equal(d.style, 'viral-short', 'a creator’s video opens on a short in its pattern');
   const plain = defaults({ ...ctx, card: { title: 'Make the video' } }, { kind: 'video', recipe: 'reel' }); assert.notEqual(plain.style, 'recreate-swap');
   assert.equal(styleOf('viral-short').seconds, 30); assert.equal(styleOf('viral-short').job, 'viral-short');
   const { R, t } = mount(); const o = await R['POST /api/jam2/open']({ cardId: 'c1', cta: 'Make the video', v1ch: 'ch1' }, t, {});
@@ -93,4 +96,9 @@ test('a batch (How many above 1) lands its takes as one run the v1 strip can sho
   const pl = (await R['POST /api/jam2/jams/:jid/studio/plan']({ spec }, t, { jid })).plan; const mk = await R['POST /api/jam2/jams/:jid/studio/make']({ spec, confirmUsd: pl.usd, bid }, t, { jid }); assert.equal(mk.boards.length, 2);
   for (const b of mk.boards) await until(R, t, jid, b);
   const g = await R['GET /api/jam2/jams/:jid']({}, t, { jid }); const runs = g.jam.boards.filter((b) => mk.boards.includes(b.id)).map((b) => b.takes.at(-1)?.run); assert.ok(runs[0] && runs[0] === runs[1], 'one run for the batch');
+});
+
+test('a Recreate take is a hard stop in the publish check: someone else’s face, voice and words are in it', () => {
+  const r = readyOf({ family: 'post', pkg: { title: 'Curly gel', copy: 'Crunchy?', video: 'gen/j2-v.mp4', film: { cover: 'gen/c.jpg', captions: { n: 0, none: 'No words are spoken in it.' } } }, brand: 'Acme', host: 'acme.com', recreated: { by: 'Michaela Vernice' } });
+  assert.equal(r.ready, false); assert.match(r.checks[0].t, /Michaela Vernice’s video with your product swapped in/);
 });

@@ -64,7 +64,10 @@ export function blockOf(st, ctx = {}) {
   if (p === 'person' && people === 'hands') return `${st.label} shows a person, and your Brand Book says hands only. Pick a hands or product style, or change it in Brand Book → People.`;
   if (p === 'hands' && people === 'none') return `${st.label} shows hands, and your Brand Book says no people on camera. Pick a style without people.`;
   if (p === 'person' && people === 'consented') return `${st.label} would show an AI person, and your Brand Book says only your own people. Pick a hands or product style, or allow AI people in Brand Book → People.`;
-  if (st.needsRef === 'video' && !ctx.ref?.video) return `${st.label} remakes a video with your product in it: open it from a viral video or a rival’s video ad card (this card has no video to remake).`;
+  /* Recreate swaps the product into the reference footage and keeps everything else: the people, their faces and voices, their
+     words. That is only the brand's to post when the footage is its own; a creator's or a rival's video would put a real person
+     and their work in the brand's ad (Arata, 24 Oct: the creator, her room and her words came back with a tube swapped) */
+  if (st.needsRef === 'video' && !(ctx.ref?.video && ctx.ref.own)) return ctx.ref?.video ? `${st.label} would keep ${ctx.ref.author || ctx.ref.brand || 'the creator'}’s own people, face, voice and words in your ad, so it only runs on videos that are yours. Make a Viral short instead: it follows the same shots with your product and your cast.` : `${st.label} remakes one of your own videos with this product in it: it needs a video of yours to start from.`;
   if ((st.job === 'packshot' || st.designed || st.preset || st.job === 'ugc-video' || st.job === 'video-restyle' || st.job === 'viral-short') && !ctx.product?.img) return `${st.label} shows your product: pick a product with a photo, or a style that shows a place or a moment.`;
   if (REVIEWISH(st) && !(ctx.bbv?.reviews || []).length) return `${st.label} needs a real customer review, and there are none in your Brand Book yet.`;
   if (st.says && /review|testimonial/i.test(`${st.id} ${st.look}`) && ctx.bbv?.comfort?.testimonials === 'no') return `${st.label} is a testimonial, and your Brand Book says no testimonials.`;
@@ -86,7 +89,7 @@ export function defaults(ctx, board = null) {
       sizes: R.sizes || [board?.size && SIZES[board.size] ? board.size : 'ig-portrait'], seconds: null, count: set.length, blocked: blockedFor(ctx) }; }
   let picks;
   if (R.picks) picks = R.picks;
-  else if (kind === 'video' && ctx.ref?.video) picks = ['recreate-swap', 'viral-short', 'ugc-review']; /* a viral or rival video: remake it with our product, or a short in its pattern */
+  else if (kind === 'video' && ctx.ref?.video) picks = ctx.ref.own ? ['recreate-swap', 'viral-short', 'ugc-review'] : ['viral-short', 'tt-hook', 'ugc-review']; /* someone else's video: a short in its pattern with our cast, never their footage; our own video can be recreated */
   else if (kind === 'video') picks = /\b(reviews?|testimonials?|ugc|creators?|unbox\w*|haul)\b(?! ready)/i.test(text.replace(/ready to review/i, '')) ? ['ugc-review', 'ugc-unbox', 'hypermotion'] : /\bhow to\b|tutorial|routine|\bguide\b/i.test(text) ? ['ugc-tutorial', 'in-life', 'showcase'] : /tiktok|trend|viral|hook/i.test(text) ? ['tt-hook', 'tt-pov', 'hypermotion'] : ['in-life', 'ugc-home', 'showcase'];
   else {
     const grp = /\bvs\b|versus|compare|switch|rival|instead of|than /i.test(text) ? 'Compare & Switch' : /\b(reviews|customer review|stars?|rated|loved|testimonials?)\b/i.test(text) ? 'Social Proof' : /problem|fix|tired of|cold|pain|struggle/i.test(text) ? 'Problem Solved' : /spec|ingredient|feature|why it works|benefit/i.test(text) ? 'Proof & Specs' : 'Hero Spotlight';

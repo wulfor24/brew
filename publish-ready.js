@@ -85,7 +85,7 @@ function partsOf(family, action, p, extra) {
   return P;
 }
 
-export function readyOf({ family, action = '', pkg = {}, card = {}, product = null, cardProduct = null, catalog = [], brand = '', host = '', source = '', words = [], wordsRead = true, style = null, version = 1 }) {
+export function readyOf({ family, action = '', pkg = {}, card = {}, product = null, cardProduct = null, catalog = [], brand = '', host = '', source = '', words = [], wordsRead = true, recreated = null, style = null, version = 1 }) {
   const p = pkg || {}, look = style?.label || '';
   const extra = { link: linkOf({ family, product, host, campaign: card.title || card.id || brand, content: `${style?.id || 'creative'}-v${version}` }), alt: altOf({ product: product?.name || cardProduct?.name || '', look: style?.look || look, brand }) };
   const parts = partsOf(family, action, p, extra).map((x) => {
@@ -110,6 +110,8 @@ export function readyOf({ family, action = '', pkg = {}, card = {}, product = nu
   const br = ratingsOk(seen, source); checks.push({ k: 'rating', ok: !br.length, t: br.length ? `“${br.join('”, “')}” isn’t from your own reviews` : 'No rating that isn’t yours', fix: br.length ? 'redo' : null });
   /* a picture whose words Brew didn't keep (made before it kept them) was never read: say so, never "no problems" */
   if (!wordsRead) { const i = checks.findIndex((c) => c.k === 'price'); for (const c of checks) if (['price', 'rating', 'claims'].includes(c.k) && c.ok) c.t = `${c.t} in the words above`; checks.splice(i, 0, { k: 'picture', ok: false, soft: true, t: 'The words in the picture weren’t read for this version: check its prices, ratings and claims yourself, or Redo it' }); }
+  /* someone else's footage with the product swapped in keeps their people, faces, voices and words: never the brand's to post */
+  if (recreated) checks.unshift({ k: 'rights', ok: false, t: `This is ${recreated.by ? `${recreated.by}’s` : 'someone else’s'} video with your product swapped in: their face, voice and words are still in it. Don’t post it without their written permission; make a Viral short in its pattern instead.` });
   /* a film: its spoken words are captioned (most feeds play muted), and an approximate timing is said */
   if (p.video && p.film) { const c = p.film.captions || {};
     checks.push(c.none ? { k: 'captions', ok: true, t: c.none } : c.n && p.film.srt ? { k: 'captions', ok: !c.approx, soft: !!c.approx, t: c.approx ? 'Captions are set from the script, timed by estimate: watch it once before it goes up' : `Captions on (${c.n} lines), and an .srt for the platform’s own captions` } : { k: 'captions', ok: false, t: c.error || 'No captions: muted feeds will play it without words' });
