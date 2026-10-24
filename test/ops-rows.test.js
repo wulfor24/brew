@@ -55,3 +55,12 @@ test('real campaign names, product-row actions and the card’s own budget move 
   const moved = { family: 'meta_ops', action: 'performance.shift_budget', pkg: { items: [{ name: 'Founder video', now: 'x', next: 'y' }] } };
   assert.equal(healOps(LEDGER, moved, { shift: { from: 'Founder video', to: 'B' } }), false);
 });
+
+test('a card’s source row ("From: Upload (Audit.pdf)") is never a campaign in the draft', async () => {
+  const { mockPkg } = await import('../studio.js'); const { runIn } = await import('../brand-ctx.js');
+  const c = { title: 'Exclude existing customers from creator ads', rows: [['The team said', 'identical Nitin Joshi assets'], ['From', 'Upload (Arata-Performance-Audit_compressed.pdf, MitoActive-Beyond-Metros.pdf),…']] };
+  const p = runIn({ slug: 'acme', name: 'Acme', sym: '₹', config: {}, seed: { brand: { name: 'Acme' } } }, () => mockPkg('meta_ops', 'performance.exclude_audience', c, 0, '', {}));
+  assert.equal(p.items[0].name, 'The ad sets your team picks');
+  const ch = { family: 'meta_ops', action: 'performance.exclude_audience', pkg: p }; healOps(LEDGER, ch, c);
+  assert.equal(ch.pkg.items[0].name, 'TOF_Mito-Preorder_Nitin-Joshi_Conversion', 'with the account, the card’s own words pick the campaign');
+});
