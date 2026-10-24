@@ -77,3 +77,9 @@ test('a capital call to action on its own line is a button, inside a sentence it
   assert.ok(copyFlags('BUY NOW before it ends.', {}).length);
   assert.match(fs.readFileSync(new URL('../public/parts.css', import.meta.url), 'utf8'), /@container canvas \(max-width:640px\)\{\.ship\.one\{flex-wrap:nowrap\}/, 'a narrow stage stacks the bar in one column');
 });
+
+test('the plan’s copy of the first draft keeps its product, so Studio sets up the product the draft shows', () => {
+  const cp = fs.readFileSync(new URL('../card-plan.js', import.meta.url), 'utf8');
+  assert.match(cp, /copy: draft\.copy \|\| '', product: draft\.product \|\| null/);
+  assert.match(fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8'), /const dp = ch\.pkg\?\.draft\?\.product \|\| \(ch\.v0 === 'draft' \? o\.planOf\?\.\(t, c\)\?\.draft\?\.product : null\)/);
+});
