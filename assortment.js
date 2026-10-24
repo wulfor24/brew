@@ -3,7 +3,7 @@
 // spoke as if it made everything. Pure: the catalog stage works it out from each product's brand (Shopify vendor, WooCommerce
 // brand, JSON-LD brand), the reader's heal does it for saved reads, and the line, the category, the brief and the plays read it.
 
-export const ASSORT_V = 1;
+export const ASSORT_V = 2; // 2: a retailer's category is asked again, named by everything it sells (Scrubroom stayed "Apparel" with 53% stethoscopes)
 const squash = (x) => String(x || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '');
 /* not a brand a shopper buys: suppliers, print-on-demand and placeholder vendors (a D2C store's dropshipper is not a rival) */
 const NOT_A_BRAND = /^(?:zendrop|cj ?dropshipping|cjdropshipping|aliexpress|alibaba|spocket|dsers|printful|printify|gelato|teelaunch|gooten|syncee|modalyst|default|default vendor|vendor|unknown|na|n\/a|none|generic|my store|store|shop)$/i;

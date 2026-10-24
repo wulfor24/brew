@@ -26,7 +26,7 @@ export function setLine(ctx, raw) {
 }
 // the one-liner on its own, for a saved read that never got one
 /* whose products the store sells (assortment.js): a curated retailer is described and classed as one, never as the maker */
-const sells = (profile) => { const l = assortmentLine(profile.assortment, profile.brandName || profile.name); return l ? `\nWhose products: ${l} Say so in the line (e.g. "curated store for ..." or "... and its own label X"), and class the category as a retailer of them.` : ''; };
+const sells = (profile) => { const l = assortmentLine(profile.assortment, profile.brandName || profile.name); return l ? `\nWhose products: ${l} Say so in the line (e.g. "curated store for ..." or "... and its own label X"). Name the category by everything the catalog sells, weighted by product count (product types above), never only its largest apparel line: a store whose catalog is half stethoscopes and half scrubs is "Medical apparel and equipment", not "Apparel".` : ''; };
 export async function writeLine(ctx) {
   const { profile } = ctx; const prods = profile.catalog?.products || [];
   const r = await ctx.ai({ tag: 'reader-line', model: 'sonnet', max: 300, schema: { type: 'object', properties: { line: { type: 'string' } } },

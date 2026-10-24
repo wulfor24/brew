@@ -195,7 +195,7 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
        is read again (once a day until it reads); a Shopify or WooCommerce catalog is never touched here */
     /* a read from before the assortment (ASSORT_V): whose products the store sells. From the saved products when they name their
        brand, else from one free catalog read; a store found to sell other brands gets its category and line written again */
-    const assortStale = !!profile.host && !profile.closed && (profile.assortment?.v || 0) < ASSORT_V && (profile.catalog?.products?.length || 0) > 0 && due('assortment');
+    const assortStale = !!profile.host && !profile.closed && (profile.assortment?.v || 0) < ASSORT_V && (profile.catalog?.products?.length || 0) > 0 && due(`assortment${ASSORT_V}`); /* per version: a new version runs now, a failed try waits a day */
     const catalogStale = !!profile.host && !profile.closed && (profile.catalog?.v || 0) < CATALOG_V && (!profile.catalog?.products?.length || /^jsonld/.test(profile.catalog?.source || '')) && due('catalog');
     /* reviews from before vendor/marketplace reading (REVIEWS_V): read again once when the detection could have been wrong
        (a script vendor, a switched-off store, nothing found) or an Indian store has no marketplace check yet */
@@ -238,7 +238,7 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
     if (catalogStale) { stamp('catalog'); await homeAndPages();
       try { await withTimeout(catalog(ctx), LIMIT.catalog * 2, 'catalog'); changed.push(profile.catalog?.products?.length ? 'catalog' : 'catalog:empty'); if (profile.meta?.errors) delete profile.meta.errors.catalog; }
       catch (e) { lg.warn?.('[reader] heal catalog', slug, e.message); profile.meta.errors = { ...(profile.meta.errors || {}), catalog: e.message }; changed.push('catalog:failed'); } }
-    if (assortStale && !changed.includes('catalog')) { stamp('assortment'); const was = profile.assortment?.kind || null;
+    if (assortStale && !changed.includes('catalog')) { stamp(`assortment${ASSORT_V}`); const was = profile.assortment?.kind || null, wasV = profile.assortment?.v;
       try {
         /* only each product's brand is added to the saved catalog: a catalog re-run here lacks the read's store facts and once
            came back with 6 of Scrubroom's 140 products. products.json stores give it in one free list; others get it on their next read */
@@ -249,7 +249,7 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
           for (const p of profile.catalog.products) if (byHandle.has(p.handle)) p.brand = byHandle.get(p.handle); }
         assortIn(profile, ctx.ledger, profile.url, 'products.json');
         changed.push('assortment');
-        if (['retailer', 'mixed'].includes(profile.assortment?.kind) && profile.assortment.kind !== was && aiOn) {
+        if (['retailer', 'mixed'].includes(profile.assortment?.kind) && (profile.assortment.kind !== was || (wasV || 0) < 2) && aiOn) { /* a new retailer, or one read before its category was asked by the whole catalog */
           try { await inferCategory(ctx); changed.push('category'); } catch (e) { lg.warn?.('[reader] heal category', slug, e.message); }
           if (profile.descriptorBy !== 'brand') { try { if (await writeLine(ctx)) changed.push('line'); } catch (e) { lg.warn?.('[reader] heal line', slug, e.message); } } } /* the brand's own words are never overwritten */
       } catch (e) { lg.warn?.('[reader] heal assortment', slug, e.message); changed.push('assortment:failed'); } }

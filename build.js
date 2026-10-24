@@ -759,7 +759,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         /* a site that links no Instagram or YouTube: its accounts are looked up by search (socials.js), once a day at most */
         || (!p.closed && (!p.socials?.instagram || !p.socials?.youtube) && ((p.socials?.search?.v || 0) < SOCIAL_SEARCH_V || !!p.socials?.search?.error) && !(p.meta?.healTried?.socials && Date.now() - Date.parse(p.meta.healTried.socials) < 864e5))
         /* a read from before the assortment: whose products the store sells (assortment.js), once */
-        || (!p.closed && (p.catalog?.products?.length || 0) > 0 && (p.assortment?.v || 0) < ASSORT_V && !(p.meta?.healTried?.assortment && Date.now() - Date.parse(p.meta.healTried.assortment) < 864e5));
+        || (!p.closed && (p.catalog?.products?.length || 0) > 0 && (p.assortment?.v || 0) < ASSORT_V && !(p.meta?.healTried?.[`assortment${ASSORT_V}`] && Date.now() - Date.parse(p.meta.healTried[`assortment${ASSORT_V}`]) < 864e5));
       const stillBroken = !!p.ads?.own?.error || (p.ads?.rivals || []).some((r) => r.error) || (!p.ai?.answers?.length && !!p.meta?.errors?.answers); /* the AI tools step failed in the read: ask again hourly */
       if (!outdated && p.meta?.healedAt && Date.now() - Date.parse(p.meta.healedAt) < (stillBroken ? 36e5 : 864e5)) return null;
       const reader = makeReader(await load()); if (!reader.heal) return null;
