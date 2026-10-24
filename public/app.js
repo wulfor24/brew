@@ -3679,7 +3679,7 @@
         ${p.title ? `<h3 class="fb-t">${esc(p.title)}</h3>` : ''}<p class="pm-body">${pmText(String(p.copy || '').slice(0, lg ? 6000 : 300))}${tags.length ? `<br><br>${pmText(tags.join(' '))}` : ''}</p>${pmMedia(ch, p, lg)}
         ${pmBar([['thumb', 'Like'], ['reply', 'Comment'], ['share', 'Share']])}</div>`;
     }
-    const line = [esc(p.platform || PM_NAME[kind] || 'Post'), count, p.postAt ? esc(whenLine(p.postAt)) : ''].filter(Boolean).join(' · ');
+    const line = [esc(String(p.platform || '').replace(/\b(shorts|reels?|tiktok)\s+short video$/i, '$1') || PM_NAME[kind] || 'Post') /* "YouTube Shorts short video" says Shorts once */, count, p.postAt ? esc(whenLine(p.postAt)) : ''].filter(Boolean).join(' · ');
     const whereHtml = wh.length && lg ? `<p class="pm-where">${ic('link', 's14')}<span>Post in ${wh.slice(0, 3).map((w) => /^https?:/.test(w.url || '') ? `<a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.name)}</a>` : esc(w.name)).join(', ')}${where1.rule ? `${tipBtn(where1.rule)}` : ''}</span></p>` : '';
     return `<div class="as as-pm${lg ? ' lg' : ''}"><p class="pm-line">${line}</p>${body}${whereHtml}</div>`;
   };
@@ -3793,7 +3793,9 @@
     if (ch.family === 'meta_ad' && act === 'whatsapp_ad' && !lg) return `<div class="as as-chat">${(p.chat || []).slice(0, 3).map((m) => `<div class="wa ${m.from === 'in' ? 'in' : 'out'}">${esc(m.text)}</div>`).join('')}</div>`;
     // several pictures in one ad or post: a row that swipes, each with its own photo and words
     const rows = p.cards || p.slides || [], pics = p.cardImages || [];
-    const swipe = (cls, inner) => `<div class="as-swipe ${cls}" style="--ar:${esc((p.format || '1:1').replace(':', '/'))}">${inner}</div>`;
+    /* the frame takes the shape of the pictures in it: a first draft made at 4:5 in a 1:1 frame lost the words set at its top (25 Oct) */
+    const drShape = /^\d{1,2}:\d{1,2}$/.test(p.draft?.ratio || '') && [p.image, ...pics].some((u) => u && (p.draft.images || []).includes(u)) ? p.draft.ratio : null;
+    const swipe = (cls, inner) => `<div class="as-swipe ${cls}" style="--ar:${esc((drShape || p.format || '1:1').replace(':', '/'))}">${inner}</div>`;
     const picOf = (i) => pics[i] || (i === 0 ? p.image || null : null); // only photos made for this ad; the card's own image carries its own words
     const morePics = lg && rows.length > 1 && !ch.imagePending && rows.some((_, i) => !picOf(i)) ? `<button class="btn btn-ghost sm as-allpics" data-rx="images-all">${ic('sparkles', 's14')}Make the photo for every ${ch.family === 'social' ? 'slide' : 'card'}</button>` : '';
     if (ch.family === 'meta_ad' && rows.length) return `<div class="as as-meta as-multi${lg ? ' lg' : ''}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${esc(B.brand.name)}</b><small>Sponsored</small></div></div>
@@ -3823,7 +3825,7 @@
         ${story ? (p.stickers ? `<p class="ig-st">${ic('chat', 's14')}${esc(p.stickers)}</p>` : '') : `<p class="ig-cap"><b>${esc(handle)}</b> ${esc(p.caption || '').replace(/\n/g, '<br>')}${(p.hashtags || []).length ? `<span class="ig-tags">${esc(p.hashtags.join(' '))}</span>` : ''}</p>`}</div>`;
     }
     if (ch.family === 'meta_ad') {
-      const made = imgOf(ch), img = made || (lg ? cardPhoto() : null), ratio = (p.format || '4:5').replace(':', '/'), [rw, rh] = (p.format || '4:5').split(':').map(Number);
+      const made = imgOf(ch), img = made || (lg ? cardPhoto() : null), shp = drShape && (p.draft.images || []).includes(img) ? drShape : p.format || '4:5', ratio = shp.replace(':', '/'), [rw, rh] = shp.split(':').map(Number);
       return `<div class="as as-meta${lg ? ' lg' : ''}" style="--ar:${(rw / rh) || 0.8}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${esc(B.brand.name)}</b><small>Sponsored</small></div></div>
         <p class="am-text">${esc(p.primaryText || '')}</p>
         <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${ratio}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : !lg ? `<div class="am-empty">${ic('sparkles', 's16')}<span>The photo is made in the studio</span></div>` : ''}${p.overlay && img && wordsOver(img, p, ch) && !(ch.studio && ch.versions?.find((v) => v.id === ch.head)?.studio) /* a Studio take has its own words */ ? `<span class="am-ov">${esc(p.overlay)}</span>` : ''}${pending}${!p.image && lg && !ch.imagePending ? (img ? `<button class="am-newpic" data-rx="image">${ic('sparkles', 's14')}New photo for this ad${freeTag()}</button>` : `<div class="am-make"><span>No photo for this version yet</span><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the photo${freeTag()}</button></div>`) : ''}</div>
@@ -4107,7 +4109,8 @@
     const busy = !!job;
     const sSt = ch.studio ? window.CreativeStage?.state(ch.id) : null, sPl = sSt?.plan || null; /* a Studio redo is made again the same way, at its price */
     const redo = !busy && !(op && !op.picked) && !(ch.studio && !studioMade(ch)) ? (ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" ${sSt?.making || !sPl || sPl.error || sPl.usd == null ? 'disabled' : ''} title="${sSt?.making ? 'It is being made now' : !sPl ? 'Pricing it…' : 'Made again with the same set-up, priced first. This one stays in History.'}">${ic('shuffle', 's16')}Redo it${sPl?.usd != null ? ` · ${moneyOf(sPl.usd)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle, a free draft. This one stays in History.">${ic('shuffle', 's16')}Redo it</button>`) : '';
-    return `<div class="ship one ${fix ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l">${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
+    const headTxt = String(head).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return `<div class="ship one ${fix ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l"${/ship-fixes/.test(head) ? '' : ` title="${esc(headTxt)}"`}>${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
   /* the options as tabs above the stage, named by their angle, never v1–v5 */
   /* one, always: no option tabs, not even on jams saved with options (the one on the stage is the one; the rest are in History) */
   const optTabs = (ch, viewing) => { const op = null; if (!op || viewing || ch.batchKey) return '';
@@ -4140,7 +4143,8 @@
     if (!ch.batchKey && ch.state !== 'jam' && ch.studio && !studioMade(ch)) return stepBar(ch); /* Studio, not made yet: Make it, priced */
     if (!ch.batchKey && ch.state !== 'jam' && jobOf(ch)) return stepBar(ch); /* being made: the bar says what, never Draft or Ready */
     if (!ch.batchKey && ch.state !== 'jam' && !planMade(ch)) { const pl = planOf(ch);
-      return `<div class="ship one ok"><div class="ship-tx"><b>${ic('sparkles', 's16')}<span class="ship-l">${ch.v0 === 'draft' ? 'First draft' : 'Draft'} · v${curN(ch)}</span>${tipBtn(`${planGo(ch, pl).line}. Then share the brief.`)}</b></div>
+      const media0 = PH_FAM.includes(ch.family) && !ch.realOnly && (ch.family !== 'post' || isReel(ch) || ch.pkg?.image || ch.pkg?.media || ch.pkg?.video); /* the same steps as every other bar (stepBar) */
+      return `<div class="ship one ok"><ol class="ship-steps" aria-label="Steps">${(media0 ? ['Draft', 'Make', 'Send'] : ['Draft', 'Send']).map((x, i) => `<li class="${i ? '' : 'is-on'}">${x}</li>`).join('')}</ol><div class="ship-tx is-step"><b>${ic('sparkles', 's16')}<span class="ship-l">${ch.v0 === 'draft' ? 'First draft' : 'Draft'} · v${curN(ch)}</span>${tipBtn(`${planGo(ch, pl).line}. Then share the brief.`)}</b></div>
         <div class="ship-btns">${shipMenu(ch, [['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team, Brew’s build crew, gets it by email and makes it.'], ['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']])}<button class="btn btn-primary" data-rx="plan">${ic('sparkles', 's16')}${esc(planGo(ch, pl).label)}${freeTag(isReel(ch))}</button></div></div>`; }
     if (!ch.batchKey && ch.state !== 'jam') return stepBar(ch);
     if (ch.state === 'jam') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}Being planned in a jam</b><span>Answer the open questions there, then it ships.</span></div><div class="ship-btns">${postOpenOf(ch) ? poBtn(postOpenOf(ch), false) /* a ready post can still be copied out while the jam plans it */ : ''}<button class="btn btn-primary" data-rx="open">Open the jam</button></div></div>`;
@@ -4625,7 +4629,8 @@
   /* where the piece goes, said once in the header ("Instagram Stories on Instagram", "Reply on Reddit"): an organic post is never
      "on Meta Ads", and a label that already names its place ("Post on Reddit") isn't told twice */
   const stWhere = (ch) => { const lab = String(ch.actionLabel || ''), a = String(ch.action || '').split('.').pop(), p = ch.pkg || {};
-    const w = ch.family === 'social' ? 'Instagram' : ch.family === 'post' ? (a === 'short_video' ? (ch.target?.conn === 'meta' ? 'Meta Ads' : p.platform || '') : p.platform || PM_NAME[a] || '') : ch.target?.conn && ch.target?.name ? ch.target.name : '';
+    const plat = String(p.platform || '').replace(/\s+(?:comment reply|replies|reply|post|thread|answer|short video|video|pin)$/i, '').trim(); /* "YouTube comment reply" is on YouTube */
+    const w = ch.family === 'social' ? 'Instagram' : ch.family === 'post' ? (a === 'comment_reply' && ch.target?.name ? ch.target.name : a === 'short_video' ? (ch.target?.conn === 'meta' ? 'Meta Ads' : plat) : plat || PM_NAME[a] || '') : ch.target?.conn && ch.target?.name ? ch.target.name : '';
     return w && !/\bon [A-Z]/.test(lab) && !/^comment reply$/i.test(w) ? w : ''; };
   const cutW = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : x; };
   const paintStudio = () => {

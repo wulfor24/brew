@@ -28,11 +28,15 @@ test('rows that name a product become the account campaign the card is about, wi
   assert.match(opsCheck(LEDGER, ch).k, /Brew matched this campaign/); assert.equal(opsCheck(LEDGER, ch).soft, true);
 });
 
-test('with no account connected the row asks for the campaign instead of guessing one', () => {
-  const ch = { family: 'meta_ops', action: 'performance.scale_budget', pkg: { items: [{ name: 'Serum Roller Combo', now: 'As set today', next: 'Budget up 20%' }] } };
-  healOps({}, ch, card); assert.equal(ch.pkg.items[0].name, NO_CAMP);
-  const oc = opsCheck({}, ch); assert.equal(oc.soft, true); assert.match(oc.k, /Connect Meta/);
-  assert.notEqual(budgetMatch(card, ch, LEDGER)?.ok, false, 'a row waiting for its name is not called a made-up campaign');
+test('a read without the account (a guest, no Meta) never rewrites the names; it says they weren’t checked', () => {
+  const ch = { family: 'meta_ops', action: 'performance.scale_budget', pkg: { items: [{ name: 'Serum Roller Combo', now: 'Now: As set today', next: 'Next: Budget up 20%' }] } };
+  healOps({}, ch, card); assert.equal(ch.pkg.items[0].name, 'Serum Roller Combo'); assert.equal(ch.pkg.items[0].now, 'As set today'); assert.equal(ch.pkg.items[0].next, 'Budget up 20%', 'no "Now:" label in a cell');
+  healOps({ member: false, liveLedger: LEDGER.liveLedger }, ch, card); assert.equal(ch.pkg.items[0].name, 'Serum Roller Combo', 'a guest’s read never sees the ledger');
+  const oc = opsCheck({}, ch); assert.equal(oc.soft, true); assert.match(oc.k, /couldn’t check these campaign names/);
+  const old = { family: 'meta_ops', action: 'performance.scale_budget', pkg: { items: [{ name: NO_CAMP, was: 'Founder video', pick: true, now: 'x', next: 'y' }] } };
+  healOps({}, old, card); assert.equal(old.pkg.items[0].name, 'Founder video', 'the first cut’s “connect Meta” rows get their names back'); assert.equal(old.pkg.items[0].pick, undefined);
+  const pickRow = { family: 'meta_ops', action: 'performance.scale_budget', pkg: { items: [{ name: 'Pick the campaign', pick: true, now: 'x', next: 'y' }] } };
+  assert.notEqual(budgetMatch(card, pickRow, LEDGER)?.ok, false, 'a row waiting for its name is not called a made-up campaign');
 });
 
 test('a row no campaign matches asks the team to name it, with the account’s campaigns as examples', () => {

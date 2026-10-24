@@ -35,7 +35,7 @@ test('the bar: Draft › Make › Send on every jam, every fix listed, the statu
   assert.match(sb, /const steps = media \|\| ch\.studio \? \['Draft', 'Make', 'Send'\] : \['Draft', 'Send'\]/);
   assert.ok(!/'Set up', 'Made'|'Final'\]/.test(sb), 'no other step names');
   assert.match(sb, /class="ship-fixes"/, 'more than one fix: each is listed');
-  assert.match(css, /\.ship\.one \.ship-l\{white-space:normal;[^}]*-webkit-line-clamp:2/);
+  assert.match(css, /\.ship\.one \.ship-l\{white-space:normal;[^}]*-webkit-line-clamp:3/);
   assert.ok(!/Make the final \$\{what\}/.test(app), 'the make step says Make it');
 });
 
@@ -53,4 +53,19 @@ test('one version: a card with a jam opens on it, never the What should this car
 test('words set into a draft picture are never printed over it again', () => {
   assert.match(app, /!\(p\.draft\?\.as === 'carousel' && \(p\.draft\.images \|\| \[\]\)\.includes\(img\)\)/);
   assert.match(app, /\(p\.draft && !p\.draft\.text && \(p\.draft\.images \|\| \[\]\)\.includes\(imgOf\(ch\)\)\)/, 'a reel’s hook over a draft picture');
+});
+
+test('QA 25 Oct: organic videos, pack offers, review replies, capital buttons and draft shapes', async () => {
+  const { isAdVideo, cleanPkg } = await import('../studio.js'); const { recipeOfCard } = await import('../remix.js');
+  assert.equal(isAdVideo({ title: 'Post a short family comedy video on YouTube', sub: 'Meta video ads cost too much' }), false, 'an organic YouTube post is never a Meta video ad');
+  assert.equal(isAdVideo({ title: 'Use a warm comedy video', sub: 'Run it as Meta video ads' }), true);
+  assert.equal(recipeOfCard({ title: 'Sell an exclusive ninety-day pack only on arata.in', cta: { label: 'Work on this' }, sector: 'catalog', agent: 'brew', type: 'idea' }).primary, 'storefront.bundle_offer');
+  assert.equal(recipeOfCard({ title: 'Launch cold gifting email to US tech HR managers', agent: 'crm', sector: 'signals', cta: { label: 'Draft the email' } }).primary, 'crm.outreach_email');
+  const rmx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
+  assert.match(rmx, /ch\.target\?\.object === 'Review reply'\) \{ if \(ch\.actionLabel !== 'Reply to reviews'\)/, 'a review reply is named for the reviews app, never YouTube');
+  assert.match(rmx, /const capsBtn = new Set/, 'a saved button in capitals is never shouting copy');
+  const p = cleanPkg ? cleanPkg('crm', 'crm.flow_copy', { message: 'Hi', buttons: ['SHOP NOW', 'View Pack of 3'] }) : null;
+  if (p) assert.deepEqual(p.buttons, ['Shop now', 'View Pack of 3']);
+  assert.match(app, /const drShape = /, 'a frame takes the shape of its draft pictures'); assert.match(app, /\(drShape \|\| p\.format \|\| '1:1'\)/);
+  assert.match(fn('stWhere'), /comment reply\|replies\|reply\|post\|thread\|answer\|short video/, '"YouTube comment reply" is on YouTube');
 });

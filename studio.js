@@ -412,10 +412,10 @@ const str = (v) => (v == null ? '' : String(v));
 const pickOpt = (opts, v) => { if (opts.includes(v)) return v; const n = (x) => String(x ?? '').toLowerCase().replace(/[^a-z0-9:+%]+/g, ' ').trim(), nv = n(v); if (!nv) return opts[0];
   return opts.find((o) => n(o) === nv) || opts.find((o) => nv.startsWith(n(o)) || n(o).startsWith(nv)) || opts.find((o) => nv.includes(n(o))) || opts[0]; };
 export const cleanPkg = (family, action, pkg = {}, clean = (s) => s) => {
-  const out = {}, wordCut = (s, n) => (s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '').replace(/[\s,;:–-]+$/, '') + '…' : s);
+  const out = {}, btnCase = (x) => (/[A-Z]{3}/.test(x) && x === x.toUpperCase() ? x[0] + x.slice(1).toLowerCase() : x) /* a button in capitals ("SHOP NOW") reads as "Shop now" */, wordCut = (s, n) => (s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '').replace(/[\s,;:–-]+$/, '') + '…' : s);
   fieldsFor(family, action).forEach((f) => {
     const v = pkg[f.k]; if (v == null || v === '') return;
-    if (f.type === 'list') out[f.k] = (Array.isArray(v) ? v : String(v).split('\n')).map((x) => clean(str(x)).trim()).filter(Boolean).slice(0, 8);
+    if (f.type === 'list') out[f.k] = (Array.isArray(v) ? v : String(v).split('\n')).map((x) => clean(str(x)).trim()).filter(Boolean).map((x) => (f.k === 'buttons' ? btnCase(x) : x)).slice(0, 8);
     else if (f.type === 'rows') out[f.k] = (Array.isArray(v) ? v : []).slice(0, 10).map((r) => Object.fromEntries(f.cols.map((c) => [c, clean(str(r?.[c])).slice(0, 400)])));
     else if (f.type === 'number') { const n = +String(v).replace(/[^\d.-]/g, ''); if (!Number.isNaN(n)) out[f.k] = Math.round(n); }
     else if (f.type === 'select') out[f.k] = pickOpt(f.opts, v); /* "email" is Email, "9:16 vertical" is 9:16, never silently the first option */
@@ -670,7 +670,9 @@ export const cardWords = (c = {}) => [c.title, c.sub, c.make?.pieces, ...(c.deta
    Shorts post). An idea from the stream (c.post) or a card that asks for a reel stays organic */
 const AD_TALK = /\b(?:meta|facebook|instagram)\s+(?:video\s+)?ads?\b|\bvideo\s+ads?\b|\bads?\s+(?:manager|account|costs?|spend|library)\b|\blive\s+ads\b|\bpaid\s+(?:social|video)\b|\b(?:CPM|CTR|ROAS|CPA|hook rate|thumb-?stop)\b/i;
 /* our version of a rival's video ad is a paid ad too, whatever format the card carries (it opened as an organic Reel: QA J-10) */
-export const isAdVideo = (c = {}) => !!c && !c.post && (c.make?.format === 'video ad' || c.research?.kind === 'ad' || c.make?.from === 'rival' || (c.make?.format !== 'reel' && AD_TALK.test(cardWords(c))));
+/* a card that posts a video on a platform's own feed ("Post a short family comedy video on YouTube") is organic, whatever its evidence says about ads */
+const ORGANIC_T = (t) => /\b(?:post|upload|publish|share)\b/i.test(t) && /\b(?:youtube|tiktok|shorts|reels?|instagram)\b/i.test(t) && !/\bads?\b|\bpaid\b|\bboost/i.test(t);
+export const isAdVideo = (c = {}) => !!c && !c.post && !(c.make?.format !== 'video ad' && ORGANIC_T(String(c.title || ''))) && (c.make?.format === 'video ad' || c.research?.kind === 'ad' || c.make?.from === 'rival' || (c.make?.format !== 'reel' && AD_TALK.test(cardWords(c))));
 /* "Add to the live test" only when the card is about a test that runs; any other ad idea makes new ads */
 export const namesLiveTest = (c = {}) => /\b(?:live|running|current|existing|ongoing)\s+(?:meta\s+)?(?:ad\s+)?tests?\b|\btest\s+(?:ad\s+set|campaign|budget)\b|META_Test|\b(?:in|to|into)\s+the\s+(?:meta\s+)?test\b|\bA\/B\b/i.test(cardWords(c)) || (c.images || []).length >= 3;
 /* a store claim as the site prints it can carry footnote marks ("growth in 84 days 1 and", "by up to 95% 2 .."): they go, so

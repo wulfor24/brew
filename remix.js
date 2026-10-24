@@ -180,7 +180,7 @@ const VERB_RULES = [
   [/\bsegment\b/i, () => 'crm.new_segment'],
   [/\b(flows?|journey|emails?|whatsapp message|sms)\b/i, () => 'crm.flow_copy'],
   [/\b(discount|code)\b/i, () => 'crm.discount_offer'],
-  [/\b(offers?|bundles?|ladder)\b/i, () => 'storefront.bundle_offer'],
+  [/\b(offers?|bundles?|ladder)\b|\b(?:sell|launch|offer|create|build)\b[^.]{0,40}\b(?:[\w-]+-day|exclusive|value|starter|trial|gift|combo) (?:packs?|kits?)\b/i, () => 'storefront.bundle_offer'], /* "Sell an exclusive ninety-day pack only on arata.in" is an offer, never marketplace titles */
   [/\bproof block\b|\bproduct page\b/i, () => 'storefront.pdp_block'],
   [/\b(landing page|page copy|page|section|banner)\b/i, () => 'storefront.page_copy'],
   [/\binsert\b|\bprint\b/i, () => 'crm.print_insert'],
@@ -264,7 +264,8 @@ const primaryOf = (c) => {
     if (DECIDE_CTA.has(label)) { if (DECIDE_T.test(c.title || '')) return 'brew.plan'; if (MAKE_ACTION[c.make?.format]) return MAKE_VERB.test(c.title || '') ? onChannel(MAKE_ACTION[c.make.format], c) : 'brew.plan'; }
     /* "Review draft" outside AI answers: the planned format, else the title's verb, else the card's area decides */
     if (label === 'Review draft' && c.sector !== 'visibility') { if (MAKE_ACTION[c.make?.format]) return onChannel(MAKE_ACTION[c.make.format], c); const v = verbAction(c.title || '', c); return v ? onChannel(refine(v, c), c) : REVIEW_IN[c.sector] || 'visibility.faq_entry'; } }
-  if (label && !(label in CTA_ACTION) && !CTA_IN_SECTOR[`${c.sector}:${label}`]) { const v = verbAction(label, c); if (v) return onChannel(refine(v, c), c); } // a button we don't know: its verb
+  if (label && !(label in CTA_ACTION) && !CTA_IN_SECTOR[`${c.sector}:${label}`]) { const v = verbAction(label, c); if (v) return onChannel(refine(v, c), c); /* a button we don't know: its verb */
+    if (!c.make?.format && verbAction(c.title || '', c) === 'storefront.bundle_offer') return 'storefront.bundle_offer'; } /* "Work on this" on "Sell an exclusive ninety-day pack": the offer, never marketplace titles */
   /* "Draft the listing" is a marketplace listing when the card names a marketplace, else the card's own format (an outreach email
      opened "Change page copy on Shopify", an Amazon launch "Publish an FAQ answer": final QA pass 19 Oct) */
   if (label === 'Draft the listing') { if (MARKETPLACE.test(`${c.title || ''} ${c.sub || ''} ${c.make?.pieces || ''}`)) return 'storefront.listing_content'; if (MAKE_ACTION[c.make?.format]) return onChannel(MAKE_ACTION[c.make.format], c); }
@@ -544,7 +545,8 @@ export function createRemix(o) {
     /* what a shopper would read: no invented code, guarantee or timed result, and copy that reads right (QA-25, QA-02) */
     /* a reel's spoken and shown lines and a remake's script and slides are read by shoppers too (QA-25: PURE25 sat in a script) */
     const lines = (xs, k) => (Array.isArray(xs) ? xs : []).map((x) => (typeof x === 'string' ? x : x?.[k])).filter((x) => typeof x === 'string' && x.trim());
-    const shopperText = [ch.after.title, ch.after.sub, ...pubT, ...lines(ch.pkg?.script, 'line'), ...lines(ch.pkg?.draft?.script, 'line'), ...lines(ch.pkg?.draft?.slides, 'text'), ...lines(ch.pkg?.slides, 'text'), ...lines([ch.pkg?.draft?.text, ch.pkg?.draft?.copy])].filter(Boolean).join('\n');
+    const capsBtn = new Set((ch.pkg?.buttons || []).filter((x) => typeof x === 'string' && x === x.toUpperCase())); /* a saved button in capitals is a button, never shouting copy */
+    const shopperText = [ch.after.title, ch.after.sub, ...pubT.filter((x) => !capsBtn.has(x)), ...lines(ch.pkg?.script, 'line'), ...lines(ch.pkg?.draft?.script, 'line'), ...lines(ch.pkg?.draft?.slides, 'text'), ...lines(ch.pkg?.slides, 'text'), ...lines([ch.pkg?.draft?.text, ch.pkg?.draft?.copy])].filter(Boolean).join('\n');
     const src = brandSource(t, card), cf = claimFlags(shopperText, src, { allowNewCode: /discount_offer$/.test(ch.action || '') });
     checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote) });
     const lf = copyFlags(shopperText, { source: src, names: [BN(), o.SEED?.brand?.name, ...(catalogOf(t) || []).map((x) => x?.t)] }); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
@@ -786,6 +788,9 @@ export function createRemix(o) {
     if (ch.pkg && ch.pkg.landing?.v !== LANDING_V && isLanding(ch, t.cards.get(ch.cardId) || {})) sync(t, ch); /* a jam saved before landing drafts gains its page */
     const opts = optionsOf(t, ch); /* first: healing an old jam can move its stage */
     { const tg = msgTarget(t, ch); if (tg && tg !== ch.target) ch.target = tg; } /* the brand's own messaging tool (2.4) */
+    /* replies to reviews are review replies in the reviews app: never a YouTube frame or "Reply in the comments on YouTube comment reply" (25 Oct) */
+    if (ch.target?.object === 'Review reply') { if (ch.actionLabel !== 'Reply to reviews') ch.actionLabel = 'Reply to reviews'; if (ch.pkg && !/review/i.test(ch.pkg.platform || '')) ch.pkg = { ...ch.pkg, platform: 'Review reply' };
+      if (Array.isArray(ch.pkg?.where) && ch.pkg.where.some((w) => /youtube|tiktok|instagram comments?/i.test(w?.name || ''))) ch.pkg = { ...ch.pkg, where: ch.pkg.where.map((w) => (/youtube|tiktok|instagram comments?/i.test(w?.name || '') ? { ...w, name: ch.target.name, url: null } : w)) }; }
     const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
     /* the jam's own name in plain words ("syncing our Shopify products.json stock levels", final QA pass 19 Oct); the package itself is untouched */
