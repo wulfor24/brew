@@ -498,7 +498,11 @@ export function createRemix(o) {
   /* ---------- checks + verdict ---------- */
   /* the brand's own words (facts, catalog, the card's real evidence): a claim they carry is backed (claims.js) */
   const SRC = new WeakMap();
-  const brandSource = (t, card) => { const cat = catalogOf(t) || null; const key = Array.isArray(cat) || (cat && typeof cat === 'object') ? cat : null; let base = key && SRC.get(key);
+  /* one claim-check source for the whole jam (v1 checks, the publish check, the pack cut, and Studio): the viewer's pack (the team's
+     connected facts, the Brand Book's approved claims, review quotes and fact brief), plus the card's evidence; the older catalog-only
+     source stands in when no pack is loaded */
+  const brandSource = (t, card) => { const ps = o.packSourceOf?.(t, card); if (ps) return `${ps}\n${sourceText(card?.liveOnly || /^live-/.test(card?.id || '') ? [card.title, card.sub, card.rows] : [])}`; return brandSource0(t, card); };
+  const brandSource0 = (t, card) => { const cat = catalogOf(t) || null; const key = Array.isArray(cat) || (cat && typeof cat === 'object') ? cat : null; let base = key && SRC.get(key);
     if (base == null) { base = sourceText(Object.values(FACTS || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), cat, o.SEED?.brand?.about || '', o.SEED?.brand?.tagline || ''); if (key) SRC.set(key, base); }
     return `${base}\n${sourceText(card.post?.evidence || [], card.evidence || [], card.liveOnly || /^live-/.test(card.id || '') ? [card.title, card.sub, card.rows] : [])}`; };
   /* the card's amounts (₹/$ in its title, body and rows) against the draft's: a budget move whose draft moves another amount,
@@ -2197,5 +2201,8 @@ export function createRemix(o) {
     studioState(t, chId, { state: 'made', line: Array.isArray(take.missing) && take.missing.length ? `${label} · ${take.missing.length} couldn’t be made: open it to add ${take.missing.length > 1 ? 'them' : 'it'}` : label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
   const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; ch.studioState = { ...st, at: now(t) }; const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };
-  return { landStudio, studioOf, studioState, remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
+  /* the product a jam's copy is about (the card's, or the one its words name now), with its catalog photo: Studio shows the same one */
+  const productOfCh = (t, chId) => { const ch = C(t, chId); if (!ch) return null; const c = t.cards.get(ch.cardId) || {}; const P = productFor(c, FACTS, pkgWords(ch));
+    const m = (catalogOf(t) || []).find((x) => x?.t && (x.t === P?.name || x.t === P?.full)); const img = m?.img || P?.img || null; return img ? { img, name: m?.t || P.name, from: 'jam' } : null; };
+  return { productOfCh, landStudio, studioOf, studioState, remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
 }

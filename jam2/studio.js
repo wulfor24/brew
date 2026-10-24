@@ -219,7 +219,8 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       const real = [...ok, ...loose].map((r) => tidy(r.text, 300));
       const said = (words.proof || []).map((q) => tidy(q, 300)).find((q) => q && real.some((r) => low(r).includes(low(q)))), forProduct = ok.length ? tidy(ok[0].text, 300) : null;
       const proof = [said || forProduct || real[0]].filter(Boolean), review = REVIEWISH(st) && proof.length;
-      const claims = (ctx.bbv?.claims || []).map((c) => tidy(c.text || c, 60)).filter(Boolean).slice(0, 3); /* the only benefit callouts a designed piece may print */
+      const pn0 = String(ctx.product?.name || '').toLowerCase(), cp = (c) => String(c?.product || '').toLowerCase();
+      const claims = (ctx.bbv?.claims || []).filter((c) => !cp(c) || !pn0 || pn0.includes(cp(c)) || cp(c).includes(pn0)).map((c) => tidy(c.text || c, 60)).filter(Boolean).slice(0, 3); /* this product's own claims (or the whole brand's) only */ /* the only benefit callouts a designed piece may print */
       const market = st.groupId === 'marketplace'; /* a marketplace image carries no button, price or promotion (their rules) */
       const exact = [words.headline && `Headline: "${words.headline}"`, words.sub && `Line: "${words.sub}"`, review && `Customer review, word for word, with its stars: "${tidy(proof[0], 220)}"`, words.cta && !market && `Button: "${words.cta}"`].filter(Boolean).join('; ');
       const callouts = st.id === 'mp-benefits' ? (claims.length ? ` Benefit callouts, word for word: ${claims.map((c) => `"${c}"`).join(', ')}.` : ' No benefit callouts: the product and the headline only.') : '';

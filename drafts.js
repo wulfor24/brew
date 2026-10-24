@@ -77,7 +77,7 @@ export function createDrafts({ sourceOf = () => '', rivalAdOf = () => null, riva
     const mem = await memoryBlockAsync(t, w.agent === 'brew' ? 'creative' : w.agent, `${w.title || ''} ${String(briefOf(t, w) || '').slice(0, 1500)}`); // brand memory: voice, creative style, rules, what works
     const rv = await rivalRead(t, c).catch(() => null);
     const hooks = hookBlock(hooksOf(t) || catalogOf(t)?.hooks || {}); /* real buyers' words and the rival ads that keep running (brand-pack.js hooksOf; feed-service passes them) */
-    const prompt = draftPrompt({ card: c ? `${cardBrief(c, seatLine(t.viewer))}${rv ? `\n\n${rivalBlock(rv.ad, rv.style, brandName(t) || 'the brand')}` : ''}${hooks ? `\n\n${hooks}` : ''}` : `Jam: ${w.title}`, role: AGENT[w.agent] || 'creative', brief: briefOf(t, w), mem, as, ask });
+    const prompt = draftPrompt({ card: c ? `${cardBrief(c, seatLine(t.viewer), t)}${rv ? `\n\n${rivalBlock(rv.ad, rv.style, brandName(t) || 'the brand')}` : ''}${hooks ? `\n\n${hooks}` : ''}` : `Jam: ${w.title}`, role: AGENT[w.agent] || 'creative', brief: briefOf(t, w), mem, as, ask });
     const j = await claudeTool(prompt, SCHEMA, 4500, 'draft'); /* 3000 was hit once: a plan cut off mid-JSON */
     try { cleanDraftClaims(j, sourceOf(t, c)); } catch {} /* QA-25: the store's own claims only (its facts, catalog, reviews, the card's evidence) */
     if (!DRAFT_AS.includes(j.as) || as !== 'auto') j.as = as === 'auto' ? 'text' : as;

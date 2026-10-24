@@ -70,7 +70,7 @@ export function claimFlags(text, source = '', { allowNewCode = false } = {}) {
     /* a health endorsement ("dermat-approved", "clinically tested", "doctor recommended") needs its proof, not just the words: the store
        names the study, test or certificate beside it, or the team approved it in the Brand Book (23 Oct QA 1.5); other absolutes
        ("permanent", "100% natural") pass where the store says them */
-    if (HEALTH.test(ph) ? certifiedIn(src, ph) || approvedHas(src, ph) : src.includes(ph)) continue; /* "treats" a pet store sells is not a health claim */ add('absolute', m[0], m.index, `“${m[0]}” isn’t backed by your store`); }
+    if (HEALTH.test(ph) ? certifiedIn(src, ph) || approvedHas(src, ph) : src.includes(ph)) continue; /* "treats" a pet store sells is not a health claim */ add('absolute', m[0], m.index, HEALTH.test(ph) && src.includes(ph) ? `“${m[0]}” needs its proof: your store says it, but not which study or test. Name it beside the claim, or approve the claim in Brand Book → Claims` : `“${m[0]}” isn’t backed by your store`); }
   for (const m of s.matchAll(EFFICACY)) { const q = around(s, m.index, m[0].length); if (!RESULT.test(q) && !/hair|skin|acne|weight|sleep|pain/i.test(q)) continue;
     if (measuredIn(src, m[0])) continue; /* the same number where the store says it was measured */ if (approvedHas(src, norm(m[0]).trim())) continue;
     add('efficacy', m[0].trim(), m.index, `“${m[0].trim()}” is a measured result; your store doesn’t say where it was measured`); }

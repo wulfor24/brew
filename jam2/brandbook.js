@@ -47,12 +47,15 @@ export const channelOf = (kind = '') => { const x = String(kind || '').toLowerCa
 export const playbookFor = (v = {}, kind = '') => { const fs = familiesFor(kind); return [...(v.playbooks || [])].sort((a, b) => fs.indexOf(a.family) - fs.indexOf(b.family)).find((p) => fs.includes(p.family)) || null; };
 
 /* the words block every writer reads: rules first, then how the brand sounds (with its own lines), then the format's playbook, then taste */
-export function promptBlock(v = {}, { recipe = null, kind = null } = {}) {
+export function promptBlock(v = {}, { recipe = null, kind = null, product = null } = {}) {
   const L = [], t = v.tone || {};
+  /* a review or claim about one product is never offered for another: filtered to this product (or the whole brand) when it is known,
+     and each one says which product it is about when it isn't */
+  const pn = String(product || '').toLowerCase(), of = (x) => String(x?.product || '').toLowerCase(), mine = (x) => !pn || !of(x) || pn.includes(of(x)) || of(x).includes(pn), about = (x) => (!pn && x?.product ? ` (about ${x.product})` : '');
   const rl = ruleLines(v.rulebook || [], { channel: channelOf(kind || recipe) }); if (rl) L.push(rl);
   if (v.never?.length) L.push(`Never use these words or claims: ${v.never.join(', ')}.`);
   if (v.words?.avoid?.length) L.push(`Words this brand avoids: ${v.words.avoid.join(', ')}.`);
-  if (v.claims?.length) L.push(`Claims the brand may make (only these, as written): ${v.claims.slice(0, 6).map((c) => `"${c.text}"`).join('; ')}.`);
+  { const cl = (v.claims || []).filter(mine); if (cl.length) L.push(`Claims the brand may make (only these, as written, and only for the product named): ${cl.slice(0, 6).map((c) => `"${c.text}"${about(c)}`).join('; ')}.`); }
   if (t.summary) L.push(`How the brand sounds: ${end(t.summary)}${t.reading ? ` (${end(t.reading)})` : ''}${t.language ? `; writes in ${end(t.language)}` : ''}.`);
   if (t.traits?.length) L.push(`Voice traits, with their own lines (match the voice, never copy the line):\n${t.traits.map((x) => `- ${x.trait}${x.sounds ? `: "${x.sounds}"` : ''}`).join('\n')}`);
   if (t.never?.length) L.push(`It never sounds: ${t.never.map((x) => x.text).join('; ')}.`);
@@ -62,7 +65,7 @@ export function promptBlock(v = {}, { recipe = null, kind = null } = {}) {
   if (v.words?.use?.length) L.push(`Words the brand uses: ${v.words.use.slice(0, 12).map((x) => `"${x}"`).join(', ')}.`);
   if (v.golden?.length) L.push(`How the brand really writes (match this, never copy it):\n${v.golden.slice(0, 3).map((g, i) => `${i + 1}. ${g.text}`).join('\n')}`);
   if (v.language?.length) L.push(`Words their customers use: ${v.language.slice(0, 8).map((x) => `"${x}"`).join(', ')}.`);
-  if (v.reviews?.length) L.push(`Real review lines (quote only these, word for word): ${v.reviews.slice(0, 4).map((r) => `"${r.text}"`).join(' | ')}`);
+  { const rv = (v.reviews || []).filter(mine); if (rv.length) L.push(`Real review lines (quote only these, word for word, and only on the product each is about): ${rv.slice(0, 4).map((r) => `"${r.text}"${about(r)}`).join(' | ')}`); }
   const pb = playbookFor(v, kind || recipe || '');
   if (pb) L.push(`Their ${REF_FAMILIES[pb.family] || pb.family} usually: ${[pb.headline && `headline ${pb.headline}`, pb.wordsOnImage && `words on the picture ${pb.wordsOnImage}`, pb.cta && `CTA ${pb.cta}`, pb.avoid && `never ${pb.avoid}`].filter(Boolean).join('; ')}.`);
   const dos = (v.taste?.rules || []).filter((r) => r.kind === 'do'), donts = (v.taste?.rules || []).filter((r) => r.kind === 'dont');

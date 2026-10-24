@@ -43,12 +43,18 @@ export function mountJam2(d) {
   async function ctxOf(t, jam, { pick = null } = {}) {
     const slug = slugOfT(t), br = brandOfT(t), card = jam.cardId ? cardOf(t, jam.cardId) : null, view = bb.view(await bb.load(slug));
     const refs = await refsOf(slug).catch(() => []), catalog = br?.catalog || [];
-    const prod = productFor({ card, catalog, refs, pick: pick || jam.product || null, lanePhoto: null });
+    /* the product the v1 jam's copy is about leads, so the picture and the words show the same thing (v1 and Studio used to pick apart) */
+    let v1p = null; if (!pick && !jam.product && jam.v1ch && d.v1Product) { try { v1p = d.v1Product(t, jam.v1ch); } catch { v1p = null; } }
+    const prod = productFor({ card, catalog, refs, pick: pick || jam.product || v1p || null, lanePhoto: null });
     let memory = ''; try { memory = memoryOf ? memoryOf(t, card?.agent && card.agent !== 'brew' ? card.agent : 'creative') || '' : ''; } catch { memory = ''; }
     const cfg = br?.config || {}, market = br ? askMarket({ country: cfg.country, locale: cfg.locale, market: cfg.market }, cfg) : null; /* who the people in a picture or film look like */
     const ref = card && d.refOf ? d.refOf(t, card) : null; /* the reference the card is about (Recreate, viral shorts) */
     const v1 = jam.v1ch ? t.changes?.[jam.v1ch]?.pkg || null : null; /* the v1 jam's own words (headline, caption): what the ad says, never the card's internal title */
-    return { slug, jam, card, ref, v1, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: (jam.notes || []).map((n) => n.text), market, refs, storeKind: br?.profile?.storeKind || await kindOfStore(slug) };
+    let facts = null; try { facts = d.factBriefOf?.(t) || null; } catch { facts = null; }
+    const evidence = card ? [...(card.post?.evidence || []), ...(card.evidence || [])].map((e) => (typeof e === 'string' ? e : e?.text || e?.quote || '')).filter(Boolean).join(' · ') : '';
+    /* what the v1 jam's team said (its notes, its own checks, its last asks): Studio's art direction follows them too */
+    const ch1 = jam.v1ch ? t.changes?.[jam.v1ch] : null, v1notes = ch1 ? [...(ch1.notes || []).map((n) => n.text || n), ...(ch1.myChecks || []).filter((m) => !m.done).map((m) => `Check: ${m.text}`), ...(ch1.thread || []).filter((m) => m.from === 'you').slice(-3).map((m) => `The team asked: ${m.text}`)].filter((x) => typeof x === 'string' && x.trim()).map((x) => x.slice(0, 200)) : [];
+    return { slug, jam, card, ref, v1, facts, evidence, bbv: view, catalog, product: prod, by: whoOf(t).me, source: sourceOf(t, card), cuts: jam.cuts || (jam.cuts = {}), memory, notes: [...(jam.notes || []).map((n) => n.text), ...v1notes], market, refs, storeKind: br?.profile?.storeKind || await kindOfStore(slug) };
   }
   /* run slow work in the background; the board says what it is doing and any error in plain words */
   /* a job also leaves a mark on the jam (saved with it): after a restart, a mark with no job running says the job was cut off */

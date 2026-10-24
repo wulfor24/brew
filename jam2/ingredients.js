@@ -16,7 +16,7 @@ export function productFor({ card = null, catalog = [], refs = [], pick = null, 
   if (ref) return { img: ref.url || ref.file, name: ref.label || null, from: 'references' };
   const own = card && !isRivalCard(card) ? (card.images || []).find((u) => u && !isResearchImage(u)) : null;
   if (own) return { img: own, name: null, from: 'card' };
-  const lead = (catalog || []).find((p) => imgOf(p));
+  const lead = (catalog || []).find((p) => imgOf(p) && !p.out) || (catalog || []).find((p) => imgOf(p)); /* in stock first */
   if (lead) return { img: imgOf(lead), name: lead.t || lead.title || null, handle: lead.handle || null, from: 'catalog' };
   if (lanePhoto) return { img: lanePhoto, name: null, from: 'lane' };
   return null;
