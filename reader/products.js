@@ -153,7 +153,7 @@ export function ldItem(ld, url, html, group = null) {
   const ar = ld.aggregateRating || group?.aggregateRating;
   const cat = typeof ld.category === 'string' ? ld.category : typeof group?.category === 'string' ? group.category : '';
   return {
-    handle: handleOf(url), title: clean(ld.name || group?.name), type: clean(cat.split(/[>/|]/).pop() || ''), price, mrp: list, currency: o.priceCurrency || null,
+    handle: handleOf(url), title: clean(ld.name || group?.name), type: clean(cat.split(/[>/|]/).pop() || ''), vendor: clean((typeof (ld.brand || group?.brand) === 'string' ? (ld.brand || group?.brand) : (ld.brand || group?.brand)?.name) || '') || null, /* whose product it is (assortment.js) */ price, mrp: list, currency: o.priceCurrency || null,
     // a product is in stock when any of its offers (sizes, colours) is
     inStock: avail.length ? avail.some((a) => IN_STOCK.test(a)) : null, variants: Math.max(1, offers.length),
     images: imgs.length ? imgs : [og].filter(Boolean), url, published: null, tags: [], claims: claimsOf(stripTags(ld.description || group?.description || '')), about: clean(stripTags(ld.description || group?.description || '')).slice(0, 600) || null,

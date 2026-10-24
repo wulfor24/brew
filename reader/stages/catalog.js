@@ -4,6 +4,7 @@
 import { jsonLd, typeIs, clean, stripTags, pathOf, money, num, pool, hostOf, meta, links } from '../util.js';
 import { moneyFmt } from '../../brand-pack.js'; // the price label the check page prints (build.js normalizeProfile)
 import { adminUrl } from './admin.js';
+import { assortmentOf, assortmentLine } from '../../assortment.js'; // own label, other brands, or both
 import { findProductUrls, isProductPage, productFromPage, PACK, claimsOf, storeKindOf, offeringUrls, offeringFromPage, spread } from '../products.js';
 
 /** bump when the catalog starts reading differently: heal() re-reads every saved catalog with an older version */
@@ -122,11 +123,14 @@ export async function catalog(ctx) {
   for (const c of collections.slice(0, 200)) collOut.push({ handle: c.handle, title: clean(c.title), count: c.products_count ?? null });
   profile.catalog = {
     count: products.length, collections: collOut,
-    products: products.map((p) => ({ ...(p.id ? { id: p.id } : {}), handle: p.handle, title: p.title, type: p.type || null, price: p.price || null, mrp: p.mrp || null, currency: p.currency || null, inStock: p.inStock, variants: p.variants, images: p.images.slice(0, 6), img: p.img || null, url: p.url, published: p.published || null, tags: p.tags || [], claims: p.claims || [], about: p.about || null, pack: !!p.pack, reviews: p.reviews || null, ...(p.kind ? { kind: p.kind, priceText: p.priceText || null, summary: p.summary || null } : {}) })),
+    products: products.map((p) => ({ ...(p.id ? { id: p.id } : {}), handle: p.handle, title: p.title, type: p.type || null, ...(p.vendor ? { brand: p.vendor } : {}), price: p.price || null, mrp: p.mrp || null, currency: p.currency || null, inStock: p.inStock, variants: p.variants, images: p.images.slice(0, 6), img: p.img || null, url: p.url, published: p.published || null, tags: p.tags || [], claims: p.claims || [], about: p.about || null, pack: !!p.pack, reviews: p.reviews || null, ...(p.kind ? { kind: p.kind, priceText: p.priceText || null, summary: p.summary || null } : {}) })),
     hero: hero.map((p) => p.handle), order: orderHow || 'catalog order', source: how,
     /* every product page the store lists (count is only the ones read) and the URL shapes learned for them */
     ...(group ? { offerings: group } : {}), total: total ?? products.length, ...(shapes?.length ? { shapes, prefix } : {}), v: CATALOG_V
   };
+  /* whose products these are: a store selling mostly other brands' products is a curated retailer, and the line, category,
+     brief and plays must say so (Scrubroom, 24 Oct) */
+  assortIn(profile, ledger, listUrl, admin ? listHow : how);
   if (products.length) ledger.add({ key: 'catalog.count', label: 'Products in the catalog', v: String(products.length), n: products.length, unit: 'products', url: admin ? listUrl : how === 'products.json' ? `${origin}/products.json` : origin, method: how?.startsWith('jsonld') ? 'jsonld' : admin ? listHow : how || 'crawl', note: how?.startsWith('jsonld') ? `only product pages read so far; ${ctx.state.productPageCount || 0} product pages in the sitemap${shapes?.length ? ` (${shapes.map((x) => '/' + x.split('/')[0] + '/').join(', ')})` : ''}` : admin ? `active products in the Shopify admin${admin.partial ? `; the first ${products.length} of ${admin.count} read` : ''}` : undefined });
   if (collections.length) ledger.add({ key: 'catalog.collections', label: 'Collections', v: String(collections.length), n: collections.length, url: admin ? adminUrl(admin.shop?.myshopify, '/collections') : `${origin}/collections.json`, method: listHow });
   const packs = products.filter((p) => p.pack); if (products.length) ledger.add({ key: 'catalog.packs', label: 'Packs, kits and bundles', v: String(packs.length), n: packs.length, url: listUrl, method: how?.startsWith('jsonld') ? 'jsonld' : listHow, layer: 'inferred', conf: 'medium', note: 'titles that say pack/kit/combo/set/duo/trio' });
@@ -175,8 +179,20 @@ function shopifyItem(p, origin, cur) {
 function wooItem(p) {
   const minor = +(p.prices?.currency_minor_unit ?? 2); const f = (x) => (x == null || x === '' ? null : +x / 10 ** minor);
   const price = f(p.prices?.price) || 0, reg = f(p.prices?.regular_price);
-  return { handle: p.slug, title: clean(stripTags(p.name)), type: clean(p.categories?.[0]?.name || ''), price, mrp: reg > price ? reg : null, currency: p.prices?.currency_code || null, inStock: !!p.is_in_stock, variants: (p.variations || []).length || 1, images: (p.images || []).map((i) => i.src), url: p.permalink, published: null, tags: (p.tags || []).map((t) => t.name), claims: claimsOf(stripTags(p.description || p.short_description || '')), about: clean(stripTags(p.description || p.short_description || '')).slice(0, 600) || null, pack: PACK.test(p.name), reviews: p.review_count ? { count: +p.review_count, rating: +p.average_rating || null } : null };
+  return { vendor: clean(p.brands?.[0]?.name || '') || null, /* WooCommerce Brands, when the store uses it (assortment.js) */ handle: p.slug, title: clean(stripTags(p.name)), type: clean(p.categories?.[0]?.name || ''), price, mrp: reg > price ? reg : null, currency: p.prices?.currency_code || null, inStock: !!p.is_in_stock, variants: (p.variations || []).length || 1, images: (p.images || []).map((i) => i.src), url: p.permalink, published: null, tags: (p.tags || []).map((t) => t.name), claims: claimsOf(stripTags(p.description || p.short_description || '')), about: clean(stripTags(p.description || p.short_description || '')).slice(0, 600) || null, pack: PACK.test(p.name), reviews: p.review_count ? { count: +p.review_count, rating: +p.average_rating || null } : null };
 }
 const sizeUp = (src) => (/cdn\.shopify\.com|\/cdn\/shop\//.test(src) ? src.replace(/^\/\//, 'https://') + (src.includes('?') ? '&' : '?') + 'width=1200' : src.replace(/^\/\//, 'https://'));
 export const shortTitle = (t) => clean(String(t).replace(/\s*[|]\s*.*$/, '').replace(/™|®/g, '')).slice(0, 60);
 const fmtDate = (s) => new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+/** profile.assortment from the saved catalog, with its ledger lines (the catalog stage and the reader's heal) */
+export function assortIn(profile, ledger, url, method) {
+  const a = assortmentOf({ products: profile.catalog?.products || [], name: profile.name, brandName: profile.brandName, host: profile.host, about: profile.about || '' });
+  profile.assortment = a;
+  if (!a.kind) return a;
+  ledger.add({ key: 'catalog.assortment', label: 'Whose products the store sells', v: a.kind === 'retailer' ? 'Mostly other brands (a curated retailer)' : a.kind === 'mixed' ? 'Its own label and other brands' : 'Its own label', layer: 'inferred', conf: 'high', url, method: method || 'catalog',
+    note: assortmentLine(a, profile.brandName || profile.name) || `${(a.own || []).join(', ')} only` });
+  if (a.others.length) ledger.add({ key: 'catalog.brands.others', label: 'Other brands in the catalog (products)', v: a.others.slice(0, 8).map((g) => `${g.name} (${g.n})`).join(', '), url, method: method || 'catalog' });
+  if (a.own.length && a.kind !== 'own') ledger.add({ key: 'catalog.brands.own', label: 'The store’s own label', v: a.own.join(', '), layer: 'inferred', url, method: method || 'catalog' });
+  return a;
+}

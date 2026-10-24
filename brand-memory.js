@@ -12,6 +12,7 @@
 // app's own pieces: ai.js structured output for extraction and decisions, Vertex Gemini embeddings, and the brand pack
 // files (local disk + GCS) for persistence. Without AI (AI_MOCK=1) it still works: deterministic facts and lexical search.
 // Rule: never invent brand facts. Every memory line has a source; add() refuses text without one.
+import { assortmentLine } from './assortment.js';
 import { sk } from './demo-mode.js'; // Demo Mode: each demo session keeps its own memory
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -335,6 +336,7 @@ export function createBrandMemory({ ai = null, packs, embed = null, allow = () =
     if (profile) {
       if (profile.tagline || profile.descriptor) D('live.site.tagline', 'voice', `How the site describes the brand: "${tidy(profile.descriptor || profile.tagline, 120)}"${profile.tagline && profile.descriptor && profile.tagline !== profile.descriptor ? `; page title: "${tidy(profile.tagline, 120)}"` : ''}.`, `${host} homepage`);
       if (profile.category) D('live.site.category', 'products', `Category: ${profile.category}${profile.subcategory ? `, ${profile.subcategory}` : ''}.`, `${host} (brand read)`);
+      { const w = assortmentLine(profile.assortment, profile.brandName || name); if (w) D('live.site.assortment', 'products', w, `${host} catalog (brand read)`); } /* a curated retailer, said once for every writer */
       const id = profile.identity || {};
       if (id.colors?.length) D('live.site.colors', 'creative-style', `Brand colours on the site: ${id.colors.slice(0, 5).join(', ')}.`, `${host} styles`);
       if (id.fonts?.heading || id.fonts?.body) D('live.site.fonts', 'creative-style', `Site type: headings in ${id.fonts.heading || 'the default'}, body in ${id.fonts.body || 'the default'}.`, `${host} styles`);

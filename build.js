@@ -45,7 +45,8 @@ import { createBookReader } from './brand-book-read.js';
 import { createEnricher } from './brand-enrich.js'; // the Brand Book's fresh posts, reels, TikToks and film words (paid, capped, saved once) // the Brand Book as the read finds it: built after the brief, healed on open
 import { markMoveClaims, sourceText } from './claims.js'; // move PDFs mark a claim the store never made, like the page
 import { COMPANY_V } from './reader/stages/company.js'; // a read from before the about page heals once
-import { SOCIAL_SEARCH_V } from './reader/stages/socials.js'; // a site with no social links: its accounts by search, once
+import { SOCIAL_SEARCH_V } from './reader/stages/socials.js';
+import { ASSORT_V, assortmentLine } from './assortment.js'; // whose products a store sells: saved reads work it out once // a site with no social links: its accounts by search, once
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
 // addresses that must never be read or built (wrong links, removals): BUILD_BLOCK=slug;slug (deploy.sh needs ; since its env list is comma-separated)
@@ -756,7 +757,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         || ((p.rivals || []).some((r) => r.host && !(r.prices || []).length) && !p.meta?.healTried?.rivalPrices)
         || ((p.company?.v || 0) < COMPANY_V && !(p.company?.founders || []).length && !p.meta?.healTried?.[`companyAbout${COMPANY_V}`]) /* founders from the brand's own about page, once (2.8) */
         /* a site that links no Instagram or YouTube: its accounts are looked up by search (socials.js), once a day at most */
-        || (!p.closed && (!p.socials?.instagram || !p.socials?.youtube) && ((p.socials?.search?.v || 0) < SOCIAL_SEARCH_V || !!p.socials?.search?.error) && !(p.meta?.healTried?.socials && Date.now() - Date.parse(p.meta.healTried.socials) < 864e5));
+        || (!p.closed && (!p.socials?.instagram || !p.socials?.youtube) && ((p.socials?.search?.v || 0) < SOCIAL_SEARCH_V || !!p.socials?.search?.error) && !(p.meta?.healTried?.socials && Date.now() - Date.parse(p.meta.healTried.socials) < 864e5))
+        /* a read from before the assortment: whose products the store sells (assortment.js), once */
+        || (!p.closed && (p.catalog?.products?.length || 0) > 0 && (p.assortment?.v || 0) < ASSORT_V && !(p.meta?.healTried?.assortment && Date.now() - Date.parse(p.meta.healTried.assortment) < 864e5));
       const stillBroken = !!p.ads?.own?.error || (p.ads?.rivals || []).some((r) => r.error) || (!p.ai?.answers?.length && !!p.meta?.errors?.answers); /* the AI tools step failed in the read: ask again hourly */
       if (!outdated && p.meta?.healedAt && Date.now() - Date.parse(p.meta.healedAt) < (stillBroken ? 36e5 : 864e5)) return null;
       const reader = makeReader(await load()); if (!reader.heal) return null;
@@ -767,6 +770,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       normalizeProfile(out.profile);
       if (await packs.getJSON(slug, 'seed.json', null)) await publishBase(slug, out.profile, out.ledger, out.findings).catch((e) => log.warn?.('[build] heal publish', slug, e.message));
       log.info?.(`[build] healed ${slug}: ${out.changed.join(', ')}`);
+      /* a store now known to sell other brands: every move written as if it made them goes to the weekly rewrite (the week's pot
+         pays, never an extra run), with the reason the rewrite reads */
+      const a = out.profile.assortment;
+      if (out.changed.includes('assortment') && ['retailer', 'mixed'].includes(a?.kind) && a.kind !== p.assortment?.kind) {
+        const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves), ns = Object.keys(moves).map(Number).filter(ok);
+        if (ns.length) await flagStale(slug, ns.map((n) => ({ n, priority: 'high', via: 'assortment', real: true, why: `Written as if ${out.profile.brandName || out.profile.name} made everything it sells. ${assortmentLine(a, out.profile.brandName || out.profile.name)}`, changes: [`Assortment: ${a.kind === 'retailer' ? 'a curated retailer' : 'own label and other brands'} (${Math.round(a.otherShare * 100)}% other brands)`] })));
+        log.log?.(`[assortment] ${slug}: ${a.kind}; ${ns.length} moves flagged for the weekly rewrite`); }
       return out.changed;
     } catch (e) { log.warn?.('[build] heal', slug, e.message); return null; }
     finally { healing.delete(slug); }

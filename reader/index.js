@@ -10,7 +10,8 @@ import { normalizeUrl, slugOf, createFetcher, createLedger, defaultStore, withTi
 import { sitemapUrls } from './products.js';
 import { open } from './stages/open.js';
 import { brand, whoOf } from './stages/brand.js';
-import { catalog, CATALOG_V } from './stages/catalog.js';
+import { catalog, CATALOG_V, assortIn } from './stages/catalog.js';
+import { ASSORT_V } from '../assortment.js'; // own label vs other brands: saved reads work it out once
 import { reviews, REVIEWS_V } from './stages/reviews.js';
 import { ads, findRivals, ADS_V, crawlRival } from './stages/ads.js';
 import { site, SITE_V, speedOn } from './stages/site.js';
@@ -192,6 +193,9 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
     const due = (k) => { const t = profile.meta?.healTried?.[k]; return !t || Date.now() - Date.parse(t) >= 864e5; };
     /* a catalog from before the store's product URLs were learned (reader/products.js), empty or read from product pages,
        is read again (once a day until it reads); a Shopify or WooCommerce catalog is never touched here */
+    /* a read from before the assortment (ASSORT_V): whose products the store sells. From the saved products when they name their
+       brand, else from one free catalog read; a store found to sell other brands gets its category and line written again */
+    const assortStale = !!profile.host && !profile.closed && (profile.assortment?.v || 0) < ASSORT_V && (profile.catalog?.products?.length || 0) > 0 && due('assortment');
     const catalogStale = !!profile.host && !profile.closed && (profile.catalog?.v || 0) < CATALOG_V && (!profile.catalog?.products?.length || /^jsonld/.test(profile.catalog?.source || '')) && due('catalog');
     /* reviews from before vendor/marketplace reading (REVIEWS_V): read again once when the detection could have been wrong
        (a script vendor, a switched-off store, nothing found) or an Indian store has no marketplace check yet */
@@ -214,7 +218,7 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
        couldn't run: socials once more, at most once a day, so the Films card names the brand's accounts */
     const so = profile.socials || {};
     if (!failedStages.includes('socials') && !!profile.host && !profile.closed && (!so.instagram || !so.youtube) && ((so.search?.v || 0) < SOCIAL_SEARCH_V || !!so.search?.error) && (!tried.socials || Date.now() - Date.parse(tried.socials) >= 864e5)) failedStages.push('socials');
-    if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length && !catalogStale && !reviewsStale && !nameMissing && !rivalPricesStale) return null;
+    if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length && !catalogStale && !reviewsStale && !nameMissing && !rivalPricesStale && !assortStale) return null;
     const added = [], cards = [], stepsDone = {}, healPicks = {};
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
     const ctx = { config: config || {}, sourced: config?.questionsV ? config.questions || [] : [], url: new URL(profile.url), slug, http, profile, state: { homeUrl: profile.url, ...(profile.closed ? { closed: profile.closed, home: '' } : {}) }, log: lg, tregOn, aiOn, saveAsset, saveRaw, today: today(),
@@ -234,6 +238,21 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
     if (catalogStale) { stamp('catalog'); await homeAndPages();
       try { await withTimeout(catalog(ctx), LIMIT.catalog * 2, 'catalog'); changed.push(profile.catalog?.products?.length ? 'catalog' : 'catalog:empty'); if (profile.meta?.errors) delete profile.meta.errors.catalog; }
       catch (e) { lg.warn?.('[reader] heal catalog', slug, e.message); profile.meta.errors = { ...(profile.meta.errors || {}), catalog: e.message }; changed.push('catalog:failed'); } }
+    if (assortStale && !changed.includes('catalog')) { stamp('assortment'); const was = profile.assortment?.kind || null;
+      try {
+        /* only each product's brand is added to the saved catalog: a catalog re-run here lacks the read's store facts and once
+           came back with 6 of Scrubroom's 140 products. products.json stores give it in one free list; others get it on their next read */
+        if (!(profile.catalog.products || []).some((p) => p.brand) && profile.catalog.source === 'products.json') {
+          const origin = new URL(profile.url).origin, byHandle = new Map();
+          for (let pg = 1; pg <= 10; pg++) { let r = null; for (const wait of [0, 4e3, 12e3]) { if (wait) await new Promise((ok) => setTimeout(ok, wait)); r = await http.get(`${origin}/products.json?limit=250&page=${pg}`, { as: 'json', key: `heal-brands-${pg}`, ms: 25e3 }).catch(() => null); if (r?.status !== 429) break; } /* Shopify answers 429 to a burst: wait, then try again */
+            const ps = r?.ok ? r.json?.products || [] : null; if (!ps) throw new Error(`products.json page ${pg} could not be read (${r ? `${r.status} ${String(r.error || r.text || "").slice(0, 80)}` : "no answer"})`); ps.forEach((x) => x?.handle && x.vendor && byHandle.set(x.handle, String(x.vendor).trim())); if (ps.length < 250) break; }
+          for (const p of profile.catalog.products) if (byHandle.has(p.handle)) p.brand = byHandle.get(p.handle); }
+        assortIn(profile, ctx.ledger, profile.url, 'products.json');
+        changed.push('assortment');
+        if (['retailer', 'mixed'].includes(profile.assortment?.kind) && profile.assortment.kind !== was && aiOn) {
+          try { await inferCategory(ctx); changed.push('category'); } catch (e) { lg.warn?.('[reader] heal category', slug, e.message); }
+          if (profile.descriptorBy !== 'brand') { try { if (await writeLine(ctx)) changed.push('line'); } catch (e) { lg.warn?.('[reader] heal line', slug, e.message); } } } /* the brand's own words are never overwritten */
+      } catch (e) { lg.warn?.('[reader] heal assortment', slug, e.message); changed.push('assortment:failed'); } }
     if (reviewsStale || changed.includes('catalog')) { stamp('reviews'); await homeAndPages();
       try { await withTimeout(reviews(ctx), LIMIT.reviews * 2, 'reviews'); changed.push('reviews'); if (profile.meta?.errors) delete profile.meta.errors.reviews; }
       catch (e) { lg.warn?.('[reader] heal reviews', slug, e.message); changed.push('reviews:failed'); } }

@@ -6,6 +6,7 @@
 // → Opus 5.5 (effort medium by default, streamed, structured output; the system and brand block cached for an hour).
 // verify(move) = deterministic number scan against the ledger + a Sonnet claims check on the lines the move rests on + one targeted Sonnet fix.
 // runAll() = dependency-ordered scheduler with resume. Mock mode writes structurally valid placeholders.
+import { assortmentLine } from './assortment.js'; // own label vs other brands, for every move
 import { marketLine } from './market.js'; // where the brand sells, never just where its store is registered
 import fs from 'node:fs';
 import path from 'node:path';
@@ -362,9 +363,11 @@ export function exemplarText(n, cap = 38000) {
 }
 const compact = (o, cap) => { const s = JSON.stringify(o); return s.length > cap ? s.slice(0, cap) + '…' : s; };
 function profileSlice(p = {}) {
-  const { catalog, identity, ...rest } = p;
-  return compact({ ...rest, catalog: catalog && { count: catalog.count, hero: catalog.hero, collections: catalog.collections,
-    products: (catalog.products || []).slice(0, 40).map((x) => ({ title: x.title, price: x.price, mrp: x.mrp, url: x.url, claims: x.claims, reviews: x.reviews })) } }, 14000);
+  const { catalog, identity, assortment, ...rest } = p;
+  /* whose products these are leads the extract, so it survives the cut: a curated retailer's moves never call it the maker */
+  const whose = assortmentLine(assortment, p.brandName || p.name);
+  return compact({ ...(whose ? { whoseProducts: whose } : {}), ...rest, catalog: catalog && { count: catalog.count, hero: catalog.hero, collections: catalog.collections,
+    products: (catalog.products || []).slice(0, 40).map((x) => ({ title: x.title, ...(x.brand && whose ? { brand: x.brand } : {}), price: x.price, mrp: x.mrp, url: x.url, claims: x.claims, reviews: x.reviews })) } }, 14000);
 }
 const fill = (o, vars) => JSON.parse(JSON.stringify(o).replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars[k] ?? '')));
 

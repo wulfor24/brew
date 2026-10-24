@@ -2,6 +2,7 @@
 // asked to ChatGPT, Gemini and Perplexity through treg (their consumer answers, from the brand's country) and to
 // Claude with web search. Per answer: is the brand named, which rivals are, which sources are cited.
 // Also: inferCategory (category, subcategory, category search terms) used by rivals, ads and company.
+import { assortmentLine } from '../../assortment.js'; // own label vs other brands
 import { marketShort } from '../../market.js';
 import { clean, hostOf, registrable, pool, brandRe } from '../util.js';
 import { askMarket } from '../../market.js';
@@ -24,10 +25,12 @@ export function setLine(ctx, raw) {
   return true;
 }
 // the one-liner on its own, for a saved read that never got one
+/* whose products the store sells (assortment.js): a curated retailer is described and classed as one, never as the maker */
+const sells = (profile) => { const l = assortmentLine(profile.assortment, profile.brandName || profile.name); return l ? `\nWhose products: ${l} Say so in the line (e.g. "curated store for ..." or "... and its own label X"), and class the category as a retailer of them.` : ''; };
 export async function writeLine(ctx) {
   const { profile } = ctx; const prods = profile.catalog?.products || [];
   const r = await ctx.ai({ tag: 'reader-line', model: 'sonnet', max: 300, schema: { type: 'object', properties: { line: { type: 'string' } } },
-    prompt: `Brand: ${profile.name} (${profile.host}), ${marketShort(profile)}, category ${profile.category || 'unknown'}${profile.subcategory ? ' / ' + profile.subcategory : ''}\nPage title: ${profile.descriptor || ''}\nTagline: ${profile.tagline || ''}\nAbout: ${(profile.about || '').slice(0, 400)}\nTop products: ${prods.slice(0, 12).map((p) => p.title).join('; ')}\n\nReturn line: ${LINE_RULES}.` });
+    prompt: `Brand: ${profile.name} (${profile.host}), ${marketShort(profile)}, category ${profile.category || 'unknown'}${profile.subcategory ? ' / ' + profile.subcategory : ''}\nPage title: ${profile.descriptor || ''}\nTagline: ${profile.tagline || ''}\nAbout: ${(profile.about || '').slice(0, 400)}\nTop products: ${prods.slice(0, 12).map((p) => p.title).join('; ')}${sells(profile)}\n\nReturn line: ${LINE_RULES}.` });
   return setLine(ctx, r.json?.line);
 }
 
@@ -47,7 +50,7 @@ export async function inferCategory(ctx) {
   if (ctx.aiOn) {
     try {
       const r = await ctx.ai({ tag: 'reader-category', model: 'sonnet', max: 700, schema: { type: 'object', properties: { category: { type: 'string' }, subcategory: { type: 'string' }, confidence: { type: 'string', enum: ['high', 'medium', 'low'] }, why: { type: 'string' }, line: { type: 'string' }, queries: { type: 'array', items: { type: 'string' } } } },
-        prompt: `Classify this store. Use only the evidence below.\nBrand: ${profile.name} (${profile.host}), ${marketShort(profile)}\nTitle/descriptor: ${profile.descriptor || ''}\nTagline: ${profile.tagline || ''}\nMeta: ${(profile.about || '').slice(0, 300)}\nProduct types: ${types.slice(0, 10).map(([t, n]) => `${t} (${n})`).join(', ') || 'none'}\nTop products: ${prods.slice(0, 15).map((p) => p.title).join('; ')}\n\nReturn: category (broad, e.g. "Hair care", "Skin care", "Supplements", "Apparel"), subcategory (narrow, e.g. "Hair fall serums"), confidence, why (one line naming the evidence), line: ${LINE_RULES}. And queries: 3 short Google queries a shopper in ${profile.country || 'that country'} types when buying this kind of product without a brand in mind (lowercase, e.g. "best hair growth serum").` });
+        prompt: `Classify this store. Use only the evidence below.\nBrand: ${profile.name} (${profile.host}), ${marketShort(profile)}\nTitle/descriptor: ${profile.descriptor || ''}\nTagline: ${profile.tagline || ''}\nMeta: ${(profile.about || '').slice(0, 300)}\nProduct types: ${types.slice(0, 10).map(([t, n]) => `${t} (${n})`).join(', ') || 'none'}\nTop products: ${prods.slice(0, 15).map((p) => p.title).join('; ')}${sells(profile)}\n\nReturn: category (broad, e.g. "Hair care", "Skin care", "Supplements", "Apparel"), subcategory (narrow, e.g. "Hair fall serums"), confidence, why (one line naming the evidence), line: ${LINE_RULES}. And queries: 3 short Google queries a shopper in ${profile.country || 'that country'} types when buying this kind of product without a brand in mind (lowercase, e.g. "best hair growth serum").` });
       const j = r.json || {};
       profile.category = j.category || null; profile.subcategory = j.subcategory || null;
       state.categoryQueries = (j.queries || []).slice(0, 3);
