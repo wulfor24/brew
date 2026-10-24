@@ -2,7 +2,7 @@
 // measured, the Brand Book's approved claims count, and every surface's words go through the same check.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { claimFlags, checkCopy, checkCopyIn, approvedText } from '../claims.js';
+import { claimFlags, checkCopy, checkCopyIn, approvedText, sourceText } from '../claims.js';
 import { groundCheck } from '../jam-answer.js';
 
 const site = 'Arata Hair Growth Serum. In a clinical study with 40 participants, 95% saw visible hair growth in 84 days.';
@@ -33,4 +33,9 @@ test('a health endorsement needs its proof on the store, not just the words (QA 
   assert.equal(claimFlags('Dermat-approved haircare', 'Dermat-approved: tested by an independent lab in a clinical study of 40 volunteers.').length, 0);
   assert.equal(claimFlags('Dermat-approved haircare', approvedText(['Dermat-approved'])).length, 0, 'the team approved it');
   assert.equal(claimFlags('100% natural', 'We are 100% natural.').length, 0, 'not a health endorsement');
+});
+
+test('a test named in another fact never proves a health endorsement (QA audit 24 Oct: Arata’s tagline)', () => {
+  const src = sourceText(['Tagline', 'Explore our most trusted & dermat-approved haircare'], ['Serum', 'In a clinical study of 40 volunteers, 87% saw growth']);
+  assert.ok(claimFlags('Dermat-approved haircare', src).length); assert.equal(claimFlags('87% saw growth', src).length, 0);
 });
