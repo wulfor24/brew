@@ -16,7 +16,7 @@ import { ads, findRivals, ADS_V, crawlRival } from './stages/ads.js';
 import { site, SITE_V, speedOn } from './stages/site.js';
 import { pageSpeed, keepSpeed } from '../health.js';
 import { answers, inferCategory, writeLine, rescoreNamed } from './stages/answers.js';
-import { socials } from './stages/socials.js';
+import { socials, SOCIAL_SEARCH_V } from './stages/socials.js';
 import { named, namedStale } from './stages/named.js';
 import { company, COMPANY_V } from './stages/company.js';
 import { openAdmin, CLOSED_STAGE, reopenCheck } from './stages/admin.js';
@@ -210,6 +210,10 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
     if (!failedStages.includes('company') && !!profile.host && !profile.closed && (profile.company?.v || 0) < COMPANY_V && !(profile.company?.founders || []).length && !tried[`companyAbout${COMPANY_V}`]) { failedStages.push('company'); profile.meta = { ...(profile.meta || {}), healTried: { ...(profile.meta?.healTried || {}), [`companyAbout${COMPANY_V}`]: new Date().toISOString() } }; }
     /* a read from before the health card's speed part gets PageSpeed; a failed one is kept and tried again a day later */
     const ps = profile.site?.pagespeed, speedMissing = !!profile.host && !siteBroken && speedOn() && (!ps || (!!ps.error && Date.now() - Date.parse(ps.triedAt || ps.at || 0) >= 864e5)); /* triedAt: a kept reading's last failed try */
+    /* a read from before the accounts search (SOCIAL_SEARCH_V) whose site links no Instagram or YouTube, or whose search
+       couldn't run: socials once more, at most once a day, so the Films card names the brand's accounts */
+    const so = profile.socials || {};
+    if (!failedStages.includes('socials') && !!profile.host && !profile.closed && (!so.instagram || !so.youtube) && ((so.search?.v || 0) < SOCIAL_SEARCH_V || !!so.search?.error) && (!tried.socials || Date.now() - Date.parse(tried.socials) >= 864e5)) failedStages.push('socials');
     if (!reopen && !adsBroken && !lineMissing && !answersBroken && !namedBroken && !siteBroken && !speedMissing && !failedStages.length && !catalogStale && !reviewsStale && !nameMissing && !rivalPricesStale) return null;
     const added = [], cards = [], stepsDone = {}, healPicks = {};
     const tregOn = !!treg && treg.live !== false, aiOn = !!ai && ai.live !== false;
@@ -258,7 +262,7 @@ export function createReader({ ai = null, treg = null, apify = null, saveAsset, 
       ctx.state.origin ||= new URL(profile.url).origin; ctx.state.home ||= '';
       for (const k of failedStages) {
         profile.meta = { ...(profile.meta || {}), healTried: { ...(profile.meta?.healTried || {}), [k]: new Date().toISOString() } };
-        try { await withTimeout(RERUN[k](ctx), LIMIT[k] || 90e3, k); delete profile.meta.errors[k]; changed.push(k); }
+        try { await withTimeout(RERUN[k](ctx), LIMIT[k] || 90e3, k); if (profile.meta.errors) delete profile.meta.errors[k]; changed.push(k); }
         catch (e) { lg.warn?.(`[reader] heal ${k}`, slug, e.message); profile.meta.errors = { ...(profile.meta.errors || {}), [k]: e.message }; changed.push(`${k}:failed`); /* the stamp is saved, so the stage waits a day */ }
       }
     }
