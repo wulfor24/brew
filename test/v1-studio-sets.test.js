@@ -110,3 +110,14 @@ test('a film never casts an AI expert and never says an unbacked endorsement; a 
   assert.ok(r.checks.find((c) => c.k === 'match' && !c.ok && c.soft), 'words written for another idea');
   assert.ok(!readyOf({ family: 'post', pkg: { title: 'Curls that hold', copy: 'Seal Deal Curl Gel keeps curls defined.', video: 'v', film: { srt: 'a', cover: 'c', captions: { n: 2 } } }, product: { name: 'Seal Deal Curl Gel - 50 ml' }, brand: 'Arata', host: 'arata.in' }).checks.some((c) => c.k === 'match'));
 });
+
+test('Always use this: a pick saved for the brand opens every new set-up and says why; the chat changes the set-up, never the words', { timeout: 60e3 }, async () => {
+  const { R, t } = mount(); const o = await R['POST /api/jam2/open']({ cardId: 'c1', cta: 'Make the ad', v1ch: 'ch1' }, t, {}); const jid = o.jam.id, bid = o.jam.boards[0].id;
+  assert.ok(!(await R['POST /api/jam2/studio/remember']({ slot: 'quality', value: 'premium' }, t, {})).error);
+  assert.ok(!(await R['POST /api/jam2/studio/remember']({ slot: 'cast', value: 'A woman in her 30s' }, t, {})).error);
+  const d = await R['GET /api/jam2/jams/:jid/studio']({}, t, { jid }, new URLSearchParams(`bid=${bid}`));
+  assert.equal(d.defaults.quality, 'premium'); assert.equal(d.defaults.cast, 'A woman in her 30s'); assert.match(d.context.slots.quality.why, /always use this/);
+  const off = await R['POST /api/jam2/studio/remember']({ slot: 'quality', value: null }, t, {}); assert.equal(off.prefs.quality, undefined, 'a pick can be taken back');
+  const a = await R['POST /api/jam2/jams/:jid/studio/ask']({ text: 'make it a 10 s UGC video with a woman in her 30s, in Hindi', spec: { kind: 'image', style: 'in-use' } }, t, { jid });
+  assert.equal(a.patch.kind, 'video'); assert.equal(a.patch.style, 'ugc-review'); assert.equal(a.patch.seconds, 10); assert.match(a.patch.cast, /woman in her 30s/); assert.match(a.patch.addDirection, /hindi/i); assert.ok(a.said);
+});

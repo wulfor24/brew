@@ -123,7 +123,7 @@ export function readLayer({ slug = null, profile = null, brief = null, config = 
 }
 
 export const blankBook = () => ({ v: 1, voice: { written: 'site', narrator: 'Kore', clones: [] }, music: { moods: ['warm acoustic'], never: ['trending audio we have no rights to'] },
-  comfort: { people: 'ai-cast', aiVoice: 'yes', testimonials: 'yes', how: 'ai' }, cast: [], places: [], pinned: { golden: [], styleRefs: [] }, removed: { golden: [], styleRefs: [] },
+  comfort: { people: 'ai-cast', aiVoice: 'yes', testimonials: 'yes', how: 'ai' }, studioPrefs: {} /* Brew Studio picks the team asked Brew to always use */, cast: [], places: [], pinned: { golden: [], styleRefs: [] }, removed: { golden: [], styleRefs: [] },
   kitEdits: {}, claimsAllowed: [], neverSay: [], rulebook: { over: {}, own: [] }, taste: { counts: {}, rules: [] }, confirmed: {}, recipes: [], edits: {}, uploads: [], updatedAt: null });
 /* the Brand Book as the page and every maker read it (pure: the pack loader builds the share view from it too) */
 export function viewOf(bb, { scope = 'member' } = {}) {
@@ -152,7 +152,7 @@ export function viewOf(bb, { scope = 'member' } = {}) {
     proof: [x.roas != null ? `${x.roas}× return` : null, x.buys ? `${x.buys} sales` : null].filter(Boolean).join(', ') || 'A top spender',
     detail: [x.spend ? `${Math.round(x.spend).toLocaleString('en-US')} ${x.currency || ''} spent`.trim() : null, x.ctr != null ? `${x.ctr}% click rate` : null].filter(Boolean).join(', ') + ' in the last 30 days',
     video: null, cta: x.cta || null, kind: 'Their winning ad', private: true })), ...(v.library || {}) };
-  if (scope === 'member') Object.assign(v, { recipes: bb.recipes || [], voice: bb.voice, music: bb.music, comfort: bb.comfort, cast: bb.cast, places: bb.places, taste: bb.taste, confirmed: bb.confirmed,
+  if (scope === 'member') Object.assign(v, { studioPrefs: bb.studioPrefs || {}, recipes: bb.recipes || [], voice: bb.voice, music: bb.music, comfort: bb.comfort, cast: bb.cast, places: bb.places, taste: bb.taste, confirmed: bb.confirmed,
     /* a change not taken yet keeps its proposal, so its card comes back after a reload */
     uploads: (bb.uploads || []).map(({ id, name, kind, from, at, by, private: pv, applied, proposed, kit, neverSay, dropNever, dismissed }) => ({ id, name, kind, from: from || null, at, by, private: !!pv, applied: applied || 0, dismissed: !!dismissed,
       ...(applied ? {} : { proposed: (proposed || []).map(({ path, label, value, before, after }) => ({ path, label, value, before: before ?? null, after: after ?? null })), kit: kit || null, neverSay: neverSay || [], dropNever: dropNever || [] }) })) });
@@ -239,6 +239,14 @@ export function createBrandbook({ packs, log = console, now = () => Date.now() }
       if (Array.isArray(k.colors)) bb.kitEdits.colors = k.colors.filter((c) => hexOk(c.hex || c)).slice(0, 6).map((c, i) => ({ hex: c.hex || c, role: c.role || (i ? 'accent' : 'primary') })); }
     if (patch.voice) bb.voice = { ...bb.voice, ...(VOICES[patch.voice.written] ? { written: patch.voice.written } : {}), ...(NARRATORS.some((n) => n.id === patch.voice.narrator) ? { narrator: patch.voice.narrator } : {}) };
     if (patch.music) bb.music = { ...bb.music, ...(Array.isArray(patch.music.moods) ? { moods: patch.music.moods.filter((m) => MOODS.includes(m)).slice(0, 3) } : {}) };
+    /* Studio picks remembered for every new piece (the creative stage's "Always use this"): quality, a size per kind, who is on
+       camera, the photo to use for a product. null clears one */
+    if (patch.studio && typeof patch.studio === 'object') { const sp = { ...(bb.studioPrefs || {}) }, st = patch.studio;
+      if ('quality' in st) { if (['preview', 'standard', 'premium'].includes(st.quality)) sp.quality = st.quality; else delete sp.quality; }
+      if (st.size && ['image', 'video'].includes(st.size.kind)) { sp.size = { ...(sp.size || {}) }; if (st.size.key) sp.size[st.size.kind] = tidy(st.size.key, 30); else delete sp.size[st.size.kind]; }
+      if ('cast' in st) { if (st.cast) sp.cast = tidy(st.cast, 160); else delete sp.cast; }
+      if (st.photo?.name) { sp.photos = { ...(sp.photos || {}) }; if (st.photo.img) sp.photos[tidy(st.photo.name, 120)] = tidy(st.photo.img, 600); else delete sp.photos[tidy(st.photo.name, 120)]; }
+      bb.studioPrefs = sp; }
     if (patch.comfort) for (const [k, val] of Object.entries(patch.comfort)) if (COMFORT[k]?.options[val]) bb.comfort[k] = val;
     if (patch.pinGolden) bb.pinned.golden = [{ text: tidy(patch.pinGolden, 400), from: 'team' }, ...bb.pinned.golden].slice(0, 6);
     if (patch.removeGolden) bb.removed.golden = [...new Set([...bb.removed.golden, patch.removeGolden])];

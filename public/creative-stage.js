@@ -33,7 +33,7 @@
     const made0 = (bd.takes || []).at(-1)?.studio?.spec || null, D = made0 ? { ...d.defaults, ...Object.fromEntries(Object.entries(made0).filter(([, v]) => v != null && v !== '')), count: 1, styles: d.defaults.styles?.includes(made0.style) || !made0.style ? d.defaults.styles : [made0.style, ...(d.defaults.styles || []).slice(0, 2)] } : d.defaults, X = d.context?.slots || {};
     Object.assign(S, { loading: false, jid: jam.id, bid: bd.id, boards: jam.boards.map((b) => b.id), products: d.products || [], slots: X, missing: d.context?.missing || [], blocked: D.blocked || {}, picks: D.styles || [],
       spec: { ...D, ask: D.ask || '', direction: D.direction || X.direction?.value || '', cast: D.cast || (X.cast?.shown && X.cast.value !== 'none' ? X.cast.label : X.cast?.value === 'none' ? 'No people' : null), ref: made0 ? made0.ref || null : X.reference?.value?.label || null, quality: D.quality || ((bd.takes || []).length ? 'standard' : 'preview') /* the first take is a cheap low-res preview of the idea (3.4); the full one comes after it looks right */ },
-      busy: jam.busy || {}, made: (bd.takes || []).length > 0, failed: Object.values(jam.busy || {}).find((b) => b?.error)?.error || null }); /* a make that stopped says so after a reload too */
+      prefs: d.prefs || {}, kept: d.kept || {}, brand: d.context?.slots?.brand ? (window.B?.brand?.name || '') : '', busy: jam.busy || {}, made: (bd.takes || []).length > 0, failed: Object.values(jam.busy || {}).find((b) => b?.error)?.error || null }); /* a make that stopped says so after a reload too */
     S.open = !ch.versions?.some((v) => v.studio) && !S.made; /* made already: the set-up folds into one line under the frame */
     paint(); price(); if (anyBusy()) poll();
   }
@@ -136,10 +136,11 @@
   }
   /* clicks on the composer: true when handled */
   function click(e) {
-    const g = (sel) => e.target.closest(sel); if (!S || !g('.cs, .cs-line, [data-cs-open]')) return false; const sp = S.spec;
+    const g = (sel) => e.target.closest(sel); if (!S || !g('.cs, .cs-line, [data-cs-open], .cs-adjust')) return false; const sp = S.spec;
     if (g('[data-cs-retry]')) { const id = S.chId; S = null; H.paint?.(); H.remount?.(id); return true; }
     if (g('[data-cs-feed]')) { H.toFeed?.(); return true; }
     if (g('[data-cs-game]')) { window.BrewGame?.open?.({ progress: () => S?.making }); return true; }
+    const rm = e.target.closest('[data-cs-remember],[data-cs-forget]'); if (rm && S?.spec) { remember(rm.dataset.csRemember || rm.dataset.csForget, rm, !!rm.dataset.csForget); return true; }
     if (g('[data-cs-open]')) { S.open = true; paint(); setTimeout(() => document.querySelector('.cs-stage .cs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); return true; }
     if (g('[data-cs-redo]')) { go(true); return true; }
     const sel = g('[data-cs-sel]'); if (sel) { S.sel = +sel.dataset.csSel; paint(); /* the frame swipes to the slide picked */
@@ -175,7 +176,30 @@
     return false; }
   /* the frame shows the slide picked in the strip, through every repaint (a price coming back redraws the stage) */
   const toSel = (smooth = false) => { if (!S?.sel) return; const sw = document.querySelector('.cs-frame .as-swipe'), it = sw?.children?.[S.sel]; if (sw && it) sw.scrollTo({ left: it.offsetLeft - sw.children[0].offsetLeft, behavior: smooth ? 'smooth' : 'auto' }); };
+  /* the chat, on a set-up not made yet: the words become slot changes (server: studio/ask), shown as changed chips, re-priced */
+  async function ask(text) { if (!S?.jid || !S.spec) return { error: 'The set-up is still opening.' };
+    const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/ask`, { text, spec: S.spec }); if (r?.error || !r?.patch) return { error: r?.error || 'That didn’t go through.' };
+    const { addDirection, ...pt } = r.patch; if (addDirection) pt.direction = [S.spec.direction, addDirection].filter(Boolean).join(' ');
+    if (pt.style && !S.picks.includes(pt.style)) S.picks = [pt.style, ...S.picks.slice(0, 2)]; S.changed = Object.keys(pt); S.open = true; set(pt); return { said: r.said }; }
+  /* the Adjust tab on a creative: every slot, what it is now, why, and "Always use this for <brand>" */
+  function adjustHtml(ch) { if (!S || S.chId !== ch.id || !S.spec) return '<p class="hs-tip">Setting it up from the card…</p>';
+    const sp = S.spec, X = S.slots || {}, kind = sp.kind === 'video' ? 'video' : 'image', st = styleById(sp.style), bn = (window.LIVE?.brand?.name || document.title.split(' · ')[0] || 'this brand');
+    const pr = S.prefs || {}, row = (label, value, why, rem) => `<div class="cs-adj"><small>${H.esc(label)}</small><b>${H.esc(value || '—')}</b>${why ? `<p class="cs-why">${H.esc(why)}</p>` : ''}${rem || ''}</div>`;
+    const remBtn = (slot, value, saved, extra = '') => value == null || value === '' ? '' : saved ? `<span class="cs-saved">Always used for ${H.esc(bn)} · <button class="linkbtn" data-cs-forget="${slot}"${extra}>Stop</button></span>` : `<button class="linkbtn" data-cs-remember="${slot}"${extra}>Always use this for ${H.esc(bn)}</button>`;
+    return `<div class="cs-adjust"><p class="hs-tip">Everything Brew set up for this piece, and why. Change any of it on the stage; save the ones you always want.</p>
+      ${row('Style', Array.isArray(sp.set) ? `${sp.set.length} slides` : st?.label, why('style'))}
+      ${row('Product', sp.product?.name, why('products'), sp.product?.img ? remBtn('product', sp.product.img, pr.photos?.[sp.product.name] === sp.product.img, ` data-name="${H.esc(sp.product.name || '')}"`) : '')}
+      ${st?.people && st.people !== 'none' || Array.isArray(sp.set) ? row('On camera', sp.cast || X.cast?.label, why('cast'), remBtn('cast', sp.cast || X.cast?.label, pr.cast && pr.cast === (sp.cast || X.cast?.label))) : ''}
+      ${row('Size', SIZES?.[sp.sizes?.[0]]?.label || sp.sizes?.[0], why('size'), remBtn('size', sp.sizes?.[0], pr.size?.[kind] === sp.sizes?.[0], ` data-kind="${kind}"`))}
+      ${row('Quality', { preview: 'Preview', standard: 'Standard', premium: 'Premium (4K)' }[sp.quality || 'standard'], why('quality'), remBtn('quality', sp.quality || 'standard', (pr.quality || 'standard') === (sp.quality || 'standard') && !!pr.quality))}
+      ${row('Reference', sp.ref || 'None', why('reference'))}
+      ${row('Direction', (sp.direction || '').slice(0, 220), 'What the maker reads. Change it on the stage, or tell me in the chat.')}
+      <button class="btn btn-ghost sm" data-cs-open>${S.made ? 'Change the set-up and make it again' : 'Go to the set-up'}</button></div>`; }
+  async function remember(slot, el, off = false) { const sp = S.spec, kind = el.dataset.kind || (sp.kind === 'video' ? 'video' : 'image');
+    const value = off ? null : slot === 'product' ? sp.product?.img : slot === 'cast' ? sp.cast || S.slots?.cast?.label : slot === 'size' ? sp.sizes?.[0] : slot === 'quality' ? sp.quality || 'standard' : null;
+    const r = await api('POST', '/api/jam2/studio/remember', { slot, value, kind, name: el.dataset.name || sp.product?.name || '' }); if (r?.error) return H.toast?.(H.esc(r.error));
+    S.prefs = r.prefs || S.prefs; H.toast?.(off ? 'Brew won’t always use that any more.' : 'Saved: Brew uses this for every new piece. Change it any time here or in your Brand Book.'); paint(); }
   const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null } : null);
   const reset = () => { clearTimeout(pollT); clearTimeout(planT); S = null; };
-  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, redo: () => go(true), afterPaint: () => toSel(false) };
+  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, redo: () => go(true), afterPaint: () => toSel(false), ask, adjustHtml };
 })();

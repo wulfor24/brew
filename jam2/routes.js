@@ -144,8 +144,42 @@ export function mountJam2(d) {
     return { spec: sp }; };
   on('GET', '/api/jam2/jams/:jid/studio', wrap(async (b, t, p, q) => { const j = await load(t, p.jid), bd = boardOf(j, q?.get?.('bid')) || j.boards[0]; const ctx = await ctxOf(t, j);
     const d0 = studio.defaults(ctx, bd), tiles = productTiles(brandOfT(t)?.catalog || [], 400);
+    /* the picks the team asked Brew to always use for this brand win over the card's defaults, and say so */
+    const pr = ctx.bbv?.studioPrefs || {}, kept = {};
+    if (pr.quality) { d0.quality = pr.quality; kept.quality = true; }
+    if (pr.size?.[d0.kind] && SIZES[pr.size[d0.kind]] && !Array.isArray(d0.set)) { d0.sizes = [pr.size[d0.kind]]; kept.size = true; }
+    if (pr.cast) { d0.cast = pr.cast; kept.cast = true; }
+    const ph = d0.product?.name && pr.photos?.[d0.product.name]; if (ph) { d0.product = { ...d0.product, img: ph }; kept.product = true; }
     if (d0.product?.img && !tiles.some((x) => x.img === d0.product.img)) tiles.unshift(d0.product); /* the card's own product is always pickable */
-    return { defaults: d0, products: tiles, context: contextOf(ctx, d0) }; })); /* each slot filled from what Brew knows, with why */
+    const cx = contextOf(ctx, d0), BN0 = ctx.bbv?.name || 'this brand';
+    for (const [k, slot] of [['quality', 'quality'], ['size', 'size'], ['cast', 'cast'], ['product', 'products']]) if (kept[k] && cx.slots[slot]) cx.slots[slot].why = `You asked Brew to always use this for ${BN0}.`;
+    return { defaults: d0, products: tiles, context: cx, prefs: pr, kept }; })); /* each slot filled from what Brew knows, with why */
+  /* "Always use this for <brand>": a composer pick saved to the Brand Book's Studio picks (the brand's team only) */
+  on('POST', '/api/jam2/studio/remember', wrap(async (b, t) => { const w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can change what Brew always uses.' };
+    const k = String(b.slot || ''), v = b.value ?? null, patch = k === 'quality' ? { quality: v } : k === 'size' ? { size: { kind: b.kind === 'video' ? 'video' : 'image', key: v } } : k === 'cast' ? { cast: v } : k === 'product' ? { photo: { name: b.name, img: v } } : null;
+    if (!patch) return { error: 'That can’t be remembered.' };
+    if (k === 'cast' && /^no people$/i.test(String(v || ''))) await bb.update(slugOfT(t), { comfort: { people: 'none' } }, w.me); /* "no people" is the Brand Book's own people rule */
+    const raw = await bb.update(slugOfT(t), { studio: patch }, w.me); return { prefs: bb.view(raw).studioPrefs || {} }; }));
+  /* a chat message on a composer that hasn't made anything yet changes the set-up, never the words: "make it a UGC video with a
+     woman in her 30s, in Hindi" → kind, style, cast, direction. Free (a cheap words call); the price follows on the stage */
+  const ASK_SCHEMA = { type: 'object', properties: { kind: { type: 'string', enum: ['image', 'video', ''] }, style: { type: 'string' }, seconds: { type: 'number' }, count: { type: 'number' }, quality: { type: 'string', enum: ['preview', 'standard', 'premium', ''] }, size: { type: 'string' }, cast: { type: 'string' }, direction: { type: 'string' }, said: { type: 'string' } }, required: ['said'] };
+  on('POST', '/api/jam2/jams/:jid/studio/ask', wrap(async (b, t, p) => { const j = await load(t, p.jid), text = String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, 400); if (!text) return { error: 'Say what to change.' };
+    const lib = studioLibrary(), styles = [...lib.image, ...lib.video].flatMap((g) => g.styles.map((x) => ({ id: x.id, label: x.label, group: g.label, kind: lib.video.includes(g) ? 'video' : 'image' }))), sp = b.spec || {};
+    let out = null;
+    if (!isMock() && d.claudeTool && spend('text', slugOfT(t))) { try {
+      out = await d.claudeTool(`A brand is setting up one creative in Brew Studio. Turn what they asked into changes to the set-up. Change only what they asked; leave the rest empty.\nWhat they asked: "${text}"\nThe set-up now: ${JSON.stringify({ kind: sp.kind, style: sp.style, seconds: sp.seconds, count: sp.count, quality: sp.quality, size: sp.sizes?.[0], cast: sp.cast, direction: tidyLabel(sp.direction || '') })}\nStyles (pick one id only if they name a kind of piece): ${styles.map((x) => `${x.id} (${x.kind}: ${x.label}, ${x.group})`).join('; ')}\nSizes: ${Object.keys(SIZES).join(', ')}\ncast: who is on camera in plain words (e.g. "a woman in her 30s"), or "No people". direction: one or two sentences to ADD to the direction (mood, setting, language, what to say). said: one short line telling them what changed.`, ASK_SCHEMA, 600, 'studio_ask');
+    } catch (e) { log.warn?.('[jam2] studio ask', e.message); } }
+    if (!out) { /* no AI here: the plain words still move the obvious slots */
+      const l = text.toLowerCase(); out = { said: 'Changed what I could read from that.' };
+      if (/\b(video|reel|film|clip|ugc)\b/.test(l)) out.kind = 'video'; else if (/\b(image|picture|photo|static|still)\b/.test(l)) out.kind = 'image';
+      if (/\bugc|talking|review video|creator\b/.test(l)) out.style = 'ugc-review'; const n = /(\d{1,2})\s*(?:s|sec|seconds)\b/.exec(l); if (n) out.seconds = +n[1];
+      if (/no (people|person|face)/.test(l)) out.cast = 'No people'; else { const c = /\b(a|an)\s+((?:young\s+|older\s+)?(?:woman|man|girl|boy|person|mother|father|couple)[^,.;]*)/.exec(text); if (c) out.cast = c[0].slice(0, 80); }
+      if (/premium|4k|best quality/.test(l)) out.quality = 'premium'; if (/hindi|tamil|telugu|marathi|bengali|spanish|french|arabic/.test(l)) out.direction = `In ${(/hindi|tamil|telugu|marathi|bengali|spanish|french|arabic/.exec(l) || [])[0]}.`; }
+    const patch = {}; if (['image', 'video'].includes(out.kind)) patch.kind = out.kind; if (out.style && styles.some((x) => x.id === out.style)) { patch.style = out.style; patch.kind = styles.find((x) => x.id === out.style).kind; }
+    if (Number.isFinite(+out.seconds) && +out.seconds > 0) patch.seconds = Math.max(3, Math.min(30, Math.round(+out.seconds))); if (Number.isFinite(+out.count) && +out.count > 0) patch.count = Math.max(1, Math.min(12, Math.round(+out.count)));
+    if (['preview', 'standard', 'premium'].includes(out.quality)) patch.quality = out.quality; if (out.size && SIZES[out.size]) patch.sizes = [out.size]; if (out.cast) patch.cast = tidyLabel(out.cast).slice(0, 80) || String(out.cast).slice(0, 80);
+    if (out.direction) patch.addDirection = String(out.direction).replace(/\s+/g, ' ').trim().slice(0, 300);
+    note(j, `Studio set-up from chat: ${text.slice(0, 80)}`, whoOf(t).email); return { patch, said: String(out.said || 'Changed the set-up.').slice(0, 200) }; }));
   on('POST', '/api/jam2/jams/:jid/studio/plan', wrap(async (b, t, p) => { const j = await load(t, p.jid), ctx = await ctxOf(t, j), c = await cleanSpec(t, j, ctx, b.spec); if (c.error) return { plan: { error: c.error } }; return { plan: await studio.plan(ctx, c.spec) }; }));
   /* what a Studio take keeps of its set-up, so Redo makes it again the same way */
   const specOf = (sp) => ({ kind: sp.kind || null, style: sp.style || null, set: sp.set || null, product: sp.product || null, sizes: sp.sizes || null, seconds: sp.seconds || null, ask: sp.ask || '', direction: sp.direction || null, cast: sp.cast || null, ref: sp.ref || null, quality: sp.quality || null, count: 1 });
