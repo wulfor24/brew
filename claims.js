@@ -22,15 +22,29 @@ const GUARANTEE = /\b(?:guarantee[sd]?|money[- ]back|risk[- ]free|no[- ]question
 /* a timed result: "in 7 days", "within 2 weeks", "takes exactly 7 days to", "visible results in 14 days", "overnight results" */
 const TIMED = /\b(?:(?:takes?|needs?|in|within|after|just|only|exactly)\s+(?:just\s+|only\s+|exactly\s+)?\d+\s*(?:hours?|days?|nights?|weeks?|months?|washes|uses|applications)\b|overnight results?|instant(?:ly)? (?:results?|glow|fix|relief))/gi;
 const RESULT = /\b(?:result|warm|relie|pain|sore|ache|firm|lift|tone|younger|glow|grow|growth|regrow|thick|strong|stop|reduc|clear|fade|lighten|bright|repair|heal|less|fewer|more|visible|see|notice|transform|soft|smooth|moistur|hydrat|fall|loss|acne|spot|wrinkle|weight|slim|sleep|energy|relief|shine|frizz|damage|dandruff|tan|pigment)/i;
-const ABSOLUTE = /\b(?:clinically (?:proven|tested|backed)|dermatologist[- ](?:approved|recommended|tested)|doctor[- ]recommended|scientifically proven|permanent(?:ly)?|forever|never again|100% (?:safe|natural|effective|organic|results?)|no side[- ]effects|works for everyone|cures?)\b/gi;
+/* every way a writer shortens the same health claim counts (Arata 23 Oct: "Dermat-approved" passed): dermat, derma, derm,
+   dermatologically; doctor- or trichologist-approved; clinically shown or studied; lab-tested */
+const ABSOLUTE = /\b(?:clinically (?:proven|tested|backed|shown|studied|validated)|derm(?:at(?:ologist(?:ally)?|ologically)?|a)?[- ]?(?:approved|recommended|tested|certified)|(?:doctor|trichologist|dentist|paediatrician|pediatrician|vet)[- ](?:approved|recommended|tested|formulated)|scientifically (?:proven|backed)|lab[- ]tested|proven to|permanent(?:ly)?|forever|never again|100% (?:safe|natural|effective|organic|results?|chemical[- ]free)|no side[- ]effects|works for everyone|cures?|cured|treats?|heals?|reverses?)\b/gi;
+/* a measured result: "95% hair growth", "up to 60% less hair fall", "3x thicker", "reduces acne by 40%". Being on the store's
+   page is not enough: the store must say it was measured (a study, a trial, a test, users surveyed) in the same place, or the team
+   approved it in the Brand Book's claims we may make */
+const EFFICACY = /\b(?:up to |by |over |nearly |almost )?\d+(?:\.\d+)?\s?(?:%|x|×|times)\s(?:\w+\s){0,3}?(?:more|less|fewer|growth|regrowth|reduction|thicker|stronger|softer|brighter|faster|denser|improvement|better|hair|results?|visible|reduc\w*|increase\w*|boost\w*)\b|\b(?:reduces?|increases?|boosts?|improves?|cuts?|lifts?)\s(?:\w+\s){0,4}?by\s\d+(?:\.\d+)?\s?%/gi;
+const MEASURED = /\b(?:clinical|study|studies|trial|tested on|test(?:ed)? with|participants|subjects|volunteers|users? (?:saw|reported|said|surveyed)|survey(?:ed)?|in-vivo|in vivo|in-vitro|lab results?|certified by|dermatological(?:ly)? test)/i;
+/* the store says this number was measured: the same number within a sentence or two of a study word in its own words */
+const measuredIn = (src, phrase) => { const n = (phrase.match(/\d+(?:\.\d+)?\s?(?:%|x|×|times)/) || [])[0]; if (!n) return false; const k = n.replace(/\s/g, '').toLowerCase();
+  let i = -1; const flat = src.replace(/\s(?=%|x\b|×)/g, ''); while ((i = flat.indexOf(k, i + 1)) >= 0) { if (MEASURED.test(flat.slice(Math.max(0, i - 220), i + 220))) return true; } return false; };
 
+/* the Brand Book's "claims we may make" (the team approved them, or the read found them on the brand's own pages): each one is
+   backed as written, measured results included, marked so claimFlags knows the team signed it off */
+const APPROVED = /\[approved claims\]/;
+export const approvedText = (claims = []) => { const xs = (claims || []).map((c) => (typeof c === 'string' ? c : c?.text)).filter(Boolean); return xs.length ? `[approved claims] ${xs.join(' \n ')}` : ''; };
 /* the brand's own words, for "is this claim theirs?": every string in the facts, the catalog rows, evidence, about */
 export const sourceText = (...parts) => { const out = []; const walk = (o, d = 0) => { if (d > 6 || o == null) return; if (typeof o === 'string' || typeof o === 'number') out.push(String(o)); else if (Array.isArray(o)) o.slice(0, 2000).forEach((x) => walk(x, d + 1)); else if (typeof o === 'object') for (const [k, v] of Object.entries(o)) if (!/^(img|image|images|src|url|logo|id|handle)$/i.test(k)) walk(v, d + 1); }; parts.forEach((p) => walk(p)); const n = norm(out.join(' \n ')); if (n.length > 2000) { if (NORMED.size >= 12) NORMED.delete(NORMED.keys().next().value); NORMED.set(n, n); } return n; };
 
 /* a brand pack's own words (brand-pack.js: facts, catalog, the review quotes, about), plus the card's real evidence */
 const PACK_SRC = new WeakMap();
 export const packSource = (p, card = null) => { let base = p && typeof p === 'object' ? PACK_SRC.get(p) : '';
-  if (base == null || base === undefined) { base = sourceText(Object.values(p?.facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), p?.catalog, p?.reviewQuotes, p?.seed?.brand?.about || '', p?.seed?.brand?.tagline || '', p?.factBrief || ''); if (p && typeof p === 'object') PACK_SRC.set(p, base); }
+  if (base == null || base === undefined) { base = sourceText(Object.values(p?.facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), p?.catalog, p?.reviewQuotes, p?.seed?.brand?.about || '', p?.seed?.brand?.tagline || '', p?.factBrief || '', approvedText(p?.book?.claims)); if (p && typeof p === 'object') PACK_SRC.set(p, base); }
   if (!card || typeof card !== 'object') return base || ''; const ev = sourceText(card.post?.evidence || [], card.evidence || []); if (!ev.trim()) return base || '';
   const k = CARD_SRC.get(card); if (k?.base === base && k.ev === ev) return k.s; const out = `${base || ''}\n${ev}`; CARD_SRC.set(card, { base, ev, s: out }); NORMED.set(out, out); if (NORMED.size > 12) NORMED.delete(NORMED.keys().next().value); return out; }; /* the same string per card, so it is normalised once */
 const CARD_SRC = new WeakMap();
@@ -45,15 +59,18 @@ export function claimFlags(text, source = '', { allowNewCode = false } = {}) {
   for (const m of s.matchAll(GUARANTEE)) if (!src.includes(m[0].toLowerCase())) add('guarantee', m[0], m.index, `“${m[0]}” isn’t something your store offers`);
   for (const m of s.matchAll(TIMED)) { const q = around(s, m.index, m[0].length); if (!RESULT.test(q)) continue; const n = (m[0].match(/\d+\s*\w+/) || [m[0]])[0].toLowerCase();
     if (!src.includes(n) && !src.includes(m[0].toLowerCase())) add('timed', m[0].trim(), m.index, `a result promised “${m[0].trim()}” that your store doesn’t claim`); }
-  for (const m of s.matchAll(ABSOLUTE)) if (!src.includes(m[0].toLowerCase())) add('absolute', m[0], m.index, `“${m[0]}” isn’t backed by your store`);
+  for (const m of s.matchAll(ABSOLUTE)) { const ph = m[0].toLowerCase(); if (src.includes(ph) || (/^(?:treats?|heals?|cures?|cured|reverses?)$/.test(ph) && !RESULT.test(around(s, m.index, m[0].length)))) continue; /* "treats" a pet store sells is not a health claim */ add('absolute', m[0], m.index, `“${m[0]}” isn’t backed by your store`); }
+  for (const m of s.matchAll(EFFICACY)) { const q = around(s, m.index, m[0].length); if (!RESULT.test(q) && !/hair|skin|acne|weight|sleep|pain/i.test(q)) continue;
+    if (measuredIn(src, m[0])) continue; /* the same number where the store says it was measured */ if (APPROVED.test(src) && src.includes(norm(m[0]).trim())) continue;
+    add('efficacy', m[0].trim(), m.index, `“${m[0].trim()}” is a measured result; your store doesn’t say where it was measured`); }
   return flags;
 }
 
 /* one line for a studio check or a card QA row */
-export const claimCheck = (flags) => flags.length ? `Claims to check before shipping: ${flags.slice(0, 3).map((f) => f.why).join('; ')}${flags.length > 3 ? ` (+${flags.length - 3} more)` : ''}` : 'No invented codes, guarantees or timed results';
+export const claimCheck = (flags) => flags.length ? `Claims to check before shipping: ${flags.slice(0, 3).map((f) => f.why).join('; ')}${flags.length > 3 ? ` (+${flags.length - 3} more)` : ''}` : 'No invented codes, guarantees, health claims or timed results';
 
 /* the rule every writer prompt carries */
-export const CLAIMS_RULE = 'Never invent a discount code, coupon, guarantee, refund promise, or a result tied to a time ("in 7 days", "overnight"), and never write "clinically proven", "dermatologist approved", "permanent" or "100%" unless those exact words are in the facts or the product page given here. Offers and codes come only from the facts.';
+export const CLAIMS_RULE = 'Never invent a discount code, coupon, guarantee, refund promise, or a result tied to a time ("in 7 days", "overnight"), and never write "clinically proven", "dermatologist approved" (or "dermat-approved", "derma tested"), "doctor recommended", "cures", "treats", "heals", "permanent" or "100%" unless those exact words are in the facts or the product page given here. A measured result ("95% saw growth", "60% less hair fall", "3x thicker") only when the facts say where it was measured (a study, a trial, a test) or it is in the Brand Book’s claims we may make. Offers and codes come only from the facts.';
 
 /* a card that can't be rewritten by a person (the feed's own cards): drop just the sentences that carry an unbacked code or
    guarantee, keep the rest; titles keep their words (a flagged title fails QA and is rewritten instead). kinds: which flags
@@ -159,3 +176,22 @@ export function copyFlags(text, opts = {}) {
   return [...new Set(out)];
 }
 export const COPY_RULE = 'Write natural, idiomatic English a good copywriter would sign off: no forced slang, no shouting caps, never the same product word twice in one name, line breaks as real line breaks.';
+
+/* One entry point for every surface that writes words a shopper, the team or a partner may copy (static ads, plain-words card
+   rewrites, team briefs, the weekly digest, Slack replies, Ask Brew and jam answers, ideas, feed cards, the download pack's
+   message templates): → { flags, text } where text drops each sentence that carries a claim the brand's own words, its measured
+   results or its Brand Book's approved claims don't back. A text with nothing flagged comes back as it was. Never throws. */
+export function checkCopy(text, source = '', { allowNewCode = false } = {}) {
+  try { const s = String(text ?? ''); if (!s.trim()) return { flags: [], text: text ?? '' };
+    const f = claimFlags(s, source, { allowNewCode }); if (!f.length) return { flags: [], text: s };
+    const kept = s.split(/(?<=[.!?])\s+|\n/).filter((sent) => !f.some((g) => sent.includes(g.phrase))).join(s.includes('\n') ? '\n' : ' ').trim();
+    return { flags: f, text: kept }; } catch { return { flags: [], text: text ?? '' }; }
+}
+/* every string field of an object (a brief, a template, a card) checked in place; → the flags removed */
+export function checkCopyIn(o, source = '', { skip = /^(id|url|src|img|image|images|key|handle|at|by|from|kind|state|status)$/i, depth = 0 } = {}) {
+  const hit = []; if (!o || typeof o !== 'object' || depth > 5) return hit;
+  for (const [k, v] of Object.entries(o)) { if (skip.test(k)) continue;
+    if (typeof v === 'string') { const r = checkCopy(v, source); if (r.flags.length) { hit.push(...r.flags); o[k] = r.text; } }
+    else if (v && typeof v === 'object') hit.push(...checkCopyIn(v, source, { skip, depth: depth + 1 })); }
+  return hit;
+}

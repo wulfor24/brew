@@ -12,6 +12,7 @@
 import crypto from 'node:crypto';
 import { numbersIn } from './fact-gate.js';
 import { claimGaps } from './proof-logic.js';
+import { claimFlags } from './claims.js'; // a rewrite never adds a health claim, guarantee or code the card didn't carry
 import { moveSay } from './move-label.js'; /* a rewrite never claims Brew saw more than the card did */
 
 export const PLAIN_V = 3; /* 2: outcome-first titles, no technical steps in the title or body (testing notes 18 Oct); 3: every field required, half answers never kept */
@@ -64,6 +65,8 @@ const keepsAll = (out, need) => { const o = nums(out); for (const n of need) if 
 /* the kinds of thing a text says Brew saw that the brand's evidence can't show (proof-logic.js), sentence by sentence */
 const gapsIn = (s, kinds) => new Set(String(s || '').split(/(?<=[.!?])\s+/).flatMap((x) => claimGaps(x, kinds).map((g) => g.kind)));
 const addsGap = (out, orig, kinds) => { const was = gapsIn(orig, kinds); for (const g of gapsIn(out, kinds)) if (!was.has(g)) return true; return false; };
+/* a claim phrase the rewrite brought in ("clinically proven", "95% less hair fall") that the card's own words didn't have (1.5) */
+const addsClaim = (out, orig) => { const was = new Set(claimFlags(orig, '').map((f) => f.phrase.toLowerCase())); return claimFlags(out, String(orig || '')).some((f) => !was.has(f.phrase.toLowerCase())); };
 const tidy = (s, n) => String(s || '').replace(/\u2039(?=\s?\d)/g, '₹') /* the model sometimes writes ₹ as ‹ */.replace(/\s*[—–]\s*/g, ', ').replace(/\s+/g, ' ').trim().slice(0, n);
 
 export const SCHEMA = { type: 'object', properties: { cards: { type: 'array', items: { type: 'object', properties: {
@@ -138,10 +141,10 @@ export function createPlain({ ai, store, spend = () => true, isMock = () => fals
   /* ... and says Brew saw nothing the card itself didn't: a rewrite that turns "may worry" into "are worried", or adds "visitors are leaving", keeps the original */
   const check = (c, r, kinds = {}) => { if (!r) return null; const src = nums([c.title, c.sub, ...(c.detail?.why || []), ...(c.detail?.how || [])].join(' '));
     const said = [c.title, c.sub, ...(c.detail?.why || [])].filter(Boolean).join(' ');
-    const field = (orig, out, n) => { const t = tidy(out, n); if (!t) return null; if (!subset(t, src) || !keepsAll(t, nums(orig)) || addsGap(t, said, kinds)) return null; return t; };
+    const field = (orig, out, n) => { const t = tidy(out, n); if (!t) return null; if (!subset(t, src) || !keepsAll(t, nums(orig)) || addsGap(t, said, kinds) || addsClaim(t, said)) return null; return t; };
     const list = (orig = [], out = [], n) => { const xs = (out || []).slice(0, Math.max(orig.length, 0) || 3).map((x, i) => field(orig[i] || '', x, n)); return xs.length && xs.every(Boolean) ? xs : null; };
     const title = field(c.title, r.title, 90), sub = field(c.sub, r.sub, 320);
-    const because = (() => { const t = tidy(r.because, 280); return t && subset(t, src) && !addsGap(t, said, kinds) ? t : null; })();
+    const because = (() => { const t = tidy(r.because, 280); return t && subset(t, src) && !addsGap(t, said, kinds) && !addsClaim(t, said) ? t : null; })();
     return { title: title || c.title, sub: sub || c.sub, why: (c.detail?.why || []).length ? list(c.detail.why, r.why, 120) : null, how: (c.detail?.how || []).length ? list(c.detail.how, r.how, 100) : null, because, at: Date.now() }; };
   /* rewrite the cards that have none yet, a batch at a time, one run per brand. Never twice at once, never in a mock run */
   const queue = (slug, cards, brand) => {

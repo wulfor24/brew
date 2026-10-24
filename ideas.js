@@ -11,6 +11,7 @@ import { marketLine } from './market.js';
 import { promptBlock as creativeBlock } from './creative-catalog.js'; // what can be made, for ideas that make something
 import crypto from 'node:crypto';
 import { numbersIn, canon } from './fact-gate.js';
+import { claimFlags, checkCopy, sourceText } from './claims.js'; // an idea's post carries only the brand's own claims
 import { ideaCards, ideaUsable, rivalCards, categoryCards } from './social-feed.js';
 import { usableThread, redditStats, withStats, repliesText, isQuoraQuestion, inMarket, matchesThread, REPLY_DAYS, usableCommunity, topicStems, typeaheadCommunities } from './community-gate.js'; // which threads and questions any brand may be pointed at
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
@@ -412,7 +413,11 @@ For each: title, hook, full copy, cta, hashtags, media (kind; for image/carousel
     ideas = await check(c, d, ideas, extra);
     ideas = await places(c, d, ideas);
     ideas.forEach((i) => gate(c, i));
-    ideas.filter((i) => i._drop).forEach((i) => dropped.push({ title: i.title, platform: i.platform, why: ['unbacked numbers: ' + (i.gated || []).join(', ')] }));
+    /* an idea's post is copied word for word into a community: no health claim, guarantee or code the brand's own words don't back (1.5) */
+    { const src = sourceText(c.facts || {}, c.profile?.catalog?.products || [], c.profile?.about || '', c.profile?.tagline || '');
+      for (const i of ideas) { if (i._drop) continue; if (claimFlags(i.title || '', src).length) { i._drop = true; i.gated = [...(i.gated || []), 'claim in the title']; continue; }
+        for (const k of ['copy', 'hook', 'cta']) if (typeof i[k] === 'string') i[k] = checkCopy(i[k], src).text; if ((i.copy || '').length < 40) i._drop = true; } }
+    ideas.filter((i) => i._drop).forEach((i) => dropped.push({ title: i.title, platform: i.platform, why: ['unbacked numbers or claims: ' + (i.gated || []).join(', ')] }));
     ideas = ideas.filter((i) => !i._drop);
     if (written.length < items.length) dropped.push(...items.filter((s) => !written.some((w) => w.slot === s.slot)).map((s) => ({ title: s.angle, platform: s.platform, why: ['not written (chunk failed)'] })));
     ideas.forEach((i) => { delete i._drop; delete i._slot; });

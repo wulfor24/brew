@@ -11,6 +11,7 @@ import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { saveGen, genFile } from './gen-store.js';
 import { withBrowser } from './pdf/render.js';
+import { checkCopyIn } from './claims.js'; // the brief's words carry no claim the materials don't back
 
 export const TB_V = 4; // bump when the brief starts being written differently: every saved one is written again
 export const SECTIONS = [['what', 'What to make'], ['why', 'Why we’re doing it'], ['who', 'Who it’s for'], ['words', 'The words · final'], ['creative', 'The creative'],
@@ -82,8 +83,10 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
       try {
         const j = await claudeTool(`You write the brief a team works from to make this for ${x.brand}: an agency, a designer, a media buyer or the brand’s own team. They were not in the jam. Give them everything they need to make it right the first time: what to make, why, for whom, the evidence behind it, the final words, the creative, the specs, the rules, timing, how it’s judged.\n\nMaterials:\n${materials(t, w, x)}\n\nRules: plain short sentences, written to the team ("Make…", "Keep…"). Every number and claim only from the materials, never invented; "To confirm" where they don’t say. No internal words (move, card, jam, Brew’s agents). Don’t repeat the final words: they are printed as they are in their own section. Evidence: each fact once, its source named plainly.`, SCHEMA, 3500, 'team_brief');
         const pick = (k) => clean(String(j?.[k] || '')).trim();
-        if (AI_KEYS.every((k) => pick(k))) return { ai: true, title: pick('title'), ...Object.fromEntries(AI_KEYS.map((k) => [k, pick(k)])),
+        if (AI_KEYS.every((k) => pick(k))) { const o = { ai: true, title: pick('title'), ...Object.fromEntries(AI_KEYS.map((k) => [k, pick(k)])),
           open: (j.open || []).map((s) => clean(String(s)).trim()).filter(Boolean).slice(0, 8), evidence: (j.evidence || []).map((e) => ({ say: clean(String(e.say || '')).trim(), src: clean(String(e.src || '')).trim() })).filter((e) => e.say).slice(0, 8) };
+          const cut = checkCopyIn(o, materials(t, w, x), { skip: /^(ai|src)$/ }); if (cut.length) log.warn?.('[team brief] claims cut', cut.map((f) => f.phrase).join(', ')); /* a brief never hands a team a claim the materials don't back (1.5) */
+          return o; }
       } catch (e) { log.warn?.('[team brief]', e.message); }
     }
     return { ai: false, ...fallback(w, x) }; };

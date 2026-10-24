@@ -9,6 +9,7 @@
 // never wrong. Phase 0 (23 Oct, Cozy): single products came out really shot; a kit of three changed two items, which this catches.
 import { recipe } from './catalogue.js';
 import { refsFor, creativeBlock } from './brandbook.js';
+import { claimFlags, sourceText } from '../claims.js'; // words a model drew are checked like written ones
 
 const tidy = (s, n = 400) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const ZONES = ['top', 'bottom', 'left', 'right'];
@@ -123,7 +124,11 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const known = [`Brand: ${ctx.bbv?.name || ''}`, ctx.product?.name ? `Product: ${ctx.product.name}${e?.price ? ` · ${e.price}` : ''}` : '', ctx.profile ? `What it is: ${ctx.profile.what}; label: ${ctx.profile.label || ''}; size: ${ctx.profile.size || ''}` : '',
       `Our words: ${[facts.headline, facts.sub, facts.badge, facts.cta].filter(Boolean).join(' / ')}`, (facts.claims || []).length ? `Claims the brand may make, as written: ${facts.claims.map((c) => `"${tidy(c, 80)}"`).join(' ')}` : '', (facts.proof || []).length ? `Real customer reviews (word for word): ${facts.proof.map((q) => `"${tidy(q, 300)}"`).join(' ')}` : 'There are no customer reviews to quote.'].filter(Boolean).join('\n');
     try { const r = await ai.call({ model: 'sonnet', tag: 'jam2_made_check', max: 1500, effort: 'low', schema: MADE_SCHEMA, messages: [{ role: 'user', content: [...(ref ? [img(ref)] : []), img(f), { type: 'text', text: `${ref ? 'Image 1 is the real product. Image 2 is an ad made for it.' : 'This is an ad.'} The facts we can back up:\n${known}\nThe product's own printed label is fine. Read every text on the ad and list what is not backed by these facts.` }] }] });
-      const j = r.json || {}; return { same: ref ? !!j.same : true, invented: (j.invented || []).map((x) => tidy(x, 120)).filter(Boolean).slice(0, 6), words: (j.words || []).slice(0, 20), usd: r.usd || 0 };
+      const j = r.json || {}, read = (j.words || []).slice(0, 20);
+      /* the words the model drew, read back, go through the same claim check as every draft (1.5): "Dermat-approved" or "95% growth"
+         the brand's own words and approved claims don't carry is invented, whatever the reader said */
+      const src = sourceText(known, ctx.bbv?.claims || [], ctx.bbv?.reviews || []), claimed = read.filter((w) => claimFlags(String(w), src).length).map((x) => tidy(x, 120));
+      return { same: ref ? !!j.same : true, invented: [...new Set([...(j.invented || []).map((x) => tidy(x, 120)), ...claimed])].filter(Boolean).slice(0, 6), words: read, usd: r.usd || 0 };
     } catch (err) { log.warn?.('[creative] made check', err.message); return { same: true, invented: [], words: [], unchecked: true }; } }
 
   /* a logo's width ÷ height (its box hugs the logo); null when it can't be read */

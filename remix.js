@@ -28,7 +28,7 @@ import { isQuestion, photoAsk, answerGrounded } from './jam-answer.js'; // a que
 import { EVIDENCE_ASK, proofAnswer } from './evidence.js'; // "what's the evidence?" is answered from the card's own proof
 import { moveNo } from './value.js';
 import { numbersIn } from './fact-gate.js'; // a budget draft's amounts against its card's
-import { claimFlags, claimCheck, copyFlags, sourceText, CLAIMS_RULE, COPY_RULE } from './claims.js'; // invented codes, guarantees, timed results and copy that reads wrong are flagged before shipping
+import { claimFlags, claimCheck, copyFlags, sourceText, CLAIMS_RULE, COPY_RULE, checkCopyIn } from './claims.js'; // invented codes, guarantees, timed results and copy that reads wrong are flagged before shipping
 import { dejargon } from './plain.js'; // jam names in plain words, like the cards
 import { budgetWhy } from './budget.js'; // v2 words/takes: a refused spend is said with its real reason, never a silent fallback
 import { createFamilies } from './measure-families.js';
@@ -1780,7 +1780,8 @@ export function createRemix(o) {
     const read = async (rel) => { if (!rel || typeof rel !== 'string') return null; if (/^\/?gen\//.test(rel)) return genFile(rel.replace(/^\/?gen\//, ''));
       const f = (o.photoAsync ? await o.photoAsync(rel).catch(() => null) : null) || photoFile(rel); return f && fs.existsSync(f) && fs.statSync(f).isFile() ? f : null; };
     const renderPdf = ch.family === 'print' && process.env.PACK_PDF !== '0' ? (html) => withBrowser(async (br) => { const pg = await br.newPage(); try { await pg.setContent(html, { waitUntil: 'load' }); return Buffer.from(await pg.pdf({ preferCSSPageSize: true, printBackground: true })); } finally { await pg.close().catch(() => {}); } }) : null;
-    const made = await buildPack({ ch: chV, pkg, family: ch.family, version: n, brand, assets: assetsFor(t, chV), read, renderPdf });
+    { const cut = checkCopyIn(chV.pkg = structuredClone(pkg), brandSource(t, t.cards.get(ch.cardId) || {}), { skip: /^(id|url|src|img|image|images|key|handle|at|by|kind|state|status|knobs|utm|finalUrl|qr|file)$/i }); if (cut.length) log.warn?.('[pack] claims cut', ch.id, cut.map((f) => f.phrase).join(', ')); } /* what the team downloads (ad text, WhatsApp, email, SMS templates) carries no claim the store doesn't back (1.5) */
+    const made = await buildPack({ ch: chV, pkg: chV.pkg, family: ch.family, version: n, brand, assets: assetsFor(t, chV), read, renderPdf });
     if (!(await genFile(key))) saveGen(key, zipBuffer(made.entries));
     const meta = { name: made.fileName, version: n, versionId: v?.id || null, family: ch.family, familyName: FAMILY_NAME[ch.family], files: made.entries.map((e) => e.name), todo: made.todo, readme: made.readme, readOnly: true };
     ch.packMeta[key] = meta; const pk = Object.keys(ch.packMeta); if (pk.length > 6) delete ch.packMeta[pk[0]];

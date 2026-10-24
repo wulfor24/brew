@@ -4,6 +4,7 @@
 import { numbersOf, dayOf } from './pack-numbers.js'; // one number, one source
 import { mockAllowed } from './ai.js'; // a mock card stands in only on a mock run, never after a billing pause
 import { unbacked, allowedFrom, numbersIn, backedNumbers } from './fact-gate.js';
+import { claimFlags, checkCopy, sourceText } from './claims.js'; // card words carry only the brand's own claims
 import { CTA, ctaName } from './seed-template.js';
 import * as catalog from './creative-catalog.js'; /* what can be made: formats, the prompt block, generic and repeat checks */
 import { isReferenceCard } from './rival-ad.js'; /* "Make our version" belongs only on a card built on a rival's ad or a viral video */
@@ -197,6 +198,7 @@ export function createCardsGen({ ai, log = console }) {
     /* numbers the move states as observed are allowed too (they carry their own citation in the move); a number the
        move marks "to confirm", or gives as a target, assumption or example, is not (fact-gate.js backedNumbers) */
     const moveNums = backedNumbers(move);
+    const claimSrc = sourceText(Object.values(facts || {}).map((f) => [f?.label, f?.v]), profile?.catalog?.products || [], profile?.about || '', profile?.tagline || '', bookWords || ''); /* the brand's own words and its Brand Book back a claim */
     /* what Brew holds for the brand (reviews and their stars, threads, connected accounts, search data): the card may say Brew saw only those (Param, 19 Oct) */
     const kinds = evidenceKinds({ voice: voice || voiceOfProfile(profile), ledger, facts, sources: move.sources || [] });
     const factList = Object.values(facts).slice(0, 120).map((f) => `- ${f.label}: ${f.v}`).join('\n');
@@ -272,6 +274,10 @@ ${catalog.promptBlock({ product: heroName })}
       const bad = unbacked({ title: card.title, sub: card.sub, rows: card.rows, detail: card.detail, make: card.make }, { has: (n) => ok.has(n) || moveNums.has(n) || fromLedger.has(n) }, { strict: true });
       if (bad.length) { log.warn('[cards] dropped', card.id, bad.map((b) => b.n).join(',')); return; }
       if (LEAK.test(card.title + ' ' + card.sub) || !card.title || !card.sub) return;
+      /* a card's words are copied into ads and posts: a health claim, guarantee or code the brand's own words don't back is cut from
+         the body and steps, and a title that carries one doesn't ship (1.5) */
+      if (claimFlags(card.title, claimSrc).length) { log.warn('[cards] claim in title', card.id); return; }
+      card.sub = checkCopy(card.sub, claimSrc).text || card.sub; if (card.detail) card.detail = { why: (card.detail.why || []).map((x) => checkCopy(x, claimSrc).text).filter(Boolean), how: (card.detail.how || []).map((x) => checkCopy(x, claimSrc).text).filter(Boolean) };
       cards.push(card);
     });
     await fixClaims(cards, kinds, { brand, has: (n) => ok.has(n) || moveNums.has(n) || fromLedger.has(n) });

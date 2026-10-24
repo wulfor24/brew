@@ -7,6 +7,7 @@
 //                      something performs ("highest engagement", "converts best") needs performance numbers in the evidence
 //   answerGrounded()   one small AI call (no package, no brief rewritten), then groundCheck; an answer that fails it is
 //                      cut to what passes, plus a plain "I don't know that yet"
+import { claimFlags } from './claims.js'; // an answer's claims are checked like a draft's
 
 const EDIT = '(?:make|change|rewrite|re-?write|write|add|remove|drop|cut|shorten|lengthen|swap|replace|use|try|put|turn|redo|fix|update|move|translate|tighten|give|include|mention|lead|start|end|switch|keep|show|set|lower|raise|bump|trim|simplify|punch)';
 const POLITE = new RegExp(`^(?:(?:hey|ok|okay|so|and|now|also|please)[,\\s]+)*(?:(?:can|could|would|will) (?:you|we)\\s+(?:please\\s+)?|please\\s+|let'?s\\s+|i want (?:you )?to\\s+|go ahead and\\s+)?${EDIT}\\b`, 'i');
@@ -49,6 +50,7 @@ export function groundCheck(answer, evidence) {
   for (const s of sentences(answer)) {
     const bad = numsOf(s).filter((n) => +n >= 10 && !evNums.has(n) && !/^(19|20)\d\d$/.test(n)); /* small counts (3 steps) and years pass */
     if (bad.length) issues.push({ kind: 'number', text: s, nums: bad });
+    else if (claimFlags(s, ev).length) issues.push({ kind: 'claim', text: s }); /* a health claim, guarantee or code the evidence doesn't carry (1.5) */
     else if (PERF_CLAIM.test(s) && !hasPerf) issues.push({ kind: 'performance', text: s });
   }
   return { ok: !issues.length, issues };

@@ -78,7 +78,7 @@ import { cardFrom } from './card-from.js'; // the plain "from" line on every car
 import { aiRingFromRun } from './health.js'; // the AI answers ring from the weekly check: score, rows and who the answers name, all one run
 import { toolOf, channelFit, paceFit, paceOf, cleanViewer } from './channel-fit.js'; // where a card's work goes out, and how it fits the channels and ad pace the viewer told Brew in setup
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
-import { claimFlags, cleanDraftClaims, packSource } from './claims.js'; // drafts and finals carry only the store's own claims (QA-25)
+import { claimFlags, cleanDraftClaims, packSource, checkCopy } from './claims.js'; // drafts and finals carry only the store's own claims (QA-25)
 import { isCommunityCard } from './social-feed.js'; // a reply or post in a community, from what listening heard: it keeps a first-screen seat
 // cut on a word boundary with an ellipsis, never mid-word or with a dangling space
 const cutWords = (x, n) => { x = String(x).trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s,;:·-]+$/, '') + '…' : x; };
@@ -1493,7 +1493,8 @@ export function createFeedService(o) {
           const convo = (w.thread || []).filter((m) => m.from !== 'system').slice(-8).map((m) => `${m.from === 'me' ? 'Colleague' : m.who || (m.from === 'ai' ? 'AI' : 'Brew')}: ${m.body}`).join('\n');
           r = await claudeTool(`${cardBrief({ ...card, ...curV(w), agent: w.agent }, seatLine(t.viewer), t)}\n\nYou are ${who}, ${BN()}'s ${role}, replying in Slack ${w.with.channel || ''} to a colleague about this work. You care most about ${ROLE_ANGLE[id] || `getting it right for ${BN()}`}.\nThe brief now:\n"""\n${String(w.doc?.md || '').slice(0, 2500)}\n"""\nThe thread so far:\n${convo || '(nothing yet)'}\n\nTheir latest message: "${last}"\n\nReply like a busy, friendly teammate: 1 to 3 short sentences, plain words, no greetings. Answer exactly what they asked, from your role, with one concrete point taken from the brief or the card (a number, a condition, a risk). Never invent numbers. Then decide the verdict: "approve" only if they asked for a sign-off and nothing in your area blocks it (if you already raised a point and they answered it, approve); "question" if you need one thing answered first; "changes" if something must change; "answer" if they asked a question that is not a sign-off.`,
             { type: 'object', required: ['reply', 'verdict'], properties: { reply: { type: 'string', description: '1 to 3 short sentences, in character' }, verdict: { type: 'string', description: 'approve, question, changes or answer' } } }, 700, 'colleague');
-          if (r?.reply) r = { reply: clean(r.reply), verdict: String(r.verdict || '').toLowerCase() }; else r = null;
+          if (r?.reply) r = { reply: checkCopy(clean(r.reply), packSource(packFor(t), t.cards.get(w.cardId))).text || clean(r.reply).replace(/[^.!?]*$/, ''), verdict: String(r.verdict || '').toLowerCase() }; else r = null; /* a Slack reply carries no claim the store doesn't back (1.5) */
+          if (r && !r.reply.trim()) r = null;
         } catch (e) { log.warn('[colleague]', e.message); r = null; }
       }
       if (!r) { // offline: the old rules, but they follow what was asked

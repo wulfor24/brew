@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { numbersIn, allowedFrom } from './fact-gate.js';
+import { claimFlags, checkCopy, sourceText, CLAIMS_RULE } from './claims.js'; // words set on an ad are checked like every draft's
 import { buildDraft } from './sloosh-prompt.js';
 
 const SCHEMA = { type: 'object', properties: { ads: { type: 'array', items: { type: 'object', properties: {
@@ -82,9 +83,11 @@ export function createStatics({ ai, image, packs, launchBrowser, log = console }
     if (!prods.length) throw new Error('no product photos to build from');
     const examples = (move.sections || []).flatMap((s) => (s.blocks || []).filter((b) => b.t === 'example' || b.t === 'table').map((b) => b.t === 'example' ? `[${b.title}] ${b.body}` : [b.head, ...(b.rows || [])].map((r) => (r || []).join(' | ')).join('\n'))).join('\n\n').slice(0, 20000);
     const ok = allowedFrom(facts), moveNums = new Set(numbersIn(JSON.stringify(move.sections || [])));
-    const r = await ai.call({ model: 'sonnet', schema: SCHEMA, max: 5000, tag: 'statics', ...(bookWords ? { system: `You write for ${profile.name}. Follow its Brand Book in every word:\n${bookWords}` } : {}), prompt: `You turn the ad-creative plan (Move 21) for ${profile.name} into ${n} static Meta ads.\n\nTHE PLAN'S AD CONCEPTS AND EXAMPLES:\n${examples}\n\nPRODUCTS WITH REAL PHOTOS (handle: title, price):\n${prods.map((p) => `- ${p.handle}: ${p.title}${p.priceLabel ? ', ' + p.priceLabel : ''}`).join('\n')}\n\nFACTS YOU MAY QUOTE:\n${Object.values(facts).slice(0, 80).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\n\nWrite ${n} ads, each a different concept from the plan, each built around one real product photo. The headline speaks to shoppers. Only numbers from the facts or the plan; no rival names; no claim the brand's site doesn't make; no before/after, no bodies shown as results; no disclaimers.` });
+    const claimSrc = sourceText(Object.values(facts || {}).map((f) => [f?.label, f?.v]), profile.catalog?.products || [], profile.about || '', profile.tagline || ''); /* the brand's own words back a claim */
+    const r = await ai.call({ model: 'sonnet', schema: SCHEMA, max: 5000, tag: 'statics', ...(bookWords ? { system: `You write for ${profile.name}. Follow its Brand Book in every word:\n${bookWords}` } : {}), prompt: `You turn the ad-creative plan (Move 21) for ${profile.name} into ${n} static Meta ads.\n\nTHE PLAN'S AD CONCEPTS AND EXAMPLES:\n${examples}\n\nPRODUCTS WITH REAL PHOTOS (handle: title, price):\n${prods.map((p) => `- ${p.handle}: ${p.title}${p.priceLabel ? ', ' + p.priceLabel : ''}`).join('\n')}\n\nFACTS YOU MAY QUOTE:\n${Object.values(facts).slice(0, 80).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\n\nWrite ${n} ads, each a different concept from the plan, each built around one real product photo. The headline speaks to shoppers. Only numbers from the facts or the plan; no rival names; no claim the brand's site doesn't make (${CLAIMS_RULE}); no before/after, no bodies shown as results; no disclaimers.` });
     const want = (r.json?.ads || []).filter((a) => a.headline && prods.some((p) => p.handle === a.product))
       .filter((a) => numbersIn(`${a.headline} ${a.small}`).every((x) => ok.has(x) || moveNums.has(x)))
+      .filter((a) => !claimFlags(a.headline, claimSrc).length).map((a) => ({ ...a, small: checkCopy(a.small, claimSrc).text })) /* words set on an ad never carry a health claim, guarantee or code the store doesn't back (1.5) */
       .slice(0, n).map((a, i) => ({ ...a, id: (String(a.id || 'ad').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'ad') + '-' + (i + 1) }));
     if (!want.length) throw new Error('no ad concept passed the fact check');
     const accent = profile.identity?.colors?.[1] || profile.identity?.colors?.[0] || '#82B1FF';
