@@ -311,7 +311,7 @@ export function createBookReader({ packs, ai, treg = null, enricher = null, log 
       if (!opts.force && !(await stale(slug))) return packs.getJSON(slug, FILE, null);
       const book = await build(slug, opts);
       if (book && !book.skip) await packs.put(slug, FILE, book);
-      return book;
+      return book && !book.skip ? { ...book, built: true } : book; /* built: written just now (a current book comes back without it) */
     })().catch((e) => (log.warn?.('[book] ensure', slug, e.message), null)).finally(() => running.delete(slug));
     running.set(slug, job); return job;
   }

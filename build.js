@@ -421,7 +421,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* the Brand Book's read layer: never blocks a build; a new one drops the brand's cached book so makers read it at once */
   const book = createBookReader({ packs, ai, treg, log, enricher: process.env.ENRICH_OFF === '1' ? null : createEnricher({ packs, treg, log }) });
   const bookListeners = [];
-  const bookAfter = (slug, opts = {}) => { if (process.env.BOOK_OFF === '1') return null; return book.ensure(slug, opts).then(async (b) => { if (b && !b.skip) { bookListeners.forEach((f) => { try { f(slug, b); } catch {} }); packs.drop(slug); await onPack(slug); } return b; }); };
+  const bookAfter = (slug, opts = {}) => { if (process.env.BOOK_OFF === '1') return null; return book.ensure(slug, opts).then(async (b) => { if (b && !b.skip && b.built) { bookListeners.forEach((f) => { try { f(slug, b); } catch {} }); packs.drop(slug); await onPack(slug); } return b; }); }; /* only a book written just now reloads the pack: checking a current one on every page open rebuilt the whole pack twice a load (1.7) */
   /* the feed gate: set on a brand's first read, lifted by the first open of its feed (feedOpenAt); a feed opened before the brief is done counts */
   const waitsOnFeed = async (slug) => { const s = await status(slug); return !!s?.feedGate && !s.feedOpenAt; };
   const waitForFeed = (slug) => new Promise((res) => { const x = st(slug); x.feedOpen = res; waitsOnFeed(slug).then((w) => { if (!w) { x.feedOpen = null; res(); } }, () => {}); });
