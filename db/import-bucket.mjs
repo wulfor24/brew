@@ -2,7 +2,7 @@
 // timestamp. Idempotent and safe to repeat: a row is written only when the bucket's copy is newer than the row, so once
 // the app writes to Postgres a later run never overwrites that. Run it as a Cloud Run Job inside the VPC (the database
 // has a private IP only), before and right after switching a service to STORAGE=pg:
-//   node tools/import-objects.mjs [--prefix tenants/ --prefix brands/arata-in/] [--dry] [--cache-days 2]
+//   node db/import-bucket.mjs [--prefix tenants/ --prefix brands/arata-in/] [--dry] [--cache-days 2]
 // Binaries (pictures, video, PDFs) stay in the bucket and are skipped. _cache/ entries older than --cache-days are skipped.
 import { isRow } from '../objects.js';
 import { q, close } from '../db/index.js';

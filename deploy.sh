@@ -25,7 +25,7 @@ fi
 # AI_PROVIDER=gemini GEMINI_DEEP_MODEL=gemini-3.5-flash ./deploy.sh
 # Storage (25 Oct): STORAGE=pg — structured data in Cloud SQL brew-staging (private IP, Direct VPC egress), binaries in the
 # bucket. While the bucket is still the way back, reads fall through to it (OBJECTS_READTHROUGH) and every row is copied to it
-# (OBJECTS_MIRROR); run the brew-import job after any deploy that ran on the bucket. STORAGE=gcs ./deploy.sh goes back.
+# (OBJECTS_MIRROR); run the brew-import job (db/import-bucket.mjs) after any deploy that ran on the bucket. STORAGE=gcs ./deploy.sh goes back.
 # Deploy any time: the instance that goes gets SIGTERM, stops starting moves and saves what it has; the new one resumes every
 # unfinished build and rewrite on boot (build.js resumeAll). Only the moves in flight at that second are written again.
 # Apify (YouTube clips for viral remakes, video-read.js): its key goes in once the secret exists, so a deploy never fails on it
