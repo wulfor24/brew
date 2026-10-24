@@ -121,3 +121,9 @@ test('Always use this: a pick saved for the brand opens every new set-up and say
   const a = await R['POST /api/jam2/jams/:jid/studio/ask']({ text: 'make it a 10 s UGC video with a woman in her 30s, in Hindi', spec: { kind: 'image', style: 'in-use' } }, t, { jid });
   assert.equal(a.patch.kind, 'video'); assert.equal(a.patch.style, 'ugc-review'); assert.equal(a.patch.seconds, 10); assert.match(a.patch.cast, /woman in her 30s/); assert.match(a.patch.addDirection, /hindi/i); assert.ok(a.said);
 });
+
+test('the waiting game loads only when tapped, shows while a creative is made, and stops when it lands', () => {
+  const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8'), cs = fs.readFileSync(new URL('../public/creative-stage.js', import.meta.url), 'utf8'), game = fs.readFileSync(new URL('../public/brew-game.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(html, /brew-game\.js/, 'never in the page until someone taps Play'); assert.match(cs, /sc\.src = '\/brew-game\.js'/); assert.match(cs, /data-cs-game>Play while it brews/);
+  assert.match(cs, /window\.BrewGame\?\.done\?\.\(\);/, 'a landing stops the game'); assert.match(game, /visibilitychange/); assert.match(game, /prefers-reduced-motion/); assert.match(game, /try \{ return \+localStorage/);
+});

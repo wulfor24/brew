@@ -51,7 +51,7 @@
     if (S !== mine) return; S.working = false;
     if (r?.needsConfirm) { S.plan = r.plan; paint(); return H.toast?.(`The price changed to ${usd(r.plan.usd)}. Tap Generate again.`); }
     if (r?.error) { paint(); return H.toast?.(H.esc(r.error)); }
-    S.boards = r.jam?.boards?.map((b) => b.id) || S.boards; S.busy = r.jam?.busy || {}; S.making = { line: r.plan.line, usd: r.plan.usd, at: Date.now(), n: (r.boards || []).length || 1 }; S.open = false; S.failed = null;
+    S.boards = r.jam?.boards?.map((b) => b.id) || S.boards; S.busy = r.jam?.busy || {}; S.making = { line: r.plan.line, usd: r.plan.usd, at: Date.now(), n: (r.boards || []).length || 1, video: S.spec?.kind === 'video' }; S.open = false; S.failed = null;
     H.making?.(S.chId, S.making); paint(); poll();
   }
   /* one slide of a made set: redo it or add one (priced, from the plan of that one style), or drop it (free) */
@@ -72,6 +72,7 @@
       S.busy = r.jam.busy || {}; S.boards = r.jam.boards.map((b) => b.id); const err = Object.values(S.busy).find((b) => b?.error);
       if (anyBusy()) { paint(); return poll(); }
       const was = S.making; S.making = null; S.made = S.made || !err; /* made here once a take of this press lands */ if (err) S.failed = err.error; else S.failed = null;
+      window.BrewGame?.done?.(); /* a game open over the stage stops and says it's ready */
       H.landed?.(S.chId, { failed: S.failed, was }); }, 3000); }
 
   /* ---------- the composer ---------- */
@@ -123,7 +124,7 @@
   function html(ch) {
     if (!S || S.chId !== ch.id || S.loading) return `<div class="j2-studio cs"><p class="cs-wait"><brew-load class="spin"></brew-load> Setting it up from the card…</p></div>`;
     if (S.error) return `<div class="j2-studio cs"><p class="j2-err">${H.esc(S.error)}</p><button class="j2-pri" data-cs-retry>Try again</button></div>`;
-    if (S.making || anyBusy()) { const m = S.making; return `<div class="j2-studio cs cs-making"><p><brew-load class="spin"></brew-load><b>Making ${H.esc(m?.line || 'it')}</b>${m?.usd != null ? ` · ${usd(m.usd)}` : ''}</p><p class="cs-why">You can leave this page: it lands here and in Work when it’s ready, and Brew tells you.</p><div class="cs-acts"><button class="j2-chip" data-cs-feed>Back to the feed</button>${window.BrewGame ? '<button class="j2-chip" data-cs-game>Play while it brews</button>' : ''}</div></div>`; }
+    if (S.making || anyBusy()) { const m = S.making; return `<div class="j2-studio cs cs-making"><p><brew-load class="spin"></brew-load><b>Making ${H.esc(m?.line || 'it')}</b>${m?.usd != null ? ` · ${usd(m.usd)}` : ''}</p><p class="cs-why">You can leave this page: it lands here and in Work when it’s ready, and Brew tells you.</p><div class="cs-acts"><button class="j2-chip" data-cs-feed>Back to the feed</button><button class="j2-chip" data-cs-game>Play while it brews</button></div></div>`; }
     const sl = slidesOf(ch);
     /* a batch (How many above 1): every take of the newest run in one strip; tap one to look at it, Use it keeps it on the stage */
     const head0 = ch.versions?.find((v) => v.id === ch.head)?.studio, run = [...(ch.versions || [])].reverse().find((v) => v.studio?.run)?.studio?.run, batch = run ? (ch.versions || []).filter((v) => v.studio?.run === run) : [];
@@ -143,7 +144,9 @@
     const g = (sel) => e.target.closest(sel); if (!S || !g('.cs, .cs-line, [data-cs-open], .cs-adjust')) return false; const sp = S.spec;
     if (g('[data-cs-retry]')) { const id = S.chId; S = null; H.paint?.(); H.remount?.(id); return true; }
     if (g('[data-cs-feed]')) { H.toFeed?.(); return true; }
-    if (g('[data-cs-game]')) { window.BrewGame?.open?.({ progress: () => S?.making }); return true; }
+    if (g('[data-cs-game]')) { /* the game is loaded on the first tap only (brew-game.js), never before */
+      const go2 = () => window.BrewGame?.open?.({ progress: () => (S?.making || (anyBusy() ? { line: 'your creative', at: S?.makingAt } : null)), brand: S?.slots?.brand?.value?.colors || [], onSee: () => H.paint?.() });
+      if (window.BrewGame) go2(); else { const sc = document.createElement('script'); sc.src = '/brew-game.js'; sc.onload = go2; sc.onerror = () => H.toast?.('The game didn’t load. Your creative keeps being made.'); document.head.appendChild(sc); } return true; }
     const rm = e.target.closest('[data-cs-remember],[data-cs-forget]'); if (rm && S?.spec) { remember(rm.dataset.csRemember || rm.dataset.csForget, rm, !!rm.dataset.csForget); return true; }
     if (g('[data-cs-open]')) { S.open = true; paint(); setTimeout(() => document.querySelector('.cs-stage .cs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); return true; }
     if (g('[data-cs-redo]')) { go(true); return true; }
