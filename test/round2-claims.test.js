@@ -39,3 +39,8 @@ test('a test named in another fact never proves a health endorsement (QA audit 2
   const src = sourceText(['Tagline', 'Explore our most trusted & dermat-approved haircare'], ['Serum', 'In a clinical study of 40 volunteers, 87% saw growth']);
   assert.ok(claimFlags('Dermat-approved haircare', src).length); assert.equal(claimFlags('87% saw growth', src).length, 0);
 });
+
+test('an approved list backs only what is on it, not the same words elsewhere in the brand’s copy (QA audit 24 Oct)', () => {
+  const src = sourceText(['Tagline', 'Explore trusted & dermat-approved haircare'], approvedText(['7.4X Hair Fall Reduction']));
+  assert.ok(claimFlags('Dermat-approved care', src).length);
+});

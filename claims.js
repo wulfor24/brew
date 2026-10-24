@@ -41,7 +41,10 @@ const measuredIn = (src, phrase) => { const n = (phrase.match(/\d+(?:\.\d+)?\s?(
 /* the Brand Book's "claims we may make" (the team approved them, or the read found them on the brand's own pages): each one is
    backed as written, measured results included, marked so claimFlags knows the team signed it off */
 const APPROVED = /\[approved claims\]/;
-export const approvedText = (claims = []) => { const xs = (claims || []).map((c) => (typeof c === 'string' ? c : c?.text)).filter(Boolean); return xs.length ? `[approved claims] ${xs.join(' \n ')}` : ''; };
+export const approvedText = (claims = []) => { const xs = (claims || []).map((c) => (typeof c === 'string' ? c : c?.text)).filter(Boolean); return xs.map((x) => `[approved claims] ${x}`); }; /* each its own segment, so approvedHas reads the list and nothing else */
+/* the phrase sits inside one of the Brand Book's approved claims, never just anywhere in the brand's words (QA audit 24 Oct: Arata's
+   tagline said "dermat-approved" and passed because an approved list existed) */
+const approvedHas = (src, phrase) => { const k = String(phrase).toLowerCase().trim(); return src.split('¶').some((seg) => seg.includes('[approved claims]') && seg.includes(k)); };
 /* the brand's own words, for "is this claim theirs?": every string in the facts, the catalog rows, evidence, about */
 export const sourceText = (...parts) => { const out = []; const walk = (o, d = 0) => { if (d > 6 || o == null) return; if (typeof o === 'string' || typeof o === 'number') out.push(String(o)); else if (Array.isArray(o)) o.slice(0, 2000).forEach((x) => walk(x, d + 1)); else if (typeof o === 'object') for (const [k, v] of Object.entries(o)) if (!/^(img|image|images|src|url|logo|id|handle)$/i.test(k)) walk(v, d + 1); }; parts.forEach((p) => walk(p)); const n = norm(out.join(' ¶ ')); /* ¶ marks where one fact, product or review ends (certifiedIn reads one at a time) */ if (n.length > 2000) { if (NORMED.size >= 12) NORMED.delete(NORMED.keys().next().value); NORMED.set(n, n); } return n; };
 
@@ -67,9 +70,9 @@ export function claimFlags(text, source = '', { allowNewCode = false } = {}) {
     /* a health endorsement ("dermat-approved", "clinically tested", "doctor recommended") needs its proof, not just the words: the store
        names the study, test or certificate beside it, or the team approved it in the Brand Book (23 Oct QA 1.5); other absolutes
        ("permanent", "100% natural") pass where the store says them */
-    if (HEALTH.test(ph) ? certifiedIn(src, ph) || (APPROVED.test(src) && src.includes(ph)) : src.includes(ph)) continue; /* "treats" a pet store sells is not a health claim */ add('absolute', m[0], m.index, `“${m[0]}” isn’t backed by your store`); }
+    if (HEALTH.test(ph) ? certifiedIn(src, ph) || approvedHas(src, ph) : src.includes(ph)) continue; /* "treats" a pet store sells is not a health claim */ add('absolute', m[0], m.index, `“${m[0]}” isn’t backed by your store`); }
   for (const m of s.matchAll(EFFICACY)) { const q = around(s, m.index, m[0].length); if (!RESULT.test(q) && !/hair|skin|acne|weight|sleep|pain/i.test(q)) continue;
-    if (measuredIn(src, m[0])) continue; /* the same number where the store says it was measured */ if (APPROVED.test(src) && src.includes(norm(m[0]).trim())) continue;
+    if (measuredIn(src, m[0])) continue; /* the same number where the store says it was measured */ if (approvedHas(src, norm(m[0]).trim())) continue;
     add('efficacy', m[0].trim(), m.index, `“${m[0].trim()}” is a measured result; your store doesn’t say where it was measured`); }
   return flags;
 }
