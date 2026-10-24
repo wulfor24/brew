@@ -48,7 +48,7 @@ import { createEnricher } from './brand-enrich.js'; // the Brand Book's fresh po
 import { markMoveClaims, sourceText } from './claims.js'; // move PDFs mark a claim the store never made, like the page
 import { COMPANY_V } from './reader/stages/company.js'; // a read from before the about page heals once
 import { SOCIAL_SEARCH_V } from './reader/stages/socials.js';
-import { ASSORT_V, assortmentLine } from './assortment.js'; // whose products a store sells: saved reads work it out once // a site with no social links: its accounts by search, once
+import { ASSORT_V, assortmentLine, stillMaker } from './assortment.js'; // whose products a store sells: saved reads work it out once // a site with no social links: its accounts by search, once
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
 // addresses that must never be read or built (wrong links, removals): BUILD_BLOCK=slug;slug (deploy.sh needs ; since its env list is comma-separated)
@@ -788,6 +788,12 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         const moves = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(moves), ns = Object.keys(moves).map(Number).filter(ok);
         if (ns.length) await flagStale(slug, ns.map((n) => ({ n, priority: 'high', via: 'assortment', real: true, why: `Written as if ${out.profile.brandName || out.profile.name} made everything it sells. ${assortmentLine(a, out.profile.brandName || out.profile.name)}`, changes: [`Assortment: ${a.kind === 'retailer' ? 'a curated retailer' : 'own label and other brands'} (${Math.round(a.otherShare * 100)}% other brands)`] })));
         log.log?.(`[assortment] ${slug}: ${a.kind}; ${ns.length} moves flagged for the weekly rewrite`); }
+      /* a retailer's category asked again (it was the maker's: "Apparel" for a store half stethoscopes): moves written under the old
+         one that still call the store "an apparel brand" are rewritten too (Scrubroom 25 Oct, plays 18 and 27) */
+      if (out.changed.includes('category') && ['retailer', 'mixed'].includes(a?.kind)) { const moves = await packs.getJSON(slug, 'moves.json', {});
+        const ns = stillMaker(moves, p.category, out.profile.category).filter(await rewritable(moves));
+        if (ns.length) await flagStale(slug, ns.map((n) => ({ n, priority: 'high', via: 'assortment', real: true, why: `Calls ${out.profile.brandName || out.profile.name} a${/^[aeiou]/i.test(p.category || '') ? 'n' : ''} ${String(p.category || '').toLowerCase()} brand; it is ${assortmentLine(a, out.profile.brandName || out.profile.name)}`, changes: [`Category: ${p.category} → ${out.profile.category}`] })));
+        if (ns.length) log.log?.(`[assortment] ${slug}: category ${p.category} → ${out.profile.category}; ${ns.length} moves still framed as its maker flagged`); }
       return out.changed;
     } catch (e) { log.warn?.('[build] heal', slug, e.message); return null; }
     finally { healing.delete(slug); }

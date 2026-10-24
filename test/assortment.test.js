@@ -51,3 +51,11 @@ test('a saved read gets its assortment by adding brands to its catalog, never by
   assert.ok(block.length > 100); assert.doesNotMatch(block, /catalog\(ctx\)/, 'a heal re-run once read 6 of 140 products');
   assert.match(block, /p\.brand = byHandle\.get/); assert.match(block, /429/);
 });
+
+test('a retailer whose category changes gets the moves that still call it the maker rewritten, and only those', async () => {
+  const { stillMaker } = await import('../assortment.js');
+  const moves = { 0: { title: 'Index' }, 18: { title: 'Directory listings', sections: [{ blocks: [{ text: 'listings that matter for an Indian medical apparel brand' }] }] }, 19: { title: 'Curated boutique pages', gives: 'Where doctors buy Littmann' }, 27: { title: 'Pop-ups', sections: [{ blocks: [{ text: 'For a premium medical apparel brand, events mean' }] }] } };
+  assert.deepEqual(stillMaker(moves, 'Apparel', 'Medical apparel and equipment'), [18, 27]);
+  assert.deepEqual(stillMaker(moves, 'Apparel', 'apparel'), [], 'no change, nothing flagged');
+  assert.deepEqual(stillMaker(moves, '', 'Medical supplies'), []);
+});

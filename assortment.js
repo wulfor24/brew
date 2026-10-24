@@ -57,3 +57,12 @@ export function assortmentLine(a, storeName = 'The store') {
     ? `${storeName} is a curated retailer: ${pct}% of its catalog is other brands' products (${top}).${ownPart} Speak of the store as where to buy them, never as their maker; the own label is the store's to claim.`
     : `${storeName} sells its own label and other brands: ${pct}% of its catalog is other brands' products (${top}).${ownPart} Only the own label's products are the store's to claim as made by it.`;
 }
+
+/** moves that still call the store a maker of its old category ("a medical apparel brand") after a retailer's category changed:
+    their numbers, for the rewrite. Nothing when the category didn't change */
+export function stillMaker(moves = {}, was = '', now = '') {
+  const w = String(was || '').trim(); if (!w || w.toLowerCase() === String(now || '').trim().toLowerCase()) return [];
+  const word = w.toLowerCase().split(/[^a-z]+/).filter((x) => x.length >= 4).pop(); if (!word) return [];
+  const re = new RegExp(`\\b${word}\\s+(?:brand|company|label|maker|manufacturer)s?\\b`, 'i');
+  return Object.entries(moves || {}).filter(([k, m]) => /^\d+$/.test(k) && +k > 0 && m && typeof m === 'object' && re.test(JSON.stringify({ t: m.title, g: m.gives, s: m.sections }))).map(([k]) => +k);
+}
