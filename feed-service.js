@@ -1797,7 +1797,8 @@ export function createFeedService(o) {
     if (hit && hit.k === ck && Date.now() - hit.at < 20e3) return hit.v;
     /* the same viewer, nothing they did since (rev): the last answer goes back at once and a fresh one is built behind, so a page load
        never waits on background cards (watchers, connector reads) arriving; anything the viewer changed is built fresh (1.7) */
-    if (hit && hit.who === who && Date.now() - hit.at < 5 * 60e3) { if (!hit.busy) { hit.busy = true; feedRoute(b, t).then(store).catch(() => {}).finally(() => { hit.busy = false; }); } return hit.v; }
+    if (hit && hit.who === who && Date.now() - hit.at < 5 * 60e3) { if (!hit.busy) { hit.busy = true; /* after the page's own first calls (state, live, work), so the rebuild never holds them up */
+      setTimeout(() => feedRoute(b, t).then(store).catch(() => {}).finally(() => { hit.busy = false; }), 4000); } return hit.v; }
     if (hit) log.log?.(`[feed] ${t.brandId || ''} built fresh: ${hit.who !== who ? `was ${hit.who.split('|').slice(1).join('|')} now ${who.split('|').slice(1).join('|')}` : `${Math.round((Date.now() - hit.at) / 1e3)} s old`}`); /* why a reload waited (1.7) */
     return store(await feedRoute(b, t)); });
   const feedRoute = async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts);
