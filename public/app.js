@@ -728,13 +728,16 @@
         <p class="pv-cap">Your feed, as ${/^[AEIOU]/.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}</p>
         <div class="pv-win"><div class="pv-bar"><i></i><i></i><i></i><span>${location.host}</span></div>
           <div class="pv-in"><small>Today</small><h3>${dayPart()}${hiName(R)}</h3>
-            <div class="pv-tiles">${yes ? `<span class="hot"><b>${yes}</b>need your yes</span>` : ''}${all.length ? `<span><b>${all.length}</b>${all.length === 1 ? 'card' : 'cards'}</span>` : ''}<span><b>5</b>agents on it</span></div>
+            <div class="pv-tiles">${yes ? `<span class="hot"><b>${yes}</b>need your yes</span>` : ''}${all.length ? `<span><b>${all.length}</b>${all.length === 1 ? 'card' : 'cards'}</span>` : ''}<span><b>${AGENTS_ON.length}</b>agents on it</span></div>
             ${cards.slice(0, 3).map(pvCard).join('')}</div></div></div>`; pvLast = host.innerHTML.replace('class="pv"', 'class="pv still"'); };
     let cards = [];
     let all = [];
     if (TID) { const r = await loadFeed(); if (r && RANKED.length) { all = RANKED; cards = RANKED.slice(0, 8); } }
     if (!cards.length) { all = B.posts.filter((p) => !p.onlyWhen && (!p.roles || p.roles.includes(S.viewer.role)) && !p.kind?.startsWith?.('conf')); cards = all.slice(0, 8); }
+    /* once an account is connected, the preview leads with the cards built from its own numbers (3.8: show the payoff of connecting) */
+    const live = all.filter((p) => /^live-/.test(String(p.id || ''))); if (live.length) cards = [...live.slice(0, 3), ...cards.filter((p) => !live.includes(p))];
     paint(cards, all);
+    if (live.length && $('#ob-show .pv-cap')) $('#ob-show .pv-cap').textContent = `Built from your ${[...new Set(live.map((p) => B.connectors?.[String(p.id).split('-')[1]]?.name).filter(Boolean))].join(' and ') || 'connected'} numbers`;
   };
   const LANE_IMG = B.laneImg || {};
   const obNav = (next, back) => `<div class="ob2-nav">${back ? `<button class="btn btn-ghost lg" id="ob-back">${ic('left', 's18')} Back</button>` : '<span></span>'}<button class="btn btn-primary lg" id="ob-next">${next} ${ic('right', 's18')}</button></div>`;
@@ -896,9 +899,25 @@
       ${window.BREW_NUMBERS?.storeNote ? `<p class="ready-note">${esc(window.BREW_NUMBERS.storeNote)}</p>` : ''}
       <button class="lm" id="open-feed"><span class="lm-rim"><span class="lm-in">Open my feed ${ic('right', 's18')}</span></span></button>
     </div></div>`);
-    $('#open-feed').onclick = () => { $$('.ready').forEach((x) => x.remove()); feed(); };
+    $('#open-feed').onclick = () => { $$('.ready').forEach((x) => x.remove()); if (!S.swiped && (RANKED.length || rank().length) >= 4) return swipeTuner(feed); feed(); };
     $('#open-feed').focus();
   };
+  /* ten of the brand's own cards, one at a time (3.1): More like this or Less, by button, arrow key or a swipe. Each tap nudges that
+     agent in the ranking (feed-service tune_more / tune_less); Skip or Done leaves the rest as they are */
+  const swipeTuner = (then) => { const seen = new Set(), pick = []; for (const p of (RANKED.length ? RANKED : rank())) { if (pick.length >= 10) break; if (seen.has(p.agent) && pick.length < 6) continue; seen.add(p.agent); pick.push(p); }
+    let i = 0; const done = () => { S.swiped = 1; save(); $('#swipe')?.remove(); document.removeEventListener('keydown', key); toast(`${ic('check', 's16')}Your feed follows what you picked. Change it any time in Your feed.`); then(); };
+    const vote = (k) => { const p = pick[i]; if (k && p) tapi('POST', `/api/cards/${encodeURIComponent(p.id)}/feedback`, { kind: k }); i++; if (i >= pick.length) return done(); paint(); };
+    const key = (e) => { if (!$('#swipe')) return; if (e.key === 'ArrowRight') { e.preventDefault(); vote('tune_more'); } else if (e.key === 'ArrowLeft') { e.preventDefault(); vote('tune_less'); } else if (e.key === 'Escape') done(); };
+    const paint = () => { const p = pick[i], c = cardOf(p), img = (c.images || p.images || p.draft?.images || [])[0];
+      const el = $('#swipe') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'swipe', className: 'ready swipe' }));
+      el.innerHTML = `<div class="ready-card sw-card" role="dialog" aria-label="Tune your feed"><p class="q-step">Tune your feed · ${i + 1} of ${pick.length}</p><div class="q-prog"><span style="width:${Math.round(100 * (i + 1) / pick.length)}%"></span></div>
+        <article class="sw-c">${img ? `<img src="${esc(img)}" alt="" loading="eager">` : ''}<small>${esc(fromLabel(c))}</small><h3>${esc(c.title)}</h3><p>${esc(plain(c.sub || ''))}</p></article>
+        <div class="sw-btns"><button class="btn btn-ghost lg" data-sw="tune_less">${ic('left', 's18')} Less like this</button><button class="btn btn-primary lg" data-sw="tune_more">More like this ${ic('right', 's18')}</button></div>
+        <button class="linkbtn" data-sw="skip">${i ? 'Done, open my feed' : 'Skip, open my feed'}</button></div>`;
+      $$('[data-sw]', el).forEach((b) => (b.onclick = () => (b.dataset.sw === 'skip' ? done() : vote(b.dataset.sw))));
+      let x0 = null; const c0 = $('.sw-c', el); c0.addEventListener('pointerdown', (e) => { x0 = e.clientX; }); c0.addEventListener('pointerup', (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 60) vote(dx > 0 ? 'tune_more' : 'tune_less'); });
+      $('[data-sw="tune_more"]', el).focus(); };
+    document.addEventListener('keydown', key); paint(); };
 
   /* =========================================================
      4. The feed
@@ -1113,7 +1132,7 @@
   const postCard = (p, i) => {
     const c = cardOf(p);
     const isNew = PINNED.has(p.id);
-    const sub = [isNew ? 'Just in' : agoText(c.time), campLine(c)].filter(Boolean).join(' · ');
+    const sub = [isNew ? 'Just in' : agoText(c.time), campLine(c), SCORES[p.id]?.rankWhy && FEED.indexOf(p) < 12 ? SCORES[p.id].rankWhy : ''].filter(Boolean).join(' · '); /* why it is this high, in a few words (3.11) */
     const lc = null; /* Do it now was cut: nothing goes live from Brew, so no card shows a Live row */
     const live = lc ? `<button class="live-row" data-livech data-card="${esc(p.id)}" title="${esc(`${lc.label}${lc.scope ? ' · ' + lc.scope : ''} · ${byTeam(lc.by) ? 'shipped by the ShopOS team' : 'shipped by Brew'}. Open the history`)}"><span class="live-pill"><i class="pulse"></i>Live</span><span class="live-tx">${esc(lc.label)}</span><span class="live-v">v${lc.v}</span>${ic('right', 's14')}</button>` : '';
     const body = `<div class="body">${live || statusRow(p, c)}${p.told && !isToldCard(c) ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${aisLine(p)}${needLine(p)}${isToldCard(c) ? '' : srcLine(c)}</div>`;
@@ -1326,18 +1345,52 @@
     await Promise.all([loadFeed(), pullWork(true)]); if (view !== 'queue') return;
     const L = gLists(); GSTAT = L;
     const list = L[k]; if (k !== 'board') FEED = list;
+    /* the first time the yes calls open, they come one at a time (3.2): what it is, why in one line, the two buttons, and how far along */
+    const guide = k === 'yes' && list.length > 1 && !S.yesGuided && QG.on !== false; if (guide && QG.i >= list.length) { S.yesGuided = 1; save(); QG.on = false; return renderQueue(k); }
     const tab = (t) => `<button role="tab" aria-selected="${t === k}" data-qtab="${t}">${ic(QHEAD[t][3], 's16')}${QHEAD[t][0]}<span class="q-n">${L[t].length}</span></button>`;
     const empty = `<div class="empty">${ic('check')}<b>Nothing waiting</b><span>You’re clear here. New calls land as your agents finish.</span></div>`;
     $('#view').innerHTML = `<div class="qpage">
       <button class="q-back" data-nav="feed">${ic('left', 's16')}Feed</button>
       <header class="q-head"><h1>${QHEAD[k][0]} <span>${list.length}</span></h1><p>${QHEAD[k][1]}</p></header>
       <div class="q-tabs" role="tablist">${['yes', 'spend', 'board'].map(tab).join('')}</div>
-      <div class="q-list">${list.length ? (k === 'board' ? list.map(wRow).join('') : list.map(qRow).join('')) : empty}</div>
+      ${guide ? guideHtml(list) : `<div class="q-list">${list.length ? (k === 'board' ? list.map(wRow).join('') : list.map(qRow).join('')) : empty}</div>`}
       ${k === 'board' && list.length ? `<button class="btn btn-ghost q-more" data-nav="work">${ic('board', 's16')} Open the whole board</button>` : ''}
     </div>`;
     $$('[data-qtab]').forEach((b) => b.onclick = () => renderQueue(b.dataset.qtab));
+    $$('[data-qg]').forEach((b) => b.onclick = () => { const a = b.dataset.qg; if (a === 'skip') { QG.i++; return renderQueue('yes'); } if (a === 'all') { QG.on = false; S.yesGuided = 1; save(); return renderQueue('yes'); } });
     counts(); window.scrollTo(0, 0);
   };
+  const QG = { i: 0, on: true };
+  const guideHtml = (list) => { const p = list[QG.i], c = cardOf(p), why = SCORES[p.id]?.rankWhy || String(c.sub || '').split(/(?<=[.!?])\s/)[0];
+    return `<div class="q-guide" aria-live="polite"><p class="q-step">Call ${QG.i + 1} of ${list.length}</p><div class="q-prog"><span style="width:${Math.round(100 * (QG.i + 1) / list.length)}%"></span></div>
+      <div class="q-list">${qRow(p, FEED.indexOf(p))}</div><p class="q-why">${ic('info', 's14')}<span><b>Why it needs you:</b> ${esc(why || 'Only you can make this call.')}</span></p>
+      <div class="q-gnav"><button class="btn btn-ghost" data-qg="skip">${QG.i + 1 < list.length ? 'Not now, next call' : 'Not now, done'} ${ic('right', 's16')}</button><button class="linkbtn" data-qg="all">See them all at once</button></div></div>`; };
+  /* the product shelf (3.3): each product as a shelf, best sellers first, with the stack of pictures, videos and drafts Brew made
+     for it and where each stands (draft, in a brief, final); a product with nothing yet says so and its cards are one tap away */
+  const SHELF_ST = { final: ['Final', 'ok'], 'in a brief': ['In a brief', 'info'], draft: ['Draft', 'muted'] };
+  const renderShelf = async () => { view = 'products'; document.body.classList.remove('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
+    $('#view').innerHTML = `<div class="qpage"><div class="sk" style="height:140px;border-radius:20px"></div></div>`;
+    const r = await tapi('GET', '/api/tenants/:t/shelf'); if (view !== 'products') return;
+    if (r.error || !r.products) { $('#view').innerHTML = `<div class="qpage"><p class="lx-empty">The products didn’t load. Reload the page.</p></div>`; return; }
+    const row = (x) => `<section class="shf"><header class="shf-h">${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy">` : ''}<div><b>${esc(x.name)}</b><small>${esc([x.price, x.units != null ? `${x.units} sold in 30 days` : '', x.out ? 'Out of stock' : ''].filter(Boolean).join(' · '))}</small></div>${x.url ? `<a class="linkbtn" href="${esc(x.url)}" target="_blank" rel="noopener">Product page</a>` : ''}</header>
+      ${x.assets.length ? `<div class="shf-stack">${x.assets.map((a) => `<a class="shf-a" href="#remix=${encodeURIComponent(a.cardId)}${a.changeId ? '/' + encodeURIComponent(a.changeId) : ''}">${a.video && !a.img ? `<video src="${esc(a.video)}" muted playsinline preload="none"></video>` : `<img src="${esc(a.img)}" alt="${esc(a.label)}" loading="lazy">`}<span class="badge ${SHELF_ST[a.state]?.[1] || 'muted'}">${esc(SHELF_ST[a.state]?.[0] || 'Draft')}</span><small>${esc(a.label)}${a.v ? ` · v${a.v}` : ''}</small></a>`).join('')}</div>` : `<p class="shf-none">Nothing made for it yet.</p>`}</section>`;
+    $('#view').innerHTML = `<div class="qpage shf-page"><button class="q-back" data-nav="learned">${ic('left', 's16')}What Brew learned</button><header class="q-head"><h1>Products <span>${r.products.length}</span></h1><p>Ordered by ${esc(r.order || 'the store’s own order')}.</p></header>${r.products.map(row).join('') || '<p class="lx-empty">No products read yet.</p>'}</div>`;
+    window.scrollTo(0, 0); };
+  /* rivals (3.5): the ads filtered by rival, and one page per rival (its ads, prices and how AI answers name it) */
+  let RIV = null;
+  const renderRivals = async (one = '') => { view = 'rivals'; document.body.classList.remove('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
+    if (!RIV) { $('#view').innerHTML = `<div class="qpage"><div class="sk" style="height:140px;border-radius:20px"></div></div>`; RIV = await tapi('GET', '/api/tenants/:t/rivals'); if (view !== 'rivals') return; }
+    if (RIV.error || !RIV.rivals) { RIV = null; $('#view').innerHTML = `<div class="qpage"><p class="lx-empty">The rivals didn’t load. Reload the page.</p></div>`; return; }
+    const L = RIV.rivals, pick = L.find((x) => x.name === one), list = pick ? [pick] : L;
+    const ad = (a, r) => `<a class="rv-ad" href="${esc(a.url)}" target="_blank" rel="noopener">${a.poster ? `<img src="${esc(a.poster)}" alt="" loading="lazy">` : ''}<b>${esc(a.title || a.hook || r.name)}</b><small>${esc([a.days != null ? `${a.days} days live` : '', a.versions ? `${a.versions} versions` : '', a.angle].filter(Boolean).join(' · '))}</small>${a.why ? `<span>${esc(a.why)}</span>` : ''}</a>`;
+    const page = (r) => `<section class="shf"><header class="shf-h">${r.avatar ? `<img src="${esc(r.avatar)}" alt="" loading="lazy">` : ''}<div><b>${esc(r.name)}</b><small>${esc([r.live != null ? `${r.live} live ads` : r.error ? 'Their ads couldn’t be read this time; the next refresh tries again' : '', r.ai != null ? `AI answers name them ${typeof r.ai === 'number' && r.ai <= 1 ? Math.round(r.ai * 100) + '%' : r.ai} of the time` : ''].filter(Boolean).join(' · '))}</small></div>${pick ? '' : `<button class="linkbtn" data-rv="${esc(r.name)}">Their page ${ic('right', 's14')}</button>`}</header>
+      ${pick && r.prices.length ? `<div class="rv-prices">${r.prices.map((x) => `<span>${esc(x.title)} · <b>${esc(String(x.price))}</b></span>`).join('')}</div>` : ''}
+      ${r.ads.length ? `<div class="shf-stack">${r.ads.slice(0, pick ? 24 : 6).map((a) => ad(a, r)).join('')}</div>` : `<p class="shf-none">${r.error ? 'Their ads couldn’t be read this time.' : 'No live ads read for them.'}</p>`}</section>`;
+    $('#view').innerHTML = `<div class="qpage shf-page"><button class="q-back" data-nav="${pick ? 'rivals' : 'learned'}">${ic('left', 's16')}${pick ? 'All rivals' : 'What Brew learned'}</button><header class="q-head"><h1>${pick ? esc(pick.name) : `Rivals <span>${L.length}</span>`}</h1><p>${RIV.at ? `Ads read ${esc(new Date(RIV.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }))}` : ''}</p></header>
+      ${pick ? '' : `<div class="q-tabs rv-filter" role="tablist"><button role="tab" aria-selected="true" data-rv="">All</button>${L.map((r) => `<button role="tab" aria-selected="false" data-rv="${esc(r.name)}">${esc(r.name)}<span class="q-n">${r.ads.length}</span></button>`).join('')}</div>`}
+      ${list.map(page).join('') || '<p class="lx-empty">No rivals read yet.</p>'}</div>`;
+    $$('[data-rv]').forEach((b) => (b.onclick = () => { const n = b.dataset.rv; nav(n ? `#v=rivals&r=${encodeURIComponent(n)}` : '#v=rivals', true, 'view', 'rivals'); renderRivals(n); }));
+    window.scrollTo(0, 0); };
   const openGStat = (k) => { nav(`#v=queue&q=${k}`, true, 'view', 'queue'); return renderQueue(k); }; /* each list has its own link (1.14: the address stayed #v=feed) */
   document.addEventListener('click', (e) => { const g = e.target.closest('[data-gstat]'); if (g) openGStat(g.dataset.gstat); });
   const appShell = () => {
@@ -1387,7 +1440,7 @@
   };
   /* phones: a native tab bar like Instagram (Feed, Deck, new jam, Work, Library) and the section's name in the header */
   const TABS = [['feed', 'feed', 'Feed'], ['deck', 'deck', 'Deck'], ['+', 'plus', 'New jam'], ['work', 'board', 'Work'], ['saved', 'bookmark', 'Library']];
-  const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', refs: 'Library', learned: 'Learned', moves: 'Plays', move: 'Play', connectors: 'Connectors', tune: 'Your feed', queue: `${B.brand.name}`, remix: 'Remix' };
+  const TITLES = { feed: `${B.brand.name}`, deck: 'Deck', work: 'Work', saved: 'Library', jams: 'Library', remixes: 'Library', refs: 'Library', learned: 'Learned', moves: 'Plays', move: 'Play', products: 'Products', rivals: 'Rivals', connectors: 'Connectors', tune: 'Your feed', queue: `${B.brand.name}`, remix: 'Remix' };
   const paintTabbar = () => {
     document.body.dataset.view = BOOT_RX ? 'remix' : view; /* a studio link is the studio from the first paint, even while the feed boots underneath */
     /* the feed's stickers and margin notes sit in layers outside the page: leaving the feed clears them, or they float over the next page (a brand sticker covered the move page's number) */
@@ -1936,7 +1989,7 @@
   // why this card is here, in words a client reads: what lifted it, what held it back, where it sits today,
   // and a way to say if it was useful (that feedback re-ranks the feed and teaches Brew)
   const paceOfN = (n) => (n == null || !Number.isFinite(+n) ? null : +n === 0 ? 'none' : +n < 10 ? 'few' : +n < 50 ? 'ten' : 'always'); /* channel-fit paceOf */
-  const reasonsOf = (p, sc) => { const r = [], role = ROLE();
+  const reasonsOf = (p, sc) => { const r = [], role = ROLE(); if (sc?.rankWhy) r.push({ up: true, ic: 'zap', t: sc.rankWhy }); /* urgency and money at stake lead (3.11) */
     if (sc.seat > 0) r.push({ up: true, ic: 'person', t: `Picked for your seat: ${role.title}`, w: sc.seat });
     if (sc.impact > 0) r.push({ up: true, ic: 'trendup', t: sc.impactV ? `About ${inrS(sc.impactV)} a month at stake` : sc.impactPct ? 'Moves a number you track' : 'Could move revenue', w: sc.impact });
     if (sc.isDecision) r.push({ up: true, ic: 'hand', t: 'A call only you can make', w: 1 });
@@ -1977,7 +2030,7 @@
      so the browser's Back and ours walk the same path. route() makes the screen match the URL. */
   const nav = (hash, push, a, v = view) => { const st = { a, v }; hash = typeof hash === 'string' && hash.startsWith('#') ? location.pathname + hash : hash; if (push) history.pushState(st, '', hash); else history.replaceState(st, '', hash); };
   const VIEWS = () => { const v = VIEWS0(); v.tune = renderTune; return v; };
-  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), refs: (f) => renderReferences(f !== false), done: renderWork, work: renderWork, connectors: renderConnectors, learned: renderLearned, brand: () => renderBrand(), watch: () => renderWatch(), heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue(['yes', 'spend', 'board'].includes(hashParams().q) ? hashParams().q : QTAB) });
+  const VIEWS0 = () => ({ feed: renderFeed, deck: renderDeck, saved: renderSaved, jams: (f) => renderJams(f !== false), remixes: (f) => renderJams(f !== false), refs: (f) => renderReferences(f !== false), done: renderWork, work: renderWork, connectors: renderConnectors, learned: renderLearned, brand: () => renderBrand(), watch: () => renderWatch(), heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, queue: () => renderQueue(['yes', 'spend', 'board'].includes(hashParams().q) ? hashParams().q : QTAB), products: () => renderShelf(), rivals: () => renderRivals(hashParams().r || '') });
   const route = () => {
     const hp = hashParams(), rm = location.hash.match(/^#remix=([^/&]+)(?:\/([^&]+))?/);
     if (rm) { const p = byId(decodeURIComponent(rm[1]));
@@ -2626,10 +2679,12 @@
       if (b && !b.error) {
         b.inflight.forEach((x) => out.push({ id: 'bg-m' + x.n, kind: 'run', t: `Writing ${mvLabel(x.n)}`, s: x.title, meta: `${mins(x.secs)} so far · usually 6 to 9`, pct: Math.min(92, Math.round(100 * x.secs / 480)) }));
         b.failed.forEach((x) => out.push({ id: 'bg-f' + x.n, kind: 'fail', t: `${mvLabel(x.n)} stopped`, s: `${x.title} · ${x.msg}`, meta: 'It gets another try once the rest are written' }));
-        if (b.statics?.state === 'running') out.push({ id: 'bg-st', kind: 'run', t: 'Making your static ads', s: 'From Move 21, on your real product photos', meta: 'About 5 minutes', pct: 40 });
+        if (b.statics?.state === 'running') out.push({ id: 'bg-st', kind: 'run', t: 'Making your static ads', s: 'From Play 21, on your real product photos', meta: 'About 5 minutes', pct: 40 });
         b.queue.slice(0, 3).forEach((x) => out.push({ id: 'bg-q' + x.n, kind: 'next', t: `Up next: ${mvLabel(x.n)}`, s: x.title, meta: 'Starts when a slot frees up' }));
         if (!b.inflight.length && b.done < 51 && !b.failed.length && !b.queue.length) out.push({ id: 'bg-w', kind: 'next', t: 'Waiting to start', s: b.state || '', meta: '' });
       } }
+    /* every jam with a revision, picture or video being made right now (3.7): each its own tile with its step and time, several at once */
+    if (TID) { const j = await tapi('GET', '/api/jobs').catch(() => null); (j?.jobs || []).forEach((x) => out.push({ id: 'bg-j' + x.id + x.kind, kind: 'run', t: `${{ revision: 'Writing a new version', picture: 'Making a picture', video: 'Making a video' }[x.kind] || 'Working'}: ${x.title}`, s: x.step, meta: x.since ? `${mins(Math.round((Date.now() - x.since) / 1000))} so far` : '', pct: x.since ? Math.min(92, Math.round(100 * (Date.now() - x.since) / (x.kind === 'video' ? 6e5 : 12e4))) : 30, open: x.cardId ? `#remix=${encodeURIComponent(x.cardId)}/${encodeURIComponent(x.id)}` : null })); }
     const r = await api('/api/research'); (r?.running || []).forEach((k) => out.push({ id: 'bg-r' + k, kind: 'run', t: { ads: 'Reading rival ads', own: 'Reading your live ads', trends: 'Reading Google Trends', news: 'Reading industry news', howto: 'Writing this week’s playbooks' }[k] || 'Research', s: 'For your story rings', meta: 'A minute or two', pct: 50 }));
     /* creatives Brew Studio is making right now, from any jam: in the background lane with what they cost */
     WORK.items.filter((w) => w.creative?.state === 'making' && Date.now() - (w.creative.at || 0) < 40 * 60e3).forEach((w) => { const secs = (Date.now() - w.creative.at) / 1e3, vid = w.creative.kind === 'video';
@@ -2639,7 +2694,7 @@
     BG.t = view === 'work' || view === 'moves' ? setTimeout(loadBG, 10e3) : null;
   };
   const bgTile = (x) => `<article class="card wb-card wb-bg is-${x.kind}"><div class="wb-bg-h">${face('brew')}<span><b>${esc(x.t)}</b><small>${esc(x.s || '')}</small></span>${x.kind === 'run' ? '<span class="wb-bg-live"><span class="dot"></span>Now</span>' : x.kind === 'fail' ? `<button class="btn btn-ghost sm" data-bgretry>Retry</button>` : ''}</div>
-    ${x.kind === 'run' ? `<div class="wb-bg-bar"><i style="width:${x.pct || 30}%"></i></div>` : ''}${x.meta ? `<p class="wb-bg-meta">${esc(x.meta)}</p>` : ''}</article>`;
+    ${x.kind === 'run' ? `<div class="wb-bg-bar"><i style="width:${x.pct || 30}%"></i></div>` : ''}${x.meta ? `<p class="wb-bg-meta">${esc(x.meta)}</p>` : ''}${x.open ? `<a class="linkbtn" href="${esc(x.open)}">Open the jam ${ic('right', 's14')}</a>` : ''}</article>`;
   document.addEventListener('click', async (e) => { if (!e.target.closest('[data-bgretry]')) return; const r = await api(`/api/brands/${B.slug || BR}/retry`, {}); toast(`${ic('refresh', 's16')}${esc(r?.note || 'Retrying the stopped moves')}`); loadBG(); });
   const renderWork = () => {
     if (!BG.t) loadBG();
@@ -2786,6 +2841,9 @@
   const fmtT = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
   /* money in the brand's own currency: lakh and crore for INR, K and M elsewhere */
   const MONEY = window.BREW_MONEY || { cur: 'INR', sym: '₹', locale: 'en-IN' }; if (!B.sym) B.sym = MONEY.sym;
+  /* a dollar cost said in the brand's money first (3.4) */
+  const FX_PER = { INR: 88, GBP: 0.75, EUR: 0.86, AUD: 1.52, CAD: 1.38, AED: 3.67, SGD: 1.29 };
+  const moneyOf = (n) => { const r = FX_PER[MONEY.cur]; if (!r || !+n) return `$${(+n || 0).toFixed(2)}`; const v = +n * r; return `about ${MONEY.sym}${v >= 100 ? Math.round(v).toLocaleString(MONEY.locale || 'en-IN') : v.toFixed(v < 10 ? 1 : 0)}`; };
   const inrS = (v) => MONEY.cur === 'INR' ? (v >= 1e7 ? `₹${+(v / 1e7).toFixed(1)} Cr` : v >= 1e5 ? `₹${+(v / 1e5).toFixed(1)} lakh` : `₹${Math.round(v).toLocaleString('en-IN')}`)
     : v >= 1e6 ? `${MONEY.sym}${+(v / 1e6).toFixed(1)}M` : v >= 1e4 ? `${MONEY.sym}${+(v / 1e3).toFixed(1)}K` : `${MONEY.sym}${Math.round(v).toLocaleString(MONEY.locale)}`;
   const renderView = () => ({ tune: renderTune, feed: renderFeed, saved: renderSaved, jams: () => renderJams(false), remixes: () => renderJams(false), refs: () => renderReferences(false), done: renderWork, work: renderWork, connectors: renderConnectors, deck: renderDeck, learned: renderLearned, heard: () => renderHeard(), facts: () => renderFacts(), moves: renderMoves, move: renderMove, remix: () => (RX.p ? openRemix(RX.p) : renderFeed()), queue: () => renderQueue() }[view] || renderFeed)();
@@ -3274,7 +3332,9 @@
     ads: { name: 'Ads', dot: '#a3a3a3', emo: '📣' }, storefront: { name: 'Storefront', dot: '#8a8a8a', emo: '🛍️' }, visibility: { name: 'AI answers', dot: '#6b6b6b', emo: '🤖' }
   };
   let COL_ORDER = [];
-  const colOrder = () => { const base = ['signals', 'catalog', 'creatives', 'ads', 'storefront', 'visibility']; const f = ROLE().deckFirst; COL_ORDER = [f, ...base.filter((k) => k !== f).sort((a, b) => (ROLE().sector[b] || 0) - (ROLE().sector[a] || 0))]; };
+  /* columns: the one holding the most urgent money first (3.11: rank columns by urgency and money at stake), then the seat's order */
+  const urgentIn = (k) => FEED.filter((p) => p.sector === k).reduce((m, p) => Math.max(m, +SCORES[p.id]?.urgency || 0), 0);
+  const colOrder = () => { const base = ['signals', 'catalog', 'creatives', 'ads', 'storefront', 'visibility']; const f = ROLE().deckFirst; COL_ORDER = [f, ...base.filter((k) => k !== f).sort((a, b) => (ROLE().sector[b] || 0) - (ROLE().sector[a] || 0))]; COL_ORDER.sort((a, b) => (urgentIn(b) >= 3 ? 1 : 0) - (urgentIn(a) >= 3 ? 1 : 0)); };
   const byCol = (k) => FEED.map((p, i) => [p, i]).filter(([p]) => p.sector === k);
   const colState = {}; ['signals', 'catalog', 'creatives', 'ads', 'storefront', 'visibility'].forEach((k) => (colState[k] = { hidden: false }));
   const COL_MIN = 380, COL_MAX = 900, COL_SNAP = [380, 480, 600, 720, 840];
@@ -3367,7 +3427,7 @@
   const buildDeck = async () => {
     const d0 = deckEl(); if (!d0) return; await syncNow();
     const r = await tapi('GET', `/api/tenants/:t/deck${SFQ}`); if (r.error) return;
-    ALL = r.cards; SCORES = r.scores || SCORES; FEED = Object.values(r.columns).flat().map((id) => ALL[id]).filter(Boolean);
+    ALL = r.cards; SCORES = r.scores || SCORES; FEED = Object.values(r.columns).flat().map((id) => ALL[id]).filter(Boolean); colOrder(); /* urgent columns first */
     if (!layoutLoaded) { layoutLoaded = true; (r.layout.hidden || []).forEach((k) => colState[k] && (colState[k].hidden = true)); colW = r.layout.colWidth || colW; }
     const d = deckEl(); if (!d) return;
     const keep = d.scrollLeft, keepY = Object.fromEntries($$('.dcol', d).map((c) => [c.dataset.col, $('.col-body', c)?.scrollTop || 0])); document.body.classList.add('col-dragging');
@@ -3623,6 +3683,18 @@
         <div class="faq-b"><h3>Questions people ask</h3>${es.map((e, i) => `<details class="faq-q"${i < 2 ? ' open' : ''}><summary>${esc(e.q)}${ic('chev', 's16')}</summary><p>${txt(e.a)}${e.source ? tipBtn(`Source: ${e.source}`) : ''}</p></details>`).join('')}
         ${p.asOf ? `<small class="faq-asof">Updated ${esc(String(p.asOf).replace(/^as of\s*/i, ''))}</small>` : ''}</div></div>`; }
     if (ch.family === 'meta_ops') { const items = p.items || [];
+      /* a budget move a performance marketer reads in one look (3.9): each campaign's ad, its spend a day before and after as bars,
+         its return, and the exact campaign in Ads Manager */
+      const amt = (x) => { const m = /[\d,]+(?:\.\d+)?/.exec(String(x || '')); return m ? +m[0].replace(/,/g, '') : NaN; }, sh = (RX.p || byId(ch.cardId) || {}).shift || null;
+      const rows = items.map((r) => { const from = sh && r.name === sh.from, to = sh && r.name === sh.to; return { ...r, nowN: amt(r.now), nextN: amt(r.next), roas: from ? sh.fromRoas : to ? sh.toRoas : null, img: from ? sh.fromImg : to ? sh.toImg : null,
+        link: (from || to) && (from ? sh.fromAct : sh.toAct) && (from ? sh.fromId : sh.toId) ? `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${String(from ? sh.fromAct : sh.toAct).replace(/^act_/, '')}&selected_campaign_ids=${encodeURIComponent(from ? sh.fromId : sh.toId)}` : null }; });
+      const bars = rows.length >= 2 && rows.every((r) => Number.isFinite(r.nowN) && Number.isFinite(r.nextN)), top = bars ? Math.max(...rows.flatMap((r) => [r.nowN, r.nextN]), 1) : 1;
+      if (bars) return `<div class="as as-pm lg">${quiet(['Meta Ads Manager', ch.actionLabel, p.checkAt])}<div class="pm am3">${rows.map((r) => `<div class="am3-row">${r.img ? `<img class="am3-img" src="${esc(r.img)}" alt="The ad running in ${esc(r.name)}" loading="lazy">` : `<span class="am3-img is-none">${ic('megaphone', 's16')}</span>`}
+          <div class="am3-b"><b>${esc(r.name)}</b>${r.roas != null ? `<small>${esc(String(r.roas))}x return this week</small>` : ''}
+            <div class="am3-bar" role="img" aria-label="${esc(r.now)} now, ${esc(r.next)} after"><span class="is-now" style="width:${Math.round(100 * r.nowN / top)}%"></span><span class="is-next" style="width:${Math.round(100 * r.nextN / top)}%"></span></div>
+            <div class="am3-v"><span>Now ${esc(r.now.replace(/^About /, ''))}</span><strong>After ${esc(r.next.replace(/^About /, ''))}</strong></div>
+            ${r.link ? `<a class="linkbtn" href="${esc(r.link)}" target="_blank" rel="noopener">Open in Ads Manager ${ic('right', 's14')}</a>` : ''}</div></div>`).join('')}
+        ${p.rule ? `<p class="am2-rule">${ic('eyeoff', 's14')}<span><b>Rule</b> ${esc(p.rule)}</span></p>` : ''}<p class="am2-note">Total spend stays the same. Brew changes nothing in Ads Manager: your team makes the move.</p></div></div>`;
       return `<div class="as as-pm lg">${quiet(['Meta Ads Manager', ch.actionLabel, p.checkAt])}<div class="pm am2"><table><thead><tr><th>Ad set or ad</th><th>Now</th><th>After</th></tr></thead>
         <tbody>${items.map((r) => `<tr><td><span class="am2-on"></span>${esc(r.name)}</td><td>${esc(r.now)}</td><td><b>${esc(r.next)}</b></td></tr>`).join('')}</tbody></table>
         ${p.rule ? `<p class="am2-rule">${ic('eyeoff', 's14')}<span><b>Rule</b> ${esc(p.rule)}</span></p>` : ''}${p.spendChangeWeek ? `<p class="am2-spend ${p.spendChangeWeek > 0 ? 'up' : 'down'}">${p.spendChangeWeek > 0 ? '+' : '−'}${inrS(Math.abs(p.spendChangeWeek))} a week</p>` : ''}</div></div>`; }
@@ -3989,7 +4061,7 @@
     /* Redo it: one new take beside the one way forward, whenever the version can still change (not while something is being made) */
     const busy = !!job;
     const sPl = ch.studio ? window.CreativeStage?.state(ch.id)?.plan : null; /* a Studio redo is made again the same way, at its price */
-    const redo = !busy && !(op && !op.picked) ? (ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" title="Made again with the same set-up, priced first. This one stays in History.">${ic('shuffle', 's16')}Redo it${sPl?.usd != null ? ` · $${(+sPl.usd).toFixed(2)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle, a free draft. This one stays in History.">${ic('shuffle', 's16')}Redo it${freeTag()}</button>`) : '';
+    const redo = !busy && !(op && !op.picked) ? (ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" title="Made again with the same set-up, priced first. This one stays in History.">${ic('shuffle', 's16')}Redo it${sPl?.usd != null ? ` · ${moneyOf(sPl.usd)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle, a free draft. This one stays in History.">${ic('shuffle', 's16')}Redo it${freeTag()}</button>`) : '';
     return `<div class="ship one ${fix ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l">${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
   /* the options as tabs above the stage, named by their angle, never v1–v5 */
   /* one, always: no option tabs, not even on jams saved with options (the one on the stage is the one; the rest are in History) */
@@ -5288,7 +5360,7 @@
         ppl && t('data-nav="watch"', ppl.toLocaleString(), 'Things people said', srcs.length > 2 ? `${srcs.slice(0, 2).map((x) => x.name).join(', ')} +${srcs.length - 2} more` : srcs.map((x) => x.name).join(', '))].filter(Boolean);
       return tiles.length ? `<div class="lx-ov">${tiles.join('')}</div>` : ''; };
     libShell('What Brew learned', 'From what you pick, edit and ship, and anything you drop on this page. Edit, pause or forget any of it.',
-      `<div class="lx" data-m2-drop>${`<div class="lx-pair">${lxBook() + lxWatch(heard)}</div>` + lxDropBig() + lxOverview()}
+      `<div class="lx" data-m2-drop>${`<div class="lx-pair">${lxBook() + lxWatch(heard)}</div>` + `<button class="lx-heard-row lx-shelf" data-nav="rivals"><span class="lg-ic">${ic('search', 's16')}</span><span class="lg-tx"><b>Rivals and their ads</b><span>Every rival ad Brew read, by rival, with a page for each</span></span>${ic('right', 's16')}</button><button class="lx-heard-row lx-shelf" data-nav="products"><span class="lg-ic">${ic('layers', 's16')}</span><span class="lg-tx"><b>Products and their creative</b><span>Every product, best sellers first, with what Brew made for it</span></span>${ic('right', 's16')}</button>` + lxDropBig() + lxOverview()}
         ${mvBuilding ? movesHtml : ''}
         
         ${toldHtml}

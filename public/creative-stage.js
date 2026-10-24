@@ -7,7 +7,9 @@
 (() => {
   const H = {}; let S = null, LIB = null, SIZES = null, pollT = null, planT = null;
   const srcOf = (s) => (!s ? '' : /^(https?:|data:|blob:|\/)/.test(s) ? s : '/' + s);
-  const usd = (n) => (n == null ? '' : `$${(+n).toFixed(2)}`);
+  /* a price in the brand's own money, the dollar figure beside it (3.4: "prices in ₹"); rough rates, so "about" */
+  const PER = { INR: 88, GBP: 0.75, EUR: 0.86, AUD: 1.52, CAD: 1.38, AED: 3.67, SGD: 1.29 }, CS = { INR: '₹', GBP: '£', EUR: '€', AUD: 'A$', CAD: 'C$', AED: 'AED ', SGD: 'S$' };
+  const usd = (n) => { if (n == null) return ''; const M = window.BREW_MONEY || {}, c = M.cur, r = PER[c]; if (!r || !+n) return `$${(+n).toFixed(2)}`; const v = +n * r; return `about ${CS[c] || M.sym || ''}${v >= 100 ? Math.round(v).toLocaleString(M.locale || 'en-IN') : v.toFixed(v < 10 ? 1 : 0)} ($${(+n).toFixed(2)})`; };
   const SIZE_OPTS = { image: ['ig-portrait', 'ig-square', 'story', 'pinterest', 'youtube', 'fbx', 'email', 'banner', 'pdp', 'a5'], video: ['story', 'ig-square', 'ig-portrait', 'youtube'] };
   const groups = () => (LIB ? [...LIB.image.map((g) => ({ ...g, kind: 'image' })), ...LIB.video.map((g) => ({ ...g, kind: 'video' }))] : []);
   const styleById = (id) => { for (const g of groups()) { const x = g.styles.find((y) => y.id === id); if (x) return { ...x, group: x.group || g.label, kind: g.kind }; } return null; };
@@ -30,7 +32,7 @@
     /* a board already made opens on the set-up its newest take was made with, so Redo makes that again at its price */
     const made0 = (bd.takes || []).at(-1)?.studio?.spec || null, D = made0 ? { ...d.defaults, ...Object.fromEntries(Object.entries(made0).filter(([, v]) => v != null && v !== '')), count: 1, styles: d.defaults.styles?.includes(made0.style) || !made0.style ? d.defaults.styles : [made0.style, ...(d.defaults.styles || []).slice(0, 2)] } : d.defaults, X = d.context?.slots || {};
     Object.assign(S, { loading: false, jid: jam.id, bid: bd.id, boards: jam.boards.map((b) => b.id), products: d.products || [], slots: X, missing: d.context?.missing || [], blocked: D.blocked || {}, picks: D.styles || [],
-      spec: { ...D, ask: D.ask || '', direction: D.direction || X.direction?.value || '', cast: D.cast || (X.cast?.shown && X.cast.value !== 'none' ? X.cast.label : X.cast?.value === 'none' ? 'No people' : null), ref: made0 ? made0.ref || null : X.reference?.value?.label || null, quality: D.quality || 'standard' },
+      spec: { ...D, ask: D.ask || '', direction: D.direction || X.direction?.value || '', cast: D.cast || (X.cast?.shown && X.cast.value !== 'none' ? X.cast.label : X.cast?.value === 'none' ? 'No people' : null), ref: made0 ? made0.ref || null : X.reference?.value?.label || null, quality: D.quality || ((bd.takes || []).length ? 'standard' : 'preview') /* the first take is a cheap low-res preview of the idea (3.4); the full one comes after it looks right */ },
       busy: jam.busy || {}, made: (bd.takes || []).length > 0, failed: Object.values(jam.busy || {}).find((b) => b?.error)?.error || null }); /* a make that stopped says so after a reload too */
     S.open = !ch.versions?.some((v) => v.studio) && !S.made; /* made already: the set-up folds into one line under the frame */
     paint(); price(); if (anyBusy()) poll();
@@ -105,7 +107,7 @@
         ${chip('size', 'Size', SIZES?.[sp.sizes?.[0]]?.label || sp.sizes?.[0] || 'Size')}
         ${kind === 'video' && st?.job === 'video-restyle' ? '<div class="cs-slot"><small>Length</small><span class="cs-why">As long as the reference</span></div>' : kind === 'video' ? `<div class="cs-slot"><small>Length</small><div class="j2-seg">${(st?.job === 'viral-short' ? [15, 20, 30] : [5, 10, 15]).map((n) => `<button data-cs-sec="${n}" class="${+sp.seconds === n ? 'on' : ''}">${n} s</button>`).join('')}</div></div>` : ''}
         ${setIds ? '' : `<div class="cs-slot"><small>How many</small><div class="j2-count"><button data-cs-count="-1" aria-label="Fewer">−</button><b>${sp.count}</b><button data-cs-count="1" aria-label="More">+</button></div></div>`}
-        <div class="cs-slot"><small>Quality</small><div class="j2-seg">${[['preview', 'Preview'], ['standard', 'Standard'], ['premium', 'Premium']].map(([k, n]) => `<button data-cs-q="${k}" class="${(sp.quality || 'standard') === k ? 'on' : ''}" title="${H.esc(k === 'premium' ? '4K, for print and big screens' : k === 'preview' ? 'A quick, cheap look at the idea' : why('quality'))}">${n}</button>`).join('')}</div></div>
+        <div class="cs-slot"><small>Quality</small><div class="j2-seg">${[['preview', 'Preview'], ['standard', 'Standard'], ['premium', 'Premium']].map(([k, n]) => `<button data-cs-q="${k}" class="${(sp.quality || 'standard') === k ? 'on' : ''}" title="${H.esc(k === 'premium' ? '4K, for print and big screens' : k === 'preview' ? 'A quick, low-res look at the idea at about a third of the price: make the full one once it looks right' : why('quality'))}">${n}</button>`).join('')}</div></div>
         ${S.pop ? popHtml(S.pop) : ''}
       </div>
       <label class="cs-dir"><small>Direction <span>${H.esc(why('direction'))}</span></small><textarea id="cs-dir" rows="3">${H.esc(sp.direction || '')}</textarea></label>

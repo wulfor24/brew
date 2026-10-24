@@ -500,6 +500,14 @@ export function createFeedService(o) {
   const toldCard = (c) => !!c && !(c.research?.kind === 'ad' || c.research?.kind === 'viral' || c.origin === 'listen' || c.stream === 'heard') && (c.origin === 'told' || c.told === true || inLearned('teamCards', c.id) || inLearned('learnedUp', c.id) || !!B()?.learnedMoves?.has(moveNo(c.id)));
   // who may see that a card rests on what the team told Brew: the same people as the told list (server.js /told)
   const toldSeen = (t) => process.env.DEMO_MODE === '1' || !!t?.member || process.env.FEED_SIGNIN === '0';
+  const STOCK_NOW = /\b(?:sold[ -]?out|out of stock|0 left|5 or fewer units|stock-?outs?)\b/i;
+  const urgencyOf = (c, at) => { const txt = `${c.title || ''} ${c.sub || ''} ${(c.rows || []).flat().join(' ')}`; let score = 0, why = '';
+    const m = /([₹$£€])\s?([\d,]+(?:\.\d+)?)\s?(k|L|lakh|Cr)?\s*(?:a|per|\/)\s*(day|week|month)/i.exec(txt);
+    if (m) { const n = +m[2].replace(/,/g, '') * ({ k: 1e3, l: 1e5, lakh: 1e5, cr: 1e7 }[String(m[3] || '').toLowerCase()] || 1), perDay = n / ({ day: 1, week: 7, month: 30 }[m[4].toLowerCase()]); if (perDay > 0) { score += Math.min(4, Math.log10(1 + perDay) * (m[1] === '₹' ? 0.9 : 1.4)); why = `${m[1]}${m[2]}${m[3] || ''} a ${m[4].toLowerCase()} at stake`; } }
+    if (STOCK_NOW.test(txt)) { score += 3; why ||= 'Sold out or nearly: it costs sales every day'; }
+    const d = /\b(\d{1,2}) days? (?:away|left|to go)\b|\bin (\d{1,2}) days?\b/i.exec(txt), days = d ? +(d[1] || d[2]) : null; if (days != null && days <= 10) { score += 3 - days / 5; why ||= `${days} day${days === 1 ? '' : 's'} left`; }
+    if (/^live-/.test(String(c.id || ''))) { score += 1.5; why ||= 'From your account today'; }
+    return { score: +score.toFixed(2), why }; };
   const score = (t, c, af) => {
     const v = t.viewer, R = SEED.roles[v.role] || SEED.roles.founder;
     const ageH = Math.max(0, (now(t) - c.createdAt) / H);
@@ -523,12 +531,13 @@ export function createFeedService(o) {
     const contra = inLearned('learnedHide', c.id) ? -40 : 0; /* the team said it doesn't work for them: off the top until someone says "bring back" (brand-learnings.js) */
     const art = draftView(draftFor(c, B()?.firstDrafts), c); /* a first draft with a picture or clip: the first screen should be things to look at */
     const look = (art?.images?.length || art?.video ? 3 : 0) + (isStaticCard(c.id) || c.research?.kind === 'ad' || c.research?.kind === 'viral' ? 2 : 0);
-    const extra = told + look + boostNow(t.boost?.[c.id], now(t)) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
+    const urg = urgencyOf(c, now(t)); /* urgency and money at stake (3.11): what is happening now and the money a day or week it names */
+    const extra = urg.score + told + look + boostNow(t.boost?.[c.id], now(t)) + (c.onlyWhen && connOn(t, c.onlyWhen) ? 3 : 0) + (c.live && Object.keys(c.live).some((k) => connOn(t, k)) ? 2 : 0) + (c.liveOnly ? 2 : 0);
     const behind = B()?.staleMoves?.has(moveNo(c.id)) ? -8 : 0; /* its move is being rewritten: off the first screen until the new card lands */
     /* what they said in setup: a card only for channels they don't run sinks; their ad pace lifts new ads or groundwork (channel-fit.js). 0 with no answers */
     const chan = channelFit(v.channels, c), pace = paceFit(v.adPace || paceOf(B()?.numbers?.ownAds?.n), c); /* no answer: the pace the read counted */
     const total = val + seat + aff + fresh + fatigue + fb + extra + behind + tune + lift + contra + chan + pace;
-    return { fresh, told, look, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, tune, boost: boostNow(t.boost?.[c.id], now(t)), extra, chan, pace, total: +total.toFixed(2), seen, ...(dec ? { quiet: true } : {}) };
+    return { urgency: urg.score, rankWhy: urg.why || null, fresh, told, look, value: val, impact: +val.toFixed(2), impactNote: valNote, impactV: imp.v, impactPct: imp.pct, isDecision: imp.decision, affinity: +aff.toFixed(2), seat: +seat.toFixed(2), fatigue: +fatigue.toFixed(2), feedback: fb, tune, boost: boostNow(t.boost?.[c.id], now(t)), extra, chan, pace, total: +total.toFixed(2), seen, ...(dec ? { quiet: true } : {}) };
   };
   const connOn = (t, k) => !!(t.conn?.[k] || t.liveConn?.[k]);
   // live cards are the team's only; a real account hides its demo cards; a move rewritten privately replaces its shared cards
@@ -1732,6 +1741,29 @@ export function createFeedService(o) {
     const f = feed(t); if (process.env.PLAIN_OFF !== '1' && !demoReq()) PLAIN.queue(slugOfT(t), f.order.map((id) => t.cards.get(id)).filter(Boolean), BN()); /* cards still in their first words get plain ones in the background */
     oneTitles(t);
     return { ...f, newIds: newIdsOf(t, f.order), saved: [...savedOf(t)], cards: allCards(t), withTeam: withTeam(t.work.filter((w) => shown0(w) && guestSees(t)(w))), batches: t.batches, health: t.health, healthLive: t.member ? healthReadings(t.liveLedger) : {}, aiRing: aiRingWeekly(), decided: t.decided || {}, yesterday: yesterdayOf(t), clock: now(t) }; });
+  /* the product shelf (3.3): every product the store sells, best sellers first (Shopify units for the team, else the store's own
+     order), each with the pictures, videos and drafts Brew made for it in the team's jams and where each one stands */
+  on('GET', '/api/tenants/:id/shelf', async (b, t) => {
+    const cat = (brandOfT(t)?.catalog || []).slice(0, 60), units = unitsOf(t), by = new Map(cat.map((x) => [x.t, { ...x, units: units.get(String(x.t).trim().toLowerCase()) || null, assets: [] }]));
+    const stateOf = (ch, v) => (ch.lastFinal?.versionId === v.id || /^Final/.test(v.label || '') ? 'final' : (t.work || []).some((w) => w.changeId === ch.id && w.jamBrief?.frozen) ? 'in a brief' : 'draft');
+    for (const ch of Object.values(t.changes || {})) { const c = t.cards.get(ch.cardId) || {}; let pr = null; try { pr = cardProduct(c, cat, { brand: BN() }); } catch {} const row = pr && by.get(pr.t); if (!row) continue;
+      for (const v of (ch.versions || []).slice(-6)) { const sn = v.snapshot || {}, img = sn.image || sn.draft?.images?.[0] || v.studio?.file || null, vid = sn.video || null; if (!img && !vid) continue;
+        row.assets.push({ img, video: vid, label: ch.actionLabel || ch.familyName || 'Draft', v: v.n || null, state: stateOf(ch, v), changeId: ch.id, cardId: ch.cardId, at: v.at || 0 }); } }
+    for (const c of t.cards.values()) { const d = draftFor(c, B()?.firstDrafts); const img = d?.images?.[0]; if (!img) continue; let pr = null; try { pr = cardProduct(c, cat, { brand: BN() }); } catch {} const row = pr && by.get(pr.t); if (row && !row.assets.some((a) => a.img === img)) row.assets.push({ img, label: 'First draft', state: 'draft', cardId: c.id, at: c.createdAt || 0 }); }
+    const { sorted, said } = salesRank([...by.values()].map((x) => ({ ...x, title: x.t })), t);
+    return { products: sorted.map((x) => ({ name: x.t, img: x.img, price: x.price || null, out: !!x.out, url: x.url || null, units: x.units, assets: x.assets.sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 12) })), order: said };
+  });
+  /* rivals (3.5): every rival ad Brew read, filterable by rival, and a page per rival: its live ads, its prices from the read and
+     how often AI answers name it. A rival whose ads couldn't be read says so (brew-external-data rule 1) */
+  on('GET', '/api/tenants/:id/rivals', async (b, t) => {
+    const R = research?.get() || {}, ads = resAll(R.ads).filter((a) => a && a.brand), prof = brandOfT(t)?.seed?.brand || {}, p0 = B()?.profile || null;
+    const rivals = [...new Set([...(R.ads?.brands || []).map((x) => x.name), ...ads.map((a) => a.brand)])].filter((n) => n && n !== BN());
+    const read = (p0?.rivals || brandOfT(t)?.rivals || []), aiNamed = (n) => { try { const st = B()?.aiStanding?.rivals || []; const x = st.find((y) => y.name === n); return x ? x.share ?? x.n ?? null : null; } catch { return null; } };
+    return { rivals: rivals.map((n) => { const meta = (R.ads?.brands || []).find((x) => x.name === n) || {}, r = read.find((x) => x.name === n) || {};
+      return { name: n, live: meta.live ?? null, page: meta.page || null, error: meta.error || r.error || null, avatar: meta.avatar || null, host: r.host || null, prices: (r.prices || []).slice(0, 6), ai: aiNamed(n),
+        ads: ads.filter((a) => a.brand === n).slice(0, 24).map((a) => ({ id: a.id, poster: a.poster, video: a.video, format: a.format, title: a.title, hook: a.hook, angle: a.angle, why: a.why, days: a.days, versions: a.versions, url: a.url })) }; }),
+      at: R.ads?.fetchedAt || null, brand: prof.name || BN() };
+  });
   on('GET', '/api/tenants/:id/deck', async (b, t) => {
     /* the deck holds exactly the feed's cards, each once (1.13: its columns summed 123 while the feed showed 117): the same order
        the feed serves, and no Storefront column while Storefront is off */
@@ -1896,7 +1928,7 @@ export function createFeedService(o) {
   on('GET', '/api/cards/:cid', async (b, t, p) => { const c = t.cards.get(p.cid); return c ? { card: pub(c) } : { error: 'not found' }; });
   on('POST', '/api/cards/:cid/feedback', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
-    const W = { heart: 1, unheart: -1, save: 1.5, unsave: -1.5, not_interested: -1, fewer_agent: -2, snooze: 0, snooze_agent: 0 };
+    const W = { heart: 1, unheart: -1, save: 1.5, unsave: -1.5, not_interested: -1, fewer_agent: -2, snooze: 0, snooze_agent: 0, tune_more: 0.5, tune_less: -0.5 };
     t.feedback.push({ id: uid('f'), cardId: c.id, userId: 'viewer', kind: b.kind, weight: W[b.kind] ?? 0, at: now(t) });
     /* the bookmark: kept for this person on every device (member-tuning.js), and it lifts cards like it (1.5 hearts) */
     if (b.kind === 'save' || b.kind === 'unsave') { const tu = await TUNE.setSaved(t.brandId || DEFAULT_BRAND, tuneKey(t), c.id, b.kind === 'save').catch((e) => { log.warn?.('[saved]', e.message); return null; }); return { ok: true, saved: tu ? tu.saved : [...savedOf(t)] }; }
@@ -1904,6 +1936,8 @@ export function createFeedService(o) {
     if (b.kind === 'not_interested') { setState(t, c, 'dismissed'); if (c.title) t.noTitles = [...(t.noTitles || []), { h: String(c.title).slice(0, 160), at: now(t) }].slice(-40); /* near titles sink by 4 */ t.memory.unshift({ id: uid('m'), type: 'feedback', fact: `Not interested: “${c.title}”`, source: 'card feedback', at: now(t) }); }
     if (b.kind === 'fewer_agent') { t.fewer[c.agent] = (t.fewer[c.agent] || 0) + 1; t.memory.unshift({ id: uid('m'), type: 'feedback', fact: `Show fewer from ${AGENT[c.agent]}`, source: 'card feedback', at: now(t) }); }
     if (b.kind === 'snooze') t.snoozed[c.id] = dayKey(now(t));
+    /* the swipe tuner's light touch (3.1): more or less of this kind of card, half a "fewer" step on its agent, nothing dismissed */
+    if (b.kind === 'tune_more' || b.kind === 'tune_less') { t.fewer[c.agent] = +((t.fewer[c.agent] || 0) + (b.kind === 'tune_less' ? 0.5 : -0.5)).toFixed(1); t.memory.unshift({ id: uid('m'), type: 'feedback', fact: `${b.kind === 'tune_less' ? 'Less' : 'More'} like “${c.title}” (setup swipe)`, source: 'swipe tuner', at: now(t) }); }
     // "Tell us why": kept for the ShopOS team, written to brand memory, and a step Brew learns from
     if (b.kind === 'note' && String(b.text || '').trim()) { const text = String(b.text).trim().slice(0, 500); (t.cardNotes ||= []).unshift({ id: uid('cn'), cardId: c.id, title: c.title, agent: c.agent, text, useful: b.useful ?? null, at: now(t) }); t.memory.unshift({ id: uid('m'), type: 'feedback', fact: `On “${c.title}”: ${text}`, source: 'card feedback', at: now(t) }); }
     if (['note', 'not_interested'].includes(b.kind)) stepLearn(t, { id: `fb:${c.id}:${now(t)}`, cardId: c.id, thread: [{ from: 'me', body: b.kind === 'note' ? String(b.text || '') : 'Not for me' }], versions: [], current: 1 }, b.kind === 'note' ? 'feedback' : 'dismissed');

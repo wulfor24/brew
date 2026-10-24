@@ -1548,6 +1548,16 @@ export function createRemix(o) {
     }
     return { remixes: rows.sort((a, b) => b.at - a.at) };
   });
+  /* what is being made right now, for the Work board (3.7): every jam with a revision, a picture or a video in flight, each with
+     its own step and how long it has run; several run at once, and each lands in its own jam */
+  on('GET', '/api/jobs', async (b, t) => {
+    const out = [];
+    for (const ch of Object.values(changes(t))) { if (!ch) continue; const c = t.cards.get(ch.cardId) || {}, name = c.title || ch.actionLabel || 'A jam';
+      if (ch.job && ITER_JOBS.has(ch.job.id)) out.push({ id: ch.id, cardId: ch.cardId, kind: 'revision', title: name, step: ch.thinking?.step || 'Writing the next version', since: ch.job.at });
+      if (ch.imagePending && IMG_JOBS.has(ch.id)) out.push({ id: ch.id, cardId: ch.cardId, kind: 'picture', title: name, step: 'Making the picture', since: ch.imageAt || ch.updatedAt || null });
+      if (ch.videoPending && VID_JOBS.has(ch.id)) out.push({ id: ch.id, cardId: ch.cardId, kind: 'video', title: name, step: ch.videoStep || 'Making the video', since: ch.videoAt || ch.videoPending?.at || null }); }
+    return { jobs: out.sort((x, y) => (x.since || 0) - (y.since || 0)) };
+  });
   on('GET', '/api/changes/:chid', async (b, t, p) => { const ch = C(t, p.chid); return ch ? { change: pubChange(t, evaluate(t, ch)) } : { error: 'not found' }; });
   /* Brew never changes the brand's accounts (read-only by design): a change that went out went to the team as a brief, and the next one is a new version */
   const editable = (ch) => (!['running', 'live', 'deploy_team'].includes(ch.state) ? null : ch.state === 'deploy_team' ? 'It’s in a shared brief. Share a new version from the jam instead.' : 'It was sent to your team. Open a jam for the next version.');
