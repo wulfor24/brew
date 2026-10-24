@@ -3408,10 +3408,14 @@
     /* a real Shopify shows only what it really found (those arrive as live cards in this column), never the sample signal */
     return sigStrip() + (sigFake() ? SIGS.map(sigCard).join('') : '');
   };
+  /* why a column sits where it does (3.11): its most urgent card's reason and when to act, never only how many cards it holds */
+  const colWhy = (k) => { const top = byCol(k).map(([p]) => [p, SCORES[p.id]]).filter(([, sc]) => sc?.rankWhy).sort((a, b) => (+b[1].urgency || 0) - (+a[1].urgency || 0))[0]; if (!top) return '';
+    const u = +top[1].urgency || 0, when = u >= 4 ? 'Do first' : u >= 3 ? 'Today' : 'This week';
+    return `<span class="col-why" title="${esc(top[0].title || '')}"><b>${when}</b> ${esc(top[1].rankWhy)}</span>`; };
   const colHTML = (k) => {
     const cards = byCol(k), sb = k === 'signals' ? sigBody() : k === 'visibility' ? `<article class="sig-lock ais-card"><div class="sig-lock-body ais">${aisHtml(aiStand())}</div></article>` : '';
     return `<section class="dcol" data-col="${k}">
-        <div class="col-head"><div class="col-top"><h2><span class="col-emo" aria-hidden="true">${SECTORS[k].emo}</span>${SECTORS[k].name}</h2><span class="col-fill"></span>
+        <div class="col-head"><div class="col-top"><h2><span class="col-emo" aria-hidden="true">${SECTORS[k].emo}</span>${SECTORS[k].name}</h2>${colWhy(k)}<span class="col-fill"></span>
           <span class="col-menu"><button class="col-dots" aria-label="Column options">${ic('more', 's18')}</button>
             <div class="col-pop"><button data-colact="refresh">${ic('refresh', 's16')} Refresh new cards</button><button data-colact="hide">${ic('x', 's16')} Hide this column</button></div></span></div><hr></div>
         <div class="col-body">${sb ? `<div class="sig-body">${sb}</div>` : ''}${cards.map(([p, i]) => postCard(p, i)).join('')}${cards.length ? `<p class="col-end">You are caught up on ${SECTORS[k].name.toLowerCase()}.</p>` : ''}</div>

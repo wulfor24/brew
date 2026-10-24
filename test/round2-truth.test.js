@@ -33,6 +33,6 @@ test('six moves planning the same reorder nudge show once; scale and tired on on
 });
 
 import { sameJob } from '../same-ask.js';
-test('the same reorder job groups when only one card names its channel (QA audit 24 Oct)', () => {
-  assert.equal(sameJob('reorder:whatsapp', 'reorder:any'), true); assert.equal(sameJob('reorder:email', 'reorder:whatsapp'), false); assert.equal(sameJob('cart:any', 'reorder:any'), false);
+test('one reorder job, whatever channel each card names (QA audit 24 Oct)', () => {
+  assert.equal(sameJob('reorder:whatsapp', 'reorder:any'), true); assert.equal(sameJob('reorder:email', 'reorder:ads'), true); assert.equal(sameJob('cart:any', 'reorder:any'), false);
 });

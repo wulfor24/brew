@@ -616,7 +616,8 @@ export function createFeedService(o) {
        stays, the other waits like a repeat, unless someone engaged with it (1.4) */
     /* near-repeats that aren't plays (watcher, idea, listening and AI-answer cards): the same title with only a product or price
        changed ("Reduce hair fall with our ₹1,803 combo" five times) shows once, the best-ranked; the rest wait like repeats (1.4) */
-    { const head = (c) => String(c.title || '').toLowerCase().replace(/[₹$£€]\s?[\d,.]+|\d[\d,.]*%?|™|®/g, ' ').replace(/[^a-z ]+/g, ' ').split(/\s+/).filter(Boolean).slice(0, 4).join(' ');
+    { const shown = (c) => { try { return PLAIN.get(slugOfT(t), c)?.title || c.title; } catch { return c.title; } }; /* the title as the feed shows it (plain words) */
+      const head = (c) => String(shown(c) || '').toLowerCase().replace(/[₹$£€]\s?[\d,.]+|\d[\d,.]*%?|™|®/g, ' ').replace(/[^a-z ]+/g, ' ').split(/\s+/).filter(Boolean).slice(0, 4).join(' ');
       const seenHead = new Map(); for (const c of asks.list) { if (moveNo(c.id) != null || /^live-/.test(String(c.id)) || eng.has(c.id) || t.acted.has(c.id)) continue; const h = head(c); if (h.split(' ').length < 3) continue;
         if (seenHead.has(h)) asks.sunk.add(c.id); else seenHead.set(h, c.id); } }
     const clash = conflicts(asks.list, { value: (c) => cardValue(c, B()?.moveValue || {}, now(t)) }); for (const [id, x] of clash) if (!eng.has(id) && !t.acted.has(id)) { asks.sunk.add(id); const w = t.cards.get(x.by); if (w) w.conflictNote = x.why; }

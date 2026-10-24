@@ -89,7 +89,7 @@ const CHANNELS = [['whatsapp', /whatsapp/i], ['email', /\be-?mail|klaviyo|newsle
 const textOf = (c) => [c?.title, c?.sub, ...(c?.detail?.how || []), ...(c?.rows || []).flat(), c?.cta?.label].filter((x) => typeof x === 'string').join(' ');
 /* one job: the same topic, on the same channel or where one card names no channel (the reorder nudge "before bottles run out"
    and the reorder WhatsApp on day 25 are one job) */
-export const sameJob = (a, b) => { if (!a || !b) return false; const [ta, ca] = a.split(':'), [tb, cb] = b.split(':'); return ta === tb && (ca === cb || ca === 'any' || cb === 'any'); };
+export const sameJob = (a, b) => { if (!a || !b) return false; return a.split(':')[0] === b.split(':')[0]; }; /* one plan per job whatever channel a card names: a card that names the Meta account it read is not an ads job (QA audit 24 Oct) */
 export function jobOf(c) { const t = textOf(c), topic = (TOPICS.find(([, re]) => re.test(t)) || [])[0]; if (!topic) return null; const ch = (CHANNELS.find(([, re]) => re.test(t)) || [])[0] || 'any'; return `${topic}:${ch}`; }
 
 /* what a card does to a named ad or campaign: grow it, or stop it */

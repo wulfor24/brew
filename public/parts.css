@@ -131,3 +131,7 @@
 .rv-ad small, .rv-ad span { color: var(--muted, #6b6b6b); font-size: 12px; }
 .rv-prices { display: flex; flex-wrap: wrap; gap: 8px; } .rv-prices span { border: 1px solid var(--line, #e5e5e5); border-radius: 999px; padding: 4px 10px; font-size: 13px; }
 .rv-filter { overflow-x: auto; }
+
+/* why a deck column is where it is (3.11) */
+.col-why { font-size: 12px; color: var(--muted, #6b6b6b); margin-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+.col-why b { color: var(--ink, #111); font-weight: 600; margin-right: 4px; }
