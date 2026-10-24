@@ -177,7 +177,7 @@ test('Studio opens every picture, set and video card on the right deliverable; f
   for (const r of RECIPES) if (['static', 'video', 'carousel'].includes(r.kind)) assert.equal(inStudio({ kind: r.kind, recipe: r.id }), r.id !== 'founder-ad', r.id);
   assert.ok(!inStudio({ kind: 'message', recipe: 'email' }));
   /* a set is priced slide by slide and named */
-  const studio = createStudio({ engines: { hf: { pick: () => ({ id: 'x', input: {} }), estimate: async () => ({ usd: 0.08 }), nearestRatio: () => '1:1' }, quote: async () => ({ usd: 0.1 }) }, maker: { creative: {} } });
+  const studio = createStudio({ engines: { hf: { pick: () => ({ id: 'x', input: {} }), estimate: async () => ({ usd: 0.08 }), nearestRatio: () => '1:1' }, quote: async (cap) => ({ usd: cap === 'cutout' ? 0 : 0.1 }) /* Brew's own cut-out is free */ }, maker: { creative: {} } });
   const pl = await studio.plan(ctx, { set: ['mp-main', 'mp-lifestyle', 'mp-benefits'], sizes: ['pdp'], product: { name: 'Serum' } });
   assert.match(pl.line, /^3 slides · Main image \(white\), Lifestyle, Benefits · Serum/); assert.equal(pl.usd, 0.3); /* the main image is the real photo cut out (free); the other two show the real product, so each is a product shot */ assert.deepEqual(pl.set, ['mp-main', 'mp-lifestyle', 'mp-benefits']);
   assert.equal((await studio.plan(ctx, { set: ['mp-main'] })).error, 'Pick at least two slides.');
