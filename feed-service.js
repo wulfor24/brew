@@ -275,7 +275,8 @@ export function createFeedService(o) {
   const BOOKTXT = new Map(); const bookText = (t) => { if (!t) return ''; const slug = slugOfT(t), hit = BOOKTXT.get(slug);
     if (!hit || Date.now() - hit.at > 5 * 60e3) { BOOKTXT.set(slug, { at: Date.now(), text: hit?.text || '' }); BOOK.load(slug).then((bb) => BOOKTXT.set(slug, { at: Date.now(), text: BOOK.promptBlock(BOOK.view(bb)).slice(0, 3500) })).catch(() => {}); }
     return hit?.text ? `\n\nTHE BRAND BOOK (follow it):\n${hit.text}` : ''; };
-  const cardBrief = (c, role, t = null) => `${o.cardBrief(c, role, t?.member ? packFor(t)?.factBrief : null)}${planPrompt(planOfCard(c))}${bookText(t)}`; /* a member's writers quote the team's truth (their connected accounts), a visitor's the public sheet */
+  const cardBrief = (c0, role, t = null) => { let c = c0; if (t && c0) { try { c = freshCounts(c0, countsFor(packFor(t)), { live: !!t.member }); } catch { c = c0; } } /* the card's counts as of today's fact sheet, the same numbers the writer is told */
+    return `${o.cardBrief(c, role, t?.member ? packFor(t)?.factBrief : null)}${planPrompt(planOfCard(c))}${bookText(t)}`; }; /* a member's writers quote the team's truth (their connected accounts), a visitor's the public sheet */
   /* demo mode: a request from someone who may not make fresh work runs every AI path as mock (nothing spent, the plain
      version shown); the background clock and the team's requests are unchanged */
   const isMock = () => !!o.isMock?.() || demoReq(), spend = (k, n) => !demoReq() && (o.spend ? o.spend(k, undefined, n) : true);
@@ -302,7 +303,8 @@ export function createFeedService(o) {
   let JAM2 = null; // Jam v2 (jam2/routes.js), ?v=2 only
   /* the Brand Book: one store for v1 and Jam v2 (jam2/brandbook.js), its page, uploads and share routes (brand-book-routes.js) */
   const BOOK = createBrandbook({ packs: o.globalPacks || packs, log: console });
-  builder?.onBook?.((slug) => BOOK.drop(slug)); /* a freshly written read layer reaches every maker at once */
+  builder?.onBook?.((slug) => { BOOK.drop(slug); BOOKTXT.delete(slug); }); /* a freshly written read layer reaches every maker at once */
+  for (const k of ['update', 'save']) { const f0 = BOOK[k]; if (typeof f0 === 'function') BOOK[k] = async (slug, ...a) => { const r = await f0(slug, ...a); BOOKTXT.delete(slug); return r; }; } /* a Brand Book edit reaches the v1 writers at once, not in five minutes */
   let JAM_FINALS = null; // the jam's finals (finals-routes.js), for a final that lands after a restart
   let linkChange = null; // a jam's change package for its work item (set with the work routes)
  // the measuring engine (measure-engine.js), behind MEASURE_ENGINE; off = the old simulated loop
@@ -2322,7 +2324,7 @@ export function createFeedService(o) {
   const tbToJam = (t, w, { ask, quote, recent, said }) => { if (!JB?.edit) return;
     const text = `${quote ? `In the part that says "${String(quote).slice(0, 300)}": ` : ''}${ask}${said ? `\n(Already done in the team brief: ${said})` : ''}${recent?.length ? `\nThe chat just before:\n${recent.slice(-3).map((l) => `- ${String(l.text).slice(0, 200)}`).join('\n')}` : ''}`;
     JB.edit(t, w, text, { who: meOf(t)?.name || 'You', mode: 'hear' }).then((r) => { if (r?.changed?.length) TB.follow(t, w); }).catch((e) => log.warn('[team brief → jam brief]', e.message)); };
-  TB = createTeamBrief({ onEdit: tbToJam, claudeTool, isMock, spend, clean, now, log, handoff: HO, proofOf: (t, w) => (w.cardId ? proofSay(t, w.cardId) : null) }); TB.routes({ on, W });
+  TB = createTeamBrief({ bookOf: (t) => bookText(t), onEdit: tbToJam, claudeTool, isMock, spend, clean, now, log, handoff: HO, proofOf: (t, w) => (w.cardId ? proofSay(t, w.cardId) : null) }); TB.routes({ on, W });
   setupOn();
   // the option you went with on the card page travels with every handoff
   on('POST', '/api/work/:wid/decided', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; w.decided = b.id || null; if (b.id) stepLearn(t, w, 'decided'); if (w.cardId) { t.decided ||= {}; if (b.id) t.decided[w.cardId] = b.id; else delete t.decided[w.cardId]; } return { work: w }; });

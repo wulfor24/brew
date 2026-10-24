@@ -683,7 +683,16 @@ export function createRemix(o) {
       whatsapp: nameOfTool(yes(fv('site.tech.whatsappTool')) ? fv('site.tech.whatsappTool') : null), checkout: app || nameOfTool(yes(fv('site.tech.checkoutApp')) ? fv('site.tech.checkoutApp') : null) }; };
   /* a CRM change on Klaviyo for a brand without Klaviyo goes to the tool it has: carts and WhatsApp to the checkout or WhatsApp app,
      email to its email tool, else "your messaging tool" (and the jam asks once: "which tool sends this?") */
-  const msgTarget = (t, ch) => { if (ch?.target?.conn !== 'klaviyo' && !ch?.target?.msgTool) return ch?.target; const T = toolsOf(t);
+  /* a reply goes where the comment or review is: a review card's replies go in the reviews app (Judge.me, Yotpo, Google), never "YouTube" */
+  const replyTarget = (t, ch) => { if (!/comment_reply$/.test(ch?.action || '')) return null; const c = t.cards.get(ch.cardId) || {}, w = `${c.title || ''} ${c.sub || ''} ${c.cta?.label || ''} ${c.heard?.where || ''} ${c.post?.platform || ''}`;
+    const app = /judge\.?me/i.test(w) ? 'Judge.me' : /yotpo/i.test(w) ? 'Yotpo' : /google (?:reviews?|business)/i.test(w) ? 'Google reviews' : /amazon/i.test(w) ? 'Amazon reviews' : /\breviews?\b|\b\d-star\b|stars?\b/i.test(w) ? 'Your reviews app' : null;
+    if (app) return { ...ch.target, name: app, object: 'Review reply' };
+    const pl = /instagram/i.test(w) ? 'Instagram' : /tiktok/i.test(w) ? 'TikTok' : /facebook/i.test(w) ? 'Facebook' : /youtube/i.test(w) ? 'YouTube' : null; return pl && pl !== ch.target?.name ? { ...ch.target, name: pl } : null; };
+  /* a tracking fix is done in the tool the card names: a Meta pixel in Meta, GA4 and UTMs in Google Analytics, a tag in Tag Manager */
+  const trackTarget = (t, ch) => { if (!/tracking_fix$/.test(ch?.action || '')) return null; const c = t.cards.get(ch.cardId) || {}, w = `${c.title || ''} ${c.sub || ''} ${(c.detail?.how || []).join(' ')}`;
+    const name = /\bpixel\b|\bcapi\b|conversions api|\bmeta\b|facebook/i.test(w) ? 'Meta Events Manager' : /\bga4\b|google analytics|\butm/i.test(w) ? 'Google Analytics' : /\bgtm\b|tag manager/i.test(w) ? 'Google Tag Manager' : /google ads|adwords|gclid/i.test(w) ? null : null;
+    return name && name !== ch.target?.name ? { ...ch.target, conn: /Meta/.test(name) ? 'meta' : /Analytics/.test(name) ? 'ga4' : ch.target?.conn || null, name } : null; };
+  const msgTarget = (t, ch) => { const rt = replyTarget(t, ch) || trackTarget(t, ch); if (rt) return rt; if (ch?.target?.conn !== 'klaviyo' && ch?.target?.conn !== 'whatsapp' && !ch?.target?.msgTool) return ch?.target; const T = toolsOf(t); /* a WhatsApp broadcast names the brand's own WhatsApp tool (WATI, Interakt) too */
     if (!T.told && (t?.conn?.klaviyo || T.email === 'Klaviyo')) return ch.target;
     const pkg = ch.pkg || {}, wa = /whatsapp/i.test(pkg.channel || '') || /whatsapp/i.test(ch.actionLabel || ''), cart = /cart|checkout|abandon/i.test(`${pkg.flow || ''} ${pkg.trigger || ''} ${ch.title || ''}`);
     const msgApp = /gokwik|shopflo/i.test(T.checkout || '') ? T.checkout : null; /* a checkout app that also sends messages (GoKwik Engage, Shopflo): the brand's channel when no other tool is seen (2.4) */

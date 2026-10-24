@@ -29,7 +29,7 @@ const fmtM = (m) => { if (!m?.metric) return '';
   const u = (v) => (v == null ? '' : /^(₹|\$|£|€)$/.test(m.unit || '') ? `${m.unit}${Math.round(v).toLocaleString(m.unit === '₹' ? 'en-IN' : 'en-US')}` : m.unit === '%' ? `${(+v).toFixed(1)}%` : `${v}${m.unit && m.unit !== 'x' ? ' ' + m.unit : m.unit === 'x' ? 'x' : ''}`);
   return `${m.metric}${m.baseline != null ? `: from ${u(m.baseline)}` : ''}${m.target != null ? `${m.baseline != null ? ' to' : ', target'} ${u(m.target)}` : ''}${m.window ? `, read after ${m.window} days` : ''}.`; };
 
-export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true, spend = () => false, clean = (x) => x, now = () => Date.now(), handoff, proofOf = () => null, log = console }) {
+export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true, spend = () => false, clean = (x) => x, now = () => Date.now(), handoff, proofOf = () => null, bookOf = () => '', log = console }) {
   /* the files that go with it: the package's own pictures and videos (a rival's are never ours: handoff leaves them out) */
   const creativesOf = (x) => { const seen = new Set();
     return (x.pkg?.assets || []).filter((a) => (a.kind === 'image' || a.kind === 'video') && ownPath(a.url)).filter((a) => { const n = ownPath(a.url); if (seen.has(n)) return false; seen.add(n); return true; })
@@ -56,6 +56,7 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
     if (x.brief?.md) L.push('The jam brief the team wrote together:', '"""', one(x.brief.md, 3500), '"""');
     const asked = (x.pkg?.thread || []).filter((m) => !/\(studio\)$/.test(m.who)).slice(-6); if (asked.length) L.push('What the team asked for while making it:', ...asked.map((m) => `- ${one(m.text, 200)}`));
     const open = x.questions.filter((q) => !q.a); if (open.length) L.push('Open questions:', ...open.slice(0, 5).map((q) => `- ${q.q}`));
+    { let bk = ''; try { bk = String(bookOf(t) || ''); } catch { bk = ''; } if (bk.trim()) L.push(bk.trim()); } /* the Brand Book: which claims may be made, the words to avoid, the voice: the rules section comes from it, not a generic line */
     return L.join('\n'); };
 
   const SCHEMA = { type: 'object', required: ['title', ...AI_KEYS, 'open', 'evidence'], properties: {

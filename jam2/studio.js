@@ -115,7 +115,10 @@ const castRefs = (ctx, spec = {}, pub = (u) => u) => { const c = (ctx.bbv?.cast 
 const spokeIn = (ctx) => { const l = String(ctx.bbv?.tone?.language || '').trim(); return l && !/^english\b/i.test(l) ? `Spoken in ${l.replace(/[.]+$/, '')}, the way the brand's buyers talk.` : ''; };
 const expertOk = (ctx) => (ctx.bbv?.cast || []).some((c) => c.kind === 'real' && (c.refs || c.photos || []).length && /doctor|dermatolog|expert|scientist|pharmacist|trichologist/i.test(`${c.label || ''}`)); /* a real, consented expert with their own photos; a founder is no expert */
 /* what is said in a film: a claim the store doesn't make is taken out before the model ever hears it */
-const sayable = (line, ctx) => { const flags = claimFlags(line, ctx.source || ''); if (!flags.length) return line; let out = line; for (const f of flags) out = out.split(/(?<=[.!?])\s+/).filter((sn) => !sn.toLowerCase().includes(String(f.phrase).toLowerCase())).join(' '); return out.replace(/\b(dermatologist|doctor)[- ](approved|recommended|tested)\b/gi, '').replace(/\s{2,}/g, ' ').trim(); };
+const sayable = (line0, ctx) => { /* the brand's never-say words and rulebook blocks go before anything is bought, not in the gate after */
+  const nv = [...(ctx.bbv?.neverSay || []), ...(ctx.bbv?.never || []), ...((ctx.bbv?.rulebook || []).filter((r) => r?.block || r?.kind === 'block').map((r) => r.word || r.text))].map((w) => String(w || '').trim().toLowerCase()).filter((w) => w.length > 2);
+  const line = nv.length ? String(line0 || '').split(/(?<=[.!?])\s+/).filter((sn) => !nv.some((w) => sn.toLowerCase().includes(w))).join(' ') : line0;
+  const flags = claimFlags(line, ctx.source || ''); if (!flags.length) return line; let out = line; for (const f of flags) out = out.split(/(?<=[.!?])\s+/).filter((sn) => !sn.toLowerCase().includes(String(f.phrase).toLowerCase())).join(' '); return out.replace(/\b(dermatologist|doctor)[- ](approved|recommended|tested)\b/gi, '').replace(/\s{2,}/g, ' ').trim(); };
 export function createStudio({ engines, maker, profileOf = async () => null, isMock = () => false, spend = () => true, finish = null, log = console }) {
   /* a film made ready to post (video-finish.js): spoken words as captions (an .srt, and burned in for muted feeds), a cover with the
      headline, a looping GIF for a short silent clip. Local and nearly free; a step that can't run leaves the film as it is and says why */
@@ -152,8 +155,14 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     return 0.14;
   }
   /* the plan line and its price: what will be made, how many, at what cost */
+  /* the jam's own words (its headline and first line, checked and edited in v1): one helper for the free look, the make and its batch's first take */
+  const v1Words = (ctx, spec = {}) => { if (spec.ask) return null; const v1 = ctx.v1 || {}, h = tidy(v1.headline || v1.overlay || v1.slides?.[0]?.onSlide || v1.heading || v1.front || '', 90); if (!h) return null;
+    return { headline: h, sub: tidy(String(v1.primaryText || v1.caption || v1.copy || v1.description || v1.back || '').split(/\n|(?<=[.!?])\s/)[0], 120) || '', cta: v1.cta || '' }; };
+  /* a sold-out product isn't made into a paid creative (v1 wouldn't let it be posted), unless the card is about it coming back */
+  const soldOut = (ctx) => { const pn = String(ctx.product?.name || '').trim(); if (!pn) return null; const m = (ctx.catalog || []).find((x) => (x?.t || x?.title) === pn); if (!m?.out) return null;
+    const cw = `${ctx.card?.title || ''} ${ctx.card?.sub || ''} ${ctx.card?.cta?.label || ''}`; return /restock|back in stock|coming back|pre-?order|waitlist/i.test(cw) ? null : `${tidy(pn, 60)} is sold out on your store: pick an in-stock product, or make it when it’s back.`; };
   async function plan(ctx, spec) {
-    if (spec.product?.img) ctx.product = { ...spec.product }; if (spec.quality) ctx.tier = spec.quality === 'premium' ? 'premium' : spec.quality === 'preview' ? 'preview' : null;
+    if (spec.product?.img) ctx.product = { ...spec.product }; { const so = soldOut(ctx); if (so) return { error: so }; } if (spec.quality) ctx.tier = spec.quality === 'premium' ? 'premium' : spec.quality === 'preview' ? 'preview' : null;
     if (Array.isArray(spec.set)) { const set = spec.set.map(styleOf).filter((x) => x && x.kind === 'image').slice(0, 10); if (set.length < (spec.fill ? 1 : 2)) return { error: spec.fill ? 'Nothing is missing.' : 'Pick at least two slides.' }; /* filling in left-out slides may be one */
       const no = set.map((x) => blockOf(x, ctx)).find(Boolean); if (no) return { error: no };
       const size = sizeOf(spec.sizes?.[0] || 'ig-portrait'), each = await Promise.all(set.map((x) => perTake(ctx, x, x.size ? sizeOf(x.size) : size))), usd = +each.reduce((a, b) => a + b, 0).toFixed(2), prod = spec.product?.name || ctx.product?.name;
@@ -190,8 +199,8 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     const no = blockOf(st, ctx); if (no) throw new Error(no); /* the Brand Book may have changed since the price was shown */
     /* the first take carries the jam's own words (the headline and line the brand already has, checked and edited), so the picture
        and the copy say the same thing; later takes of a batch write their own hooks */
-    const v1 = ctx.v1 || {}, mine = i === 0 && !spec.ask ? tidy(v1.headline || v1.overlay || v1.slides?.[0]?.onSlide || v1.heading || v1.front || '', 90) : '';
-    const words = mine ? { headline: mine, sub: tidy(String(v1.primaryText || v1.caption || v1.copy || v1.description || v1.back || '').split(/\n|(?<=[.!?])\s/)[0], 120) || '', cta: v1.cta || '' } : await maker.write(ctx, board, { ask: spec.count > 1 ? `This is take ${i + 1} of ${spec.count}: a different hook and headline from the others${spec.ask ? `; ${spec.ask}` : ''}.` : spec.ask || '' }).catch(() => ({}));
+    const mine = i === 0 ? v1Words(ctx, spec) : null;
+    const words = mine || await maker.write(ctx, board, { ask: spec.count > 1 ? `This is take ${i + 1} of ${spec.count}: a different hook and headline from the others${spec.ask ? `; ${spec.ask}` : ''}.` : spec.ask || '' }).catch(() => ({}));
     const made = [], take = { op: 'studio', by: ctx.by, words, made, studio: { style: st.id, label: st.label, group: st.group, kind: st.kind, size: size.key } };
     if (st.job === 'packshot') { /* a marketplace main image is the real product, never a drawing: cut out of its clearest photo, alone on pure white
          at 85% of the frame (Amazon, Flipkart, Nykaa, Myntra main-image rules); a photo that won't cut out cleanly is said so */
@@ -312,7 +321,8 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
   async function sketch(ctx, spec) {
     if (spec.product?.img) ctx.product = { ...spec.product }; const st = styleOf(spec.style), video = st?.kind === 'video' || spec.kind === 'video';
     if (spec.direction && !ctx.asked) { ctx.notes = [...(ctx.notes || []), `The direction for this piece (follow it): ${tidy(spec.direction, 600)}`]; ctx.asked = true; }
-    const words = await maker.write(ctx, { recipe: video ? 'reel' : 'image-ad' }, { ask: spec.ask || '' }).catch(() => ({}));
+    const v1w = v1Words(ctx, spec); /* the free look shows the words the paid make will set: the jam's own */
+    const words = v1w || await maker.write(ctx, { recipe: video ? 'reel' : 'image-ad' }, { ask: spec.ask || '' }).catch(() => ({}));
     const size = sizeOf(spec.sizes?.[0] || (video ? 'story' : 'ig-portrait')), img = ctx.product?.img || null;
     const scene = maker.composeScene({ size, bgFile: null, cut: img ? { file: img } : null, words, kit: ctx.bbv?.kit || {} });
     const file = await maker.render(scene).catch((e) => { log.warn?.('[studio] sketch render', e.message); return null; });
