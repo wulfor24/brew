@@ -88,3 +88,7 @@ test('the draft view keeps the product its pictures show', async () => {
   const { draftView } = await import('../drafts-bg.js');
   assert.equal(draftView({ as: 'carousel', kind: 'stories', slides: [{ image: 'gen/a.jpg' }], product: 'Anti-Hair Fall Intensive Shampoo', title: 'x' }).product, 'Anti-Hair Fall Intensive Shampoo');
 });
+
+test('a made piece that needs a look says what, on the bar', () => {
+  assert.match(fn('stepBar'), /things to look at before you post it/); assert.match(fn('stepBar'), /`Needs a look: \$\{esc\(look\[0\]\)\}`/);
+});
