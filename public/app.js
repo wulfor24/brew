@@ -4574,7 +4574,7 @@
     /* before anything is made the frame shows the composer's product photo in the picture's place, never an empty grey box */
     const pv = !made && !viewing && st?.productImg && !/^gen\//.test(pkgCh.pkg?.image || '') ? { ...pkgCh, pkg: { ...pkgCh.pkg, image: st.productImg } } : pkgCh;
     return `<div class="st-asset cs-stage">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ' is-preview' : ''}${making ? ' is-making' : ''}">${assetHtml(pv, 'lg')}</div>
-      ${made && !viewing ? publishPanel(ch, pkgCh) : ''}${cs ? cs.html(ch) : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
+      ${made && !viewing ? publishPanel(ch, pkgCh) : ''}${cs ? cs.html(ch) : ''}${ch.filmOk && !making ? `<p class="fb-alt">Would the founder rather film it for real? <button class="linkbtn" data-film-alt>Brief a film instead</button></p>` : ''}</div>${made && !viewing ? shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh)) : viewing ? shipBar(ch, viewing) : ''}`; };
   window.FilmBoard?.init({ tapi, esc, toast, sound, ch: () => RX.ch, paint: () => { if (view === 'remix' && RX.ch) paintStudio(); }, saved: (c) => { RX.ch = c; putCh(c); if (view === 'remix') paintStudio(); } });
   window.CreativeStage?.init({ tapi, esc, toast, ic, ch: () => RX.ch, viewing: () => RX.viewing,
     paint: () => { if (view === 'remix' && RX.ch?.studio) paintStudio(); },
@@ -4871,6 +4871,9 @@
     const so = e.target.closest('[data-st-open]'); if (so) { e.stopPropagation(); const p = byId(so.dataset.stOpen); if (p) openDetail(p); return; }
     const lc = e.target.closest('[data-livech]'); if (lc) { e.stopPropagation(); const p = byId(lc.dataset.card); const ch = p?.liveChange?.changeId; if (p) openRemix(p, ch); return; }
     if (view !== 'remix') return;
+    if (e.target.closest('[data-film-alt]')) { const b = e.target.closest('[data-film-alt]'), ch = RX.ch; if (!ch?.cardId || b.disabled) return; b.disabled = true; b.textContent = 'Opening the storyboard…';
+      const r = await tapi('POST', `/api/cards/${ch.cardId}/remix`, { as: 'film', fast: true }).catch((er) => ({ error: er.message })); const fc = r.changes?.[0];
+      if (!fc) { toast(esc(r.error || 'The storyboard didn’t open.')); return paintStudio(); } PRE_CH.set(fc.id, fc); return openStudio(fc.id, { deep: true }); } /* the same card, filmed for real: the founder storyboard */
     if (window.FilmBoard?.click(e)) return; /* the founder storyboard and its teleprompter (film-board.js) */
     if (window.CreativeStage?.click(e)) return; /* the creative stage's composer (creative-stage.js) */
     if (e.target.closest('[data-vmenu]')) { RX.vmenu = !RX.vmenu; return paintStudio(); }

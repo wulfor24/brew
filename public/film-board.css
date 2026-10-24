@@ -48,3 +48,4 @@ body.tp-open{overflow:hidden}
 #fb-tp.is-rec [data-tp="rec"]{background:#d92d20;border-color:#d92d20}
 @media (max-width:600px){.fb-f{flex-basis:140px}}
 @media (prefers-reduced-motion:reduce){#fb-tp .tp-count{font-size:72px}}
+.fb-alt{margin:12px auto 0;text-align:center;font-size:13px;color:var(--fg-2,#555)}

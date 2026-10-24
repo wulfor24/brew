@@ -43,3 +43,11 @@ test('the pack carries the storyboard, the script and captions', async () => {
   const other = await buildPack({ ch: { family: 'brief', action: 'creative.creative_brief' }, family: 'brief', pkg: PKG, brand: { name: 'Arata' } });
   assert.ok(!other.entries.some((e) => e.name === 'storyboard.md'), 'a creatives brief has no storyboard');
 });
+
+test('a video jam can open the same card as a film brief', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
+  assert.match(src, /b\.as === 'film' && !r0\.conflict/, 'the remix route opens a film brief on as: film');
+  assert.match(src, /filmOk:/, 'a video jam says it can be filmed instead');
+  const app = (await import('node:fs')).readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  assert.match(app, /data-film-alt/); assert.match(app, /as: 'film', fast: true/);
+});
