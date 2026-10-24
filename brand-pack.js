@@ -465,5 +465,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(out, null, 1)); bump(slug); return out; };
   /* fn(slug, name) when any instance writes a pack file (Postgres NOTIFY); nothing without Postgres */
   const onChange = (fn) => obj?.onChange?.((key) => { const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (m) fn(m[1], m[2]); }).catch((e) => log.warn('[packs] listen', e.message));
-  return { load, peek, put, putStrict, update, onChange, get, getJSON, readJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => { bump(slug); for (const k of freshP.keys()) if (k.startsWith(`${slug}|`)) freshP.delete(k); return cache.delete(slug); }, version: ver, remote };
+  /* parted documents (objects.js PARTED) on Postgres: read and change single parts, for stores two instances write at once */
+  const getParts = obj?.pg ? (slug, name) => obj.getParts(`brands/${slug}/${name}`) : null;
+  const patchParts = obj?.pg ? (slug, name, set, del) => obj.patchParts(`brands/${slug}/${name}`, set, del) : null;
+  return { load, peek, put, putStrict, update, onChange, getParts, patchParts, get, getJSON, readJSON, getFreshJSON, listFiles, refreshDrafts, assetFile, list, dirOf, clientFacts, clientSeed, drop: (slug) => { bump(slug); for (const k of freshP.keys()) if (k.startsWith(`${slug}|`)) freshP.delete(k); return cache.delete(slug); }, version: ver, remote };
 }

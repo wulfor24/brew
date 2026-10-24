@@ -22,8 +22,8 @@ const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z', 
 
 const slugs = ALL ? (await q(`SELECT split_part(key, '/', 2) AS s FROM objects WHERE key LIKE 'brands/%/status.json'`)).rows.map((r) => r.s).filter((s) => s && s !== '_brew') : vals('--slug');
 if (!slugs.length) throw new Error('no brands: --all or --slug <slug>');
-const tenants = (await q(`SELECT key, body FROM objects WHERE key LIKE 'tenants/%.json'`)).rows
-  .map((r) => { try { return { key: r.key, t: JSON.parse(r.body.toString('utf8')) }; } catch { return null; } })
+/* every workspace through the store (a workspace may be kept in parts: objects.js PARTED) */
+const tenants = (await Promise.all((await O.list('tenants/')).filter((x) => /^tenants\/t_[a-f0-9]+\.json$/.test(x.name)).map(async (x) => { try { return { key: x.name, t: JSON.parse((await O.get(x.name)).toString('utf8')) }; } catch { return null; } })))
   .filter((x) => x && (ALL || slugs.includes(x.t.brandId)));
 console.log(`[reset-jams] ${slugs.length} brands, ${tenants.length} workspaces, archive ${ARCH}`);
 

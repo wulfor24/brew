@@ -36,6 +36,9 @@ import { isWorker, isLeader, whenLeader, leaderOnly, startLease } from './roles.
 import { createJobs } from './jobs.js'; // work any instance asks for and one worker does
 import { createCounters } from './counters.js'; // the day's spend, shared by every instance
 import { createBuildEvents } from './build-events.js'; // a build's progress, followed from any instance
+import { createSessions } from './sessions.js'; // sign-ins that can be ended (Postgres)
+import { createBus } from './bus.js'; // what one instance tells the others
+import { q as dbq } from './db/index.js';
 import { setApifyCache, createApify, onAnyApifyCharge } from './apify.js';
 import { watchView } from './watch-view.js';
 import { attachHealthStore, sourceTable, flush as healthFlush } from './source-health.js'; // how well each outside source works // What Brew watches for you: the four blocks
@@ -563,7 +566,8 @@ if (packs.remote && !OBJ) setInterval(() => packs.refreshDrafts().catch((e) => c
 const hostOf = async (slug) => { if (!slug || blocked(slug)) return null; const s0 = await packs.getJSON(slug, 'status.json', null); return s0?.host || null; };
 /* seat key → title for invite emails and the approve page (the brand's own roles; every generated brand shares the template's) */
 const seatNames = async (slug) => { const p = packs.peek(slug) || await packs.load(slug).catch(() => null); return Object.fromEntries(Object.entries(p?.seed?.roles || {}).map(([k, r]) => [k, r.title || r.name || k])); };
-const auth = createAuth({ packs, hostOf, seatNames, onTeamChange: () => MEMO.clear(), log: console });
+const SESSIONS = createSessions({ log: console }); if (OBJ) await SESSIONS.start();
+const auth = createAuth({ packs, hostOf, seatNames, onTeamChange: () => MEMO.clear(), sessions: OBJ ? SESSIONS : null, log: console });
 /* sign-in off on Cloud Run (FEED_SESSION_SECRET or GOOGLE_CLIENT_ID missing) would open every team-only read to everyone: the
    instance refuses to boot instead. OPEN_SITE=1 says that is meant (a local-style open server) */
 if (process.env.K_SERVICE && !auth.signinOn() && process.env.OPEN_SITE !== '1') throw new Error('[auth] sign-in is not configured (FEED_SESSION_SECRET / GOOGLE_CLIENT_ID): refusing to boot with every team-only read open. Set OPEN_SITE=1 only on purpose.');
@@ -645,8 +649,16 @@ const MEMO = new Map();
    every 30 s and on SIGTERM; staff read it at GET /api/admin/visitors */
 const VIS = { m: null, dirty: false, t: null }, VIS_FILE = 'private/visitors.json';
 const visLoad = () => (VIS.m ||= packs.getJSON('_brew', VIS_FILE, {}).then((x) => x || {}).catch(() => ({})));
-const visFlush = async () => { clearTimeout(VIS.t); VIS.t = null; if (!VIS.dirty) return; VIS.dirty = false; await packs.put('_brew', VIS_FILE, await visLoad()).catch((e) => console.warn('[visitors]', e.message)); };
+/* Postgres: one access_log row per brand and email, counted up by every instance (the file stays for the bucket-only sites) */
+const VISQ = new Map(); /* slug|email → this instance's opens since the last write */
+const visFlush = async () => { clearTimeout(VIS.t); VIS.t = null;
+  if (OBJ) { const rows = [...VISQ.values()]; VISQ.clear(); for (const r of rows) await dbq(`INSERT INTO access_log (slug, email, first, last, n, name, access, blocked) VALUES ($1, $2, to_timestamp($3 / 1e3), to_timestamp($4 / 1e3), $5, $6, $7, $8)
+      ON CONFLICT (slug, email) DO UPDATE SET last = GREATEST(access_log.last, EXCLUDED.last), n = access_log.n + EXCLUDED.n, name = COALESCE(EXCLUDED.name, access_log.name), access = EXCLUDED.access, blocked = access_log.blocked + EXCLUDED.blocked`,
+      [r.slug, r.email, r.first, r.last, r.n, r.name || null, r.access, r.blocked || 0]).catch((e) => console.warn('[visitors]', e.message)); return; }
+  if (!VIS.dirty) return; VIS.dirty = false; await packs.put('_brew', VIS_FILE, await visLoad()).catch((e) => console.warn('[visitors]', e.message)); };
 const visSeen = (slug, me, v, a) => { const email = String(me?.email || '').toLowerCase(); if (!email || !slug || slug === DEFAULT || !a?.host || process.env.DEMO_MODE === '1') return; /* no host: no such brand */
+  if (OBJ) { const k = `${slug}|${email}`, r = (VISQ.get(k) || VISQ.set(k, { slug, email, first: Date.now(), n: 0, blocked: 0 }).get(k)); r.last = Date.now(); r.n++; if (me.name) r.name = me.name;
+    r.access = a.full ? 'brew' : v.member ? 'team' : v.gen ? 'official' : 'blocked'; if (r.access === 'blocked') r.blocked++; VIS.t ||= setTimeout(visFlush, 30e3); return; }
   visLoad().then((m) => { const k = `${slug}|${email}`, r = (m[k] ||= { slug, email, first: Date.now(), n: 0 });
     r.last = Date.now(); r.n++; if (me.name) r.name = me.name;
     r.access = a.full ? 'brew' : v.member ? 'team' : v.gen ? 'official' : 'blocked'; /* brew: SquareUp; official: the brand's own email, unclaimed */
@@ -689,6 +701,13 @@ feedSvc = createFeedService({ ai, /* Drop anything here reads PDFs and photos wi
   /* membership checked from the signed-in user on every request and on the background clock (feed-service.js REQ / bgTeam) */
   isMemberEmail: (slug, email) => auth.isMember(slug, { email: String(email || '').toLowerCase() }), roleOf: (slug, email) => auth.roleOf(slug, { email: String(email || '').toLowerCase() }) });
 feedSvc.wire(B());
+/* Postgres: what reaches open workspaces on this instance (a build's new cards, cards a rewrite retired, a connected account read
+   again) reaches the workspaces open on every other instance too; each applies it to its own */
+const BUS = createBus({ log: console });
+if (BUS) { for (const m of ['addCards', 'dropCards', 'refreshLive']) { const f = feedSvc[m]; if (typeof f !== 'function') continue;
+    feedSvc[m] = (...a) => { const r = f(...a); BUS.publish(`feed.${m}`, a); return r; };
+    BUS.on(`feed.${m}`, (a) => { if (m === 'refreshLive') { MEMO.clear(); connectors?.drop?.(a[0]); } return f(...(a || [])); }); }
+  whenLeader(() => { const t = setInterval(() => { BUS.purge(); dbq(`DELETE FROM build_events WHERE at < now() - interval '3 days'`).catch(() => {}); }, 3600e3); t.unref?.(); }); }
 /* Postgres: the job queue (web instances hear answers; workers do the work) and the background lease; the lease holder runs
    everything gated by whenLeader / leaderOnly (resume, ticks, paid watchers). Without Postgres this instance leads at once */
 if (OBJ) { await JOBS.start({ interactive: +process.env.JOBS_INTERACTIVE || 4, batch: +process.env.JOBS_BATCH || 4 }); await startLease({ log: console }); }
@@ -765,10 +784,18 @@ const brandRoutes = async (req, res, u) => {
       return send(res, 200, { markets: Array.isArray(mk) ? mk : mk?.markets || [], events }), true; }
     catch (e) { return send(res, 200, { markets: [], events: [], error: e.message }), true; } }
   // admins: tools treg added this week that Brew doesn't use yet, and this month's treg spend for a brand
+  /* sign-ins (Postgres): GET /api/admin/sessions?email= lists them; POST /api/admin/sessions/end { email } signs that person out
+     everywhere (every instance, at once) */
+  if (u.pathname === '/api/admin/sessions' && req.method === 'GET') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
+    return send(res, 200, { sessions: await SESSIONS.list(u.searchParams.get('email') || '') }), true; }
+  if (u.pathname === '/api/admin/sessions/end' && req.method === 'POST') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
+    const b = await readBody(req); if (!b.email) return send(res, 400, { error: 'email' }), true; return send(res, 200, { ended: await SESSIONS.endAll(b.email), email: b.email }), true; }
   /* who opened which brand (visSeen): newest first; ?slug= one brand, ?blocked=1 only the ones kept out */
   if (req.method === 'GET' && u.pathname === '/api/admin/visitors') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
     const slug = u.searchParams.get('slug'), bl = u.searchParams.get('blocked') === '1';
-    const rows = Object.values(await visLoad()).filter((r) => (!slug || r.slug === slug) && (!bl || r.access === 'blocked' || r.blocked)).sort((x, y) => y.last - x.last);
+    const rows = OBJ ? (await dbq(`SELECT slug, email, extract(epoch from first) * 1e3 AS first, extract(epoch from last) * 1e3 AS last, n, name, access, blocked FROM access_log
+        WHERE ($1::text IS NULL OR slug = $1) AND (NOT $2 OR access = 'blocked' OR blocked > 0) ORDER BY last DESC LIMIT 5000`, [slug || null, bl])).rows.map((r) => ({ ...r, first: +r.first, last: +r.last }))
+      : Object.values(await visLoad()).filter((r) => (!slug || r.slug === slug) && (!bl || r.access === 'blocked' || r.blocked)).sort((x, y) => y.last - x.last);
     return send(res, 200, { n: rows.length, emails: new Set(rows.map((r) => r.email)).size, rows }), true; }
   /* admins: how well each outside source worked on Brew's own calls this week (source-health.js), worst first */
   if (req.method === 'GET' && u.pathname === '/api/admin/sources') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;

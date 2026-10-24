@@ -1,7 +1,8 @@
 // Jam v2 (?v=2): its own jams, beside v1's and never mixed with them. A brand's team shares one list
 // (brands/<slug>/private/jams-v2.json); a visitor who is not on the team keeps theirs under their workspace id in the same file.
-// One instance runs the service (deploy.sh --max-instances=1), so the in-memory list is the truth and the file follows it
-// within a few seconds, and on SIGTERM (flush). Nothing here reads or writes v1's jams.json.
+// Each instance holds the list in memory and the store follows within a few seconds, and on SIGTERM (flush). On Postgres several
+// instances hold it at once: each writes only the jams it changed and takes the others' (shared-doc.js). Nothing here reads or writes v1's jams.json.
+import { createDocSync } from '../shared-doc.js'; // Postgres: each instance writes only the jams it changed, and takes the others'
 const FILE = 'private/jams-v2.json';
 
 export function createJam2Store({ packs, log = console, everyMs = 4000, enabled = () => true }) {
@@ -15,6 +16,7 @@ export function createJam2Store({ packs, log = console, everyMs = 4000, enabled 
       if (!r.ok) { b.failed = r.error || 'read failed'; return; }
       if (r.data?.jams) for (const [id, x] of Object.entries(r.data.jams)) if (!b.jams[id]) b.jams[id] = x;
       b.loaded = true; b.failed = null; b.last = JSON.stringify(b.jams);
+      b.sync = createDocSync({ packs, slug, name: FILE, fields: ['jams'], log }); b.sync?.settle(b); b.chain = Promise.resolve();
     }).catch((e) => { log.warn?.('[jam2] load', slug, e.message); b.failed = e.message; });
     BR.set(slug, b); return b;
   };
@@ -29,10 +31,13 @@ export function createJam2Store({ packs, log = console, everyMs = 4000, enabled 
       if (!b.loaded || (only && b.slug !== only)) continue;
       let s; try { s = JSON.stringify(b.jams); } catch (e) { log.warn?.('[jam2] serialise', e.message); continue; }
       if (s === b.last) continue; b.last = s;
+      if (b.sync) { await (b.chain = b.chain.then(() => b.sync.push(b)).catch((e) => { b.last = null; log.warn?.('[jam2] save', b.slug, e.message); })); continue; }
       await (packs.putStrict || packs.put)(b.slug, FILE, { at: Date.now(), jams: b.jams }).catch((e) => { b.last = null; log.warn?.('[jam2] save', b.slug, e.message); }); /* failed: stays dirty, the next flush writes it again */
     }
   };
-  const timer = packs?.put && everyMs && enabled() ? setInterval(() => flush().catch(() => {}), everyMs) : null; timer?.unref?.();
+  const timer = packs?.put && everyMs && enabled() ? setInterval(() => flush().catch(() => {}), packs.patchParts ? Math.min(everyMs, 1500) : everyMs) : null; timer?.unref?.();
+  packs?.onChange?.((slug, name) => { const b = BR.get(slug); if (name !== FILE || !b?.sync) return;
+    b.chain = b.chain.then(async () => { if (await b.sync.pull(b)) b.last = JSON.stringify(b.jams); }).catch((e) => log.warn?.('[jam2] pull', slug, e.message)); });
 
   /* the jams a request may see: the team's (owner 'team'), or this workspace's own */
   const ownerOf = (who) => (who?.member || who?.staff ? 'team' : `ws_${who?.tid || 'anon'}`);

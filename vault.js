@@ -18,6 +18,12 @@ export function createVault(packs) {
   return {
     async save(slug, id, secret) { await packs.put(slug, name(id), { c: encrypt(JSON.stringify(secret)), at: Date.now() }); },
     async load(slug, id) { const x = await packs.getJSON(slug, name(id), null); if (!x?.c) return null; try { return JSON.parse(decrypt(x.c)); } catch { return null; } },
-    async drop(slug, id) { await packs.put(slug, name(id), { c: null, at: Date.now() }); }
+    async drop(slug, id) { await packs.put(slug, name(id), { c: null, at: Date.now() }); },
+    /* the secret refreshed by fn(current) → next under the row's lock when the store has one (Postgres): whoever comes second
+       gets the refreshed secret and fn sees a token that needs nothing. fn returning the same object writes nothing */
+    refresh: packs.update ? async (slug, id, fn) => { let out = null;
+      await packs.update(slug, name(id), async (x) => { const cur = x?.c ? JSON.parse(decrypt(x.c)) : null; if (!cur) { out = null; return undefined; }
+        const next = await fn(cur); out = next; return next === cur ? undefined : { c: encrypt(JSON.stringify(next)), at: Date.now() }; });
+      return out; } : null
   };
 }

@@ -5,7 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { wiping, retireReady } from './retire.js'; // a workspace on a brand being reset is neither saved nor loaded
 import { brewText, onceEscaped } from './brew-name.js'; // workspaces saved before the rename say ShopOS
-import { createObjects } from './objects.js';
+import crypto from 'node:crypto';
+import { createObjects, splitDoc } from './objects.js';
 
 const enc = (k, v) => (v instanceof Map ? { __m: [...v.entries()] } : v instanceof Set ? { __s: [...v] } : v);
 const dec = (k, v) => (v && typeof v === 'object' && v.__m ? new Map(v.__m) : v && typeof v === 'object' && v.__s ? new Set(v.__s) : v);
@@ -17,11 +18,28 @@ export function createStore({ dir, bucket, gToken, objects = null, log = console
   const remote = !!obj?.remote;
   const timers = new Map();
   const file = (id) => path.join(dir, String(id).replace(/[^a-z0-9_]/gi, '') + '.json');
+  /* Postgres keeps a workspace in parts (objects.js PARTED): this instance writes only the parts it changed since it last read
+     or wrote them, so a copy another instance holds never writes its older parts over newer ones */
+  const base = new Map(); // id → Map(part → md5)
+  const partsMap = (str) => { try { return new Map(splitDoc(JSON.parse(str)).map(([p, b]) => [p, crypto.createHash('md5').update(b).digest("hex")])); } catch { return null; } };
   const gcs = async (method, id, body) => {
     const name = `tenants/${String(id).replace(/[^a-z0-9_]/gi, '')}.json`;
+    if (method === 'PUT' && obj.patchParts) { const prev = puts.get(id) || Promise.resolve(); const run = prev.catch(() => {}).then(() => putNow(name, id, body)); puts.set(id, run); run.finally(() => { if (puts.get(id) === run) puts.delete(id); }).catch(() => {}); return run; }
     if (method === 'PUT') return obj.put(name, body, 'application/json');
+    return getNow(name, id);
+  };
+  const puts = new Map(); /* one write at a time per workspace, in order */
+  const putNow = async (name, id, body) => {
+    {
+      if (base.has(id)) { const doc = JSON.parse(body), parts = splitDoc(doc), was = base.get(id), now = new Map(), set = [], del = [];
+        parts.forEach(([p, b], ord) => { const h = crypto.createHash('md5').update(b).digest('hex'); now.set(p, h); if (was.get(p) !== h) set.push([p, b, ord]); });
+        for (const p of was.keys()) if (!now.has(p)) del.push(p);
+        if (set.length || del.length) await obj.patchParts(name, set, del); base.set(id, now); return true; }
+      const r = await obj.put(name, body, 'application/json'); base.set(id, partsMap(body) || new Map()); return r; }
+  };
+  const getNow = async (name, id) => {
     const b = await obj.get(name); if (b == null) throw new Error(`gcs GET ${name} 404`); /* load0 reads a 404 as "no such workspace" */
-    return b.toString('utf8');
+    const str = b.toString('utf8'); if (obj.patchParts) { const m = partsMap(str); if (m) base.set(id, m); } return str;
   };
   const write = (t) => {
     if (wiping(t?.brandId)) return; fromGcs.add(t.id);

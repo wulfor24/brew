@@ -3,10 +3,13 @@
 // read the brand's shared list (brands/<slug>/private/jams.json). A visitor who is not on the team keeps their own jams in
 // their workspace (t.ownWork / t.ownChanges), as before. When someone joins the team, their own jams move into the team's.
 // The demo site keeps per-visitor jams (every visitor is a sandbox of their own).
-// One instance runs the service (deploy.sh --max-instances=1), so the in-memory list is the truth and the file follows it.
+// Each instance holds the list in memory and the store follows it. On Postgres several instances hold it at once: each writes
+// only the parts it changed (one per jam, change and version list) and takes the others' parts when they write (shared-doc.js).
 // The versions of the team's changes and jams (vg) live here too, beside the changes (learn.js vgOf reads t.teamVg), so a
 // teammate's studio shows the same versions and head as yours.
 import { mergeVersions } from './learn.js';
+import { createDocSync } from './shared-doc.js'; // Postgres: each instance writes only the jams it changed, and takes the others'
+import { createPresence } from './presence.js'; // who has a jam open, across instances
 const FILE = 'private/jams.json';
 const OPEN = (w) => !w.archived && !w.discarded && !['out', 'measuring', 'result'].includes(w.stage); // the same as feed-service workFor: a shared brief reopens its jam
 const lc = (e) => (e ? String(e).toLowerCase() : null);
@@ -37,6 +40,7 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
       if (j) { const have = new Set(b.work.map((w) => w.id)); b.work.push(...(j.work || []).filter((w) => !have.has(w.id))); b.changes = { ...(j.changes || {}), ...b.changes };
         for (const [id, list] of Object.entries(j.vg || {})) b.vg[id] = b.vg[id] ? mergeVersions(list, b.vg[id]) : list; }
       b.loaded = true; b.last = JSON.stringify({ work: b.work, changes: b.changes, vg: b.vg });
+      b.sync = createDocSync({ packs, slug, name: FILE, fields: ['work', 'changes', 'vg'], log }); b.sync?.settle(b); b.chain = Promise.resolve();
     }).catch((e) => { log.warn?.('[jams] load', slug, e.message); b.failed = true; });
     BR.set(slug, b); return b;
   };
@@ -48,10 +52,14 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
       if (!b.loaded || (only && b.slug !== only)) continue;
       let s; try { s = JSON.stringify({ work: b.work, changes: b.changes, vg: b.vg }); } catch (e) { log.warn?.('[jams] serialise', e.message); continue; }
       if (s === b.last) continue; b.last = s;
+      if (b.sync) { await (b.chain = b.chain.then(() => b.sync.push(b)).catch((e) => { b.last = null; log.warn?.('[jams] save', b.slug, e.message); })); continue; }
       await (packs.putStrict || packs.put)(b.slug, FILE, { at: Date.now(), work: b.work, changes: b.changes, vg: b.vg }).catch((e) => { b.last = null; log.warn?.('[jams] save', b.slug, e.message); });
     }
   };
-  const timer = packs?.put && everyMs ? setInterval(() => flush().catch(() => {}), everyMs) : null; timer?.unref?.();
+  const timer = packs?.put && everyMs ? setInterval(() => flush().catch(() => {}), packs.patchParts ? Math.min(everyMs, 1500) : everyMs) : null; timer?.unref?.();
+  /* another instance wrote the team's jams: this one takes what it hasn't changed itself, in place */
+  packs?.onChange?.((slug, name) => { const b = BR.get(slug); if (name !== FILE || !b?.sync) return;
+    b.chain = b.chain.then(async () => { const n = await b.sync.pull(b); if (n) b.last = JSON.stringify({ work: b.work, changes: b.changes, vg: b.vg }); }).catch((e) => log.warn?.('[jams] pull', slug, e.message)); });
 
   const slugOf = (t) => t.brandId || null;
   /* does this workspace read the team's jams right now: the request's viewer is on the team or a guest of one of its jams,
@@ -122,10 +130,10 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
   const openFor = (t, cardId) => t.work.find((w) => w.cardId === cardId && OPEN(w));
 
   /* presence: who has a jam open right now (the open jam's poll is the heartbeat) */
-  const HERE = new Map(); // wid → Map(email → { name, pic, at, typing })
-  const beat = (wid, u, typing = false) => { const p = person(u); if (!p || !wid) return; let m = HERE.get(wid); if (!m) HERE.set(wid, (m = new Map())); m.set(p.email, { ...p, at: Date.now(), typing: !!typing }); };
-  const here = (wid, ms = 30e3) => { const m = HERE.get(wid); if (!m) return []; const out = []; for (const [e, x] of m) { if (Date.now() - x.at > ms) m.delete(e); else out.push(x); } return out; };
-  const watching = (wid, email, ms = 120e3) => { const x = HERE.get(wid)?.get(lc(email)); return !!x && Date.now() - x.at < ms; };
+  const P = createPresence({ log });
+  const beat = (wid, u, typing = false) => { const p = person(u); if (!p || !wid) return; P.beat(wid, p, typing); };
+  const here = (wid, ms = 30e3) => P.here(wid, ms);
+  const watching = (wid, email, ms = 120e3) => P.watching(wid, lc(email), ms);
 
   return { load, flush, guard, shared, join, isIn, guestWids, adopt, hydrate, openFor, fold, beat, here, watching, peek: (slug) => BR.get(slug) || null, OPEN, stop: () => timer && clearInterval(timer) };
 }

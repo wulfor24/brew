@@ -4,10 +4,10 @@
 // web 5, worker 10 (keep instances × pool under the server's max_connections).
 import pg from 'pg';
 
-let pool = null, listener = null, closing = false;
+let pool = null, listener = null, closing = false, connecting = null;
 const handlers = new Map(); // channel → Set(fn)
 const conf = () => ({ ...(process.env.DATABASE_URL ? { connectionString: process.env.DATABASE_URL } : {}),
-  max: +process.env.PG_POOL_MAX || 5, idleTimeoutMillis: 30e3, connectionTimeoutMillis: 10e3,
+  max: +process.env.PG_POOL_MAX || 5, idleTimeoutMillis: 30e3, allowExitOnIdle: true, connectionTimeoutMillis: 10e3,
   statement_timeout: +process.env.PG_STATEMENT_MS || 30e3, application_name: `brew-${process.env.ROLE || 'all'}` });
 
 export const enabled = () => process.env.STORAGE === 'pg';
@@ -38,9 +38,11 @@ async function connectListener(tries = 0) {
 }
 export async function listen(channel, fn) {
   if (!/^[a-z_]+$/.test(channel)) throw new Error('bad channel');
+  closing = false;
   const first = !handlers.has(channel); if (first) handlers.set(channel, new Set());
   handlers.get(channel).add(fn);
-  if (!listener) await connectListener(); else if (first) await listener.query(`LISTEN "${channel}"`);
+  if (!listener) { connecting ||= connectListener().finally(() => { connecting = null; }); await connecting; } /* one listen connection, however many ask at once */
+  else if (first) await listener.query(`LISTEN "${channel}"`);
   return () => handlers.get(channel)?.delete(fn);
 }
-export async function close() { closing = true; await listener?.end().catch(() => {}); await pool?.end().catch(() => {}); pool = null; listener = null; handlers.clear(); closing = false; }
+export async function close() { closing = true; const l = listener; listener = null; handlers.clear(); await l?.end().catch(() => {}); await pool?.end().catch(() => {}); pool = null; } /* stays closed until the next listen() or query */

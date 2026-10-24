@@ -66,6 +66,10 @@ export const daysLeft = (s, now = Date.now()) => (s?.expiresAt ? Math.floor((s.e
 // DUMMY: simulated on the demo site (DEMO_MODE=1)
 export const simOnly = (id) => DEMO || !REAL[id];
 
+/* brands whose live connections are never dropped or replaced by accident (a client going live) */
+export const PROTECTED = () => new Set(String(process.env.PROTECTED_CONNECTIONS ?? 'arata-in').split(',').map((x) => x.trim()).filter(Boolean));
+export const isProtected = (slug) => PROTECTED().has(String(slug || ''));
+const PROTECTED_WHY = 'This brand’s connections are protected while it is live with a client. Ask a Brew admin if it really has to change.';
 export function createConnectors({ packs, auth, builder, treg = null, log = console, onLive = () => {} }) {
   const SIM = createSim({ packs, log }), vault = createVault(packs), deps = { treg };
   const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
@@ -79,7 +83,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   const CF = 'private/connections.json';
   let lock = Promise.resolve();
   const conns = async (slug) => (await packs.getJSON(slug, CF, {})) || {};
-  const editC = (slug, f) => { const run = lock.then(async () => { const c = await conns(slug); await f(c); await packs.put(slug, CF, c); return c; }); lock = run.catch(() => {}); return run; };
+  /* on Postgres the change is made under a row lock (packs.update), so two instances never lose each other's edit */
+  const editC = (slug, f) => { const run = lock.then(async () => { if (packs.update) return packs.update(slug, CF, async (c0) => { const c = c0 || {}; await f(c); return c; });
+    const c = await conns(slug); await f(c); await packs.put(slug, CF, c); return c; }); lock = run.catch(() => {}); return run; };
   /* one read per brand at a time: a manual Sync and the hourly tick never run the same brand's read, ledger write and move
      rewrite (builder.liveConnected) on top of each other. A failure never blocks the next (same shape as editC) */
   const brandRuns = new Map();
@@ -192,7 +198,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     if (!creds) throw new Error('Not connected: connect it again.');
     const dead = (e) => { if (C.expired?.(e)) { e.expired = true; e.message = `${C.name || id} sign-in expired: connect it again. (${e.message.slice(0, 120)})`; } throw e; };
     /* a refresh that Google or Shopify refuses (invalid_grant, 401) is a dead sign-in: the admins are told to connect it again */
-    if (C.fresh) { let f; try { f = await C.fresh(creds); } catch (e) { dead(e); } if (f !== creds) { creds = f; await vault.save(slug, id, creds); } }
+    /* refresh under the vault row's lock (Postgres): the second instance waits, reads the token the first one just got, and
+       asks the provider nothing; a refused refresh keeps the old token (the connection goes stale, never disconnected) */
+    if (C.fresh) { try { creds = vault.refresh ? await vault.refresh(slug, id, (c) => C.fresh(c)) : await (async () => { const f = await C.fresh(creds); if (f !== creds) await vault.save(slug, id, f); return f; })(); } catch (e) { dead(e); } }
     const exp = C.expires ? { expiresAt: +creds.exp || null, refreshedAt: creds.refreshedAt || null } : null; /* when the sign-in runs out (Meta) */
     const ctx = await ctxOf(slug);
     /* an account not yet matched to the brand is checked again on each read: the brand may have fixed its links since */
@@ -247,7 +255,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       return { ok: false, error: e.message.slice(0, 200), rateLimited: !!fx.rateLimited, retryAt: fx.retryAt || null };
     }
   }
-  const disconnect = (slug, id) => perBrand(slug, () => disconnect0(slug, id));
+  /* a protected brand (PROTECTED_CONNECTIONS, default arata-in: a live client) never loses a live connection by accident:
+     disconnect, re-select and connecting again over a live one are refused unless an admin forces it */
+  const disconnect = (slug, id, { force = false } = {}) => (isProtected(slug) && !force ? Promise.resolve({ error: PROTECTED_WHY, protected: true }) : perBrand(slug, () => disconnect0(slug, id)));
   async function disconnect0(slug, id) {
     /* the sign-in goes, and every sign-in still waiting for its account to be picked (<id>-pending-*). The grant on the
        platform's side is left alone on purpose: one person's Meta sign-in may serve several brands, and taking it back
@@ -407,7 +417,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         if (s?.state === 'syncing' && Date.now() - (s.syncAt || 0) < 10 * 60e3) return json(res, 200, { ok: true, state: 'syncing', busy: true, note: 'Already reading it. This takes a minute.' }), true;
         if (s?.state === 'live' && !s.error && s.lastSync && Date.now() - s.lastSync < SYNC_GAP) return json(res, 200, { ok: true, state: 'live', recent: true, lastSync: s.lastSync, note: `Read ${Math.max(1, Math.round((Date.now() - s.lastSync) / 60e3))} min ago. You can read it again in ${Math.max(1, Math.ceil((SYNC_GAP - (Date.now() - s.lastSync)) / 60e3))} min.` }), true;
         return json(res, 200, await sync(slug, id)), true; }
-      if (b.action === 'disconnect') { if (!member) return json(res, 403, { error: 'Only the brand’s team can disconnect it.' }), true; return json(res, 200, await disconnect(slug, id)), true; }
+      if (isProtected(slug) && ['disconnect', 'select', 'key', 'connect'].includes(b.action) && (b.action === 'disconnect' || (await conns(slug))[id]?.state === 'live') && !(b.force === true && auth.isAdmin(me)))
+        return json(res, 409, { error: PROTECTED_WHY, protected: true }), true;
+      if (b.action === 'disconnect') { if (!member) return json(res, 403, { error: 'Only the brand’s team can disconnect it.' }), true; return json(res, 200, await disconnect(slug, id, { force: b.force === true && auth.isAdmin(me) })), true; }
       if (!C) { if (['demo', 'key', 'select', 'connect'].includes(b.action)) return json(res, 200, await finish(slug, id, null, me)), true; return json(res, 400, { error: 'unknown action' }), true; }
       if (b.action === 'key') { if (!C.fromKey) return json(res, 400, { error: 'This one connects by signing in.' }), true;
         /* a pasted key or ID asks Google whether Brew can see it: a few tries per person, so nobody walks through IDs */

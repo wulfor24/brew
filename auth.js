@@ -41,7 +41,7 @@ const DEMO_SITE = () => process.env.DEMO_MODE === '1';
 export const cleanSeats = (x) => (x === 'all' ? 'all' : [...new Set((Array.isArray(x) ? x : []).map((k) => String(k).toLowerCase()).filter((k) => /^[a-z]{2,16}$/.test(k)))].slice(0, 12));
 const seatList = (x) => (x == null || x === 'all' ? null : x);
 
-export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeamChange = () => {}, log = console }) {
+export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeamChange = () => {}, sessions = null, log = console }) {
   const SECRET = process.env.FEED_SESSION_SECRET || (process.env.K_SERVICE ? '' : 'local-dev-session-secret');
   if (!SECRET) log.warn('[auth] FEED_SESSION_SECRET is not set: sign-in is off');
   // FEED_SIGNIN=0 keeps sign-in hidden (until the redirect URI is registered on the Google client)
@@ -64,7 +64,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   const cookies = (req) => Object.fromEntries(String(req.headers.cookie || '').split(/;\s*/).filter(Boolean).map((c) => { const i = c.indexOf('='); return [c.slice(0, i), decodeURIComponent(c.slice(i + 1))]; }));
   const setCookie = (res, name, val, maxAge) => { const prev = res.getHeader('set-cookie') || []; res.setHeader('set-cookie', [...(Array.isArray(prev) ? prev : [prev]), `${name}=${encodeURIComponent(val)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`]); };
   /* req.brewUser: a person inside the Shopify admin, proved by a session token (shopify-app.js attach), never by a cookie */
-  const user = (req) => { if (req.brewUser) return req.brewUser; const s = verify(cookies(req).fs_s, 'session'); return s?.email ? { email: s.email, name: s.name || null, pic: s.pic || null, sub: s.sub || null } : null; };
+  const user = (req) => { if (req.brewUser) return req.brewUser; const s = verify(cookies(req).fs_s, 'session'); return s?.email && (!sessions || sessions.live(s)) ? /* an ended session (signed out, sign out everywhere) is nobody */ { email: s.email, name: s.name || null, pic: s.pic || null, sub: s.sub || null } : null; };
   const redirect = (res, to) => { res.writeHead(302, { location: to, 'cache-control': 'no-store' }); res.end(); };
   const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
   const readBody = (req) => new Promise((r) => { let d = ''; req.on('data', (c) => (d += c)); req.on('end', () => { try { r(JSON.parse(d || '{}')); } catch { r({}); } }); });
@@ -78,7 +78,12 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   const MF = 'private/members.json', INVITE_DAYS = 14;
   const getM = async (slug) => ({ owner: null, members: [], invites: [], ...(await packs.getJSON(slug, MF, {})), requests: [] });
   /* m.owner follows the first remaining owner, so "claimed" and the owner label stay right when the admin changes */
-  const editM = (slug, f) => { const run = lock.then(async () => { const m = await getM(slug); const r = await f(m); const o = m.members.filter((x) => x.role === 'owner'); if (o.length && !o.some((x) => x.email === m.owner)) m.owner = o[0].email; await packs.put(slug, MF, m); try { onTeamChange(slug); } catch {} return r ?? m; }); lock = run.catch(() => {}); return run; };
+  const ownerFix = (m) => { const o = m.members.filter((x) => x.role === 'owner'); if (o.length && !o.some((x) => x.email === m.owner)) m.owner = o[0].email; };
+  /* on Postgres the edit runs under a row lock (packs.update): an invite on one instance and a join on another both land */
+  const editM = (slug, f) => { const run = lock.then(async () => { let r;
+    if (packs.update) await packs.update(slug, MF, async (cur) => { const m = { owner: null, members: [], invites: [], ...(cur || {}), requests: [] }; r = await f(m); ownerFix(m); r = r ?? m; return m; });
+    else { const m = await getM(slug); r = await f(m); ownerFix(m); await packs.put(slug, MF, m); r = r ?? m; }
+    try { onTeamChange(slug); } catch {} return r; }); lock = run.catch(() => {}); return run; };
   const isAdmin = (u) => !!u && (ADMINS.has(u.email) || fullDomain(u.email));
   // who this person is to the brand: owner | member | admin | null
   async function roleOf(slug, u) {
@@ -224,7 +229,8 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       if (c.aud !== CID || !['accounts.google.com', 'https://accounts.google.com'].includes(c.iss) || !(c.exp > Date.now() / 1e3) || c.nonce !== hs.n) return fail('claims');
       if (!(c.email_verified === true || c.email_verified === 'true') || !c.email) return fail('email not verified');
       const me = { email: String(c.email).toLowerCase(), name: c.name || null, pic: c.picture || null, sub: c.sub || null };
-      setCookie(res, 'fs_s', sign(me, 30 * 86400, 'session'), 30 * 86400);
+      const ses = sessions?.open(me.email, { ttlSec: 30 * 86400, ua: req.headers['user-agent'], ip: null }) || {}; /* a session row: signing out ends it for real */
+      setCookie(res, 'fs_s', sign({ ...me, ...ses }, 30 * 86400, 'session'), 30 * 86400);
       log.log?.(`[auth] signed in ${me.email}`);
       return redirect(res, st.next || '/'), true;
     }
@@ -234,7 +240,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       setCookie(res, 'fs_s', sign({ email, name: u.searchParams.get('name') || email.replace(/@.*/, ''), pic: null, sub: 'dev' }, 86400, 'session'), 86400);
       return redirect(res, safeNext(u.searchParams.get('next'))), true;
     }
-    if (p === '/auth/logout') { setCookie(res, 'fs_s', '', 0); if (req.method === 'GET') return redirect(res, safeNext(u.searchParams.get('next'))), true; return json(res, 200, { ok: true }), true; }
+    if (p === '/auth/logout') { const was = verify(cookies(req).fs_s, 'session'); if (was?.sid) await sessions?.end(was.sid); setCookie(res, 'fs_s', '', 0); if (req.method === 'GET') return redirect(res, safeNext(u.searchParams.get('next'))), true; return json(res, 200, { ok: true }), true; }
     /* old one-tap approve links (asking for access is gone): the owner invites them instead */
     if (p === '/auth/approve' && (req.method === 'GET' || req.method === 'POST')) {
       const t = verify(u.searchParams.get('t'), 'approve');
