@@ -63,7 +63,8 @@ test('jams: two instances add jams at once, both keep both; one closes a jam and
   assert.deepEqual(bA.changes.ch1, { by: 'B' });
   bA.work.splice(bA.work.findIndex((w) => w.id === 'w_b'), 1); await jA.flush(); await sleep(500);
   assert.deepEqual(bB.work.map((w) => w.id), ['w_a'], 'the jam A removed is gone on B');
-  jA.beat('w_a', { email: 'ana@x.com', name: 'Ana' }); jB.here('w_a'); await sleep(2500);
+  jA.beat('w_a', { email: 'ana@x.com', name: 'Ana' }); jB.here('w_a');
+  for (let i = 0; i < 40 && !jB.here('w_a').some((p) => p.email === 'ana@x.com'); i++) await sleep(250); /* a beat crosses within a sync or two (2 s each) */
   assert.ok(jB.here('w_a').some((p) => p.email === 'ana@x.com'), 'presence crosses instances');
 });
 

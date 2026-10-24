@@ -32,13 +32,13 @@ import { createTreg, gcsCache } from './treg.js';
 import { createObjects } from './objects.js'; // STORAGE=pg: rows in Postgres, binaries in the bucket
 import { enabled as pgEnabled } from './db/index.js';
 import { migrate } from './db/migrate.js';
-import { isWorker, isLeader, whenLeader, leaderOnly, startLease } from './roles.js'; // ROLE=web|worker; the background lease
+import { isWeb, isWorker, isLeader, whenLeader, leaderOnly, startLease } from './roles.js'; // ROLE=web|worker; the background lease
 import { createJobs } from './jobs.js'; // work any instance asks for and one worker does
 import { createCounters } from './counters.js'; // the day's spend, shared by every instance
 import { createBuildEvents } from './build-events.js'; // a build's progress, followed from any instance
 import { createSessions } from './sessions.js'; // sign-ins that can be ended (Postgres)
 import { createBus } from './bus.js'; // what one instance tells the others
-import { q as dbq } from './db/index.js';
+import { q as dbq, dbClock } from './db/index.js';
 import { setApifyCache, createApify, onAnyApifyCharge } from './apify.js';
 import { watchView } from './watch-view.js';
 import { attachHealthStore, sourceTable, flush as healthFlush } from './source-health.js'; // how well each outside source works // What Brew watches for you: the four blocks
@@ -260,6 +260,7 @@ const ZC = new Map(); // file → { mtime, size, etag, raw, br, gzip }
 const fileEntry = (f) => { const st = fs.statSync(f); const e0 = ZC.get(f); if (e0 && e0.mtime === st.mtimeMs && e0.size === st.size) return e0;
   const raw = fs.readFileSync(f), e = { mtime: st.mtimeMs, size: st.size, raw, etag: `"${crypto.createHash('sha1').update(raw).digest('base64url').slice(0, 16)}"` }; ZC.set(f, e); return e; };
 const encOf = (req) => { const ae = String(req.headers['accept-encoding'] || ''); return /\bbr\b/.test(ae) ? 'br' : /\bgzip\b/.test(ae) ? 'gzip' : null; };
+const zipAsync = (buf, enc, level) => new Promise((ok, no) => (enc === 'br' ? zlib.brotliCompress(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: level ?? 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: buf.length } }, (e, z) => (e ? no(e) : ok(z))) : zlib.gzip(buf, { level: level ?? 6 }, (e, z) => (e ? no(e) : ok(z)))));
 const zip = (buf, enc, level) => (enc === 'br' ? zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: level ?? 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: buf.length } }) : zlib.gzipSync(buf, { level: level == null ? 6 : Math.min(9, level) }));
 const verOf = (f) => { try { return fileEntry(f).etag.slice(1, 9); } catch { return null; } };
 const serveFile = (req, res, f, o = {}) => {
@@ -297,9 +298,12 @@ const zipRes = (req, res) => {
       const [code] = held, hd = held.find((x, i) => i > 0 && x && typeof x === 'object') || {}, get = (k) => Object.entries(hd).find(([x]) => x.toLowerCase() === k)?.[1] ?? res.getHeader(k);
       const buf = Buffer.isBuffer(body) ? body : Buffer.from(body, typeof rest[0] === 'string' ? rest[0] : 'utf8');
       if (code === 200 && buf.length > 1024 && !get('content-encoding') && ZTYPE.test(String(get('content-type') || ''))) {
-        const z = zip(buf, enc), out = Object.fromEntries(Object.entries(hd).filter(([x]) => x.toLowerCase() !== 'content-length'));
-        held = null; res.removeHeader('content-length'); wh.call(res, code, { ...out, 'content-encoding': enc, vary: 'Accept-Encoding', 'content-length': z.length });
-        return en.call(res, z, ...rest.filter((x) => typeof x === 'function'));
+        const out = Object.fromEntries(Object.entries(hd).filter(([x]) => x.toLowerCase() !== 'content-length')), cb = rest.filter((x) => typeof x === 'function');
+        const send = (z) => { res.removeHeader('content-length'); wh.call(res, code, { ...out, 'content-encoding': enc, vary: 'Accept-Encoding', 'content-length': z.length }); en.call(res, z, ...cb); };
+        held = null;
+        /* a big answer (the feed is ~400 KB) is compressed off the main thread, so one request's compression never holds the others */
+        if (buf.length > 32 * 1024) { zipAsync(buf, enc).then(send, () => { wh.call(res, code, hd); en.call(res, buf, ...cb); }); return res; }
+        send(zip(buf, enc)); return res;
       }
     }
     flush(); return en.call(res, body, ...rest);
@@ -1037,9 +1041,17 @@ const server = http.createServer(async (req, res) => {
   zipRes(req, res);
   res.once('finish', () => alerts.response(res.statusCode)); /* the 5xx rate for the ops alerts */
   retire.claim(); // traffic reaches this revision: it is the live one
-  if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => serve(req, res, u)); }
-  return serve(req, res, u);
+  if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => timed(req, res, u, () => serve(req, res, u))); }
+  return timed(req, res, u, () => serve(req, res, u));
 }).listen(PORT, () => console.log(`Brew Feed on http://localhost:${PORT} · AI ${MOCK ? "mock" : `live (${PROVIDER})`} · env ${fs.existsSync(envFile) ? envFile : 'none'}${DEMO ? ' · DEMO MODE' : ''}`));
+/* every web instance starts with the brands people use already built in memory (opened in the last 14 days), one after
+   another in the background, so the first visitor after a deploy or a scale-up never waits for a pack build (Phase 4) */
+if (isWeb() && process.env.WARM_OFF !== '1') setTimeout(async () => { const t0 = Date.now(); let n = 0;
+  for (const b of (await builder.list().catch(() => [])).filter((x) => x.slug && x.status?.ready !== false)) {
+    if (n >= (+process.env.WARM_BRANDS || 30)) break;
+    const lo = (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0; if (Date.now() - lo > 14 * 864e5) continue;
+    try { await loadBrand(b.slug, { fresh: true, share: true }); n++; } catch (e) { console.warn('[warm]', b.slug, e.message); } }
+  if (n) console.log(`[warm] ${n} brand(s) ready in memory in ${Date.now() - t0} ms`); }, +process.env.WARM_DELAY_MS || 3000).unref?.();
 /* Cloud Run stops an instance with SIGTERM (deploys, scale to zero): the team's jams, any workspace still inside its 1.5 s
    save debounce, the day's budget counters, the treg spend ledger and the batched jam emails are written (or sent) before it
    goes, and the listener closes so in-flight requests finish, all inside 6 s */
@@ -1065,6 +1077,16 @@ const crossSite = (req, u) => {
   if (origin) return !own.has(origin);
   return site === 'cross-site' || site === 'same-site';
 };
+/* every answer says how long it took and how much of that was the database (Server-Timing: total, db), and a slow one is
+   logged with its route, so production speed is watched per route (Phase 4) */
+const SLOW_MS = +process.env.SLOW_MS || 1500;
+function timed(req, res, u, fn) {
+  const t0 = performance.now(), clock = { ms: 0, n: 0 }, wh = res.writeHead;
+  res.writeHead = function (code, ...a) { try { const st = `total;dur=${Math.round(performance.now() - t0)}, db;dur=${Math.round(clock.ms)};desc="${clock.n} queries"`;
+    const hd = a.find((x) => x && typeof x === 'object'); if (hd && !Object.keys(hd).some((k) => k.toLowerCase() === 'server-timing')) hd['server-timing'] = st; else if (!hd && !res.getHeader('server-timing')) res.setHeader('server-timing', st); } catch {} return wh.call(res, code, ...a); };
+  res.once('finish', () => { const ms = performance.now() - t0; if (ms > SLOW_MS && !/text\/event-stream/.test(String(res.getHeader('content-type') || ''))) console.warn(`[slow] ${req.method} ${u.pathname.replace(/t_[a-f0-9]+/g, 't_*').replace(/\/w_[A-Za-z0-9_-]+/g, '/w_*')} ${res.statusCode} ${Math.round(ms)} ms (db ${Math.round(clock.ms)} ms, ${clock.n} queries)`); });
+  return dbClock.run(clock, fn);
+}
 async function serve(req, res, u) {
   try {
     if (crossSite(req, u)) { res.writeHead(403, { 'content-type': 'application/json', 'cache-control': 'no-store' }); return res.end(JSON.stringify({ error: 'This change has to come from Brew itself.' })); }

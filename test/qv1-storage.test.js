@@ -75,7 +75,7 @@ test('Postgres group', { skip }, async (t) => {
   await t.test('a database read that fails is an error, never "not there"', async () => {
     const packs = mkPacks(); await packs.put('zz-err', 'status.json', { ok: 1 });
     const realQ = db.q; /* break the next reads */
-    const o2 = O.createObjects({ log: quiet }); const orig = o2.get; o2.get = async () => { throw new Error('pool timeout'); };
+    const o2 = O.createObjects({ log: quiet }); const orig = o2.get; o2.get = async () => { throw new Error('pool timeout'); }; o2.getV = async () => { throw new Error('pool timeout'); };
     const { createPacks } = await import('../brand-pack.js');
     const p2 = createPacks({ ROOT: fs.mkdtempSync(path.join(os.tmpdir(), 'qv1e-')), PUB: path.resolve('public'), objects: o2, log: quiet });
     await assert.rejects(p2.get('zz-err', 'status.json'), /pool timeout/); void realQ; void orig;

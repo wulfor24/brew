@@ -10,7 +10,11 @@ const norm = (s) => String(s || '').toLowerCase().replace(/[’']/g, "'").replac
 /* a brand's own words are long (every product): normalised once per text, not once per sentence checked (a feed of 120 cards and
    a pack of 60 moves checked against the same words took 12–50 s to load when each check lower-cased them again) */
 const NORMED = new Map();
+/* a card's source is the brand's words plus its own evidence (packSource): normalised from the brand's words (normalised once) and
+   the evidence alone, instead of re-reading the whole brand's words for every card */
+const COMP = new Map();
 const srcNorm = (source) => { if (typeof source !== 'string') return sourceText(source); const hit = NORMED.get(source); if (hit !== undefined) return hit;
+  const c = COMP.get(source); if (c) return `${srcNorm(c.base)} ${norm(c.ev)}`.replace(/ {2,}/g, ' ');
   const n = norm(source); if (NORMED.size >= 12) NORMED.delete(NORMED.keys().next().value); NORMED.set(source, n); NORMED.set(n, n); return n; };
 /* the sentence a phrase sits in, for the flag's quote */
 const around = (text, i, len) => { const s = String(text); const a = Math.max(0, s.lastIndexOf('.', i) + 1, s.lastIndexOf('\n', i) + 1), b0 = s.slice(i + len).search(/[.!?\n]/), b = b0 < 0 ? s.length : i + len + b0 + 1; return s.slice(a, b).trim().slice(0, 140); };
@@ -53,7 +57,7 @@ const PACK_SRC = new WeakMap();
 export const packSource = (p, card = null) => { let base = p && typeof p === 'object' ? PACK_SRC.get(p) : '';
   if (base == null || base === undefined) { base = sourceText(Object.values(p?.facts || {}).map((f) => [f?.label, f?.v, ...(f?.aliases || [])]), p?.catalog, p?.reviewQuotes, p?.seed?.brand?.about || '', p?.seed?.brand?.tagline || '', String(p?.factBrief || '').split('\n'), approvedText(p?.book?.claims)); /* the fact brief one fact at a time, so a test named in one never proves another (certifiedIn) */ if (p && typeof p === 'object') PACK_SRC.set(p, base); }
   if (!card || typeof card !== 'object') return base || ''; const ev = sourceText(card.post?.evidence || [], card.evidence || []); if (!ev.trim()) return base || '';
-  const k = CARD_SRC.get(card); if (k?.base === base && k.ev === ev) return k.s; const out = `${base || ''}\n${ev}`; CARD_SRC.set(card, { base, ev, s: out }); NORMED.set(out, out); if (NORMED.size > 12) NORMED.delete(NORMED.keys().next().value); return out; }; /* the same string per card, so it is normalised once */
+  const k = CARD_SRC.get(card); if (k?.base === base && k.ev === ev) return k.s; const out = `${base || ''}\n${ev}`; CARD_SRC.set(card, { base, ev, s: out }); COMP.set(out, { base: base || '', ev }); if (COMP.size > 5000) COMP.delete(COMP.keys().next().value); return out; }; /* the same string per card, so it is normalised once */
 const CARD_SRC = new WeakMap();
 
 /* → [{ kind, phrase, quote, why }] for every claim in `text` that `source` (sourceText) doesn't carry */

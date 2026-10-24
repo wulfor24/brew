@@ -163,6 +163,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   /* notes.json and move-value.json are written in the background a few seconds after every load (server attach): they show within
      FRESH_MS, and never force the next page load to rebuild the whole pack */
   const BUILT_FROM = /^(?:seed|status|profile|facts|brief|config|moves|labels|learned|pages|pools|rival-reads|statics|updates|demo|brandbook-read|ledger|findings)\.(?:json|md)$|^(?:moves|docs|drafts|pulse)\/|^private\/(?:brandbook|shop-brand|facts|profile-live|moves|statics)/; /* private/connections.json is rewritten by every connector read and the pack only asks it whether Shopify is connected: a real connect drops the pack itself */
+  /* status.json is part of the pack, but a page view's seenAt stamp is not: a write that changes only seenAt never rebuilds it */
+  const statusSig = (x) => { try { const { seenAt, ...rest } = typeof x === 'string' || Buffer.isBuffer(x) ? JSON.parse(String(x)) : x || {}; return JSON.stringify(rest); } catch { return null; } };
+  const changesPack = (slug, name, data) => { if (name !== 'status.json') return BUILT_FROM.test(name); const was = cache.get(slug)?.status; return !was || statusSig(was) !== statusSig(data); };
   /* where packs live behind this disk: Postgres rows + the bucket for binaries (STORAGE=pg), or the bucket (Cloud Run) */
   const obj = objects || (process.env.K_SERVICE && bucket && gToken ? createObjects({ bucket, gToken, log }) : null);
   const remote = !!obj?.remote;
@@ -172,7 +175,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   const gcsList = (prefix) => obj.list(prefix);
   /* another instance wrote to a pack: the next fresh load here reads it (pg NOTIFY) */
   obj?.onChange?.((key) => { if (key === '*') { for (const sl of new Set([...vers.keys(), ...cache.keys()])) bump(sl); return; } /* notices may have been missed: every pack loads fresh */
-    const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (m && BUILT_FROM.test(m[2])) bump(m[1]); }).catch((e) => log.warn('[packs] listen', e.message));
+    const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (!m || !BUILT_FROM.test(m[2])) return;
+    if (m[2] === 'status.json' && cache.has(m[1])) { getJSON(m[1], 'status.json', null).then((st) => { if (changesPack(m[1], 'status.json', st)) bump(m[1]); }).catch(() => bump(m[1])); return; } /* a seenAt stamp alone keeps the built pack */
+    bump(m[1]); }).catch((e) => log.warn('[packs] listen', e.message));
 
   /* ---------- the files of a pack (local first, GCS behind) ---------- */
   const dirOf = (slug) => path.join(DIR, slug);
@@ -185,7 +190,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     const f = fileOf(slug, name); fs.mkdirSync(path.dirname(f), { recursive: true });
     // bytes may come as a Uint8Array (a browser screenshot), not a Buffer: never JSON them
     const buf = Buffer.isBuffer(data) ? data : data instanceof Uint8Array || data instanceof ArrayBuffer ? Buffer.from(data) : Buffer.from(typeof data === 'string' ? data : JSON.stringify(data, null, 1));
-    fs.writeFileSync(f, buf); if (BUILT_FROM.test(name)) bump(slug); /* only a file the pack is built from makes the next load fresh (1.7: page-open logs and caches rebuilt the seed on every load, 2.8 s); anything else is picked up within FRESH_MS */
+    fs.writeFileSync(f, buf); if (changesPack(slug, name, buf)) bump(slug); /* only a file the pack is built from makes the next load fresh (1.7: page-open logs and caches rebuilt the seed on every load, 2.8 s); anything else is picked up within FRESH_MS */
     if (remote) await gcsPut(`brands/${slug}/${name}`, buf, type || (name.endsWith('.json') ? 'application/json' : undefined)).catch((e) => { log.warn('[packs] gcs put', name, e.message); if (obj?.pg && pgRow(name)) throw e; }); /* Postgres: a lost write is an error, never a quiet disk-only copy */
     return f;
   };
@@ -195,6 +200,18 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     if (sb) { const b = await getRaw(slug, sb); if (b) return b; const v = virtualFile(name); if (v) return Buffer.from(JSON.stringify(v)); }
     return getRaw(slug, name);
   };
+  /* Postgres rows, read fresh every time but kept as read and healed: an unchanged file costs one small version check, never
+     the transfer and the text heals again (a feed load read moves.json, 4.4 MB, and healed it on every read). Bounded by size */
+  const RAW = new Map(); let rawBytes = 0; const RAW_MAX = (+process.env.PACK_CACHE_MB || 256) * 1e6;
+  const readRow = async (slug, name, f) => {
+    const k = `${slug}/${name}`, c = RAW.get(k), get1 = () => obj.getV(`brands/${slug}/${name}`, c?.v);
+    const r = await get1().catch(() => get1()); /* tried once more, then a failure throws: never "not there" */
+    if (r.same) { RAW.delete(k); RAW.set(k, c); return c.out; }
+    const out = brewFile(name, r.body);
+    if (c) { RAW.delete(k); rawBytes -= c.n; }
+    if (out && r.version != null) { const n = out.length || 0; RAW.set(k, { v: r.version, out, n }); rawBytes += n; while (rawBytes > RAW_MAX && RAW.size) { const [k0, x] = RAW.entries().next().value; RAW.delete(k0); rawBytes -= x.n; } }
+    if (r.body) { try { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, r.body); } catch {} }
+    return out; };
   const getRaw = async (slug, name) => {
     if (!inside(slug, name)) return null;
     const f = fileOf(slug, name);
@@ -202,7 +219,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     if (!remote) return pgRow(name) && fs.existsSync(f) ? brewFile(name, fs.readFileSync(f)) : null;
     /* Postgres: a read that fails is tried once more, then throws: "couldn't read" is never taken for "not there" (the disk copy
        isn't a fallback for rows, it may be older) */
-    const b = obj?.pg && pgRow(name) ? await gcsGet(`brands/${slug}/${name}`).catch(() => gcsGet(`brands/${slug}/${name}`)) : await gcsGet(`brands/${slug}/${name}`).catch((e) => { log.warn('[packs] gcs get', name, e.message); return null; });
+    if (obj?.pg && pgRow(name)) return readRow(slug, name, f);
+    const b = await gcsGet(`brands/${slug}/${name}`).catch((e) => { log.warn('[packs] gcs get', name, e.message); return null; });
     if (b) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, b); }
     return brewFile(name, b);
   };
@@ -218,7 +236,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     } catch (e) { log.warn('[packs] read', slug, name, e.message); return { ok: false, error: e.message }; } };
   /* the same file written so a failed bucket write throws (the caller keeps it dirty and tries again) */
   const putStrict = async (slug, name0, data) => { await retireReady(); const name = sandboxName(name0) || name0; if (wiping(slug)) return null; const f = fileOf(slug, name); fs.mkdirSync(path.dirname(f), { recursive: true });
-    const buf = Buffer.from(JSON.stringify(data, null, 1)); fs.writeFileSync(f, buf); if (BUILT_FROM.test(name)) bump(slug); if (remote) await gcsPut(`brands/${slug}/${name}`, buf, 'application/json'); return f; };
+    const buf = Buffer.from(JSON.stringify(data, null, 1)); fs.writeFileSync(f, buf); if (changesPack(slug, name, buf)) bump(slug); if (remote) await gcsPut(`brands/${slug}/${name}`, buf, 'application/json'); return f; };
   const getJSON = async (slug, name, d = null) => { const b = await get(slug, name); if (!b) return d; try { return JSON.parse(b.toString('utf8')); } catch { return d; } };
   /* a file other instances write while this one runs (first drafts, made by whichever instance's background job ran): the
      bucket's copy first, kept on disk; this instance's disk only when the bucket can't be reached. get() serves the disk

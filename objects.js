@@ -119,6 +119,16 @@ export function createObjects({ bucket, gToken, log = console, pg = pgOn(), read
     if (mirror && gcsOn) { const b = await get(key); if (b) mirrorPut(key, b, 'application/json'); }
     return version;
   }
+  /* get(), but asking only for what changed: with the version a caller already holds, the body comes back only when the
+     object moved on ({ version, same: true } otherwise). For callers that keep what they read (brand-pack's read cache) */
+  async function getV(key, have = null) {
+    if (!inRows(key)) return { version: null, body: await get(key) };
+    const row = (await q('SELECT version, content_type, CASE WHEN version = $2 THEN NULL ELSE body END AS body FROM objects WHERE key = $1', [key, have == null ? -1 : have])).rows[0];
+    if (!row) return { version: null, body: await get(key) }; /* not a row (yet): read-through and the rest as get() does */
+    const version = +row.version; if (have != null && version === have) return { version, same: true };
+    if (row.content_type === STUB) return { version, body: Buffer.from(JSON.stringify(joinDoc((await q('SELECT part, body FROM doc_parts WHERE key = $1 ORDER BY ord, part', [key])).rows))) };
+    return { version, body: row.body?.length ? row.body : null };
+  }
   async function get(key) {
     if (inRows(key)) { const row = (await q('SELECT body, content_type FROM objects WHERE key = $1', [key])).rows[0], b = row?.body;
       if (row?.content_type === STUB) return Buffer.from(JSON.stringify(joinDoc((await q('SELECT part, body FROM doc_parts WHERE key = $1 ORDER BY ord, part', [key])).rows))); /* parted */
@@ -176,5 +186,5 @@ export function createObjects({ bucket, gToken, log = console, pg = pgOn(), read
   /* fn(key, version) when any instance writes an object; fn('*') after the notice connection came back from a drop, when
      notices may have been missed: every cache that listens catches up */
   const onChange = (fn) => (pg ? listen('objects', (p) => { if (p === '*') return fn('*', null); const i = String(p).lastIndexOf('|'); return i < 0 ? fn(p, null) : fn(p.slice(0, i), +p.slice(i + 1)); }) : Promise.resolve(() => {}));
-  return { get, put, del, list, update, getParts, patchParts, onChange, mirrored, pg, remote: pg || gcsOn, isRow: inRows };
+  return { get, getV, put, del, list, update, getParts, patchParts, onChange, mirrored, pg, remote: pg || gcsOn, isRow: inRows };
 }

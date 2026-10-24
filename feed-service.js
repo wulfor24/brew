@@ -1815,7 +1815,7 @@ export function createFeedService(o) {
     if (hit) log.log?.(`[feed] ${t.brandId || ''} built fresh: ${hit.who !== who ? `was ${hit.who.split('|').slice(1).join('|')} now ${who.split('|').slice(1).join('|')}` : `${Math.round((Date.now() - hit.at) / 1e3)} s old`}`); /* why a reload waited (1.7) */
     return store(await feedRoute(b, t)); });
   const feedRoute = async (b, t) => { repairHeartKids(t); syncBatches(t); if (B().kind === 'generated') streamSync(t, SEED.posts);
-    if (t.visit && t.feedVisit !== t.visit.at) { t.feedVisit = t.visit.at; if (t.onboarding.readyAt) await runFree(t, 'visit', 6000); }
+    if (t.visit && t.feedVisit !== t.visit.at) { t.feedVisit = t.visit.at; if (t.onboarding.readyAt) await runFree(t, 'visit', +process.env.VISIT_WAIT_MS || 600); } /* the free watchers get a moment; what they find later lands on the next refresh, never holding the page */
     await PLAIN.load(slugOfT(t)).catch(() => {}); if (t.member) await PLAIN.load(slugOfT(t), true).catch(() => {}); /* the team's private cards' rewrites */
     const f = feed(t); if (process.env.PLAIN_OFF !== '1' && !demoReq()) PLAIN.queue(slugOfT(t), f.order.map((id) => t.cards.get(id)).filter(Boolean), BN()); /* cards still in their first words get plain ones in the background */
     oneTitles(t);
@@ -1972,7 +1972,7 @@ export function createFeedService(o) {
   on('POST', '/api/brands/:slug/references/:rid/remove', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; const no = refTeam(t); if (no) return no;
     return REFS.remove(slug, p.rid); });
   on('PUT', '/api/tenants/:id/deck-layout', async (b, t) => { if (Array.isArray(b.hidden)) t.deck.hidden = b.hidden; if (b.colWidth) t.deck.colWidth = b.colWidth; return t.deck; });
-  on('GET', '/api/tenants/:id/stories', async (b, t) => { await Promise.race([research?.ready?.(), new Promise((r) => setTimeout(r, 8000).unref?.())]).catch(() => {}); return { rings: JSON.parse(noPaise(JSON.stringify(stories(t)))) }; }); /* stories saved before the paise fix read clean too */
+  on('GET', '/api/tenants/:id/stories', async (b, t) => { await Promise.race([research?.ready?.(), new Promise((r) => setTimeout(r, +process.env.STORIES_WAIT_MS || 1500).unref?.())]).catch(() => {}); return { rings: JSON.parse(noPaise(JSON.stringify(stories(t)))) }; }); /* stories saved before the paise fix read clean too */
   on('POST', '/api/tenants/:id/stories/:ring/seen', async (b, t, p) => { t.storySeen[p.ring] = Date.now(); return { ok: true }; });
   // a story slide's button: the matching card, made now if the watcher has not posted it yet
   on('POST', '/api/tenants/:id/research-card', async (b, t) => {

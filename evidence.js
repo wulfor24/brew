@@ -31,6 +31,10 @@ const allNums = (s) => [...new Set([...numbersIn(String(s || ''), { strict: true
 /* a creator's paid post is not a customer speaking */
 const PAID = /#\s?ad\b|#sponsored|#collab|paid partnership|\bcomment\s*[“"']?\s*link|link in (?:my )?bio|use (?:my )?code\b/i;
 const voiceKey = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60);
+/* a review's words and key, worked out once per review, not once per card that looks at it (a feed of 120 cards against
+   hundreds of reviews spent most of a feed load re-reading the same reviews) */
+const VW = new WeakMap(), vWords = (v) => { let x = VW.get(v); if (!x) { x = new Set(words(`${v.text} ${v.product || ''}`)); VW.set(v, x); } return x; };
+const VK = new WeakMap(), vKey = (v) => { let k = VK.get(v); if (k === undefined) { k = voiceKey(v.text); VK.set(v, k); } return k; };
 const isEvRow = (x) => /^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) || /^[^:“"]{2,90}\([^)]*\):/.test(x);
 
 /* the learnings a card rests on: by the card's own record (a team card's rows, the reason it was lifted or stepped back, the
@@ -124,9 +128,9 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
       add({ kind: 'read', label: 'What Brew read on your site', value: cut(String(c.sub || '').split(/(?<=[.!?])\s+/)[0], 200), src: cut(c.src || h, 80), url: h ? `https://${h}/` : null }); }
     /* real customer voice on what the card is about: a review or a thread that shares its words (or names its product) */
     const brandW = new Set(words(c.brand || ''));
-    const voiceHits = (voice || []).map((v) => { let hit = 0; for (const w of new Set(words(`${v.text} ${v.product || ''}`))) if (cw.has(w) && !brandW.has(w)) hit++; const prod = v.product && cardText(c).toLowerCase().includes(String(v.product).toLowerCase().split(/\s+[-–|]\s+/)[0]); return { v, s: hit + (prod ? 3 : 0) }; })
+    const voiceHits = (voice || []).map((v) => { let hit = 0; for (const w of (v && typeof v === 'object' ? vWords(v) : new Set(words(`${v?.text} ${v?.product || ''}`)))) if (cw.has(w) && !brandW.has(w)) hit++; const prod = v.product && cardText(c).toLowerCase().includes(String(v.product).toLowerCase().split(/\s+[-–|]\s+/)[0]); return { v, s: hit + (prod ? 3 : 0) }; })
       .filter((x) => x.s >= 3 && !PAID.test(x.v.text)).sort((a, b) => b.s - a.s)
-      .filter((x, i, a) => a.findIndex((y) => voiceKey(y.v.text) === voiceKey(x.v.text)) === i).slice(0, 3); /* the same review listed under two products shows once */
+      .filter(((seen) => (x) => { const k = x.v && typeof x.v === 'object' ? vKey(x.v) : voiceKey(x.v?.text); if (seen.has(k)) return false; seen.add(k); return true; })(new Set())).slice(0, 3); /* the same review listed under two products shows once */
     for (const { v } of voiceHits) add(v.kind === 'review' ? { kind: 'voice', label: `${v.rating ? `${v.rating}★ review` : 'A customer review'}${v.product ? ` of ${cut(v.product, 60)}` : ''}`, value: cut(v.text, 220), src: v.src || 'Your reviews', url: okUrl(v.url), at: v.at ? String(v.at).slice(0, 10) : null }
       : { kind: 'quote', label: v.where ? `Said on ${v.where}` : 'Said online', value: cut(v.text, 220), src: v.platform || hostOf(v.url), url: okUrl(v.url), extra: v.replies ? `${v.replies} replies` : '' });
     /* the pages and records Brew read for this card (its move's sources, as themselves), those the card names first */

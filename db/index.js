@@ -3,6 +3,9 @@
 // DATABASE_URL, or the PG* variables (PGHOST, PGUSER, PGPASSWORD, PGDATABASE). PG_POOL_MAX sizes the pool per instance:
 // web 5, worker 10 (keep instances × pool under the server's max_connections).
 import pg from 'pg';
+import { AsyncLocalStorage } from 'node:async_hooks';
+/* time spent in the database by the request in hand (server.js Server-Timing) */
+export const dbClock = new AsyncLocalStorage();
 
 let pool = null, listener = null, closing = false, connecting = null, everConnected = false;
 const handlers = new Map(); // channel → Set(fn)
@@ -16,7 +19,7 @@ export function db() {
   if (!pool) { pool = new pg.Pool(conf()); pool.on('error', (e) => console.warn('[db] idle client', e.message)); }
   return pool;
 }
-export const q = (text, params) => db().query(text, params);
+export const q = async (text, params) => { const c = dbClock.getStore(); if (!c) return db().query(text, params); const t = performance.now(); try { return await db().query(text, params); } finally { c.ms += performance.now() - t; c.n++; } };
 /* fn(client) inside BEGIN … COMMIT; any throw rolls back */
 export async function tx(fn) {
   const c = await db().connect();
