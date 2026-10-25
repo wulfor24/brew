@@ -134,6 +134,19 @@ const sayable = (line0, ctx) => { /* the brand's never-say words and rulebook bl
   const nv = [...(ctx.bbv?.neverSay || []), ...(ctx.bbv?.never || []), ...((ctx.bbv?.rulebook || []).filter((r) => r?.block || r?.kind === 'block').map((r) => r.word || r.text))].map((w) => String(w || '').trim().toLowerCase()).filter((w) => w.length > 2);
   const line = nv.length ? String(line0 || '').split(/(?<=[.!?])\s+/).filter((sn) => !nv.some((w) => sn.toLowerCase().includes(w))).join(' ') : line0;
   const flags = claimFlags(line, ctx.source || ''); if (!flags.length) return line; let out = line; for (const f of flags) out = out.split(/(?<=[.!?])\s+/).filter((sn) => !sn.toLowerCase().includes(String(f.phrase).toLowerCase())).join(' '); return out.replace(/\b(dermatologist|doctor)[- ](approved|recommended|tested)\b/gi, '').replace(/\s{2,}/g, ' ').trim(); };
+/* the words a still will carry, checked before anything is drawn (QV 25 Oct: a full Arata set printed "Dermat-approved
+   formulations" and a 15 ml stick's slide "₹601 Special Combo Price", the combo's price): a line with a claim the store or the
+   Brand Book doesn't back goes, as in a film (sayable), and so does a price that isn't this product's own. A real review quote
+   (proof) is checked against the reviews where it is used */
+const PRICE = /[₹$£€]\s?\d[\d,]*(?:\.\d+)?|\b\d[\d,]*(?:\.\d+)?\s?(?:rs\.?|inr|usd)\b/gi;
+export const cleanStill = (words, ctx = {}) => { if (!words || typeof words !== 'object') return words; const w = { ...words };
+  const pn = String(ctx.product?.name || ''), row = (ctx.catalog || []).find((x) => x && (x.t || x.name) === pn), own = `${row?.price || ''} ${ctx.product?.price || ''}`;
+  const nums = (x) => (String(x || '').match(PRICE) || []).map((m) => m.replace(/[^\d.]/g, '').replace(/\.0+$/, '')), mine = nums(own);
+  const fix = (x) => { if (typeof x !== 'string' || !x.trim()) return x; let y = sayable(x, ctx); if (y && nums(y).some((n) => !mine.includes(n))) y = ''; return y; };
+  for (const k of ['headline', 'sub', 'cta', 'button', 'badge', 'kicker', 'tag']) if (typeof w[k] === 'string') w[k] = fix(w[k]);
+  const low = (x) => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim(), reviews = (ctx.bbv?.reviews || []).map((r) => low(r?.text)).filter(Boolean);
+  if (Array.isArray(w.proof)) w.proof = w.proof.map((q) => (typeof q === 'string' && !reviews.some((r) => r.includes(low(q))) ? fix(q) : q)).filter(Boolean); /* a real customer's words stay as they wrote them */
+  return w; };
 export function createStudio({ engines, maker, profileOf = async () => null, isMock = () => false, spend = () => true, finish = null, log = console }) {
   /* a film made ready to post (video-finish.js): spoken words as captions (an .srt, and burned in for muted feeds), a cover with the
      headline, a looping GIF for a short silent clip. Local and nearly free; a step that can't run leaves the film as it is and says why */
@@ -217,7 +230,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     /* the first take carries the jam's own words (the headline and line the brand already has, checked and edited), so the picture
        and the copy say the same thing; later takes of a batch write their own hooks */
     const mine = i === 0 ? v1Words(ctx, spec) : null;
-    const words = mine || await maker.write(ctx, board, { ask: spec.count > 1 ? `This is take ${i + 1} of ${spec.count}: a different hook and headline from the others${spec.ask ? `; ${spec.ask}` : ''}.` : spec.ask || '' }).catch(() => ({}));
+    const words = cleanStill(mine || await maker.write(ctx, board, { ask: spec.count > 1 ? `This is take ${i + 1} of ${spec.count}: a different hook and headline from the others${spec.ask ? `; ${spec.ask}` : ''}.` : spec.ask || '' }).catch(() => ({})), ctx);
     const made = [], take = { op: 'studio', by: ctx.by, words, made, studio: { style: st.id, label: st.label, group: st.group, kind: st.kind, size: size.key } };
     if (st.job === 'packshot') { /* a marketplace main image is the real product, never a drawing: cut out of its clearest photo, alone on pure white
          at 85% of the frame (Amazon, Flipkart, Nykaa, Myntra main-image rules); a photo that won't cut out cleanly is said so */

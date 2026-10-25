@@ -159,3 +159,13 @@ test('the Plays page says plays: its title, counts and the out-of-date banner (3
 test('phones: the stage toggle, dots, Creative/Brief and the bar tip have a 44px tap area', () => {
   assert.match(css, /@media \(max-width:640px\)\{\.stg-mode button,\.stg-dot,\.tbm-switch button,\.ship \.tip-i\{position:relative\}/);
 });
+
+test('a still never prints a claim the store does not back, nor another product’s price (QV 25 Oct, Arata full set)', async () => {
+  const { cleanStill } = await import('../jam2/studio.js');
+  const ctx = { source: 'Sleek Hair Styling Stick', product: { name: 'Sleek Hair Styling Stick - 15 ml' }, catalog: [{ t: 'Sleek Hair Styling Stick - 15 ml', price: '₹349' }], bbv: { reviews: [{ text: 'Dermat-approved and gentle, I love it' }] } };
+  const w = cleanStill({ headline: 'Baal Ki Baat: Styling Lab', sub: '₹601 Special Combo Price', badge: 'Dermat-approved formulations', button: 'Shop now', proof: ['Dermat-approved and gentle, I love it', '87% saw growth'] }, ctx);
+  assert.equal(w.headline, 'Baal Ki Baat: Styling Lab'); assert.equal(w.sub, ''); assert.equal(w.badge, ''); assert.equal(w.button, 'Shop now');
+  assert.deepEqual(w.proof, ['Dermat-approved and gentle, I love it'], 'a real review stays; an unbacked figure goes');
+  assert.equal(cleanStill({ sub: 'Now ₹349' }, ctx).sub, 'Now ₹349', 'the product’s own price stays');
+  assert.match(fs.readFileSync(new URL('../jam2/studio.js', import.meta.url), 'utf8'), /const words = cleanStill\(mine \|\| await maker\.write/);
+});
