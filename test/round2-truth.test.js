@@ -36,3 +36,9 @@ import { sameJob } from '../same-ask.js';
 test('one reorder job, whatever channel each card names (QA audit 24 Oct)', () => {
   assert.equal(sameJob('reorder:whatsapp', 'reorder:any'), true); assert.equal(sameJob('reorder:email', 'reorder:ads'), true); assert.equal(sameJob('cart:any', 'reorder:any'), false);
 });
+
+test('QV 25 Oct (2.6): an account move built on Google figures offers Connect Google Ads while Google Ads is not connected', async () => {
+  const fsx = await import('node:fs'); const src = fsx.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  assert.match(src, /const gAcct = want\.includes\('google'\) && \/\\b\(\?:shift\|scale\|pause\|stop\|bid\|budget\|launch\)\\b\/i\.test\(c0\.cta\?\.label/);
+  assert.match(src, /if \(\(tl && want\.includes\(tl\) && tl === 'google'\) \|\| gAcct\) rest\.cta = \{ label: `Connect \$\{SEED\.connectors\.google\?\.name \|\| 'Google Ads'\}`, connect: 'google' \}/);
+});
