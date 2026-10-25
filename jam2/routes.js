@@ -185,9 +185,7 @@ export function mountJam2(d) {
   /* "Always use this for <brand>": a composer pick saved to the Brand Book's Studio picks (the brand's team only) */
   /* a take made earlier in Studio (v2) for this card, landed in the v1 jam it now sits on: free, it is already paid for */
   on('POST', '/api/jam2/jams/:jid/studio/land', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, b.bid), tk = bd && (bd.takes || []).find((x) => x.id === b.takeId);
-    if (!tk) return { error: 'That take is gone.' }; if (!j.v1ch) return { error: 'This jam isn’t linked to a v1 jam.' };
-    const v1 = t.changes?.[j.v1ch]; if ((v1?.versions || []).some((v) => v.studio && tk.file && (v.studio.file === tk.file || (v.studio.slides || []).some((x) => x.file === tk.file) || v.studio.take === tk.id))) return { ok: true, already: true }; /* pressed again: one version per take, never a copy each press (QV 25 Oct) */
-    toV1(t, j, tk); return { ok: true }; }));
+    if (!tk) return { error: 'That take is gone.' }; if (!j.v1ch) return { error: 'This jam isn’t linked to a v1 jam.' }; toV1(t, j, tk); return { ok: true }; })); /* landing the same take again is a no-op (landStudio) */
   on('POST', '/api/jam2/studio/remember', wrap(async (b, t) => { const w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can change what Brew always uses.' };
     const k = String(b.slot || ''), v = b.value ?? null, patch = k === 'quality' ? { quality: v } : k === 'size' ? { size: { kind: b.kind === 'video' ? 'video' : 'image', key: v } } : k === 'cast' ? { cast: v } : k === 'product' ? { photo: { name: b.name, img: v } } : null;
     if (!patch) return { error: 'That can’t be remembered.' };

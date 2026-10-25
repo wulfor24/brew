@@ -2221,7 +2221,9 @@ export function createRemix(o) {
   /* a Studio take (made from this jam's composer, priced and confirmed) lands as the jam's next version: a picture, the slides of a
      set (a listing's photo set), or a film with its poster. The words stay; History says what Studio made and what it cost */
   const tidyL = (x, n) => String(x ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
-  const landStudio = (t, chId, take) => { const ch = C(t, chId); if (!ch || !take?.file) return null; ensurePkg(t, ch);
+  const landStudio = (t, chId, take) => { const ch = C(t, chId); if (!ch || !take?.file) return null;
+    { const had = versionsOf(t, chId).find((v) => v.studio && ((take.id && v.studio.take === take.id) || (v.studio.file && v.studio.file === take.file))); if (had) return had; } /* a take lands once: pressed again (Use it, a resend), no copy each time (QV 25 Oct) */
+    ensurePkg(t, ch);
     const slides = (take.slides || []).filter((x) => x?.file), st = take.studio || {}, label = slides.length > 1 ? `${slides.every((x) => /^aplus-/.test(x.style || '')) ? 'A+' : ch.family === 'listing' ? 'Listing images' : 'Carousel'} · ${slides.length} ${ch.family === 'listing' && !slides.every((x) => /^aplus-/.test(x.style || '')) ? 'images' : slides.every((x) => /^aplus-/.test(x.style || '')) ? 'modules' : 'slides'}` : cleanLabel(st.label || 'Studio') || 'Studio';
     /* a set lands whole: an A+ set as its modules (header, tiles, wide image, each with its own words), a listing as its photo
        set, a carousel or stories set as its cards or slides, the rows following the slides one for one */

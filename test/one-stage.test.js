@@ -139,7 +139,7 @@ test('QV 25 Oct server: the shown quote runs, a still-running final is never fai
   const fr = fs.readFileSync(new URL('../finals-routes.js', import.meta.url), 'utf8'), jr = fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8'), rmx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
   assert.equal((fr.match(/\(b\.expect \|\| fq\.quote\?\.quoteId\) && fq\.quote\?\.quoteId !== b\.expect/g) || []).length, 2, 'both final routes');
   assert.match(fr, /catch \(e\) \{ if \(e\.open\) \{/);
-  assert.match(jr, /return \{ ok: true, already: true \}; \/\* pressed again/); assert.match(rmx, /v\.studio = \{ take: take\.id \|\| null, file: take\.file \|\| null/);
+  assert.match(rmx, /const had = versionsOf\(t, chId\)\.find\(\(v\) => v\.studio && \(\(take\.id && v\.studio\.take === take\.id\)/); assert.match(rmx, /v\.studio = \{ take: take\.id \|\| null, file: take\.file \|\| null/);
   assert.match(jr, /const most = studio\.styleOf\(patch\.style \|\| sp\.style\)\?\.job === 'viral-short' \? 30 : 15/);
 });
 
@@ -154,4 +154,8 @@ test('the Plays page says plays: its title, counts and the out-of-date banner (3
   const i = app.indexOf('/* ---------- The moves: every plan Brew wrote'), seg = app.slice(i, app.indexOf('\n  /* ----------', i + 50));
   assert.match(seg, /<h2>The plays<\/h2>/); assert.match(seg, /\} plays for \$\{esc\(B\.brand\.name\)\}/); assert.match(seg, /play\$\{nStale === 1 \? ' is' : 's are'\} out of date/);
   assert.ok(!/<h2>The moves<\/h2>|\} moves for \$\{esc/.test(seg));
+});
+
+test('phones: the stage toggle, dots, Creative/Brief and the bar tip have a 44px tap area', () => {
+  assert.match(css, /@media \(max-width:640px\)\{\.stg-mode button,\.stg-dot,\.tbm-switch button,\.ship \.tip-i\{position:relative\}/);
 });

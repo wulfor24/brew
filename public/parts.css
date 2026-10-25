@@ -239,3 +239,5 @@ p.am-when small{display:inline;margin:0 6px 0 0}
 @media (max-width:860px){.stg-mode{top:8px;right:8px}.std .st-asset[data-stg="all"] .as-swipe{grid-auto-columns:minmax(0,1fr)}}
 .stg-mode{position:static;align-self:flex-end;margin:0 0 10px;flex:0 0 auto} /* its own row above the piece, never over the card's header */
 @media (max-width:860px){.stg-mode{margin:0 0 8px}}
+/* phones: the stage's small controls get a 44px tap area without changing how they look (QV 25 Oct: One/All 26px, dots 30px, info 22px) */
+@media (max-width:640px){.stg-mode button,.stg-dot,.tbm-switch button,.ship .tip-i{position:relative}.stg-mode button::after,.stg-dot::after,.tbm-switch button::after,.ship .tip-i::after{content:'';position:absolute;inset:-8px -4px}.ship .tip-i::after{inset:-11px}}
