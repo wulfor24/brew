@@ -1021,14 +1021,16 @@ const server = http.createServer(async (req, res) => {
 /* every web instance on the live stack starts with the brands people use already built in memory (opened in the last 30 days,
    most recent first): only the pack is built (no watchers, no paid fills: those start when someone opens the brand, as
    before), one brand at a time with a pause between, so a fresh instance keeps answering while it warms (Phase 4) */
+let warmDone = !(isWeb() && OBJ && process.env.K_SERVICE && !MOCK && !DEMO && process.env.WARM_OFF !== '1'); /* /healthz/ready says so (Cloud Run's startup probe holds traffic until then, at most WARM_READY_MS) */
+const warmStart = Date.now();
 if (isWeb() && OBJ && process.env.K_SERVICE && !MOCK && !DEMO && process.env.WARM_OFF !== '1') setTimeout(async () => { const t0 = Date.now(); let n = 0;
   const all = (await builder.list().catch(() => [])).filter((x) => x.slug && x.status?.ready !== false);
   const lo = new Map(await Promise.all(all.map(async (b) => [b.slug, (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0])));
   for (const b of all.filter((x) => Date.now() - lo.get(x.slug) < 30 * 864e5).sort((x, y) => lo.get(y.slug) - lo.get(x.slug)).slice(0, +process.env.WARM_BRANDS || 20)) {
     if (shuttingDown) break;
     try { await packs.load(b.slug, { fresh: true, share: true }); n++; } catch (e) { console.warn('[warm]', b.slug, e.message); }
-    await new Promise((r) => setTimeout(r, 250)); } /* requests go first between brands */
-  if (n) console.log(`[warm] ${n} brand(s) ready in memory in ${Date.now() - t0} ms`); }, +process.env.WARM_DELAY_MS || 3000).unref?.();
+    await new Promise((r) => setTimeout(r, warmDone ? 250 : 20)); } /* before traffic (the startup probe): straight through; after, requests go first */
+  warmDone = true; if (n) console.log(`[warm] ${n} brand(s) ready in memory in ${Date.now() - t0} ms`); }, +process.env.WARM_DELAY_MS || 1000).unref?.();
 /* Cloud Run stops an instance with SIGTERM (deploys, scale to zero): the team's jams, any workspace still inside its 1.5 s
    save debounce, the day's budget counters, the treg spend ledger and the batched jam emails are written (or sent) before it
    goes, and the listener closes so in-flight requests finish, all inside 6 s */
@@ -1066,6 +1068,8 @@ function timed(req, res, u, fn) {
 }
 async function serve(req, res, u) {
   try {
+    /* the startup probe: ready once the brands are built in memory (or after WARM_READY_MS, so a slow warm never blocks a deploy) */
+    if (u.pathname === '/healthz/ready') { const ok = warmDone || Date.now() - warmStart > (+process.env.WARM_READY_MS || 90e3); res.writeHead(ok ? 200 : 503, { 'content-type': 'text/plain', 'cache-control': 'no-store' }); return res.end(ok ? 'ready' : 'warming'); }
     if (crossSite(req, u)) { res.writeHead(403, { 'content-type': 'application/json', 'cache-control': 'no-store' }); return res.end(JSON.stringify({ error: 'This change has to come from Brew itself.' })); }
     if (demoRoutes && await demoRoutes(req, res, u)) return;
     if (shopifyApp) { await shopifyApp.attach(req, u); if (await shopifyApp.handle(req, res, u)) return; } // a request from inside the Shopify admin carries a session token, not a cookie
