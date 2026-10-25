@@ -44,3 +44,16 @@ test('what this side removed stays removed: a deleted note, a trimmed list, a dr
   mergeItem(mine, theirs, was);
   assert.deepEqual(mine.notes.map((n) => n.id), ['n1', 'n3']); assert.equal('tmp' in mine, false);
 });
+
+test('jams kept as a map (Jam v2): another instance\'s write lands in the same object a running make holds, and both sides\' takes are kept', async () => {
+  const packs = store(), j = () => ({ id: 'j1', boards: [{ id: 'b1', takes: [{ id: 't1', at: 1 }] }, { id: 'b2', takes: [] }], running: {} });
+  const A = { jams: { j1: j() } }, B = { jams: { j1: j() } };
+  const a = createDocSync({ packs, slug: 'arata-in', name: 'private/jams-v2.json', fields: ['jams'] }), b = createDocSync({ packs, slug: 'arata-in', name: 'private/jams-v2.json', fields: ['jams'] });
+  await a.push(A); a.settle(A); b.settle(B);
+  const held = A.jams.j1;                                                     /* a make on A holds this object */
+  A.jams.j1.boards[0].takes.push({ id: 't2', at: 2 }); A.jams.j1.running.b1 = { op: 'studio' };
+  B.jams.j1.boards[1].takes.push({ id: 't9', at: 3 }); B.jams.j1.running.b2 = { op: 'studio' };
+  await a.push(A); await b.pull(B); await b.push(B); await a.pull(A);
+  assert.equal(A.jams.j1, held, 'the same object: the running make writes the live jam');
+  for (const s of [A, B]) { assert.deepEqual(s.jams.j1.boards[0].takes.map((t) => t.id), ['t1', 't2']); assert.deepEqual(s.jams.j1.boards[1].takes.map((t) => t.id), ['t9']); assert.ok(s.jams.j1.running.b1 && s.jams.j1.running.b2, 'both boards still show as making'); }
+});

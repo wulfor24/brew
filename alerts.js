@@ -68,7 +68,7 @@ export function createAlerts({ env = process.env, store = null, treg = null, sen
     const title = TITLE[issue] || issue, html = emailHtml({ eyebrow: 'Brew ops', title, preheader: WHAT[issue] || detail,
       body: mailP(WHAT[issue] || '') + (detail ? mailList([String(detail).slice(0, 400)]) : '') + mailP(`This alert is sent at most once a day. Revision ${env.K_REVISION || 'local'}.`, { muted: true, small: true }) });
     const where = env.ENV === 'production' ? 'production' : env.K_SERVICE === 'shopos-feed' ? 'staging' : env.K_SERVICE || 'local'; /* both sites mail the same inbox */
-    await sendMail({ to: cfg.to, subject: `Brew alert (${where}): ${title}`, html, text: `${title} (${where})\n\n${WHAT[issue] || ''}\n${detail}` }).catch((e) => { delete sent.issues[issue]; log.warn?.('[alerts] send', e.message); }); /* not sent: the next check tries again */
+    await sendMail({ to: cfg.to, subject: `Brew alert (${where}): ${title}`, html, text: `${title} (${where})\n\n${WHAT[issue] || ''}\n${detail}` }).catch((e) => { delete sent.issues[issue]; store?.unclaim?.(issue, sent.day); log.warn?.('[alerts] send', e.message); }); /* not sent: the claim goes back and the next check tries again */
     return true;
   }
   function note(kind, detail = '') {

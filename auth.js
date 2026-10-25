@@ -103,7 +103,10 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     if (isAdmin(u)) return 'admin';
     // a claimed brand: a teammate on the owner's company domain joins on their own with every view (an empty feed lost them);
     // the admins hear and can narrow their views on Team
-    if (m.owner && m.domain && !freeMail(u.email) && domainOf(u.email) === m.domain) { const added = await addMember(slug, u, 'member', 'Same company email', 'all'); if (added === true) joinedMail(slug, u).catch((e) => log.warn('[auth] mail', e.message)); return 'member'; } /* two requests at once: only the one that added them emails the owners */
+    /* a brand Brew's own people claimed for it (Arata: marketing@shopos.ai) has no company domain on file: the brand's own site's
+       domain counts, so its staff (someone@arata.in) join on their own as well (QV 25 Oct) */
+    const dom = m.domain || (m.owner && isFullAccess(m.owner) && !freeMail(u.email) && officialFor(u.email, m.host || (await hostOf(slug).catch(() => '')) || '') ? domainOf(u.email) : null);
+    if (m.owner && dom && !freeMail(u.email) && domainOf(u.email) === dom) { const added = await addMember(slug, u, 'member', 'Same company email', 'all'); if (added === true) joinedMail(slug, u).catch((e) => log.warn('[auth] mail', e.message)); return 'member'; } /* two requests at once: only the one that added them emails the owners */
     return null;
   }
   /* the views this person may use on the brand: null = every view (owners, Brew admins, members from before views, visitors) */

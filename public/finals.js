@@ -79,7 +79,9 @@
     if (r?.error) { F.quote = null; F.err = soft && r.missing ? '' : r.error; } else { F.quote = r.quote; if (r.quote?.fields) { F.fields = r.quote.fields; F.filled = r.quote.filled || null; F.inputs = { ...(r.quote.inputs || {}), ...F.inputs }; } }
     paint(); };
   const runIt = async () => { if (F.busy || !F.quote) return; F.busy = true; paint();
-    const r = await api('POST', `${F.base}/run`, { draftId: F.draftId }).catch((e) => ({ error: e.message })); F.busy = false;
+    /* the press carries the quote it showed (expect): the route refuses a run without it, so a teammate's newer quote never runs on this one */
+    const r = await api('POST', `${F.base}/run`, { draftId: F.draftId, expect: F.quote.quoteId || undefined }).catch((e) => ({ error: e.message })); F.busy = false;
+    if (r?.requote) { await getQuote(true); if (!F.err) { F.err = r.error; paint(); } return; } /* the price changed or ran out: the fresh one shows, nothing was spent */
     if (r?.error) { F.err = r.error; paint(); window.__sound?.('error'); return; } window.__sound?.('send'); toast(F.quote.dummy ? 'Making the final (simulated here).' : F.quote.provider === 'gemini' ? 'Brew is making the final with Gemini. It lands here in a minute or two.' : 'Sloosh is making the final. It lands here in a minute or two.'); close(); if (r.change && A.putCh) { A.putCh(r.change); A.paintStudio?.(); } else window.JamRoom?.pull?.(); };
   const close = () => { if ($('.ph-m.fn-m')) A.closeModal(); F.wid = null; F.base = null; };
   /* open: the draft's photos, references and Spaces come from one call; the draft's own product photo is image 1 */

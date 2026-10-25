@@ -48,6 +48,7 @@ export function createSlackRoutes({ connectors, feed, log = console, secret = ()
     if (!slug || (await connectors.slackSlug(team)) !== slug) return tell('This workspace isn’t connected to that brand in Brew any more.');
     const user = await connectors.slackUser(slug, p.user?.id); if (user.bot) return;
     const r = await feed()?.slackIn({ slug, kind: 'approve', thread: root, user, n: +n });
+    if (r?.notMember) return tell('Only the brand’s team approves in Brew. Open it in Brew to see it.');
     if (!r?.w || r.w.id !== wid) return tell('Brew couldn’t find that jam. Open it in Brew to approve.');
     if (r.stale) return tell(`It changed to v${r.w.current} in Brew since this was posted. Open it in Brew, check it, then approve.`);
     /* the post now says who approved it, in place of the button */
@@ -62,6 +63,7 @@ export function createSlackRoutes({ connectors, feed, log = console, secret = ()
     if (!slug || (await connectors.slackSlug(p.team?.id)) !== slug) return tell('This workspace isn’t connected to that brand in Brew any more.');
     const user = await connectors.slackUser(slug, p.user?.id); if (user.bot) return;
     const r = await feed()?.slackIn({ slug, kind: a.action_id, thread: p.message?.thread_ts || p.message?.ts, user, pid });
+    if (r?.notMember) return tell('Only the brand’s team says yes to a make. Open it in Brew.');
     if (!r?.w || r.w.id !== wid) return tell('Brew couldn’t find that jam. Open it in Brew.');
     if (r.gone) return tell('That was already answered.');
     if (r.error) tell(r.error);

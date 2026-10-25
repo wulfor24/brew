@@ -7,7 +7,8 @@ import { reflow } from '../public/jam2/scene.js';
 import { recipe, SIZES } from './catalogue.js';
 import { headOf } from './core.js';
 
-const KEYS = [...new Set([process.env.HANDOFF_SECRET, process.env.ANTHROPIC_API_KEY, process.env.K_SERVICE ? null : 'local'].filter(Boolean))].map((k) => crypto.createHash('sha256').update('brew-jam2:' + k).digest('hex'));
+/* production opens only links signed with its own HANDOFF_SECRET, never the shared Anthropic key (as handoff.js) */
+const KEYS = [...new Set([process.env.HANDOFF_SECRET, process.env.ENV === 'production' && process.env.HANDOFF_SECRET ? null : process.env.ANTHROPIC_API_KEY, process.env.K_SERVICE ? null : 'local'].filter(Boolean))].map((k) => crypto.createHash('sha256').update('brew-jam2:' + k).digest('hex'));
 const sig = (key, s) => crypto.createHmac('sha256', key).update(s).digest('base64url').slice(0, 14);
 export const tokenFor = (kind, slug, jid, nonce) => `${slug}~${jid}~${nonce}~${sig(KEYS[0], `${kind}/${slug}/${jid}/${nonce}`)}`;
 export const parseToken = (kind, tok) => { const [slug, jid, nonce, s] = String(tok || '').split('~'); if (!slug || !jid || !nonce || !s) return null;

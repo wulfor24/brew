@@ -70,3 +70,9 @@ test('a reel final takes its pictures from its beats, never an image brief left 
   const src = (await import('node:fs')).readFileSync(new URL('../finals-routes.js', import.meta.url), 'utf8');
   assert.match(src, /isVideo\(ch\) && \(p\.script \|\| \[\]\)\.some\(\(x\) => x\?\.shot\) \? '' : p\.imageBrief/);
 });
+
+test('QV 25 Oct: the finals sheet presses with the quote it showed and asks for a fresh one when the price changed', async () => {
+  const src = (await import('node:fs')).readFileSync('public/finals.js', 'utf8');
+  assert.match(src, /api\('POST', `\$\{F\.base\}\/run`, \{ draftId: F\.draftId, expect: F\.quote\.quoteId \|\| undefined \}\)/);
+  assert.match(src, /if \(r\?\.requote\) \{ await getQuote\(true\);/);
+});

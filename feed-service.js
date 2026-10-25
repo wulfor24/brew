@@ -259,7 +259,9 @@ export function followRead({ builder, slug, loadSeed, send, isOpen = () => true,
    A guest chats, edits the brief and makes drafts; sharing or sending the brief, its status, approving, assigning, deciding and
    discarding (the jam, or its studio change, which discards the jam with it: remix.js) stay with the team */
 export const GUEST_DO = /^(message|iterate|pick|version|edit|reference|canvas|doc|doc\/(ask|add|sync)|jb|jb\/import|draft|draft\/[^/]+\/drop|plan\/(answer|add))$/;
-export const GUEST_CHANGE_NO = /^(discard|restore)$/;
+/* and the paid makes on a change (a final, a video, a remake, listing photos, a new picture or its variants, a CTA make): a guest's
+   share link never spends the brand's budget (QV 25 Oct); the team makes those */
+export const GUEST_CHANGE_NO = /^(discard|restore|final\/(quote|run|checkpoint)|video|remake|listing-photos|image|variants|cta-make)$/;
 export function guestAllows(path, { wids = [], changes = {}, cards = new Set() } = {}) {
   if (!wids.length) return false;
   let m = path.match(/^\/api\/work\/([^/]+)(\/(.*))?$/); if (m) return wids.includes(m[1]) && GUEST_DO.test(m[3] || '');
@@ -1987,7 +1989,10 @@ export function createFeedService(o) {
      picker shows them); adding, editing and removing are the team's, with the same member check as a drop into brand memory */
   const refSlug = (t, p) => { const slug = t.brandId || DEFAULT_BRAND; return p.slug === slug ? slug : null; };
   const refTeam = (t) => { const r = reqOf(t); return r?.member || process.env.DEMO_MODE === '1' ? null : { status: r?.email ? 403 : 401, error: 'Only this brand’s team changes its References.', team: true }; };
-  on('GET', '/api/brands/:slug/references', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; return { items: await REFS.list(slug), jobs: REFS.JOBS }; });
+  /* reading is for the team, Brew's staff and a guest of one of the brand's jams: never a fresh workspace from outside (QV 25 Oct) */
+  on('GET', '/api/brands/:slug/references', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; const r = reqOf(t);
+    if (!(r?.member || r?.guest || process.env.DEMO_MODE === '1')) return { status: r?.email ? 403 : 401, error: 'Only this brand’s team sees its References.', team: true };
+    return { items: await REFS.list(slug), jobs: REFS.JOBS }; });
   on('POST', '/api/brands/:slug/references', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; const no = refTeam(t); if (no) return no;
     const x = await REFS.add(slug, { data: b.data, label: b.label || b.name, job: b.job, keep: b.keep, product: b.product, by: meOf(t)?.email || null }); return x.error ? x : { ok: true, item: x.item, same: !!x.same, items: await REFS.list(slug) }; });
   on('POST', '/api/brands/:slug/references/:rid', async (b, t, p) => { const slug = refSlug(t, p); if (!slug) return { status: 400, error: 'This workspace is for another brand.' }; const no = refTeam(t); if (no) return no;
@@ -2445,6 +2450,9 @@ export function createFeedService(o) {
   /* a reply in a jam's Slack thread, or its Approve button pressed (server.js checked Slack's signature and found the brand) */
   const slackIn = async ({ slug, kind, thread, ts, user = {}, text = '', n = null, pid = null, mention = false }) => {
     const br = await packs.load(slug); if (!br) return null; await JAMS.load(br.slug);
+    /* approving a version or saying yes to a make (paid) is the brand's team's: someone in the channel whose Slack email isn't on the
+       team is told to open it in Brew (QV 25 Oct). Replies stay open to the channel; their answers leave the team's numbers out */
+    if (['approve', 'apply'].includes(kind) && !(user.email && o.isMemberEmail && await o.isMemberEmail(br.slug, user.email).catch(() => false))) return { notMember: true, w: { id: null } };
     const w = (JAMS.peek(br.slug)?.work || []).find((x) => x.slack?.ts === thread); if (!w) return JAM2 ? JAM2.slackIn({ slug: br.slug, kind, thread, ts, user, text, n }) : null; /* not a v1 jam's thread: maybe a Jam v2 one */
     const t = (w.slack.tid && await getTenant(w.slack.tid).catch(() => null)) || brandTenants(br)[0]; if (!t) return null;
     /* who wrote in Slack is a member of the brand's team only when their Slack email is on the team: then Brew's answer in the
@@ -2522,7 +2530,7 @@ export function createFeedService(o) {
       if (/^\/api\/tenants\/[^/]+\/stories$/.test(u.pathname)) { send(res, 200, { rings: [], teamOnly: true }); return true; }
       /* the onboarding stream replays the brand's whole read (its findings): outside the team it only says it is ready */
       if (/^\/api\/tenants\/[^/]+\/onboarding$/.test(u.pathname)) { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.end(`data: ${JSON.stringify({ type: 'ready', teamOnly: true })}\n\n`); return true; }
-      if (/^\/api\/tenants\/[^/]+\/(deck|pulse|engine|remixes|learning|ask|tuning)$/.test(u.pathname)) { send(res, 200, { teamOnly: true }); return true; }
+      if (/^\/api\/tenants\/[^/]+\/(deck|pulse|engine|remixes|learning|ask|tuning|rivals)$/.test(u.pathname)) { send(res, 200, { teamOnly: true }); return true; } /* rivals: the brand's rival read is the team's, like research (QV 25 Oct) */
       if (/^\/api\/tenants\/[^/]+\/ai-answers$/.test(u.pathname)) { send(res, 200, { ai: null, teamOnly: true }); return true; } /* the AI answers ring is the team's, like stories */
       const bareCard = /^\/api\/cards\/([^/]+)$/.exec(u.pathname), guestCard = bareCard && viewer?.email && (JAMS.peek(br.slug)?.work || []).some((w) => JAMS.guestWids(br.slug, viewer.email).includes(w.id) && w.cardId === decodeURIComponent(bareCard[1]));
       if (/^\/api\/cards\//.test(u.pathname) && !guestJam && !guestCard && !(t0 && viewer?.email && guestOk(t0, viewer.email, u.pathname))) { send(res, viewer?.email ? 403 : 401, { error: 'This brand’s cards are for its team.', team: true, signin: !viewer?.email }); return true; }

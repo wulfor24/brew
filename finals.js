@@ -238,8 +238,9 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
         const units = Math.ceil(q.credits || 0) || 1;
         /* the brand's share is taken before the paid call (five finals pressed at once can't all pass a check and all charge, QV 25 Oct)
            and given back if Sloosh doesn't take it */
-        if (budget.refusal('credits', slug, units) || budget.spend('credits', slug, units) === false) throw Object.assign(new Error(budget.why('credits', slug, null, units)), { budget: true });
-        const giveBack = () => budget.refund?.('credits', slug, units);
+        /* the record says once its units were taken: a run picked up again after a crash never takes them twice */
+        if (!rec.spent) { if (budget.refusal('credits', slug, units) || budget.spend('credits', slug, units) === false) throw Object.assign(new Error(budget.why('credits', slug, null, units)), { budget: true }); rec = { ...rec, spent: units }; }
+        const giveBack = () => { budget.refund?.('credits', slug, rec.spent || units); rec = { ...rec, spent: 0 }; };
         await writeRec(slug, rec);
         let r; try { r = q.space ? await sloosh.runSpace({ quote: q.quoteId, runKey, confirmed: true }) : await sloosh.generate({ quote: q.quoteId, runKey, confirmed: true }); }
         catch (e) { giveBack(); noteRefusal(slug, q.space ? 'run_space' : 'generate', { quote: q.quoteId, model: q.model }, e); rec = { ...rec, state: 'failed', error: `Sloosh did not start this one (${String(e.message).slice(0, 200)}). Nothing was charged; ask for a fresh quote.`, charged: 0, failedAt: now() }; await writeRec(slug, rec); throw Object.assign(new Error(rec.error), { rec, cause: e, soft: true }); }

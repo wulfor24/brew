@@ -370,6 +370,8 @@ treg.onCharge(() => budget.touch());
 /* ops alerts to the ShopOS team (alerts.js): once per issue per day, the day's list in the bucket */
 const alerts = createAlerts({ treg, log: console, shared: COUNTERS, store: { get: () => packs.getJSON('_brew', 'alerts.json', null), put: (x) => packs.put('_brew', 'alerts.json', x),
     /* Postgres: the day's alert list edited under its row lock, so only one instance sends each alert */
+    /* an alert whose email failed gives its claim back, so the next check (any instance) tries again */
+    unclaim: OBJ ? (issue, day) => packs.update('_brew', 'alerts.json', (cur) => (cur?.day === day && cur.issues?.[issue] ? { ...cur, issues: Object.fromEntries(Object.entries(cur.issues).filter(([k]) => k !== issue)) } : undefined)).catch(() => {}) : null,
     claim: OBJ ? async (issue, day) => { let mine = false; await packs.update('_brew', 'alerts.json', (cur) => { const x = cur?.day === day ? cur : { day, issues: {} }; if (x.issues?.[issue]) return undefined; mine = true; return { ...x, issues: { ...(x.issues || {}), [issue]: new Date().toISOString() } }; }); return mine; } : null },
   sendMail: async ({ to, subject, html, text }) => { const key = process.env.RESEND_API_KEY; if (!key) throw new Error('no RESEND_API_KEY');
     const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Brew <hello@send.joinsquareup.com>', to: [to], subject, html, text }) });
@@ -469,7 +471,7 @@ const SEEN_AT = new Map(); /* a page view nudges the worker once an hour a brand
 /* clicks that wait on long work go on their own queue (jobs.js 'slow'): four slow ones never hold every slot the quick clicks need (QV 25 Oct) */
 const SLOW_BUILD = /^(pdf|teamStatics|checkData|confirm|marketCheck|rewrite|redo|remake)/;
 /* a click nobody waits for any more (it timed out, or sat in a queue an older worker revision doesn't work) is dropped, never run hours later */
-whenLeader(() => JOBS.define('builder', async ({ m, args, until }) => { if (until && Date.now() > until) { console.warn(`[build] ${m} dropped: asked ${Math.round((Date.now() - until) / 60e3)} min past its wait`); return { expired: true }; }
+whenLeader(() => JOBS.define('builder', async ({ m, args, until }) => { if (until && Date.now() > until) { console.warn(`[build] ${m} dropped: asked ${Math.round((Date.now() - until) / 60e3)} min past its wait`); throw Object.assign(new Error('That took too long and was dropped. Press it again.'), { expired: true }); } /* an error, never a result a late joiner would take for an answer */
   if (BUILD_LOCAL.has(m) || typeof builder0[m] !== 'function') throw new Error(`builder.${m} is not asked of the worker`);
   const r = await builder0[m](...(args || [])); return m === 'pdfOn' && r ? { name: r.name } : r; }, { queue: 'interactive', maxTries: 1 }));
 const builder = isWorker() ? builder0 : new Proxy(builder0, { get(t, k) { const v = t[k]; if (typeof v !== 'function' || BUILD_LOCAL.has(k)) return v;

@@ -11,6 +11,8 @@ const SEP = '\u0001';
    order. was: this instance's copy at its last sync, so an item or field removed here stays removed, never brought back (QV 25 Oct) */
 const byId = (a) => Array.isArray(a) && a.length > 0 && a.every((x) => x && typeof x === 'object' && x.id != null);
 const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
+/* the stored item put into the object this instance already holds (its keys replaced), so anything holding it sees the new state */
+const inPlace = (cur, next) => { if (!isObj(cur) || !isObj(next)) return next; for (const k of Object.keys(cur)) if (!(k in next)) delete cur[k]; return Object.assign(cur, next); };
 export function mergeItem(mine, theirs, was = null) {
   if (!isObj(mine) || !isObj(theirs)) return mine;
   for (const [k, tv] of Object.entries(theirs)) {
@@ -35,7 +37,8 @@ export function createDocSync({ packs, slug, name, fields, log = console }) {
   const partsOf = (state) => splitDoc(Object.fromEntries(fields.map((f) => [f, state[f]])), { always: true });
   const hashes = (parts) => new Map(parts.map(([p, b]) => [p, md5(b)]));
   /* after a load: what this instance holds now is what is stored */
-  const keepBodies = (parts) => { wasBody = new Map(parts.filter(([p]) => p.includes(`${SEP}a${SEP}`)).map(([p, b]) => [p, b])); };
+  const item = (p) => p.includes(`${SEP}a${SEP}`) || p.includes(`${SEP}o${SEP}`); /* one part per item (a list's or a map's): what a merge needs as "was" */
+  const keepBodies = (parts) => { wasBody = new Map(parts.filter(([p]) => item(p)).map(([p, b]) => [p, b])); };
   const settle = (state) => { const parts = partsOf(state); base = hashes(parts); keepBodies(parts); };
   async function push(state) {
     const parts = partsOf(state), now = hashes(parts), set = [], del = [];
@@ -65,12 +68,14 @@ export function createDocSync({ packs, slug, name, fields, log = console }) {
       } else if (v && typeof v === 'object') {
         const keys = new Set();
         for (const r of rows.filter((x) => x.part.startsWith(`${pre}o${SEP}`))) { const k = r.part.slice(pre.length + 2); keys.add(k);
-          if (!dirty(r.part) && local.get(r.part) !== md5(r.body.toString('utf8'))) { v[k] = JSON.parse(r.body.toString('utf8')); took++; } }
+          const b = r.body.toString('utf8');
+          if (!dirty(r.part)) { if (local.get(r.part) !== md5(b)) { v[k] = inPlace(v[k], JSON.parse(b)); took++; } } /* in place: a job holding this jam keeps the live one */
+          else if (was.has(r.part) && was.get(r.part) !== md5(b) && v[k]) { mergeItem(v[k], JSON.parse(b), wasBody.has(r.part) ? JSON.parse(wasBody.get(r.part)) : null); took++; } } /* both changed it: merged */
         for (const k of Object.keys(v)) { const p = `${pre}o${SEP}${k}`; if (!keys.has(k) && was.has(p) && !dirty(p)) { delete v[k]; took++; } }
       } else { const r = remote.get(f); if (r && !dirty(f)) state[f] = JSON.parse(r.body.toString('utf8')); }
     }
     base = new Map(rows.map((r) => [r.part, md5(r.body.toString('utf8'))])); /* what is stored now; this instance's own changes stay ahead of it */
-    wasBody = new Map(rows.filter((r) => r.part.includes(`${SEP}a${SEP}`)).map((r) => [r.part, r.body.toString('utf8')]));
+    wasBody = new Map(rows.filter((r) => item(r.part)).map((r) => [r.part, r.body.toString('utf8')]));
     return took;
   }
   return { push, pull, settle };

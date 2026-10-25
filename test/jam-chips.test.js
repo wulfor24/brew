@@ -111,10 +111,11 @@ test('the chips stay read-only: no account writes, no posted wording; demo visit
   const DEMO_OK = new RegExp(/const DEMO_OK = \/(.+)\/;/.exec(fs0)[1]);
   assert.ok(!DEMO_OK.test('/api/changes/ch_1/remake'), 'a demo visitor can’t make media');
 });
-test('a jam guest reaches its own change’s chips, never discard or restore', async () => {
+test('a jam guest reaches its own change’s chips, never discard, restore or a paid remake', async () => {
   const { guestAllows } = await import('../feed-service.js'), g = { wids: ['w1'], changes: { ch_1: { workId: 'w1' } } };
-  for (const r of ['pack', 'impact', 'remake']) assert.ok(guestAllows(`/api/changes/ch_1/${r}`, g), `a guest may use ${r}`);
-  for (const r of ['discard', 'restore']) assert.ok(!guestAllows(`/api/changes/ch_1/${r}`, g), `a guest may not ${r}`);
+  for (const r of ['pack', 'impact']) assert.ok(guestAllows(`/api/changes/ch_1/${r}`, g), `a guest may use ${r}`);
+  /* a remake is a paid make: the team's, never a guest's on the brand's budget (QV 25 Oct) */
+  for (const r of ['discard', 'restore', 'remake']) assert.ok(!guestAllows(`/api/changes/ch_1/${r}`, g), `a guest may not ${r}`);
   assert.ok(!guestAllows('/api/changes/ch_2/pack', g), 'not another jam’s change');
 });
 

@@ -48,7 +48,7 @@ export function createVault(packs) {
         let kept = true;
         /* taken over while this one waited on the provider: still written when the stored token is the one this refresh started from
            (nobody wrote a newer one), so a rotated refresh token is never thrown away; a newer one already there is kept */
-        await packs.update(slug, f, async (x) => { if (!x) return undefined; if (x.lk?.by !== me && x.c !== claimedC) { kept = false; return undefined; } return next === cur ? { ...x, lk: null } : { c: encrypt(JSON.stringify(next)), at: Date.now(), lk: null }; });
+        await packs.update(slug, f, async (x) => { if (!x) return undefined; if (x.lk?.by !== me && (x.c !== claimedC || (x.lk && x.lk.until > Date.now()))) { kept = false; return undefined; } /* another's live claim is never cleared, nor a newer token overwritten */ return next === cur ? { ...x, lk: x.lk?.by === me ? null : x.lk } : { c: encrypt(JSON.stringify(next)), at: Date.now(), lk: null }; });
         if (!kept) { const now = await packs.getJSON(slug, f, null).catch(() => null); return now?.c ? JSON.parse(decrypt(now.c)) : next; }
         return next;
       }

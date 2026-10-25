@@ -171,3 +171,13 @@ test('a member’s name and picture follow their Google account, and everyone on
   const x = (await auth.getMembers('cozy')).members.find((y) => y.email === 'raj@gmail.com'); assert.equal(x.name, 'Raj Kumar'); assert.equal(x.pic, 'https://x/p2.jpg');
   const a = await auth.accessOf('cozy', { email: 'raj@gmail.com' }); assert.ok(a.team.some((y) => y.email === 'ana@cozysnugglet.shop')); assert.equal(a.members, undefined, 'views stay with admins');
 });
+
+test('QV 25 Oct: a brand Brew\'s own people claimed (owner on shopos.ai) lets its own domain\'s staff join on their own; others still need an invite', async () => {
+  const packs = memPacks(); HOSTS.arata = 'arata.in'; const auth = mkAuth(packs);
+  await packs.put('arata', 'private/members.json', { owner: 'marketing@shopos.ai', members: [{ email: 'marketing@shopos.ai', role: 'owner', seats: 'all', at: 1 }], invites: [], requests: [] });
+  assert.equal(await auth.roleOf('arata', { email: 'riya@arata.in', name: 'Riya' }), 'member', 'the brand\'s own domain joins');
+  assert.equal(await auth.roleOf('arata', { email: 'mallory@gmail.com' }), null, 'a free mail address does not');
+  assert.equal(await auth.roleOf('arata', { email: 'x@arata-fake.in' }), null, 'a look-alike domain does not');
+  /* a brand claimed by its own founder keeps the founder's domain rule as before */
+  const { auth: a2 } = await owned(); assert.equal(await a2.roleOf('cozy', { email: 'raj@cozysnugglet.shop' }), 'member');
+});
