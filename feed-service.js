@@ -961,7 +961,7 @@ export function createFeedService(o) {
       const refFile = !ref ? null : named ? ref /* the guard fetches the named product's photos itself (a store URL too) */ : await fileOfRel(ref);
       if (refFile && spend('image')) {
         try {
-          const buf = await geminiImage({ srcFile: refFile, prompt: buildDraft({ kind: 'image', title: clean(j.title), visual: j.scene || 'the product in use in a real moment, soft daylight', hasSrc: true, ratio: '4:5', topSpace: true, product: { name: named?.t || `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt,
+          const buf = await geminiImage({ srcFile: refFile, prompt: buildDraft({ kind: 'image', title: 'an ad' /* never the card's words: the model draws a title it is given (25 Oct, Cozy) */, visual: j.scene || 'the product in use in a real moment, soft daylight', hasSrc: true, ratio: '4:5', topSpace: true, product: { name: named?.t || `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt,
             ratio: '4:5', text: words, catalog: cat.length ? cat : null, brand: BN(), ...(named ? { named } : {}), slug: B()?.slug, fallback: true, ...(process.env.WATCHER_IMAGE_MODEL ? { model: process.env.WATCHER_IMAGE_MODEL } : {}) });
           if (buf?.guard?.genFailed) imgNote = `the real product photo (the new picture was held back: ${String(buf.guard.error || '').slice(0, 80)})`;
           else { const key = crypto.createHash('sha1').update(j.title + j.scene).digest('hex').slice(0, 16); saveGen(key + '.png', buf); img = `gen/${key}.png`; imgNote = 'made around the product the idea names, checked as an ad'; }

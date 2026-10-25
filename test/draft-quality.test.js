@@ -113,6 +113,7 @@ test('watcher idea pictures are context driven: the product the idea names, the 
   assert.match(body, /pricedProduct\(words, cat/, 'the product the idea names');
   assert.match(body, /text: words, catalog:/, 'the card\'s words go to the guard (product and look checks)');
   assert.doesNotMatch(body, /'gemini-2\.5-flash-image'/, 'never the cheap model by default');
+  assert.doesNotMatch(body, /buildDraft\(\{ kind: 'image', title: clean\(/, 'the card title never goes into the picture prompt: the model draws it as words');
   assert.match(src, /const healWatcherLooks = /); assert.match(src, /healWatcherLooks\(t\)/, 'saved watcher pictures heal on every rank');
 });
 
