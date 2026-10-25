@@ -479,7 +479,7 @@
       if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Tab') { e.preventDefault(); opts[JM.mi || 0]?.click(); return; }
       if (e.key === 'Escape') { e.preventDefault(); JM.noMention = true; paint(); return; }
     }
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#jm-f')?.requestSubmit(); }
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); $('#jm-f')?.requestSubmit(); }
   });
   document.addEventListener('focusout', (e) => { const d = e.target.closest?.('[data-jm-doc]'); if (!d) return; (JM.saveT ? saveDoc(d) : Promise.resolve()).then(() => setTimeout(() => { if (!document.activeElement?.closest?.('[data-jm-doc]')) A.repaintDetail(); }, 0)); });
 

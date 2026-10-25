@@ -46,7 +46,7 @@
     S.spec = { ...S.spec, ...patch }; S.pop = null; price(); };
 
   async function go(redo = false) {
-    const pl = S?.plan; if (!pl || pl.error || pl.usd == null || S.working) return; const mine = S; S.working = true; paint();
+    const pl = S?.plan; if (!pl || pl.error || pl.usd == null || S.working || S.making || anyBusy()) return; /* one paid make at a time, whichever button asked */ const mine = S; S.working = true; paint();
     const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/make`, { spec: S.spec, confirmUsd: pl.usd, bid: S.bid, redo: redo || S.made });
     if (S !== mine) return; S.working = false;
     if (r?.needsConfirm) { S.plan = r.plan; paint(); return H.toast?.(`The price changed to ${usd(r.plan.usd)}. Tap Make it again.`); }
@@ -55,7 +55,7 @@
     H.making?.(S.chId, S.making); paint(); poll();
   }
   /* a quick preview made: the full one is the same set-up at standard quality, priced first (the bar's Make the full one) */
-  function fullPrice() { if (!S?.spec || S.spec.quality !== 'preview' || !S.jid) return null; const spec = { ...S.spec, quality: 'standard' }, key = JSON.stringify(spec);
+  function fullPrice() { if (!S || S.loading) return null; /* still opening: priced in a moment */ if (S.error) return { error: S.error }; if (!S.spec || !S.jid) return { error: 'The studio isn’t open for this piece yet: open the Set-up tab.' }; if (S.spec.quality !== 'preview') return { error: 'This version is already the full one.' }; const spec = { ...S.spec, quality: 'standard' }, key = JSON.stringify(spec);
     if (S.full?.key === key) return S.full.plan; S.full = { key, plan: null }; const mine = S;
     api('POST', `/api/jam2/jams/${S.jid}/studio/plan`, { spec }).then((r) => { if (S === mine && S.full?.key === key) { S.full.plan = r?.plan || { error: r?.error || 'No price yet.' }; paint(); } }); return null; }
   function makeFull() { const pl = fullPrice(); if (!pl || pl.error || pl.usd == null || S.working) return; S.spec = { ...S.spec, quality: 'standard' }; S.plan = pl; S.full = null; go(true); }
@@ -237,5 +237,5 @@
   const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), working: !!S.working, made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null, frames: Array.isArray(S.spec?.set) ? S.spec.set.length : null /* the stage previews this many frames */, sel: S.sel ?? 0 /* the slide picked here is the one on the stage */, error: S.error || null } : null);
   const reset = () => { clearTimeout(pollT); clearTimeout(planT); S = null; };
   const openSetup = () => { if (!S) return; S.open = true; H.showSetup?.(); paint(); };
-  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), make: () => go(false) /* the bar's Make it */, select: (i) => { if (S) S.sel = +i || 0; }, fullPrice: () => fullPrice(), makeFull: () => makeFull(), afterPaint: () => toSel(false), ask, adjustHtml };
+  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), make: () => go(false) /* the bar's Make it */, select: (i) => { if (S) S.sel = +i || 0; }, fullPrice: () => fullPrice(), makeFull: () => makeFull(), /* a version restored: Redo, Made with and the full one follow the version on the stage, not the newest take (QV 25 Oct) */ respec: (v) => { if (!S?.spec || !v) return; const sl = (v.slides || []).map((x) => x.style).filter(Boolean); S.spec = { ...S.spec, ...(v.quality ? { quality: v.quality } : {}), ...(v.style ? { style: v.style } : {}), ...(v.size ? { size: v.size } : {}), ...(sl.length > 1 ? { set: sl } : {}) }; S.full = null; S.sel = 0; price(); }, afterPaint: () => toSel(false), ask, adjustHtml };
 })();

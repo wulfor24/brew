@@ -1554,7 +1554,7 @@
     addEventListener('pointermove', (e) => { if (gx == null) return; if (Math.abs(e.clientX - gx) >= 24) { gx = e.clientX; sound('ratchet'); } }, { passive: true });
     addEventListener('pointerup', () => { gx = null; }); }
   document.addEventListener('submit', (e) => { if (e.target.closest('#dp, .std, .jm, .rxp, #url-form')) sound('send'); }, true);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && e.target.matches?.('#jm-in, .std textarea, .std input[type="text"]') && String(e.target.value || '').trim() && !$('.jm-mentions:not([hidden])')) sound('send'); }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.target.matches?.('#jm-in, .std textarea, .std input[type="text"]') && String(e.target.value || '').trim() && !$('.jm-mentions:not([hidden])')) sound('send'); }, true);
   /* phones and the keyboard: track the part of the screen the keyboard leaves visible, so pinned inputs sit right above it
      (iOS doesn't shrink the page when the keyboard opens), hide the tab bar while typing, and scroll the field into view */
   if (window.visualViewport) { const vv = visualViewport, de = document.documentElement;
@@ -1820,7 +1820,7 @@
     const io = new IntersectionObserver((es) => es.forEach((en) => en.isIntersecting && en.target.classList.add('on')), { threshold: .4 });
     $$('#notes .mnote').forEach((n) => io.observe(n));
   };
-  addEventListener('keydown', (e) => { if (view !== 'remix' || !$('.stg-nav') || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('input, textarea, select, [contenteditable]')) return; if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); $(`[data-stg-go="${e.key === 'ArrowLeft' ? -1 : 1}"]`)?.click(); } });
+  addEventListener('keydown', (e) => { if (view !== 'remix' || !$('.stg-nav') || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('input, textarea, select, [contenteditable], [role="dialog"], [role="menu"]') || RX.vmenu || $('.bg-ov')) return; /* never while the game, a sheet or a menu has the keys */ if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); $(`[data-stg-go="${e.key === 'ArrowLeft' ? -1 : 1}"]`)?.click(); } });
   { let sr; addEventListener('resize', () => { clearTimeout(sr); sr = setTimeout(() => { if (view === 'remix') stageFrames(); }, 120); }); }
   let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { placeStickers(); placeNotes(); }, 200); });
 
@@ -4087,11 +4087,11 @@
       main = `<button class="btn btn-primary ship-go" ${opt ? `data-opt-use="${esc(opt.id)}"` : 'disabled'}>${ic('check', 's16')}${opt ? `Use ${esc(opt.name)}` : 'Pick one above'}</button>`; }
     else if (fix) { const fx = ch.fixes || []; head = fx.length > 1 ? `<details class="ship-fixes" data-keep="fixes"><summary>${fx.length} things to fix before it ships</summary><ol>${fx.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>` : `Needs a fix: ${esc(fx[0] || 'see the checks')}`; tip = `Before it can ship: ${fx.join('; ')}.`; main = `<button class="btn btn-primary ship-go" data-rx="fix">${ic('sparkles', 's16')}Fix it with AI${freeTag()}</button>`; }
     else if (blockOf(ch)) { const bk = blockOf(ch); head = `Can’t ship yet: ${esc(bk)}`; tip = 'A check failed that Brew can’t fix by rewriting: ask in the chat what to do, or change the plan.'; main = `<button class="btn btn-primary ship-go" data-tab="iterate">${ic('sparkles', 's16')}Ask Brew what to do</button>`; }
-    else if (ch.verdict === 'confirm' && (ch.confirm || []).length) { head = `Tick your own checks first · ${(ch.confirm || []).length}`; tip = `Your checks: ${(ch.confirm || []).join('; ')}. Tick them in the Brief tab, then Send brief.`; main = `<button class="btn btn-primary ship-go" data-tab="details">${ic('check', 's16')}Tick your checks</button>`; }
+    else if (ch.verdict === 'confirm' && (ch.confirm || []).length) { head = `Tick your own checks first · ${(ch.confirm || []).length}`; tip = `Your checks: ${(ch.confirm || []).join('; ')}. Tick them in the Details tab, then Send brief.`; main = `<button class="btn btn-primary ship-go" data-tab="details">${ic('check', 's16')}Tick your checks</button>`; }
     else if (fp) { head = `<brew-load class="spin"></brew-load>${fp.fallback ? 'Brew' : 'Sloosh'} is making the final${nm}`; tip = 'It takes a few minutes. We’ll notify you when it’s ready; you can leave this page.'; main = `<button class="btn btn-primary ship-go" disabled aria-busy="true"><brew-load class="spin"></brew-load>Making the final ${reel ? 'reel' : 'picture'}…</button>`; }
     else if (media && !fin && isReel(ch) && !p.video) { head = `Script ready${nm}`; tip = 'Make the video to see it moving. It’s a quick draft; the final reel is made after.'; main = `<button class="btn btn-primary ship-go" data-rx="video" title="Make the video">${ic('vid', 's16')}Make it${freeTag(true)}</button>`; }
     else if (media && !fin) { head = `Draft ${reel ? 'video' : 'photo'} ready${nm}`; tip = `A quick draft made by Brew to check the idea. The final ${reel ? 'reel' : 'picture'} is made on Sloosh, ready to post. Then Send brief.`; main = finalBtn(ch); }
-    else if (media) { const look = sv && ch.publish?.made ? lookOf(ch).map((x) => x.t) : []; /* soft ones too: a preview is "ready" yet still needs the full one */ /* what needs the look, said: "Needs a look · 1" named nothing (25 Oct, Arata stories) */
+    else if (media || sv) { const look = sv && ch.publish?.made ? lookOf(ch).map((x) => x.t) : []; /* soft ones too: a preview is "ready" yet still needs the full one */ /* what needs the look, said: "Needs a look · 1" named nothing (25 Oct, Arata stories) */
       const fullOf = sv && sv.quality === 'preview' && !RX.viewing ? window.CreativeStage?.fullPrice?.() : undefined; /* a quick preview: the next step is the full one */
       head = look.length > 1 ? `<details class="ship-fixes" data-keep="fixes"><summary>${look.length} things to look at before you post it</summary><ol>${look.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>` : look.length ? `Needs a look: ${esc(look[0])}` : `${sv ? (ch.publish?.made ? (ch.publish.ready ? 'Ready to publish' : `Needs a look · ${ch.publish.bad}`) : 'Made by Brew Studio') : 'Final ready'}${nm}`; tip = 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and posts or runs it. Its status shows in the top bar.'; main = send;
       if (fullOf !== undefined) { tip = 'This is the quick, low-resolution preview of the idea. The full one is made the same way at standard quality, priced first; then send the brief.';
@@ -4099,7 +4099,7 @@
     else if (po) { head = `Ready${nm}`; tip = `${po.filled ? `Opens ${PO_WHERE(po)} with the post filled in, and copies it too.` : `Copies the post and opens ${PO_WHERE(po)}; paste it there.`} You post it yourself; Brew never posts in communities for you.${po.rule ? ` ${po.rule}` : ''}`; main = poBtn(po, true); }
     /* a post with no thread to open: its main button copies the post (it said "you post it yourself" over a Send brief button: QA J-20) */
     else if (ch.family === 'post' && ch.target?.conn !== 'meta' && (p.copy || p.title)) { head = `Ready${nm}`; tip = 'Copy the post and paste it where it goes. You post it yourself; Brew never posts in communities for you. The brief carries it too.'; main = `<button class="btn btn-primary ship-go" data-rx="copy-post">${ic('copy', 's16')}${ch.target?.object === 'Review reply' ? 'Copy the reply' : 'Copy the post'}</button>`; }
-    else { head = `Ready${nm}`; tip = `${ch.verdict === 'jam' && (ch.reasons || [])[0] ? `${esc(ch.reasons[0])}: the brief carries everything the team needs. ` : ''}Send brief: the ShopOS team, Brew’s build crew, gets it by email and runs it. Its status shows in the top bar.`; main = send; }
+    else { head = `Ready${nm}`; tip = `${ch.verdict === 'jam' && (ch.reasons || [])[0] ? `${ch.reasons[0]}: the brief carries everything the team needs. ` : ''}Send brief: the ShopOS team, Brew’s build crew, gets it by email and runs it. Its status shows in the top bar.`; main = send; }
     const items = [];
     /* a final reel or picture is post-ready: its caption and hashtags one tap away, beside Download (Param, 21 Oct) */
     if (media && fin && !fp && (p.copy || p.title)) items.push(['data-rx="copy-post"', 'copy', 'Copy the caption', 'Title, caption and hashtags, ready to paste with the final.']);
@@ -4117,7 +4117,7 @@
     const busy = !!job;
     const sSt = ch.studio ? window.CreativeStage?.state(ch.id) : null, sPl = sSt?.plan || null; /* a Studio redo is made again the same way, at its price */
     const redo = !busy && !(op && !op.picked) && !(ch.studio && !studioMade(ch)) ? (ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" ${sSt?.making || !sPl || sPl.error || sPl.usd == null ? 'disabled' : ''} title="${sSt?.making ? 'It is being made now' : !sPl ? 'Pricing it…' : 'Made again with the same set-up, priced first. This one stays in History.'}">${ic('shuffle', 's16')}Redo it${sPl?.usd != null ? ` · ${moneyOf(sPl.usd)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle, a free draft. This one stays in History.">${ic('shuffle', 's16')}Redo it</button>`) : '';
-    const headTxt = String(head).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const headTxt = String(head).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&amp;/g, '&'); /* plain text: esc() below is its only escaping */
     return `<div class="ship one ${fix || /^Needs a look|things to look at/.test(String(head)) ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l"${/ship-fixes/.test(head) ? '' : ` title="${esc(headTxt)}"`}>${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
   /* the options as tabs above the stage, named by their angle, never v1–v5 */
   /* one, always: no option tabs, not even on jams saved with options (the one on the stage is the one; the rest are in History) */
@@ -4607,7 +4607,8 @@
   /* Ready to publish (publish-ready.js on the server): every part the platform needs, each editable where it sits, the check, and
      every placement cut from the one make. "Ready to publish" only when nothing needs a look */
   /* what a made piece needs before it is posted: the failing checks, hard ones first. The bar and the Details checklist read this one list */
-  const lookOf = (ch) => (ch?.publish?.checks || []).filter((x) => x && !x.ok && x.t).sort((a, b) => (a.soft ? 1 : 0) - (b.soft ? 1 : 0));
+  const lookOf = (ch) => [...(ch?.publish?.parts || []).filter((x) => x && !x.ok).map((x) => ({ t: x.why?.[0] || `${x.label} needs a fix`, part: x.k })), /* a field over its limit counts on the bar and in Details alike (QV 25 Oct) */
+    ...(ch?.publish?.checks || []).filter((x) => x && !x.ok && x.t).sort((a, b) => (a.soft ? 1 : 0) - (b.soft ? 1 : 0))];
   /* one check as a line, with its own fix when it has one */
   const ckLi = (c) => `<li class="${c.ok ? 'ok' : c.soft ? 'warn' : 'bad'}">${ic(c.ok ? 'check' : 'x', 's14')}<span>${esc(c.t)}</span>${!c.ok && c.k === 'preview' ? ' <button class="linkbtn" data-cs-full>Make the full one</button>' : !c.ok && c.fix === 'redo' ? ' <button class="linkbtn" data-cs-open>Change the set-up</button>' : ''}</li>`;
   const publishPanel = (ch, pkgCh) => { const pb = ch.publish; if (!pb?.made) return ''; const img = pkgCh.pkg?.image, lk = lookOf(ch);
@@ -4801,7 +4802,7 @@
     let ch = findCh(id) || PRE_CH.get(id); PRE_CH.delete(id); if (!ch) { const stop = holdView('Opening the jam'); const g = await tapi('GET', `/api/changes/${id}`); stop(); ch = g.change; }
     /* a link to a jam this browser can't open (another workspace's, or gone): open the card's own jam, never a blank page */
     if (!ch) { if (RX.p && !o.noFallback) { history.replaceState(history.state, '', `${location.pathname}#remix=${RX.p.id}`); return openRemix(RX.p, null, { fromHistory: true, noFallback: true }); } $('#view').innerHTML = `<div class="rxp"><p class="rx-gone">${ic('info', 's16')}This jam can’t be opened here. <button class="linkbtn" data-nav="feed">Back to the feed</button></p></div>`; return; }
-    Object.assign(RX, { ch, viewing: null, cmp: [], tab: null /* the panel picks: a Studio piece not made yet opens on its Set-up */, editing: false, draft: '', knobSel: {}, briefEdit: false, sending: null, att: [], stage: 'creative', tbEdit: null }); /* a reply still running in another jam never freezes this one */ tapi('POST', `/api/changes/${ch.id}/open`, {}); REMIXES = null; if (!o.fromHistory) nav(`#remix=${RX.p.id}/${ch.id}`, !o.replace, o.deep ? 'rx-deep' : 'rx-ch'); /* from the card page it replaces the card: Back goes to the feed, not round again */
+    Object.assign(RX, { ch, viewing: null, cmp: [], tab: null /* the panel picks: a Studio piece not made yet opens on its Set-up */, editing: false, draft: '', knobSel: {}, briefEdit: false, sending: null, att: [], stage: 'creative', tbEdit: null, vmenu: false, busyRx: null, fixing: false }); /* a reply still running in another jam never freezes this one; nor does its History menu or a send still going (QV 25 Oct) */ tapi('POST', `/api/changes/${ch.id}/open`, {}); REMIXES = null; if (!o.fromHistory) nav(`#remix=${RX.p.id}/${ch.id}`, !o.replace, o.deep ? 'rx-deep' : 'rx-ch'); /* from the card page it replaces the card: Back goes to the feed, not round again */
     $('#view').innerHTML = `<div class="std"></div>`; window.scrollTo(0, 0); paintStudio();
     autoImage(ch);
     /* a revision still running from before (the person left and came back): the bar shows it working and the answer lands here */
@@ -4980,7 +4981,10 @@
       if (!fc) { toast(esc(r.error || 'The storyboard didn’t open.')); return paintStudio(); } PRE_CH.set(fc.id, fc); return openStudio(fc.id, { deep: true }); } /* the same card, filmed for real: the founder storyboard */
     if (window.FilmBoard?.click(e)) return; /* the founder storyboard and its teleprompter (film-board.js) */
     if (e.target.closest('[data-cs-make]')) { window.CreativeStage?.make?.(); return; }
-    if (e.target.closest('[data-cs-full]')) { window.CreativeStage?.makeFull?.(); return; } /* a preview made: the full one, priced */
+    if (e.target.closest('[data-cs-full]')) { /* a preview made: the full one is made from the bar, where its price shows; a chip or a checklist link points there (it once paid on a second tap with no price on screen: QV 25 Oct) */
+      if (e.target.closest('.ship-go')) { window.CreativeStage?.makeFull?.(); return; }
+      window.CreativeStage?.fullPrice?.(); const bb = document.querySelector('.ship-go[data-cs-full]'); if (bb) { bb.focus(); bb.classList.add('is-flash'); setTimeout(() => bb.classList.remove('is-flash'), 1200); }
+      toast('The full one is priced on the bar under the piece: press Make the full one there.'); return; }
     { const m = e.target.closest('[data-stg-mode]'); if (m) { RX.stgMode = m.dataset.stgMode; return paintStudio(); }
       const d = e.target.closest('[data-stg-i]'); if (d) return stagePick(+d.dataset.stgI);
       const g = e.target.closest('[data-stg-go]'); if (g) { const n = $$('.std .st-asset .as-swipe > figure').length, cur = +($('.stg-dot.on')?.dataset.stgI || 0); return stagePick(Math.max(0, Math.min(n - 1, cur + +g.dataset.stgGo))); } } /* the bar's Make it: Studio makes the set-up in the panel, at its price */
@@ -5014,7 +5018,7 @@
     const om = e.target.closest('[data-opt-more]'); if (om && RX.ch) { om.disabled = true; om.querySelector('b').textContent = 'Writing…'; const r = await tapi('POST', `/api/changes/${RX.ch.id}/more`, {}).catch((er) => ({ error: er.message }));
       if (r?.error) { toast(`${ic('info', 's16')}${esc(r.error)}`); return paintStudio(); } RX.ch = r.change; putCh(r.change); RX.viewing = null; return paintStudio(); }
     const f1 = e.target.closest('[data-fn-one]'); if (f1) return fnOne(f1);
-    const vu = e.target.closest('[data-v-use]'); if (vu) { const r = await tapi('POST', `/api/changes/${RX.ch.id}/restore`, { versionId: vu.dataset.vUse }); if (r.error) return toast(esc(r.error)); RX.ch = r.change; putCh(r.change); RX.viewing = null; paintStudio(); toast(`${ic('check', 's16')}Now on v${curN(r.change)}. Your next change builds from here.`); return; }
+    const vu = e.target.closest('[data-v-use]'); if (vu) { const r = await tapi('POST', `/api/changes/${RX.ch.id}/restore`, { versionId: vu.dataset.vUse }); if (r.error) return toast(esc(r.error)); RX.ch = r.change; putCh(r.change); RX.viewing = null; { const hv = (r.change.versions || []).find((v) => v.id === r.change.head); if (hv?.studio) window.CreativeStage?.respec?.(hv.studio); } paintStudio(); toast(`${ic('check', 's16')}Now on v${curN(r.change)}. Your next change builds from here.`); return; }
     const cb = e.target.closest('[data-cmp]'); if (cb) { const v = cb.dataset.cmp; RX.cmp = RX.cmp.includes(v) ? RX.cmp.filter((x) => x !== v) : [...RX.cmp, v].slice(-2); return paintStudio(); }
     if (e.target.closest('[data-cmp-clear]')) { RX.cmp = []; return paintStudio(); }
     if (e.target.closest('[data-spec-edit]')) { RX.editing = true; return paintStudio(); }
@@ -5076,7 +5080,7 @@
   document.addEventListener('keydown', (e) => {
     if (view !== 'remix') return;
     if (e.key === 'Escape' && RX.viewing) { RX.viewing = null; paintStudio(); }
-    if (e.key === 'Enter' && !e.shiftKey && e.target.id === 'st-in') { e.preventDefault(); e.target.form.requestSubmit(); }
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229 && e.target.id === 'st-in') { e.preventDefault(); /* never mid-word in an input method (Hindi, Japanese) */ e.target.form.requestSubmit(); }
   });
   document.addEventListener('submit', async (e) => {
     if (e.target.id === 'rx-ask') { e.preventDefault(); runRemix(); }

@@ -116,3 +116,29 @@ test('the stage presents a set: one slide big (arrows, dots, keys) or all, the p
   assert.match(cs, /select: \(i\) => \{ if \(S\) S\.sel = \+i \|\| 0; \}/); assert.match(cs, /sel: S\.sel \?\? 0/);
   assert.match(css, /\.std \.st-asset\[data-stg="one"\] \.as-swipe > figure:not\(\[data-on\]\)\{display:none\}/);
 });
+
+test('QV 25 Oct: one count, every Studio family, one paid make at a time, the full one priced where it is pressed', () => {
+  assert.match(fn('lookOf'), /publish\?\.parts/, 'a field over its limit counts on the bar and in Details alike');
+  assert.match(fn('stepBar'), /else if \(media \|\| sv\) \{ const look/, 'a made Studio listing, A+ or print piece gets the made-piece bar');
+  assert.ok(!/Tick them in the Brief tab/.test(app), 'the tab is called Details');
+  assert.match(app, /if \(e\.target\.closest\('\.ship-go'\)\) \{ window\.CreativeStage\?\.makeFull\?\.\(\); return; \}/, 'a chip or checklist link points to the bar, where the price shows');
+  assert.match(cs, /S\.working \|\| S\.making \|\| anyBusy\(\)\) return; \/\* one paid make at a time/);
+  assert.match(cs, /if \(S\.spec\.quality !== 'preview'\) return \{ error: /, 'a disabled Make the full one says why');
+  assert.match(cs, /respec: \(v\) =>/); assert.match(app, /window\.CreativeStage\?\.respec\?\.\(hv\.studio\)/, 'a restored version re-seeds the set-up');
+});
+
+test('QV 25 Oct: keys and jams: arrows never move slides under the game or a menu, Enter never sends mid-word, one jam leaks nothing into the next', () => {
+  assert.match(app, /e\.defaultPrevented \|\| e\.metaKey[^\n]*RX\.vmenu \|\| \$\('\.bg-ov'\)\) return;/);
+  assert.match(app, /!e\.isComposing && e\.keyCode !== 229 && e\.target\.id === 'st-in'/);
+  assert.match(fs.readFileSync(new URL('../public/jam-room.js', import.meta.url), 'utf8'), /!e\.isComposing && e\.keyCode !== 229\) \{ e\.preventDefault\(\); \$\('#jm-f'\)/);
+  assert.match(app, /tbEdit: null, vmenu: false, busyRx: null, fixing: false \}\)/);
+  assert.match(css, /\.stg-nav\{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap/);
+});
+
+test('QV 25 Oct server: the shown quote runs, a still-running final is never failed, a take lands once, a chat ask says the real video length', () => {
+  const fr = fs.readFileSync(new URL('../finals-routes.js', import.meta.url), 'utf8'), jr = fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8'), rmx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
+  assert.equal((fr.match(/\(b\.expect \|\| fq\.quote\?\.quoteId\) && fq\.quote\?\.quoteId !== b\.expect/g) || []).length, 2, 'both final routes');
+  assert.match(fr, /catch \(e\) \{ if \(e\.open\) \{/);
+  assert.match(jr, /return \{ ok: true, already: true \}; \/\* pressed again/); assert.match(rmx, /v\.studio = \{ take: take\.id \|\| null, file: take\.file \|\| null/);
+  assert.match(jr, /const most = studio\.styleOf\(patch\.style \|\| sp\.style\)\?\.job === 'viral-short' \? 30 : 15/);
+});
