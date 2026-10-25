@@ -58,7 +58,13 @@ export async function collageEdges(input) {
     for (const r of flat) { const g = groups.find((x) => dist(x.mean, r.mean) < 40); if (g) g.n++; else groups.push({ mean: r.mean, n: 1 }); }
     const big = groups.filter((g) => g.n / runs.length >= 0.1).sort((a, b) => b.n - a.n);
     const two = big.length >= 2 && dist(big[0].mean, big[1].mean) >= 60;
-    return { collage: two, why: two ? 'two flat backgrounds of different colours meet the frame (a paste-up)' : '' }; } catch { return { collage: false, why: '' }; }
+    if (two) return { collage: true, why: 'two flat backgrounds of different colours meet the frame (a paste-up)' };
+    /* a blank band: one whole side flat black or flat white while the opposite side is not (a letterboxed picture-in-picture) */
+    const per = N / SEG, side = (k) => runs.slice(k * per, (k + 1) * per), luma = (m) => 0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2];
+    for (const [a, b] of [[0, 1], [1, 0], [2, 3], [3, 2]]) { const A = side(a), B = side(b);
+      if (!A.every((r) => r.spread <= FLAT && (luma(r.mean) < 24 || luma(r.mean) > 232))) continue;
+      const c = A[0].mean; if (B.filter((r) => r.spread <= FLAT && dist(r.mean, c) < 40).length < per / 2) return { collage: true, why: 'a blank band runs along one side of the picture' }; }
+    return { collage: false, why: '' }; } catch { return { collage: false, why: '' }; }
 }
 
 /* a cut-out (a PNG with transparency): is it a real matte? rect: the opaque part fills its whole box (the background never came

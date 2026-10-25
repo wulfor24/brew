@@ -26,6 +26,9 @@ test('the paste-up is caught for free; a real photo and a packshot on white are 
   assert.equal((await collageEdges(await photo())).collage, false, 'a photograph has no flat edges');
   assert.equal((await collageEdges(await packshot())).collage, false, 'one flat ground is a clean product shot');
   assert.equal((await collageEdges(Buffer.from('not an image'))).collage, false, 'a file that is not a picture is never called a collage');
+  const letterbox = await sharp({ create: { width: W, height: H, channels: 3, background: '#000000' } }).composite([{ input: await photo(), top: 0, left: 0 }]).png().toBuffer().then((b) => sharp(b).extract({ left: 0, top: 0, width: W, height: H }).toBuffer());
+  const boxed = await sharp({ create: { width: W, height: H + 160, channels: 3, background: '#000000' } }).composite([{ input: await photo(), top: 0, left: 0 }]).png().toBuffer();
+  assert.equal((await collageEdges(letterbox)).collage, false); assert.equal((await collageEdges(boxed)).collage, true, 'a picture-in-picture over a black band');
 });
 
 test('the cleanest reference: a packshot on a plain ground over a busy designed card, the main photo kept when none is clearly plainer', async () => {
