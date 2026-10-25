@@ -157,7 +157,11 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   const DIR = path.join(ROOT, '.brands'); fs.mkdirSync(DIR, { recursive: true });
   const cache = new Map();
   /* every write to a pack moves its version on (put, drop): a fresh load is reused while nothing was written to the pack */
-  const vers = new Map(), ver = (slug) => vers.get(slug) || 0, bump = (slug) => { vers.set(slug, ver(slug) + 1); warmSoon(slug); };
+  /* a background refresh (research, live-watch, the daily facts: the numbers) is a soft change: a page asking meanwhile gets the pack it
+     already has while the new one builds behind, instead of waiting 1–2 s on the rebuild (production, 25 Oct). Anything else, a hard
+     change, is waited for as before. hard: the version of the last hard change */
+  const SOFT = /^(research|live-watch|facts-daily)\.json$/;
+  const vers = new Map(), hard = new Map(), ver = (slug) => vers.get(slug) || 0, bump = (slug, name = null) => { const v = ver(slug) + 1; vers.set(slug, v); if (!(name && SOFT.test(name))) hard.set(slug, v); warmSoon(slug); };
   /* a pack a page loaded lately is rebuilt in the background a moment after it changes, so the next page load finds it ready instead of
      waiting 2+ s for the rebuild (1.7); a load that comes first shares that same build */
   const warmT = new Map();
@@ -185,7 +189,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     if (key === '*') { for (const sl of new Set([...vers.keys(), ...cache.keys()])) bump(sl); return; } /* notices may have been missed: every pack loads fresh */
     const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (!m || !BUILT_FROM.test(m[2])) return;
     if (m[2] === 'status.json') { getJSON(m[1], 'status.json', null).then((st) => { if (changesPack(m[1], 'status.json', st)) bump(m[1]); }).catch(() => bump(m[1])); return; } /* a seenAt stamp alone keeps the built pack (and so does the notice of this instance's own write) */
-    bump(m[1]); }).catch((e) => log.warn('[packs] listen', e.message));
+    bump(m[1], m[2]); }).catch((e) => log.warn('[packs] listen', e.message));
 
   /* ---------- the files of a pack (local first, GCS behind) ---------- */
   const dirOf = (slug) => path.join(DIR, slug);
@@ -203,7 +207,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     const f = fileOf(slug, name); fs.mkdirSync(path.dirname(f), { recursive: true });
     // bytes may come as a Uint8Array (a browser screenshot), not a Buffer: never JSON them
     const buf = Buffer.isBuffer(data) ? data : data instanceof Uint8Array || data instanceof ArrayBuffer ? Buffer.from(data) : Buffer.from(typeof data === 'string' ? data : JSON.stringify(data, null, 1));
-    fs.writeFileSync(f, buf); if (changesPack(slug, name, buf) && building.getStore() !== slug) bump(slug); /* only a file the pack is built from makes the next load fresh (1.7: page-open logs and caches rebuilt the seed on every load, 2.8 s); anything else is picked up within FRESH_MS */
+    fs.writeFileSync(f, buf); if (changesPack(slug, name, buf) && building.getStore() !== slug) bump(slug, name); /* only a file the pack is built from makes the next load fresh (1.7: page-open logs and caches rebuilt the seed on every load, 2.8 s); anything else is picked up within FRESH_MS */
     if (remote) { const k = `${slug}/${name}`, w = gcsPut(`brands/${slug}/${name}`, buf, type || (name.endsWith('.json') ? 'application/json' : undefined)); writing.set(k, w);
       try { ownWrote(slug, name, await w.catch((e) => { log.warn('[packs] gcs put', name, e.message); if (obj?.pg && pgRow(name)) throw e; })); } finally { if (writing.get(k) === w) writing.delete(k); } } /* Postgres: a lost write is an error, never a quiet disk-only copy */
     return f;
@@ -252,7 +256,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     } catch (e) { log.warn('[packs] read', slug, name, e.message); return { ok: false, error: e.message }; } };
   /* the same file written so a failed bucket write throws (the caller keeps it dirty and tries again) */
   const putStrict = async (slug, name0, data) => { await retireReady(); const name = sandboxName(name0) || name0; if (wiping(slug)) return null; const f = fileOf(slug, name); fs.mkdirSync(path.dirname(f), { recursive: true });
-    const buf = Buffer.from(JSON.stringify(data, null, 1)); fs.writeFileSync(f, buf); if (changesPack(slug, name, buf) && building.getStore() !== slug) bump(slug); if (remote) { const k = `${slug}/${name}`, w = gcsPut(`brands/${slug}/${name}`, buf, 'application/json'); writing.set(k, w); try { ownWrote(slug, name, await w); } finally { if (writing.get(k) === w) writing.delete(k); } } return f; };
+    const buf = Buffer.from(JSON.stringify(data, null, 1)); fs.writeFileSync(f, buf); if (changesPack(slug, name, buf) && building.getStore() !== slug) bump(slug, name); if (remote) { const k = `${slug}/${name}`, w = gcsPut(`brands/${slug}/${name}`, buf, 'application/json'); writing.set(k, w); try { ownWrote(slug, name, await w); } finally { if (writing.get(k) === w) writing.delete(k); } } return f; };
   const getJSON = async (slug, name, d = null) => { const b = await get(slug, name); if (!b) return d; try { return JSON.parse(b.toString('utf8')); } catch { return d; } };
   /* a file other instances write while this one runs (first drafts, made by whichever instance's background job ran): the
      bucket's copy first, kept on disk; this instance's disk only when the bucket can't be reached. get() serves the disk
@@ -481,8 +485,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     const v0 = ver(slug);
     /* nothing written to the pack since it was built: the page gets it at once and a fresh build runs behind (1.7: a cold page load
        waited 1.7 s on seed.js rebuilding the whole pack every minute) */
-    if (share && f0 && f0.v === v0 && f0.done) { if (!f0.refreshing) { f0.refreshing = true; const p1 = (async () => { const p = slug === DEFAULT ? loadDefault() : await loadGenerated(slug); if (p) cache.set(slug, p); return p; })();
-      p1.then((p) => { if (p && ver(slug) === v0) freshP.set(key, { at: Date.now(), p: Promise.resolve(p), v: v0, done: true }); }).catch(() => {}).finally(() => { f0.refreshing = false; }); } return f0.p; }
+    if (share && f0 && f0.done && (f0.v === v0 || (hard.get(slug) || 0) <= f0.v)) { if (!f0.refreshing) { f0.refreshing = true; const p1 = (async () => { const p = slug === DEFAULT ? loadDefault() : await loadGenerated(slug); if (p) cache.set(slug, p); return p; })();
+      p1.then((p) => { if (p && ver(slug) === v0) freshP.set(key, { at: Date.now(), p: Promise.resolve(p), v: v0, done: true }); else if (p && (hard.get(slug) || 0) <= v0) freshP.set(key, { at: Date.now(), p: Promise.resolve(p), v: v0, done: true }); }).catch(() => {}).finally(() => { f0.refreshing = false; }); } return f0.p; }
     const p0 = (async () => { const p = slug === DEFAULT ? loadDefault() : await loadGenerated(slug); if (p) cache.set(slug, p); return p; })();
     if (share) { const e = { at: Date.now(), p: p0, v: v0 }; freshP.set(key, e); p0.then((p) => { if (p) e.done = true; }).catch(() => freshP.delete(key)); if (freshP.size > 200) freshP.clear(); }
     return p0;

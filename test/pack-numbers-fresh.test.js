@@ -13,3 +13,11 @@ test('every file the numbers are read from rebuilds the pack', () => {
   for (const f of files) assert.ok(re.test(f), f);
   for (const f of ['notes.json', 'move-value.json', 'private/connections.json', 'drafts/state.json', 'research/history/2026-10-25.json']) assert.ok(!re.test(f), `${f} never rebuilds it`);
 });
+
+test('a background refresh of the numbers never makes a page wait on the rebuild: it gets the pack in hand while the new one builds', () => {
+  const s = src('brand-pack.js');
+  assert.match(s, /const SOFT = \/\^\(research\|live-watch\|facts-daily\)\\\.json\$\//);
+  assert.match(s, /bump = \(slug, name = null\) => \{ const v = ver\(slug\) \+ 1; vers\.set\(slug, v\); if \(!\(name && SOFT\.test\(name\)\)\) hard\.set\(slug, v\);/);
+  assert.match(s, /if \(share && f0 && f0\.done && \(f0\.v === v0 \|\| \(hard\.get\(slug\) \|\| 0\) <= f0\.v\)\)/, 'soft changes since the built pack: served at once, rebuilt behind');
+  assert.match(s, /bump\(m\[1\], m\[2\]\)/, 'another instance\'s notice says which file changed');
+});
