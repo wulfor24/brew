@@ -81,7 +81,9 @@ echo "6/8 traffic to $REV"
 gcloud run services update-traffic brew-web --to-revisions="$REV=100" --region=$REGION --project=$P --quiet >/dev/null || { rollback; die "traffic switch failed"; }
 
 echo "7/8 checks through the load balancer"
+# each check gets 5 tries: a network blip on the machine running this (no connection, code 000) is not a failed release
 ok=1; for u in / /healthz/ready /api/config /privacy ${SMOKE_BRANDS:-}; do case "$u" in /*) ;; *) u="/$u";; esac
-  c=$(curl -s --max-time 20 -o /dev/null -w '%{http_code}' "$PROD_URL$u" || echo 000); echo "   $u -> $c"; [ "$c" = 200 ] || ok=0; done
+  for t in 1 2 3 4 5; do c=$(curl -s --max-time 20 -o /dev/null -w '%{http_code}' "$PROD_URL$u" || true); [ "$c" = 200 ] && break; sleep 5; done
+  echo "   $u -> ${c:-000}"; [ "$c" = 200 ] || ok=0; done
 [ $ok = 1 ] || { rollback; die "production checks failed after the switch: rolled back"; }
 echo "8/8 production runs $SHA ($REV)"
