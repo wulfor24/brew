@@ -43,7 +43,11 @@ export function createVault(packs) {
         let next;
         try { next = await fn(cur); }
         catch (e) { await packs.update(slug, f, async (x) => (x?.lk?.by === me ? { ...x, lk: null } : undefined)).catch(() => {}); throw e; } /* refused: the old secret stays */
-        await packs.update(slug, f, async (x) => { if (!x) return undefined; return next === cur ? { ...x, lk: null } : { c: encrypt(JSON.stringify(next)), at: Date.now(), lk: null }; });
+        /* only while the claim is still this instance's: a refresh slower than the claim (60 s) was taken over, and that one's newer
+           (rotating) token is never overwritten with this older one */
+        let kept = true;
+        await packs.update(slug, f, async (x) => { if (!x) return undefined; if (x.lk?.by !== me) { kept = false; return undefined; } return next === cur ? { ...x, lk: null } : { c: encrypt(JSON.stringify(next)), at: Date.now(), lk: null }; });
+        if (!kept) { const now = await packs.getJSON(slug, f, null).catch(() => null); return now?.c ? JSON.parse(decrypt(now.c)) : next; }
         return next;
       }
     } : null

@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import { verifyIdToken, queryOk, webhookOk, embeddedReq, embedHtml, frameAncestors, createShopifyApp } from '../shopify-app.js';
 
 const ID = 'test-client-id', SECRET = 'test-secret';
@@ -56,7 +57,7 @@ function rig({ brands = { 'cozysnugglet-shop': { claimed: false } }, connected =
   const builder = { status: async (slug) => (brands[slug] ? { slug } : null), start: async (url, o) => { started.push({ url, user: o.user.email }); return { slug: url.replace(/\./g, '-') }; } };
   const fetchFn = async (url, init = {}) => {
     const body = init.body ? JSON.parse(init.body) : {};
-    if (url.endsWith('/admin/oauth/access_token')) return new Response(JSON.stringify(body.requested_token_type?.includes('online') ? { access_token: 'online', associated_user: { id: 7, email: 'Founder@CozySnugglet.shop', first_name: 'Ana', account_owner: true } } : { access_token: 'offline-tok', scope: 'read_products', expires_in: 3600, refresh_token: 'r' }));
+    if (url.endsWith('/admin/oauth/access_token')) return new Response(JSON.stringify(body.requested_token_type?.includes('online') ? { access_token: 'online', associated_user: { id: 7, email_verified: true, email: 'Founder@CozySnugglet.shop', first_name: 'Ana', account_owner: true } } : { access_token: 'offline-tok', scope: 'read_products', expires_in: 3600, refresh_token: 'r' }));
     if (url.includes('/graphql.json')) return new Response(JSON.stringify({ data: { shop: { name: 'Cozy', myshopifyDomain: 'cozy.myshopify.com', primaryDomain: { host: 'cozysnugglet.shop' } } } }));
     if (url === 'https://newbrand.com/') return Object.assign(new Response('ok'), {}); /* open storefront */
     throw new Error('unexpected ' + url);
@@ -152,4 +153,13 @@ test('Brew’s app going never cuts a brand’s own app or token; the admin neve
 test('/shopify/own/* belongs to the brand’s own app route, not Brew’s app', async () => {
   const { sa } = rig();
   assert.equal(await sa.handle({ method: 'GET', headers: {} }, {}, new URL('https://brew.test/shopify/own/callback?code=x')), false);
+});
+
+test('QV 25 Oct: a Shopify sign-in never makes anyone Brew staff, an unverified Shopify email is nobody, and the token stays out of API addresses', () => {
+  const s = fs.readFileSync('shopify-app.js', 'utf8');
+  assert.match(s, /if \(a\.email_verified !== true \|\| isFullAccess\(email\)\)/);
+  assert.match(s, /if \(!h\?\.email \|\| isFullAccess\(h\.email\)\)/, 'a hop never mints a staff session');
+  assert.match(s, /if \(!hopOnce\(h\)\)/, 'a hop link works once');
+  assert.match(s, /const inUrlOk = \(req, u\) => req\.method === 'GET' && !u\.pathname\.startsWith\('\/api\/'\)/);
+  assert.match(s, /const safeNext = \(n\) => \(typeof n === 'string' && \/\^\\\/\[A-Za-z0-9/);
 });

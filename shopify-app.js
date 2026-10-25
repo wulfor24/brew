@@ -18,6 +18,7 @@
 //   - app/uninstalled and the three compliance webhooks are HMAC-checked; Brew keeps no per-customer record, so the customer
 //     ones have nothing to send or erase, and shop/redact (and uninstall) drop the store's token and its numbers
 import crypto from 'node:crypto';
+import { isFullAccess } from './auth.js'; // a Shopify sign-in never makes anyone staff
 import { slugOf } from './brand-pack.js';
 import { adminCatalog } from './reader/stages/admin.js';
 import { isPasswordPage, CLOSED_WHY } from './reader/closed.js';
@@ -80,12 +81,18 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
     subject_token: t.raw, subject_token_type: 'urn:ietf:params:oauth:token-type:id_token', requested_token_type: `urn:shopify:params:oauth:token-type:${kind}-access-token`, ...(kind === 'offline' ? { expiring: '1' } : {}) });
   const credsOf = (j, shop) => ({ token: j.access_token, scope: j.scope || '', exp: j.expires_in ? Date.now() + j.expires_in * 1e3 : null, refresh: j.refresh_token || null, shop, app: 'brew' });
 
-  const tokenOf = (req, u) => { const h = String(req.headers.authorization || ''); return verifyIdToken(/^Bearer\s+/i.test(h) ? h.replace(/^Bearer\s+/i, '') : u.searchParams.get('id_token')); };
+  /* the session token rides in the Authorization header; in the address only where a page can't set a header (the embedded page's own
+     load and its seed/facts scripts), never on an API call, so it isn't left in load-balancer logs or a Referer (QV 25 Oct) */
+  const inUrlOk = (req, u) => req.method === 'GET' && !u.pathname.startsWith('/api/') && (!u.pathname.startsWith('/b/') || /^\/b\/[a-z0-9-]+\/(?:(?:seed|facts)\.js$|pdf\/)/.test(u.pathname)); /* a PDF link can't send a header either */
+  const tokenOf = (req, u) => { const h = String(req.headers.authorization || ''); return verifyIdToken(/^Bearer\s+/i.test(h) ? h.replace(/^Bearer\s+/i, '') : inUrlOk(req, u) ? u.searchParams.get('id_token') : null); };
   /* the staff member behind a session token, as a Brew person: their Shopify email (cached for a few hours per shop and user) */
   const people = new Map(), PEOPLE_MS = 6 * 3600e3;
   async function personOf(t) {
     const k = `${t.shop}|${t.sub}`, hit = people.get(k); if (hit && Date.now() - hit.at < PEOPLE_MS) return hit.me;
     const j = await exchange(t, 'online'), a = j.associated_user || {}; const email = String(a.email || '').toLowerCase().trim(); if (!email) return null;
+    /* a Shopify account is anyone's to make, with any email: only one Shopify verified counts, and never as Brew's staff or an admin
+       (anyone can open a store owned by "param@joinsquareup.com"): staff sign in with Google, where their domain is checked (QV 25 Oct) */
+    if (a.email_verified !== true || isFullAccess(email)) { log.warn?.(`[shopify-app] ${t.shop}: ${a.email_verified !== true ? 'an unverified Shopify email' : 'a staff email'} not taken as a Brew sign-in`); people.set(k, { at: Date.now(), me: null }); return null; }
     const me = { email, name: [a.first_name, a.last_name].filter(Boolean).join(' ') || null, pic: null, sub: `shopify:${t.shop}:${a.id || t.sub}`, shop: t.shop, shopOwner: !!a.account_owner };
     if (people.size > 2000) people.clear(); people.set(k, { at: Date.now(), me }); return me;
   }
@@ -179,8 +186,11 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
 
   /* a signed one-time hop from the admin to a top-level tab: Google, Meta and Slack sign-ins can't run inside a frame */
   const HOP_S = 120;
+  /* a hop link works once (it mints a 7-day session): its signature, remembered until it runs out */
+  const HOPS = new Map(); const hopOnce = (h) => { const k = `${h.sub}|${h.exp}|${h.email}`, now = Date.now(); for (const [x, at] of HOPS) if (at < now) HOPS.delete(x); if (HOPS.has(k)) return false; HOPS.set(k, (h.exp || 0) * 1e3); return true; };
   const hopUrl = (req, me, next) => `${base(req)}/shopify/hop?${new URLSearchParams({ t: auth.sign({ email: me.email, name: me.name, sub: me.sub, next }, HOP_S, 'shopify-hop') })}`;
-  const safeNext = (n) => (typeof n === 'string' && /^\/(?![/\\])/.test(n) ? n : '/');
+  /* a same-site path, the rule sign-in uses (auth.js): no //, no backslash, no tab or newline a browser would strip into //evil */
+  const safeNext = (n) => (typeof n === 'string' && /^\/[A-Za-z0-9/_#=&?.%~:,+-]*$/.test(n) && !n.startsWith('//') && !/^\/%2f/i.test(n) ? n : '/');
 
   async function webhook(req, res) {
     const body = await raw(req);
@@ -237,7 +247,8 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
       res.writeHead(302, { location: adminApp(shop), 'cache-control': 'no-store' }); return res.end(), true;
     }
     if (p === '/shopify/hop' && req.method === 'GET') { /* the new tab: a Brew session for the person the admin vouched for, then on */
-      const h = auth.verify(u.searchParams.get('t'), 'shopify-hop'); if (!h?.email) return html(res, 400, page('Link expired', '<p>That link expired. Go back to Shopify and tap it again.</p>'), null), true;
+      const h = auth.verify(u.searchParams.get('t'), 'shopify-hop'); if (!h?.email || isFullAccess(h.email)) return html(res, 400, page('Link expired', '<p>That link expired. Go back to Shopify and tap it again.</p>'), null), true;
+      if (!hopOnce(h)) return html(res, 400, page('Link used', '<p>That link was already used. Go back to Shopify and tap it again.</p>'), null), true;
       const ses = (await auth.newSession?.(h.email, 7 * 86400, req)) || {}; /* a session row, so signing out ends it (sessions.js) */
       auth.setCookie(res, 'fs_s', auth.sign({ email: h.email, name: h.name || null, pic: null, sub: h.sub || null, ...ses }, 7 * 86400, 'session'), 7 * 86400);
       res.writeHead(302, { location: safeNext(h.next), 'cache-control': 'no-store' }); return res.end(), true;
@@ -270,6 +281,6 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
   /* a store not open yet keeps its pages to its team (closed-gate.js), and a frame's own load can't say who is looking: inside
      the admin, a page with no person on it asks App Bridge for a fresh session token and loads again with it (once: fresh=1) */
   const renew = (req, u, res) => { if (!app().id || !embeddedReq(req, u) || req.brewUser || u.searchParams.get('fresh') === '1') return null;
-    const shop = shopQ(u); res.setHeader('content-security-policy', frameAncestors(shop)); return embedHtml(page('Brew', '<div id="brew-renew">Opening Brew…</div>'), shop); };
-  return { handle, attach, embeddedReq, renew, embed: (req, u, res, body) => { if (!app().id || !embeddedReq(req, u)) return body; const shop = shopQ(u); res.setHeader('content-security-policy', frameAncestors(shop)); return embedHtml(withToken(req, u, body), shop); } };
+    const shop = shopQ(u); res.setHeader('content-security-policy', frameAncestors(shop)); res.setHeader('referrer-policy', 'no-referrer'); return embedHtml(page('Brew', '<div id="brew-renew">Opening Brew…</div>'), shop); };
+  return { handle, attach, embeddedReq, renew, embed: (req, u, res, body) => { if (!app().id || !embeddedReq(req, u)) return body; const shop = shopQ(u); res.setHeader('content-security-policy', frameAncestors(shop)); res.setHeader('referrer-policy', 'no-referrer'); return embedHtml(withToken(req, u, body), shop); } };
 }

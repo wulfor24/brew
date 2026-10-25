@@ -90,7 +90,7 @@ const jwt = (body, secret = SECRET) => { const h = b64u({ alg: 'HS256', typ: 'JW
 const now = Math.floor(Date.now() / 1e3);
 const claims = { iss: 'https://devshop.myshopify.com/admin', dest: 'https://devshop.myshopify.com', aud: ID, sub: '42', exp: now + 60, nbf: now - 5, iat: now, jti: 'x', sid: 's' };
 test('on the server, a PDF address with the token from the admin is the staff member; a forged or missing one is nobody', async () => {
-  const fetchFn = async (url) => { if (url.endsWith('/admin/oauth/access_token')) return new Response(JSON.stringify({ access_token: 'online', associated_user: { id: 7, email: 'Ana@Devshop.test', first_name: 'Ana' } })); throw new Error('unexpected ' + url); };
+  const fetchFn = async (url) => { if (url.endsWith('/admin/oauth/access_token')) return new Response(JSON.stringify({ access_token: 'online', associated_user: { id: 7, email_verified: true, email: 'Ana@Devshop.test', first_name: 'Ana' } })); throw new Error('unexpected ' + url); };
   const sa = createShopifyApp({ auth: {}, connectors: {}, builder: {}, packs: {}, log: { log() {}, warn() {} }, fetchFn });
   const who = async (tk) => { const q = tk ? `?dl=1&id_token=${encodeURIComponent(tk)}` : '?dl=1', req = { method: 'GET', url: `/b/devshop-myshopify-com/pdf/move-3.pdf${q}`, headers: {} };
     await sa.attach(req, new URL(req.url, 'https://brew.test')); return req.brewUser?.email || null; };

@@ -6,6 +6,19 @@ import crypto from 'node:crypto';
 import { splitDoc } from './objects.js';
 
 const SEP = '\u0001';
+/* one item both instances changed (a jam two people replied in at once): this instance's fields stand, and every list of items with
+   ids (the thread, versions, people, drafts) takes the other's new items too, in time order, so neither reply is lost (QV 25 Oct) */
+const byId = (a) => Array.isArray(a) && a.length > 0 && a.every((x) => x && typeof x === 'object' && x.id != null);
+export function mergeItem(mine, theirs) {
+  if (!mine || !theirs || typeof mine !== 'object' || typeof theirs !== 'object') return mine;
+  for (const [k, tv] of Object.entries(theirs)) {
+    const mv = mine[k];
+    if (byId(tv) && (byId(mv) || (Array.isArray(mv) && !mv.length))) { const have = new Set(mv.map((x) => String(x.id))), add = tv.filter((x) => !have.has(String(x.id)));
+      if (add.length) { mv.push(...add); if (mv.every((x) => Number.isFinite(+x.at))) mv.sort((a, b) => +a.at - +b.at); } }
+    else if (mv === undefined) mine[k] = tv; /* a field only the other one set */
+  }
+  return mine;
+}
 const md5 = (s) => crypto.createHash('md5').update(Buffer.from(s)).digest('hex');
 export function createDocSync({ packs, slug, name, fields, log = console }) {
   if (!packs?.patchParts) return null;
@@ -35,7 +48,7 @@ export function createDocSync({ packs, slug, name, fields, log = console }) {
         if (Array.isArray(wv)) { if (!dirty(f) && local.get(f) !== md5(whole.body.toString('utf8'))) { v.splice(0, v.length, ...wv); took++; } continue; }
         const mine = new Map(v.map((x) => [String(x?.id), x])), next = [], seen = new Set();
         for (const r of rows.filter((x) => x.part.startsWith(`${pre}a${SEP}`))) { const id = r.part.slice(pre.length + 2); seen.add(id);
-          if (dirty(r.part)) { if (mine.has(id)) next.push(mine.get(id)); continue; } /* changed or removed here: this instance's version stands */
+          if (dirty(r.part)) { if (mine.has(id)) { const b = r.body.toString('utf8'); next.push(was.get(r.part) !== md5(b) && was.has(r.part) ? mergeItem(mine.get(id), JSON.parse(b)) : mine.get(id)); } continue; } /* changed or removed here: this instance's version stands, with what the other added (both changed it) */
           next.push(JSON.parse(r.body.toString('utf8'))); if (local.get(r.part) !== md5(r.body.toString('utf8'))) took++; }
         for (const x of v) { const id = String(x?.id), p = `${pre}a${SEP}${id}`; if (!seen.has(id) && (dirty(p) || !was.has(p))) next.push(x); else if (!seen.has(id)) took++; } /* new here: kept; gone there and unchanged here: gone */
         v.splice(0, v.length, ...next);

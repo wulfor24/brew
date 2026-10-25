@@ -29,7 +29,7 @@ export const SKIP = [
   [/^raw\//, 'raw paid answers (only the same day is read back)'],
   [/^private\/backup-/, 'a staging backup'],
   [/^(private\/)?jams(-v2)?\.json$/, 'jams made while testing'],
-  [/^private\/finals\//, 'finals of those jams'],
+  [/^private\/finals(-beat)?\//, 'finals of those jams'],
   [/^private\/sloosh-assets\.json$/, 'Sloosh uploads of staging links'],
   [/^start-lock\.json$/, "staging's build lock"],
   [/^spend\//, "staging's spend"],

@@ -22,18 +22,40 @@ if [ -z "${1:-}" ] && ! git merge-base --is-ancestor "$SHA" origin/main; then di
 case "$IMG" in *@sha256:*) ;; *) die "image $IMG is not pinned to a digest";; esac
 echo "image $IMG (staging $STAGE_REV, git-sha $SHA)"
 
+# one promotion at a time: a lock object only one run can create (two at once read each other's revisions and could roll back the
+# other's release). A lock older than 2 hours is a run that died, and is taken over
+LOCK=gs://brew-prod-backups/locks/promote.lock
+echo "$(git config user.email 2>/dev/null || whoami) $(date -u +%Y-%m-%dT%H:%M:%SZ) $SHA" > "$TMPDIR/promote.lock"
+if ! gcloud storage cp --if-generation-match=0 "$TMPDIR/promote.lock" "$LOCK" --project=$P >/dev/null 2>&1; then
+  HELD=$(gcloud storage cat "$LOCK" --project=$P 2>/dev/null || echo "unknown")
+  AGE=$(gcloud storage objects describe "$LOCK" --project=$P --format='value(creation_time)' 2>/dev/null | python3 -c "import sys,datetime; t=sys.stdin.read().strip(); print(int((datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(t.replace('Z','+00:00'))).total_seconds()) if t else 0)" || echo 0)
+  [ "${AGE:-0}" -gt 7200 ] || die "another promotion is running ($HELD); wait for it"
+  echo "   taking over a lock left by a run that died ($HELD)"; gcloud storage rm "$LOCK" --project=$P >/dev/null 2>&1 || true
+  gcloud storage cp --if-generation-match=0 "$TMPDIR/promote.lock" "$LOCK" --project=$P >/dev/null 2>&1 || die "another promotion took the lock"
+fi
+trap 'gcloud storage rm "$LOCK" --project=$P >/dev/null 2>&1 || true' EXIT
+
 # what production runs now, to put back if anything after this point fails
-PREV_WEB=$(gcloud run services describe brew-web --region=$REGION --project=$P --format=json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); t=[x for x in d['status'].get('traffic',[]) if x.get('percent')]; print(t[0]['revisionName'] if t else '')" || true)
+PREV_WEB=$(gcloud run services describe brew-web --region=$REGION --project=$P --format=json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); t=[x for x in d['status'].get('traffic',[]) if x.get('percent')]; print(t[0]['revisionName'] if len(t)==1 else ('SPLIT' if t else ''))" || true)
+# a service that exists must say what it serves, or there is nothing to roll back to: stop before anything changes
+if gcloud run services describe brew-web --region=$REGION --project=$P --format='value(metadata.name)' >/dev/null 2>&1; then
+  [ -n "$PREV_WEB" ] || die "could not read which revision brew-web serves now (nothing to roll back to)"
+  [ "$PREV_WEB" != SPLIT ] || die "brew-web splits its traffic between revisions; put it on one revision first"
+fi
 # the worker revision that serves now (its traffic), not the newest one: after a rollback those differ, and the newest is the bad one
 PREV_WORKER=$(gcloud run services describe brew-worker --region=$REGION --project=$P --format=json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); t=[x for x in d['status'].get('traffic',[]) if x.get('percent')]; print(t[0]['revisionName'] if t else '')" || true)
 CHANGED_WORKER=0
-rollback() { echo "rolling back"; [ -n "$PREV_WEB" ] && gcloud run services update-traffic brew-web --to-revisions="$PREV_WEB=100" --region=$REGION --project=$P --quiet >/dev/null && echo "   web back on $PREV_WEB"
-  [ "$CHANGED_WORKER" = 1 ] && [ -n "$PREV_WORKER" ] && gcloud run services update-traffic brew-worker --to-revisions="$PREV_WORKER=100" --region=$REGION --project=$P --quiet >/dev/null && echo "   worker back on $PREV_WORKER"; }
+# every step says what happened: a rollback that fails is said out loud, never swallowed by set -e
+rollback() { echo "rolling back"
+  if [ -n "$PREV_WEB" ]; then if gcloud run services update-traffic brew-web --to-revisions="$PREV_WEB=100" --region=$REGION --project=$P --quiet >/dev/null 2>&1; then echo "   web back on $PREV_WEB"; else echo "   ROLLBACK FAILED: web is NOT back on $PREV_WEB (put it back by hand)"; fi; fi
+  if [ "$CHANGED_WORKER" = 1 ] && [ -n "$PREV_WORKER" ]; then if gcloud run services update-traffic brew-worker --to-revisions="$PREV_WORKER=100" --region=$REGION --project=$P --quiet >/dev/null 2>&1; then echo "   worker back on $PREV_WORKER"; else echo "   ROLLBACK FAILED: the worker is NOT back on $PREV_WORKER (put it back by hand)"; fi; fi
+  return 0; }
 
 echo "1/8 backup"
 OP=""; for i in $(seq 1 20); do
-  if OUT=$(gcloud sql backups create --instance=brew-prod --project=$P --description="before promote $SHA" --async 2>&1); then
-    OP=$(gcloud sql operations list --instance=brew-prod --project=$P --filter="operationType=BACKUP_VOLUME" --limit=1 --sort-by=~startTime --format='value(name)'); break; fi
+  if OUT=$(gcloud sql backups create --instance=brew-prod --project=$P --description="before promote $SHA" --async --format='value(name)' 2>&1); then
+    OP=$(echo "$OUT" | grep -Eo '^[0-9a-f-]{20,}$' | tail -1 || true) # this very backup's operation, not the newest one (an automatic backup may be newer)
+    [ -n "$OP" ] || OP=$(gcloud sql operations list --instance=brew-prod --project=$P --filter="operationType=BACKUP_VOLUME" --limit=1 --sort-by=~startTime --format='value(name)'); break; fi
   echo "$OUT" | grep -q "another operation" || die "backup refused: $OUT"; sleep 30; done
 [ -n "$OP" ] || die "the database stayed busy: no backup"
 gcloud sql operations wait "$OP" --project=$P --timeout=1800 >/dev/null || die "the backup did not finish"

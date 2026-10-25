@@ -18,7 +18,11 @@ export function guardMovedSends({ isStaff, current = () => null, log = console }
   const about = (text) => { const s = current(); if (movedAway(s)) return s; for (const m of movedList()) if (new RegExp(`/${m}(?=[/#?"'\\s<]|$)`).test(String(text || ''))) return m; return null; };
   const g = async (url, opts = {}) => {
     let u = null; try { u = new URL(typeof url === 'string' ? url : url.url); } catch {}
-    const post = String(opts.method || 'GET').toUpperCase() === 'POST', body = typeof opts.body === 'string' ? opts.body : opts.body instanceof URLSearchParams ? opts.body.toString() : '';
+    const post = String(opts.method || 'GET').toUpperCase() === 'POST', readable = opts.body == null || typeof opts.body === 'string' || opts.body instanceof URLSearchParams;
+    const body = typeof opts.body === 'string' ? opts.body : opts.body instanceof URLSearchParams ? opts.body.toString() : '';
+    /* a send this guard can't read (a Buffer, a stream) fails closed on staging: kept back, never sent unchecked */
+    const sending = u && post && ((u.hostname === 'api.resend.com' && u.pathname === '/emails') || (u.hostname === 'slack.com' && SLACK_SEND.test(u.pathname)) || u.hostname === 'hooks.slack.com');
+    if (sending && !readable) { log.warn?.(`[moved] a ${u.hostname} send with a body this guard can't read was kept back (staging)`); return new Response(JSON.stringify({ ok: true, id: 'muted-unreadable' }), { status: 200, headers: { 'content-type': 'application/json' } }); }
     if (u && post && u.hostname === 'api.resend.com' && u.pathname === '/emails') {
       let j = null; try { j = JSON.parse(body); } catch {}
       const slug = j && about(`${j.html || ''}\n${j.text || ''}\n${j.subject || ''}`);

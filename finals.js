@@ -36,6 +36,16 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   dummy = () => process.env.DEMO_MODE === '1' || process.env.SLOOSH_DUMMY === '1', readFile = null, geminiImage = null, makeVideo = null, photo = async () => null,
   onDone = async () => {} /* (slug, rec) after reconcileAll settles a run the UI closures lost at the restart: rec.target says what it was made from (a jam draft or a studio change), rec.land where it shows (the workspace and the final's card) */ } = {}) {
   const inflight = new Map(); /* runKey → promise, this instance */
+  /* a run in flight here says so every minute (its beat, private/finals-beat/): the lease holder's reconcile (at its boot and every 10
+     minutes) leaves a run alone while its beat is fresh, so a final a web instance is still polling is never polled twice, and one whose
+     instance went (a scale-in, a deploy) is collected within minutes, not at the worker's next boot (QV 25 Oct) */
+  const BEAT_MS = 60e3, BEAT_FRESH = 3 * 60e3, inSlug = new Map(), beatName = (k) => `private/finals-beat/${String(k).replace(/[^A-Za-z0-9_-]/g, '')}.json`;
+  const beat = (slug, k) => Promise.resolve().then(() => packs.put(slug, beatName(k), { at: now() })).catch(() => {});
+  const beatT = setInterval(() => { for (const [k, slug] of inSlug) beat(slug, k); }, BEAT_MS); beatT.unref?.();
+  const beating = async (slug, k) => { const b = await Promise.resolve().then(() => packs.getJSON(slug, beatName(k), null)).catch(() => null); return !!b && now() - (+b.at || 0) < BEAT_FRESH; };
+  /* a run that stops here, settled or left open on Sloosh (a wait limit), stops beating at once: reconcile may take it straight away */
+  const quiet = (slug, k) => { inSlug.delete(k); return Promise.resolve().then(() => packs.put(slug, beatName(k), { at: 0 })).catch(() => {}); };
+  const track = (slug, k, p) => { inflight.set(k, p); inSlug.set(k, slug); beat(slug, k); p.then(() => quiet(slug, k), () => quiet(slug, k)); return p; };
   let statusMemo = null;
 
   /* ---------- the connection, in plain words ---------- */
@@ -237,7 +247,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
       }
       return finish(slug, rec);
     })().finally(() => inflight.delete(runKey));
-    inflight.set(runKey, p); return p;
+    return track(slug, runKey, p);
   }
   /* poll to the end, pull the bytes, keep the record honest; a Space waiting on a checkpoint stops here with state 'checkpoint' */
   async function finish(slug, rec) {
@@ -272,7 +282,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     const ck = rec.checkpoint || {}; const args = { id: rec.genId, nodeId: ck.nodeId, checkpointKey: ck.runKey, expectedRerunCount: ck.expectedRerunCount ?? 0 }; void note; /* Sloosh takes no note with a decision */
     await (ok ? sloosh.approveCheckpoint(args) : sloosh.rejectCheckpoint(args));
     if (!ok) { const r2 = { ...rec, state: 'failed', error: 'stopped at the checkpoint', failedAt: now() }; return writeRec(slug, r2); }
-    const p = finish(slug, { ...rec, state: 'running' }).finally(() => inflight.delete(runKey)); inflight.set(runKey, p); return p;
+    const p = finish(slug, { ...rec, state: 'running' }).finally(() => inflight.delete(runKey)); return track(slug, runKey, p);
   }
 
   /* ---------- after a restart: every run still open is finished or failed, never paid again ---------- */
@@ -288,13 +298,15 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
       const files = await packs.listFiles(slug, DIR.replace(/\/$/, '')).catch(() => []);
       for (const f of files) { const rec = await packs.getJSON(slug, DIR + f, null); if (!rec) continue;
         if (rec.state === 'done' && rec.landed === false && (rec.landTries || 0) < 3 && (rec.land?.tid || rec.target)) { n++; await settled(slug, rec); continue; } /* done on Sloosh, never reached its card */
-        if (!['starting', 'running'].includes(rec.state)) continue; n++;
+        if (!['starting', 'running'].includes(rec.state)) continue;
+        if (inflight.has(rec.runKey) || await beating(slug, rec.runKey)) continue; /* still being made here or on another instance */
+        n++;
         if (rec.fallback) { await settled(slug, await writeRec(slug, { ...rec, state: 'failed', error: 'Brew restarted while Gemini was making this; nothing was charged. Make it again.', charged: 0, failedAt: now() })); continue; }
         (async () => { try {
           if (!rec.genId) { /* the paid call may or may not have gone out: the same quote + idempotency key gives back the same operation or a refusal, never a second charge */
             const qid = rec.quote?.id; const r = qid ? await (rec.space ? sloosh.runSpace({ quote: qid, runKey: rec.runKey, confirmed: true }) : sloosh.generate({ quote: qid, runKey: rec.runKey, confirmed: true })).catch((e) => ({ refused: e.message })) : null; const gid = idOf(r);
             if (!gid) { const f = await writeRec(slug, { ...rec, state: 'failed', error: r?.refused ? `Brew restarted before Sloosh confirmed this one and Sloosh refused the retry (${r.refused}); check Sloosh’s Assets before paying again` : 'Brew restarted before Sloosh started this one; nothing was charged', charged: r?.refused ? null : 0, failedAt: now() }); await settled(slug, f); return; } rec.genId = gid; }
-          const p = finish(slug, { ...rec, state: 'running' }).finally(() => inflight.delete(rec.runKey)); inflight.set(rec.runKey, p); const done = await p; log.info?.(`[finals] ${slug} ${rec.runKey} ${done.state} after the restart`); await settled(slug, done); }
+          const p = track(slug, rec.runKey, finish(slug, { ...rec, state: 'running' }).finally(() => inflight.delete(rec.runKey))); const done = await p; log.info?.(`[finals] ${slug} ${rec.runKey} ${done.state} after the restart`); await settled(slug, done); }
         catch (e) { log.warn('[finals] reconcile', slug, rec.runKey, e.message); if (e.rec && !e.open) await settled(slug, e.rec); } })(); }
     }
     return n;

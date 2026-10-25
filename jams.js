@@ -40,7 +40,7 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
       if (j) { const have = new Set(b.work.map((w) => w.id)); b.work.push(...(j.work || []).filter((w) => !have.has(w.id))); b.changes = { ...(j.changes || {}), ...b.changes };
         for (const [id, list] of Object.entries(j.vg || {})) b.vg[id] = b.vg[id] ? mergeVersions(list, b.vg[id]) : list; }
       b.loaded = true; b.last = JSON.stringify({ work: b.work, changes: b.changes, vg: b.vg });
-      b.sync = createDocSync({ packs, slug, name: FILE, fields: ['work', 'changes', 'vg'], log }); b.sync?.settle(b); b.chain = Promise.resolve();
+      b.sync = createDocSync({ packs, slug, name: FILE, fields: ['work', 'changes', 'vg'], log }); b.sync?.settle(b); b.chain = Promise.resolve(); if (b.missed && b.sync) { b.missed = false; pullBox(b); } /* a change heard while this load ran is taken now */
     }).catch((e) => { log.warn?.('[jams] load', slug, e.message); b.failed = true; });
     BR.set(slug, b); return b;
   };
@@ -60,7 +60,7 @@ export function createJams({ packs, reqOf, bgMember, log = console, enabled = ()
   /* another instance wrote the team's jams: this one takes what it hasn't changed itself, in place */
   const pullBox = (b) => { b.chain = b.chain.then(() => b.sync.pull(b)).catch((e) => log.warn?.('[jams] pull', b.slug, e.message)); };
   packs?.onChange?.((slug, name) => { if (slug === '*') { for (const b of BR.values()) if (b.sync) pullBox(b); return; } /* notices missed: catch up */
-    const b = BR.get(slug); if (name === FILE && b?.sync) pullBox(b); });
+    const b = BR.get(slug); if (name !== FILE || !b) return; if (b.sync) pullBox(b); else b.missed = true; }); /* still loading: pulled once it has */
 
   const slugOf = (t) => t.brandId || null;
   /* does this workspace read the team's jams right now: the request's viewer is on the team or a guest of one of its jams,

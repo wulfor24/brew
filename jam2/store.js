@@ -16,7 +16,7 @@ export function createJam2Store({ packs, log = console, everyMs = 4000, enabled 
       if (!r.ok) { b.failed = r.error || 'read failed'; return; }
       if (r.data?.jams) for (const [id, x] of Object.entries(r.data.jams)) if (!b.jams[id]) b.jams[id] = x;
       b.loaded = true; b.failed = null; b.last = JSON.stringify(b.jams);
-      b.sync = createDocSync({ packs, slug, name: FILE, fields: ['jams'], log }); b.sync?.settle(b); b.chain = Promise.resolve();
+      b.sync = createDocSync({ packs, slug, name: FILE, fields: ['jams'], log }); b.sync?.settle(b); b.chain = Promise.resolve(); if (b.missed && b.sync) { b.missed = false; pullBox(b); } /* a change heard while this load ran is taken now */
     }).catch((e) => { log.warn?.('[jam2] load', slug, e.message); b.failed = e.message; });
     BR.set(slug, b); return b;
   };
@@ -38,7 +38,7 @@ export function createJam2Store({ packs, log = console, everyMs = 4000, enabled 
   const timer = packs?.put && everyMs && enabled() ? setInterval(() => flush().catch(() => {}), packs.patchParts ? Math.min(everyMs, 1500) : everyMs) : null; timer?.unref?.();
   const pullBox = (b) => { b.chain = b.chain.then(() => b.sync.pull(b)).catch((e) => log.warn?.('[jam2] pull', b.slug, e.message)); };
   packs?.onChange?.((slug, name) => { if (slug === '*') { for (const b of BR.values()) if (b.sync) pullBox(b); return; } /* notices missed: catch up */
-    const b = BR.get(slug); if (name === FILE && b?.sync) pullBox(b); });
+    const b = BR.get(slug); if (name !== FILE || !b) return; if (b.sync) pullBox(b); else b.missed = true; }); /* still loading: pulled once it has */
 
   /* the jams a request may see: the team's (owner 'team'), or this workspace's own */
   const ownerOf = (who) => (who?.member || who?.staff ? 'team' : `ws_${who?.tid || 'anon'}`);

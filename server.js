@@ -457,13 +457,15 @@ const builder0 = createBuilder({ shared: COUNTERS, events: createBuildEvents({ l
 const BUILD_LOCAL = new Set(['status', 'events', 'subscribe', 'list', 'summary', 'peek', 'spent', 'spentToday', 'paidWork', 'setHooks', 'onBook', 'buildInfo', 'stop']);
 const BUILD_NUDGE = new Set(['seen', 'bookAfter', 'signal', 'heal', 'feedOpened']); /* heal on every feed open: the worker heals, the page reads the result when it lands (NOTIFY) */
 const SEEN_AT = new Map(); /* a page view nudges the worker once an hour a brand, not on every view */
+/* clicks that wait on long work go on their own queue (jobs.js 'slow'): four slow ones never hold every slot the quick clicks need (QV 25 Oct) */
+const SLOW_BUILD = /^(pdf|teamStatics|checkData|confirm|marketCheck|rewrite|redo|remake)/;
 whenLeader(() => JOBS.define('builder', async ({ m, args }) => { if (BUILD_LOCAL.has(m) || typeof builder0[m] !== 'function') throw new Error(`builder.${m} is not asked of the worker`);
   const r = await builder0[m](...(args || [])); return m === 'pdfOn' && r ? { name: r.name } : r; }, { queue: 'interactive', maxTries: 1 }));
 const builder = isWorker() ? builder0 : new Proxy(builder0, { get(t, k) { const v = t[k]; if (typeof v !== 'function' || BUILD_LOCAL.has(k)) return v;
   return (...args) => {
     if (k === 'seen') { const at = SEEN_AT.get(args[0]) || 0; if (Date.now() - at < 3600e3) return Promise.resolve(); SEEN_AT.set(args[0], Date.now()); }
     if (BUILD_NUDGE.has(k) && k !== 'feedOpened') { const p = JOBS.enqueue('builder', { m: k, args }, { key: `${k}:${args[0]}`, queue: 'batch', maxTries: 1 }); p.catch((e) => console.warn(`[build] ${k}`, e.message)); return p.then(() => undefined); }
-    const p = JOBS.call('builder', { m: k, args }, { timeoutMs: String(k).startsWith('pdf') ? 180e3 : 90e3, maxTries: 1 })
+    const p = JOBS.call('builder', { m: k, args }, { timeoutMs: String(k).startsWith('pdf') ? 180e3 : 90e3, maxTries: 1, queue: SLOW_BUILD.test(String(k)) ? 'slow' : 'interactive' })
       .then(async (r) => (k === 'pdfOn' && r?.name ? { name: r.name, buf: await packs.get(args[0], 'pdf/' + r.name) } : r)); /* the PDF itself is in the bucket */
     p.catch((e) => console.warn(`[build] ${k}`, e.message)); /* a caller that doesn't wait never leaves the rejection unhandled */
     return p; }; } });
@@ -706,8 +708,17 @@ if (BUS) { for (const m of ['addCards', 'dropCards', 'refreshLive', 'syncSocial'
   whenLeader(() => { const t = setInterval(() => { BUS.purge(); SESSIONS.purge(); dbq(`DELETE FROM build_events WHERE at < now() - interval '3 days'`).catch(() => {}); }, 3600e3); t.unref?.(); }); }
 /* Postgres: the job queue (web instances hear answers; workers do the work) and the background lease; the lease holder runs
    everything gated by whenLeader / leaderOnly (resume, ticks, paid watchers). Without Postgres this instance leads at once */
-if (OBJ) { await JOBS.start({ interactive: +process.env.JOBS_INTERACTIVE || 4, batch: +process.env.JOBS_BATCH || 4 }); await startLease({ log: console, exit: (c) => shutdown(c) }); } /* a lost lease saves everything first */
+/* the web instances watch the worker (the alerts the worker sends can't say it is down): no background lease held for two checks in a
+   row, or a job waiting over 10 minutes, emails the team once a day (QV 25 Oct) */
+if (OBJ && isWeb() && !isWorker() && process.env.K_SERVICE) { let missed = 0; const t = setInterval(async () => { try {
+  const held = +(await dbq(`SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND objid = 727275 AND objsubid = 1 AND granted`)).rows[0].n;
+  missed = held ? 0 : missed + 1; if (missed >= 2) await alerts.fire('worker-down', `no background lease for ${missed * 2} minutes`);
+  const old = (await JOBS.age().catch(() => [])).filter((r) => r.oldest_s > 600); if (old.length) await alerts.fire('queue-stuck', old.map((r) => `${r.queue}: ${r.n} waiting, oldest ${Math.round(r.oldest_s / 60)} min`).join('; '));
+} catch (e) { console.warn('[watch] worker', e.message); } }, 120e3); t.unref?.(); }
+if (OBJ) { await JOBS.start({ interactive: +process.env.JOBS_INTERACTIVE || 4, batch: +process.env.JOBS_BATCH || 4, slow: +process.env.JOBS_SLOW || 2 }); await startLease({ log: console, exit: (c) => shutdown(c) }); } /* a lost lease saves everything first */
 retireInit.finally(() => whenLeader(() => { if (!process.env.BUILD_RESUME_OFF) builder.resumeAll().catch((e) => console.error('[build] resumeAll', e.message)); }));
+/* and every 10 minutes: a final whose instance went (its beat stopped) is collected within minutes (finals.js) */
+retireInit.finally(() => whenLeader(() => { if (!process.env.BUILD_RESUME_OFF) { const t = setInterval(() => finals.reconcileAll().then((n) => { if (n) console.log(`[finals] ${n} run(s) collected`); }).catch((e) => console.warn('[finals] reconcile', e.message)), 10 * 60e3); t.unref?.(); } }));
 retireInit.finally(() => whenLeader(() => { if (!process.env.BUILD_RESUME_OFF) finals.reconcileAll().then((n) => { if (n) console.log(`[finals] ${n} run(s) picked up after the restart`); }).catch((e) => console.error('[finals] reconcileAll', e.message)); })); // resume off for a local server reading the live bucket
 
 /* ---------- brand routes: start a read, its status and live events, "check what we read", moves and PDFs ---------- */
@@ -715,7 +726,7 @@ retireInit.finally(() => whenLeader(() => { if (!process.env.BUILD_RESUME_OFF) f
    email before it is claimed); the demo site stays open to anyone (Param, 2026-10-15). Status and progress stay public, so
    someone signing in mid-read still sees where it is */
 const teamRead = async (req, slug) => { if (process.env.DEMO_MODE === '1' || !auth.signinOn() || !slug || slug === DEFAULT) return true; const v = await viewerOf(req, slug); return !!(v.member || v.gen); };
-const TEAM_READ = /^\/api\/brands\/([a-z0-9-]+)\/(heard(?:\/(?:items|history|asked))?|watch|moves(?:\/\d+|\/cadence)?|facts|findings|check|build|updates|summary|events)$/; /* watch: What Brew watches is the team's too */
+const TEAM_READ = /^\/api\/brands\/([a-z0-9-]+)\/(heard(?:\/(?:items|history|asked))?|watch|moves(?:\/\d+|\/cadence)?|facts|findings|check|build|updates|summary|events|calendar)$/; /* calendar: move titles. watch: What Brew watches is the team's too */
 const teamGate = async (req, res, u) => {
   if (req.method !== 'GET') return false;
   const m = u.pathname.match(TEAM_READ), slug = m ? m[1] : u.pathname === '/api/research' ? req.headers['x-brand'] : null;
@@ -787,7 +798,7 @@ const brandRoutes = async (req, res, u) => {
   if (u.pathname === '/api/admin/sessions/end' && req.method === 'POST') { if (!auth.isRootAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
     const b = await readBody(req); if (!b.email) return send(res, 400, { error: 'email' }), true; return send(res, 200, { ended: await SESSIONS.endAll(b.email), email: b.email }), true; }
   /* who opened which brand (visSeen): newest first; ?slug= one brand, ?blocked=1 only the ones kept out */
-  if (req.method === 'GET' && u.pathname === '/api/admin/visitors') { if (!auth.isAdmin(auth.user(req))) return send(res, 403, { error: 'admins only' }), true;
+  if (req.method === 'GET' && u.pathname === '/api/admin/visitors') { if (!auth.isRootAdmin(auth.user(req))) /* every email that opened every brand: root admins only */ return send(res, 403, { error: 'admins only' }), true;
     const slug = u.searchParams.get('slug'), bl = u.searchParams.get('blocked') === '1';
     const rows = OBJ ? (await dbq(`SELECT slug, email, extract(epoch from first) * 1e3 AS first, extract(epoch from last) * 1e3 AS last, n, name, access, blocked FROM access_log
         WHERE ($1::text IS NULL OR slug = $1) AND (NOT $2 OR access = 'blocked' OR blocked > 0) ORDER BY last DESC LIMIT 5000`, [slug || null, bl])).rows.map((r) => ({ ...r, first: +r.first, last: +r.last }))

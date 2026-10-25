@@ -67,9 +67,10 @@ export function createJobs({ log = console, leaseMs = 120e3, pollMs = 5e3, pg = 
       if (e.afterDone) { log.warn?.(`[jobs] ${job.name} #${job.id} done but its result could not be saved: ${e.message}`); return; }
       const last = job.tries >= job.max_tries;
       log.warn?.(`[jobs] ${job.name} #${job.id} try ${job.tries}/${job.max_tries}: ${e.message}`);
-      await q(last ? `UPDATE jobs SET state = 'failed', error = $2, done_at = now(), locked_until = NULL WHERE id = $1`
-        : `UPDATE jobs SET state = 'queued', error = $2, locked_until = NULL, run_at = now() + make_interval(secs => $3) WHERE id = $1`,
-        last ? [job.id, String(e.message).slice(0, 2000)] : [job.id, String(e.message).slice(0, 2000), Math.min(3600, 15 * 2 ** job.tries)]).catch(() => {});
+      /* only a run this worker still holds: a lease that ran out meanwhile (a database failover) was handed on, and that run is not reset */
+      await q(last ? `UPDATE jobs SET state = 'failed', error = $2, done_at = now(), locked_until = NULL WHERE id = $1 AND locked_by = $3 AND state = 'running'`
+        : `UPDATE jobs SET state = 'queued', error = $2, locked_until = NULL, run_at = now() + make_interval(secs => $4) WHERE id = $1 AND locked_by = $3 AND state = 'running'`,
+        last ? [job.id, String(e.message).slice(0, 2000), ME] : [job.id, String(e.message).slice(0, 2000), ME, Math.min(3600, 15 * 2 ** job.tries)]).catch(() => {});
     } finally { clearInterval(beat); running--; }
   }
   /* a lease that ran out (its worker died): the job goes back in the queue, or fails once it has had its tries */
@@ -88,13 +89,13 @@ export function createJobs({ log = console, leaseMs = 120e3, pollMs = 5e3, pg = 
       await new Promise((r) => { wake = r; setTimeout(r, pollMs).unref?.(); }); wake = null;
     }
   }
-  async function start({ interactive = 4, batch = 4 } = {}) {
+  async function start({ interactive = 4, batch = 4, slow = 2 } = {}) {
     if (!pg) return;
     await listen('jobs_done', (id) => { const w = waiters.get(+id); if (w?.size) q('SELECT state, result, error FROM jobs WHERE id = $1', [+id]).then((r) => { if (r.rows[0]) for (const f of [...w]) f(r.rows[0]); }).catch(() => {}); });
     if (!worker) return;
     const r = setInterval(reap, 30e3), p = setInterval(purge, 3600e3); r.unref?.(); p.unref?.(); reap();
     const keep = (qs, n) => loop(qs, n).catch((e) => { log.warn?.('[jobs] loop', qs[0], e.message); if (!stopped) setTimeout(() => keep(qs, n), 5000).unref?.(); }); /* a loop that fails starts again */
-    keep(['interactive'], interactive); keep(['batch'], batch);
+    keep(['interactive'], interactive); keep(['batch'], batch); keep(['slow'], slow); /* slow: clicks that wait on long work (a PDF, statics, a data check), so they never hold every interactive slot */
     log.log?.(`[jobs] worker ${ME} on interactive (${interactive}) and batch (${batch})`);
   }
   const stop = () => { stopped = true; };

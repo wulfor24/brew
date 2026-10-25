@@ -32,15 +32,19 @@ const TITLE = {
   'ai-pause': 'Brew’s AI is paused',
   'treg-low': 'treg balance is low',
   '5xx': 'Brew is returning server errors',
-  sloosh: 'Sloosh can’t make finals'
+  sloosh: 'Sloosh can’t make finals',
+  'worker-down': 'Brew’s background worker is down',
+  'queue-stuck': 'Brew’s job queue is stuck'
 };
 const WHAT = {
   'vertex-billing': 'Check the Google Cloud billing account and credits for squareup-492617. Until it is fixed, moves, drafts and images fail.',
   'vertex-quota': 'Vertex keeps answering 429 (quota). Check the quota page for squareup-492617, or slow the background jobs down.',
   'ai-pause': 'A billing failure paused every AI call for 15 minutes. It turns itself back on, and pauses again while the credit is out.',
   'treg-low': 'Top up the squareup team on treg. Store reads, rivals’ ads, SERP and Instagram need it; at $0 the reads fall back or fail.',
-  '5xx': 'Look at the Cloud Run logs for shopos-feed (severity ERROR) to see what is failing.',
-  sloosh: 'Make the final is using Gemini instead of Sloosh until this is fixed. Reconnect at brew.joinsquareup.com/api/ops/sloosh/connect, or check the daily agent limit and credits on sloosh.ai/settings/mcp.'
+  '5xx': `Look at the Cloud Run logs for ${process.env.K_SERVICE || 'the Brew service'} (severity ERROR) to see what is failing.`,
+  sloosh: `Make the final is using Gemini instead of Sloosh until this is fixed. Reconnect at ${String(process.env.PUBLIC_URL || 'https://brew.joinsquareup.com').replace(/^https?:\/\//, '')}/api/ops/sloosh/connect, or check the daily agent limit and credits on sloosh.ai/settings/mcp.`,
+  'worker-down': 'No worker holds the background lease: builds, rewrites, finals, connector reads and every scheduled job have stopped. Look at the brew-worker service in Cloud Run (crash loop, failed deploy).',
+  'queue-stuck': 'Jobs have waited more than 10 minutes to start: the worker is down or overloaded, and clicks that wait on it time out. Look at the brew-worker service in Cloud Run.'
 };
 
 /* store.claim(issue, day) → true for the one instance that may send (Postgres: a locked edit of the day's file), so every

@@ -160,7 +160,7 @@ function rig({ brands = {}, primary = 'devshop.myshopify.com', pages = {}, produ
     start: async (url, o) => { started.push({ url, ...o, user: o.user.email }); return { slug: url.replace(/\./g, '-') }; } };
   const fetchFn = async (url, init = {}) => {
     const body = init.body ? JSON.parse(init.body) : {};
-    if (url.endsWith('/admin/oauth/access_token')) return new Response(JSON.stringify(body.requested_token_type?.includes('online') ? { access_token: 'online', associated_user: { id: 7, email: 'dev@devshop.test', first_name: 'Dee', account_owner: true } } : { access_token: 'offline-tok', scope: 'read_products', expires_in: 3600 }));
+    if (url.endsWith('/admin/oauth/access_token')) return new Response(JSON.stringify(body.requested_token_type?.includes('online') ? { access_token: 'online', associated_user: { id: 7, email_verified: true, email: 'dev@devshop.test', first_name: 'Dee', account_owner: true } } : { access_token: 'offline-tok', scope: 'read_products', expires_in: 3600 }));
     if (url.includes('/graphql.json')) { const q = body.query;
       if (/\{ shop \{ id name/.test(q)) return new Response(JSON.stringify({ data: { shop: { id: 'gid://shopify/Shop/555', name: 'Dev Shop', myshopifyDomain: 'devshop.myshopify.com', primaryDomain: { host: primary } } } }));
       try { return new Response(JSON.stringify({ data: await admin.gql(q, body.variables) })); } catch (e) { return new Response(JSON.stringify({ errors: [{ message: e.message }] })); } }

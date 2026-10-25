@@ -215,3 +215,18 @@ test('a reel also fits the brand’s own share of Brew’s credits (21 Oct: Sloo
   assert.ok(!q.error, q.error); assert.ok(q.credits <= 100, `fits the brand's share: ${q.credits}`);
   assert.deepEqual(R.calls.filter((c) => c[0] === 'quote').map((c) => [c[1].resolution, c[1].seconds]), [['1080p', 15], ['720p', 15]]);
 });
+
+test('QV 25 Oct: reconcile leaves a run alone while another instance beats for it, and collects it once the beat goes quiet', async () => {
+  const { createFinals } = await import('../finals.js');
+  const files = new Map(), packs = { getJSON: async (s, f) => (files.has(`${s}/${f}`) ? JSON.parse(files.get(`${s}/${f}`)) : null), put: async (s, f, d) => { files.set(`${s}/${f}`, JSON.stringify(d)); },
+    listFiles: async (s, sub) => [...files.keys()].filter((k) => k.startsWith(`${s}/${sub}/`)).map((k) => k.slice(`${s}/${sub}/`.length)).filter((n) => !n.includes('/')) };
+  let polls = 0; const sloosh = { getGeneration: async () => { polls++; return { state: 'succeeded', outputs: [] }; }, wait: async (fn) => fn() };
+  const f = createFinals({ sloosh, packs, budget: { refusal: () => null, spend() {} }, saveGen() {}, genFlush: async () => {}, slugs: async () => ['b'], log: { info() {}, warn() {}, log() {} }, fetchImpl: async () => ({ ok: false }) });
+  await packs.put('b', 'private/finals/k1.json', { runKey: 'k1', state: 'running', genId: 'g1', quote: { id: 'q' } });
+  await packs.put('b', 'private/finals-beat/k1.json', { at: Date.now() - 30e3 }); /* another instance polled it 30 s ago */
+  assert.equal(await f.reconcileAll(), 0, 'left to the instance making it');
+  assert.equal(polls, 0);
+  await packs.put('b', 'private/finals-beat/k1.json', { at: Date.now() - 10 * 60e3 }); /* that instance went 10 minutes ago */
+  assert.equal(await f.reconcileAll(), 1, 'collected');
+  await new Promise((r) => setTimeout(r, 20)); assert.ok(polls >= 1);
+});

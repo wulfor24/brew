@@ -121,18 +121,26 @@ export function createObjects({ bucket, gToken, log = console, pg = pgOn(), read
   }
   /* get(), but asking only for what changed: with the version a caller already holds, the body comes back only when the
      object moved on ({ version, same: true } otherwise). For callers that keep what they read (brand-pack's read cache) */
+  /* a parted document read in one statement (one snapshot): a delete or a whole rewrite landing between reading the stub and reading
+     its parts can't hand back {} (QV 25 Oct). → { version, body } | null when the row is gone */
+  async function joined(key) {
+    const rows = (await q('SELECT o.version, o.content_type, o.body AS obody, p.part, p.body FROM objects o LEFT JOIN doc_parts p ON p.key = o.key WHERE o.key = $1 ORDER BY p.ord, p.part', [key])).rows;
+    if (!rows.length) return null; const v = +rows[0].version;
+    if (rows[0].content_type !== STUB) return { version: v, body: rows[0].obody?.length ? rows[0].obody : null }; /* made whole meanwhile */
+    return { version: v, body: Buffer.from(JSON.stringify(joinDoc(rows.filter((r) => r.part != null)))) };
+  }
   async function getV(key, have = null) {
     if (!inRows(key)) return { version: null, body: await get(key) };
     const row = (await q('SELECT version, content_type, CASE WHEN version = $2 THEN NULL ELSE body END AS body FROM objects WHERE key = $1', [key, have == null ? -1 : have])).rows[0];
     if (!row) return { version: null, body: await get(key) }; /* not a row (yet): read-through and the rest as get() does */
     const version = +row.version; if (have != null && version === have) return { version, same: true };
-    if (row.content_type === STUB) return { version, body: Buffer.from(JSON.stringify(joinDoc((await q('SELECT part, body FROM doc_parts WHERE key = $1 ORDER BY ord, part', [key])).rows))) };
+    if (row.content_type === STUB) { const j = await joined(key); return j ? (have != null && j.version === have ? { version: j.version, same: true } : j) : { version: null, body: null }; }
     if (!row.body?.length && readThrough && gcsOn) return { version: null, body: await get(key) }; /* not imported yet: as get() */
     return { version, body: row.body?.length ? row.body : null };
   }
   async function get(key) {
     if (inRows(key)) { const row = (await q('SELECT body, content_type FROM objects WHERE key = $1', [key])).rows[0], b = row?.body;
-      if (row?.content_type === STUB) return Buffer.from(JSON.stringify(joinDoc((await q('SELECT part, body FROM doc_parts WHERE key = $1 ORDER BY ord, part', [key])).rows))); /* parted */
+      if (row?.content_type === STUB) return (await joined(key))?.body ?? null; /* parted, in one snapshot */
       if (b?.length) return b; /* an empty body is a row just locked for its first write */
       /* the switch from the bucket (OBJECTS_READTHROUGH=1): an object not imported yet is read from the bucket once and kept */
       if (!readThrough || !gcsOn || b) return null;
