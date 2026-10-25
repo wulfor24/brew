@@ -26,7 +26,7 @@ export const pkce = () => { const verifier = b64u(crypto.randomBytes(32)); retur
 
 /* one registered client per redirect URI (RFC 7591); the probe tool registers one with no redirect for the device flow */
 export async function register({ redirect, fetchImpl = fetch, grants = ['authorization_code', 'refresh_token'], base = null } = {}) {
-  const body = { client_name: 'Brew', client_uri: 'https://brew.joinsquareup.com', redirect_uris: redirect ? [redirect] : [], grant_types: grants, response_types: ['code'], token_endpoint_auth_method: 'none', scope: SCOPES };
+  const body = { client_name: 'Brew', client_uri: process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', redirect_uris: redirect ? [redirect] : [], grant_types: grants, response_types: ['code'], token_endpoint_auth_method: 'none', scope: SCOPES };
   const r = await fetchImpl(`${base || await authServer(fetchImpl)}/oauth/register`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20e3) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.client_id) throw new Error(`Sloosh client registration failed (${r.status}): ${JSON.stringify(j).slice(0, 300)}`);

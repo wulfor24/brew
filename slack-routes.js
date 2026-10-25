@@ -14,7 +14,15 @@ export const plain = (s, names = {}) => String(s || '')
 /* the thread reply Brew takes: a person's message inside a thread, not an edit, a join, a bot or the thread's own post */
 export const isReply = (ev) => ev?.type === 'message' && !ev.subtype && !ev.bot_id && !!ev.user && !!ev.thread_ts && ev.thread_ts !== ev.ts;
 
-export function createSlackRoutes({ connectors, feed, log = console, secret = () => process.env.SLACK_SIGNING_SECRET || '' }) {
+/* Slack sends a Slack app's events to one address. Production takes them (SLACK_RELAY_URL set there): a workspace connected to a
+   brand on production is handled here, any other is passed on to staging exactly as Slack sent it (same body and signature
+   headers, so staging checks it the same way). Staging never relays */
+export function createSlackRoutes({ connectors, feed, log = console, secret = () => process.env.SLACK_SIGNING_SECRET || '', relayUrl = () => process.env.SLACK_RELAY_URL || '', fetchImpl = fetch }) {
+  const relay = async (path, body, h) => { const to = relayUrl(); if (!to) return false;
+    try { const r = await fetchImpl(to.replace(/\/$/, '') + path, { method: 'POST', body, signal: AbortSignal.timeout(10e3), headers: Object.fromEntries(['content-type', 'x-slack-signature', 'x-slack-request-timestamp', 'x-slack-retry-num', 'x-slack-retry-reason'].filter((k) => h[k]).map((k) => [k, h[k]])) });
+      log.log?.(`[slack] relayed ${path} to staging: ${r.status}`); } catch (e) { log.warn('[slack] relay', e.message); }
+    return true; };
+  const mine = async (team) => !team || !!(await connectors.slackSlug(team).catch(() => null)); /* a workspace a brand here is connected to */
   const seen = new Map(); // event ids already handled (Slack retries): 1 hour
   const once = (id) => { const now = Date.now(); for (const [k, at] of seen) if (now - at > 3600e3) seen.delete(k); if (!id || seen.has(id)) return !id; seen.set(id, now); return true; };
   const raw = (req) => new Promise((r) => { let d = ''; req.on('data', (c) => { d += c; if (d.length > 1e6) req.destroy(); }); req.on('end', () => r(d)); req.on('error', () => r('')); });
@@ -65,6 +73,7 @@ export function createSlackRoutes({ connectors, feed, log = console, secret = ()
       if (j.type === 'url_verification') return out(res, 200, { challenge: j.challenge }), true;
       out(res, 200, null); /* answered: Slack retries anything slower than 3 seconds */
       if (j.type !== 'event_callback' || !once(j.event_id)) return true;
+      if (relayUrl() && !(await mine(j.team_id))) { await relay('/slack/events', body, req.headers); return true; }
       const ev = j.event || {};
       log.log?.(`[slack] event ${ev.type}${ev.subtype ? '/' + ev.subtype : ''} from ${j.team_id}${ev.thread_ts ? ' in a thread' : ''}`);
       if (ev.type === 'app_uninstalled' || ev.type === 'tokens_revoked') connectors.slackGone(j.team_id).then((s) => s && log.log?.(`[slack] ${s}: Slack was removed`)).catch(() => {});
@@ -73,6 +82,7 @@ export function createSlackRoutes({ connectors, feed, log = console, secret = ()
     }
     let p = {}; try { p = JSON.parse(new URLSearchParams(body).get('payload') || '{}'); } catch {}
     out(res, 200, null);
+    if (relayUrl() && !(await mine(p.team?.id))) { await relay('/slack/actions', body, req.headers); return true; }
     if (p.type === 'block_actions') press(p).catch((e) => log.warn('[slack] action', e.message));
     return true;
   };
