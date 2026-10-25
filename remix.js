@@ -4,6 +4,7 @@ import { B, BN, BH, CTRY, FESTN, FESTD, live } from './brand-ctx.js';
 // Its verdict says what is left before the brief is ready: a fix, the team's own checks, or a plan in the jam.
 // The jam is a versioned plan (goal, the changes, open questions with owners, readiness). It ends with Share the brief:
 // nothing is run from Brew. Learning reads every step (learn.js).
+import { ME as INSTANCE } from './instance.js'; // whose job a jam's spinner is (several web instances)
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -838,7 +839,7 @@ export function createRemix(o) {
     const slots = rows.length ? rows.map((_, i) => i).filter((i) => (all ? !(p.cardImages || [])[i] : i === 0)).slice(0, 10) : [0];
     if (!slots.length) return false;
     if (!spend('image')) return false;
-    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id);
+    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id); mineJob(t, ch);
     (async () => {
       try {
         const src = await picSrc(t, ch, p); if (!src) throw new Error('no product photo could be read for this picture');
@@ -889,7 +890,7 @@ export function createRemix(o) {
     if (isMock() || !geminiImage) { const n = listingFromCatalog(t, ch, why); if (!n) ch.thread.push({ from: 'ai', text: 'No photo could be made here, and the store has no product photo to place. The shot list stays as the photo brief for your team.', at: now(t) }); bump(t, ch); o.save?.(t); return n ? 'own' : false; }
     if (!spend('image')) return false;
     const shots = shotsOf(ch.pkg), product = ch.pkg.product || ch.pkg.name || `${BN()} ${B().config.product?.noun || 'product'}`;
-    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id); ch.pkg = { ...ch.pkg, photoShots: shots };
+    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id); mineJob(t, ch); ch.pkg = { ...ch.pkg, photoShots: shots };
     (async () => {
       try {
         const src = await picSrc(t, ch); if (!src) throw new Error('no product photo could be read for the listing photos');
@@ -915,7 +916,7 @@ export function createRemix(o) {
   const cutPhotos = (t, ch, vs, one = false) => {
     if (!canPic(ch) || isVideoPost(ch) || vs.length < (one ? 1 : 2)) return 0;
     if (!spend('image')) return 0;
-    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id);
+    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id); mineJob(t, ch);
     (async () => {
       let done = 0, stopped = false;
       try {
@@ -959,7 +960,7 @@ export function createRemix(o) {
     if (!isVideoPost(ch) || (isMock() && !o.mediaFake) || !geminiImage || ch.videoPending) return false;
     if (!spend('video')) return false;
     const target = headOf(t, ch)?.id || null, p = { ...ch.pkg }, sc = p.script || [], hook = hookOf(p);
-    ch.videoPending = Date.now(); ch.videoError = null; ch.videoStep = 'Making the first frame'; VID_JOBS.add(ch.id);
+    ch.videoPending = Date.now(); ch.videoError = null; ch.videoStep = 'Making the first frame'; VID_JOBS.add(ch.id); mineJob(t, ch);
     (async () => {
       try {
         const M = makers();
@@ -1298,7 +1299,14 @@ export function createRemix(o) {
     if (ch.pkg?.draft?.pending) ch.pkg = { ...ch.pkg, draft: off(ch.pkg.draft) };
     for (const v of versionsOf(t, ch.id)) if (v.snapshot?.draft?.pending) v.snapshot = { ...v.snapshot, draft: off(v.snapshot.draft) };
     return n; };
-  const C = (t, id) => { const ch = changes(t)[id]; if (!ch) return ch;
+  /* several web instances (production): a job running on another instance carries its name and a fresh beat on the jam, so this
+     instance never calls it cut off ("Brew restarted… Try again") or clears its spinner while it runs (QV 25 Oct) */
+  const MINE_JOBS = new Map(), JOB_FRESH = 3 * 60e3; /* chId → { t, ch } this instance is working on */
+  const mineJob = (t, ch) => { ch.busyBy = { by: INSTANCE, beat: Date.now() }; MINE_JOBS.set(ch.id, { t, ch }); };
+  const stillMine = (ch) => (ch.job && ITER_JOBS.has(ch.job.id)) || IMG_JOBS.has(ch.id) || VID_JOBS.has(ch.id) || FILL_JOBS.has(ch.id) || REMAKE_JOBS.has(ch.id);
+  { const jb = setInterval(() => { for (const [id, x] of MINE_JOBS) { if (stillMine(x.ch)) { x.ch.busyBy = { by: INSTANCE, beat: Date.now() }; } else { if (x.ch.busyBy?.by === INSTANCE) delete x.ch.busyBy; MINE_JOBS.delete(id); } try { o.save?.(x.t); } catch {} } }, 60e3); jb.unref?.(); }
+  const elsewhereJob = (ch) => !!ch.busyBy && ch.busyBy.by !== INSTANCE && Date.now() - (+ch.busyBy.beat || 0) < JOB_FRESH;
+  const C = (t, id) => { const ch = changes(t)[id]; if (!ch) return ch; if (elsewhereJob(ch)) return ch; /* being made on another instance: its own reads settle it */
     if (ch.job && !ITER_JOBS.has(ch.job.id)) { const job = ch.job; delete ch.job; ch.thinking = null; ch.thread = [...(ch.thread || []), { from: 'ai', text: 'Brew restarted while I was working on that, so nothing changed. Try again.', at: Date.now(), retry: job.ask || '' }]; } /* a revision a restart cut off says so, never spins for ever */
     if (ch.pkg && ch.pkg.wordsIn === undefined && ch.lastFinal?.versionId && /^gen\/fin-/.test(ch.pkg.image || '') && ch.pkg.overlay) ch.pkg.wordsIn = ch.pkg.image; /* a final made before 18 Oct: its words are set in the picture */
     if (ch.pkg && ch.pkg.wordsIn === undefined && /^gen\//.test(ch.pkg.image || '') && ch.cardId && o.planOf) { const w = o.planOf(t, t.cards?.get?.(ch.cardId) || {})?.draft?.wordsIn; ch.pkg.wordsIn = w && w === ch.pkg.image ? w : null; } /* a jam opened from a first draft before 20 Oct: its picture may already carry the headline */
@@ -1382,7 +1390,7 @@ export function createRemix(o) {
   const touchedCh = (t, ch) => versionsOf(t, ch.id).length > 1 || (ch.thread || []).length > 0;
   const startingPoint = (t) => ({ from: 'ai', text: 'This is a starting point: the first draft didn’t get written. Say “rewrite it” and I’ll write it now from the card.', at: now(t), rewrite: true });
   const fillLater = (t, c, ch, write, after = null) => {
-    ch.copyPending = Date.now(); FILL_JOBS.add(ch.id);
+    ch.copyPending = Date.now(); FILL_JOBS.add(ch.id); mineJob(t, ch);
     (async () => {
       let ok = false;
       try { let x = null; try { x = await write(); } catch (e) { log.warn('[remix later] first try', e.message); }
@@ -1497,7 +1505,7 @@ export function createRemix(o) {
     const maker = o.mediaFake ? imgMaker() : geminiImage;
     if ((isMock() && !o.mediaFake) || !maker) return failTake(t, c, ch, v, isMock() ? 'Pictures are off while AI is offline; the words are on the version.' : 'This server can’t make pictures.');
     if (!spend('image')) return failTake(t, c, ch, v, budgetWhy('image', o.slugOfT?.(t), BN()) || 'Today’s picture limit is used up; the words are on the version.');
-    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id);
+    ch.imagePending = true; ch.imageError = null; IMG_JOBS.add(ch.id); mineJob(t, ch);
     const p = { ...ch.pkg }, rows = p.cards || p.slides || [], head = takeWords(ch).title;
     const land = (url) => {
       if (!v.drawing) return; /* the cap already ended it */
@@ -1836,7 +1844,7 @@ export function createRemix(o) {
       .then((r) => { if (r?.answered) ch.job.answered = true; })
       .catch((e) => { log.warn('[iterate job]', ch.id, e.message); ch.thread.push({ from: 'ai', text: e.timeout ? `That took over ${Math.round(ITER_MAX_MS / 60e3)} minutes, so I stopped. Nothing changed. Try again, or say it in fewer words.` : `That didn’t go through (${String(e.message).slice(0, 100)}). Nothing changed. Try again.`, at: now(t), retry: msg.slice(0, 400) }); })
       .finally(() => { ITER_JOBS.delete(id); if (ch.job?.id === id) ch.lastJob = { id, at: Date.now(), answered: !!ch.job.answered }; delete ch.job; think(ch, null); bump(t, ch); o.save?.(t); });
-    ITER_JOBS.set(id, p0); o.save?.(t);
+    ITER_JOBS.set(id, p0); mineJob(t, ch); o.save?.(t);
     return { change: pubChange(t, ch), working: true };
   });
   // a knob: instant for a look, a new creative for the image, AI for the words
@@ -1981,7 +1989,7 @@ export function createRemix(o) {
     /* a refusal by today's limits is said in the chat before anything is spent (it used to leave a silent "words only" version) */
     const no = as === 'video' && !spend('video') ? 'today’s video limit is used up' : !spend('image') ? 'today’s picture limit is used up' : null;
     if (no) { ch.remakeError = `The ${as} can’t be made right now: ${no}. The words are on the version.`; ch.thread.push({ from: 'ai', text: ch.remakeError, at: now(t) }); return false; }
-    ch.remakePending = { as, at: Date.now(), step: 'Making the first picture' }; ch.remakeError = null; REMAKE_JOBS.add(ch.id);
+    ch.remakePending = { as, at: Date.now(), step: 'Making the first picture' }; ch.remakeError = null; REMAKE_JOBS.add(ch.id); mineJob(t, ch);
     const step = (s) => { if (ch.remakePending) ch.remakePending.step = s; };
     (async () => {
       try {

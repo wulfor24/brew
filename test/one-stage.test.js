@@ -142,3 +142,10 @@ test('QV 25 Oct server: the shown quote runs, a still-running final is never fai
   assert.match(jr, /return \{ ok: true, already: true \}; \/\* pressed again/); assert.match(rmx, /v\.studio = \{ take: take\.id \|\| null, file: take\.file \|\| null/);
   assert.match(jr, /const most = studio\.styleOf\(patch\.style \|\| sp\.style\)\?\.job === 'viral-short' \? 30 : 15/);
 });
+
+test('several instances: a v1 job running on another instance is never called cut off here (its name and beat are on the jam)', () => {
+  const rmx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
+  assert.match(rmx, /const C = \(t, id\) => \{ const ch = changes\(t\)\[id\]; if \(!ch\) return ch; if \(elsewhereJob\(ch\)\) return ch;/);
+  assert.equal((rmx.match(/mineJob\(t, ch\);/g) || []).length, 8, 'every job start stamps the jam: pictures, listing photos, cut-outs, video, words, takes, revisions, remakes');
+  assert.match(rmx, /ch\.busyBy = \{ by: INSTANCE, beat: Date\.now\(\) \}/);
+});
