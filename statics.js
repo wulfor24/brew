@@ -46,26 +46,42 @@ export async function teamStatic(req, res, slug, name, { viewerOf, signedIn, pac
   res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'private, no-store', vary: 'Cookie' }); res.end(b); return true;
 }
 
+export const STATICS_LAYOUT_V = 2; /* 2 (25 Oct): words in their own panel above the whole picture; older saved statics are drawn again (recompose) */
 export function createStatics({ ai, image, packs, launchBrowser, log = console }) {
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  // the composer: scene image + exact type, rendered by Chromium at 1080×1350 (4:5)
+  /* the composer (layout 2, Param 25 Oct): the words get their own panel at the top and the picture sits whole under them, never
+     words over the product (a dark band over the bottle's cap and logo read as a broken ad). The picture is fitted, not cropped, on a
+     soft blurred copy of itself, so a tight packshot and a wide scene both read. Rendered by Chromium at 1080×1350 (4:5) */
   const compose = async (browser, sceneBuf, { headline, small, accent }) => {
     const page = await browser.newPage();
     try {
       await page.setViewport({ width: 1080, height: 1350, deviceScaleFactor: 1 });
-      const size = headline.length < 20 ? 92 : headline.length < 50 ? 70 : 58;
+      const size = headline.length < 24 ? 84 : headline.length < 46 ? 68 : 56, src = `data:image/png;base64,${sceneBuf.toString('base64')}`;
       await page.setContent(`<!doctype html><html><head><style>
-        html,body{margin:0;width:1080px;height:1350px;overflow:hidden;font-family:"Helvetica Neue",Helvetica,Inter,Arial,sans-serif}
-        .bg{position:absolute;inset:0;background:url(data:image/png;base64,${sceneBuf.toString('base64')}) center/cover no-repeat}
-        .scrim{position:absolute;left:0;right:0;top:0;height:62%;background:linear-gradient(180deg,rgba(12,16,26,.86) 0%,rgba(12,16,26,.62) 45%,rgba(12,16,26,0) 100%)}
-        .t{position:absolute;left:72px;right:78px;top:72px}
-        .bar{width:64px;height:8px;background:${accent};margin-bottom:26px}
-        h1{margin:0;color:#fff;font-weight:700;font-size:${size}px;line-height:1.12;letter-spacing:-.01em}
-        p{margin:16px 0 0;color:#d6e2ff;font-size:34px;line-height:1.3}
-      </style></head><body><div class="bg"></div><div class="scrim"></div><div class="t"><div class="bar"></div><h1>${esc(headline)}</h1>${small ? `<p>${esc(small)}</p>` : ''}</div></body></html>`, { waitUntil: 'load' });
+        html,body{margin:0;width:1080px;height:1350px;overflow:hidden;font-family:"Helvetica Neue",Helvetica,Inter,Arial,sans-serif;background:#fff}
+        body{display:flex;flex-direction:column}
+        .t{flex:none;padding:68px 76px 44px}
+        .bar{width:64px;height:8px;background:${accent};border-radius:4px;margin-bottom:26px}
+        h1{margin:0;color:#14161a;font-weight:700;font-size:${size}px;line-height:1.1;letter-spacing:-.015em}
+        p{margin:14px 0 0;color:#5b6070;font-size:32px;line-height:1.32}
+        .pic{position:relative;flex:1;min-height:0;overflow:hidden}
+        .pic .blur{position:absolute;inset:-40px;background:url(${src}) center/cover;filter:blur(36px) saturate(1.05) brightness(1.04);opacity:.9}
+        .pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+      </style></head><body><div class="t"><div class="bar"></div><h1>${esc(headline)}</h1>${small ? `<p>${esc(small)}</p>` : ''}</div><div class="pic"><div class="blur"></div><img src="${src}"></div></body></html>`, { waitUntil: 'load' });
       return await page.screenshot({ type: 'jpeg', quality: 88 });
     } finally { await page.close().catch(() => {}); }
   };
+  /* saved statics made with the old layout are drawn again from their saved scene (raw-<id>.png) and words: free, no new picture */
+  async function recompose(slug, { priv = false, accent = '#82B1FF' } = {}) {
+    const pre = priv ? 'private/' : '', mark = await packs.getJSON(slug, `${pre}statics-layout.json`, null).catch(() => null);
+    if ((mark?.v || 0) >= STATICS_LAYOUT_V) return 0;
+    const text = (await packs.getJSON(slug, `${pre}statics.json`, null).catch(() => null)) || {}; const ids = Object.keys(text).filter((id) => text[id]?.headline);
+    let n = 0; if (ids.length) { const browser = await launchBrowser();
+      try { for (const id of ids) { const raw = await packs.get(slug, `${pre}statics/raw-${id}.png`).catch(() => null); if (!raw) continue;
+        const out = await compose(browser, raw, { headline: text[id].headline, small: text[id].small, accent }); await packs.put(slug, `${pre}statics/${id}.jpg`, out, 'image/jpeg'); n++; } }
+      finally { await browser.close().catch(() => {}); } }
+    await packs.put(slug, `${pre}statics-layout.json`, { v: STATICS_LAYOUT_V, at: new Date().toISOString(), n }); return n;
+  }
   // product photos come as png/webp/jpg; Gemini gets a clean JPEG
   const toJpeg = async (browser, buf, type) => {
     const page = await browser.newPage();
@@ -111,8 +127,8 @@ export function createStatics({ ai, image, packs, launchBrowser, log = console }
       }
     } finally { await browser.close().catch(() => {}); }
     if (!done.length) throw new Error('no image was made');
-    await packs.put(slug, `${pre}statics.json`, text);
+    await packs.put(slug, `${pre}statics.json`, text); await packs.put(slug, `${pre}statics-layout.json`, { v: STATICS_LAYOUT_V, at: new Date().toISOString(), n: done.length });
     return { ids: done, text };
   }
-  return { make };
+  return { make, recompose };
 }

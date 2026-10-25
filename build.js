@@ -779,9 +779,15 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function heal(slug) {
     if (!healing.has(slug) && !blocked(slug) && !st(slug).running && process.env.AI_MOCK !== '1') bookAfter(slug); /* a missing or stale Brand Book is written once (no-op when current) */
     const mk = healing.has(slug) || blocked(slug) || st(slug).running || st(slug).checking || process.env.HEAL_OFF === '1' ? null : await marketCheck(slug).catch((e) => (log.warn?.('[market] heal', slug, e.message), null));
+    healStatics(slug).catch((e) => log.warn?.('[statics] recompose', slug, e.message)); /* free: old-layout statics drawn again from their saved scenes */
     const r = await healRead(slug);
     return mk ? ['market', ...(r || [])] : r;
   }
+  const staticsHealed = new Set();
+  async function healStatics(slug) { if (staticsHealed.has(slug) || process.env.AI_MOCK === '1') return; staticsHealed.add(slug);
+    const p = await packs.getJSON(slug, 'profile.json', null); const accent = p?.identity?.colors?.[1] || p?.identity?.colors?.[0] || '#82B1FF';
+    const m = await load(); if (!m?.pdf?.launchBrowser) return;
+    const S = createStatics({ ai, image, packs, launchBrowser: m.pdf.launchBrowser, log }); await S.recompose(slug, { accent }); await S.recompose(slug, { priv: true, accent }); }
   async function healRead(slug) {
     if (healing.has(slug) || blocked(slug) || st(slug).running || st(slug).checking || process.env.AI_MOCK === '1' || process.env.HEAL_OFF === '1') return null;
     healing.add(slug);
