@@ -80,6 +80,6 @@ test('every background loop that spends or writes to people skips moved brands',
 test('production relays the Slack of a brand whose home is staging, and its sign-ins are renewed by staging only', () => {
   assert.match(src('slack-routes.js'), /const mine = async \(team\) => \{[^\n]*!movedAway\(slug\)/);
   assert.match(src('connectors/index.js'), /C\.fresh && !\(movedAway\(slug\) && creds\?\.refresh\)/);
-  assert.match(src('tools/prod-env.sh'), /ENV=production\|[^"]*STAGING_HOME=\$\{STAGING_HOME-arata-in,nutrova-com\}/);
-  assert.ok(!/MOVED_TO_PROD-[^|]*(arata-in|nutrova-com)/.test(src('deploy.sh')), 'Arata and Nutrova live on staging');
+  assert.match(src('tools/prod-env.sh'), /ENV=production\|[^"]*STAGING_HOME=\$\{STAGING_HOME-\}/, 'every partner lives on production (Param, 25 Oct); the list is there for a partner tried on staging first');
+  assert.match(src('deploy.sh'), /MOVED_TO_PROD=\$\{MOVED_TO_PROD-[^}]*arata-in/, 'staging sends Arata to production');
 });
