@@ -149,3 +149,9 @@ test('several instances: a v1 job running on another instance is never called cu
   assert.equal((rmx.match(/mineJob\(t, ch\);/g) || []).length, 8, 'every job start stamps the jam: pictures, listing photos, cut-outs, video, words, takes, revisions, remakes');
   assert.match(rmx, /ch\.busyBy = \{ by: INSTANCE, beat: Date\.now\(\) \}/);
 });
+
+test('the Plays page says plays: its title, counts and the out-of-date banner (3.10)', () => {
+  const i = app.indexOf('/* ---------- The moves: every plan Brew wrote'), seg = app.slice(i, app.indexOf('\n  /* ----------', i + 50));
+  assert.match(seg, /<h2>The plays<\/h2>/); assert.match(seg, /\} plays for \$\{esc\(B\.brand\.name\)\}/); assert.match(seg, /play\$\{nStale === 1 \? ' is' : 's are'\} out of date/);
+  assert.ok(!/<h2>The moves<\/h2>|\} moves for \$\{esc/.test(seg));
+});

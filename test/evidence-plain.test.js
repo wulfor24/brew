@@ -98,3 +98,11 @@ test('real customer voice backs a card when it speaks to what the card is about,
   assert.equal(v[0].label, '5★ review of Scalp Massager'); assert.equal(v[0].url, 'https://arata.in/r/1');
   assert.ok(v.some((x) => x.kind === 'quote' && x.extra === '31 replies'));
 });
+
+test('QV 25 Oct: a web address stays as written in plain words; the store\'s product list is still named for people', async () => {
+  const { dejargon } = await import('../plain.js');
+  assert.equal(dejargon('arata.in/sitemap.xml'), 'arata.in/sitemap.xml');
+  assert.equal(dejargon('Check https://arata.in/sitemap_products_1.xml now'), 'Check https://arata.in/sitemap_products_1.xml now');
+  assert.match(dejargon('your sitemap has 204 pages'), /page list for Google/);
+  assert.match(dejargon('Read arata.in/products.json for prices'), /your product list/);
+});

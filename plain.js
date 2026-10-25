@@ -51,7 +51,11 @@ const cap1 = (to, m, at, all) => (/^[A-Z`/]/.test(m) && /^[a-z]/.test(to) && (at
 const SWAPS = [...new Set(JARGON.map(([, to]) => to).filter((x) => typeof x === 'string'))].map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 const TWICE = new RegExp(`\\b(${SWAPS.join('|')})(?:\\s+\\1\\b)+`, 'gi');
 const twice = (x) => x.replace(TWICE, '$1');
-export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; let x = s; for (const [re, to] of JARGON) x = x.replace(re, (m, ...a) => { const at = a[a.length - 2], all = a[a.length - 1]; return cap1(typeof to === 'function' ? to(m, ...a) : to, m, at, all); }); return moveSay(twice(x)); }; /* and "Weekly move 11", never "Move 1011" */
+/* a web address stays as written ("arata.in/sitemap.xml" read "arata.in/page list for Google.xml": QV 25 Oct); the
+   store's own product, collection and details files are still named for people (rule above) */
+const KEEP_AS_IS = /\bhttps?:\/\/[^\s)"'<>]+|\b[\w-]+(?:\.[\w-]+)+\/[^\s)"'<>]*/gi; /* a bare file name in a sentence ("/llms.txt") is still said plainly */
+const keepAside = (s) => { const kept = []; const x = s.replace(KEEP_AS_IS, (m) => (/\b(?:products|collections|meta)\.json\b/i.test(m) ? m : (kept.push(m), `\u0000${kept.length - 1}\u0000`))); return { x, back: (y) => y.replace(/\u0000(\d+)\u0000/g, (m, i) => kept[+i]) }; };
+export const dejargon = (s) => { if (typeof s !== 'string' || !s) return s; const ka = keepAside(s); let x = ka.x; for (const [re, to] of JARGON) x = x.replace(re, (m, ...a) => { const at = a[a.length - 2], all = a[a.length - 1]; return cap1(typeof to === 'function' ? to(m, ...a) : to, m, at, all); }); return ka.back(moveSay(twice(x))); }; /* and "Weekly move 11", never "Move 1011" */
 /* the source line under a card ("Move 64 · Loop 3: SKU-Specific Reorder Clocks"): the move's own words, without the plan's
    internal numbering (Loop 3, Pillar 2, Phase 1) and in plain words */
 export const plainSrc = (s) => (typeof s !== 'string' || !s ? s : dejargon(s.replace(/(·\s*)(?:Loop|Pillar|Phase|Step|Part|Stage|Track|Wave|Tier|Layer|Workstream|Sprint|Decision)s?\s*\d+[a-z]?(?:\s*(?:and|&|to|[–—-])\s*\d+[a-z]?)*\s*[:.\-–—]\s*/gi, '$1')));
