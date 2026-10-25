@@ -1062,7 +1062,12 @@ const SLOW_MS = +process.env.SLOW_MS || 1500;
 function timed(req, res, u, fn) {
   const t0 = performance.now(), clock = { ms: 0, n: 0 }, wh = res.writeHead; let ctype = '';
   res.writeHead = function (code, ...a) { try { const st = `total;dur=${Math.round(performance.now() - t0)}, db;dur=${Math.round(clock.ms)}`;
-    const hd = a.find((x) => x && typeof x === 'object' && !Array.isArray(x)); if (hd) ctype = String(Object.entries(hd).find(([k]) => k.toLowerCase() === 'content-type')?.[1] || ''); if (hd && !Object.keys(hd).some((k) => k.toLowerCase() === 'server-timing')) hd['server-timing'] = st; else if (!hd && !res.getHeader('server-timing')) res.setHeader('server-timing', st); } catch {} return wh.call(res, code, ...a); };
+    const hd = a.find((x) => x && typeof x === 'object' && !Array.isArray(x));
+    /* the CDN in front of production caches only what an answer calls public: anything else (a viewer's own feed, seed.js,
+       a private PDF) is marked private, so no shared cache ever keeps one person's answer for another */
+    { const k = hd && Object.keys(hd).find((x) => x.toLowerCase() === 'cache-control'), cc = String((k ? hd[k] : res.getHeader('cache-control')) || '');
+      if (cc && !/\b(public|private|no-store)\b/i.test(cc)) { if (k) hd[k] = `private, ${cc}`; else res.setHeader('cache-control', `private, ${cc}`); } }
+    if (hd) ctype = String(Object.entries(hd).find(([k]) => k.toLowerCase() === 'content-type')?.[1] || ''); if (hd && !Object.keys(hd).some((k) => k.toLowerCase() === 'server-timing')) hd['server-timing'] = st; else if (!hd && !res.getHeader('server-timing')) res.setHeader('server-timing', st); } catch {} return wh.call(res, code, ...a); };
   res.once('close', () => { const ms = performance.now() - t0; if (ms > SLOW_MS && !/text\/event-stream/.test(ctype || String(res.getHeader('content-type') || ''))) console.warn(`[slow]${res.writableFinished ? '' : ' (client gone)'} ${req.method} ${u.pathname.replace(/t_[a-f0-9]+/g, 't_*').replace(/\/w_[A-Za-z0-9_-]+/g, '/w_*')} ${res.statusCode} ${Math.round(ms)} ms (db ${Math.round(clock.ms)} ms, ${clock.n} queries)`); });
   return dbClock.run(clock, fn);
 }

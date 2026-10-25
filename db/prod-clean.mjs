@@ -11,6 +11,7 @@ const SERVICES = String(process.env.PROD_SERVICES || '').split(',').filter(Boole
 const TEST_BRANDS = new Set(String(process.env.TEST_BRANDS || 'cozysnugglet-shop,zenant-club,zenant-club-yt,adpage,adpage-ads,questions').split(','));
 const found = []; const bad = (why) => { found.push(why); console.log(`[clean] ${why}`); };
 
+if (!SERVICES.length) bad('no production services named (PROD_SERVICES): nothing about them was checked'); /* a gate with nothing to check never passes */
 /* 1. the services as Cloud Run runs them (the newest revision, which is the one about to get traffic) */
 const token = async () => (await (await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token', { headers: { 'Metadata-Flavor': 'Google' } })).json()).access_token;
 for (const s of SERVICES) {

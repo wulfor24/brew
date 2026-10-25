@@ -17,7 +17,9 @@ echo "image $IMG (staging git-sha $SHA, origin/main $MAIN)"
 if [ -z "${1:-}" ] && ! git merge-base --is-ancestor "$SHA" origin/main; then echo "staging runs $SHA, which is not on origin/main: deploy staging from main first"; exit 1; fi
 case "$IMG" in *@sha256:*) ;; *) DIG=$(gcloud artifacts docker images describe "$IMG" --format='value(image_summary.digest)' 2>/dev/null || true); [ -n "$DIG" ] && IMG="${IMG%%:*}@$DIG";; esac
 
-echo "1/7 backup"; gcloud sql backups create --instance=brew-prod --project=$P --description="before promote $SHA" --async >/dev/null && echo "   on-demand backup started"
+echo "1/7 backup"
+for i in $(seq 1 20); do if gcloud sql backups create --instance=brew-prod --project=$P --description="before promote $SHA" --async >/dev/null 2>&1; then echo "   on-demand backup started"; break; fi
+  [ $i = 20 ] && { echo "   no backup could be started (the database stayed busy): stopping"; exit 1; }; sleep 30; done
 
 echo "2/7 migrations"
 gcloud run jobs deploy brew-prod-migrate --image="$IMG" --project=$P --region=$REGION --service-account=$SA $NET --command=node --args=db/migrate.js \
@@ -30,10 +32,12 @@ gcloud run deploy brew-worker --image="$IMG" --project=$P --region=$REGION --ser
   --set-env-vars="$PROD_ENV|ROLE=worker|PG_POOL_MAX=10" --set-secrets="$PROD_SECRETS" --labels=git-sha=$SHA --quiet >/dev/null && echo "   worker on $SHA"
 
 echo "4/7 web (no traffic yet)"
+# the very first deploy creates the service (Cloud Run allows no "no traffic" then; nobody uses it before DNS points at it)
+NOTRAFFIC=$(gcloud run services describe brew-web --region=$REGION --project=$P --format="value(metadata.name)" >/dev/null 2>&1 && echo --no-traffic || true)
 gcloud run deploy brew-web --image="$IMG" --project=$P --region=$REGION --service-account=$SA $NET --allow-unauthenticated \
   --memory=2Gi --cpu=2 --no-cpu-throttling --min-instances=2 --max-instances=10 --timeout=3600 --concurrency=80 --session-affinity \
   --startup-probe=httpGet.path=/healthz/ready,periodSeconds=3,failureThreshold=40,timeoutSeconds=3 \
-  --set-env-vars="$PROD_ENV|ROLE=web|PG_POOL_MAX=5" --set-secrets="$PROD_SECRETS" --labels=git-sha=$SHA --no-traffic --tag=candidate --quiet >/dev/null
+  --set-env-vars="$PROD_ENV|ROLE=web|PG_POOL_MAX=5" --set-secrets="$PROD_SECRETS" --labels=git-sha=$SHA $NOTRAFFIC --tag=candidate --quiet >/dev/null
 TAG=$(gcloud run services describe brew-web --region=$REGION --project=$P --format=json | python3 -c "import json,sys; d=json.load(sys.stdin); print([t['url'] for t in d['status'].get('traffic',[]) if t.get('tag')=='candidate'][0])")
 echo "   candidate $TAG"
 
@@ -45,7 +49,7 @@ for s in ${SMOKE_BRANDS:-}; do c=$(curl -s -o /dev/null -w '%{http_code}' "$TAG/
 
 echo "6/7 clean gate"
 gcloud run jobs deploy brew-prod-clean --image="$IMG" --project=$P --region=$REGION --service-account=$SA $NET --command=node --args=db/prod-clean.mjs \
-  --set-env-vars="STORAGE=pg|PROD_SERVICES=brew-web,brew-worker|GOOGLE_CLOUD_PROJECT=$P|REGION=$REGION" --set-secrets="DATABASE_URL=BREW_PROD_DATABASE_URL:latest" --max-retries=0 --task-timeout=600 --quiet >/dev/null
+  --set-env-vars="^|^STORAGE=pg|PROD_SERVICES=brew-web,brew-worker|GOOGLE_CLOUD_PROJECT=$P|REGION=$REGION" --set-secrets="DATABASE_URL=BREW_PROD_DATABASE_URL:latest" --max-retries=0 --task-timeout=600 --quiet >/dev/null
 if ! gcloud run jobs execute brew-prod-clean --project=$P --region=$REGION --wait >/dev/null 2>&1; then
   gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="brew-prod-clean" AND textPayload:"[clean]"' --project=$P --limit=30 --freshness=10m --format='value(textPayload)' | tac
   echo "the clean gate refused: production traffic is unchanged"; exit 1; fi
