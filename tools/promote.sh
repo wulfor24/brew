@@ -60,7 +60,7 @@ echo "   candidate $REV at $TAG"
 
 echo "4/8 smoke test and clean gate (from inside the VPC)"
 gcloud run jobs deploy brew-prod-clean --image="$IMG" --project=$P --region=$REGION --service-account=$PSA --network=default --subnet=default --vpc-egress=all-traffic --command=node --args=db/prod-clean.mjs \
-  --set-env-vars="^|^STORAGE=pg|PROD_SERVICES=brew-web,brew-worker|GOOGLE_CLOUD_PROJECT=$P|REGION=$REGION|SMOKE_URL=$TAG|EXPECT_IMAGE=$IMG|EXPECT_WEB_REV=$REV" --set-secrets="DATABASE_URL=BREW_PROD_DATABASE_URL:latest" --max-retries=0 --task-timeout=600 --quiet >/dev/null
+  --set-env-vars="^|^STORAGE=pg|PROD_SERVICES=brew-web|GOOGLE_CLOUD_PROJECT=$P|REGION=$REGION|SMOKE_URL=$TAG|EXPECT_IMAGE=$IMG|EXPECT_WEB_REV=$REV" --set-secrets="DATABASE_URL=BREW_PROD_DATABASE_URL:latest" --max-retries=0 --task-timeout=600 --quiet >/dev/null
 if ! gcloud run jobs execute brew-prod-clean --project=$P --region=$REGION --wait >/dev/null 2>&1; then
   gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="brew-prod-clean" AND textPayload:"[clean]"' --project=$P --limit=40 --freshness=10m --format='value(textPayload)' | tac
   die "the smoke test or the clean gate refused: production traffic is unchanged"; fi
@@ -72,6 +72,10 @@ gcloud run deploy brew-worker --image="$IMG" --project=$P --region=$REGION --ser
   --memory=4Gi --cpu=2 --no-cpu-throttling --min-instances=1 --max-instances=1 --timeout=3600 --concurrency=80 \
   --set-env-vars="$PROD_ENV|ROLE=worker|PG_POOL_MAX=10" --set-secrets="$PROD_SECRETS" --labels=git-sha=$SHA --quiet >/dev/null || { rollback; die "worker deploy failed"; }
 echo "   worker on $SHA"
+# the worker's own settings, now that the new one runs (before any user traffic moves)
+gcloud run jobs execute brew-prod-clean --project=$P --region=$REGION "--update-env-vars=^|^PROD_SERVICES=brew-worker|SMOKE_URL=" --wait >/dev/null 2>&1 || {
+  gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="brew-prod-clean" AND textPayload:"[clean]"' --project=$P --limit=20 --freshness=5m --format='value(textPayload)' | tac; rollback; die "the new worker's settings failed the gate"; }
+echo "   worker settings clean"
 
 echo "6/8 traffic to $REV"
 gcloud run services update-traffic brew-web --to-revisions="$REV=100" --region=$REGION --project=$P --quiet >/dev/null || { rollback; die "traffic switch failed"; }

@@ -24,7 +24,7 @@ for (const s of SERVICES) {
     if (env.ROLE !== role) bad(`${s}: ROLE is ${env.ROLE || 'unset'}, not ${role}`);
     if (s === 'brew-web' && svc.ingress !== 'INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER') bad(`${s}: takes traffic that skips the load balancer (ingress ${svc.ingress})`);
     if (s === 'brew-worker' && svc.ingress !== 'INGRESS_TRAFFIC_INTERNAL_ONLY') bad(`${s}: is reachable from outside (ingress ${svc.ingress})`);
-    if (s === 'brew-web' && process.env.EXPECT_IMAGE && c0.image !== process.env.EXPECT_IMAGE) bad(`${s}: the candidate runs ${c0.image}, not the image being promoted`);
+    if (process.env.EXPECT_IMAGE && c0.image !== process.env.EXPECT_IMAGE) bad(`${s}: the candidate runs ${c0.image}, not the image being promoted`);
     if (!/brew-prod-runtime@/.test(svc.template?.serviceAccount || '')) bad(`${s}: runs as ${svc.template?.serviceAccount || 'the default account'}, not brew-prod-runtime`);
     if (env.MIGRATE_ON_BOOT !== '0') bad(`${s}: runs migrations on boot (only the migrate job does on production)`);
     for (const k of ['DEMO_MODE', 'AI_MOCK', 'OPEN_SITE', 'DEV_LOGIN', 'DEV_MEMBER', 'SLOOSH_DUMMY']) if (env[k] && env[k] !== '0') bad(`${s}: ${k}=${env[k]} (never on production)`);
