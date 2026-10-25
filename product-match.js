@@ -59,7 +59,9 @@ export function pricedProduct(text, catalog, opts = {}) {
   const pool = catalog.filter((x) => x.price && want.has(priceKey(x.price))); if (!pool.length) return null;
   const m = matchProduct(text, pool, opts); if (m) return m;
   /* at that price one shared word is enough, when only one product there has it ("conditioner") */
-  const said = new Set(words(text)), skip = new Set([...words(opts.brand || ''), ...COMMON]), hits = pool.filter((x) => words(x.t).some((w) => !skip.has(w) && said.has(w)));
+  const said = new Set(words(text)), skip = new Set([...words(opts.brand || ''), ...COMMON]), df = new Map(); for (const x of catalog) for (const w of new Set(words(x.t))) df.set(w, (df.get(w) || 0) + 1);
+  const rare = (w) => (df.get(w) || 0) <= Math.max(2, catalog.length * 0.08); /* "conditioner", never "hair" in a hair-care store */
+  const hits = pool.filter((x) => words(x.t).some((w) => !skip.has(w) && said.has(w) && rare(w)));
   return hits.length === 1 ? hits[0] : null;
 }
 /* the product a card is about, for every card type and brand. A product named outright wins: in the title or body first (a

@@ -121,5 +121,5 @@ test('an idea that states a price picks its product among those at that price; a
   assert.equal(pricedProduct('Hydrate curls without buildup using your ₹449 conditioner', cat, { brand: 'Arata' })?.img, 'b');
   assert.equal(pricedProduct('Warm frozen fingers with a $44 puppy warmer', cat, { brand: 'Snugglet' })?.img, 'e');
   assert.equal(pricedProduct('Style it sleek with the Sleek Hair Styling Stick for ₹449', cat, { brand: 'Arata' })?.img, 'a', 'the name written out');
-  assert.equal(pricedProduct('A ₹999 gift for curls', cat, { brand: 'Arata' }), null, 'nothing at that price: no guess');
+  assert.equal(pricedProduct('A ₹449 gift for your hair', cat, { brand: 'Arata' }), null, 'a common word at that price is no match'); assert.equal(pricedProduct('A ₹999 gift for curls', cat, { brand: 'Arata' }), null, 'nothing at that price: no guess');
 });

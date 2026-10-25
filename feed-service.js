@@ -463,11 +463,11 @@ export function createFeedService(o) {
      swapped, free, for the real photo of the product the card names (else the brand's own product photo): the paste-ups it made
      (25 Oct, Arata) are never served again. New pictures are made around the named product and judged (creativeIdea) */
   const healWatcherLooks = (t) => { const cat = B()?.catalog || [];
-    for (const c of t.cards.values()) { if (c.watcher !== 'creative' || c.imgQ === LOOKS_V + 0.1) continue; const was = c.imgQ; c.imgQ = LOOKS_V + 0.1; /* .1: matched by price too (healed again once) */
-      if (!/^gen\//.test(String(c.images?.[0] || '')) && !(was === LOOKS_V && c.product)) continue; /* a picture this heal already swapped is matched again */
-      const named = cat.length ? pricedProduct(`${c.title || ''}. ${c.sub || ''}`, cat, { brand: BN() }) : null, real = named?.img || refPhoto(c.lane);
-      if (!named && was === LOOKS_V) continue; /* matched again with nothing better: the photo already swapped in stays */
-      if (real) { c.images = [real]; if (named) c.product = named.t; } else { c.images = []; c.kind = 'rows'; } } };
+    for (const c of t.cards.values()) { if (c.watcher !== 'creative' || c.imgQ === LOOKS_V + 0.2) continue; const was = c.imgQ; c.imgQ = LOOKS_V + 0.2; /* .1: matched by price too (healed again once) */
+      if (!/^gen\//.test(String(c.images?.[0] || '')) && !(was >= LOOKS_V && c.product)) continue; /* a picture this heal already swapped is matched again */
+      const named = cat.length ? pricedProduct(`${c.title || ''}. ${c.sub || ''}`, cat, { brand: BN() }) : null;
+      /* the idea names no product the store sells (a price or a line the catalog doesn't carry): no picture at all, never another product's */
+      if (named) { c.images = [named.img]; c.product = named.t; } else { delete c.product; c.images = []; c.kind = 'rows'; c.rows ||= []; } } };
   /* saved catalog cards are written again from their reading (QA FEED-ARV-08, CAT_V): product · issue · fix, best sellers first.
      The old "products our cards sell" reading is part of the one stock-out card now: its own card steps aside (kept if worked on) */
   const healCatalog = (t, keep = new Set()) => { const evs = live?.get()?.catalog?.events || [], vevs = live?.get()?.visibility?.events || [];
@@ -954,8 +954,10 @@ export function createFeedService(o) {
          ad (a collage, a cropped product or an unrelated scene is made again, then held back). Never a generic "<brand> product"
          over the lane's default photo (Arata 25 Oct: a hair swatch and three bottles pasted over a dark panel) */
       const cat = B()?.catalog || [], words = `${clean(j.title)}. ${clean(j.sub)}`, named = cat.length ? (pricedProduct(words, cat, { brand: BN() }) || null) : null;
-      const ref = named?.img || refPhoto(lane);
-      let img = named?.img || (STATICS.length ? stImg(STATICS.includes(j.image) ? j.image : STATICS[0]) : ref), imgNote = named ? `the real photo of ${named.t}` : STATICS.length ? 'picked from your statics' : 'your product photo'; /* the brand's own product photo; with none, no picture is made (never the wrong product) */
+      /* a brand with a catalog: only the product the idea names (none named: no picture, never another product's). A brand
+         without one (services, enquiry) keeps its own photo */
+      const ref = named?.img || (cat.length ? null : refPhoto(lane));
+      let img = named?.img || (cat.length ? null : STATICS.length ? stImg(STATICS.includes(j.image) ? j.image : STATICS[0]) : ref), imgNote = named ? `the real photo of ${named.t}` : img ? 'your own photo' : 'no picture: the idea names no product the store sells';
       const refFile = !ref ? null : named ? ref /* the guard fetches the named product's photos itself (a store URL too) */ : await fileOfRel(ref);
       if (refFile && spend('image')) {
         try {
@@ -965,7 +967,7 @@ export function createFeedService(o) {
           else { const key = crypto.createHash('sha1').update(j.title + j.scene).digest('hex').slice(0, 16); saveGen(key + '.png', buf); img = `gen/${key}.png`; imgNote = 'made around the product the idea names, checked as an ad'; }
         } catch (e) { log.warn('[creative watcher] image', e.message); }
       }
-      return { cards: [{ id: uid('w-c'), agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], kind: 'media', images: [img], imgQ: LOOKS_V + 0.1, ...(named ? { product: named.t } : {}), campaign: 'New from your agents', title: clean(j.title), sub: clean(j.sub), detail: { why: (j.why || []).map(clean), how: (j.how || []).map(clean) }, cta: { label: 'Make the ad' } }], how: `written live by Claude, image ${imgNote}` };
+      return { cards: [{ id: uid('w-c'), agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], ...(img ? { kind: 'media', images: [img] } : { kind: 'rows', rows: [], images: [] }), imgQ: LOOKS_V + 0.2, ...(named ? { product: named.t } : {}), campaign: 'New from your agents', title: clean(j.title), sub: clean(j.sub), detail: { why: (j.why || []).map(clean), how: (j.how || []).map(clean) }, cta: { label: 'Make the ad' } }], how: `written live by Claude, image ${imgNote}` };
     } catch (e) { log.warn('[creative watcher]', e.message); return { cards: fromPool(t, 'creative'), how: 'from the pool (AI call failed)' }; }
   };
   /* ---------- cards from real research (research.js) ---------- */
