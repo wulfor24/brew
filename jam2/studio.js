@@ -10,7 +10,7 @@ import { claimFlags } from '../claims.js';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(HERE, '..', 'data', f), 'utf8')); } catch { return d; } };
-const LIB = readJSON('studio-styles.json', { image: [], video: [] }), HFSTYLES = readJSON('higgsfield-styles.json', { presets: [] }).presets || [];
+const LIB = readJSON('studio-styles.json', { image: [], video: [] }), EXAMPLES = readJSON('style-examples.json', {}) /* one example picture per style, made once on a neutral product (tools/style-examples.mjs) */, HFSTYLES = readJSON('higgsfield-styles.json', { presets: [] }).presets || [];
 const tidy = (s, n = 400) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 /* a film delivered at the placement's exact pixels (a 720p model clip covers 1080×1920 for Reels/Stories): scaled to cover and
    centre-cropped, lanczos with a light sharpen, H.264 + AAC, fast start. Free, local; when ffmpeg can't, the model's clip stands */
@@ -24,7 +24,8 @@ export async function finishVideo(buf, size, log = console) {
 /* the whole library, Higgsfield's designed ad styles filled into the Ads group (grouped as Higgsfield groups them) */
 export function library() {
   const ads = HFSTYLES.map((p) => ({ id: `hf:${p.id}`, label: p.name, group: p.group || 'Ads', job: 'product-shot', type: 'drawn', preset: p.id, ratio: p.ratio || null, cover: p.cover || null }));
-  return { image: LIB.image.map((g) => (g.source === 'higgsfield-presets' ? { ...g, styles: ads } : g)), video: LIB.video };
+  const ex = (g) => ({ ...g, styles: g.styles.map((st) => (EXAMPLES[st.id] ? { ...st, example: '/' + EXAMPLES[st.id] } : st)) });
+  return { image: LIB.image.map((g) => (g.source === 'higgsfield-presets' ? { ...g, styles: ads } : ex(g))), video: LIB.video.map(ex) };
 }
 const ALL = () => { const L = library(); return [...L.image, ...L.video].flatMap((g) => g.styles.map((s) => ({ ...s, group: s.group || g.label, groupId: g.id, kind: L.video.includes(g) ? 'video' : 'image' }))); };
 export const styleOf = (id) => ALL().find((s) => s.id === id) || null;

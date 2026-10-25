@@ -195,3 +195,69 @@
 .cs-frame.is-preview.cs-t-hands .am-media{background:linear-gradient(180deg,#eef0ee,#dde2dc)}
 .cs-frame.is-preview .am-media::after{content:var(--pv);position:absolute;left:50%;bottom:12px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:11.5px;line-height:16px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ship.plain .ship-tx b{color:var(--fg)}
+/* ---- the Set-up, v2 (Param 25 Oct, "aim for 15/10"): one sentence to read and change, real example pictures, the rest folded.
+   --acc is the brand's own first colour: the picked style and the sentence's choices wear it ---- */
+.cs{--acc:var(--fg,#111)}.cs-v2{gap:14px!important}
+.cs-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cs-hint{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg-3,#777)}
+.cs-sent{margin:2px 0 0;font-size:19px;line-height:1.9;letter-spacing:-.01em;color:var(--fg-2,#555);font-weight:450;text-wrap:pretty}
+.cs-tok{display:inline-flex;align-items:center;gap:6px;max-width:100%;margin:0 1px;padding:1px 8px 1px 9px;border:0;border-radius:9px;background:color-mix(in srgb,var(--acc) 9%,var(--bg,#fff));box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--acc) 55%,transparent);font:inherit;font-weight:600;color:var(--fg,#111);cursor:pointer;vertical-align:baseline;line-height:1.45;text-align:left;transition:background .15s}
+.cs-tok:hover,.cs-tok.on{background:color-mix(in srgb,var(--acc) 18%,var(--bg,#fff))}
+.cs-tok:focus-visible,.cs-row:focus-visible,.j2-sti:focus-visible,.cs-look-btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.cs-tok>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(320px,52vw)}
+.cs-tok img{width:22px;height:22px;border-radius:6px;object-fit:cover;flex:none;background:#fff}
+.cs-tok svg{width:9px;height:6px;flex:none;color:var(--fg-3,#888)}
+.cs-because{margin:-4px 0 0;font-size:13px;line-height:1.45;color:var(--fg-3,#777)}
+.cs-strip-h{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.cs-strip-h b{font-size:14px;font-weight:600}.cs-strip-h span{font-size:12.5px;color:var(--fg-3,#888)}
+.cs-styles{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 20px) / 2.35);gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 8px;margin:0 -2px;scrollbar-width:thin}
+.cs-v2 .j2-sti{scroll-snap-align:start;position:relative;background:none;border:0;border-radius:14px;gap:2px;padding:0}
+.cs-pic{display:block;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:var(--surface-2,#f1f1f1);box-shadow:inset 0 0 0 1px var(--line,#e6e6e6);transition:box-shadow .15s,transform .15s}
+.cs-pic img{width:100%;height:100%;object-fit:cover;display:block}
+.cs-pic.is-own img{object-fit:contain;padding:14%;mix-blend-mode:multiply}
+.cs-pic.is-none{display:grid;place-items:center;font-weight:700;color:var(--fg-2,#555);padding:12px;text-align:center}
+.cs-v2 .j2-sti:hover .cs-pic{transform:translateY(-2px)}
+.cs-v2 .j2-sti.on .cs-pic{box-shadow:0 0 0 3px var(--acc)}
+.cs-on{position:absolute;top:8px;right:8px;min-width:24px;height:24px;padding:0 6px;border-radius:999px;background:var(--acc);color:#fff;font-style:normal;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.cs-v2 .j2-sti b{padding:6px 2px 0;font-size:13.5px}.cs-v2 .j2-sti small{padding:0 2px;font-size:12px}
+.cs-v2 .j2-sti.no .cs-pic{opacity:.4;filter:grayscale(1)}
+.cs-mosaic{display:grid!important;grid-template-columns:1fr 1fr;gap:2px;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:var(--line,#e6e6e6)}
+.cs-mosaic.is-empty{display:grid!important;place-items:center;grid-template-columns:1fr;font-size:22px;color:var(--fg-3)}
+.cs-note{display:flex;gap:8px;align-items:flex-start;margin:0;padding:10px 12px;border-radius:12px;background:var(--surface-2,#f4f4f4);font-size:13px;line-height:1.45;color:var(--fg-2,#555)}
+.cs-note>svg{flex:none;margin-top:2px;color:var(--fg-3)}
+.cs-fine{border-top:1px solid var(--line,#eee);padding-top:4px}
+.cs-fine-h{display:flex;align-items:baseline;gap:10px;width:100%;padding:10px 0;border:0;background:none;font:inherit;text-align:left;cursor:pointer;color:var(--fg,#111)}
+.cs-fine-h b{font-size:14px;font-weight:600}.cs-fine-h span{flex:1;font-size:12.5px;color:var(--fg-3,#888)}.cs-fine-h i{font-style:normal;font-size:17px;color:var(--fg-3)}
+.cs-rows{display:flex;flex-direction:column}
+.cs-row{display:flex;align-items:center;gap:12px;width:100%;padding:12px 2px;border:0;border-bottom:1px solid var(--line,#eee);background:none;font:inherit;text-align:left;cursor:pointer;color:var(--fg,#111)}
+.cs-row>span{flex:none;width:96px;font-size:13px;color:var(--fg-3,#777)}
+.cs-row>b{flex:1;min-width:0;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cs-row>b img{width:24px;height:24px;border-radius:6px;object-fit:cover}
+.cs-row>svg{width:6px;height:10px;color:var(--fg-3)}
+.cs-row:hover>b{color:var(--acc)}
+.cs-v2 .cs-dir{padding:12px 0 2px;gap:6px}
+.cs-v2 .cs-dir>span{font-size:13px;color:var(--fg-3,#777)}
+.cs-v2 .cs-dir small{font-size:12px;color:var(--fg-3,#888);text-transform:none;letter-spacing:0;font-weight:400}
+.cs-look-btn{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:1px dashed color-mix(in srgb,var(--acc) 45%,var(--line,#ddd));border-radius:14px;background:color-mix(in srgb,var(--acc) 4%,var(--bg,#fff));font:inherit;text-align:left;cursor:pointer;color:var(--fg,#111)}
+.cs-look-btn:hover{background:color-mix(in srgb,var(--acc) 9%,var(--bg,#fff))}
+.cs-look-btn>span{display:flex;flex-direction:column;gap:1px}.cs-look-btn b{font-size:14px;font-weight:600}.cs-look-btn small{font-size:12.5px;color:var(--fg-3,#777)}
+.cs-look-btn:disabled{opacity:.6;cursor:progress}
+/* pickers */
+.cs-v2 .cs-pop{position:static;margin-top:-4px;padding:12px;border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.12),0 0 0 1px var(--line,#e6e6e6)}
+.cs-opts{display:flex;gap:6px;flex-wrap:wrap;padding:0 4px 4px}
+.cs-opts button{min-width:52px;justify-content:center;padding:8px 14px!important;border-radius:999px!important;background:var(--surface-2,#f2f2f2)!important;font-weight:600}
+.cs-opts button.on{background:var(--acc)!important;color:#fff}
+.cs-pop .cs-opt-l{flex-direction:column;align-items:flex-start!important;gap:1px!important}
+.cs-pop .cs-opt-l small{font-size:12px;color:var(--fg-3);margin:0!important}
+.cs-pop .cs-opt-l.on{box-shadow:inset 3px 0 0 var(--acc)}
+.cs-pop .cs-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px}
+.cs-pop .cs-grid button{position:static!important;aspect-ratio:auto!important;display:flex;flex-direction:column;align-items:stretch!important;gap:6px!important;padding:6px!important;border-radius:12px!important;background:var(--bg,#fff)!important;box-shadow:inset 0 0 0 1px var(--line,#eee)!important;overflow:visible!important}
+.cs-pop .cs-grid button.on{box-shadow:0 0 0 2px var(--acc)!important}
+.cs-pp{display:block;aspect-ratio:1;border-radius:8px;background:#fff;overflow:hidden}
+.cs-pop .cs-grid .cs-pp img{width:100%!important;height:100%!important;object-fit:contain!important;aspect-ratio:auto!important;border-radius:0!important}
+.cs-pop .cs-grid .cs-pn{position:static!important;background:none!important;color:var(--fg,#111)!important;padding:0 2px 2px!important;font-size:12px!important;line-height:1.3!important;font-weight:500!important;text-align:left;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0;height:auto!important;border-radius:0!important}
+.cs-early{display:flex;flex-direction:column;gap:8px}.cs-early>b{font-size:14px}
+.cs-ghost{border:1px solid var(--line,#e6e6e6);background:var(--bg,#fff);border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.cs-pic,.cs-tok{transition:none}.cs-v2 .j2-sti:hover .cs-pic{transform:none}}
+@media (max-width:640px){.cs-sent{font-size:17.5px}.cs-styles{grid-auto-columns:calc((100% - 10px) / 1.7)}}
+.cs-madewith p{margin:0;font-size:16px;line-height:1.55;color:var(--fg-2,#555)}.cs-madewith p b{color:var(--fg,#111);font-weight:600}

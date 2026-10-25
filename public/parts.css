@@ -275,3 +275,21 @@ body.is-guest [data-cs-full]:not(.ship-go),body.is-guest [data-cs-slide="redo"],
 .dl-menu button{text-align:left;padding:9px 10px;border:0;border-radius:8px;background:none;color:var(--fg);font:500 14px inherit;cursor:pointer}
 .dl-menu button:hover,.dl-menu button:focus-visible{background:var(--surface)}
 @media (max-width:640px){.dl-row{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;padding-bottom:2px}.dl-pill,.dl-add{height:44px}.dl-add{width:44px}.dl-menu{position:fixed;left:16px;right:16px;top:auto;bottom:16px}}
+/* Browse templates in the panel (25 Oct): the whole tab, a header with ✕, search across the width, the groups as one row of
+   chips, two tiles a row (three when the panel is wide) */
+.cs-panel .j2-stgal{position:static;inset:auto;flex-direction:column;gap:10px;background:none;border-radius:0;overflow:visible}
+.cs-panel .cs-addgal{min-height:0}
+.cs-galhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cs-galhead b{font-size:15px}
+.cs-galx{width:32px;height:32px;border-radius:999px;display:grid;place-items:center}
+.cs-panel .j2-stgal-side{width:auto;flex-direction:row;gap:6px;padding:0 0 2px;border:0;overflow-x:auto;scrollbar-width:none;order:3}
+.cs-panel .j2-stgal-side::-webkit-scrollbar{display:none}
+.cs-panel .j2-stgal-side button{flex:none;white-space:nowrap;padding:6px 12px;border-radius:999px;background:var(--surface-2,#f1f1f1);font-size:13px}
+.cs-panel .j2-stgal-side button.on{background:var(--fg,#111);color:var(--bg,#fff)}.cs-panel .j2-stgal-side button.on small{color:inherit;opacity:.7}
+.cs-panel .j2-stgal-main{padding:0;overflow:visible;display:contents}
+.cs-panel #cs-q{order:2;width:100%;padding:9px 12px;border:1px solid var(--line,#e6e6e6);border-radius:10px;font:inherit;font-size:14px;background:var(--bg,#fff);color:var(--fg,#111)}
+.cs-panel .j2-stgrid{order:4;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (min-width:861px){.st-body.is-wide .cs-panel .j2-stgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.st-body.is-wide .cs-panel .cs-styles{grid-auto-columns:calc((100% - 30px) / 3.3)}
+.cs-panel .cs-v2 .cs-pop .cs-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (min-width:861px){.st-body.is-wide .cs-panel .cs-v2 .cs-pop .cs-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
