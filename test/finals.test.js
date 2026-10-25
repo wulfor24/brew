@@ -79,7 +79,7 @@ test('until Brew’s workspace can pay, an image final is made on Gemini with th
   const q = await R.F.quote('cozy', spec); assert.equal(q.provider, 'gemini'); assert.equal(q.credits, 0); assert.equal(q.model, 'gemini-3-pro-image'); assert.match(q.why, /on Gemini for now/); assert.match(q.prompt, /Hush Mask/);
   const r = await R.F.run('cozy', { ...spec }, { quote: { ...q, at: Date.now() - 3600e3 }, by: 'Param', target: { chid: 'c' } }); assert.equal(r.state, 'done'); assert.equal(r.provider, 'gemini'); assert.equal(r.charged, 0); assert.match(r.file, /^gen\/fin-[0-9a-f]{16}\.png$/); /* no four-minute rule on Gemini */
   assert.equal(made[0].srcFile, '/photos/b/cozy/a/mask.jpg'); assert.equal(made[0].ratio, '4:5'); assert.equal(made[0].text, 'Sleep through it'); assert.equal(R.calls.length, 0); assert.equal(R.budget.left('cozy').credits.used, 0);
-  const v = await R.F.quote('cozy', { ...spec, kind: 'video' }); assert.match(v.error, /video final runs on Sloosh only here/);
+  const v = await R.F.quote('cozy', { ...spec, kind: 'video' }); assert.match(v.error, /A video final isn’t available right now/);
   /* with a video maker: a Gemini still, then Veo on it */
   const clips = []; const R3 = rig({ connected: false, gemini, video: async (frame, prompt, o) => { clips.push([frame.toString(), prompt, o]); return Buffer.from('MP4BYTES'); } });
   const qv = await R3.F.quote('cozy', { ...spec, kind: 'video', motion: 'the camera drifts left', seconds: 6, ratio: '9:16' }); assert.equal(qv.model, 'veo-3.1-fast'); assert.match(qv.motion, /camera drifts left/);

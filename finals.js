@@ -65,7 +65,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   /* the Gemini fallback quote: no credits, the same brief (the Nano Banana rendering is right for Gemini image; a video is Veo on a Gemini still); a Space has none */
   /* product photos first, then the rest (a look, a scene, a person): Gemini gets them in that order, so "image 1" is always the product */
   const productFirst = (refs = []) => [...refs.filter((r) => r?.job === 'product'), ...refs.filter((r) => r?.job !== 'product')];
-  const geminiQuote = (spec, why) => { if (spec.space) return { error: `${why} A Space runs on Sloosh only.`.trim() }; const vid = spec.kind === 'video'; if (vid && !makeVideo) return { error: `${why} A video final runs on Sloosh only here.`.trim() };
+  const geminiQuote = (spec, why) => { void why; if (spec.space) return { error: 'This kind of final isn’t available right now. Pick a picture final instead.' }; const vid = spec.kind === 'video'; if (vid && !makeVideo) return { error: 'A video final isn’t available right now. Make a picture final instead.' }; /* plain words: never which partner isn't connected */
     if (!(spec.refs || []).some((r) => r?.job === 'product')) return { error: 'Pick a product photo first: Brew makes the final around the real product.' };
     spec = { ...spec, refs: productFirst((spec.refs || []).filter((r) => r?.job !== 'frame' && r?.job !== 'motion')), /* Gemini and Veo take no reference video */ ratio: vid ? (spec.ratio === '16:9' ? '16:9' : '9:16') : spec.ratio };
     const b = buildFinal({ ...spec, kind: 'image' }); const settings = vid ? { aspect_ratio: spec.ratio, resolution: '1080p', duration: Math.max(4, Math.min(8, Math.round(spec.seconds || 6))), sound: !!spec.sound } : b.settings;
