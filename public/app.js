@@ -230,6 +230,8 @@
   const ensureTenant = (force) => { if (TID && !force) return Promise.resolve(TID); if (tenantP) return tenantP;
     tenantP = api('/api/tenants', { url: B.brand.host, brand: B.slug || BR, snapshot: snapshot() }).then((r) => { TID = r.id; ls.set(`${LSP()}tenant`, TID); lastSync = ''; tenantP = null; return TID; }); return tenantP; };
   let FEED_LOADED = 0; /* when the feed was last read: a tab click within 30 s of it, with nothing changed since, draws from it (1.7) */
+  /* the jam's right panel: narrow (400px) or wide (up to 640px), the person's choice, kept in this browser */
+  const panelWide = (on) => { try { if (on !== undefined) localStorage.setItem('brew.panelWide', on ? '1' : ''); return localStorage.getItem('brew.panelWide') === '1'; } catch { return !!on; } };
   const tapi = async (method, p, body, retry = true) => { if (method !== 'GET') FEED_LOADED = 0; /* anything that changes something reads the feed again */
     await ensureTenant();
     try {
@@ -4693,9 +4695,9 @@
     pg.innerHTML = `<header class="st-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : 'Back'}</button>
         <div class="st-ttl"><b>${esc(ch.actionLabel)}${stWhere(ch) ? ` <span>on ${esc(stWhere(ch))}</span>` : ''}</b><small>${face(ch.agent)}${RX.p && cardOf(RX.p).title ? `<button type="button" class="st-for" data-tab="iterate" title="${esc(cardOf(RX.p).title)}">For: ${esc(cutW(cardOf(RX.p).title, 90))}</button> · ` : ''}${studioFrom(ch)}</small></div>${tbSwitch()}${studioJamCtl()}
         <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
-      <div class="st-body">
+      <div class="st-body${panelWide() ? ' is-wide' : ''}">
         <main class="st-canvas${RX.stage === 'brief' ? ' is-brief' : ''}">${RX.stage === 'brief' ? `<div class="tbm-scroll">${tbStage(ch)}</div>` : `${refBtnHtml(ch)}${rivalReadHtml(ch)}${optTabs(ch, viewing)}${ch.studio ? studioStage(ch, pkgCh, viewing) : `<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>${esc(ch.ctaPending)}…</p>` : ''}${ch.film && window.FilmBoard && (!viewing || viewing === ch.head) ? window.FilmBoard.html(ch) : assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}`}`}</main>
-        <aside class="st-panel"><div class="st-tabs" role="tablist">${[['iterate', 'Chat'], ['adjust', ch.studio ? 'Set-up' : 'Adjust'], ['details', 'Details']].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}</div>
+        <aside class="st-panel"><div class="st-tabs" role="tablist">${[['iterate', 'Chat'], ['adjust', ch.studio ? 'Set-up' : 'Adjust'], ['details', 'Details']].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join('')}<button class="st-wide" data-st-wide aria-pressed="${panelWide()}" title="${panelWide() ? 'Make the panel narrower' : 'Make the panel wider'}" aria-label="${panelWide() ? 'Make the panel narrower' : 'Make the panel wider'}">${panelWide() ? '⇥' : '⇤'}</button></div>
           <div class="st-panel-b${tab === 'iterate' ? ' is-chat' : ''}">${tab === 'iterate' ? chatTab(ch, edit) : tab === 'adjust' ? adjustTab(ch, edit) : tab === 'details' ? detailsTab(ch, pkgCh, edit) : chatTab(ch, edit)}</div></aside>
       </div>`;
     /* Change photo sits on the photo itself, never under the post. A swiping carousel gets a still frame around it, so the
@@ -4999,6 +5001,7 @@
     if (e.target.closest('[data-st-back]')) return !RX.batch ? leaveRemix() : history.state?.a === 'rx-ch' ? history.back() : backToOptions();
     const os = e.target.closest('[data-open-studio]'); if (os) return openStudio(os.dataset.openStudio);
     const it = e.target.closest('[data-intent]'); if (it) { RX.intent = RX.intent === it.dataset.intent ? '' : it.dataset.intent; if (RX.intent) runRemix(); else paintStart(); return; }
+    if (e.target.closest('[data-st-wide]')) { panelWide(!panelWide()); return paintStudio(); } /* the right panel, wider when the set-up or the chat needs the room; remembered per person */
     const tb = e.target.closest('[data-tab]'); if (tb) { RX.tab = tb.dataset.tab; RX.editing = false; RX.resetScroll = true; if (RX.tab === 'details') syncBriefNow(); /* the Brief opened: it catches up with the version on the stage */ return paintStudio(); }
     const sc = e.target.closest('[data-scope]'); if (sc) { RX.scope[RX.ch.id] = +sc.dataset.scope; return paintStudio(); }
     const vv = e.target.closest('[data-v-view]'); if (vv) {

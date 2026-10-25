@@ -160,3 +160,25 @@
 .cs-frame .cs-pick{outline:3px solid var(--accent,#2563eb);outline-offset:2px;border-radius:6px}
 /* a Studio creative is made on the stage, priced: the frame never offers the free picture buttons */
 .cs-frame [data-rx="image"],.cs-frame [data-rx="images-all"],.cs-frame [data-rx="listing-photos"],.cs-frame .am-make{display:none!important}
+/* the style tiles (25 Oct): the product dressed as the style, so tiles differ before anything is paid; a template's cover is
+   another brand's example and is tagged so */
+.j2-sti-ph.cs-t{overflow:hidden;aspect-ratio:4/5;background:var(--surface-2,#f1f1f1)}
+.j2-sti-ph.cs-t img{opacity:1;filter:none;width:100%;height:100%;aspect-ratio:auto;object-fit:cover;background:none}
+.cs-t-pop{background:var(--bc,#f4c542)!important}.cs-t-pop img{object-fit:contain!important;padding:16%;mix-blend-mode:multiply;filter:drop-shadow(6px 8px 0 rgba(0,0,0,.18))!important}
+.cs-t-white{background:#fff!important}.cs-t-white img{object-fit:contain!important;padding:12%;mix-blend-mode:multiply;filter:drop-shadow(0 10px 10px rgba(0,0,0,.12))!important}
+.cs-t-tex{background:linear-gradient(160deg,#efe6d8,#d9c9b0)!important}.cs-t-tex img{object-fit:contain!important;padding:14%;mix-blend-mode:multiply}
+.cs-t-person img,.cs-t-hands img{object-fit:contain!important;padding:10%;mix-blend-mode:multiply}
+.cs-t-person{background:linear-gradient(180deg,#f3ebe4,#e4d6ca)!important}.cs-t-hands{background:linear-gradient(180deg,#eef0ee,#dde2dc)!important}
+.cs-t-tag{position:absolute;left:6px;bottom:6px;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.62);color:#fff;font-style:normal;font-size:10.5px;font-weight:600;line-height:16px}
+.cs-t.is-ex .cs-t-tag{top:6px;bottom:auto}
+.j2-sti small{line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cs-mosaic{display:grid;grid-template-columns:1fr 1fr;gap:2px;aspect-ratio:4/5;overflow:hidden;background:var(--line,#e6e6e6)}
+.cs-mosaic img{width:100%;height:100%;aspect-ratio:auto!important;object-fit:cover;display:block}
+.j2-st-hint{display:inline-flex;align-items:center;gap:6px}
+.cs-search{width:100%;margin:0 0 8px;padding:8px 12px;border:1px solid var(--line,#e6e6e6);border-radius:10px;font:inherit;font-size:13.5px;background:var(--bg,#fff);color:var(--fg,#111)}
+/* More settings: one line with what is set, opened when wanted */
+.cs-more{border-top:1px solid var(--line,#eee);padding-top:10px;display:flex;flex-direction:column;gap:12px}
+.cs-more-h{display:flex;align-items:baseline;gap:8px;width:100%;padding:2px 0;border:0;background:none;font:inherit;text-align:left;cursor:pointer;color:var(--fg,#111)}
+.cs-more-h b{font-size:13.5px;font-weight:600;flex:none}
+.cs-more-h span{flex:1;min-width:0;font-size:12.5px;color:var(--fg-3,#777);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs-more-h i{font-style:normal;font-size:16px;color:var(--fg-2,#555);flex:none}

@@ -241,3 +241,21 @@ p.am-when small{display:inline;margin:0 6px 0 0}
 @media (max-width:860px){.stg-mode{margin:0 0 8px}}
 /* phones: the stage's small controls get a 44px tap area without changing how they look (QV 25 Oct: One/All 26px, dots 30px, info 22px) */
 @media (max-width:640px){.stg-mode button,.stg-dot,.tbm-switch button,.ship .tip-i{position:relative}.stg-mode button::after,.stg-dot::after,.tbm-switch button::after,.ship .tip-i::after{content:'';position:absolute;inset:-8px -4px}.ship .tip-i::after{inset:-11px}}
+/* the Set-up tab (25 Oct): no card inside the panel's card, chips show their whole value (two lines at most), a picker sits
+   under its own chip, and a wide panel uses the room */
+.cs-panel .j2-studio{background:none;border:0;box-shadow:none;padding:0;width:100%}
+.cs-panel .cs-chip{white-space:normal;text-align:left;min-height:40px;height:auto;padding-top:6px;padding-bottom:6px}
+.cs-panel .cs-chip>span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0}
+.cs-panel .cs-pop{position:static;max-height:360px;min-width:0}
+.cs-panel .cs-pop .cs-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.st-tabs{align-items:center}
+.st-wide{flex:none!important;width:36px;font-size:17px!important;color:var(--fg-3)!important}
+.st-wide:hover{background:var(--surface)!important;color:var(--fg)!important}
+@media (min-width:861px){
+  .st-body.is-wide{grid-template-columns:minmax(360px,1fr) min(640px,50vw)}
+  .st-body.is-wide .cs-panel .j2-st-styles{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .st-body.is-wide .cs-panel .cs-slots{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .st-body.is-wide .cs-panel .cs-slots>.cs-pop,.st-body.is-wide .cs-panel .cs-slots>.cs-dir{grid-column:1/-1}
+  .st-body.is-wide .cs-panel .cs-pop .cs-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media (max-width:860px){.st-wide{display:none}}

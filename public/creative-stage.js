@@ -82,12 +82,26 @@
 
   /* ---------- the composer ---------- */
   const why = (k) => S.slots?.[k]?.why || '';
-  const chip = (k, label, value, extra = '') => `<div class="cs-slot"><small>${H.esc(label)}</small><button class="j2-chip cs-chip${S.pop === k ? ' on' : ''}" data-cs-pop="${k}" title="${H.esc(why(k))}">${extra}${H.esc(value)}</button></div>`;
+  /* a slot's picker opens right under its own chip (25 Oct: in the one-column panel it opened under Quality, out of sight) */
+  const chip = (k, label, value, extra = '') => `<div class="cs-slot"><small>${H.esc(label)}</small><button class="j2-chip cs-chip${S.pop === k ? ' on' : ''}" data-cs-pop="${k}" title="${H.esc(why(k))}">${extra}<span>${H.esc(value)}</span></button></div>${S.pop === k ? popHtml(k) : ''}`;
+  /* "An AI person who fits your buyer: The Hair-Fall Switcher" reads as the buyer first; the whole line stays in the picker */
+  const castShort = (v) => { const m = /^(An AI person[^:]*):\s*(.+)$/i.exec(String(v || '')); return m ? `${m[2]} · AI person` : v; };
+  const wideOn = () => !!document.querySelector('.st-body.is-wide');
+  /* a tile shows its style before anything is paid: the product photo dressed as the style (a colour backdrop, white, a surface,
+     a person or hands in it), and the look in a few words. A template's cover is another brand's example, and says so */
+  const treat = (x) => (x.id === 'color-pop' ? 'pop' : x.id === 'studio-white' ? 'white' : /^(natural|flat-lay)$/.test(x.id) ? 'tex' : x.people === 'hands' ? 'hands' : ['person', 'any'].includes(x.people) ? 'person' : 'plain');
+  const TAG = { person: 'With a person', hands: 'Hands only' };
+  const shortLook = (t) => { const w = String(t || '').split(/[,:.;]/)[0].trim(); return w.length > 46 ? `${w.slice(0, 44).replace(/\s+\S*$/, '')}…` : w; };
   const tile = (x) => { const on = Array.isArray(S.spec.set) ? S.spec.set.includes(x.id) : x.id === S.spec.style, no = S.blocked?.[x.id], ph = S.spec.product?.img;
-    return `<button class="j2-sti${on ? ' on' : ''}${no ? ' no' : ''}" data-cs-style="${H.esc(x.id)}" title="${H.esc(no || x.look || x.label)}">${x.cover ? `<img src="${H.esc(x.cover)}" alt="" loading="lazy">` : ph ? `<span class="j2-sti-ph"><img src="${H.esc(srcOf(ph))}" alt="" loading="lazy"></span>` : `<span class="j2-sti-art">${H.esc(x.label)}</span>`}<b>${Array.isArray(S.spec.set) && on ? `<span class="j2-sti-n">${S.spec.set.indexOf(x.id) + 1}</span> ` : ''}${H.esc(x.label)}</b><small>${H.esc(x.group || '')}</small></button>`; };
+    const tr = treat(x), bc = (S.slots?.brand?.value?.colors || [])[0] || '';
+    const art = x.cover ? `<span class="j2-sti-ph cs-t is-ex"><img src="${H.esc(x.cover)}" alt="" loading="lazy"><em class="cs-t-tag">Example</em></span>`
+      : ph ? `<span class="j2-sti-ph cs-t cs-t-${tr}"${tr === 'pop' && /^#[0-9a-f]{3,8}$/i.test(bc) ? ` style="--bc:${bc}"` : ''}><img src="${H.esc(srcOf(ph))}" alt="" loading="lazy">${TAG[tr] ? `<em class="cs-t-tag">${TAG[tr]}</em>` : ''}</span>` : `<span class="j2-sti-art">${H.esc(x.label)}</span>`;
+    const sub = x.cover ? `${x.group || 'Template'} layout` : shortLook(x.look) || x.group || '';
+    return `<button class="j2-sti${on ? ' on' : ''}${no ? ' no' : ''}" data-cs-style="${H.esc(x.id)}" title="${H.esc(no || (x.cover ? 'An example made for another brand. Brew makes this layout with your product, your words and your colours.' : x.look || x.label))}">${art}<b>${Array.isArray(S.spec.set) && on ? `<span class="j2-sti-n">${S.spec.set.indexOf(x.id) + 1}</span> ` : ''}${H.esc(x.label)}</b><small>${H.esc(sub)}</small></button>`; };
   function popHtml(k) {
     const sp = S.spec, X = S.slots || {}, head = (t) => `<p class="cs-why">${H.esc(t)}</p>`;
-    if (k === 'product') return `<div class="j2-pop cs-pop">${head(why('products'))}<div class="cs-grid">${S.products.map((p, i) => `<button data-cs-prod="${i}" class="${p.img === sp.product?.img ? 'on' : ''}"><img src="${H.esc(srcOf(p.img))}" alt=""><span>${H.esc((p.name || '').slice(0, 40))}</span></button>`).join('') || '<p>No product photos yet. Add them in your Brand Book.</p>'}</div></div>`;
+    if (k === 'product') { const q = (S.pq || '').toLowerCase().trim(), list = S.products.map((p, i) => ({ p, i })).filter(({ p }) => !q || String(p.name || '').toLowerCase().includes(q)).sort((a, b) => (b.p.img === sp.product?.img) - (a.p.img === sp.product?.img)); /* the one on the card first; a big catalog gets a search */
+      return `<div class="j2-pop cs-pop">${head(why('products'))}${S.products.length > 12 ? `<input id="cs-pq" class="cs-search" type="search" placeholder="Search ${S.products.length} products" value="${H.esc(S.pq || '')}" autocomplete="off">` : ''}<div class="cs-grid">${list.map(({ p, i }) => `<button data-cs-prod="${i}" class="${p.img === sp.product?.img ? 'on' : ''}"><img src="${H.esc(srcOf(p.img))}" alt=""><span>${H.esc(p.name || '')}</span></button>`).join('') || (q ? '<p class="cs-why">No product by that name.</p>' : '<p>No product photos yet. Add them in your Brand Book.</p>')}</div></div>`; }
     if (k === 'cast') return `<div class="j2-pop cs-pop">${head(why('cast'))}${(X.cast?.options || []).map((o) => `<button data-cs-cast="${H.esc(o.id)}" class="${(sp.cast || '') === (o.id === 'none' ? 'No people' : o.label) ? 'on' : ''}">${o.img ? `<img src="${H.esc(srcOf(o.img))}" alt="">` : ''}${H.esc(o.label)}</button>`).join('')}</div>`;
     if (k === 'ref') { const r = X.reference?.value; return `<div class="j2-pop cs-pop">${head(why('reference'))}${r?.video ? `<video class="cs-refimg" src="${H.esc(srcOf(r.video))}" ${r.img ? `poster="${H.esc(srcOf(r.img))}"` : ''} muted playsinline controls></video>${r.beats ? `<p class="cs-why">${r.beats} shots read from it: Recreate keeps them, a viral short follows them.</p>` : ''}` : r?.img ? `<img class="cs-refimg" src="${H.esc(srcOf(r.img))}" alt="">` : ''}${sp.ref ? '<button data-cs-ref="off">Don’t follow a reference</button>' : r ? '<button data-cs-ref="on">Follow it</button>' : ''}</div>`; }
     if (k === 'brand') { const b = X.brand?.value || {}; return `<div class="j2-pop cs-pop">${head(why('brand'))}<div class="cs-kit">${b.logo ? `<img src="${H.esc(srcOf(b.logo))}" alt="Logo">` : '<span>No logo yet</span>'}${(b.colors || []).map((c) => `<i style="background:${H.esc(c)}" title="${H.esc(c)}"></i>`).join('')}</div>${b.tone ? `<p class="cs-why">Tone: ${H.esc(b.tone)}</p>` : ''}<button data-cs-brand>Change it in your Brand Book</button></div>`; }
@@ -108,19 +122,22 @@
     return `<div class="j2-studio cs">${S.gallery ? gallery() : ''}${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}${early}
       <div class="j2-st-top">${setIds && LISTING.has(S.recipe) ? `<div class="j2-seg"><button data-cs-mk="listing" class="${isAplus(setIds) ? '' : 'on'}">Listing images</button><button data-cs-mk="aplus" class="${isAplus(setIds) ? 'on' : ''}">Amazon A+</button></div><b>${setIds.length} ${isAplus(setIds) ? 'modules' : 'images'}</b>` : setIds ? `<b>${setIds.length} slides</b>` : `<div class="j2-seg"><button data-cs-kind="image" class="${kind === 'image' ? 'on' : ''}">Image</button><button data-cs-kind="video" class="${kind === 'video' ? 'on' : ''}">Video</button></div>`}<span class="j2-st-hint">${H.ic?.('sparkles', 's14') || ''}Filled in by Brew from the card and your Brand Book · change anything</span></div>
       <p class="cs-why cs-why-top">${H.esc(why('style'))}</p>
-      <div class="j2-st-styles">${shown.map(tile).join('')}<button class="j2-sti more" data-cs-gal><span class="j2-sti-art">＋</span><b>Browse templates</b><small>${total} in all</small></button></div>
+      <div class="j2-st-styles">${shown.map(tile).join('')}<button class="j2-sti more" data-cs-gal>${(() => { const cv = groups().filter((g) => g.kind === kind).flatMap((g) => g.styles).filter((y) => y.cover).slice(0, 4); return cv.length === 4 ? `<span class="cs-mosaic">${cv.map((y) => `<img src="${H.esc(y.cover)}" alt="" loading="lazy">`).join('')}</span>` : '<span class="j2-sti-art">＋</span>'; })()}<b>Browse templates</b><small>See all ${total}</small></button></div>
       <div class="cs-slots">
-        ${chip('product', 'Product', sp.product?.name ? sp.product.name.slice(0, 30) : 'No product', sp.product?.img ? `<img src="${H.esc(srcOf(sp.product.img))}" alt="">` : '')}
-        ${castOn ? chip('cast', 'On camera', sp.cast || X.cast?.label || 'Anyone') : ''}
+        ${chip('product', 'Product', sp.product?.name || 'No product', sp.product?.img ? `<img src="${H.esc(srcOf(sp.product.img))}" alt="">` : '')}
+        ${castOn ? chip('cast', 'On camera', castShort(sp.cast || X.cast?.label) || 'Anyone') : ''}
+      </div>
+      ${(() => { const more = S.more ?? (wideOn() || ['ref', 'brand', 'size'].includes(S.pop)), QN = { preview: 'Preview', standard: 'Standard', premium: 'Premium' };
+        const sum = [SIZES?.[sp.sizes?.[0]]?.label || sp.sizes?.[0], kind === 'video' && sp.seconds ? `${sp.seconds} s` : '', !setIds && +sp.count > 1 ? `${sp.count} at once` : '', QN[sp.quality || 'standard'], sp.ref ? 'follows a reference' : ''].filter(Boolean).join(' · ');
+        return `<div class="cs-more${more ? ' on' : ''}"><button class="cs-more-h" data-cs-more aria-expanded="${!!more}"><b>More settings</b><span>${H.esc(sum)}</span><i>${more ? '−' : '+'}</i></button>${more ? `<div class="cs-slots">
         ${X.reference?.value ? chip('ref', 'Reference', sp.ref ? X.reference.value.label : 'Not used', X.reference.value.img && sp.ref ? `<img src="${H.esc(srcOf(X.reference.value.img))}" alt="">` : '') : ''}
         ${chip('brand', 'Brand kit', X.brand?.value?.logo ? 'Logo, colours, tone' : 'Colours, tone', (X.brand?.value?.colors || []).slice(0, 3).map((c) => `<i class="cs-dot" style="background:${H.esc(c)}"></i>`).join(''))}
         ${chip('size', 'Size', SIZES?.[sp.sizes?.[0]]?.label || sp.sizes?.[0] || 'Size')}
         ${kind === 'video' && st?.job === 'video-restyle' ? '<div class="cs-slot"><small>Length</small><span class="cs-why">As long as the reference</span></div>' : kind === 'video' ? `<div class="cs-slot"><small>Length</small><div class="j2-seg">${(st?.job === 'viral-short' ? [15, 20, 30] : [5, 10, 15]).map((n) => `<button data-cs-sec="${n}" class="${+sp.seconds === n ? 'on' : ''}">${n} s</button>`).join('')}</div></div>` : ''}
         ${setIds ? '' : `<div class="cs-slot"><small>How many</small><div class="j2-count"><button data-cs-count="-1" aria-label="Fewer">−</button><b>${sp.count}</b><button data-cs-count="1" aria-label="More">+</button></div></div>`}
         <div class="cs-slot"><small>Quality</small><div class="j2-seg">${[['preview', 'Preview'], ['standard', 'Standard'], ['premium', 'Premium']].map(([k, n]) => `<button data-cs-q="${k}" class="${(sp.quality || 'standard') === k ? 'on' : ''}" title="${H.esc(k === 'premium' ? '4K, for print and big screens' : k === 'preview' ? 'A quick, low-res look at the idea at about a third of the price: make the full one once it looks right' : why('quality'))}">${n}</button>`).join('')}</div></div>
-        ${S.pop ? popHtml(S.pop) : ''}
       </div>
-      <label class="cs-dir"><small>Direction <span>${H.esc(why('direction'))}</span></small><textarea id="cs-dir" rows="3">${H.esc(sp.direction || '')}</textarea></label>
+      <label class="cs-dir"><small>Direction <span>${H.esc(why('direction'))}</span></small><textarea id="cs-dir" rows="3">${H.esc(sp.direction || '')}</textarea></label>` : ''}</div>`; })()}
       ${(S.missing || []).map((m) => `<p class="j2-st-note">${H.esc(m.text)}${m.go === 'brand' ? ` <button class="linkbtn" data-cs-brand>${H.esc(m.fix)}</button>` : ''}</p>`).join('')}${pl?.note ? `<p class="j2-st-note">${H.esc(pl.note)}</p>` : ''}
       ${look()}
       <div class="j2-st-go"><span>${pl ? H.esc(pl.error || pl.line) : 'Pricing it…'}${S.made ? '<small class="cs-why"> · Redo it, under the stage, makes it again with this set-up</small>' : ' · Make it is under the stage'}</span>${setIds ? '' : `<button class="j2-chip" data-cs-look ${S.looking ? 'disabled' : ''} title="Brew’s words on your real product photo${kind === 'video' ? ', with the shot list' : ''}. No picture or video is made, so it costs nothing">${S.looking ? 'Sketching…' : S.look ? 'Another first look · free' : 'First look · free'}</button>`}</div>
@@ -180,7 +197,9 @@
     if (g('[data-cs-go]')) { go(false); return true; }
     if (g('[data-cs-look]')) { sketch(); return true; }
     if (!sp) return true;
-    const pop = g('[data-cs-pop]'); if (pop) { S.pop = S.pop === pop.dataset.csPop ? null : pop.dataset.csPop; paint(); return true; }
+    if (g('[data-cs-more]')) { S.more = !(S.more ?? (wideOn() || ['ref', 'brand', 'size'].includes(S.pop))); paint(); return true; }
+    const closed = !!S.pop && !g('.cs-pop, [data-cs-pop]'); if (closed) S.pop = null; /* a tap outside the open picker closes it (and still does what it tapped) */
+    const pop = g('[data-cs-pop]'); if (pop) { S.pop = S.pop === pop.dataset.csPop ? null : pop.dataset.csPop; paint(); if (S.pop) requestAnimationFrame(() => document.querySelector('.cs-pop')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })); return true; }
     if (g('[data-cs-gal]')) { S.gallery = true; paint(); return true; } if (g('[data-cs-galx]')) { S.gallery = false; S.adding = false; paint(); return true; }
     const grp = g('[data-cs-grp]'); if (grp) { S.group = grp.dataset.csGrp; S.q = ''; paint(); return true; }
     const mk = g('[data-cs-mk]'); if (mk) { const want = SETS[mk.dataset.csMk]; const ids = want.set.filter((id) => !S.blocked?.[id]); if (ids.length < 2) { H.toast?.('Your Brand Book rules out most of these.'); return true; } set({ set: ids, sizes: want.sizes }); return true; }
@@ -198,11 +217,12 @@
     const sec = g('[data-cs-sec]'); if (sec) { set({ seconds: +sec.dataset.csSec }); return true; }
     const n = g('[data-cs-count]'); if (n) { set({ count: Math.max(1, Math.min(12, (+sp.count || 1) + +n.dataset.csCount)) }); return true; }
     const q = g('[data-cs-q]'); if (q) { set({ quality: q.dataset.csQ }); return true; }
-    return true;
+    if (closed) paint(); return true;
   }
   /* typing: the direction and the template search change the set-up without a repaint under the cursor */
   function input(e) { if (!S?.spec) return false;
     if (e.target.id === 'cs-dir') { S.spec = { ...S.spec, direction: e.target.value }; clearTimeout(S.dirT); S.dirT = setTimeout(price, 600); return true; }
+    if (e.target.id === 'cs-pq') { S.pq = e.target.value; const pos = e.target.selectionStart; paint(); const el = document.getElementById('cs-pq'); if (el) { el.focus(); el.setSelectionRange(pos, pos); } return true; }
     if (e.target.id === 'cs-q') { S.q = e.target.value; const pos = e.target.selectionStart; paint(); const el = document.getElementById('cs-q'); if (el) { el.focus(); el.setSelectionRange(pos, pos); } return true; }
     return false; }
   /* the frame shows the slide picked in the strip, through every repaint (a price coming back redraws the stage) */
@@ -235,6 +255,7 @@
     const r = await api('POST', '/api/jam2/studio/remember', { slot, value, kind, name: el.dataset.name || sp.product?.name || '' }); if (r?.error) return H.toast?.(H.esc(r.error));
     S.prefs = r.prefs || S.prefs; H.toast?.(off ? 'Brew won’t always use that any more.' : 'Saved: Brew uses this for every new piece. Change it any time here or in your Brand Book.'); paint(); }
   const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), working: !!S.working, made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null, frames: Array.isArray(S.spec?.set) ? S.spec.set.length : null /* the stage previews this many frames */, sel: S.sel ?? 0 /* the slide picked here is the one on the stage */, error: S.error || null } : null);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S?.pop) { S.pop = null; paint(); } });
   const reset = () => { clearTimeout(pollT); clearTimeout(planT); S = null; };
   const openSetup = () => { if (!S) return; S.open = true; H.showSetup?.(); paint(); };
   window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), make: () => go(false) /* the bar's Make it */, select: (i) => { if (S) S.sel = +i || 0; }, fullPrice: () => fullPrice(), makeFull: () => makeFull(), /* a version restored: Redo, Made with and the full one follow the version on the stage, not the newest take (QV 25 Oct) */ respec: (v) => { if (!S?.spec || !v) return; const sl = (v.slides || []).map((x) => x.style).filter(Boolean); S.spec = { ...S.spec, ...(v.quality ? { quality: v.quality } : {}), ...(v.style ? { style: v.style } : {}), ...(v.size ? { size: v.size } : {}), ...(sl.length > 1 ? { set: sl } : {}) }; S.full = null; S.sel = 0; price(); }, afterPaint: () => toSel(false), ask, adjustHtml };

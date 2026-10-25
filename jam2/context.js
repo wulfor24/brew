@@ -3,7 +3,7 @@
 // card, the Brand Book, the catalog, the references, the rival or viral post the card is about. Each says where it came from in
 // one line, and the brand can change any of it. What Brew doesn't know is said plainly with the one thing that would fix it;
 // nothing is made up to fill a gap. Pure: no calls, no spend.
-import { styleOf, blockOf } from './studio.js';
+import { styleOf, blockOf, angleOf, carriesAngle, cardText } from './studio.js';
 import { SIZES } from './catalogue.js';
 import { refsFor } from './brandbook.js';
 
@@ -21,7 +21,7 @@ export function contextOf(ctx = {}, d0 = {}) {
   /* what to make: the card's button */
   const make = { value: set ? 'set' : kind, why: card.cta?.label ? `The card’s button: “${tidy(card.cta.label, 40)}”.` : 'From the card.' };
   /* the style: the card's angle */
-  const angle = /\bvs\b|versus|compare|switch|rival|instead of/i.test(text) ? 'it compares you with a rival' : /review|rated|loved|stars?\b/i.test(text) ? 'it leads with what customers say' : /problem|fix|tired of|pain|struggle/i.test(text) ? 'it starts from a problem' : /offer|sale|% off|deal|bundle|combo/i.test(text) ? 'it sells an offer' : /gift|festival|diwali|christmas/i.test(text) ? 'it is a gifting moment' : null;
+  const an = angleOf(cardText(ctx)), angle = carriesAngle(st, an) ? an.line : null; /* the reason names the angle only when this style carries it */
   const style = { value: set ? set.map((x) => x.id) : st?.id || null, label: set ? `${set.length} slides · ${set.map((x) => x.label).join(', ')}` : st?.label || null,
     why: set ? `A ${set.length}-slide set, one style per slide, the order that sells: what it is, it in use, why it works.` : st?.id === 'recreate-swap' ? 'Recreate it, because this card is about a video that already works: Brew keeps it as it is and puts your product in.' : st?.id === 'viral-short' && ctx.ref?.beats?.length ? `A viral short in the same ${ctx.ref.beats.length}-shot pattern as the post this card is about, with your product and your people.` : st ? `${st.label}${angle ? `, because ${angle}` : ', the style that shows the product best for this card'}.` : 'Pick a style.' };
   /* the products: the card's own, with every photo of it Brew has */

@@ -28,6 +28,19 @@ export function library() {
 }
 const ALL = () => { const L = library(); return [...L.image, ...L.video].flatMap((g) => g.styles.map((s) => ({ ...s, group: s.group || g.label, groupId: g.id, kind: L.video.includes(g) ? 'video' : 'image' }))); };
 export const styleOf = (id) => ALL().find((s) => s.id === id) || null;
+/* the card's angle, one rule for the style Brew opens on (defaults) and the reason it gives (context.js): its template group, the
+   styles that carry it, and the words of the reason. Whole words only ("Hair-Fall Switcher" is a buyer, not a comparison) */
+const ANGLES = [
+  { id: 'compare', re: /\b(vs\.?|versus|compar(e|es|ed|ing|ison)|switch(es|ed|ing)?|rivals?|instead of)\b/i, group: 'Compare & Switch', line: 'it compares you with a rival' },
+  { id: 'proof', re: /\b(reviews?|customer reviews?|stars?|rated|loved|testimonials?)\b/i, group: 'Social Proof', line: 'it leads with what customers say' },
+  { id: 'problem', re: /\b(problems?|fix(es)?|tired of|pain|struggl\w*)\b/i, group: 'Problem Solved', line: 'it starts from a problem' },
+  { id: 'offer', re: /\b(offers?|sale|deals?|discounts?|bundles?|combo|free shipping)\b|% off/i, group: null, styles: ['offer-card', 'color-pop'], line: 'it sells an offer' },
+  { id: 'gift', re: /\b(gifts?|gifting|festival|festive|holiday|christmas|diwali|valentine'?s?)\b/i, group: null, styles: ['gift'], line: 'it is a gifting moment' },
+  { id: 'specs', re: /\b(specs?|ingredients?|features?|why it works|benefits?)\b/i, group: 'Proof & Specs', line: 'it shows why it works' }];
+export const cardText = (ctx = {}) => { const c = ctx.card || {}; return `${c.title || ''} ${c.cta?.label || ''} ${c.sub || ''} ${ctx.jam?.concept?.angle || ''}`; };
+export const angleOf = (text = '') => ANGLES.find((a) => a.re.test(String(text))) || null;
+/* does this style carry the angle? Only then does the reason say "because …" */
+export const carriesAngle = (st, an) => !!st && !!an && (an.group ? st.group === an.group : (an.styles || []).includes(st.id));
 
 /* how many the card promises ("8 ads", "Queue the 12", "4 hooks"): that many takes, never more than 12 */
 export function countOf(card) { const m = /(?<![\d:.,x×/-])\b(\d{1,2})\s+(?:new\s+|more\s+|fresh\s+)?(?:ads?|images?|pictures?|posts?|statics?|creatives?|videos?|reels?|clips?|hooks?|variants?|versions?|takes?|ideas?)\b/i.exec(`${card?.cta?.label || ''} ${card?.make?.pieces || ''} ${/^(ship|make|create|queue|launch|run|test|draft|generate|try|shoot|film|post|publish|build)\b/i.test(String(card?.title || '').trim()) ? card.title : ''}`); /* the button, what the card says to make, and a title that asks to make them ("Ship 8 new ads"); "Rival is running 14 ads" is no ask for 14 */
@@ -78,7 +91,7 @@ export const blockedFor = (ctx) => Object.fromEntries(ALL().map((st) => [st.id, 
 
 /* what the composer opens with, from the card: kind, three styles, product, sizes, length, count */
 export function defaults(ctx, board = null) {
-  const card = ctx.card || {}, text = `${card.title || ''} ${card.cta?.label || ''} ${card.sub || ''} ${ctx.jam?.concept?.angle || ''}`, enquiry = ctx.storeKind === 'enquiry';
+  const card = ctx.card || {}, text = cardText(ctx), enquiry = ctx.storeKind === 'enquiry';
   /* the board's own kind wins (a picture board stays a picture even when the card says "reel"); a fresh board follows the card */
   const kind = board?.kind === 'video' ? 'video' : ['static', 'carousel'].includes(board?.kind) ? 'image' : VIDEO_RE.test(card.cta?.label || '') || VIDEO_RE.test(card.title || '') ? 'video' : 'image';
   const okPeople = (s) => !blockOf(s, ctx);
@@ -95,9 +108,10 @@ export function defaults(ctx, board = null) {
   else if (kind === 'video' && ctx.ref?.video) picks = ctx.ref.own ? ['recreate-swap', 'viral-short', 'ugc-review'] : ['viral-short', 'tt-hook', 'ugc-review']; /* someone else's video: a short in its pattern with our cast, never their footage; our own video can be recreated */
   else if (kind === 'video') picks = /\b(reviews?|testimonials?|ugc|creators?|unbox\w*|haul)\b(?! ready)/i.test(text.replace(/ready to review/i, '')) ? ['ugc-review', 'ugc-unbox', 'hypermotion'] : /\bhow to\b|tutorial|routine|\bguide\b/i.test(text) ? ['ugc-tutorial', 'in-life', 'showcase'] : /tiktok|trend|viral|hook/i.test(text) ? ['tt-hook', 'tt-pov', 'hypermotion'] : ['in-life', 'ugc-home', 'showcase'];
   else {
-    const grp = /\bvs\b|versus|compare|switch|rival|instead of|than /i.test(text) ? 'Compare & Switch' : /\b(reviews|customer review|stars?|rated|loved|testimonials?)\b/i.test(text) ? 'Social Proof' : /problem|fix|tired of|cold|pain|struggle/i.test(text) ? 'Problem Solved' : /spec|ingredient|feature|why it works|benefit/i.test(text) ? 'Proof & Specs' : 'Hero Spotlight';
+    const an = angleOf(text), grp = an?.group || 'Hero Spotlight';
     const ad = HFSTYLES.find((p) => p.group === grp); const mp = /amazon|flipkart|marketplace|listing|nykaa|myntra/i.test(text);
-    picks = enquiry ? ['in-use', 'editorial', 'natural'] : mp ? ['mp-main', 'mp-lifestyle', 'mp-benefits'] : /offer|sale|% off|deal|discount|bundle|free shipping/i.test(text) ? ['in-use', ad ? `hf:${ad.id}` : 'color-pop', 'offer-card'] : /gift|holiday|christmas|diwali|valentine/i.test(text) ? ['gift', 'in-use', ad ? `hf:${ad.id}` : 'flat-lay'] : ['in-use', ad ? `hf:${ad.id}` : 'closeup', 'color-pop'];
+    /* a card with an angle opens on the template made for that angle, so the style picked and the reason under it agree (25 Oct: "In use, because it compares you with a rival") */
+    picks = enquiry ? ['in-use', 'editorial', 'natural'] : mp ? ['mp-main', 'mp-lifestyle', 'mp-benefits'] : an?.id === 'offer' ? ['offer-card', 'in-use', ad ? `hf:${ad.id}` : 'color-pop'] : an?.id === 'gift' ? ['gift', 'in-use', ad ? `hf:${ad.id}` : 'flat-lay'] : an?.group && ad ? [`hf:${ad.id}`, 'in-use', 'color-pop'] : ['in-use', ad ? `hf:${ad.id}` : 'closeup', 'color-pop'];
   }
   picks = picks.map(styleOf).filter(Boolean).filter(okPeople);
   if (picks.length < 3) picks.push(...ALL().filter((s) => s.kind === kind && okPeople(s) && !picks.some((p) => p.id === s.id)).slice(0, 3 - picks.length));
