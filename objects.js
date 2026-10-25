@@ -142,9 +142,9 @@ export function createObjects({ bucket, gToken, log = console, pg = pgOn(), read
   }
   async function put(key, data, type) {
     live(key); const buf = toBuf(data);
-    if (inRows(key) && PARTED.test(key)) { await tx((c) => putParts(c, key, buf)); mirrorPut(key, buf, 'application/json'); return true; }
-    if (inRows(key)) { await q(`INSERT INTO objects (key, body, content_type) VALUES ($1, $2, $3)
-      ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, src = NULL, version = nextval('objects_version'), updated_at = now()`, [key, buf, typeOf(key, type)]); mirrorPut(key, buf, typeOf(key, type)); return true; }
+    if (inRows(key) && PARTED.test(key)) { const v = await tx((c) => putParts(c, key, buf)); mirrorPut(key, buf, 'application/json'); return v || true; }
+    if (inRows(key)) { const v = await q(`INSERT INTO objects (key, body, content_type) VALUES ($1, $2, $3)
+      ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, src = NULL, version = nextval('objects_version'), updated_at = now() RETURNING version`, [key, buf, typeOf(key, type)]).then((r) => +r.rows[0].version); mirrorPut(key, buf, typeOf(key, type)); return v; } /* the version written (truthy), so the writer can tell its own notice */
     if (!gcsOn) return false;
     await gcsPut(key, buf, type); return true;
   }

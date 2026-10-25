@@ -37,6 +37,13 @@ test('Postgres group', { skip: !url && 'no Postgres' }, async (t) => {
     await p.put('zz-s', 'status.json', { name: 'ZZ', ready: true, seenAt: 2, updatedAt: 2 }); await new Promise((r) => setTimeout(r, 300)); assert.equal(p.version('zz-s'), v0, 'a stamp alone (its own notice included)');
     await p.put('zz-s', 'status.json', { name: 'ZZ', ready: false, seenAt: 3, updatedAt: 3 }); assert.ok(p.version('zz-s') > v0, 'a real change');
   });
+  await t.test('one write is one rebuild: this instance’s own notice never bumps the pack again', async () => {
+    const p = mk(); await p.put('zz-own', 'config.json', { a: 1 }); await new Promise((r) => setTimeout(r, 300));
+    const v0 = p.version('zz-own'); await p.put('zz-own', 'config.json', { a: 2 }); await new Promise((r) => setTimeout(r, 300));
+    assert.equal(p.version('zz-own'), v0 + 1);
+    await O.createObjects({ log: quiet }).put('brands/zz-own/config.json', { a: 3 }); await new Promise((r) => setTimeout(r, 300)); /* another instance */
+    assert.equal(p.version('zz-own'), v0 + 2);
+  });
   await db.close();
 });
 
