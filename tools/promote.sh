@@ -111,7 +111,8 @@ gcloud run services update-traffic brew-web --to-revisions="$REV=100" --region=$
 
 echo "7/8 checks through the load balancer"
 # each check gets 5 tries: a network blip on the machine running this (no connection, code 000) is not a failed release
-ok=1; for u in / /healthz/ready /api/config /privacy ${SMOKE_BRANDS-scrubroom-in b/scrubroom-in/seed.js}; do # a partner page and its feed through the load balancer too case "$u" in /*) ;; *) u="/$u";; esac
+# a partner page and its feed are checked through the load balancer too
+ok=1; for u in / /healthz/ready /api/config /privacy ${SMOKE_BRANDS-arata-in b/arata-in/seed.js}; do case "$u" in /*) ;; *) u="/$u";; esac
   for t in 1 2 3 4 5; do c=$(curl -s --max-time 20 -o /dev/null -w '%{http_code}' "$PROD_URL$u" || true); [ "$c" = 200 ] && break; sleep 5; done
   echo "   $u -> ${c:-000}"; [ "$c" = 200 ] || ok=0; done
 [ $ok = 1 ] || { rollback; die "production checks failed after the switch: rolled back"; }
