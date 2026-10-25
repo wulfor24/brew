@@ -92,3 +92,20 @@ test('the draft view keeps the product its pictures show', async () => {
 test('a made piece that needs a look says what, on the bar', () => {
   assert.match(fn('stepBar'), /things to look at before you post it/); assert.match(fn('stepBar'), /`Needs a look: \$\{esc\(look\[0\]\)\}`/);
 });
+
+test('a made Studio piece: the stage is the piece, Details holds the checklist, the bar offers the full one, Set-up is Studio only', () => {
+  assert.ok(!/publishPanel\(/.test(fn('studioStage')), 'no checklist under the piece');
+  assert.match(fn('detailsTab'), /ch\.studio && ch\.publish\?\.made[^\n]*publishPanel\(ch, pkgCh\)/, 'Details opens on it');
+  assert.match(app, /const lookOf = \(ch\) =>/); assert.match(fn('stepBar'), /lookOf\(ch\)/); assert.match(fn('publishPanel'), /lookOf\(ch\)/);
+  assert.match(fn('stepBar'), /data-cs-full/, 'a preview’s next step is the full one'); assert.match(cs, /makeFull: \(\) => makeFull\(\)/);
+  assert.ok(!/adjustTab0/.test(fn('adjustTab').split(':').slice(0, -1).join(':')), 'no v1 knobs on a Studio piece');
+  assert.match(cs, /Your set · \$\{sl\.length\} slides/); assert.match(cs, /<small>Made with<\/small>/);
+});
+
+test('chat on a Studio piece: asks go to Studio made or not, the answer and a landed make stay in the thread, no slide-count chips', () => {
+  assert.match(app, /path === 'iterate' && !body && ch\.studio && window\.CreativeStage\?\.state\(ch\.id\) && !window\.CreativeStage\.state\(ch\.id\)\.making/);
+  assert.ok(!/!window\.CreativeStage\.state\(ch\.id\)\.made && !window\.CreativeStage/.test(app), 'a made piece’s asks go to Studio too');
+  const routes = fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8'); assert.match(routes, /ch1\.thread\.push\(\{ from: 'you', text, at \}/);
+  const rmx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8'); assert.match(rmx, /text: `Made \$\{n\}/); assert.match(rmx, /The make didn’t go through/);
+  assert.match(app, /const COUNT_CHIP = /); assert.ok(new RegExp(app.match(/const COUNT_CHIP = \/(.+)\/i;/)[1], 'i').test('Three stories'));
+});

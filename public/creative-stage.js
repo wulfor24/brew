@@ -54,6 +54,11 @@
     S.boards = r.jam?.boards?.map((b) => b.id) || S.boards; S.busy = r.jam?.busy || {}; S.making = { line: r.plan.line, usd: r.plan.usd, at: Date.now(), n: (r.boards || []).length || 1, video: S.spec?.kind === 'video' }; S.open = false; S.failed = null;
     H.making?.(S.chId, S.making); paint(); poll();
   }
+  /* a quick preview made: the full one is the same set-up at standard quality, priced first (the bar's Make the full one) */
+  function fullPrice() { if (!S?.spec || S.spec.quality !== 'preview' || !S.jid) return null; const spec = { ...S.spec, quality: 'standard' }, key = JSON.stringify(spec);
+    if (S.full?.key === key) return S.full.plan; S.full = { key, plan: null }; const mine = S;
+    api('POST', `/api/jam2/jams/${S.jid}/studio/plan`, { spec }).then((r) => { if (S === mine && S.full?.key === key) { S.full.plan = r?.plan || { error: r?.error || 'No price yet.' }; paint(); } }); return null; }
+  function makeFull() { const pl = fullPrice(); if (!pl || pl.error || pl.usd == null || S.working) return; S.spec = { ...S.spec, quality: 'standard' }; S.plan = pl; S.full = null; go(true); }
   /* one slide of a made set: redo it or add one (priced, from the plan of that one style), or drop it (free) */
   const slidesOf = (ch) => ch.versions?.find((v) => v.id === ch.head)?.studio?.slides || null;
   function slidePrice(style) { if (!S?.spec || !style) return; S.slidePlan ||= {}; if (S.slidePlan[style] !== undefined) return; S.slidePlan[style] = null; const mine = S;
@@ -138,12 +143,22 @@
     const batchHtml = batch.length > 1 ? `<div class="cs-batch"><small>${batch.length}${batch[0].studio.runN > batch.length ? ` of ${batch[0].studio.runN}` : ''} made in one go · tap one to put it on the stage; the others stay in History</small><div class="cs-strip">${batch.map((v) => { const s0 = v.snapshot || {}; return `<button class="${(H.viewing?.() || ch.head) === v.id ? 'on' : ''}${v.passed ? ' is-drop' : ''}" data-v-view="${H.esc(v.id)}" title="v${v.n}"><img src="${H.esc(srcOf(s0.poster || s0.image || ''))}" alt=""><span>${v.n}</span></button>`; }).join('')}</div></div>` : '';
     /* Redo the set makes the set as it is now (after a drop or an add), so its price follows the slides on the stage */
     if (sl?.length > 1 && Array.isArray(S.spec?.set) && sl.map((x) => x.style).join() !== S.spec.set.join() && !S.making && !S.open) { S.spec = { ...S.spec, set: sl.map((x) => x.style) }; S.sel = Math.min(S.sel || 0, sl.length - 1); setTimeout(price, 0); }
+    /* made: the Set-up tab is the set itself (big numbered slides, the picked one's own actions) and what it was made with, one
+       button to change it; Redo it and Make the full one are on the bar under the stage (25 Oct: tiny strip, centred pills, v1 knobs) */
+    const sp0 = S.spec || {}, X = S.slots || {}, AR = String(SIZES?.[sp0.sizes?.[0]]?.ratio || '9:16').replace(':', '/') /* thumbnails at the shape they were made in */, QL = { preview: 'Preview (quick, low resolution)', standard: 'Standard', premium: 'Premium (4K)' };
+    const madeWith = () => { const rows = [
+        ['Style', Array.isArray(sp0.set) ? sp0.set.map((id) => styleById(id)?.label || id).join(' · ') : styleById(sp0.style)?.label],
+        ['Product', sp0.product?.name], ['On camera', sp0.cast || X.cast?.label], ['Size', SIZES?.[sp0.sizes?.[0]]?.label || sp0.sizes?.[0]],
+        ...(sp0.kind === 'video' && sp0.seconds ? [['Length', `${sp0.seconds} s`]] : []), ['Quality', QL[sp0.quality || 'standard']]].filter((r) => r[1]);
+      return `<div class="cs-sec"><small>Made with</small><dl class="cs-rows">${rows.map(([k, v]) => `<div><dt>${H.esc(k)}</dt><dd>${H.esc(String(v).slice(0, 80))}</dd></div>`).join('')}</dl><button class="btn btn-ghost sm" data-cs-open>Change the set-up</button></div>`; };
     if (!S.open && sl?.length > 1) { const i = Math.min(S.sel || 0, sl.length - 1), cur = sl[i], st = styleById(cur.style); slidePrice(cur.style); const sp = S.slidePlan?.[cur.style];
-      return `${batchHtml}<div class="cs-line cs-set">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}${S.gallery && S.adding ? `<div class="j2-studio cs cs-addgal">${gallery()}</div>` : ''}
-        <div class="cs-strip">${sl.map((x, k) => `<button class="${k === i ? 'on' : ''}" data-cs-sel="${k}" title="${H.esc(styleById(x.style)?.label || '')}"><img src="${H.esc(srcOf(x.file))}" alt=""><span>${k + 1}</span></button>`).join('')}<button class="cs-add" data-cs-addslide title="Add a slide">＋</button></div>
-        ${S.adding && S.addStyle ? (() => { const ap = S.slidePlan?.[S.addStyle]; return `<div class="cs-acts cs-addrow"><span>Add a slide: ${H.esc(styleById(S.addStyle)?.label || '')}</span><button class="j2-pri" data-cs-addgo ${!ap || ap.error || S.working ? 'disabled' : ''}>${ap?.error ? H.esc(ap.error) : `Add this slide${ap?.usd != null ? ` · ${usd(ap.usd)}` : ''}`}</button><button class="j2-chip" data-cs-addx>Cancel</button></div>`; })() : ''}
-        <div class="cs-acts"><span>Slide ${i + 1} of ${sl.length}${st ? ` · ${H.esc(st.label)}` : ''}</span><button class="j2-chip" data-cs-slide="redo" ${!sp || sp.error ? 'disabled' : ''}>Redo this slide${sp?.usd != null ? ` · ${usd(sp.usd)}` : ''}</button><button class="j2-chip" data-cs-slide="drop" ${sl.length <= 2 ? 'disabled title="A set needs at least two slides"' : ''}>Drop it</button><button class="j2-chip" data-cs-open>Change the set-up</button></div></div>` /* redoing the whole set is Redo it on the bar, once */; }
-    if (!S.open) return `${batchHtml}<div class="cs-line">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}<span>${H.esc(S.plan?.line || 'Made by Brew Studio')}</span><button class="j2-chip" data-cs-open>Change the set-up</button></div>` /* Redo it is on the bar under the stage, once */;
+      return `${batchHtml}<div class="cs-line cs-made">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}${S.gallery && S.adding ? `<div class="j2-studio cs cs-addgal">${gallery()}</div>` : ''}
+        <div class="cs-sec"><small>Your set · ${sl.length} slides</small><div class="cs-grid" style="--ar:${AR}">${sl.map((x, k) => `<button class="${k === i ? 'on' : ''}" data-cs-sel="${k}" title="${H.esc(styleById(x.style)?.label || '')}"><img src="${H.esc(srcOf(x.file))}" alt=""><span>${k + 1}</span></button>`).join('')}<button class="cs-add" data-cs-addslide title="Add a slide">＋<small>Add a slide</small></button></div>
+        ${S.adding && S.addStyle ? (() => { const ap = S.slidePlan?.[S.addStyle]; return `<div class="cs-acts cs-addrow"><span>Add a slide: ${H.esc(styleById(S.addStyle)?.label || '')}</span><button class="j2-pri" data-cs-addgo ${!ap || ap.error || S.working ? 'disabled' : ''}>${ap?.error ? H.esc(ap.error) : `Add this slide${ap?.usd != null ? ` · ${usd(ap.usd)}` : ''}`}</button><button class="linkbtn" data-cs-addx>Cancel</button></div>`; })() : ''}
+        <div class="cs-pick"><b>Slide ${i + 1} of ${sl.length}${st ? ` · ${H.esc(st.label)}` : ''}</b><div><button class="btn btn-ghost sm" data-cs-slide="redo" ${!sp || sp.error ? 'disabled' : ''}>Redo this slide${sp?.usd != null ? ` · ${usd(sp.usd)}` : ''}</button><button class="linkbtn" data-cs-slide="drop" ${sl.length <= 2 ? 'disabled title="A set needs at least two slides"' : ''}>Drop it</button></div></div></div>
+        ${madeWith()}</div>`; }
+    if (!S.open) { const img = (H.ch?.() || ch)?.pkg?.poster || ch.pkg?.image;
+      return `${batchHtml}<div class="cs-line cs-made">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}${img ? `<div class="cs-sec"><small>Made</small><div class="cs-grid is-one" style="--ar:${AR}"><button class="on" type="button" tabindex="-1"><img src="${H.esc(srcOf(img))}" alt=""></button></div></div>` : ''}${madeWith()}</div>`; }
     return full();
   }
   /* clicks on the composer: true when handled */
@@ -198,7 +213,7 @@
     const box = img?.closest('figure, .az-mod, .al-tile') || img; if (box) { box.classList.add('cs-pick'); if (smooth) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } };
   /* the chat, on a set-up not made yet: the words become slot changes (server: studio/ask), shown as changed chips, re-priced */
   async function ask(text) { if (!S?.jid || !S.spec) return { error: 'The set-up is still opening.' };
-    const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/ask`, { text, spec: S.spec }); if (r?.error || !r?.patch) return { error: r?.error || 'That didn’t go through.' };
+    const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/ask`, { text, spec: S.spec, made: !!S.made }); if (r?.error || !r?.patch) return { error: r?.error || 'That didn’t go through.' };
     const { addDirection, ...pt } = r.patch; if ('cast' in pt) { set({ cast: pt.cast }); delete pt.cast; } if (addDirection) pt.direction = [S.spec.direction, addDirection].filter(Boolean).join(' ');
     if (pt.style && !S.picks.includes(pt.style)) S.picks = [pt.style, ...S.picks.slice(0, 2)]; S.changed = Object.keys(pt); S.open = true; set(pt); return { said: r.said }; }
   /* the Adjust tab on a creative: every slot, what it is now, why, and "Always use this for <brand>" */
@@ -222,5 +237,5 @@
   const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), working: !!S.working, made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null, frames: Array.isArray(S.spec?.set) ? S.spec.set.length : null /* the stage previews this many frames */, error: S.error || null } : null);
   const reset = () => { clearTimeout(pollT); clearTimeout(planT); S = null; };
   const openSetup = () => { if (!S) return; S.open = true; H.showSetup?.(); paint(); };
-  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), make: () => go(false) /* the bar's Make it */, afterPaint: () => toSel(false), ask, adjustHtml };
+  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), make: () => go(false) /* the bar's Make it */, fullPrice: () => fullPrice(), makeFull: () => makeFull(), afterPaint: () => toSel(false), ask, adjustHtml };
 })();

@@ -187,3 +187,26 @@ p.am-when small{display:inline;margin:0 6px 0 0}
 /* a narrow stage (the Shopify admin, a small window): the bar stacks as one column, never wrapping into side-by-side columns */
 @container canvas (max-width:640px){.ship.one{flex-wrap:nowrap}.ship.one .ship-steps{flex:0 0 auto;margin:0}.ship.one .ship-tx.is-step{flex:0 0 auto;min-width:0}.ship.one .ship-btns{margin-left:0;justify-content:flex-end}}
 .cs-panel .cs-acts{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.cs-panel .cs-acts>span{flex:1 0 100%;font-size:13px;color:var(--fg-2)}
+/* the Set-up tab once a Studio piece is made: the set in big numbered slides, the picked one's actions, what it was made with */
+.cs-panel .cs-made{display:grid;gap:18px}
+.cs-panel .cs-sec{display:grid;gap:10px}
+.cs-panel .cs-sec>small{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3)}
+.cs-panel .cs-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cs-panel .cs-grid.is-one{grid-template-columns:minmax(0,150px)}
+.cs-panel .cs-grid button{position:relative;padding:0;border:0;border-radius:10px;overflow:hidden;background:var(--surface);aspect-ratio:var(--ar,9/16);cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)}
+.cs-panel .cs-grid button img{width:100%;height:100%;object-fit:cover;display:block}
+.cs-panel .cs-grid button.on{box-shadow:0 0 0 2px var(--fg)}
+.cs-panel .cs-grid button>span{position:absolute;left:6px;top:6px;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;line-height:20px;font-weight:600}
+.cs-panel .cs-grid .cs-add{display:grid;place-content:center;gap:4px;font-size:22px;color:var(--fg-2);background:transparent;box-shadow:inset 0 0 0 1px var(--line);border:1px dashed var(--line)}
+.cs-panel .cs-grid .cs-add small{font-size:12px}
+.cs-panel .cs-pick{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:12px;background:var(--surface)}
+.cs-panel .cs-pick b{font-size:13.5px;font-weight:600}
+.cs-panel .cs-pick>div{display:flex;align-items:center;gap:12px}
+.cs-panel .cs-rows{display:grid;gap:6px;margin:0}
+.cs-panel .cs-rows div{display:grid;grid-template-columns:90px minmax(0,1fr);gap:10px;font-size:13.5px;line-height:19px}
+.cs-panel .cs-rows dt{color:var(--fg-3)}
+.cs-panel .cs-rows dd{margin:0;color:var(--fg)}
+.cs-panel .cs-sec>.btn{justify-self:start}
+/* the checklist in Details, above the brief */
+.st-panel-b>.pp{margin:0 0 16px}
+.pp .pp-checks.is-first{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--surface)}
