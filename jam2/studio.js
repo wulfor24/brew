@@ -7,7 +7,7 @@ import fs from 'node:fs'; import path from 'node:path';
 import { SIZES } from './catalogue.js';
 import { srtOf } from '../video-finish.js';
 import { claimFlags } from '../claims.js';
-import { isRestock } from '../product-match.js';
+import { isRestock, sceneOf } from '../product-match.js';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(HERE, '..', 'data', f), 'utf8')); } catch { return d; } };
@@ -128,6 +128,19 @@ export function defaults(ctx, board = null) {
 const NO_EXPERT = 'Everyone on camera is an everyday customer: no doctor, dermatologist, scientist, pharmacist or other expert, no lab coat, scrubs, clinic or laboratory, and nobody presented as a professional or as endorsing the product.';
 /* the saved cast's own photos go to the film maker with the product's, so the same face is in every film (a text note alone gave a new face each time) */
 const castRefs = (ctx, spec = {}, pub = (u) => u) => { const c = (ctx.bbv?.cast || []).find((x) => x && spec.cast && (x.id === spec.cast || x.label === spec.cast || String(spec.cast).startsWith(x.label || '\u0000'))); return (c?.refs || []).slice(0, 2).map((u) => pub(u)).filter(Boolean); };
+/* the brand's world for any picture Higgsfield draws, in one line and never as words to letter: the scene the card promises, the
+   brand's own look (light, setting, props, framing, colour roles; never its fonts, logo or words, which a picture model would
+   letter onto the image), and who it is for when people may be shown. Every Higgsfield picture gets the same context, so a
+   designed piece reads like the product shots and the films (26 Oct: designed pieces got only the style and the colours) */
+export const brandScene = (ctx = {}, { people = true } = {}) => {
+  const lk = ctx.bbv?.look || {}, k = ctx.bbv?.kit || {}, clip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n).replace(/[.;,\s]+$/, '');
+  const scene = (() => { try { return sceneOf(ctx.card || {}); } catch { return ''; } })();
+  const look = [lk.notes && clip(lk.notes, 180), lk.light && `light ${clip(lk.light, 60)}`, lk.setting && `settings ${clip(lk.setting, 60)}`, lk.props && `props ${clip(lk.props, 60)}`, lk.framing && `framing ${clip(lk.framing, 60)}`].filter(Boolean).join('; ');
+  const roles = (k.roles || []).filter((c) => c?.hex).slice(0, 4).map((c) => `${c.hex}${c.role ? ` ${clip(c.role, 20)}` : ''}`).join(', ');
+  const per = (ctx.bbv?.personas || [])[0], who = people && per ? clip(per.who || per.label || per.name, 90) : '';
+  const bits = [scene && `The scene: ${clip(scene, 220)}.`, look && `In the brand's own look: ${look}.`, roles && `Colour roles: ${roles}.`, who && `The people it is for: ${who}.`].filter(Boolean);
+  return bits.length ? `${bits.join(' ')} None of this is written on the image.` : '';
+};
 /* the language the brand speaks to its buyers (its Brand Book tone), so a film for a Hindi-first brand isn't in English */
 const spokeIn = (ctx) => { const l = String(ctx.bbv?.tone?.language || '').trim(); return l && !/^english\b/i.test(l) ? `Spoken in ${l.replace(/[.]+$/, '')}, the way the brand's buyers talk.` : ''; };
 const expertOk = (ctx) => (ctx.bbv?.cast || []).some((c) => c.kind === 'real' && (c.refs || c.photos || []).length && /doctor|dermatolog|expert|scientist|pharmacist|trichologist/i.test(`${c.label || ''}`)); /* a real, consented expert with their own photos; a founder is no expert */
@@ -149,7 +162,7 @@ export const cleanStill = (words, ctx = {}) => { if (!words || typeof words !== 
   const low = (x) => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim(), reviews = (ctx.bbv?.reviews || []).map((r) => low(r?.text)).filter(Boolean);
   if (Array.isArray(w.proof)) w.proof = w.proof.map((q) => (typeof q === 'string' && !reviews.some((r) => r.includes(low(q))) ? fix(q) : q)).filter(Boolean); /* a real customer's words stay as they wrote them */
   return w; };
-export function createStudio({ engines, maker, profileOf = async () => null, isMock = () => false, spend = () => true, finish = null, log = console }) {
+export function createStudio({ engines, maker, profileOf = async () => null, isMock = () => false, spend = () => true, refund = () => {}, finish = null, log = console }) {
   /* a film made ready to post (video-finish.js): spoken words as captions (an .srt, and burned in for muted feeds), a cover with the
      headline, a looping GIF for a short silent clip. Local and nearly free; a step that can't run leaves the film as it is and says why */
   async function finishFilm(take, { words = {}, line = '', spoken = false, loop = false } = {}) {
@@ -213,8 +226,27 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     return { line, usd, per: +per.toFixed(3), count: n, kind: st.kind, style: st.id, note };
   }
 
-  /* one take for one board */
+  /* the same ask key make0 uses for its own Higgsfield jobs: style, product, direction, cast, reference, size, length, quality */
+  const askOf = (spec) => { const x = JSON.stringify([spec.product?.name || null, spec.product?.img || null, spec.direction || null, spec.cast || null, spec.ref || null, spec.sizes || null, spec.seconds || null, spec.quality || null]); let h = 5381; for (let q = 0; q < x.length; q++) h = ((h << 5) + h + x.charCodeAt(q)) | 0; return (h >>> 0).toString(36); };
+  /* one take for one board, with a hold on every paid request inside it: the product shots and first frames that go through the
+     engines (creative.staticAd) are written down the moment Higgsfield takes them and picked up after a restart like Studio's own
+     requests, each carries an idempotency key from the press (a retried submit never buys twice; a Redo is a new press, so a new
+     purchase), the keys are let go once the take lands or fails for good, and a request Higgsfield refunded gives the day's unit back */
   async function make(ctx, board, spec, i = 0, opts = {}) {
+    const J = opts.jobs || {}, used = new Set(), ask = askOf(spec);
+    ctx.hfStep = 0;
+    { const st0 = styleOf(spec.style); ctx.castRefUrls = st0 && ['person', 'hands'].includes(st0.people) && !['none'].includes(ctx.bbv?.comfort?.people) ? castRefs(ctx, spec, engines.pub) : []; }
+    ctx.hfHook = (step) => { const k = `${spec.style}:${i}:${step}:${ask}`; used.add(k);
+      return { resume: J[k] || null, onSubmit: (j) => { J[k] = j; return opts.save?.(); }, idem: opts.press ? `brew:${String(opts.press).slice(0, 48)}:${k}`.slice(0, 200) : null }; };
+    const letGo = async () => { for (const k of used) delete J[k]; await Promise.resolve(opts.save?.()).catch(() => {}); };
+    try { const out = await make0(ctx, board, spec, i, opts); await letGo(); return out; }
+    catch (e) {
+      if (!e.open) await letGo();
+      if (e.refunded) { try { refund(styleOf(spec.style)?.kind === 'video' ? 'video' : 'image', ctx.slug); } catch {} }
+      throw e;
+    }
+  }
+  async function make0(ctx, board, spec, i = 0, opts = {}) {
     /* every Higgsfield request is written down the moment it is bought (opts.jobs, saved on the board): a restart picks the same
        request up again instead of buying a second one, and a request still running is never paid for twice */
     /* a job left open is picked up again only by the same ask (style, product, direction, cast, size, length, quality): a Redo that changed any of them buys its own */
@@ -275,7 +307,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       const showsProduct = !!(st.preset || st.designed), job = showsProduct ? 'product-shot' : st.job, o = hf.pick(job, ctx.tier || 'default'), photos = showsProduct ? cr.photosOf(ctx, ctx.profile).slice(0, st.preset ? 1 : 3).map((u) => engines.pub(u)) : [];
       const base = st.preset ? { ...o.input, enhance_prompt: true, preset_id: st.preset, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) }
         : showsProduct ? { ...o.input, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) } : { ...o.input, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
-      const colours = (ctx.bbv?.kit?.colors || []).filter(Boolean), promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}${colours.length ? `, in its colours ${colours.join(', ')}` : ''}.`, showsProduct && photos.length ? 'The product is exactly the one in the reference photos: same shape, colours, label and count.' : '', cr.productLine(ctx.profile), spec.direction ? tidy(spec.direction, 600) : '', rules, fix].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
+      const colours = (ctx.bbv?.kit?.colors || []).filter(Boolean), promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}${colours.length ? `, in its colours ${colours.join(', ')}` : ''}.`, showsProduct && photos.length ? 'The product is exactly the one in the reference photos: same shape, colours, label and count.' : '', cr.productLine(ctx.profile), spec.direction ? tidy(spec.direction, 600) : '', rules, fix, /* the brand line last: a long prompt is cut from the end, and the exact-words rule and the retry's fix must never be what goes */ brandScene(ctx, { people: !['none', 'consented'].includes(ctx.bbv?.comfort?.people) })].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
       let file = null, check = null;
       for (let t = 0; t < 2 && !file; t++) {
         const input = { ...base, prompt: promptOf(t && check ? `The last one was wrong: ${check.same ? '' : 'the product changed. '}${check.invented.length ? `it added "${check.invented.join('", "')}" — leave those out.` : ''}` : '') };

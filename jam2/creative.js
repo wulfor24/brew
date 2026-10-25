@@ -91,8 +91,12 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const photos = photosOf(ctx, ctx.profile), files = (await Promise.all(photos.map((u) => fileOf(u).catch(() => null)))).filter(Boolean), p = files.length ? { name: ctx.product?.name, refs: files.length, line: productLine(ctx.profile) } : null;
     /* the Brand Book's look: two of the brand's own pictures for this kind of piece (refsFor: their static ads for a static, reels for a reel), after the product photos (never the identity anchor) */
     const lookSrc = refsFor(ctx.bbv, ctx.kind || '', 2).map((x) => x.src).filter(Boolean), looks = (await Promise.all(lookSrc.map((u) => fileOf(u).then((f) => (f ? { u, f } : null)).catch(() => null)))).filter(Boolean);
-    const spec = { prompt: shotPrompt(d, p, looks.length), tier: ctx.tier || null /* the composer's quality: preview, standard, premium 4K */, srcFile: files[0] || null, srcUrl: photos[0] || null, refFiles: [...files.slice(1), ...looks.map((x) => x.f)], refUrls: [...photos.slice(1), ...looks.map((x) => x.u)], ratio: GEM_RATIO[ratio] || ratio, slug: ctx.slug, product: p ? ctx.product?.name : false, named: p ? { img: photos[0], t: ctx.product?.name || null } : null };
-    const outs = await Promise.all(Array.from({ length: n }, () => engines.run('still.shot', spec).catch((e) => ({ error: e }))));
+    /* the saved cast's own photos (Studio sets ctx.castRefUrls for a person or hands style): after the product and look photos, so
+       the same face is in every still, as it already is in every film (a text note alone gave a new face each time) */
+    const cast = (ctx.castRefUrls || []).slice(0, 2), castLine = cast.length ? ` The last ${cast.length === 1 ? 'reference photo shows' : `${cast.length} reference photos show`} the person to cast: keep their face and look exactly; they are not the product, and the product stays exactly as in the first photo.` : '';
+    const spec = { prompt: shotPrompt(d, p, looks.length) + castLine, tier: ctx.tier || null /* the composer's quality: preview, standard, premium 4K */, srcFile: files[0] || null, srcUrl: photos[0] || null, refFiles: [...files.slice(1), ...looks.map((x) => x.f)], refUrls: [...photos.slice(1), ...looks.map((x) => x.u), ...cast], ratio: GEM_RATIO[ratio] || ratio, slug: ctx.slug, product: p ? ctx.product?.name : false, named: p ? { img: photos[0], t: ctx.product?.name || null } : null };
+    const outs = await Promise.all(Array.from({ length: n }, (_, k) => engines.run('still.shot', { ...spec, hf: ctx.hfHook?.(`shot:${ctx.hfStep || 0}:${k}`) || null }).catch((e) => ({ error: e }))));
+    ctx.hfStep = (ctx.hfStep || 0) + 1; /* a second staticAd in the same make (a film's first frame after a still) gets its own keys */
     return { cands: outs.filter((o) => o.file), errors: outs.filter((o) => o.error).map((o) => o.error), refFile: files[0] || null };
   }
 

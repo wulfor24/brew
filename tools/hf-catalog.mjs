@@ -4,7 +4,8 @@
 import fs from 'node:fs'; import path from 'node:path';
 const BASE = 'https://docs.higgsfield.ai', OUT = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'data', 'higgsfield-catalog.json');
 const get = async (p) => { for (let i = 0; i < 3; i++) { try { const r = await fetch(BASE + p); if (r.ok) return await r.text(); } catch {} await new Promise((ok) => setTimeout(ok, 800 * (i + 1))); } return ''; };
-const links = (md, re) => [...new Set([...md.matchAll(/\]\((\/docs\/models\/[^)\s]+\.md)\)/g)].map((m) => m[1]).filter((p) => re.test(p)))];
+/* a page's links to model pages, relative ("/docs/models/x.md") or absolute ("https://docs.higgsfield.ai/docs/models/x.md", the docs since late Oct 2026) */
+const links = (md, re) => [...new Set([...md.matchAll(/\]\((?:https?:\/\/[^/)\s]+)?(\/docs\/models\/[^)\s]+\.md)\)/g)].map((m) => m[1]).filter((p) => re.test(p)))];
 const families = [];
 for (const [kind, page] of [['image', '/docs/models/image-generation.md'], ['video', '/docs/models/video-generation.md']]) {
   const md = await get(page);
@@ -27,5 +28,14 @@ for (const f of families) {
     process.stdout.write('.');
   }
 }
+/* never write a worse catalog than the one in hand: the docs changing shape once emptied it (26 Oct). Every request is checked
+   against these schemas, so an empty or shrunken file would stop Studio; keep the old one and say why */
+let old = null; try { old = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch {}
+const had = old?.workflows?.length || 0, lost = old ? old.workflows.filter((w) => !workflows.some((x) => x.id === w.id)).map((w) => w.id) : [];
+if (!workflows.length || workflows.length < had * 0.5 || workflows.some((w) => !w.schema)) {
+  console.error(`\nNot written: found ${workflows.length} workflows (${workflows.filter((w) => !w.schema).length} without a schema) against ${had} in hand. The docs may have changed shape; check the link and schema patterns above.`);
+  process.exit(1);
+}
 fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), source: BASE, families: families.length, workflows }, null, 1) + '\n');
+console.log(`\n${workflows.length} workflows (${had} before)${lost.length ? `; gone from the docs: ${lost.join(', ')}` : ''}`);
 console.log(`\n${families.length} families, ${workflows.length} workflows → ${OUT}`);
