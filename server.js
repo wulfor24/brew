@@ -454,18 +454,22 @@ const builder0 = createBuilder({ shared: COUNTERS, events: createBuildEvents({ l
    fresh from Postgres) and the hooks this instance registers; every other method is asked of the worker (jobs.js), so no
    paid read, heal, rewrite or connect run ever starts on a web instance. Clicks are asked once (maxTries 1) and waited on;
    the fire-and-forget nudges (seen, bookAfter, signal) go to the batch queue, one open job per brand, and nobody waits */
-const BUILD_LOCAL = new Set(['status', 'events', 'subscribe', 'list', 'summary', 'peek', 'spent', 'spentToday', 'paidWork', 'setHooks', 'onBook', 'buildInfo', 'stop']);
+const BUILD_LOCAL = new Set(['status', 'events', 'subscribe', 'list', 'summary', 'peek', 'spent', 'spentToday', 'paidWork', 'setHooks', 'onBook', 'buildInfo', 'stop', 'bookBuilding']); /* bookBuilding reads a shared mark */
 const BUILD_NUDGE = new Set(['seen', 'bookAfter', 'signal', 'heal', 'feedOpened']); /* heal on every feed open: the worker heals, the page reads the result when it lands (NOTIFY) */
 const SEEN_AT = new Map(); /* a page view nudges the worker once an hour a brand, not on every view */
 /* clicks that wait on long work go on their own queue (jobs.js 'slow'): four slow ones never hold every slot the quick clicks need (QV 25 Oct) */
 const SLOW_BUILD = /^(pdf|teamStatics|checkData|confirm|marketCheck|rewrite|redo|remake)/;
-whenLeader(() => JOBS.define('builder', async ({ m, args }) => { if (BUILD_LOCAL.has(m) || typeof builder0[m] !== 'function') throw new Error(`builder.${m} is not asked of the worker`);
+/* a click nobody waits for any more (it timed out, or sat in a queue an older worker revision doesn't work) is dropped, never run hours later */
+whenLeader(() => JOBS.define('builder', async ({ m, args, until }) => { if (until && Date.now() > until) { console.warn(`[build] ${m} dropped: asked ${Math.round((Date.now() - until) / 60e3)} min past its wait`); return { expired: true }; }
+  if (BUILD_LOCAL.has(m) || typeof builder0[m] !== 'function') throw new Error(`builder.${m} is not asked of the worker`);
   const r = await builder0[m](...(args || [])); return m === 'pdfOn' && r ? { name: r.name } : r; }, { queue: 'interactive', maxTries: 1 }));
 const builder = isWorker() ? builder0 : new Proxy(builder0, { get(t, k) { const v = t[k]; if (typeof v !== 'function' || BUILD_LOCAL.has(k)) return v;
   return (...args) => {
     if (k === 'seen') { const at = SEEN_AT.get(args[0]) || 0; if (Date.now() - at < 3600e3) return Promise.resolve(); SEEN_AT.set(args[0], Date.now()); }
-    if (BUILD_NUDGE.has(k) && k !== 'feedOpened') { const p = JOBS.enqueue('builder', { m: k, args }, { key: `${k}:${args[0]}`, queue: 'batch', maxTries: 1 }); p.catch((e) => console.warn(`[build] ${k}`, e.message)); return p.then(() => undefined); }
-    const p = JOBS.call('builder', { m: k, args }, { timeoutMs: String(k).startsWith('pdf') ? 180e3 : 90e3, maxTries: 1, queue: SLOW_BUILD.test(String(k)) ? 'slow' : 'interactive' })
+    if (BUILD_NUDGE.has(k) && k !== 'feedOpened') { const p = JOBS.enqueue('builder', { m: k, args }, { key: `${k}:${args[0]}${args[1]?.force ? ':force' : ''}`, queue: 'batch', maxTries: 1 }); /* a forced rebuild never joins a plain open one (its options would be lost) */ p.catch((e) => console.warn(`[build] ${k}`, e.message)); return p.then(() => undefined); }
+    const wait = String(k).startsWith('pdf') ? 180e3 : 90e3, same = crypto.createHash('sha1').update(JSON.stringify(args || [])).digest('hex').slice(0, 16);
+    /* the same click again joins the one still open (a key), and the worker drops it once nobody waits for it (until) */
+    const p = JOBS.call('builder', { m: k, args, until: Date.now() + wait + 60e3 }, { timeoutMs: wait, maxTries: 1, key: `builder:${k}:${same}`, queue: SLOW_BUILD.test(String(k)) ? 'slow' : 'interactive' })
       .then(async (r) => (k === 'pdfOn' && r?.name ? { name: r.name, buf: await packs.get(args[0], 'pdf/' + r.name) } : r)); /* the PDF itself is in the bucket */
     p.catch((e) => console.warn(`[build] ${k}`, e.message)); /* a caller that doesn't wait never leaves the rejection unhandled */
     return p; }; } });
@@ -713,7 +717,7 @@ if (BUS) { for (const m of ['addCards', 'dropCards', 'refreshLive', 'syncSocial'
 if (OBJ && isWeb() && !isWorker() && process.env.K_SERVICE) { let missed = 0; const t = setInterval(async () => { try {
   const held = +(await dbq(`SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND objid = 727275 AND objsubid = 1 AND granted`)).rows[0].n;
   missed = held ? 0 : missed + 1; if (missed >= 2) await alerts.fire('worker-down', `no background lease for ${missed * 2} minutes`);
-  const old = (await JOBS.age().catch(() => [])).filter((r) => r.oldest_s > 600); if (old.length) await alerts.fire('queue-stuck', old.map((r) => `${r.queue}: ${r.n} waiting, oldest ${Math.round(r.oldest_s / 60)} min`).join('; '));
+  const old = (await JOBS.age().catch(() => [])).filter((r) => r.queue !== 'batch' && r.oldest_s > 600); /* batch (heals, nudges) may wait */ if (old.length) await alerts.fire('queue-stuck', old.map((r) => `${r.queue}: ${r.n} waiting, oldest ${Math.round(r.oldest_s / 60)} min`).join('; '));
 } catch (e) { console.warn('[watch] worker', e.message); } }, 120e3); t.unref?.(); }
 if (OBJ) { await JOBS.start({ interactive: +process.env.JOBS_INTERACTIVE || 4, batch: +process.env.JOBS_BATCH || 4, slow: +process.env.JOBS_SLOW || 2 }); await startLease({ log: console, exit: (c) => shutdown(c) }); } /* a lost lease saves everything first */
 retireInit.finally(() => whenLeader(() => { if (!process.env.BUILD_RESUME_OFF) builder.resumeAll().catch((e) => console.error('[build] resumeAll', e.message)); }));
@@ -1013,6 +1017,8 @@ async function transcribe(req, res) {
   if (!OPENAI_KEY) return send(res, 200, { error: 'Voice is not set up here. Type it instead.', text: '' });
   const chunks = []; let size = 0;
   for await (const c of req) { size += c.length; if (size > 15e6) return send(res, 413, { error: 'That recording is too long. Keep it under 2 minutes.' }); chunks.push(c); }
+  /* the day's voice cap (budget.js, every instance): a unit a megabyte, about a minute; the per-IP hour limit alone was per instance (QV 25 Oct) */
+  if (budget.spend('voice', null, Math.max(1, Math.ceil(size / 1e6))) === false) return send(res, 429, { error: 'Voice notes are used up for today. Type it for now.' });
   const type = String(req.headers['content-type'] || 'audio/webm').split(';')[0], ext = /ogg/.test(type) ? 'ogg' : /mp4|m4a|aac/.test(type) ? 'mp4' : /wav/.test(type) ? 'wav' : 'webm';
   const fd = new FormData(); fd.append('file', new Blob([Buffer.concat(chunks)], { type }), `voice.${ext}`); fd.append('model', 'gpt-4o-transcribe');
   fd.append('prompt', 'A brand team talking about marketing: ads, campaigns, discount codes, WhatsApp, Instagram, Shopify, Meta, launches, budgets in rupees. Hindi and English may be mixed; write Hindi words in Roman script.');

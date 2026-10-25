@@ -35,8 +35,8 @@ export function createVault(packs) {
     refresh: packs.update ? async (slug, id, fn) => {
       const f = name(id), me = Math.random().toString(36).slice(2);
       for (let waited = 0; ; waited += 500) {
-        let mine = false, cur = null;
-        await packs.update(slug, f, async (x) => { if (!x?.c) return undefined; cur = JSON.parse(decrypt(x.c));
+        let mine = false, cur = null, claimedC = null;
+        await packs.update(slug, f, async (x) => { if (!x?.c) return undefined; cur = JSON.parse(decrypt(x.c)); claimedC = x.c;
           if (x.lk && x.lk.until > Date.now()) return undefined; mine = true; return { ...x, lk: { by: me, until: Date.now() + 60e3 } }; });
         if (!cur) return null;
         if (!mine) { if (waited >= 20e3) return cur; await new Promise((r) => setTimeout(r, 500)); continue; } /* another instance is refreshing: its result is read next */
@@ -46,7 +46,9 @@ export function createVault(packs) {
         /* only while the claim is still this instance's: a refresh slower than the claim (60 s) was taken over, and that one's newer
            (rotating) token is never overwritten with this older one */
         let kept = true;
-        await packs.update(slug, f, async (x) => { if (!x) return undefined; if (x.lk?.by !== me) { kept = false; return undefined; } return next === cur ? { ...x, lk: null } : { c: encrypt(JSON.stringify(next)), at: Date.now(), lk: null }; });
+        /* taken over while this one waited on the provider: still written when the stored token is the one this refresh started from
+           (nobody wrote a newer one), so a rotated refresh token is never thrown away; a newer one already there is kept */
+        await packs.update(slug, f, async (x) => { if (!x) return undefined; if (x.lk?.by !== me && x.c !== claimedC) { kept = false; return undefined; } return next === cur ? { ...x, lk: null } : { c: encrypt(JSON.stringify(next)), at: Date.now(), lk: null }; });
         if (!kept) { const now = await packs.getJSON(slug, f, null).catch(() => null); return now?.c ? JSON.parse(decrypt(now.c)) : next; }
         return next;
       }

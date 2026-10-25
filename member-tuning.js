@@ -104,12 +104,19 @@ export function withoutIgnored(af, fewer, ignored = []) {
 /* the store: one JSON per brand, cached so the ranker reads it without waiting; writes per brand go one after another */
 export function createTuning({ packs, now = () => Date.now(), log = console }) {
   const cache = new Map(), locks = new Map();
+  /* another instance changed the file: this copy is dropped and read again on next use */
+  packs.onChange?.((s, name) => { if (s === '*') return cache.clear(); if (String(name || '').endsWith(FILE.split('/').pop())) for (const k of [...cache.keys()]) if (k === s || String(k).startsWith(`${s}|`) || String(k).startsWith(`${s}:`)) cache.delete(k); });
   /* keyed per demo session too (sk): on the demo site each visitor's tuning lives in its own sandbox file, like brand-memory.js */
   const load = async (slug) => { const k = sk(slug); if (cache.has(k)) return cache.get(k); const all = (await packs.getJSON(slug, FILE, null).catch(() => null)) || {}; cache.set(k, all); return all; };
   const peek = (slug, key) => (key && cache.get(sk(slug))?.[key]) || null;
   const get = async (slug, key) => cleanTuning({}, (await load(slug))[key] || emptyTuning());
   const write = (slug, key, fn) => { const lk = sk(slug); const run = (locks.get(lk) || Promise.resolve()).catch(() => {}).then(async () => {
-    const all = await load(slug); const cur = cleanTuning({}, all[key] || emptyTuning()); const next = fn(cur) || cur; next.at = now(); all[key] = next; await packs.put(slug, FILE, all); return next; });
+    /* one person's entry changed inside the row-locked file (Postgres): several web instances each hold a copy, and writing a whole
+       cached copy back lost what teammates saved on another instance (QV 25 Oct). Without update (one instance) as before */
+    let next;
+    if (packs.update) { const out = await packs.update(slug, FILE, (cur0) => { const all = cur0 && typeof cur0 === 'object' ? cur0 : {}; const cur = cleanTuning({}, all[key] || emptyTuning()); next = fn(cur) || cur; next.at = now(); all[key] = next; return all; });
+      if (out && typeof out === 'object') cache.set(lk, out); else cache.delete(lk); return next; }
+    const all = await load(slug); const cur = cleanTuning({}, all[key] || emptyTuning()); next = fn(cur) || cur; next.at = now(); all[key] = next; await packs.put(slug, FILE, all); return next; });
     locks.set(lk, run); return run; };
   const put = (slug, key, patch) => write(slug, key, (cur) => cleanTuning(patch, cur));
   /* sides: what Gemini read the note as ({ more, less }, notePrefs), kept so the ranker never reads a "no" as a "yes" */

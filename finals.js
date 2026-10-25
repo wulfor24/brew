@@ -236,13 +236,15 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
         /* the brand's share is checked before the paid call and spent only once Sloosh has taken the quote (an operation id):
            a refused or failed generate charges nothing here, and the record says failed so the next try gets a fresh quote */
         const units = Math.ceil(q.credits || 0) || 1;
-        if (budget.refusal('credits', slug, units)) throw Object.assign(new Error(budget.why('credits', slug, null, units)), { budget: true });
+        /* the brand's share is taken before the paid call (five finals pressed at once can't all pass a check and all charge, QV 25 Oct)
+           and given back if Sloosh doesn't take it */
+        if (budget.refusal('credits', slug, units) || budget.spend('credits', slug, units) === false) throw Object.assign(new Error(budget.why('credits', slug, null, units)), { budget: true });
+        const giveBack = () => budget.refund?.('credits', slug, units);
         await writeRec(slug, rec);
         let r; try { r = q.space ? await sloosh.runSpace({ quote: q.quoteId, runKey, confirmed: true }) : await sloosh.generate({ quote: q.quoteId, runKey, confirmed: true }); }
-        catch (e) { noteRefusal(slug, q.space ? 'run_space' : 'generate', { quote: q.quoteId, model: q.model }, e); rec = { ...rec, state: 'failed', error: `Sloosh did not start this one (${String(e.message).slice(0, 200)}). Nothing was charged; ask for a fresh quote.`, charged: 0, failedAt: now() }; await writeRec(slug, rec); throw Object.assign(new Error(rec.error), { rec, cause: e, soft: true }); }
+        catch (e) { giveBack(); noteRefusal(slug, q.space ? 'run_space' : 'generate', { quote: q.quoteId, model: q.model }, e); rec = { ...rec, state: 'failed', error: `Sloosh did not start this one (${String(e.message).slice(0, 200)}). Nothing was charged; ask for a fresh quote.`, charged: 0, failedAt: now() }; await writeRec(slug, rec); throw Object.assign(new Error(rec.error), { rec, cause: e, soft: true }); }
         const gid = idOf(r);
         if (!gid) { rec = { ...rec, state: 'failed', error: `Sloosh gave no operation id (keys: ${Object.keys(r || {}).join(', ')}); check Sloosh’s Assets before paying again`, charged: null, failedAt: now() }; await writeRec(slug, rec); throw Object.assign(new Error(rec.error), { rec }); }
-        budget.spend('credits', slug, units); /* the share moves only now, once per operation */
         rec = { ...rec, state: 'running', genId: gid, startedAt: now() }; await writeRec(slug, rec);
       }
       return finish(slug, rec);

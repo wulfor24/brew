@@ -15,7 +15,7 @@ export const stayHere = (list) => (movedList().length ? list.filter((b) => !move
 /* staging, staff testing a moved brand: an email about it reaches staff only (full-access domains, admins), never the brand's
    own people, and nothing is posted to its Slack (the partner's real workspace). "About it": the brand being served (runIn) or a
    link to it in the message. Production and a staging with no moved brands are untouched */
-const SLACK_SEND = /^\/api\/(chat\.(postMessage|update|postEphemeral|scheduleMessage)|files\.(upload|completeUpload|uploadV2)|files\.getUploadURLExternal)$/;
+const SLACK_SEND = /^\/api\/(chat\.(postMessage|update|postEphemeral|scheduleMessage)|files\.(upload|completeUpload|completeUploadExternal|uploadV2)|files\.getUploadURLExternal|conversations\.join)$/;
 export function guardMovedSends({ isStaff, current = () => null, log = console } = {}) {
   if (!movedList().length || globalThis.fetch.__movedGuard) return false;
   const real = globalThis.fetch;

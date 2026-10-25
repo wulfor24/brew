@@ -160,6 +160,7 @@ test('QV 25 Oct: a Shopify sign-in never makes anyone Brew staff, an unverified 
   assert.match(s, /if \(a\.email_verified !== true \|\| isFullAccess\(email\)\)/);
   assert.match(s, /if \(!h\?\.email \|\| isFullAccess\(h\.email\)\)/, 'a hop never mints a staff session');
   assert.match(s, /if \(!hopOnce\(h\)\)/, 'a hop link works once');
-  assert.match(s, /const inUrlOk = \(req, u\) => req\.method === 'GET' && !u\.pathname\.startsWith\('\/api\/'\)/);
+  assert.match(s, /const inUrlOk = \(req, u\) => stream\(req, u\) \|\| req\.method === 'GET' && !u\.pathname\.startsWith\('\/api\/'\)/);
+  assert.match(s, /const stream = \(req, u\) => req\.method === 'GET' && \/\^\\\/api\\\/tenants\\\/\[\^\/\]\+\\\/onboarding\$\//, 'the onboarding EventSource carries its token in the address');
   assert.match(s, /const safeNext = \(n\) => \(typeof n === 'string' && \/\^\\\/\[A-Za-z0-9/);
 });

@@ -56,6 +56,11 @@ export function createBudget({ env = process.env, store = null, shared = null, n
     slug = slugNow(slug); n = Math.max(0, +n || 0) || 1; if (refusal(kind, slug, n)) return false;
     s.all[kind] += n; if (slug) mine(slug)[kind] += n; if (sh) { sh.add('ai', `${kind}|*`, n); if (slug) sh.add('ai', `${kind}|${slug}`, n); } save(); return true;
   }
+  /* units taken for a paid call that then didn't go out (Sloosh refused it): given back */
+  function refund(kind, slug, n = 1) {
+    if (!KINDS.includes(kind)) return; roll(); slug = slugNow(slug); n = Math.max(0, +n || 0) || 1;
+    s.all[kind] = Math.max(0, s.all[kind] - n); if (slug) mine(slug)[kind] = Math.max(0, mine(slug)[kind] - n); if (sh) { sh.add('ai', `${kind}|*`, -n); if (slug) sh.add('ai', `${kind}|${slug}`, -n); } save();
+  }
   /* what is left today for a brand, for the page and /api/config */
   function left(slug) {
     roll(); slug = slugNow(slug); const m = slug ? mine(slug) : null;
@@ -70,7 +75,7 @@ export function createBudget({ env = process.env, store = null, shared = null, n
     if (r === 'all') return `Brew’s ${n} budget for today is used up across all brands. It resets at midnight UTC.`;
     return null;
   }
-  const api = { caps, load, spend, touch: save, refusal, left, why, snapshot, get loaded() { return loaded; }, get state() { roll(); return s; }, flush: async () => { clearTimeout(t); if (store) await store.put(snapshot()); } };
+  const api = { caps, load, spend, refund, touch: save, refusal, left, why, snapshot, get loaded() { return loaded; }, get state() { roll(); return s; }, flush: async () => { clearTimeout(t); if (store) await store.put(snapshot()); } };
   current = api;
   return api;
 }

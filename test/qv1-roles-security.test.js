@@ -22,7 +22,7 @@ test('a web-only instance without Postgres refuses to start', async () => {
 test('server.js: the web builder forwards everything but reads; clicks once; heal and seen are batch nudges; cross-site changes refused', () => {
   const s = fs.readFileSync(new URL('../server.js', import.meta.url), 'utf8');
   assert.match(s, /const BUILD_LOCAL = new Set\(\['status', 'events', 'subscribe', 'list', 'summary', 'peek'/);
-  assert.match(s, /JOBS\.call\('builder', \{ m: k, args \}, \{[^}]*maxTries: 1[^}]*\}\)/);
+  assert.match(s, /JOBS\.call\('builder', \{ m: k, args, until: [^}]*\}, \{[^}]*maxTries: 1[^}]*key: `builder:\$\{k\}:\$\{same\}`[^}]*\}\)/);
   assert.match(s, /BUILD_NUDGE = new Set\(\['seen', 'bookAfter', 'signal', 'heal'/);
   assert.match(s, /if \(crossSite\(req, u\)\)/);
 });

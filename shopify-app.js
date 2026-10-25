@@ -83,7 +83,8 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
 
   /* the session token rides in the Authorization header; in the address only where a page can't set a header (the embedded page's own
      load and its seed/facts scripts), never on an API call, so it isn't left in load-balancer logs or a Referer (QV 25 Oct) */
-  const inUrlOk = (req, u) => req.method === 'GET' && !u.pathname.startsWith('/api/') && (!u.pathname.startsWith('/b/') || /^\/b\/[a-z0-9-]+\/(?:(?:seed|facts)\.js$|pdf\/)/.test(u.pathname)); /* a PDF link can't send a header either */
+  const stream = (req, u) => req.method === 'GET' && /^\/api\/tenants\/[^/]+\/onboarding$/.test(u.pathname) && /text\/event-stream/.test(String(req.headers.accept || '')); /* an EventSource can't set a header (shopify-embed.js) */
+  const inUrlOk = (req, u) => stream(req, u) || req.method === 'GET' && !u.pathname.startsWith('/api/') && (!u.pathname.startsWith('/b/') || /^\/b\/[a-z0-9-]+\/(?:(?:seed|facts)\.js$|pdf\/)/.test(u.pathname)); /* a PDF link can't send a header either */
   const tokenOf = (req, u) => { const h = String(req.headers.authorization || ''); return verifyIdToken(/^Bearer\s+/i.test(h) ? h.replace(/^Bearer\s+/i, '') : inUrlOk(req, u) ? u.searchParams.get('id_token') : null); };
   /* the staff member behind a session token, as a Brew person: their Shopify email (cached for a few hours per shop and user) */
   const people = new Map(), PEOPLE_MS = 6 * 3600e3;

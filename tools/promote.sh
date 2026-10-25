@@ -28,8 +28,8 @@ LOCK=gs://brew-prod-backups/locks/promote.lock
 echo "$(git config user.email 2>/dev/null || whoami) $(date -u +%Y-%m-%dT%H:%M:%SZ) $SHA" > "$TMPDIR/promote.lock"
 if ! gcloud storage cp --if-generation-match=0 "$TMPDIR/promote.lock" "$LOCK" --project=$P >/dev/null 2>&1; then
   HELD=$(gcloud storage cat "$LOCK" --project=$P 2>/dev/null || echo "unknown")
-  AGE=$(gcloud storage objects describe "$LOCK" --project=$P --format='value(creation_time)' 2>/dev/null | python3 -c "import sys,datetime; t=sys.stdin.read().strip(); print(int((datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(t.replace('Z','+00:00'))).total_seconds()) if t else 0)" || echo 0)
-  [ "${AGE:-0}" -gt 7200 ] || die "another promotion is running ($HELD); wait for it"
+  AGE=$(gcloud storage objects describe "$LOCK" --project=$P --format='value(creation_time)' 2>/dev/null | python3 -c "import sys,re,datetime; t=re.sub(r'([+-]\\d\\d):?(\\d\\d)$', r'\\1\\2', sys.stdin.read().strip().replace('Z','+0000')); t=re.sub(r'\\.\\d+', '', t); print(int((datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.strptime(t, '%Y-%m-%dT%H:%M:%S%z')).total_seconds()) if t else 0)" || echo 0)
+  [ "${AGE:-0}" -gt 7200 ] || die "another promotion is running ($HELD); wait for it (if none is: gcloud storage rm $LOCK)"
   echo "   taking over a lock left by a run that died ($HELD)"; gcloud storage rm "$LOCK" --project=$P >/dev/null 2>&1 || true
   gcloud storage cp --if-generation-match=0 "$TMPDIR/promote.lock" "$LOCK" --project=$P >/dev/null 2>&1 || die "another promotion took the lock"
 fi

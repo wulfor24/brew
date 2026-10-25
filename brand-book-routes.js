@@ -86,7 +86,7 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, factsOf
   const teamNo = (t, what) => member(t) ? null : { status: reqOf(t)?.email ? 403 : 401, error: `Only this brand’s team can ${what}.`, team: true };
   const out = async (slug, t) => {
     const raw = await BOOK.load(slug), v = BOOK.view(raw, { scope: member(t) ? 'member' : 'share' });
-    const building = !!builder?.book?.running?.(slug), stale = builder?.book ? await builder.book.stale(slug).catch(() => false) : false;
+    const building = builder?.bookBuilding ? !!(await builder.bookBuilding(slug).catch(() => false)) : !!builder?.book?.running?.(slug), stale = builder?.book ? await builder.book.stale(slug).catch(() => false) : false;
     if (stale && !building && !isMock()) builder.bookAfter?.(slug); /* a missing or older read layer is written now, in the background */
     { const tr = factsOf(t); if (tr) v.numbers = bookNumbers(tr); } /* the numbers chapter: today's fact sheet, this viewer's truth (a member's connected accounts) */
     return { book: v, building: building || stale, canEdit: member(t), readiness: BOOK.readiness(v, { products: (v.products?.heroes || []).length }),

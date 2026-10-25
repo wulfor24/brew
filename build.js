@@ -451,7 +451,13 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* the Brand Book's read layer: never blocks a build; a new one drops the brand's cached book so makers read it at once */
   const book = createBookReader({ packs, ai, treg, log, enricher: process.env.ENRICH_OFF === '1' ? null : createEnricher({ packs, treg, log }) });
   const bookListeners = [];
-  const bookAfter = (slug, opts = {}) => { if (process.env.BOOK_OFF === '1') return null; return book.ensure(slug, opts).then(async (b) => { if (b && !b.skip && b.built) { bookListeners.forEach((f) => { try { f(slug, b); } catch {} }); packs.drop(slug); await onPack(slug); } return b; }); }; /* only a book written just now reloads the pack: checking a current one on every page open rebuilt the whole pack twice a load (1.7) */
+  /* while the Brand Book is written (on the worker), a mark every instance reads says so (bookBuilding): a web instance's own reader is
+     always idle on production, so the page never showed "building" there (QV 25 Oct) */
+  const BOOK_MARK = 'private/brandbook-building.json';
+  const bookBuilding = async (slug) => { if (book.running?.(slug)) return true; const m = await packs.getJSON(slug, BOOK_MARK, null).catch(() => null); return !!m?.at && Date.now() - m.at < 20 * 60e3; };
+  const bookAfter = (slug, opts = {}) => { if (process.env.BOOK_OFF === '1') return null; let marked = false;
+    const mark = setTimeout(() => { if (book.running?.(slug)) { marked = true; packs.put(slug, BOOK_MARK, { at: Date.now() }).catch(() => {}); } }, 1500); /* only a real build marks (a current book is a no-op) */
+    return book.ensure(slug, opts).finally(() => { clearTimeout(mark); if (marked) packs.put(slug, BOOK_MARK, { at: 0 }).catch(() => {}); }).then(async (b) => { if (b && !b.skip && b.built) { bookListeners.forEach((f) => { try { f(slug, b); } catch {} }); packs.drop(slug); await onPack(slug); } return b; }); }; /* only a book written just now reloads the pack: checking a current one on every page open rebuilt the whole pack twice a load (1.7) */
   /* the feed gate: set on a brand's first read, lifted by the first open of its feed (feedOpenAt); a feed opened before the brief is done counts */
   const waitsOnFeed = async (slug) => { const s = await status(slug); return !!s?.feedGate && !s.feedOpenAt; };
   const waitForFeed = (slug) => new Promise((res) => { const x = st(slug); x.feedOpen = res; waitsOnFeed(slug).then((w) => { if (!w) { x.feedOpen = null; res(); } }, () => {}); });
@@ -651,7 +657,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     catch (e) { log.warn('[pdf] retry', slug, move?.n, e.message); await new Promise((r) => setTimeout(r, 2000)); return renderPdf1(slug, pdf, move, profile, opts); }
   }
   async function renderPdf1(slug, pdf, move, profile, { priv = false, ver = null } = {}) {
-    const brand = { name: profile.name, descriptor: (profile.descriptor || profile.category || '').toUpperCase(), host: profile.host, hero: heroFile(slug, profile), colors: profile.identity?.colors || [], dateLabel: new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }).toUpperCase(), version: 'V1 · FOR DISCUSSION' };
+    const brand = { name: profile.name, descriptor: (profile.descriptor || profile.category || '').toUpperCase(), host: profile.host, hero: await heroFile(slug, profile), colors: profile.identity?.colors || [], dateLabel: new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }).toUpperCase(), version: 'V1 · FOR DISCUSSION' };
     const out = path.join(packs.dirOf(slug), priv ? 'private/pdf' : 'pdf', pdf.pdfName(move));
     fs.mkdirSync(path.dirname(out), { recursive: true });
     const moves = move.n === 0 ? Object.values(packs.peek(slug)?.moveDocs || await packs.getJSON(slug, 'moves.json', {})).filter((m) => m && +m.n > 0 && +m.n < 1000 && !m.past) : undefined; // the index lists every move of the playbook as the page shows it (QA 20 Oct)
@@ -661,7 +667,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await markPdf(slug, move.n, path.basename(out), ver);
     emit(slug, { type: 'pdf', n: move.n, file: path.basename(out) });
   }
-  const heroFile = (slug, p) => { const img = p.catalog?.products?.find((x) => x.img)?.img; const m = img && /^b\/([^/]+)\/a\/(.+)$/.exec(String(img).replace(/^\//, '')); const f = m && [m[1], slug].map((s) => path.join(packs.dirOf(s), 'assets', m[2])).find((x) => fs.existsSync(x)); return f || null; }; /* the photo's own folder, then the brand's */
+  /* the photo's own folder, then the brand's: on disk, or fetched from storage (the worker never serves /b/<slug>/a/, so its disk often
+     hasn't got it, and production's PDFs came without their cover, QV 25 Oct) */
+  const heroFile = async (slug, p) => { const img = p.catalog?.products?.find((x) => x.img)?.img; const m = img && /^b\/([^/]+)\/a\/(.+)$/.exec(String(img).replace(/^\//, '')); if (!m) return null;
+    const f = [m[1], slug].map((s) => path.join(packs.dirOf(s), 'assets', m[2])).find((x) => fs.existsSync(x)); if (f) return f;
+    for (const s of [...new Set([m[1], slug])]) { const g = await packs.assetFile?.(s, m[2]).catch(() => null); if (g) return g; } return null; };
 
   /* ---------- "Check what we read" ---------- */
   const SUMMARY = [
@@ -1828,5 +1838,5 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (o?.stockWhy) { u.stale[x.n] = { ...o, was: { priority: x.priority, why: x.why, via: x.via }, why: [...Object.values(o.stockWhy), x.why].join(' '), changes: [...new Set([...(o.changes || []), ...(x.changes || [])])].slice(0, 6) }; continue; } /* an out-of-stock mark stays on top */
     u.stale[x.n] = { ...x, at: Date.now(), changes: [...new Set([...(x.changes || []), ...(o?.changes || [])])].slice(0, 6), ...(o && !o.private ? { private: false } : {}) }; } });
   const facts = { pot: potInfo, potSpend, estMove, republish, flagStale, readProduct: async (slug, url) => readProduct(slug, url, (await packs.getJSON(slug, 'profile.json', {})) || {}), readRival, busy: (slug) => !!(st(slug).running || st(slug).checking), setHooks: (h) => Object.assign(hooks, h) };
-  return { ...facts, book, bookAfter, onBook: (f) => bookListeners.push(f), refreshPack: async (slug) => { packs.drop(slug); await onPack(slug); }, saveAdmin, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, pdfV: PDF_V, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, staleSweep, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, feedOpened, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
+  return { ...facts, book, bookAfter, bookBuilding, onBook: (f) => bookListeners.push(f), refreshPack: async (slug) => { packs.drop(slug); await onPack(slug); }, saveAdmin, paidWork, stop, marketCheck, teamStatics, settleConnect, connectPending, readLive, heal, healPdfs, pdfFor, pdfOn, pdfV: PDF_V, connected, liveConnected, staleConnected, checkUpdates, rewrite, updates, setAuto, signal, staleSweep, seen, buildInfo, retry, goPro, checkData, applyCheck, liveWeekly, stockSignal, peek: (slug) => st(slug).status, addEmail, feedOpened, start, resume, resumeAll, replayRead, subscribe, status, summary, confirm, list, events: (slug) => st(slug).events, spent: spentFor, spentToday: dayUsd };
 }

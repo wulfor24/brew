@@ -229,7 +229,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   const getRaw = async (slug, name) => {
     if (!inside(slug, name)) return null;
     const f = fileOf(slug, name);
-    if (!pgRow(name) && fs.existsSync(f)) return brewFile(name, fs.readFileSync(f));
+    /* a move PDF keeps its name when a rewrite keeps the title: on Postgres (several instances) it is read from storage every time, never an
+       older copy on this disk (QV 25 Oct). Other files are content-named or never change */
+    if (!pgRow(name) && fs.existsSync(f) && !(obj?.pg && /^(private\/)?pdf\//.test(name))) return brewFile(name, fs.readFileSync(f));
     if (!remote) return pgRow(name) && fs.existsSync(f) ? brewFile(name, fs.readFileSync(f)) : null;
     /* Postgres: a read that fails is tried once more, then throws: "couldn't read" is never taken for "not there" (the disk copy
        isn't a fallback for rows, it may be older) */

@@ -2,6 +2,7 @@
 // table (on), so every request runs as the signed-in viewer of that brand, like the rest of the service. Slow work (a picture,
 // a video) runs in the background; the board shows it as busy and the page polls GET /api/jam2/jams/:jid.
 import { askMarket } from '../market.js';
+import { ME as INSTANCE } from '../instance.js'; // whose make a board's mark is (several web instances)
 import { createStudio, library as studioLibrary, inStudio } from './studio.js';
 import { contextOf } from './context.js';
 import { createVideoFinish, vertexTranscribe, srtOf } from '../video-finish.js';
@@ -35,6 +36,11 @@ export function mountJam2(d) {
   const studio = createStudio({ engines, maker, profileOf: (slug, p) => profiles.of(slug, p), isMock, spend, finish, log });
   const ready = createReady({ maker, zipBuffer: d.zipBuffer, log });
   const busy = new Map(); // `${jid}:${bid}` → { op, at, error? }
+  /* a make carries this instance's name and a beat on the jam's mark (saved with it, so every instance sees it): another instance
+     sees it as still making while the beat is fresh, never "Brew restarted, press it again", so nobody pays for it twice (QV 25 Oct) */
+  const BEAT_FRESH = 3 * 60e3, mine = new Map(); // key → { t, jam, bid }
+  const elsewhere = (m) => !!m && !m.error && !!m.by && m.by !== INSTANCE && Date.now() - (+m.beat || +m.at || 0) < BEAT_FRESH;
+  const beatT = setInterval(() => { for (const [k, x] of mine) { const m = x.jam.running?.[x.bid]; if (!busy.get(k)?.op || busy.get(k)?.error || !m) { mine.delete(k); continue; } m.beat = Date.now(); store.put(slugOfT(x.t), x.jam).catch(() => {}); } }, 60e3); beatT.unref?.();
   const whoOf = (t) => { const r = reqOf(t), me = meOf(t); return { member: !!r?.member, staff: !!me?.staff, tid: t.id, email: me?.email || null, me }; };
 
   /* how the brand sells (profile.storeKind: 'enquiry' for services and property, else a store), read once every ten minutes */
@@ -67,7 +73,7 @@ export function mountJam2(d) {
   const fillMerge = (host, take, spec) => { const prev = spec?.fill ? headOf(host) : null; if (!(prev?.slides?.length && prev.studio?.spec?.set && take?.slides)) return take;
     const order = prev.studio.spec.set, all = [...prev.slides, ...take.slides].sort((a, c) => order.indexOf(a.style) - order.indexOf(c.style));
     Object.assign(take, { slides: all, file: all[0].file, scene: all[0].scene, words: all[0].words || take.words, missing: take.missing, missingIds: take.missingIds }); take.studio = { ...take.studio, set: all.map((x) => x.style), label: all.map((x) => studio.styleOf(x.style)?.label).filter(Boolean).join(', '), spec: { ...prev.studio.spec } }; return take; };
-  const runBg = (t, jam, bid, op, fn, mark = {}) => { const k = `${jam.id}:${bid}`; if (busy.get(k)?.op && !busy.get(k).error) return false; busy.set(k, { op, at: Date.now() }); (jam.running ||= {})[bid] = { ...mark, op, at: Date.now() };
+  const runBg = (t, jam, bid, op, fn, mark = {}) => { const k = `${jam.id}:${bid}`; if ((busy.get(k)?.op && !busy.get(k).error) || elsewhere(jam.running?.[bid])) return false; busy.set(k, { op, at: Date.now() }); (jam.running ||= {})[bid] = { ...mark, op, at: Date.now(), by: INSTANCE, beat: Date.now() }; mine.set(k, { t, jam, bid });
     Promise.resolve().then(fn).then(() => { busy.delete(k); if (jam.running) delete jam.running[bid]; }).catch((e) => { log.warn?.('[jam2]', op, e.message);
       /* still being made at the engine (paid, not lost): keep the run's mark so it is polled again (resumeCut: on the next open, the composer's poll or in a minute), never an error */
       const m0 = jam.running?.[bid]; if (e.open && m0 && (m0.spec || ['render', 'reshot'].includes(op)) && (m0.tries || 0) < 6) { busy.delete(k); jam.running[bid] = { ...m0, resume: true, at: Date.now(), slow: plainErr(e) }; setTimeout(() => resumeCut(t, jam).catch(() => {}), 60e3).unref?.(); return; }
@@ -79,7 +85,7 @@ export function mountJam2(d) {
   const priceAlerts = (t, jam) => { const cat = brandOfT(t)?.catalog || []; for (const b of jam.boards) { const m = headOf(b)?.made4; b.priceAlert = null; if (!m?.price) continue;
     const c = cat.find((x) => (m.handle && x.handle === m.handle) || (m.name && (x.t || x.title) === m.name)); if (c?.price != null && String(c.price) !== m.price) b.priceAlert = { name: m.name, was: m.price, now: String(c.price) }; } };
   const out = (jam, t = null) => { if (t) try { priceAlerts(t, jam); } catch {} const v = jamView(jam); /* a job a restart cut off: its mark (saved with the jam) shows as the board's state until it is resumed or tried again */
-    v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || (jam.running?.[b.id] ? (jam.running[b.id].resume && !jam.running[b.id].error ? { op: jam.running[b.id].op, at: jam.running[b.id].at, line: jam.running[b.id].slow || 'Still being made; it picks up where it was' } /* waiting to be polled again: still making, never an error */ : { op: jam.running[b.id].op, at: jam.running[b.id].at, error: jam.running[b.id].error || 'Brew restarted while this was being made. Press it again.' }) : null)])); delete v.running; delete v.cuts; return v; };
+    v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || (elsewhere(jam.running?.[b.id]) ? { op: jam.running[b.id].op, at: jam.running[b.id].at } : null) || (jam.running?.[b.id] ? (jam.running[b.id].resume && !jam.running[b.id].error ? { op: jam.running[b.id].op, at: jam.running[b.id].at, line: jam.running[b.id].slow || 'Still being made; it picks up where it was' } /* waiting to be polled again: still making, never an error */ : { op: jam.running[b.id].op, at: jam.running[b.id].at, error: jam.running[b.id].error || 'Brew restarted while this was being made. Press it again.' }) : null)])); delete v.running; delete v.cuts; return v; };
   const load = async (t, jid) => { const j = await store.get(slugOfT(t), jid, whoOf(t)); if (!j) throw Object.assign(new Error('not found'), { status: 404 }); return j; };
   /* every jam call reads the brand's pack (catalog, config): right after a restart it may not be loaded yet, so it is loaded first
      (23 Oct: the first Studio make after a deploy refused the brand's own product as "not from your catalog") */
@@ -130,7 +136,7 @@ export function mountJam2(d) {
     const r = recipe(planFor(card, String(b.cta || card.cta?.label || '').slice(0, 60))[0]?.recipe); return { studio: inStudio(r ? { kind: r.kind, recipe: r.id } : null), recipe: r?.id || null }; }));
   /* a paid render (already said yes to, at that price) or a free every-product run that a restart cut off picks up again the next
      time the jam is opened, keeping the shots already made; three tries within 3 hours, then it says so and waits for a press */
-  const resumeCut = async (t, j) => { for (const bd of j.boards) { const m = j.running?.[bd.id]; if (!m || m.error || busy.get(`${j.id}:${bd.id}`)) continue;
+  const resumeCut = async (t, j) => { for (const bd of j.boards) { const m = j.running?.[bd.id]; if (!m || m.error || busy.get(`${j.id}:${bd.id}`) || elsewhere(m)) continue; /* being made on another instance */
     /* a set that kept slides since the last try is making progress: that restart doesn't count against it (deploys every few minutes) */
     const kept = Object.keys(bd.hfJobs || {}).filter((k) => /^set:/.test(k)).length; if (m.op === 'studio' && kept > (m.kept || 0)) m.tries = 0; m.kept = kept;
     if (!m.resume || Date.now() - m.at > 3 * 3600e3 || (m.tries || 0) >= 3) { m.error = `Brew restarted while this was being made. Press it again${bd.inflight || kept ? ': what was already made is kept, free' : ''}.`;
@@ -225,7 +231,7 @@ export function mountJam2(d) {
   on('POST', '/api/jam2/jams/:jid/studio/make', wrap(async (b, t, p) => { const j = await load(t, p.jid), ctx0 = await ctxOf(t, j), c = await cleanSpec(t, j, ctx0, b.spec); if (c.error) return { error: c.error }; const spec = c.spec;
     const pl = await studio.plan(ctx0, spec); if (pl.error) return { error: pl.error };
     if (mustConfirm() && !(+b.confirmUsd + 0.01 >= pl.usd)) return { needsConfirm: true, plan: pl };
-    const busyOn = (bd) => !!bd && !!busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`)?.error;
+    const busyOn = (bd) => !!bd && ((!!busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`)?.error) || elsewhere(j.running?.[bd.id]));
     /* a set is one board of slides: the carousel board it was opened on, else a new carousel */
     if (pl.set) { spec.set = pl.set; let host = boardOf(j, b.bid); if (busyOn(host)) return { error: 'That board is still being made. Wait for it, or make this on a new one.' };
       if (!host || (host.takes.length && !b.redo && !spec.fill) || host.kind !== 'carousel') { if (j.boards.length >= 12) return { error: 'This jam has 12 boards. Start a new jam for more.' }; host = newBoard('ig-carousel', { label: 'Carousel', size: spec.sizes?.[0] || null, conceptRev: j.concept.rev }); j.boards.push(host); }
@@ -249,7 +255,7 @@ export function mountJam2(d) {
      as the set's next take and, from v1, as the jam's next version */
   on('POST', '/api/jam2/jams/:jid/studio/slide', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, b.bid), head = bd && headOf(bd);
     if (!head?.slides?.length) return { error: 'There’s no set to change yet.' };
-    if (busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`)?.error) return { error: 'This set is still being made. Wait for it.' };
+    if ((busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`)?.error) || elsewhere(j.running?.[bd.id])) return { error: 'This set is still being made. Wait for it.' };
     const i = Math.max(0, Math.min(head.slides.length - 1, Math.floor(+b.i || 0))), base = head.studio?.spec || {}, copyOf = (slides) => { const { id: _i, n: _n, at: _a, gate: _g, ...rest } = head; return { ...rest, slides, file: slides[0].file, scene: slides[0].scene, words: slides[0].words || head.words, made: [], cost: { usd: 0, credits: 0 }, missing: [], missingIds: [], studio: { ...(head.studio || {}), set: slides.map((x) => x.style), spec: { ...base, set: slides.map((x) => x.style) } } }; };
     if (b.op === 'drop') { if (head.slides.length <= 2) return { error: 'A set needs at least two slides.' }; const tk = addTake(j, bd, copyOf(head.slides.filter((_, k) => k !== i))); await store.put(slugOfT(t), j); toV1(t, j, tk); return { jam: out(j) }; }
     const style = studio.styleOf(b.op === 'add' ? b.style : head.slides[i].style); if (!style || style.kind !== 'image') return { error: 'Pick a picture style.' };
@@ -292,7 +298,7 @@ export function mountJam2(d) {
     if (b.op === 'first' || (!bd.takes.length && !free)) { runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd, { ask: b.ask || '' })); return { jam: out(j) }; }
     /* Make the final runs on a partner's paid credits: only with the brand's yes on the price it was shown */
     if (b.op === 'final' && !isMock() && b.confirmUsd == null && b.confirmCredits == null) return { error: 'Confirm the price first.', jam: out(j) };
-    if (free && busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`).error) return { error: 'Brew is still working on this board. Your change can go in when it lands.', jam: out(j) };
+    if (free && ((busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`).error) || elsewhere(j.running?.[bd.id]))) return { error: 'Brew is still working on this board. Your change can go in when it lands.', jam: out(j) };
     if (free) { const ctx = await ctxOf(t, j); try { await maker.edit(ctx, bd, b); } catch (e) { if (e.needsExtend) return { error: e.message, needsExtend: true, jam: out(j) }; throw e; } await store.put(slugOfT(t), j); return { jam: out(j) }; }
     /* another placement of a shot is made by extending the photo: priced, so only with the brand's yes */
     if (b.op === 'extend' && !isMock() && b.confirmUsd == null) return { error: 'Confirm the price first.', jam: out(j) };
