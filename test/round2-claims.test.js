@@ -44,3 +44,12 @@ test('an approved list backs only what is on it, not the same words elsewhere in
   const src = sourceText(['Tagline', 'Explore trusted & dermat-approved haircare'], approvedText(['7.4X Hair Fall Reduction']));
   assert.ok(claimFlags('Dermat-approved care', src).length);
 });
+
+test('QV 25 Oct: a post Brew wrote for the brand (an idea card) is served without its unbacked claims; rival ads and shopper threads stay quoted', async () => {
+  const fsx = await import('node:fs'); const src = fsx.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  assert.match(src, /if \(c0\.post && !\['ad', 'viral'\]\.includes\(c0\.research\?\.kind\) && !\/\^\(\?:r-\|r-ad-\|heard-\)\/[^\n]*\n\s*checkCopyIn\(post, src, \{ skip: [^\n]*evidence/);
+  const { checkCopyIn } = await import('../claims.js');
+  const post = { copy: 'A 72-hour hold, entirely dermat-approved. Shop now.', evidence: [{ value: 'dermat-approved haircare' }] };
+  checkCopyIn(post, 'Explore dermat-approved haircare', { skip: /^(evidence)$/ });
+  assert.equal(post.copy, 'Shop now.'); assert.equal(post.evidence[0].value, 'dermat-approved haircare');
+});
