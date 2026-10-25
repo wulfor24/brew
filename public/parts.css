@@ -262,3 +262,16 @@ p.am-when small{display:inline;margin:0 6px 0 0}
 
 /* a jam guest: the paid makers are the brand team's (the server refuses them for guests) */
 body.is-guest [data-cs-full]:not(.ship-go),body.is-guest [data-cs-slide="redo"],body.is-guest [data-rx="image"]:not(.ship-go),body.is-guest [data-rx="images-all"],body.is-guest [data-rx="variants"]:not(.ship-go),body.is-guest [data-rx="video"]:not(.ship-go),body.is-guest [data-rx="listing-photos"]{display:none!important}
+/* the card's deliverables over the stage, and "+" for another (v2's board tabs, in v1) */
+.dl-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 12px;position:relative;z-index:3}
+.dl-pill{height:36px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--fg);font:600 14px/34px inherit;cursor:pointer;white-space:nowrap}
+.dl-pill.on{background:var(--fg);border-color:var(--fg);color:var(--card);cursor:default}
+.dl-pill:not(.on):hover{border-color:var(--fg-3)}
+.dl-addw{position:relative;display:inline-flex}
+.dl-add{display:grid;place-items:center;width:36px;height:36px;border-radius:999px;border:0;background:none;color:var(--fg-2);cursor:pointer}
+.dl-add:hover,.dl-add[aria-expanded="true"]{background:var(--surface);color:var(--fg)}
+.dl-menu{position:absolute;top:42px;left:0;display:grid;min-width:210px;padding:6px;border-radius:12px;border:1px solid var(--line);background:var(--card);box-shadow:0 12px 32px rgba(0,0,0,.14)}
+.dl-menu small{padding:6px 10px 4px;color:var(--fg-3);font-size:12px}
+.dl-menu button{text-align:left;padding:9px 10px;border:0;border-radius:8px;background:none;color:var(--fg);font:500 14px inherit;cursor:pointer}
+.dl-menu button:hover,.dl-menu button:focus-visible{background:var(--surface)}
+@media (max-width:640px){.dl-row{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;padding-bottom:2px}.dl-pill,.dl-add{height:44px}.dl-add{width:44px}.dl-menu{position:fixed;left:16px;right:16px;top:auto;bottom:16px}}

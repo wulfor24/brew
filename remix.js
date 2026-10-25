@@ -1322,14 +1322,22 @@ export function createRemix(o) {
     if (ch.copyPending && !FILL_JOBS.has(ch.id)) { ch.copyPending = false; if (!touchedCh(t, ch)) ch.thread.push(startingPoint(t)); } /* the writer stopped with the server */
     healTakesOf(t, ch); /* a v2 take left drawing by a server that stopped resolves to drawError, never hangs */
     return ch; };
+  /* another deliverable for the same card (v1's "+" beside the jam's pills, as v2 had): the card's own kinds first, then the pieces
+     any card can become (a post, a carousel, Stories, a short video, a WhatsApp message, an email), never one it already has and
+     never an ad-account change it didn't ask for */
+  const ADD_STAPLES = ['creative.ig_post', 'creative.ig_carousel', 'creative.ig_story', 'creative.short_video', 'creative.carousel_ad', 'creative.film_brief', 'crm.paid_broadcast', 'crm.outreach_email', 'creative.linkedin_post', 'creative.x_post', 'visibility.blog_post'];
+  const DL_NAME = { 'creative.short_video': 'Short video', 'creative.film_brief': 'Film brief', 'crm.paid_broadcast': 'WhatsApp message', 'crm.outreach_email': 'Email', 'creative.linkedin_post': 'LinkedIn post', 'creative.x_post': 'X post', 'visibility.blog_post': 'Blog post', 'crm.flow_copy': 'Message flow', 'creative.creative_brief': 'Creative brief', 'creative.add_variants': 'Static ad' };
+  const dlName = (key) => DL_NAME[key] || actOf(key)?.label || key;
+  const canAdd = (r, key) => !!actOf(key) && (r.actionKeys.includes(key) || ADD_STAPLES.includes(key));
+  const addable = (r, have = []) => { const got = new Set(have.map((x) => x.action)); return [...new Set([...r.actionKeys, ...ADD_STAPLES])].filter((k) => canAdd(r, k) && !got.has(k) && !k.startsWith('brew.')).slice(0, 12).map((k) => ({ key: k, label: dlName(k) })); };
   on('GET', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     const r = recipeFor(c); const cv = ensureCardVersion(t, c); const owner = c.agent === 'brew' && !r.conflict ? 'creative' : r.agent;
     const fits = new Set(r.actionKeys);
-    const mine = Object.values(changes(t)).filter((x) => x.cardId === c.id && !x.discarded && !x.batchKey && (fits.has(x.action) || ['running', 'live', 'deploy_team', 'result'].includes(x.state))).sort((a, b) => b.createdAt - a.createdAt).slice(0, 6).map((x) => pubChange(t, evaluate(t, x)));
+    const mine = Object.values(changes(t)).filter((x) => x.cardId === c.id && !x.discarded && !x.batchKey && (fits.has(x.action) || x.added || ['running', 'live', 'deploy_team', 'result'].includes(x.state))).sort((a, b) => b.createdAt - a.createdAt).slice(0, 6).map((x) => pubChange(t, evaluate(t, x)));
     const seen = new Set(), moveIntents = movePassages(c, '', 8).filter((x) => !seen.has(x.n + x.h) && seen.add(x.n + x.h)).slice(0, 2).map((x) => `Follow ${moveTag(x)}`);
     return { recipe: { key: r.key, agent: r.agent, type: r.type, intents: [...orderIntents(t, owner, r.intents), ...moveIntents], levers: !!r.levers, actions: r.actionKeys.map((k) => ({ key: k, label: actOf(k).label, money: actOf(k).money, jam: actOf(k).jam || null })) },
-      cardVersion: { id: cv.id, n: versionsOf(t, c.id).length }, learned: summaryShort(t, owner), changes: mine };
+      cardVersion: { id: cv.id, n: versionsOf(t, c.id).length }, learned: summaryShort(t, owner), changes: mine, add: addable(r, mine) };
   });
   /* ---------- batch cards: a card that already holds N finished ads ("Queue the 12") ----------
      Each ad becomes its own change you can keep, drop or remix in the studio; the kept ones queue together. */
@@ -1557,7 +1565,8 @@ export function createRemix(o) {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     if (/^build-/.test(String(c.id || ''))) return { changes: [], navOnly: true }; /* "Read all 57 plans" goes to the moves, never a page-copy jam (QA J-14) */
     if (b.queue) return v2Remix(b, t, c); /* Another take: answers at once, the picture in the background (the block above) */
-    const r0 = recipeFor(c), r = b.as === 'film' && !r0.conflict && !r0.alwaysJam ? { ...r0, actionKeys: ['creative.film_brief'], primary: 'creative.film_brief', intents: ['Founder on camera', 'Cut it to 15 seconds', 'Fewer shots'] } : r0; /* "Brief a film instead": the same card, filmed for real by the founder */
+    const r00 = recipeFor(c), pickA = b.action && canAdd(r00, String(b.action)) ? String(b.action) : null; /* "+": this card as another deliverable */
+    const r0 = pickA ? { ...r00, actionKeys: [pickA], primary: pickA, conflict: false, alwaysJam: false } : r00, r = b.as === 'film' && !r0.conflict && !r0.alwaysJam ? { ...r0, actionKeys: ['creative.film_brief'], primary: 'creative.film_brief', intents: ['Founder on camera', 'Cut it to 15 seconds', 'Fewer shots'] } : r0; /* "Brief a film instead": the same card, filmed for real by the founder */
     const cv = ensureCardVersion(t, c);
     const intent = String(b.intent || '').slice(0, 60), prompt = String(b.prompt || '').slice(0, 300);
     /* fast (opening a jam): the package is built at once from the card itself and the AI writes the lead option in the
@@ -1566,7 +1575,7 @@ export function createRemix(o) {
     let opts = null, line = '', live = false, writeLater = null;
     /* an idea from the stream is already written (ideas.js): it opens as itself, with its copy and where to post. A heard
        thread has no reply yet: the writer drafts one when AI is on; offline it starts from a plain opener */
-    if (c.post?.platform && r.primary) { const pkg = ideaPkg(c.post, r.primary.split('.').pop(), c);
+    if (c.post?.platform && r.primary && !pickA) { const pkg = ideaPkg(c.post, r.primary.split('.').pop(), c);
       if (!c.post.copy && fast && spend('text')) writeLater = async () => { const x = await liveOptions(t, c, { ...r, actionKeys: [r.primary] }, intent, `${prompt} Write the reply for this thread: ${c.post.where?.[0]?.url || ''}. Answer what they asked using only facts you have; say you work at ${BN()}.`, 1); return x.opts[0] ? { ...x.opts[0], pkg: { ...pkg, ...x.opts[0].pkg, where: pkg.where } } : null; };
       else if (!c.post.copy && !isMock() && spend('text')) { try { const x = await liveOptions(t, c, { ...r, actionKeys: [r.primary] }, intent, `${prompt} Write the reply for this thread: ${c.post.where?.[0]?.url || ''}. Answer what they asked using only facts you have; say you work at ${BN()}.`, 1); if (x.opts[0]) { opts = [{ ...x.opts[0], pkg: { ...pkg, ...x.opts[0].pkg, where: pkg.where }, fromCard: true }]; line = x.line; live = true; } } catch (e) { log.warn('[remix idea]', e.message); } }
       opts ||= [{ action: r.primary, angle: 'As written', why: String(c.post.why || '').slice(0, 160), from: null, pkg, fromCard: true }]; line ||= c.post.copy ? 'The post, ready to go, and where it goes.' : 'A reply to start from, and the thread it goes in.'; }
@@ -1582,7 +1591,8 @@ export function createRemix(o) {
     const made = opts.map((x) => build(t, c, cv, r, x, { intent, prompt })).sort((a, b) => (b.fromCard - a.fromCard) || (b.score - a.score));
     if (intent) signal(t, 'pick', { agent: made[0]?.agent, intent }, now(t));
     t.acted.add(c.id);
-    if (made[0]) seedV0(t, c, made[0]); /* the jam's package opens on the card's own first draft */
+    if (made[0] && !pickA) seedV0(t, c, made[0]); /* the jam's package opens on the card's own first draft (an added deliverable starts from its own words) */
+    if (pickA) made.forEach((x) => { x.added = true; });
     /* "Make our version" of a rival's ad: the person asked for our ad, so its first picture (in the rival's style, our product)
        is made once the words are written; nothing else opens a paid picture by itself */
     const firstPic = isRivalCard(c) && made[0] && !studioOf(t, made[0], null, c) && !/^gen\//.test(made[0].pkg?.image || '') ? () => (isVideoPost(made[0]) ? genVideo(t, made[0], 'our version of the rival video') : genImage(t, made[0], 'our version of the rival ad')) : null;

@@ -131,7 +131,7 @@ test('QV 25 Oct: keys and jams: arrows never move slides under the game or a men
   assert.match(app, /e\.defaultPrevented \|\| e\.metaKey[^\n]*RX\.vmenu \|\| \$\('\.bg-ov'\)\) return;/);
   assert.match(app, /!e\.isComposing && e\.keyCode !== 229 && e\.target\.id === 'st-in'/);
   assert.match(fs.readFileSync(new URL('../public/jam-room.js', import.meta.url), 'utf8'), /!e\.isComposing && e\.keyCode !== 229\) \{ e\.preventDefault\(\); \$\('#jm-f'\)/);
-  assert.match(app, /tbEdit: null, vmenu: false, busyRx: null, fixing: false \}\)/);
+  assert.match(app, /tbEdit: null, vmenu: false, busyRx: null, fixing: false, dlMenu: false \}\)/);
   assert.match(css, /\.stg-nav\{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap/);
 });
 
@@ -178,4 +178,13 @@ test('a jam guest sees words and drafts; paid makers say the team makes them (th
 
 test('a chat ask on a set never turns its slides into takes', () => {
   assert.match(fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8'), /\+out\.count > 0 && !\(Array\.isArray\(sp\.set\) && sp\.set\.length > 1\)\) patch\.count/);
+});
+
+test('v1 has v2’s "+": a card’s deliverables as pills over the stage, and another made from the same card', async () => {
+  assert.match(app, /const dlRow = \(ch\) =>/); assert.match(app, /\$\{dlRow\(ch\)\}\$\{refBtnHtml\(ch\)\}/);
+  assert.match(app, /tapi\('POST', `\/api\/cards\/\$\{RX\.p\.id\}\/remix`, \{ action: key, fast: true \}\)/);
+  const rmx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
+  assert.match(rmx, /changes: mine, add: addable\(r, mine\) \}/); assert.match(rmx, /pickA = b\.action && canAdd\(r00, String\(b\.action\)\)/);
+  assert.match(rmx, /x\.added \|\| \['running'/, 'an added deliverable stays listed with the card');
+  assert.match(css, /\.dl-pill\.on\{/);
 });
