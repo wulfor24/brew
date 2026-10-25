@@ -7,7 +7,10 @@ import pg from 'pg';
 import { copyBrand, copyGlobal, gcsStore, PARTNERS } from './partner-copy.js';
 import { migrate } from './migrate.js';
 
-const args = process.argv.slice(2), flag = (k) => args.includes(k), vals = (k) => args.flatMap((a, i) => (a === k ? [args[i + 1]] : []));
+/* also plain words (gcloud mangles repeated flags in a job's args): `scrubroom-in nutrova-com global apply` */
+const WORDS = { apply: '--apply', global: '--global', any: '--any' };
+const raw = process.argv.slice(2), args = raw.flatMap((a, i) => (WORDS[a] ? [WORDS[a]] : !a.startsWith('--') && raw[i - 1] !== '--slug' ? ['--slug', a] : [a]));
+const flag = (k) => args.includes(k), vals = (k) => args.flatMap((a, i) => (a === k ? [args[i + 1]] : []));
 const APPLY = flag('--apply'), slugs = vals('--slug');
 const need = (k) => { const v = process.env[k]; if (!v) { console.log(`[partner] STOP: ${k} is not set`); process.exit(1); } return v; };
 const SRC_DB = need('SRC_DATABASE_URL'), DST_DB = need('DATABASE_URL'), SRC_BUCKET = need('SRC_BUCKET'), DST_BUCKET = need('RESEARCH_BUCKET');
