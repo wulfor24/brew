@@ -60,13 +60,15 @@ export function createAlerts({ env = process.env, store = null, treg = null, sen
     await ready; if (sent.day !== day()) sent = { day: day(), issues: {} };
     if (sent.issues[issue]) return false; /* once per issue per day */
     sent.issues[issue] = new Date(now()).toISOString();
-    if (on && store?.claim) { if (!(await store.claim(issue, sent.day).catch(() => false))) return false; } /* another instance sent it today */
+    /* another instance sent it today: false. The database not answering is no answer: the alert goes (an outage never mutes them) */
+    if (on && store?.claim) { const mine = await store.claim(issue, sent.day).then((x) => !!x, () => null); if (mine === false) return false; }
     else if (on) await store?.put(sent).catch((e) => log.warn?.('[alerts] save', e.message));
     log.warn?.(`[alerts] ${issue}: ${detail}`);
     if (!on || !sendMail) return true;
     const title = TITLE[issue] || issue, html = emailHtml({ eyebrow: 'Brew ops', title, preheader: WHAT[issue] || detail,
       body: mailP(WHAT[issue] || '') + (detail ? mailList([String(detail).slice(0, 400)]) : '') + mailP(`This alert is sent at most once a day. Revision ${env.K_REVISION || 'local'}.`, { muted: true, small: true }) });
-    await sendMail({ to: cfg.to, subject: `Brew alert: ${title}`, html, text: `${title}\n\n${WHAT[issue] || ''}\n${detail}` }).catch((e) => log.warn?.('[alerts] send', e.message));
+    const where = env.ENV === 'production' ? 'production' : env.K_SERVICE === 'shopos-feed' ? 'staging' : env.K_SERVICE || 'local'; /* both sites mail the same inbox */
+    await sendMail({ to: cfg.to, subject: `Brew alert (${where}): ${title}`, html, text: `${title} (${where})\n\n${WHAT[issue] || ''}\n${detail}` }).catch((e) => { delete sent.issues[issue]; log.warn?.('[alerts] send', e.message); }); /* not sent: the next check tries again */
     return true;
   }
   function note(kind, detail = '') {

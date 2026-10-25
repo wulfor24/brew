@@ -102,7 +102,7 @@ WNOW=$(gcloud run services describe brew-worker --region=$REGION --project=$P --
 [ "$WNOW" = "$WREV" ] || { rollback; die "the worker runs ${WNOW:-a split}, not $WREV"; }
 echo "   worker on $SHA ($WREV)"
 # the worker's own settings, now that the new one runs (before any user traffic moves)
-gcloud run jobs execute brew-prod-clean --project=$P --region=$REGION "--update-env-vars=^|^PROD_SERVICES=brew-worker|SMOKE_URL=" --wait >/dev/null 2>&1 || {
+gcloud run jobs execute brew-prod-clean --project=$P --region=$REGION "--update-env-vars=^|^PROD_SERVICES=brew-worker|SMOKE_URL=|EXPECT_WORKER_REV=$WREV" --wait >/dev/null 2>&1 || {
   gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="brew-prod-clean" AND textPayload:"[clean]"' --project=$P --limit=20 --freshness=5m --format='value(textPayload)' | tac; rollback; die "the new worker's settings failed the gate"; }
 echo "   worker settings clean"
 
@@ -111,7 +111,7 @@ gcloud run services update-traffic brew-web --to-revisions="$REV=100" --region=$
 
 echo "7/8 checks through the load balancer"
 # each check gets 5 tries: a network blip on the machine running this (no connection, code 000) is not a failed release
-ok=1; for u in / /healthz/ready /api/config /privacy ${SMOKE_BRANDS:-}; do case "$u" in /*) ;; *) u="/$u";; esac
+ok=1; for u in / /healthz/ready /api/config /privacy ${SMOKE_BRANDS-arata-in b/arata-in/seed.js}; do # a partner page and its feed through the load balancer too case "$u" in /*) ;; *) u="/$u";; esac
   for t in 1 2 3 4 5; do c=$(curl -s --max-time 20 -o /dev/null -w '%{http_code}' "$PROD_URL$u" || true); [ "$c" = 200 ] && break; sleep 5; done
   echo "   $u -> ${c:-000}"; [ "$c" = 200 ] || ok=0; done
 [ $ok = 1 ] || { rollback; die "production checks failed after the switch: rolled back"; }

@@ -131,7 +131,7 @@ test('alerts: treg balance under the threshold, and the 5xx rate', async () => {
   const { a, mails } = mk({ treg: { balance: async () => ({ usd: 6 }) } });
   for (let i = 0; i < 60; i++) a.response(i < 5 ? 503 : 200);
   await a.check();
-  assert.deepEqual(mails.map((m) => m.subject).sort(), ['Brew alert: Brew is returning server errors', 'Brew alert: treg balance is low']);
+  assert.deepEqual(mails.map((m) => m.subject).sort(), ['Brew alert (local): Brew is returning server errors', 'Brew alert (local): treg balance is low']); /* both sites mail one inbox: the subject says which */
   const { a: b, mails: m2 } = mk({ treg: { balance: async () => ({ usd: 50 }) } });
   for (let i = 0; i < 60; i++) b.response(200); b.response(500);
   await b.check(); assert.equal(m2.length, 0);

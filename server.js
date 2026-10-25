@@ -1050,6 +1050,8 @@ if (isWeb() && OBJ && process.env.K_SERVICE && !MOCK && !DEMO && process.env.WAR
    goes, and the listener closes so in-flight requests finish, all inside 6 s */
 /* a promise nobody waited on that fails (a background save, a nudge) is logged, never allowed to stop the server */
 process.on('unhandledRejection', (e) => { console.error('[unhandled]', e?.stack?.split('\n').slice(0, 3).join(' | ') || e); });
+/* an uncaught exception still ends the process (its state can't be trusted), but says why first: the [unhandled] log alert sees it */
+process.on('uncaughtExceptionMonitor', (e) => { console.error('[unhandled] uncaught', e?.stack?.split('\n').slice(0, 3).join(' | ') || e); });
 /* one way to stop, whatever the reason (Cloud Run's SIGTERM, the background lease lost): nothing new starts here, everything in
    memory is saved, then the process exits (Cloud Run starts a fresh one) */
 let shuttingDown = false;

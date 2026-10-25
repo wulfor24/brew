@@ -14,7 +14,8 @@ import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves r
 /* links are signed with HANDOFF_SECRET; links signed before it was set (with the Anthropic key) still open, so rotating the
    Anthropic key no longer breaks shared briefs once HANDOFF_SECRET is set */
 /* 'local' (a public key) only signs on a laptop: on Cloud Run it would let anyone forge a link */
-const KEYS = [...new Set([process.env.HANDOFF_SECRET, process.env.ANTHROPIC_API_KEY, process.env.K_SERVICE ? null : 'local'].filter(Boolean))].map((k) => crypto.createHash('sha256').update('brew-handoff:' + k).digest('hex'));
+/* production (its own HANDOFF_SECRET_PROD, no links from before it) opens only links signed with that secret, never the shared Anthropic key */
+const KEYS = [...new Set([process.env.HANDOFF_SECRET, process.env.ENV === 'production' && process.env.HANDOFF_SECRET ? null : process.env.ANTHROPIC_API_KEY, process.env.K_SERVICE ? null : 'local'].filter(Boolean))].map((k) => crypto.createHash('sha256').update('brew-handoff:' + k).digest('hex'));
 const signWith = (key, tid, wid) => crypto.createHmac('sha256', key).update(`${tid}/${wid}`).digest('base64url').slice(0, 12);
 const sign = (tid, wid) => signWith(KEYS[0], tid, wid);
 const signed = (sig, tid, wid) => typeof sig === 'string' && KEYS.some((k) => { const want = Buffer.from(signWith(k, tid, wid)), got = Buffer.from(sig); return want.length === got.length && crypto.timingSafeEqual(want, got); });

@@ -5,6 +5,7 @@
 // Param's kept exceptions (25 Oct): the Pro plan sheet, Marketplaces "Coming soon", the catalog-photo fallback, and Delete my
 // data as an honest email request — they are code, not data, and need no exception here.
 import { q, close } from './index.js';
+import { isClosedRead } from '../closed-gate.js';
 
 const P = process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617', R = process.env.REGION || 'asia-south1';
 const SERVICES = String(process.env.PROD_SERVICES || '').split(',').filter(Boolean);
@@ -34,16 +35,36 @@ for (const s of SERVICES) {
     if (!/^https:\/\/feed\.joinsquareup\.com$/.test(env.PUBLIC_URL || '')) bad(`${s}: PUBLIC_URL is ${env.PUBLIC_URL || 'unset'}`);
     if (env.OBJECTS_READTHROUGH === '1' || env.OBJECTS_MIRROR === '1') bad(`${s}: reads or writes the staging bucket path (OBJECTS_READTHROUGH/MIRROR)`);
     if (!/(secret BREW_PROD_DATABASE_URL)/.test(env.DATABASE_URL || '')) bad(`${s}: DATABASE_URL is not the production database`);
+    /* production's own secrets (a staging key here would open staging's vault and sessions), sign-in on, the access policy set */
+    for (const [k, sec] of [['FEED_VAULT_KEY', 'FEED_VAULT_KEY_PROD'], ['FEED_SESSION_SECRET', 'FEED_SESSION_SECRET_PROD'], ['HANDOFF_SECRET', 'HANDOFF_SECRET_PROD']]) if (!new RegExp(`\\(secret ${sec}\\)`).test(env[k] || '')) bad(`${s}: ${k} is not ${sec}`);
+    if (env.FEED_SIGNIN === '0' || env.BUILD_SIGNIN === '0') bad(`${s}: sign-in is switched off (FEED_SIGNIN/BUILD_SIGNIN=0)`);
+    if (!env.ADMIN_EMAILS) bad(`${s}: ADMIN_EMAILS is not set`);
+    if (!env.FULL_ACCESS_DOMAINS) bad(`${s}: FULL_ACCESS_DOMAINS is not set`);
+    if (!/brew-prod-runtime@/.test(env.GA4_SA_EMAIL || '')) bad(`${s}: GA4_SA_EMAIL is ${env.GA4_SA_EMAIL || 'unset'}, not production's runtime account`);
+    if (!env.RESEND_API_KEY) bad(`${s}: no RESEND_API_KEY (no email, no alerts)`);
+    if (s === 'brew-web' && process.env.EXPECT_WEB_REV && svc.latestCreatedRevision && !svc.latestCreatedRevision.endsWith(`/${process.env.EXPECT_WEB_REV}`)) bad(`${s}: the newest revision is ${svc.latestCreatedRevision.split('/').pop()}, not the candidate ${process.env.EXPECT_WEB_REV}`);
     console.log(`[clean] ${s}: settings checked`);
   } catch (e) { bad(`${s}: settings check failed (${e.message})`); }
 }
 
 /* 2. the candidate answers (from inside the VPC: the service takes no other outside traffic) */
 if (process.env.SMOKE_URL) {
-  const brandsNow = (await q(`SELECT DISTINCT split_part(key, '/', 2) AS s FROM objects WHERE key LIKE 'brands/%/status.json'`)).rows.map((r) => r.s).filter((x) => x && x !== '_brew').slice(0, 8);
-  for (const p of ['/', '/healthz/ready', '/api/config', '/privacy', ...brandsNow.flatMap((b) => [`/${b}`, `/b/${b}/seed.js`])]) {
-    try { const r = await fetch(process.env.SMOKE_URL + p, { signal: AbortSignal.timeout(30e3), redirect: 'manual' }); if (r.status !== 200) bad(`smoke: ${p} answered ${r.status}`); else console.log(`[clean] smoke ${p} 200`); }
+  /* every built brand (a brand still being read has no pack yet); a store behind Shopify's password page answers its team only (401/403) */
+  const st = (await q(`SELECT split_part(key, '/', 2) AS s, body FROM objects WHERE key ~ '^brands/[^/]+/status\\.json$' AND content_type <> 'application/x-parted' ORDER BY key`)).rows.filter((r) => r.s !== '_brew');
+  const closed = new Set(), brandsNow = [];
+  for (const r of st) { let s0 = null; try { s0 = JSON.parse(r.body.toString('utf8')); } catch {} if (!s0?.done) continue; brandsNow.push(r.s);
+    if (s0.source?.kind === 'shopify-admin') { const pr = (await q('SELECT body FROM objects WHERE key = $1', [`brands/${r.s}/profile.json`])).rows[0]; let p0 = null; try { p0 = JSON.parse(pr?.body?.toString('utf8') || 'null'); } catch {} if (isClosedRead(s0, p0)) closed.add(r.s); } }
+  for (const p of ['/', '/healthz/ready', '/api/config', '/privacy', ...brandsNow.slice(0, 12).flatMap((b) => [`/${b}`, `/b/${b}/seed.js`])]) {
+    const b = (/^\/(?:b\/)?([a-z0-9-]+)/.exec(p) || [])[1], ok = (c) => c === 200 || (closed.has(b) && (c === 401 || c === 403));
+    try { const r = await fetch(process.env.SMOKE_URL + p, { signal: AbortSignal.timeout(30e3), redirect: 'manual' }); if (!ok(r.status)) bad(`smoke: ${p} answered ${r.status}`); else console.log(`[clean] smoke ${p} ${r.status}`); }
     catch (e) { bad(`smoke: ${p} did not answer (${e.message})`); } } }
+
+/* the new worker took the background lease (its connection is named after its revision, roles.js): an old revision still holding it
+   would keep running the previous release's background work */
+if (process.env.EXPECT_WORKER_REV) { let holder = null;
+  for (let i = 0; i < 24; i++) { holder = (await q(`SELECT a.application_name AS n FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE l.locktype = 'advisory' AND l.objid = 727275 AND l.objsubid = 1 AND l.granted`)).rows[0]?.n || null;
+    if (holder === `brew-lease:${process.env.EXPECT_WORKER_REV}`) break; await new Promise((r) => setTimeout(r, 5000)); }
+  if (holder !== `brew-lease:${process.env.EXPECT_WORKER_REV}`) bad(`the background lease is held by ${holder || 'nobody'}, not the new worker ${process.env.EXPECT_WORKER_REV}`); else console.log(`[clean] the new worker ${process.env.EXPECT_WORKER_REV} holds the background lease`); }
 
 /* 3. the production database */
 const brands = (await q(`SELECT DISTINCT split_part(key, '/', 2) AS s FROM objects WHERE key LIKE 'brands/%'`)).rows.map((r) => r.s).filter((x) => x && x !== '_brew');

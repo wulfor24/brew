@@ -19,7 +19,7 @@ const LEASE_KEY = 727275;
 export async function startLease({ everyMs = 10e3, log = console, exit = (c) => process.exit(c) } = {}) {
   if (!pgOn() || !isWorker() || leader) return;
   const tryOnce = async () => {
-    const c = new pg.Client({ ...clientConf(), application_name: 'brew-lease' });
+    const c = new pg.Client({ ...clientConf(), application_name: `brew-lease:${process.env.K_REVISION || 'local'}`.slice(0, 63) }); /* the release checks which revision holds the lease (db/prod-clean.mjs EXPECT_WORKER_REV) */
     try {
       await c.connect();
       const got = (await c.query('SELECT pg_try_advisory_lock($1) AS ok', [LEASE_KEY])).rows[0].ok;
