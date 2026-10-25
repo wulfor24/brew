@@ -4639,7 +4639,7 @@
         return { ...pkgCh, pkg: { ...p0, [k]: list, image: st.productImg, cardImages: list.map(() => st.productImg), draft: null, wordsIn: null } }; }
       return /^gen\//.test(p0.image || '') && !(p0.draft?.images || []).includes(p0.image) ? pkgCh : { ...pkgCh, pkg: { ...p0, image: st.productImg, cardImages: null, draft: null, wordsIn: null } }; })();
     /* not made yet: the frame says plainly that the picture is the product photo standing in, dressed like the style picked, and fits above the bar */
-    const pvNote = !made && !making && st?.styleLabel ? `Your product photo for now. Make it for the ${st.styleLabel} picture.` : '';
+    const pvNote = !made && !making && st?.styleLabel ? `Your photo for now · Make it for ${st.styleLabel}` : '';
     return `<div class="st-asset cs-stage">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made · you can leave' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ` is-preview cs-t-${esc(st?.treat || 'plain')}` : ''}${making ? ' is-making' : ''}"${pvNote ? ` style="--pv:'${esc(pvNote.replace(/['"\\]/g, ''))}'${/^#[0-9a-f]{3,8}$/i.test(st?.bc || '') ? `;--bc:${st.bc}` : ''}"` : ''}>${assetHtml(pv, 'lg')}</div>
       ${ch.filmOk && !making ? `<p class="fb-alt">Would the founder rather film it for real? <button class="linkbtn" data-film-alt>Brief a film instead</button></p>` : ''}</div>${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => (made && !viewing ? m + dlTool(ch, pkgCh) : m))}`; };
   document.addEventListener('input', (e) => { if (view === 'remix') window.CreativeStage?.input(e); }); /* the composer's Direction and template search */
