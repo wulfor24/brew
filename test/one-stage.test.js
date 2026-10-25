@@ -99,7 +99,7 @@ test('a made Studio piece: the stage is the piece, Details holds the checklist, 
   assert.match(app, /const lookOf = \(ch\) =>/); assert.match(fn('stepBar'), /lookOf\(ch\)/); assert.match(fn('publishPanel'), /lookOf\(ch\)/);
   assert.match(fn('stepBar'), /data-cs-full/, 'a preview’s next step is the full one'); assert.match(cs, /makeFull: \(\) => makeFull\(\)/);
   assert.ok(!/adjustTab0/.test(fn('adjustTab').split(':').slice(0, -1).join(':')), 'no v1 knobs on a Studio piece');
-  assert.match(cs, /Your set · \$\{sl\.length\} slides/); assert.match(cs, /<small>Made with<\/small>/);
+  assert.match(cs, /Your set · \$\{sl\.length\} slides/); assert.match(cs, /cs-madewith/); assert.match(cs, /Change the set-up/); /* what it was made with, as one sentence (25 Oct) */
 });
 
 test('chat on a Studio piece: asks go to Studio made or not, the answer and a landed make stay in the thread, no slide-count chips', () => {
