@@ -210,3 +210,4 @@ p.am-when small{display:inline;margin:0 6px 0 0}
 /* the checklist in Details, above the brief */
 .st-panel-b>.pp{margin:0 0 16px}
 .pp .pp-checks.is-first{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--surface)}
+.pp .pp-checks li{flex-wrap:wrap}.pp .pp-checks li>.linkbtn{flex:1 0 100%;text-align:left;padding:2px 0 0 22px} /* a check's fix sits under it, never squeezing its words */
