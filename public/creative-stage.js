@@ -47,7 +47,9 @@
 
   async function go(redo = false) {
     const pl = S?.plan; if (!pl || pl.error || pl.usd == null || S.working || S.making || anyBusy()) return; /* one paid make at a time, whichever button asked */ const mine = S; S.working = true; paint();
-    const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/make`, { spec: S.spec, confirmUsd: pl.usd, bid: S.bid, redo: redo || S.made });
+    /* one key per press: the server runs a press once, and one make per board, whichever instance or tab sent it (make-claim.js) */
+    const press = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+    const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/make`, { spec: S.spec, confirmUsd: pl.usd, bid: S.bid, redo: redo || S.made, press });
     if (S !== mine) return; S.working = false;
     if (r?.needsConfirm) { S.plan = r.plan; paint(); return H.toast?.(`The price changed to ${usd(r.plan.usd)}. Tap Make it again.`); }
     if (r?.error) { paint(); return H.toast?.(H.esc(r.error)); }

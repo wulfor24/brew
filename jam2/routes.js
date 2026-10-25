@@ -14,6 +14,7 @@ import { createJam2Store } from './store.js';
 import { createBrandbook, COMFORT, NARRATORS, MOODS, VOICES } from './brandbook.js';
 import { createEngines } from './engines.js';
 import { createMaker } from './make.js';
+import { claimMake, makeKeys } from './make-claim.js';
 import { createReady, tokenFor, parseToken } from './ready.js';
 import { RECIPES, FAMILIES, SIZES, HOW, HOW_LABEL, recipe, recipeFor, alsoFor, planFor } from './catalogue.js';
 import { newJam, newBoard, boardOf, headOf, bumpConcept, fromV1, jamView, note, uid, addTake, OWNERS, BRIEF_STATUS, publicView } from './core.js';
@@ -229,26 +230,32 @@ export function mountJam2(d) {
   on('POST', '/api/jam2/jams/:jid/studio/make', wrap(async (b, t, p) => { const j = await load(t, p.jid), ctx0 = await ctxOf(t, j), c = await cleanSpec(t, j, ctx0, b.spec); if (c.error) return { error: c.error }; const spec = c.spec;
     const pl = await studio.plan(ctx0, spec); if (pl.error) return { error: pl.error };
     if (mustConfirm() && !(+b.confirmUsd + 0.01 >= pl.usd)) return { needsConfirm: true, plan: pl };
+    /* one make per board across every instance (make-claim.js): claimed before anything is paid, let go when its runs end */
+    const BUSY = 'That board is still being made. Wait for it, or make this on a new one.', claim = await claimMake(makeKeys(slugOfT(t), j.id, b.bid, b.press)); if (!claim) return { error: BUSY, busy: true };
+    let left = 0; const held = (fn) => { left++; return async () => { try { return await fn(); } finally { if (--left === 0) claim.release(); } }; };
+    const started = (ok) => { if (!ok && --left === 0) claim.release(); };
+    try {
     const busyOn = (bd) => !!bd && ((!!busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`)?.error) || elsewhere(j.running?.[bd.id]));
     /* a set is one board of slides: the carousel board it was opened on, else a new carousel */
-    if (pl.set) { spec.set = pl.set; let host = boardOf(j, b.bid); if (busyOn(host)) return { error: 'That board is still being made. Wait for it, or make this on a new one.' };
+    if (pl.set) { spec.set = pl.set; let host = boardOf(j, b.bid); if (busyOn(host)) return { error: BUSY };
       if (!host || (host.takes.length && !b.redo && !spec.fill) || host.kind !== 'carousel') { if (j.boards.length >= 12) return { error: 'This jam has 12 boards. Start a new jam for more.' }; host = newBoard('ig-carousel', { label: 'Carousel', size: spec.sizes?.[0] || null, conceptRev: j.concept.rev }); j.boards.push(host); }
-      await store.put(slugOfT(t), j); runBg(t, j, host.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.makeSet(ctx, host, spec, jobsOf(t, j, host)); take.studio.spec = specOf(spec);
+      await store.put(slugOfT(t), j); started(runBg(t, j, host.id, 'studio', held(async () => { const ctx = await ctxOf(t, j); const take = await studio.makeSet(ctx, host, spec, jobsOf(t, j, host)); take.studio.spec = specOf(spec);
         /* filling in the slides left out: the new ones join the slides already made, in the set's order; only the new ones were paid for */
-        fillMerge(host, take, spec); const tk = addTake(j, host, take); tk.gate = maker.gate(ctx, tk, host); toV1(t, j, tk); }, { resume: true, spec, i: 0, confirmUsd: pl.usd });
+        fillMerge(host, take, spec); const tk = addTake(j, host, take); tk.gate = maker.gate(ctx, tk, host); toV1(t, j, tk); }), { resume: true, spec, i: 0, confirmUsd: pl.usd }));
       note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); v1State(t, j, pl, 1); return { jam: out(j), plan: pl, boards: [host.id] }; }
     const recipeId = pl.kind === 'video' ? 'reel' : 'image-ad', st = studio.styleOf(spec.style), boards = [];
     /* the empty board the composer sat on takes the first one (and becomes what is made on it: a video on a picture board is a video
        board); Redo puts its take on the same board as the next version */
-    const host = boardOf(j, b.bid); if (busyOn(host)) return { error: 'That board is still being made. Wait for it, or make this on a new one.' };
+    const host = boardOf(j, b.bid); if (busyOn(host)) return { error: BUSY };
     if (host && b.redo && host.takes.length) boards.push(host);
     else if (host && !host.takes.length) { const want = recipe(recipeId); if (host.kind !== want.kind) Object.assign(host, { recipe: recipeId, kind: want.kind }); boards.push(Object.assign(host, { label: tidyLabel(st?.label || host.label) })); }
     const room = 12 - j.boards.length; if (pl.count - boards.length > room) return { error: room > 0 ? `This jam has room for ${room + boards.length} more. Lower the count, or start a new jam.` : 'This jam has 12 boards. Start a new jam for more.' };
     while (boards.length < pl.count) { const nb = newBoard(recipeId, { label: tidyLabel(`${st?.label || 'Take'} ${boards.length + 1}`), size: spec.sizes?.[0] || null, conceptRev: j.concept.rev }); j.boards.push(nb); boards.push(nb); }
     await store.put(slugOfT(t), j);
     const run = boards.length > 1 ? uid('run') : null; /* a batch: its takes land together in the v1 jam, one strip to keep or drop each */
-    boards.forEach((bd, i) => runBg(t, j, bd.id, 'studio', async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i, jobsOf(t, j, bd)); take.studio.spec = specOf(spec); if (run) Object.assign(take, { run, runN: boards.length, runI: i }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }, { resume: true, spec, i, confirmUsd: pl.per, ...(run ? { run, runN: boards.length, runI: i } : {}) }));
-    note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); v1State(t, j, pl, boards.length); return { jam: out(j), plan: pl, boards: boards.map((x) => x.id) }; }));
+    boards.forEach((bd, i) => started(runBg(t, j, bd.id, 'studio', held(async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i, jobsOf(t, j, bd)); take.studio.spec = specOf(spec); if (run) Object.assign(take, { run, runN: boards.length, runI: i }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }), { resume: true, spec, i, confirmUsd: pl.per, ...(run ? { run, runN: boards.length, runI: i } : {}) })));
+    note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); v1State(t, j, pl, boards.length); return { jam: out(j), plan: pl, boards: boards.map((x) => x.id) };
+    } finally { if (left === 0) claim.release(); } /* nothing started (refused, or failed before a run): the board is free again */ }));
   /* one slide of a set: redo it (priced, one take of its style, the rest kept), drop it (free) or add one (priced). Each lands
      as the set's next take and, from v1, as the jam's next version */
   on('POST', '/api/jam2/jams/:jid/studio/slide', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, b.bid), head = bd && headOf(bd);
@@ -261,12 +268,14 @@ export function mountJam2(d) {
     const ctx0 = await ctxOf(t, j), c = await cleanSpec(t, j, ctx0, { ...base, kind: 'image', set: null, style: style.id, count: 1 }); if (c.error) return { error: c.error };
     const pl = await studio.plan(ctx0, c.spec); if (pl.error) return { error: pl.error };
     if (mustConfirm() && !(+b.confirmUsd + 0.01 >= pl.usd)) return { needsConfirm: true, plan: pl };
+    const claim = await claimMake(makeKeys(slugOfT(t), j.id, bd.id, b.press)); if (!claim) return { error: 'This set is still being made. Wait for it.', busy: true };
     const n = head.slides.length + (b.op === 'add' ? 1 : 0), k = b.op === 'add' ? head.slides.length : i;
-    runBg(t, j, bd.id, 'studio', async () => { const ctx = await ctxOf(t, j);
+    if (!runBg(t, j, bd.id, 'studio', async () => { try { await slideRun(); } finally { claim.release(); } })) { claim.release(); return { error: 'This set is still being made. Wait for it.' }; }
+    async function slideRun() { const ctx = await ctxOf(t, j);
       const one = await studio.make(ctx, bd, { ...c.spec, ask: [`Slide ${k + 1} of ${n} of one set: its own short line that builds on the others${k === 0 ? '; this one is the cover, the hook' : ''}.`, c.spec.ask].filter(Boolean).join(' ') }, k, jobsOf(t, j, bd));
       const slide = { scene: one.scene, file: one.file, style: style.id, words: one.words, shot: one.shot || null, drawn: one.drawn || null };
       const slides = b.op === 'add' ? [...head.slides, slide] : head.slides.map((x, q) => (q === i ? slide : x));
-      const tk = addTake(j, bd, { ...copyOf(slides), made: one.made || [], cost: one.cost || { usd: 0, credits: 0 } }); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); });
+      const tk = addTake(j, bd, { ...copyOf(slides), made: one.made || [], cost: one.cost || { usd: 0, credits: 0 } }); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }
     v1State(t, j, { ...pl, line: `${b.op === 'add' ? 'a new slide' : `slide ${i + 1}`} · ${style.label}` }, 1);
     note(j, `Studio: ${b.op === 'add' ? 'added a slide' : `slide ${i + 1} again`} · ${style.label} · $${pl.usd}`, whoOf(t).email); return { jam: out(j), plan: pl }; }));
   /* a film's captions file saved before .srt could be stored (24 Oct) is written again from the captions its take kept: the same
