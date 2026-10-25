@@ -175,3 +175,7 @@ test('a jam guest sees words and drafts; paid makers say the team makes them (th
   assert.match(fn('stepBar'), /is-guest'\) && \/data-cs-make\|data-cs-full\|data-fn-one/);
   assert.match(css, /body\.is-guest \[data-cs-full\]:not\(\.ship-go\),body\.is-guest \[data-cs-slide="redo"\]/);
 });
+
+test('a chat ask on a set never turns its slides into takes', () => {
+  assert.match(fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8'), /\+out\.count > 0 && !\(Array\.isArray\(sp\.set\) && sp\.set\.length > 1\)\) patch\.count/);
+});
