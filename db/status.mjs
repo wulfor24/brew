@@ -17,4 +17,11 @@ for (const t of ['objects', 'doc_parts', 'jobs', 'counters', 'build_events', 'se
   const r = (await q(`SELECT count(*)::int AS n FROM ${t}`)).rows[0]; console.log(`[status] ${t}: ${r.n} rows`);
 }
 const j = (await q(`SELECT state, count(*)::int AS n FROM jobs GROUP BY state`)).rows; console.log(`[status] jobs by state: ${j.map((r) => `${r.state} ${r.n}`).join(', ') || 'none'}`);
+/* --recent: what was written in the last 15 minutes (key, how often), to see what keeps a pack changing */
+if (process.argv.includes('--recent')) {
+  const r = (await q(`SELECT key, count(*) OVER (PARTITION BY regexp_replace(key, '^(brands/[^/]+/)?.*$', '\\1')) AS n, to_char(updated_at, 'HH24:MI:SS') AS at, version FROM objects WHERE updated_at > now() - interval '15 minutes' ORDER BY updated_at DESC LIMIT 80`)).rows;
+  for (const x of r) console.log(`[status] recent ${x.at} v${x.version} ${x.key}`);
+  const act = (await q(`SELECT state, wait_event_type, wait_event, count(*)::int AS n, max(EXTRACT(EPOCH FROM now() - query_start))::int AS longest_s FROM pg_stat_activity WHERE datname = current_database() GROUP BY 1, 2, 3 ORDER BY n DESC`)).rows;
+  for (const x of act) console.log(`[status] connections ${x.state || '-'} ${x.wait_event_type || ''}/${x.wait_event || ''}: ${x.n} (longest ${x.longest_s ?? 0} s)`);
+}
 await close();
