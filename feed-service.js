@@ -259,9 +259,9 @@ export function followRead({ builder, slug, loadSeed, send, isOpen = () => true,
    A guest chats, edits the brief and makes drafts; sharing or sending the brief, its status, approving, assigning, deciding and
    discarding (the jam, or its studio change, which discards the jam with it: remix.js) stay with the team */
 export const GUEST_DO = /^(message|iterate|pick|version|edit|reference|canvas|doc|doc\/(ask|add|sync)|jb|jb\/import|draft|draft\/[^/]+\/drop|plan\/(answer|add))$/;
-/* and the paid makes on a change (a final, a video, a remake, listing photos, a new picture or its variants, a CTA make): a guest's
-   share link never spends the brand's budget (QV 25 Oct); the team makes those */
-export const GUEST_CHANGE_NO = /^(discard|restore|final\/(quote|run|checkpoint)|video|remake|listing-photos|image|variants|cta-make)$/;
+/* and the paid makes on a change (a final, a video, listing photos, a new picture or its variants, a CTA make): a guest's share link
+   never spends the brand's budget on those (QV 25 Oct). A remake stays a guest's to press (Param, 25 Oct) */
+export const GUEST_CHANGE_NO = /^(discard|restore|final\/(quote|run|checkpoint)|video|listing-photos|image|variants|cta-make)$/;
 export function guestAllows(path, { wids = [], changes = {}, cards = new Set() } = {}) {
   if (!wids.length) return false;
   let m = path.match(/^\/api\/work\/([^/]+)(\/(.*))?$/); if (m) return wids.includes(m[1]) && GUEST_DO.test(m[3] || '');

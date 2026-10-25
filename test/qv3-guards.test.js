@@ -8,8 +8,8 @@ const src = (f) => fs.readFileSync(f, 'utf8');
 const ctx = { wids: ['w1'], changes: { c1: { workId: 'w1' } }, cards: new Set() };
 
 test('a jam guest works on words and drafts, never a paid make on the brand\'s budget', () => {
-  for (const p of ['edit', 'iterate', 'pick', 'notes', 'final/status', 'photos']) assert.equal(guestAllows(`/api/changes/c1/${p}`, ctx), true, p);
-  for (const p of ['final/quote', 'final/run', 'final/checkpoint', 'video', 'remake', 'listing-photos', 'image', 'variants', 'cta-make', 'discard', 'restore']) assert.equal(guestAllows(`/api/changes/c1/${p}`, ctx), false, p);
+  for (const p of ['edit', 'iterate', 'pick', 'notes', 'final/status', 'photos', 'remake']) assert.equal(guestAllows(`/api/changes/c1/${p}`, ctx), true, p); /* remake: Param, 25 Oct */
+  for (const p of ['final/quote', 'final/run', 'final/checkpoint', 'video', 'listing-photos', 'image', 'variants', 'cta-make', 'discard', 'restore']) assert.equal(guestAllows(`/api/changes/c1/${p}`, ctx), false, p);
   assert.equal(guestAllows('/api/changes/c9/edit', ctx), false, 'another jam\'s change');
 });
 
