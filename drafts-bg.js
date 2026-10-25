@@ -414,7 +414,11 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     busy.add(slug);
     try {
       const st = await stateOf(slug), lastOpen = Math.max(opens.get(slug) || 0, await lastOpenOf(slug).catch(() => 0) || 0);
-      const due = draftsDue(st, cfg, { now: now(), aiLive: ai?.live !== false, lastOpen, manual }); if (!due.ok) return { made: [], usd: 0, why: due.why };
+      const due = draftsDue(st, cfg, { now: now(), aiLive: ai?.live !== false, lastOpen, manual });
+      if (!due.ok) { /* nothing new is due, but saved drafts are still mended: the free re-lettering and the look check (25 Oct: both waited behind the daily cap) */
+        if (ai?.live !== false) { const p0 = await loadPack(slug).catch(() => null), c0 = p0?.seed?.posts ? await cacheOf(slug) : null;
+          if (c0) { const n0 = Object.values(c0).filter((d) => d?.qv === LOOKS_V).length; const h = await healHeads(p0, c0); const l = await healLooks(p0, c0); if (h || l || Object.values(c0).filter((d) => d?.qv === LOOKS_V).length !== n0) await save(slug, c0).catch(() => {}); } }
+        return { made: [], usd: 0, why: due.why }; }
       const p = await loadPack(slug); if (!p?.seed?.posts) return { made: [], usd: 0, why: 'no feed yet' };
       const cache = await cacheOf(slug), ranked = rankCards(p.seed.posts), top = new Set(ranked.slice(0, cfg.topN).map((c) => c.id)), order = byValue(p, ranked), day = today(now());
       if (await healMissing(slug, cache)) await save(slug, cache).catch(() => {});
