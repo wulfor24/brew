@@ -12,8 +12,13 @@ import { pathToFileURL } from 'node:url';
 import { saveGen, genFile } from './gen-store.js';
 import { withBrowser } from './pdf/render.js';
 import { checkCopyIn } from './claims.js'; // the brief's words carry no claim the materials don't back
+import { sentenceCase } from './text-fit.js'; // a brief title reads like a sentence, names kept
 
 export const TB_V = 4; // bump when the brief starts being written differently: every saved one is written again
+/* who a brief goes to (Param, 26 Oct: "think any and every type of brief that could go to any relevant stakeholder"): the person picks
+   it in Send to…, the To line says it, and the next writing of the brief speaks to them */
+export const RECIPIENTS = { team: 'Your team', agency: 'Your agency', designer: 'A designer', media: 'A media buyer', creator: 'A creator', editor: 'A video editor', shopos: 'The ShopOS team' };
+const AUDIENCE = { team: 'the brand’s own team', agency: 'the brand’s agency', designer: 'a designer', media: 'a media buyer who runs the ads', creator: 'a creator or influencer who will make and post it in their own voice', editor: 'a video editor', shopos: 'the ShopOS team, who make and run it for the brand' };
 export const SECTIONS = [['what', 'What to make'], ['why', 'Why we’re doing it'], ['who', 'Who it’s for'], ['words', 'The words · final'], ['creative', 'The creative'],
   ['specs', 'Specs'], ['rules', 'Must-haves and don’ts'], ['when', 'Budget, timing and owner'], ['measure', 'How we measure it'], ['done', 'Done when'], ['open', 'Still to confirm']];
 const AI_KEYS = ['what', 'why', 'who', 'creative', 'specs', 'rules', 'when', 'done'];
@@ -79,10 +84,10 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
       done: 'The final files are back in the jam and approved.', open: [...(x.brief?.missing || []), ...x.questions.filter((q) => !q.a).map((q) => q.q)].slice(0, 6),
       evidence: x.card.rows.slice(0, 5).map(([k, v]) => ({ say: `${k}: ${v}`, src: 'The card' })) }; };
 
-  const write = async (t, w, x) => {
+  const write = async (t, w, x, kind = null) => {
     if (!isMock() && spend('text')) {
       try {
-        const j = await claudeTool(`You write the brief a team works from to make this for ${x.brand}: an agency, a designer, a media buyer or the brand’s own team. They were not in the jam. Give them everything they need to make it right the first time: what to make, why, for whom, the evidence behind it, the final words, the creative, the specs, the rules, timing, how it’s judged.\n\nMaterials:\n${materials(t, w, x)}\n\nRules: plain short sentences, written to the team ("Make…", "Keep…"). Every number and claim only from the materials, never invented; "To confirm" where they don’t say. No internal words (move, card, jam, Brew’s agents). Don’t repeat the final words: they are printed as they are in their own section. Evidence: each fact once, its source named plainly.`, SCHEMA, 3500, 'team_brief');
+        const j = await claudeTool(`You write the brief a team works from to make this for ${x.brand}${AUDIENCE[kind] ? `. It goes to ${AUDIENCE[kind]}: write it for them` : ': an agency, a designer, a media buyer or the brand’s own team'}. They were not in the jam. Give them everything they need to make it right the first time: what to make, why, for whom, the evidence behind it, the final words, the creative, the specs, the rules, timing, how it’s judged.\n\nMaterials:\n${materials(t, w, x)}\n\nRules: plain short sentences, written to the team ("Make…", "Keep…"). Every number and claim only from the materials, never invented; "To confirm" where they don’t say. No internal words (move, card, jam, Brew’s agents). Don’t repeat the final words: they are printed as they are in their own section. Evidence: each fact once, its source named plainly.`, SCHEMA, 3500, 'team_brief');
         const pick = (k) => clean(String(j?.[k] || '')).trim();
         if (AI_KEYS.every((k) => pick(k))) { const o = { ai: true, title: pick('title'), ...Object.fromEntries(AI_KEYS.map((k) => [k, pick(k)])),
           open: (j.open || []).map((s) => clean(String(s)).trim()).filter(Boolean).slice(0, 8), evidence: (j.evidence || []).map((e) => ({ say: clean(String(e.say || '')).trim(), src: clean(String(e.src || '')).trim() })).filter((e) => e.say).slice(0, 8) };
@@ -96,19 +101,19 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
   const build = async (t, w, { fresh = false } = {}) => {
     const x = await handoff.build(t, w, { base: '' }); const key = keyOf(w, x), old = w.teamBrief;
     if (old && old.key === key && !fresh && old.ai) return { tb: old, x };
-    const d = await write(t, w, x), m = fmtM(x.measure || w.doc?.measure || null);
+    const d = await write(t, w, x, old?.recipient?.kind || null), m = fmtM(x.measure || w.doc?.measure || null);
     /* the rules are rules: a line that restates the final words ("Use the exact headline: …") is dropped, the words have their own section */
     const fv = (x.pkg?.fields || []).map((f) => String(f.value || '').toLowerCase().replace(/\s+/g, ' ').trim()).filter((v) => v.length >= 12);
     if (d.rules) d.rules = d.rules.split('\n').filter((l) => { const q = l.toLowerCase().replace(/\s+/g, ' '); return !/^\W*(use the exact|.{0,40}\bmust (be|read)\s*:)/i.test(l) && !fv.some((v) => q.includes(v.slice(0, 40))); }).join('\n').trim() || d.rules;
     const auto = { ...Object.fromEntries(AI_KEYS.map((k) => [k, d[k]])), words: wordsOf(x) || 'To confirm.', measure: m || 'To confirm.', open: (d.open || []).length ? d.open.map((s) => `- ${s}`).join('\n') : 'Nothing open.' };
     const edits = old?.edits || {};
-    w.teamBrief = { v: TB_V, key, over: old?.over || {}, ai: d.ai, at: now(t), title: d.title || x.title, auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
-      brand: x.brand, mark: x.mark || null, memo: { from: x.memo?.from || null, to: 'Your team' } }; /* a brief to hand over: their own team or agency (Send to the ShopOS team stays its own button) */
+    w.teamBrief = { v: TB_V, key, over: old?.over || {}, recipient: old?.recipient || null, ai: d.ai, at: now(t), title: sentenceCase(d.title || x.title, [x.brand, ...(x.pkg?.fields || []).filter((f) => f.pub).map((f) => f.value)]), auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
+      brand: x.brand, mark: x.mark || null, memo: { from: x.memo?.from || null, to: RECIPIENTS[old?.recipient?.kind] || 'Your team' } }; /* a brief to hand over: their own team or agency (Send to the ShopOS team stays its own button) */
     return { tb: w.teamBrief, x }; };
   const view = (w, x) => { const tb = w.teamBrief; if (!tb) return null;
     const ov = tb.over || {};
-    return { rev: tb.rev || tb.at || 0, docRev: w.doc?.rev || 0, title: ov.title || tb.title, at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
-      memo: { from: ov.from || tb.memo?.from || null, to: ov.to || tb.memo?.to || 'Your team', due: String(ov.due || '').replace(/^(?:due|deadline)\s*:\s*/i, '') || w.doc?.plan?.when || null, ref: w.ticket || null },
+    return { rev: tb.rev || tb.at || 0, docRev: w.doc?.rev || 0, title: ov.title || sentenceCase(tb.title, [tb.brand]), at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
+      recipient: tb.recipient || null, memo: { from: ov.from || tb.memo?.from || null, to: ov.to || tb.recipient?.name || RECIPIENTS[tb.recipient?.kind] || tb.memo?.to || 'Your team', due: String(ov.due || '').replace(/^(?:due|deadline)\s*:\s*/i, '') || w.doc?.plan?.when || null, ref: w.ticket || null },
       sections: SECTIONS.map(([k, h]) => ({ k, h, t: tb.edits[k] ?? tb.auto[k] ?? '', edited: tb.edits[k] != null, locked: k === 'words' })), evidence: tb.evidence, creatives: tb.creatives, pdf: tb.pdf }; };
 
   /* the PDF: Brew's own type, the creatives large on the first page, then every section and the evidence */
@@ -186,24 +191,34 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
   const isBriefAsk = (msg, recent = []) => { msg = String(msg || ''); if (BRIEF_ASK.test(msg)) return true;
     return FOLLOW.test(msg) && recent.slice(-3).some((l) => l?.brief || BRIEF_TOPIC.test(String(l?.text || ''))); };
 
-  const routes = ({ on, W }) => {
-    on('POST', '/api/work/:wid/team-brief/ai', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' };
+  /* each deliverable on a card has its own brief (Param, 26 Oct: the WhatsApp tab showed the ads brief): the card's first one keeps
+     w.teamBrief, every other tab's lives in w.teamBriefs[changeId], and the brief is built from that tab's package */
+  const forCh = (t, w, chId) => { if (!w || !chId || chId === w.changeId) return w; const ch = t.changes?.[chId]; if (!ch || (w.cardId && ch.cardId !== w.cardId)) return w;
+    return new Proxy(w, { get: (o, k) => (k === 'teamBrief' ? (o.teamBriefs || {})[chId] : k === 'changeId' ? chId : o[k]),
+      set: (o, k, v) => { if (k === 'teamBrief') (o.teamBriefs ||= {})[chId] = v; else if (k !== 'changeId') o[k] = v; return true; } }); };
+  const routes = ({ on, W: W0 }) => {
+    const W = (t, wid, b, q) => forCh(t, W0(t, wid), q?.get?.('ch') || b?.ch || null);
+    /* who it goes to: the To line, the email's address, and who the next writing speaks to */
+    on('POST', '/api/work/:wid/team-brief/to', async (b, t, p, q) => { const w = W(t, p.wid, b, q); if (!w) return { error: 'not found' }; if (!w.teamBrief) await build(t, w);
+      const kind = Object.hasOwn(RECIPIENTS, b.kind) ? b.kind : 'team', email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(b.email || '').trim()) ? String(b.email).trim().slice(0, 120) : null, name = one(b.name || '', 60) || null;
+      w.teamBrief.recipient = { kind, email, name }; if (w.teamBrief.over) delete w.teamBrief.over.to; w.teamBrief.pdf = null; touch(t, w); return { brief: view(w, null) }; });
+    on('POST', '/api/work/:wid/team-brief/ai', async (b, t, p, q) => { const w = W(t, p.wid, b, q); if (!w) return { error: 'not found' };
       try { return await aiEdit(t, w, { ask: b.ask, quote: b.quote }); } catch (e) { log.warn?.('[team brief ai]', e.message); return { error: 'That didn’t go through. Try again.' }; } });
-    on('GET', '/api/work/:wid/team-brief', async (b, t, p, q) => { const w = W(t, p.wid); if (!w) return { error: 'not found' };
+    on('GET', '/api/work/:wid/team-brief', async (b, t, p, q) => { const w = W(t, p.wid, b, q); if (!w) return { error: 'not found' };
       const { x } = await build(t, w, { fresh: q?.get?.('fresh') === '1' }); return { brief: view(w, x) }; });
     /* a quick edit of one section; an empty text puts the written one back. The final words are the package's: changed in the studio */
-    on('POST', '/api/work/:wid/team-brief/edit', async (b, t, p) => { const w = W(t, p.wid); if (!w?.teamBrief) return { error: 'not found' };
+    on('POST', '/api/work/:wid/team-brief/edit', async (b, t, p, q) => { const w = W(t, p.wid, b, q); if (!w?.teamBrief) return { error: 'not found' };
       const k = String(b.k || ''); if (!SECTIONS.some(([s]) => s === k) || k === 'words') return { error: 'That part can’t be edited here.' };
       const tx = String(b.t ?? '').trim().slice(0, 4000); if (tx && tx !== w.teamBrief.auto[k]) w.teamBrief.edits[k] = tx; else delete w.teamBrief.edits[k];
       w.teamBrief.pdf = null; touch(t, w); if (tx) onEdit?.(t, w, { ask: `${NAME[k]}: ${tx}` }); return { brief: view(w, null) }; });
-    on('POST', '/api/work/:wid/team-brief/evidence', async (b, t, p) => { const w = W(t, p.wid); if (!w?.teamBrief) return { error: 'not found' };
+    on('POST', '/api/work/:wid/team-brief/evidence', async (b, t, p, q) => { const w = W(t, p.wid, b, q); if (!w?.teamBrief) return { error: 'not found' };
       const i = +b.i; if (!(i >= 0 && i < w.teamBrief.evidence.length)) return { error: 'not found' }; w.teamBrief.evidence.splice(i, 1); w.teamBrief.pdf = null; touch(t, w); return { brief: view(w, null) }; });
     /* the PDF, made once per state of the brief and kept in gen/ */
-    on('POST', '/api/work/:wid/team-brief/pdf', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' };
+    on('POST', '/api/work/:wid/team-brief/pdf', async (b, t, p, q) => { const w = W(t, p.wid, b, q); if (!w) return { error: 'not found' };
       const { x } = await build(t, w); const v = view(w, x); if (w.teamBrief.pdf && !b.fresh) return { pdf: w.teamBrief.pdf, brief: v };
       try { const buf = await pdfOf(v), name = `brief-${crypto.createHash('sha1').update(buf).digest('hex').slice(0, 20)}.pdf`; saveGen(name, buf);
         w.teamBrief.pdf = { url: `gen/${name}`, name: fileName(v), bytes: buf.length, at: now(t) }; return { pdf: w.teamBrief.pdf, brief: view(w, x) }; }
       catch (e) { log.warn?.('[team brief pdf]', e.message); return { error: 'The PDF didn’t come together. Try again.' }; } });
   };
-  return { build, view, routes, pdfHtml, aiEdit, isBriefAsk, follow };
+  return { build, view, routes, pdfHtml, aiEdit, isBriefAsk, follow, forCh };
 }

@@ -81,3 +81,19 @@ test('every change stamps the brief and is handed to the jam brief; the jam brie
   w.doc.rev = 3; TB.follow({}, w); const { x } = await TB.build({}, w);
   assert.match(w.teamBrief.key, /\|3$/); assert.equal(TB.view(w, x).sections.find((s) => s.k === 'who').t, 'Men 30-50');
 });
+
+/* 26 Oct: the WhatsApp tab showed the ads brief, To was always "Your team", and the title came back in Title Case */
+test('each deliverable tab keeps its own brief; the person picked is the To line; the title reads as a sentence', async () => {
+  let routes = {}; const TB = createTeamBrief({ isMock: () => false, spend: () => true, now: () => 5, handoff: { build: async (t, w) => ({ ...X, pkg: { ...X.pkg, id: w.changeId } }) },
+    claudeTool: async () => ({ title: 'Stop Hair Fall At The Biological Root', what: 'One message.', why: 'Buyers want a routine.', who: 'Past buyers.', creative: 'None.', specs: '-', rules: 'Real product only.', when: 'To confirm.', done: 'Approved.', open: [], evidence: [] }) });
+  const w = { id: 'w1', cardId: 'c1', changeId: 'ch1', doc: { rev: 1 } }, t = { changes: { ch1: { id: 'ch1', cardId: 'c1' }, ch2: { id: 'ch2', cardId: 'c1' }, other: { id: 'other', cardId: 'c9' } } };
+  TB.routes({ on: (m, p, fn) => { routes[`${m} ${p}`] = fn; }, W: (tt, id) => (id === 'w1' ? w : null) });
+  const q = (ch) => new URLSearchParams(ch ? { ch } : {});
+  const a = await routes['GET /api/work/:wid/team-brief']({}, t, { wid: 'w1' }, q());
+  const b = await routes['GET /api/work/:wid/team-brief']({}, t, { wid: 'w1' }, q('ch2'));
+  assert.equal(w.teamBrief.key.split('|')[1], 'ch1'); assert.equal(w.teamBriefs.ch2.key.split('|')[1], 'ch2', 'the second tab has its own');
+  assert.equal(a.brief.title, 'Stop hair fall at the biological root'); assert.equal(b.brief.memo.to, 'Your team');
+  const c = await routes['POST /api/work/:wid/team-brief/to']({ kind: 'agency', email: 'riya@pixel.in', ch: 'ch2' }, t, { wid: 'w1' }, q());
+  assert.equal(c.brief.memo.to, 'Your agency'); assert.equal(c.brief.recipient.email, 'riya@pixel.in'); assert.equal(w.teamBrief.recipient, null, 'the first tab is untouched');
+  await routes['GET /api/work/:wid/team-brief']({}, t, { wid: 'w1' }, q('other')); assert.ok(!w.teamBriefs.other, 'a tab of another card falls back to the jam’s own brief');
+});

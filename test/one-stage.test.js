@@ -23,7 +23,8 @@ test('the stage holds only the piece: the Studio set-up is the panel’s Set-up 
   assert.ok(!/cs\.html\(ch\)/.test(st), 'no composer on the stage');
   assert.match(st, /shipBar\(ch, viewing\)/, 'the bar shows before anything is made');
   assert.match(st, /st\.frames/, 'the preview has as many frames as the set-up makes');
-  assert.match(app, /\['adjust', ch\.studio \? 'Set-up' : 'Adjust'\], \['details', 'Details'\]/);
+  assert.match(app, /\['adjust', 'Set-up'\], \['details', 'Details'\]/, 'one name for the tab, whatever is made (26 Oct)');
+  assert.match(app, /RX\.stage === 'brief' \? \[\['iterate', 'Chat'\], \['details', 'Details'\]\]/, 'Brief mode: no maker set-up in the panel');
   assert.match(app, /ch\.studio && !studioMade\(ch\) && edit \? 'adjust' : 'iterate'/, 'a Studio piece not made yet opens on its set-up');
   assert.match(app, /data-cs-make/); assert.match(cs, /make: \(\) => go\(false\)/);
   assert.ok(!/data-cs-go/.test(cs.slice(cs.indexOf('function full()'), cs.indexOf('function full()') + 9000)), 'no second Generate in the set-up');
@@ -90,7 +91,7 @@ test('the draft view keeps the product its pictures show', async () => {
 });
 
 test('a made piece that needs a look says what, on the bar', () => {
-  assert.match(fn('stepBar'), /things to look at before you post it/); assert.match(fn('stepBar'), /`Needs a look: \$\{esc\(look\[0\]\)\}`/);
+  assert.match(fn('stepBar'), /things to look at before you post it/); assert.match(fn('stepBar'), /Needs a look · \$\{esc\(String\(look\[0\]\)/); assert.match(fn('stepBar'), /Needs a fix · /); /* one line on the bar, the whole of it in the pop-up (26 Oct) */
 });
 
 test('a made Studio piece: the stage is the piece, Details holds the checklist, the bar offers the full one, Set-up is Studio only', () => {

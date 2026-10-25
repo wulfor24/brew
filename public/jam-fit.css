@@ -1,0 +1,46 @@
+/* The jam, fitted (26 Oct, Param's screenshots of a WhatsApp broadcast and its brief): one scroller per column, nothing cut off
+   at any width, labels in sentence case. Loaded last; each rule says what it undoes. tools/audit-layout.mjs checks all of it. */
+
+/* the Set-up was its own scroll box inside the panel's: two scrollbars, "Another first look" cut off, a sideways bar */
+.st-panel-b .j2-studio:not(.over){max-height:none;overflow:visible}
+.st-panel-b{overflow-x:hidden}
+.st-panel-b .cs-styles{margin:0;padding:2px 0 8px}
+
+/* the feed's 140px under-padding sat under the jam too: the whole page scrolled, under the studio and sideways */
+body[data-view=remix] .stage{padding:0}
+body[data-view=remix] #root{overflow-x:clip}
+.st-top{flex-wrap:wrap;row-gap:8px;min-width:0}
+
+/* the ship bar says one line; what to fix opens from it */
+.ship.one .ship-l{display:block;white-space:nowrap;-webkit-line-clamp:unset;overflow:hidden;text-overflow:ellipsis}
+.ship.one .ship-l .ship-fixes summary{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* a chat fits a short window, and a click-to-WhatsApp ad shows every bubble instead of hiding them in its own scroller */
+.wa2-chat{min-height:min(260px,30dvh)}
+@media (min-width:861px){.std .st-asset > .as-meta.lg:has(.am-chat){height:auto}.std .st-asset > .as-meta.lg:has(.am-chat) > .am-chat{overflow:visible}}
+/* below 861px the bar floats over the stage: the stage keeps room for it (--ship-h is the bar's height, set on every paint) */
+@media (max-width:860px){body[data-view=remix] .std .st-canvas{padding-bottom:calc(var(--ship-h,0px) + 12px)}}
+
+/* the free first look, big enough to read */
+.cs-look-row{flex-wrap:wrap}.cs-look-row img{width:100%;max-width:100%}
+
+/* the maker's direction grows with its words: no box scrolling inside the scrolling panel */
+.cs-dir textarea{field-sizing:content;min-height:4lh;resize:none;overflow:hidden}
+
+/* labels in sentence case (quiet UI): the case card, the brief's header, memo and section names */
+.case-k,.case-s small,.tbm-k,.tbm-memo dt,.tbm-sec h2,.st-panel .j2-k,.st-panel [class$="-k"]{text-transform:none;letter-spacing:0}
+.tbm-memo dt,.tbm-sec h2,.tbm-k{font-weight:600}
+
+/* the brief: a memo of what is known (From, To, then Due and Files once they exist), To opens Send to… */
+.tbm-memo{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+.tbm-to{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0;font:inherit;font-weight:600;color:var(--fg);cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.tbm-to:hover,.tbm-to:focus-visible{text-decoration-color:var(--fg);outline:none}
+.tbm-ev h2 em{margin-left:2px}
+.tbm-who{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.tbm-who button{border:1px solid var(--line);background:var(--card);color:var(--fg);font:inherit;font-size:13.5px;font-weight:550;padding:7px 12px;border-radius:var(--r-pill,999px);cursor:pointer}
+.tbm-who button[aria-checked="true"]{background:var(--fg);border-color:var(--fg);color:var(--card)}
+.tbm-email{display:grid;gap:6px;margin:0 0 14px}.tbm-email span{font-size:13px;color:var(--fg-3)}
+.tbm-email input{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--fg);font:inherit;font-size:14.5px;padding:10px 12px}
+.tbm-go{width:100%;justify-content:center}
+.tbd{display:grid;gap:0;margin:0}.tbd-row{display:grid;gap:2px;padding:10px 0;border-bottom:1px solid var(--line-soft)}.tbd-row:last-child{border-bottom:0}
+.tbd dt{font-size:12.5px;color:var(--fg-3)}.tbd dd{margin:0;font-size:14px;color:var(--fg);overflow-wrap:anywhere}.tbd .linkbtn{padding:0;text-align:left}
