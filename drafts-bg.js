@@ -512,7 +512,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       for (const b of [...ready.filter((x) => fresh.includes(x.slug)), ...(onlyFirst ? [] : ready.filter((x) => !fresh.includes(x.slug)))]) {
       if (ran.length >= cfg.perTick) break;
       const st = await stateOf(b.slug), lastOpen = Math.max(opens.get(b.slug) || 0, await lastOpenOf(b.slug).catch(() => 0) || 0);
-      if (!draftsDue(st, cfg, { now: now(), aiLive: ai?.live !== false, lastOpen }).ok) continue;
+      if (!draftsDue(st, cfg, { now: now(), aiLive: ai?.live !== false, lastOpen }).ok) { await runOne(b.slug).catch(() => null); continue; } /* nothing new is due: runOne still mends the saved drafts */
       const r = await runOne(b.slug).catch((e) => ({ error: e.message })); if (r?.made?.length) ran.push(b.slug); } }
     finally { ticking = false; }
     return { ran };
