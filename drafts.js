@@ -211,6 +211,7 @@ export function createDrafts({ sourceOf = () => '', rivalAdOf = () => null, riva
 // The media makers, shared by the jam (one tap) and the background first drafts (drafts-bg.js): a carousel (a photo per
 // slide, the words set in exact type by Chromium), a 6-second video from a still (Veo 3.1 Fast on our Vertex account), a voice line,
 // the voiceover muxed in with ffmpeg, and any HTML page shot to an image with Chromium (mock emails, chats, pages, grids).
+export const HEAD_V = 2; /* 2 (25 Oct): a still's words in their own panel above the whole picture (drafts-bg healHeads sets saved ones again) */
 export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save = saveGen, file = genFile, log = console }) {
   const keyOf = (s) => crypto.createHash('sha1').update(String(s)).digest('hex').slice(0, 16);
   const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -222,7 +223,18 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   /* the words in exact type at the top of a picture (buf) or of a clear sheet (no buf: laid over a clip). A tall frame (9:16)
      keeps its words below the top sixth, where Stories and Reels draw their own bars */
   const mimeOf = (b) => (b[0] === 0xff ? 'image/jpeg' : b.slice(8, 12).toString() === 'WEBP' ? 'image/webp' : 'image/png');
-  const typeHtml = ({ w, h, buf = null, text, small = '', n, of }) => { const k = w / 1080, top = h / w > 1.6 ? Math.round(h * 0.17) : Math.round(76 * k), px = (x) => `${Math.round(x * k)}px`;
+  /* a still picture (layout 2, 25 Oct): the words get their own white panel at the top and the picture sits whole under them,
+     fitted on a soft blurred copy of itself, so the words never cover the product (a dark band over a bottle's cap read as a
+     broken ad). A clip keeps its words over the frame (the sheet below), it can't be re-laid out */
+  const panelHtml = ({ w, h, buf, text, small = '', n, of }) => { const k = w / 1080, px = (x) => `${Math.round(x * k)}px`, src = `data:${mimeOf(buf)};base64,${buf.toString('base64')}`, tall = h / w > 1.6;
+    const size = text.length < 28 ? 80 : text.length < 56 ? 64 : 54;
+    return `<!doctype html><html><head><style>html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;background:#fff;font-family:"Helvetica Neue",Helvetica,Inter,Arial,sans-serif}
+        body{display:flex;flex-direction:column}.t{flex:none;padding:${tall ? Math.round(h * 0.15) : Math.round(66 * k)}px ${px(76)} ${px(40)}}
+        h1{margin:0;color:#14161a;font-weight:700;font-size:${px(size)};line-height:1.1;letter-spacing:-.015em}p{margin:${px(14)} 0 0;color:#5b6070;font-size:${px(32)};line-height:1.3}
+        .pic{position:relative;flex:1;min-height:0;overflow:hidden}.pic .b{position:absolute;inset:-40px;background:url(${src}) center/cover;filter:blur(36px) brightness(1.04);opacity:.9}.pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+        .n{position:absolute;right:${px(40)};top:${px(40)};padding:${px(6)} ${px(16)};border-radius:999px;background:rgba(0,0,0,.45);color:#fff;font-size:${px(26)}}</style></head>
+        <body><div class="t"><h1>${esc(text)}</h1>${small ? `<p>${esc(small)}</p>` : ''}</div><div class="pic"><div class="b"></div><img src="${src}"></div>${of > 1 ? `<span class="n">${n}/${of}</span>` : ''}</body></html>`; };
+  const typeHtml = ({ w, h, buf = null, text, small = '', n, of }) => { if (buf) return panelHtml({ w, h, buf, text, small, n, of }); const k = w / 1080, top = h / w > 1.6 ? Math.round(h * 0.17) : Math.round(76 * k), px = (x) => `${Math.round(x * k)}px`;
     const size = text.length < 28 ? 84 : text.length < 56 ? 68 : 56;
     return `<!doctype html><html><head><style>html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;background:transparent;font-family:"Helvetica Neue",Helvetica,Inter,Arial,sans-serif}
         .bg{position:absolute;inset:0;${buf ? `background:url(data:${mimeOf(buf)};base64,${buf.toString('base64')}) center/cover no-repeat` : ''}}
@@ -233,7 +245,7 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   const setType = async (browser, buf, { text, small, n, of }, ratio) => { const [w, h] = W[ratio] || W['4:5']; return shoot(browser, typeHtml({ w, h, buf, text, small, n, of }), [w, h]); };
   /* one picture with its headline set (a single image ad, the first frame of a clip, a real-photo stand-in): → 'gen/<name>.jpg' */
   const head = async (buf, { text, small = '' }, ratio = '4:5', key = '') => { if (!buf || !text) return null; const browser = await launchBrowser();
-    try { const out = await setType(browser, buf, { text, small }, ratio); const name = keyOf(`head|${key}|${text}|${small}|${ratio}`) + '.jpg'; save(name, out); return 'gen/' + name; }
+    try { const out = await setType(browser, buf, { text, small }, ratio); const name = keyOf(`head${HEAD_V}|${key}|${text}|${small}|${ratio}`) + '.jpg'; /* a new layout is a new file, never a cached old one */ save(name, out); return 'gen/' + name; }
     finally { await browser.close?.().catch?.(() => {}); } };
   /* the headline on a clip's first seconds: Chromium sets it on a clear sheet at the clip's own size, ffmpeg lays it over
      (scaled to the clip whatever its size) and keeps the sound → '<name>.mp4', or null without a clip */

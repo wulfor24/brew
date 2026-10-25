@@ -30,7 +30,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { matchProduct, cardProduct, sceneOf } from './product-match.js';
-import { draftPrompt, imagePrompt, hookBlock, smallOf, DRAFT_SCHEMA, DRAFT_RATIOS, createMakers } from './drafts.js';
+import { draftPrompt, imagePrompt, hookBlock, smallOf, DRAFT_SCHEMA, DRAFT_RATIOS, createMakers, HEAD_V } from './drafts.js';
 import { cardValue } from './value.js'; // what a card is worth doing: the order drafts are made in
 import { emailHtml, whatsappHtml, pageHtml, collectionHtml } from './draft-mocks.js';
 import { hasCode } from './code-md.js'; // a draft that is code (markup, a snippet) shows as code, with no product photo
@@ -256,7 +256,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       const img = await still(); if (!img) { d.as = 'text'; d.usd = +(box.usd - box.start).toFixed(4); return d; }
       d.image = img; d.as = kind === 'video' ? 'image' : d.as;
       /* the headline in exact type: a single image ad becomes a finished static (a real-photo stand-in too), a clip's first frame its poster */
-      if (kind !== 'collection' && d.headline) { const h = await headOn(stillBuf, d, ratio, img); if (h) d.render = h; }
+      if (kind !== 'collection' && d.headline) { const h = await headOn(stillBuf, d, ratio, img); if (h) { d.render = h; d.headV = HEAD_V; } }
       if (kind === 'collection' && launchBrowser) { const products = await gridOf(p, named); if (products.length >= 2) d.render = await render(collectionHtml({ brand, title: j.title || c.title, hero: await genUri(img), products }), '4:5', `${d.key}|${img}`).catch((e) => { log.warn?.('[drafts-bg] grid', slug, c.id, e.message); return null; }); }
       if (kind === 'video') { d.motion = cut(j.motion || '', 220); d.script = cut(j.script || '', 160); d.wants = 'video'; await animate(slug, d, box); } /* a real-photo stand-in is still the right product: it is animated too */
     } else if (kind === 'carousel' || kind === 'stories') {
@@ -334,6 +334,15 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
      (looks) against the card's words. A collage, a cropped product or an unrelated picture is dropped: the feed shows the card's
      own photo at once and the draft is made again in its turn, through the guard that now judges every picture. Every brand,
      every kind with a picture (a still, a clip's first frame, a collection hero, slides); a few a run so the cost stays small */
+  /* a saved still whose headline was set over the picture (layout 1) is set again from its own clean picture: the words in their
+     own panel above it. Free (Chromium only), a few a tick, never a clip's overlay */
+  async function healHeads(p, cache, max = 12) {
+    if (!genFile || !launchBrowser || !M.head) return 0; let n = 0;
+    for (const d of Object.values(cache || {})) { if (n >= max) break;
+      if (!d?.render || !d.headline || (d.headV || 0) >= HEAD_V || d.kind === 'collection' || !/^gen\//.test(d.image || '') || !['image', 'video'].includes(d.kind || d.as)) continue;
+      const f = await genFile(String(d.image).slice(4)).catch(() => null); if (!f) { d.headV = HEAD_V; continue; }
+      const h = await headOn(fs.readFileSync(f), d, d.kind === 'video' ? '9:16' : d.ratio || '4:5', d.image); if (h) d.render = h; d.headV = HEAD_V; n++; }
+    return n; }
   async function healLooks(p, cache, max = 6) {
     if (!genFile) return 0; let n = 0, checked = 0;
     for (const c of rankCards(p.seed?.posts || [])) {
@@ -380,7 +389,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
         if (r.buf?.guard?.labelApprox) d.labelApprox = true;
         if (d.as === 'text') d.as = d.kind === 'collection' ? 'collection' : 'image';
         if (d.kind === 'video' && !d.video) d.wants = 'video';
-        if (d.kind !== 'collection' && d.headline) { const h = await headOn(r.buf, d, d.ratio || '4:5', r.rel); if (h) d.render = h; else delete d.render; } /* never the old stand-in's render over the new picture */
+        if (d.kind !== 'collection' && d.headline) { const h = await headOn(r.buf, d, d.ratio || '4:5', r.rel); if (h) { d.render = h; d.headV = HEAD_V; } else delete d.render; } /* never the old stand-in's render over the new picture */
         if (d.kind === 'collection' && launchBrowser) { const products = await gridOf(p, named); if (products.length >= 2) d.render = await render(collectionHtml({ brand, title: d.title || c.title, hero: await genUri(d.image), products }), '4:5', `${d.key}|${d.image}`).catch(() => d.render || null); }
         d.usd = +((d.usd || 0) + box.usd - t0).toFixed(4); made.push({ cardId: c.id, as: d.as, kind: d.kind, title: d.title, image: d.render || d.image, video: d.video || null, usd: +(box.usd - t0).toFixed(4), remade: true });
         log.log?.('[drafts-bg] picture made again', slug, c.id); }
@@ -411,6 +420,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       if (await healMissing(slug, cache)) await save(slug, cache).catch(() => {});
       if (healWrongProduct(p, cache)) await save(slug, cache).catch(() => {});
       if (await healCodeMocks(p, cache)) await save(slug, cache).catch(() => {});
+      if (await healHeads(p, cache)) await save(slug, cache).catch(() => {});
       { const n0 = Object.values(cache).filter((d) => d?.qv === LOOKS_V).length; if (await healLooks(p, cache) || Object.values(cache).filter((d) => d?.qv === LOOKS_V).length !== n0) await save(slug, cache).catch(() => {}); }
       /* every card that names a format, and the top few others that show a picture (a text-only card with no format is not an
          ask for an asset), best-valued first; then stills that still wait for their clip */

@@ -12,7 +12,7 @@
 import sharp from 'sharp';
 
 // quality version: drafts and watcher pictures saved before it are judged once (drafts-bg healLooks, feed-service housekeep)
-export const LOOKS_V = 1; /* the judge's words changed 25 Oct (split-screens pass, doubt passes): saved drafts already passed stay passed */
+export const LOOKS_V = 2; /* 2 (25 Oct): EXPERT fails a picture (a lab coat beside the shampoo on Arata); saved drafts are judged again */ /* the judge's words changed 25 Oct (split-screens pass, doubt passes): saved drafts already passed stay passed */
 const N = 64, SEG = 8;
 
 /* the picture shrunk to N×N, transparency on white (a see-through packshot reads as a plain ground) */
@@ -93,10 +93,11 @@ Judge only the picture, like a creative director who wants it shippable. Reply w
 GOOD: a coherent photograph (or a clean product shot) that shows what the card is about. A deliberate split-screen or before/after made of real photographs is GOOD. Small soft print on a pack is fine. When in doubt, GOOD.
 COLLAGE: an obvious paste-up: products cut out with hard or jagged edges and no real shadow, flat panels or blocks of colour behind or beside them, a picture framed inside the picture, a blank band, or big words or numbers the image model drew (garbled or doubled lettering).
 CROPPED: the product or the main subject is clearly cut off by the frame edge.
-OFFTOPIC: it shows something the card is not about (another kind of product, an unrelated scene).`;
+OFFTOPIC: it shows something the card is not about (another kind of product, an unrelated scene).
+EXPERT: a person shown as a doctor, dermatologist, scientist or other expert (a lab coat, scrubs, a clinic or a laboratory): a fake endorsement.`;
 /* the judge's reply → { ok, verdict, why }; no clear word → null (the check didn't answer: never counted as a failure) */
 export function lookVerdict(text = '') {
-  const t = String(text || '').trim(), m = /^\W*(good|collage|cropped|offtopic|off-topic)\b/i.exec(t); if (!m) return null;
+  const t = String(text || '').trim(), m = /^\W*(good|collage|cropped|offtopic|off-topic|expert)\b/i.exec(t); if (!m) return null;
   const v = m[1].toLowerCase().replace('-', ''); return { ok: v === 'good', verdict: v, why: t.slice(0, 200) };
 }
 /* the line added to the prompt when a picture is made again after failing */
@@ -104,4 +105,5 @@ export const FIX = {
   collage: 'The last picture looked like a collage. Make ONE real photograph: the product physically in the scene with true contact shadows, a single continuous background, no panels, blocks, borders, bands, swatches or cut-out edges, and nothing copied from a designed graphic.',
   cropped: 'The last picture cut the product off at the frame edge. Keep the whole product inside the frame with space around it.',
   offtopic: 'The last picture did not show what the card is about. Show exactly the product and the moment the card names.',
+  expert: 'The last picture showed someone as a doctor or scientist. Show an everyday customer in an ordinary home: no lab coat, scrubs, clinic or laboratory.',
 };

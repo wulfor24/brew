@@ -21,3 +21,23 @@ test('old-layout statics are drawn again from their saved scenes, once, and new 
   assert.equal(store.get('s/statics-layout.json').v, STATICS_LAYOUT_V);
   assert.equal(await S.recompose('s'), 0, 'done once');
 });
+
+test('every draft and static picture with people keeps them everyday customers, never an expert in a lab coat', async () => {
+  const { keepLine } = await import('../sloosh-prompt.js');
+  assert.match(keepLine({ people: true }), /never a doctor, dermatologist, scientist/);
+  assert.match(keepLine({ people: true }), /no lab coat/);
+  assert.match(keepLine({ people: false }), /no people/);
+});
+
+test('a still draft sets its words in their own panel; a clip keeps its overlay', () => {
+  const src = fs.readFileSync(new URL('../drafts.js', import.meta.url), 'utf8');
+  assert.match(src, /if \(buf\) return panelHtml/, 'a picture gets the panel layout');
+  assert.match(src.slice(src.indexOf('const panelHtml'), src.indexOf('const typeHtml')), /object-fit:contain/);
+});
+
+test('the draft judge fails a picture that shows an expert, and says how to redo it', async () => {
+  const { lookVerdict, lookPrompt, FIX } = await import('../draft-quality.js');
+  assert.match(lookPrompt('Less hair fall'), /EXPERT/);
+  assert.deepEqual(lookVerdict('EXPERT: a woman in a lab coat').ok, false);
+  assert.match(FIX.expert, /everyday customer/);
+});
