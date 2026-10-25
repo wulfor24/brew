@@ -9,6 +9,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { collageEdges, plainness, plainest, cutQuality, lookVerdict, lookPrompt, FIX, LOOKS_V } from '../draft-quality.js';
 import { createImageGuard } from '../image-guard.js';
+import { pricedProduct } from '../product-match.js';
 
 const quiet = { warn() {}, log() {}, info() {} };
 const W = 400, H = 500;
@@ -108,8 +109,17 @@ test('Studio: a raw photo (no clean cut-out) is never pasted into a scene, and a
 
 test('watcher idea pictures are context driven: the product the idea names, the card\'s words, judged; old ones heal to the real photo', () => {
   const src = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8'), i = src.indexOf('const creativeIdea'), body = src.slice(i, src.indexOf('/* ---------- cards from real research', i));
-  assert.match(body, /matchProduct\(words, cat/, 'the product the idea names');
+  assert.match(body, /pricedProduct\(words, cat/, 'the product the idea names');
   assert.match(body, /text: words, catalog:/, 'the card\'s words go to the guard (product and look checks)');
   assert.doesNotMatch(body, /'gemini-2\.5-flash-image'/, 'never the cheap model by default');
   assert.match(src, /const healWatcherLooks = /); assert.match(src, /healWatcherLooks\(t\)/, 'saved watcher pictures heal on every rank');
+});
+
+test('an idea that states a price picks its product among those at that price; a name written out still wins', () => {
+  const cat = [{ t: 'Sleek Hair Styling Stick - 15 ml', img: 'a', price: '₹349' }, { t: 'Damage Defence Super Conditioner - 200 ml', img: 'b', price: '₹449' }, { t: 'Damage Defence Super Shampoo - 200 ml', img: 'c', price: '₹449' },
+    { t: 'The Desk Day Kit – Heated Hand Pillow, Heated Mouse Pad + Bear Socks', img: 'd', price: '$44' }, { t: 'Snugglet Pup Warmer – Rechargeable Puppy Hand Warmer', img: 'e', price: '$44' }];
+  assert.equal(pricedProduct('Hydrate curls without buildup using your ₹449 conditioner', cat, { brand: 'Arata' })?.img, 'b');
+  assert.equal(pricedProduct('Warm frozen fingers with a $44 puppy warmer', cat, { brand: 'Snugglet' })?.img, 'e');
+  assert.equal(pricedProduct('Style it sleek with the Sleek Hair Styling Stick for ₹449', cat, { brand: 'Arata' })?.img, 'a', 'the name written out');
+  assert.equal(pricedProduct('A ₹999 gift for curls', cat, { brand: 'Arata' }), null, 'nothing at that price: no guess');
 });

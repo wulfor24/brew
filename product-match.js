@@ -49,6 +49,19 @@ export function matchProduct(text, catalog, { brand = '', byNameOnly = false } =
   return best;
 }
 
+/* an idea's product when its words state a price ("Hydrate curls with your ₹449 conditioner"): the product named outright wins;
+   else the loose words choose only among products at that price, so a "conditioner" idea never lands on a ₹349 styling stick
+   (25 Oct, Arata; Cozy's "$44 puppy warmer" on a $44 kit). No stated price: the plain match. null when nothing fits */
+const priceKey = (p) => String(p || '').replace(/[^\d.]/g, '').replace(/\.0+$/, '');
+export function pricedProduct(text, catalog, opts = {}) {
+  if (!catalog?.length || !text) return null; const strict = matchProduct(text, catalog, { ...opts, byNameOnly: true }); if (strict) return strict;
+  const want = new Set((String(text).match(/[₹$€£]\s?\d[\d,]*(?:\.\d+)?/g) || []).map(priceKey)); if (!want.size) return matchProduct(text, catalog, opts);
+  const pool = catalog.filter((x) => x.price && want.has(priceKey(x.price))); if (!pool.length) return null;
+  const m = matchProduct(text, pool, opts); if (m) return m;
+  /* at that price one shared word is enough, when only one product there has it ("conditioner") */
+  const said = new Set(words(text)), skip = new Set([...words(opts.brand || ''), ...COMMON]), hits = pool.filter((x) => words(x.t).some((w) => !skip.has(w) && said.has(w)));
+  return hits.length === 1 ? hits[0] : null;
+}
 /* the product a card is about, for every card type and brand. A product named outright wins: in the title or body first (a
    "Desk Day Kit" card shows the kit, even when its asset line lists the kit's pieces), then in the asset line ("1 static
    image: an office worker wearing Snugglet Toe Toasters" on a card whose title names none), and only then the title's loose
