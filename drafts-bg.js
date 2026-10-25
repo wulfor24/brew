@@ -336,17 +336,16 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
      every kind with a picture (a still, a clip's first frame, a collection hero, slides); a few a run so the cost stays small */
   /* a saved still whose headline was set over the picture (layout 1) is set again from its own clean picture: the words in their
      own panel above it. Free (Chromium only), a few a tick, never a clip's overlay */
-  async function healHeads(p, cache, max = 12) {
+  async function healHeads(p, cache, max = 12, slugOf = '') {
     if (!genFile || !launchBrowser || !M.head) return 0; let n = 0; const skip = {};
     for (const d of Object.values(cache || {})) { if (n >= max) break;
       if (!d?.render || !d.headline || (d.headV || 0) >= HEAD_V || d.kind === 'collection' || !['image', 'video'].includes(d.kind || d.as)) continue;
-      /* the clean picture under the words: the draft's own, else the clip's still, else the real photo it stood in with */
+      /* the clean picture under the words: the draft's own, else the clip's still; never the card's stand-in photo (on Zenant that was its logo) */
       const src = [d.image, d.clipStill, d.poster !== d.render ? d.poster : null].find((x) => /^\/?gen\//.test(x || '') && x !== d.render);
       let f = src ? await genFile(String(src).replace(/^\/?gen\//, '')).catch(() => null) : null;
-      if (!f && d.photo && photoAsync) f = await photoAsync(d.photo).catch(() => null);
       if (!f || !fs.existsSync(f)) { skip[src ? 'no file' : 'no clean picture'] = (skip[src ? 'no file' : 'no clean picture'] || 0) + 1; d.headV = HEAD_V; continue; }
-      const h = await headOn(fs.readFileSync(f), d, d.kind === 'video' ? '9:16' : d.ratio || '4:5', src || d.photo); if (h) { d.render = h; n++; } else skip.failed = (skip.failed || 0) + 1; d.headV = HEAD_V; }
-    if (n || Object.keys(skip).length) log.log?.('[drafts-bg] re-lettered', p?.slug || p?.seed?.brand?.slug || '', n, JSON.stringify(skip));
+      const h = await headOn(fs.readFileSync(f), d, d.kind === 'video' ? '9:16' : d.ratio || '4:5', src); if (h) { d.render = h; n++; } else skip.failed = (skip.failed || 0) + 1; d.headV = HEAD_V; }
+    if (n || Object.keys(skip).length) log.log?.('[drafts-bg] re-lettered', slugOf || p?.slug || '', n, JSON.stringify(skip));
     return n + Object.values(skip).reduce((a, b) => a + b, 0); }
   async function healLooks(p, cache, max = 6) {
     if (!genFile) return 0; let n = 0, checked = 0;
@@ -422,14 +421,14 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       const due = draftsDue(st, cfg, { now: now(), aiLive: ai?.live !== false, lastOpen, manual });
       if (!due.ok) { /* nothing new is due, but saved drafts are still mended: the free re-lettering and the look check (25 Oct: both waited behind the daily cap) */
         if (ai?.live !== false) { const p0 = await loadPack(slug).catch(() => null), c0 = p0?.seed?.posts ? await cacheOf(slug) : null;
-          if (c0) { const n0 = Object.values(c0).filter((d) => d?.qv === LOOKS_V).length; const h = await healHeads(p0, c0); const l = await healLooks(p0, c0); if (h || l || Object.values(c0).filter((d) => d?.qv === LOOKS_V).length !== n0) await save(slug, c0).catch(() => {}); } }
+          if (c0) { const n0 = Object.values(c0).filter((d) => d?.qv === LOOKS_V).length; const h = await healHeads(p0, c0, 12, slug); const l = await healLooks(p0, c0); if (h || l || Object.values(c0).filter((d) => d?.qv === LOOKS_V).length !== n0) await save(slug, c0).catch(() => {}); } }
         return { made: [], usd: 0, why: due.why }; }
       const p = await loadPack(slug); if (!p?.seed?.posts) return { made: [], usd: 0, why: 'no feed yet' };
       const cache = await cacheOf(slug), ranked = rankCards(p.seed.posts), top = new Set(ranked.slice(0, cfg.topN).map((c) => c.id)), order = byValue(p, ranked), day = today(now());
       if (await healMissing(slug, cache)) await save(slug, cache).catch(() => {});
       if (healWrongProduct(p, cache)) await save(slug, cache).catch(() => {});
       if (await healCodeMocks(p, cache)) await save(slug, cache).catch(() => {});
-      if (await healHeads(p, cache)) await save(slug, cache).catch(() => {});
+      if (await healHeads(p, cache, 12, slug)) await save(slug, cache).catch(() => {});
       { const n0 = Object.values(cache).filter((d) => d?.qv === LOOKS_V).length; if (await healLooks(p, cache) || Object.values(cache).filter((d) => d?.qv === LOOKS_V).length !== n0) await save(slug, cache).catch(() => {}); }
       /* every card that names a format, and the top few others that show a picture (a text-only card with no format is not an
          ask for an asset), best-valued first; then stills that still wait for their clip */
