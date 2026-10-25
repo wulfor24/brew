@@ -39,7 +39,10 @@ export function matchProduct(text, catalog, { brand = '', byNameOnly = false } =
     // the product's own name, written out ("Snugglet Paw Warmer is only $39"), beats any overlap of loose words
     // ("toast your toes" with "foot warmer" once picked the Kitty Toes foot warmer over the Paw Warmer the copy names)
     const nameWs = words(String(p.t).split(/\s+[–—|:-]\s+|,\s/)[0]).filter((w) => !skip.has(w)), phrase = nameWs.join(' ');
-    const byName = phrase && (nameWs.length >= 2 || nameWs.some((w) => (df.get(w) || N) <= Math.max(2, N * 0.08))) && (spaced.includes(` ${phrase} `) || spacedKey.includes(` ${phrase} `));
+    /* a name that is one word once its common words are set aside ("The Desk Day Kit" → "desk") is named only when written out
+       whole: "freezing desk hands" never names the Desk Day Kit (25 Oct, Cozy: a puppy-warmer idea drew the kit) */
+    const fullName = words(String(p.t).split(/\s+[–—|:-]\s+|,\s/)[0]).filter((w) => !words(brand).includes(w)).join(' '), whole = nameWs.length >= 2 || fullName === phrase || spaced.includes(` ${fullName} `);
+    const byName = phrase && whole && (nameWs.length >= 2 || nameWs.some((w) => (df.get(w) || N) <= Math.max(2, N * 0.08))) && (spaced.includes(` ${phrase} `) || spacedKey.includes(` ${phrase} `));
     const score = hit.reduce((a, w) => a + idf(w), 0) + hit.length / ws.length + (byName ? 10 : 0);
     const rare = hit.some((w) => (df.get(w) || N) <= Math.max(2, N * 0.08));
     // one word must look like a name in the copy; two words of the title together are enough

@@ -463,7 +463,7 @@ export function createFeedService(o) {
      swapped, free, for the real photo of the product the card names (else the brand's own product photo): the paste-ups it made
      (25 Oct, Arata) are never served again. New pictures are made around the named product and judged (creativeIdea) */
   const healWatcherLooks = (t) => { const cat = B()?.catalog || [];
-    for (const c of t.cards.values()) { if (c.watcher !== 'creative' || c.imgQ === LOOKS_V + 0.2) continue; const was = c.imgQ; c.imgQ = LOOKS_V + 0.2; /* .1: matched by price too (healed again once) */
+    for (const c of t.cards.values()) { if (c.watcher !== 'creative' || c.imgQ === LOOKS_V + 0.3) continue; const was = c.imgQ; c.imgQ = LOOKS_V + 0.3; /* .1: matched by price too (healed again once) */
       if (!/^gen\//.test(String(c.images?.[0] || '')) && !(was >= LOOKS_V && c.product)) continue; /* a picture this heal already swapped is matched again */
       const named = cat.length ? pricedProduct(`${c.title || ''}. ${c.sub || ''}`, cat, { brand: BN() }) : null;
       /* the idea names no product the store sells (a price or a line the catalog doesn't carry): no picture at all, never another product's */
@@ -967,7 +967,7 @@ export function createFeedService(o) {
           else { const key = crypto.createHash('sha1').update(j.title + j.scene).digest('hex').slice(0, 16); saveGen(key + '.png', buf); img = `gen/${key}.png`; imgNote = 'made around the product the idea names, checked as an ad'; }
         } catch (e) { log.warn('[creative watcher] image', e.message); }
       }
-      return { cards: [{ id: uid('w-c'), agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], ...(img ? { kind: 'media', images: [img] } : { kind: 'rows', rows: [], images: [] }), imgQ: LOOKS_V + 0.2, ...(named ? { product: named.t } : {}), campaign: 'New from your agents', title: clean(j.title), sub: clean(j.sub), detail: { why: (j.why || []).map(clean), how: (j.how || []).map(clean) }, cta: { label: 'Make the ad' } }], how: `written live by Claude, image ${imgNote}` };
+      return { cards: [{ id: uid('w-c'), agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], ...(img ? { kind: 'media', images: [img] } : { kind: 'rows', rows: [], images: [] }), imgQ: LOOKS_V + 0.3, ...(named ? { product: named.t } : {}), campaign: 'New from your agents', title: clean(j.title), sub: clean(j.sub), detail: { why: (j.why || []).map(clean), how: (j.how || []).map(clean) }, cta: { label: 'Make the ad' } }], how: `written live by Claude, image ${imgNote}` };
     } catch (e) { log.warn('[creative watcher]', e.message); return { cards: fromPool(t, 'creative'), how: 'from the pool (AI call failed)' }; }
   };
   /* ---------- cards from real research (research.js) ---------- */

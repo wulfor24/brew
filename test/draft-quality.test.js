@@ -120,6 +120,8 @@ test('an idea that states a price picks its product among those at that price; a
     { t: 'The Desk Day Kit – Heated Hand Pillow, Heated Mouse Pad + Bear Socks', img: 'd', price: '$44' }, { t: 'Snugglet Pup Warmer – Rechargeable Puppy Hand Warmer', img: 'e', price: '$44' }];
   assert.equal(pricedProduct('Hydrate curls without buildup using your ₹449 conditioner', cat, { brand: 'Arata' })?.img, 'b');
   assert.equal(pricedProduct('Warm frozen fingers with a $44 puppy warmer', cat, { brand: 'Snugglet' })?.img, 'e');
+  assert.equal(pricedProduct('Warm frozen fingers with a $44 puppy warmer. Office workers struggle with freezing desk hands. Our rechargeable $44 puppy warmer helps.', cat, { brand: 'Snugglet' })?.img, 'e', '"desk hands" never names the Desk Day Kit');
+  assert.equal(pricedProduct('Gift the Desk Day Kit for $44', cat, { brand: 'Snugglet' })?.img, 'd', 'written out whole, it is named');
   assert.equal(pricedProduct('Style it sleek with the Sleek Hair Styling Stick for ₹449', cat, { brand: 'Arata' })?.img, 'a', 'the name written out');
   assert.equal(pricedProduct('A ₹449 gift for your hair', cat, { brand: 'Arata' }), null, 'a common word at that price is no match'); assert.equal(pricedProduct('A ₹999 gift for curls', cat, { brand: 'Arata' }), null, 'nothing at that price: no guess');
 });
