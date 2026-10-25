@@ -32,7 +32,7 @@ const ABSOLUTE = /\b(?:clinically (?:proven|tested|backed|shown|studied|validate
 /* a measured result: "95% hair growth", "up to 60% less hair fall", "3x thicker", "reduces acne by 40%". Being on the store's
    page is not enough: the store must say it was measured (a study, a trial, a test, users surveyed) in the same place, or the team
    approved it in the Brand Book's claims we may make */
-const EFFICACY = /\b(?:up to |by |over |nearly |almost )?\d+(?:\.\d+)?\s?(?:%|x|×|times)\s(?:\w+\s){0,3}?(?:more|less|fewer|growth|regrowth|reduction|thicker|stronger|softer|brighter|faster|denser|improvement|better|hair|results?|visible|reduc\w*|increase\w*|boost\w*)\b|\b(?:reduces?|increases?|boosts?|improves?|cuts?|lifts?)\s(?:\w+\s){0,4}?by\s\d+(?:\.\d+)?\s?%/gi;
+const EFFICACY = /\b(?:up to |by |over |nearly |almost )?\d+(?:\.\d+)?\s?(?:%|x|×|times)\s(?:\w+\s){0,3}?(?:more|less|fewer|growth|regrowth|reduction|thicker|stronger|softer|brighter|faster|denser|improvement|better|hair|results?|visible|reduc\w*|increase\w*|boost\w*)\b|\b(?:reduces?|increases?|boosts?|improves?|cuts?|lifts?)\s(?:\w+\s){0,4}?by\s\d+(?:\.\d+)?\s?(?:%|x\b|×|times\b)/gi; /* "reduce hair fall by 7.4X" is a measured result too (26 Oct, Arata) */
 const MEASURED = /\b(?:clinical|study|studies|trial|tested on|test(?:ed)? with|participants|subjects|volunteers|users? (?:saw|reported|said|surveyed)|survey(?:ed)?|in-vivo|in vivo|in-vitro|lab results?|certified by|dermatological(?:ly)? test)/i;
 const HEALTH = /derm|clinic|doctor|trichologist|dentist|pediatric|paediatric|vet|lab|scientific|proven/i;
 const CERT = /\b(?:certif\w*|accredit\w*|tested by|test(?:ed)? at|lab report|study|studies|trial|clinical(?:ly)? (?:study|trial)|participants|subjects|volunteers|in-vivo|in vivo|cosmetolog\w*|approved by dr|dr\.\s?[a-z])/i;
@@ -85,7 +85,7 @@ export function claimFlags(text, source = '', { allowNewCode = false } = {}) {
 export const claimCheck = (flags) => flags.length ? `Claims to check before shipping: ${flags.slice(0, 3).map((f) => f.why).join('; ')}${flags.length > 3 ? ` (+${flags.length - 3} more)` : ''}` : 'No invented codes, guarantees, health claims or timed results';
 
 /* the rule every writer prompt carries */
-export const CLAIMS_RULE = 'Never invent a discount code, coupon, guarantee, refund promise, or a result tied to a time ("in 7 days", "overnight"), and never write "clinically proven", "dermatologist approved" (or "dermat-approved", "derma tested"), "doctor recommended", "cures", "treats", "heals", "permanent" or "100%" unless those exact words are in the facts or the product page given here. A measured result ("95% saw growth", "60% less hair fall", "3x thicker") only when the facts say where it was measured (a study, a trial, a test) or it is in the Brand Book’s claims we may make. Offers and codes come only from the facts.';
+export const CLAIMS_RULE = 'Never invent a discount code, coupon, guarantee, refund promise, or a result tied to a time ("in 7 days", "overnight"), and never write "clinically proven", "dermatologist approved" (or "dermat-approved", "derma tested"), "doctor recommended", "cures", "treats", "heals", "permanent" or "100%" unless they are in the Brand Book’s claims we may make, or the facts name the study, trial or test right beside those exact words: being on the product page is not enough, the checks hold it back. The same goes for "scientifically proven", "lab tested" and "proven to". A measured result ("95% saw growth", "60% less hair fall", "3x thicker", "reduces hair fall by 7.4x") only when the facts say where it was measured (a study, a trial, a test) or it is in the Brand Book’s claims we may make. Offers and codes come only from the facts.';
 
 /* a card that can't be rewritten by a person (the feed's own cards): drop just the sentences that carry an unbacked code or
    guarantee, keep the rest; titles keep their words (a flagged title fails QA and is rewritten instead). kinds: which flags
@@ -193,7 +193,24 @@ export function copyFlags(text, opts = {}) {
       out.push(`a repeated word (“${w}”) in one phrase`); break outer; } }
   return [...new Set(out)];
 }
-export const COPY_RULE = 'Write natural, idiomatic English a good copywriter would sign off: no forced slang, no shouting caps, never the same product word twice in one name, line breaks as real line breaks.';
+export const COPY_RULE = 'Write natural, idiomatic English a good copywriter would sign off: no forced slang, no shouting caps, never the same product word twice in one name, line breaks as real line breaks. Never the "it\'s not X, it\'s Y" or "X isn\'t A; it\'s B" turn, and prices as the store shows them (₹2,182, never ₹2,182.15).';
+
+/* what a writer slipped on that a person would have to fix: an unbacked claim, the "isn't A; it's B" turn, paise on a price the store
+   shows whole, and, in a WhatsApp or SMS message, label lines, "- " lists and a length nobody reads on a phone. The writer's own
+   draft is rewritten once on these before anyone sees it (remix.js liveOptions), so "Needs a fix" never lands on a fresh draft
+   (26 Oct, Arata WhatsApp broadcast). → [why, …] */
+const CADENCE = /(?:it['’]s|this is|that['’]s|is|are|isn['’]t|aren['’]t|wasn['’]t)\s+not\s+[^.;!?\n]{1,40}[,;:—–-]\s*(?:it['’]s|this is|that['’]s|it is)\b|\b(?:isn['’]t|aren['’]t|is not|are not)\s+[^.;!?\n]{1,30};\s*(?:it['’]s|they['’]re|it is)\b/i;
+export function writerSlips(text, { source = '', chat = false, prices = [] } = {}) {
+  const s = String(text || ''); if (!s.trim()) return []; const out = claimFlags(s, source).map((f) => f.why);
+  if (CADENCE.test(s)) out.push('the "it isn’t A; it’s B" turn: say the point plainly');
+  const whole = new Set((prices || []).map((p) => String(p || '').replace(/\s/g, '')).filter((p) => /^[^\d]*[\d,]+$/.test(p)));
+  for (const m of s.matchAll(/([₹$€£]|Rs\.?\s?)\s?([\d,]+)\.(\d{1,2})\b/g)) { const r = `${m[1].trim()}${Math.round(+`${m[2].replace(/,/g, '')}.${m[3]}`).toLocaleString('en-IN')}`; if (whole.has(r.replace(/\s/g, '')) || m[1].startsWith('₹') || /^Rs/.test(m[1])) { out.push(`the price as the store shows it (${r}, not ${m[0].trim()})`); break; } }
+  if (chat) { const lines = s.split('\n').map((x) => x.trim()).filter(Boolean);
+    if (lines.some((l) => /^[-*]\s/.test(l))) out.push('"- " lists, which WhatsApp shows as dashes: use short lines');
+    if (lines.some((l, i) => i < lines.length - 1 && l.split(/\s+/).length <= 4 && !/[.!?:,₹$]/.test(l) && /^[A-Z]/.test(l) && lines.length > 3)) out.push('label lines: a WhatsApp message reads as one note, not sections');
+    if (s.length > 700) out.push(`a ${s.length}-character message: keep it under 600 so it reads on a phone`); }
+  return [...new Set(out)];
+}
 
 /* One entry point for every surface that writes words a shopper, the team or a partner may copy (static ads, plain-words card
    rewrites, team briefs, the weekly digest, Slack replies, Ask Brew and jam answers, ideas, feed cards, the download pack's

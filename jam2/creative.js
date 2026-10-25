@@ -9,7 +9,7 @@
 // never wrong. Phase 0 (23 Oct, Cozy): single products came out really shot; a kit of three changed two items, which this catches.
 import { recipe } from './catalogue.js';
 import { refsFor, creativeBlock } from './brandbook.js';
-import { claimFlags, sourceText } from '../claims.js'; // words a model drew are checked like written ones
+import { claimFlags, sourceText, approvedText } from '../claims.js'; // words a model drew are checked like written ones
 
 const tidy = (s, n = 400) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const ZONES = ['top', 'bottom', 'left', 'right'];
@@ -127,7 +127,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
       const j = r.json || {}, read = (j.words || []).slice(0, 20);
       /* the words the model drew, read back, go through the same claim check as every draft (1.5): "Dermat-approved" or "95% growth"
          the brand's own words and approved claims don't carry is invented, whatever the reader said */
-      const src = sourceText(known, ctx.bbv?.claims || [], ctx.bbv?.reviews || []), claimed = read.filter((w) => claimFlags(String(w), src).length).map((x) => tidy(x, 120));
+      const src = sourceText(known, approvedText(ctx.bbv?.claims || []), ctx.bbv?.reviews || []) /* approved as approved, so a measured claim the team signed off passes */, claimed = read.filter((w) => claimFlags(String(w), src).length).map((x) => tidy(x, 120));
       return { same: ref ? !!j.same : true, invented: [...new Set([...(j.invented || []).map((x) => tidy(x, 120)), ...claimed])].filter(Boolean).slice(0, 6), words: read, usd: r.usd || 0 };
     } catch (err) { log.warn?.('[creative] made check', err.message); return { same: true, invented: [], words: [], unchecked: true }; } }
 

@@ -134,7 +134,7 @@ export const FIELDS = {
     { k: 'segment', label: 'Who gets it', type: 'text', req: true },
     { k: 'exclusions', label: 'Left out', type: 'text' },
     { k: 'subject', label: 'Subject line', type: 'text', pub: true },
-    { k: 'message', label: 'Message', type: 'long', pub: true, req: true, hint: 'The message as sent, with {first_name} style variables' },
+    { k: 'message', label: 'Message', type: 'long', pub: true, req: true, chat: true, hint: 'The message as sent, with {first_name} style variables' },
     { k: 'buttons', label: 'Buttons', type: 'list', pub: true },
     { k: 'code', label: 'Code', type: 'text', only: ['discount_offer'] },
     { k: 'expiry', label: 'Expires', type: 'text', only: ['discount_offer'] }
@@ -353,7 +353,7 @@ export const ACTION_CHIPS = {
   flow_timing: ['Later send', 'Fewer messages', 'One message in 7 days', 'Send in the evening'],
   review_ask: ['Ask for a photo', 'Shorter ask', 'Ask which size they kept', 'Send a week later'],
   new_segment: ['Tighter segment', 'Leave out new buyers', 'Show the size', 'Exclude returns'],
-  paid_broadcast: ['Smaller list first', 'Shorter', 'Add a button', 'Send in the evening'],
+  paid_broadcast: ['Test on a small group first', 'Shorter', 'Add a button', 'Send in the evening'],
   discount_offer: ['Smaller offer', 'Shorter expiry', 'Only past buyers', 'One use per customer'],
   plan: ['Owners and dates', 'First step only', 'What would we lose?', 'Smallest step first'],
   resolution: ['Find a middle ground', 'Go with our pick', 'What would we lose?', 'Smallest step first']
@@ -405,8 +405,10 @@ export const toKV = (family, action, pkg = {}) => fieldsFor(family, action).filt
   return { k: f.k, v: f.type === 'list' ? v.join('\n') : f.type === 'rows' ? v.map((r) => f.cols.map((c) => r[c]).join(' | ')).join('\n') : String(v) };
 });
 // every long text is written already formatted for where it appears, never one block of text (Param: formatting is built in, always)
+/* a WhatsApp or SMS message is one note read on a phone (26 Oct, Arata: a broadcast came back with label lines and "- " lists) */
+export const CHAT_FORMAT = 'Sent on WhatsApp or SMS: one note read on a phone, under 600 characters (SMS under 160), 2 to 4 short lines with a blank line between, *bold* on WhatsApp for one key phrase at most, no label or header lines, no "- " lists';
 export const LONG_FORMAT = 'Format it for where it appears, from the first draft: short paragraphs of 1–3 sentences with a blank line between them; when it has several parts, a short label line (2–4 words) on its own line above each part; "- " lines for any list; quotes on their own line. Never one block of text';
-export const fieldsBrief = (family, action) => fieldsFor(family, action).map((f) => `  - ${f.k}: ${f.label}${f.req ? ' (required)' : ''}${f.hint ? '. ' + f.hint : ''}${f.opts ? `. One of: ${f.opts.join(' / ')}` : ''}${f.type === 'long' ? `. ${LONG_FORMAT}` : ''}${f.type === 'list' ? '. One item per line' : ''}${f.type === 'rows' ? `. One row per line: ${f.cols.join(' | ')}` : ''}${f.type === 'number' ? '. A number' : ''}`).join('\n');
+export const fieldsBrief = (family, action) => fieldsFor(family, action).map((f) => `  - ${f.k}: ${f.label}${f.req ? ' (required)' : ''}${f.hint ? '. ' + f.hint : ''}${f.opts ? `. One of: ${f.opts.join(' / ')}` : ''}${f.type === 'long' ? `. ${f.chat ? `${CHAT_FORMAT}; in an email: ${LONG_FORMAT}` : LONG_FORMAT}` : ''}${f.type === 'list' ? '. One item per line' : ''}${f.type === 'rows' ? `. One row per line: ${f.cols.join(' | ')}` : ''}${f.type === 'number' ? '. A number' : ''}`).join('\n');
 
 const str = (v) => (v == null ? '' : String(v));
 const pickOpt = (opts, v) => { if (opts.includes(v)) return v; const n = (x) => String(x ?? '').toLowerCase().replace(/[^a-z0-9:+%]+/g, ' ').trim(), nv = n(v); if (!nv) return opts[0];
