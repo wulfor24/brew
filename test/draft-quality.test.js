@@ -126,3 +126,19 @@ test('an idea that states a price picks its product among those at that price; a
   assert.equal(pricedProduct('Style it sleek with the Sleek Hair Styling Stick for ₹449', cat, { brand: 'Arata' })?.img, 'a', 'the name written out');
   assert.equal(pricedProduct('A ₹449 gift for your hair', cat, { brand: 'Arata' }), null, 'a common word at that price is no match'); assert.equal(pricedProduct('A ₹999 gift for curls', cat, { brand: 'Arata' }), null, 'nothing at that price: no guess');
 });
+
+test('a see-through packshot reaches the model on white, never on the black hidden under its clear pixels (Arata Damage Defence)', async () => {
+  const { createImageNorm } = await import('../img-norm.js');
+  const S = 120, raw = Buffer.alloc(S * S * 4); /* black under every clear pixel, a red bottle, a semi-clear dark shadow to its right */
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const i = (y * S + x) * 4, bottle = x > 30 && x < 70 && y > 20 && y < 100, shadow = !bottle && x >= 70 && x < 90 && y > 30 && y < 100;
+    raw[i] = bottle ? 230 : 0; raw[i + 1] = bottle ? 80 : 0; raw[i + 2] = bottle ? 75 : 0; raw[i + 3] = bottle ? 255 : shadow ? 60 : 0; }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dqn-')), f = path.join(dir, 'pack.png'); fs.writeFileSync(f, await sharp(raw, { raw: { width: S, height: S, channels: 4 } }).png().toBuffer());
+  const N = createImageNorm({ tmp: dir, log: quiet }), out = await N.normalize(f);
+  assert.notEqual(out, f, 'flattened to a new file');
+  const m = await sharp(out).metadata(), px = await sharp(out).removeAlpha().raw().toBuffer();
+  assert.ok(!m.hasAlpha || (await sharp(out).stats()).channels[3]?.min === 255);
+  assert.deepEqual([...px.slice(0, 3)], [255, 255, 255], 'the corner is white, not the hidden black');
+  const sh = ((60 * S) + 80) * 3; assert.ok(px[sh] > 150, 'the soft shadow stays soft on white, never a dark panel');
+  const jpg = path.join(dir, 'photo.jpg'); fs.writeFileSync(jpg, await sharp({ create: { width: 40, height: 40, channels: 3, background: '#335' } }).jpeg().toBuffer());
+  assert.equal(await N.normalize(jpg), jpg, 'an opaque photo is used as it is');
+});

@@ -55,16 +55,26 @@ export function createImageNorm({ withBrowser = null, tmp = os.tmpdir(), log = c
     if (!fs.existsSync(out) || !fs.statSync(out).size) throw new Error(`could not turn the ${kind} picture into a PNG`);
     return out;
   }
-  /* file → a file the models accept (the same one when it already is) */
+  /* a see-through photo is laid on white before any model sees it. Under the clear pixels of a store's cut-out packshot sits
+     colour (often black) and a semi-clear drop shadow: a model that drops the transparency sees the product on a dark panel
+     with stair-stepped edges, and copies it as a paste-up (25 Oct, Arata: Damage Defence bottles "pasted over a dark panel").
+     Opaque photos come back unchanged; a flattened one is made once, kept by content hash */
+  async function flat(file, b) {
+    try { const sharp = (await import('sharp')).default, m = await sharp(b).metadata(); if (!m.hasAlpha) return file;
+      const { channels } = await sharp(b).stats(); if (channels[3] && channels[3].min === 255) return file; /* an alpha channel with nothing see-through */
+      const out = path.join(tmp, `brew-flat-${sha(b)}.png`); if (!(fs.existsSync(out) && fs.statSync(out).size > 0)) fs.writeFileSync(out, await sharp(b).flatten({ background: '#ffffff' }).png().toBuffer());
+      return out; } catch (e) { log.warn?.('[img-norm] flatten', path.basename(file), e.message); return file; }
+  }
+  /* file → a file the models accept (the same one when it already is), see-through parts on white */
   async function normalize(file) {
     if (!file) return file;
     let b; try { b = fs.readFileSync(file); } catch { return file; }
     const kind = kindOf(b);
-    if (RASTER.has(kind)) return file;
+    if (RASTER.has(kind)) return kind === 'jpeg' ? file : flat(file, b);
     if (kind === 'html' || kind === 'video' || !kind) throw Object.assign(new Error(`this product photo is not a picture Brew can use (${kind || 'unknown format'}); pick another photo`), { soft: true, badImage: true });
     const key = sha(b);
     if (!inflight.has(key)) inflight.set(key, toPng(file, b, kind).finally(() => setTimeout(() => inflight.delete(key), 1000)));
-    try { const out = await inflight.get(key); log.info?.(`[img-norm] ${kind} → png ${path.basename(file)}`); return out; }
+    try { const out = await inflight.get(key); log.info?.(`[img-norm] ${kind} → png ${path.basename(file)}`); return flat(out, fs.readFileSync(out)); }
     catch (e) { log.warn?.('[img-norm]', kind, path.basename(file), e.message); throw Object.assign(new Error(`this product photo (${kind}) could not be turned into a picture: ${e.message}`), { soft: true, badImage: true }); }
   }
   /* a buffer (a picture already in memory, e.g. the image guard's stand-in) → a PNG/JPEG/WebP buffer */
