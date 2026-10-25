@@ -68,17 +68,25 @@ export function createHiggsfield({ env = process.env, fetchImpl = fetch, log = c
      maxMs throws { open: job } so nobody presses again and pays twice; a result link that doesn't give the file is an error */
   async function run(id, input, { maxMs = 15 * 60e3, idem = null, onSubmit = null, resume = null } = {}) {
     if (!live()) throw Object.assign(new Error('Higgsfield is not connected yet'), { skip: true });
+    /* a request written down more than a day ago is never picked up: its result may be gone (Higgsfield keeps files 7 days) and a
+       board must not loop on it forever (26 Oct review). Saying so lets the caller drop it; a new press buys a new one */
+    if (resume?.status_url && resume.at && Date.now() - resume.at > 24 * 3600e3) throw new Error(`Higgsfield ${id}: that earlier request is too old to pick up. Make it again.`);
     let j = resume && resume.status_url ? resume : null;
     if (!j) { const { input: inp, problems } = fitInput(id, input); if (problems.length) throw new Error(`Higgsfield ${id}: ${problems.join('; ')}`);
-      const r = await fetchImpl(`${base()}/${id}`, { method: 'POST', headers: { authorization: auth(), 'content-type': 'application/json', ...(idem ? { 'idempotency-key': idem } : {}) }, body: JSON.stringify(inp) });
+      /* the key is the caller's (press + step) pinned to this exact request: the same press replayed with new words is a new request,
+         never a collision with the old one (Higgsfield: reuse a key only to retry the same request) */
+      const body = JSON.stringify(inp); let hh = 5381; for (let q = 0; q < body.length; q++) hh = ((hh << 5) + hh + body.charCodeAt(q)) | 0;
+      const key = idem ? `${String(idem).slice(0, 180)}:${(hh >>> 0).toString(36)}` : null;
+      const r = await fetchImpl(`${base()}/${id}`, { method: 'POST', headers: { authorization: auth(), 'content-type': 'application/json', ...(key ? { 'idempotency-key': key } : {}) }, body });
       const x = await r.json().catch(() => ({})); if (!r.ok || !x.status_url) throw new Error(`Higgsfield ${id} ${r.status}: ${String(x.detail || x.error || JSON.stringify(x)).slice(0, 200)}`);
       j = { id, request_id: x.request_id || null, status_url: x.status_url, at: Date.now() }; await Promise.resolve(onSubmit?.(j)).catch((e) => log.warn?.('[higgsfield] onSubmit', e.message)); }
     const t0 = Date.now(); let misses = 0;
     for (let wait = 3000; Date.now() - t0 < maxMs; wait = Math.min(wait * 1.4, 10e3)) {
       await new Promise((ok) => setTimeout(ok, wait));
-      let s; try { const pr = await fetchImpl(j.status_url, { headers: { authorization: auth() } }); s = await pr.json(); misses = 0; } catch (e) { if (++misses >= 8) throw Object.assign(new Error(`Higgsfield ${id}: can't reach it to check the result (${e.message}); it is still being made`), { open: j }); continue; }
+      let s; try { const pr = await fetchImpl(j.status_url, { headers: { authorization: auth() } }); if (pr.status === 404 || pr.status === 410) throw Object.assign(new Error(`Higgsfield ${id}: that request is gone. Make it again.`), { gone: true }); s = await pr.json(); misses = 0; } catch (e) { if (e.gone) throw e; if (++misses >= 8) throw Object.assign(new Error(`Higgsfield ${id}: can't reach it to check the result (${e.message}); it is still being made`), { open: j }); continue; }
       if (s.status === 'completed') { const url = s.video?.url || s.images?.[0]?.url || s.audio?.url || s.output?.url; if (!url) throw new Error(`Higgsfield ${id}: completed with no file`);
-        const fr = await fetchImpl(url), type = fr.headers.get('content-type') || ''; if (!fr.ok || /text\/html|application\/json|xml/.test(type)) throw Object.assign(new Error(`Higgsfield ${id}: the finished file couldn't be fetched (${fr.status})`), { open: j });
+        const fr = await fetchImpl(url), type = fr.headers.get('content-type') || ''; if (fr.status === 404 || fr.status === 410) throw new Error(`Higgsfield ${id}: the finished file has expired. Make it again.`); /* final: never "still being made" forever */
+        if (!fr.ok || /text\/html|application\/json|xml/.test(type)) throw Object.assign(new Error(`Higgsfield ${id}: the finished file couldn't be fetched (${fr.status})`), { open: j });
         const buf = Buffer.from(await fr.arrayBuffer()); if (buf.length < 512) throw Object.assign(new Error(`Higgsfield ${id}: the finished file came back empty`), { open: j });
         return { buf, type, url, requestId: j.request_id }; }
       if (['failed', 'nsfw', 'canceled', 'cancelled', 'error'].includes(s.status)) throw Object.assign(new Error(`Higgsfield ${id} ${s.status}${s.error ? `: ${String(s.error).slice(0, 160)}` : ''}`), { refunded: true, moderated: s.status === 'nsfw' });

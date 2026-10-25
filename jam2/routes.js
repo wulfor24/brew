@@ -150,7 +150,8 @@ export function mountJam2(d) {
     if (m.op === 'render') runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: m.confirmUsd, tries });
     /* a shot change resumes only on the video it was asked for (a newer take means someone moved on) */
     else if (m.op === 'reshot' && headOf(bd)?.id === m.head) runBg(t, j, bd.id, 'reshot', async () => { const r = await maker.reshot(ctx, bd, { i: m.i, ask: m.ask, region: m.region, confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { ...m, tries });
-    else if (m.op === 'studio' && m.spec) runBg(t, j, bd.id, 'studio', async () => { const take = m.spec.set ? await studio.makeSet(ctx, bd, m.spec, jobsOf(t, j, bd)) : await studio.make(ctx, bd, m.spec, m.i || 0, jobsOf(t, j, bd)); take.studio.spec = specOf(m.spec); if (m.spec.set) fillMerge(bd, take, m.spec); if (m.run) Object.assign(take, { run: m.run, runN: m.runN, runI: m.runI }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }, { ...m, tries });
+    else if (m.op === 'studio' && m.spec) { const claim = await claimMake(makeKeys(slugOfT(t), j.id, bd.id, null)); if (!claim) continue; /* another instance is picking it up */
+      if (!runBg(t, j, bd.id, 'studio', async () => { try { const take = m.spec.set ? await studio.makeSet(ctx, bd, m.spec, jobsOf(t, j, bd, m.press || null)) : await studio.make(ctx, bd, m.spec, m.i || 0, jobsOf(t, j, bd, m.press || null)); take.studio.spec = specOf(m.spec); if (m.spec.set) fillMerge(bd, take, m.spec); if (m.run) Object.assign(take, { run: m.run, runN: m.runN, runI: m.runI }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); } finally { claim.release(); } }, { ...m, tries })) claim.release(); }
     else if (m.op === 'all' && boardOf(j, bd.allOf)) runBg(t, j, bd.id, 'all', async () => maker.allProducts(ctx, bd, boardOf(j, bd.allOf)), { resume: true, tries });
     else m.error = 'Brew restarted while this was being made. Press it again.'; } };
   /* a Studio jam opened from a v1 jam (its stage's composer) hands each finished take to that v1 jam as its next version, so the
@@ -228,7 +229,7 @@ export function mountJam2(d) {
   /* what a Studio take keeps of its set-up, so Redo makes it again the same way */
   const specOf = (sp) => ({ kind: sp.kind || null, style: sp.style || null, set: sp.set || null, product: sp.product || null, sizes: sp.sizes || null, seconds: sp.seconds || null, ask: sp.ask || '', direction: sp.direction || null, cast: sp.cast || null, ref: sp.ref || null, quality: sp.quality || null, count: 1 });
   /* each board keeps the Higgsfield requests it has bought (a restart polls them instead of buying again) */
-  const jobsOf = (t, j, bd, press = null) => ({ jobs: (bd.hfJobs ||= {}), save: () => store.put(slugOfT(t), j), press }); /* press: the Make press, so each paid request carries its idempotency key */
+  const jobsOf = (t, j, bd, press = null) => ({ jobs: (bd.hfJobs ||= {}), save: async () => { await store.put(slugOfT(t), j); await store.flush(slugOfT(t)); }, press }); /* save: written at once, so a crash right after a purchase still finds it; press: each paid request's idempotency key */ /* press: the Make press, so each paid request carries its idempotency key */
   /* a test server with Higgsfield really connected still asks for the price (mock mode only skips it when nothing can be spent) */
   const mustConfirm = () => !isMock() || !!engines.hf?.live?.();
   /* make: only with the brand's yes on the price it was shown; one board per take (the empty board the composer sat on first) */
@@ -246,7 +247,7 @@ export function mountJam2(d) {
       if (!host || (host.takes.length && !b.redo && !spec.fill) || host.kind !== 'carousel') { if (j.boards.length >= 12) return { error: 'This jam has 12 boards. Start a new jam for more.' }; host = newBoard('ig-carousel', { label: 'Carousel', size: spec.sizes?.[0] || null, conceptRev: j.concept.rev }); j.boards.push(host); }
       await store.put(slugOfT(t), j); started(runBg(t, j, host.id, 'studio', held(async () => { const ctx = await ctxOf(t, j); const take = await studio.makeSet(ctx, host, spec, jobsOf(t, j, host, b.press || null)); take.studio.spec = specOf(spec);
         /* filling in the slides left out: the new ones join the slides already made, in the set's order; only the new ones were paid for */
-        fillMerge(host, take, spec); const tk = addTake(j, host, take); tk.gate = maker.gate(ctx, tk, host); toV1(t, j, tk); }), { resume: true, spec, i: 0, confirmUsd: pl.usd }));
+        fillMerge(host, take, spec); const tk = addTake(j, host, take); tk.gate = maker.gate(ctx, tk, host); toV1(t, j, tk); }), { resume: true, spec, i: 0, confirmUsd: pl.usd, press: b.press || null }));
       note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); v1State(t, j, pl, 1); return { jam: out(j), plan: pl, boards: [host.id] }; }
     const recipeId = pl.kind === 'video' ? 'reel' : 'image-ad', st = studio.styleOf(spec.style), boards = [];
     /* the empty board the composer sat on takes the first one (and becomes what is made on it: a video on a picture board is a video
@@ -258,7 +259,7 @@ export function mountJam2(d) {
     while (boards.length < pl.count) { const nb = newBoard(recipeId, { label: tidyLabel(`${st?.label || 'Take'} ${boards.length + 1}`), size: spec.sizes?.[0] || null, conceptRev: j.concept.rev }); j.boards.push(nb); boards.push(nb); }
     await store.put(slugOfT(t), j);
     const run = boards.length > 1 ? uid('run') : null; /* a batch: its takes land together in the v1 jam, one strip to keep or drop each */
-    boards.forEach((bd, i) => started(runBg(t, j, bd.id, 'studio', held(async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i, jobsOf(t, j, bd, b.press || null)); take.studio.spec = specOf(spec); if (run) Object.assign(take, { run, runN: boards.length, runI: i }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }), { resume: true, spec, i, confirmUsd: pl.per, ...(run ? { run, runN: boards.length, runI: i } : {}) })));
+    boards.forEach((bd, i) => started(runBg(t, j, bd.id, 'studio', held(async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i, jobsOf(t, j, bd, b.press || null)); take.studio.spec = specOf(spec); if (run) Object.assign(take, { run, runN: boards.length, runI: i }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }), { resume: true, spec, i, confirmUsd: pl.per, press: b.press || null, ...(run ? { run, runN: boards.length, runI: i } : {}) })));
     note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); v1State(t, j, pl, boards.length); return { jam: out(j), plan: pl, boards: boards.map((x) => x.id) };
     } finally { if (left === 0) claim.release(); } /* nothing started (refused, or failed before a run): the board is free again */ }));
   /* one slide of a set: redo it (priced, one take of its style, the rest kept), drop it (free) or add one (priced). Each lands

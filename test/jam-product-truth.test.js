@@ -77,3 +77,19 @@ test('Studio: a make uses the product that was priced; a stale sold-out swap is 
   const st = fs.readFileSync(new URL('../jam2/studio.js', import.meta.url), 'utf8');
   assert.match(st, /P\.handle && x\?\.handle === P\.handle\) \|\| \(P\.img && \(x\?\.img === P\.img/);
 });
+
+
+test('review 26 Oct: a twin differs only in size or pack; prices in any format; no-price is no sample; restock means the product', () => {
+  const P2 = (title, price, o = {}) => ({ title, price, priceLabel: o.label, inStock: !o.out, img: `${title}.jpg`, images: [], tags: o.tags || [] });
+  const c2 = catalogOf({ catalog: { products: [P2('Hair Oil - Onion', 349, { out: true }), P2('Hair Oil - Rosemary', 349), P2('Serum - 30 ml', 399, { out: true }), P2('Serum - 100 ml', 799), P2('Tee', 39.99, { label: '$39.99' }), P2('Cream', 449, { label: 'Rs. 449' }), P2('Gel', null)] } });
+  const by = (t) => c2.find((x) => x.t === t);
+  assert.equal(inStockTwin(by('Hair Oil - Onion'), c2), null, 'Onion is not Rosemary'); assert.equal(inStockTwin(by('Serum - 30 ml'), c2)?.t, 'Serum - 100 ml');
+  assert.equal(by('Gel').free, undefined, 'a read without a price is not a free sample');
+  assert.equal(pricedProduct('Grab the $39 tee', c2, {})?.t, 'Tee'); assert.equal(pricedProduct('The cream at Rs. 449', c2, {})?.t, 'Cream');
+  assert.equal(isRestock({ title: 'Keep customers coming back' }), false); assert.equal(isRestock({ title: 'Our serum is coming back' }), true); assert.equal(isRestock({ title: 'Available again from Monday' }), true);
+});
+test('the publish check reads the product the jam makes (its twin), with Studio’s one restock rule', () => {
+  const rx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
+  assert.match(rx, /try \{ pr = jamProduct\(t, ch, card\); \} catch \{\}/); assert.match(rx, /if \(pr\?\.out && !isRestock\(card\) && ch\.family !== 'meta_ops'\)/);
+  assert.match(rx, /cardProduct\(c, cat, \{ brand \}\) \/\* the card's loose words/, 'the loose card match is back as a fallback');
+});

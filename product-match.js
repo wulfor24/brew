@@ -20,13 +20,20 @@ const priceOf = (x) => { if (x.priceLabel) return String(x.priceLabel); const n 
 const NOT_FOR_SALE = /\b(?:test|dummy|sample|placeholder)\s+(?:product|listing|item|sku)\b|\bdo not (?:buy|use|purchase|order)\b|(?:^|\s)test\s*$|^\s*test\b(?!\s+kits?\b)|\bevent test\b/i;
 /* a give-away the store adds to orders (Arata's 15ml "free-product" sizes, no price): a real listing, never the product a card means
    when its full size is also there (26 Oct: the jam drew the 15ml conditioner sample for a ₹2,182 combo ad) */
-const freeSample = (x) => (x.tags || []).some((g) => /^free[- ]?(?:product|gift|sample)$/i.test(String(g))) || (x.price == null && !x.priceLabel && x.inStock !== undefined);
+const freeSample = (x) => (x.tags || []).some((g) => /^free[- ]?(?:product|gift|sample)$/i.test(String(g))) || x.price === 0 || x.price === '0'; /* a store's free tag or a stated zero price; a read that just didn't get a price is no sample (26 Oct review) */
 export const sellable = (x) => !!x && !NOT_FOR_SALE.test(String(x.title || x.t || '')) && !/-copy(?:-\d+)?\/?$/i.test(String(x.handle || x.url || '').split('?')[0]);
 export const catalogOf = (profile, max = 400) => (profile?.catalog?.products || []).filter(sellable)
   .map((x) => ({ t: String(x.title || ''), img: [x.img, ...(x.images || [])].find((u) => u && !JUNK.test(u)) || null, ...(priceOf(x) ? { price: priceOf(x) } : {}), ...(x.inStock === false ? { out: true } : {}), ...(freeSample(x) ? { free: true } : {}), ...(x.handle ? { handle: String(x.handle) } : {}), ...(x.url ? { url: String(x.url) } : {}), ...((x.claims || [])[0] ? { claim: String(x.claims[0]) } : {}), imgs: [...new Set([x.img, ...(x.images || [])].filter((u) => u && typeof u === 'string' && !JUNK.test(u)))].slice(0, 8) /* every photo of it: a listing's photo set where no photo can be made (remix listingFromCatalog) */ })) /* skip a "sold out" placeholder, keep the product; price and stock for a product grid (draft-mocks.js); its page and first claim for the jam's product line (studio productFor) */
   .filter((x) => x.t && x.img && !JUNK_TITLE.test(x.t)).slice(0, max);
 
-const roundPrice = (p) => priceKey(p);
+/* a price as a number from any way a store or a line writes it: "₹2,182.15", "Rs. 449", "INR 1,299", "$39.99", "1.299,00 €" */
+const priceNum = (p) => { let x = String(p ?? '').replace(/\b(?:rs|inr|usd|eur|gbp)\.?/gi, '').replace(/[^\d.,]/g, '');
+  if (/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(x)) x = x.replace(/\./g, '').replace(',', '.'); else x = x.replace(/,/g, '');
+  const n = parseFloat(x); return Number.isFinite(n) ? n : null; };
+/* every price a line states, as numbers */
+const statedNums = (text) => [...String(text || '').matchAll(/(?:[₹$€£]|\brs\.?|\binr\b|\busd\b)\s?(\d[\d.,]*\d|\d)/gi)].map((m) => priceNum(m[1])).filter((n) => n > 0);
+/* the same price when within one unit of money: "$39" is the $39.99 tee, "₹2,182" the ₹2,182.15 combo */
+const samePrice = (n, label) => { const v = priceNum(label); return v != null && n != null && Math.abs(v - n) < 1; };
 export function matchProduct(text, catalog, { brand = '', byNameOnly = false } = {}) {
   if (!catalog?.length || !text) return null;
   const said = new Set(words(text)), joined = words(text).join(''), skip = new Set([...words(brand), ...COMMON]);
@@ -42,11 +49,11 @@ export function matchProduct(text, catalog, { brand = '', byNameOnly = false } =
      conditioner was drawn for a ₹2,182 combo). Works for any catalog: a kit, set, regimen or pack names its pieces the same way.
      Two listings with one name ("Conditioner - 15ml" and "- 200 ml", a single and its "Pack of 3"): the size the words write out,
      then a priced full size over a free sample, then in stock, the stated price, and a single over a pack nobody asked for */
-  const stated = new Set((String(text).match(/[₹$€£]\s?\d[\d,]*(?:\.\d+)?/g) || []).map(roundPrice));
+  const stated = statedNums(text);
   const packSaid = /\b(?:pack|packs|set|duo|trio|bundle)\b|\b\d+\s*x\b/i.test(text);
   const sizeOf = (x) => { const m = /(\d+(?:\.\d+)?)\s*(ml|g|gm|kg|l|oz|ltr)\b/i.exec(String(x || '')); return m ? `${+m[1]}${m[2].toLowerCase().replace(/^gm$/, 'g').replace(/^ltr$/, 'l')}` : ''; };
   const sizesSaid = new Set([...String(text).matchAll(/(\d+(?:\.\d+)?)\s*(ml|g|gm|kg|l|oz|ltr)\b/gi)].map((m) => sizeOf(m[0])));
-  const rank = (c) => [c.byName ? 1 : 0, c.byName ? c.nameLen : 0, sizesSaid.size && sizesSaid.has(sizeOf(c.p.t)) ? 1 : 0, c.p.free ? 0 : 1, c.p.out ? 0 : 1, stated.size && stated.has(roundPrice(c.p.price)) ? 1 : 0, !packSaid && /\bpack of \d|\b\d+\s*x\s*\d|\(pack\b/i.test(c.p.t) ? 0 : 1, c.score];
+  const rank = (c) => [c.byName ? 1 : 0, c.byName ? c.nameLen : 0, sizesSaid.size && sizesSaid.has(sizeOf(c.p.t)) ? 1 : 0, c.p.free ? 0 : 1, c.p.out ? 0 : 1, stated.length && stated.some((n) => samePrice(n, c.p.price)) ? 1 : 0, !packSaid && /\bpack of \d|\b\d+\s*x\s*\d|\(pack\b/i.test(c.p.t) ? 0 : 1, c.score];
   const better = (a, b) => { const x = rank(a), y = rank(b); for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
   let best = null, bestC = null;
   for (const p of catalog) {
@@ -74,11 +81,10 @@ export function matchProduct(text, catalog, { brand = '', byNameOnly = false } =
    else the loose words choose only among products at that price, so a "conditioner" idea never lands on a ₹349 styling stick
    (25 Oct, Arata; Cozy's "$44 puppy warmer" on a $44 kit). No stated price: the plain match. null when nothing fits */
 /* a price as whole units: the card's "₹2,182" is the catalog's ₹2,182.15 */
-const priceKey = (p) => { const n = parseFloat(String(p ?? '').replace(/[^\d.]/g, '')); return Number.isFinite(n) ? String(Math.round(n)) : ''; };
 export function pricedProduct(text, catalog, opts = {}) {
   if (!catalog?.length || !text) return null; const strict = matchProduct(text, catalog, { ...opts, byNameOnly: true }); if (strict) return strict;
-  const want = new Set((String(text).match(/[₹$€£]\s?\d[\d,]*(?:\.\d+)?/g) || []).map(priceKey)); if (!want.size) return matchProduct(text, catalog, opts);
-  const pool = catalog.filter((x) => x.price && want.has(priceKey(x.price))); if (!pool.length) return null;
+  const want = statedNums(text); if (!want.length) return matchProduct(text, catalog, opts);
+  const pool = catalog.filter((x) => x.price && want.some((n) => samePrice(n, x.price))); if (!pool.length) return null;
   const m = matchProduct(text, pool, opts); if (m) return m;
   /* at that price one shared word is enough, when only one product there has it ("conditioner") */
   const said = new Set(words(text)), skip = new Set([...words(opts.brand || ''), ...COMMON]), df = new Map(); for (const x of catalog) for (const w of new Set(words(x.t))) df.set(w, (df.get(w) || 0) + 1);
@@ -112,13 +118,17 @@ export const cardScene = (c = {}) => (sceneOf(c) ? `The picture must show what t
 
 /* a card about a product coming back (restock, pre-order, waitlist) keeps its sold-out product; one rule for the Studio and the
    publish check. Only the card's own words count, never the ad's ("before it sells out" is copy, not a restock) */
-export const RESTOCK_RE = /\brestock\w*|back in stock|coming back|pre-?orders?\b|wait-?list|notify me|back soon/i;
+/* about the product coming back, not about customers ("keep customers coming back" is retention copy: 26 Oct review) */
+export const RESTOCK_RE = /\brestock(?:ed|ing|s)?\b|\bback in stock\b|\b(?:is|are|it's|it’s)\s+(?:coming\s+)?back\b|\bavailable again\b|\bpre-?orders?\b|\bwait-?list\b|\bnotify me\b|\bback soon\b|\brelaunch(?:ed|ing|es)?\b/i;
 export const isRestock = (c = {}) => RESTOCK_RE.test(`${c?.title || ''} ${c?.sub || ''} ${c?.cta?.label || ''}`);
 /* the product a shopper can buy in place of a sold-out one: the same name in another size or pack that is in stock and priced
    (Brightening Face Serum 30 ml → its 50 ml), else null: never a different product chosen by loose words */
 export function inStockTwin(p, catalog = []) {
-  if (!p?.out) return p || null; const base = (t) => words(String(t || '').split(/\s+[–—|:-]\s+|,\s|\s+\(/)[0]).join(' ');
-  const b = base(p.t || p.name); if (!b) return null;
-  const same = (catalog || []).filter((x) => x !== p && !x.out && !x.free && x.t !== p.t && base(x.t) === b);
+  if (!p?.out) return p || null;
+  /* the whole title with only its size and pack taken out: "Hair Oil - Onion" is not "Hair Oil - Rosemary" (26 Oct review),
+     "Serum - 30 ml" is "Serum - 50 ml", "Serum - 30 ml - Pack of 3" is the serum too */
+  const core = (t) => words(String(t || '').toLowerCase().replace(/\bpack\s+of\s+\d+\b|\b\d+\s*x\b|\(\s*pack[^)]*\)/g, ' ').replace(/\b\d+(?:\.\d+)?\s*(?:ml|g|gm|kg|l|ltr|oz|mg|tablets?|capsules?|caps|pcs|pieces)\b/g, ' ')).join(' ');
+  const b = core(p.t || p.name); if (!b) return null;
+  const same = (catalog || []).filter((x) => x !== p && !x.out && !x.free && x.price && x.t !== p.t && core(x.t) === b);
   return same.find((x) => !/\bpack of \d/i.test(x.t)) || same[0] || null;
 }

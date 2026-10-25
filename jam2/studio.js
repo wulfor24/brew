@@ -132,14 +132,15 @@ const castRefs = (ctx, spec = {}, pub = (u) => u) => { const c = (ctx.bbv?.cast 
    brand's own look (light, setting, props, framing, colour roles; never its fonts, logo or words, which a picture model would
    letter onto the image), and who it is for when people may be shown. Every Higgsfield picture gets the same context, so a
    designed piece reads like the product shots and the films (26 Oct: designed pieces got only the style and the colours) */
-export const brandScene = (ctx = {}, { people = true } = {}) => {
+export const brandScene = (ctx = {}, { people = true, scene: withScene = true } = {}) => {
   const lk = ctx.bbv?.look || {}, k = ctx.bbv?.kit || {}, clip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n).replace(/[.;,\s]+$/, '');
-  const scene = (() => { try { return sceneOf(ctx.card || {}); } catch { return ''; } })();
-  const look = [lk.notes && clip(lk.notes, 180), lk.light && `light ${clip(lk.light, 60)}`, lk.setting && `settings ${clip(lk.setting, 60)}`, lk.props && `props ${clip(lk.props, 60)}`, lk.framing && `framing ${clip(lk.framing, 60)}`].filter(Boolean).join('; ');
+  const scene0 = withScene ? (() => { try { return sceneOf(ctx.card || {}); } catch { return ''; } })() : '';
+  const scene = !people && /\b(?:woman|women|man|men|person|people|girl|boy|customer|model|hands?|holding|wearing|face|someone)\b/i.test(scene0) ? '' : scene0; /* a scene with a person never goes where people aren't allowed */
+  const look = !withScene ? '' : [lk.notes && clip(lk.notes, 180), lk.light && `light ${clip(lk.light, 60)}`, lk.setting && `settings ${clip(lk.setting, 60)}`, lk.props && `props ${clip(lk.props, 60)}`, lk.framing && `framing ${clip(lk.framing, 60)}`].filter(Boolean).join('; ');
   const roles = (k.roles || []).filter((c) => c?.hex).slice(0, 4).map((c) => `${c.hex}${c.role ? ` ${clip(c.role, 20)}` : ''}`).join(', ');
   const per = (ctx.bbv?.personas || [])[0], who = people && per ? clip(per.who || per.label || per.name, 90) : '';
   const bits = [scene && `The scene: ${clip(scene, 220)}.`, look && `In the brand's own look: ${look}.`, roles && `Colour roles: ${roles}.`, who && `The people it is for: ${who}.`].filter(Boolean);
-  return bits.length ? `${bits.join(' ')} None of this is written on the image.` : '';
+  return bits.length ? `Context only, never written on the image: ${bits.join(' ')}` : ''; /* the clause first, so a cut from the end can't take it */
 };
 /* the language the brand speaks to its buyers (its Brand Book tone), so a film for a Hindi-first brand isn't in English */
 const spokeIn = (ctx) => { const l = String(ctx.bbv?.tone?.language || '').trim(); return l && !/^english\b/i.test(l) ? `Spoken in ${l.replace(/[.]+$/, '')}, the way the brand's buyers talk.` : ''; };
@@ -235,7 +236,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
   async function make(ctx, board, spec, i = 0, opts = {}) {
     const J = opts.jobs || {}, used = new Set(), ask = askOf(spec);
     ctx.hfStep = 0;
-    { const st0 = styleOf(spec.style); ctx.castRefUrls = st0 && ['person', 'hands'].includes(st0.people) && !['none'].includes(ctx.bbv?.comfort?.people) ? castRefs(ctx, spec, engines.pub) : []; }
+    { const st0 = styleOf(spec.style); ctx.castRefUrls = st0 && st0.people === 'person' && !['none', 'hands', 'consented'].includes(ctx.bbv?.comfort?.people) ? castRefs(ctx, spec, engines.pub) : []; /* a face only where the style shows a person and the Brand Book allows people: never on a hands-only style (26 Oct review) */ }
     ctx.hfHook = (step) => { const k = `${spec.style}:${i}:${step}:${ask}`; used.add(k);
       return { resume: J[k] || null, onSubmit: (j) => { J[k] = j; return opts.save?.(); }, idem: opts.press ? `brew:${String(opts.press).slice(0, 48)}:${k}`.slice(0, 200) : null }; };
     const letGo = async () => { for (const k of used) delete J[k]; await Promise.resolve(opts.save?.()).catch(() => {}); };
@@ -253,7 +254,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     const ask = (() => { const x = JSON.stringify([spec.product?.name || null, spec.product?.img || null, spec.direction || null, spec.cast || null, spec.ref || null, spec.sizes || null, spec.seconds || null, spec.quality || null]); let h = 5381; for (let q = 0; q < x.length; q++) h = ((h << 5) + h + x.charCodeAt(q)) | 0; return (h >>> 0).toString(36); })();
     const runHF = async (step, id, input, o = {}) => { const k = `${spec.style}:${i}:${step}:${ask}`, J = opts.jobs || {};
       const k0 = `${spec.style}:${i}:${step}`; /* the key used before 24 Oct */
-      try { const out = await hf.run(id, input, { ...o, resume: J[k] || J[k0] || null, onSubmit: (j) => { J[k] = j; return opts.save?.(); } }); delete J[k]; delete J[k0]; await opts.save?.()?.catch?.(() => {}); return out; }
+      try { const out = await hf.run(id, input, { ...o, idem: opts.press ? `brew:${String(opts.press).slice(0, 48)}:${k}` : null, resume: J[k] || J[k0] || null, onSubmit: (j) => { J[k] = j; return opts.save?.(); } }); delete J[k]; delete J[k0]; await opts.save?.()?.catch?.(() => {}); return out; }
       catch (e) { if (!e.open) { delete J[k]; await opts.save?.()?.catch?.(() => {}); } throw e; } };
     const st = styleOf(spec.style); if (!st) throw new Error('Pick a style.');
     const size = sizeOf(st.size || spec.sizes?.[0] || (st.kind === 'video' ? 'story' : 'ig-portrait')); /* an A+ module's own size wins */
@@ -280,7 +281,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       Object.assign(take, { file, scene: { w: size.w, h: size.h, bg: { color: '#ffffff', src: file }, layers: [] } });
     } else if (st.kind === 'image' && st.job === 'product-shot' && !st.preset && !st.designed) {
       const x = await cr.staticAd(ctx, board, words, size, { style: st, noWords: st.type === 'none' }); made.push(...x.made);
-      if (!x.scene) throw Object.assign(new Error(x.fail || 'The picture didn’t come out right.'), { made }); /* what it spent still counts */
+      if (!x.scene) throw Object.assign(new Error(x.fail || 'The picture didn’t come out right.'), { made, refunded: !!x.refunded }); /* what it spent still counts; every shot refunded gives the unit back */
       /* a word-free picture whose shape is far from the frame's (an A+ 970×300 wide image from a 21:9 shot, a 3:1 banner) is fitted whole on its own edge colour, never cropped into the product */
       if (st.type === 'none' && x.scene?.bg?.src && !x.scene.layers?.length) { const ft = await fitOf(x.scene.bg.src, size); if (ft.fit === 'contain') { x.scene = { ...x.scene, bg: { ...x.scene.bg, ...ft } }; x.file = await maker.render(x.scene).catch(() => x.file); } }
       Object.assign(take, { scene: x.scene, file: x.file, shot: x.shot, direction: x.direction });
@@ -307,7 +308,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       const showsProduct = !!(st.preset || st.designed), job = showsProduct ? 'product-shot' : st.job, o = hf.pick(job, ctx.tier || 'default'), photos = showsProduct ? cr.photosOf(ctx, ctx.profile).slice(0, st.preset ? 1 : 3).map((u) => engines.pub(u)) : [];
       const base = st.preset ? { ...o.input, enhance_prompt: true, preset_id: st.preset, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) }
         : showsProduct ? { ...o.input, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) } : { ...o.input, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
-      const colours = (ctx.bbv?.kit?.colors || []).filter(Boolean), promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}${colours.length ? `, in its colours ${colours.join(', ')}` : ''}.`, showsProduct && photos.length ? 'The product is exactly the one in the reference photos: same shape, colours, label and count.' : '', cr.productLine(ctx.profile), spec.direction ? tidy(spec.direction, 600) : '', rules, fix, /* the brand line last: a long prompt is cut from the end, and the exact-words rule and the retry's fix must never be what goes */ brandScene(ctx, { people: !['none', 'consented'].includes(ctx.bbv?.comfort?.people) })].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
+      const colours = (ctx.bbv?.kit?.colors || []).filter(Boolean), promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}${colours.length ? `, in its colours ${colours.join(', ')}` : ''}.`, showsProduct && photos.length ? 'The product is exactly the one in the reference photos: same shape, colours, label and count.' : '', cr.productLine(ctx.profile), spec.direction ? tidy(spec.direction, 600) : '', rules, fix, /* the brand line last: a long prompt is cut from the end, and the exact-words rule and the retry's fix must never be what goes */ brandScene(ctx, { people: st.people !== 'none' && !['none', 'consented'].includes(ctx.bbv?.comfort?.people), scene: showsProduct && !/^mp-/.test(st.id || '') /* marketplace pictures and type-only posters get the colours, not a room and props */ })].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
       let file = null, check = null;
       for (let t = 0; t < 2 && !file; t++) {
         const input = { ...base, prompt: promptOf(t && check ? `The last one was wrong: ${check.same ? '' : 'the product changed. '}${check.invented.length ? `it added "${check.invented.join('", "')}" — leave those out.` : ''}` : '') };
@@ -324,8 +325,8 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       Object.assign(take, { file: await maker.render(scene), drawn: file, scene, check: { words: check.words, unchecked: false } });
     } else if (st.job === 'product-motion') { /* a checked product shot (the style's look, no words), then Kling moves it */
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); /* before the first frame is paid for */
-      const shot = await cr.staticAd(ctx, board, words, size, { style: { ...st, people: 'none' }, noWords: true }); made.push(...shot.made); if (!shot.shot) throw Object.assign(new Error(shot.fail || 'The first frame didn’t keep the product.'), { made });
-      const o = hf.pick('product-motion', ctx.tier || 'default'), input = { ...o.input, prompt: tidy(`${st.look} ${cr.productLine(ctx.profile)} Nothing new appears; no text.`, 2400), image_url: engines.pub(shot.shot.file), duration: +spec.seconds || st.seconds || 5 };
+      const shot = await cr.staticAd(ctx, board, words, size, { style: { ...st, people: 'none' }, noWords: true }); made.push(...shot.made); if (!shot.shot) throw Object.assign(new Error(shot.fail || 'The first frame didn’t keep the product.'), { made, refunded: !!shot.refunded });
+      const o = hf.pick('product-motion', ctx.tier || 'default'); if (!o) throw new Error('Brew’s video maker isn’t set up for this right now.'); const input = { ...o.input, prompt: tidy(`${st.look} ${cr.productLine(ctx.profile)} Nothing new appears; no text.`, 2400), image_url: engines.pub(shot.shot.file), duration: +spec.seconds || st.seconds || 5 };
       const e = await hf.estimate(o.id, input), out = await runHF('motion', o.id, input, { maxMs: 20 * 60e3 }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.motion', provider: 'higgsfield', model: o.id, usd: e.usd ?? 0.55 });
       Object.assign(take, { file, poster: shot.shot.file, shot: shot.shot });
       await finishFilm(take, { words, loop: true }).catch((e) => log.warn?.('[studio] finish', e.message)); /* silent: a cover and a GIF */
@@ -333,7 +334,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       if (!spend('video', ctx.slug)) throw Object.assign(new Error('Today’s video budget is used up.'), { budget: true }); await ensureProfile(ctx);
       const photos = cr.photosOf(ctx, ctx.profile).slice(0, 4).map((u) => engines.pub(u)), o = hf.pick('video-restyle'), ref = engines.pub(ctx.ref.video);
       const input = { ...o.input, prompt: tidy([st.look, ctx.product?.name ? `Our product: ${ctx.product.name}. ${cr.productLine(ctx.profile)}` : '', spec.direction || ''].filter(Boolean).join(' '), 2400), video_url: ref, image_urls: photos };
-      const e = await hf.estimate(o.id, input), out = await runHF('swap', o.id, input, { maxMs: 25 * 60e3 }).catch((err) => { if (err.moderated || /nsfw|content safety/i.test(err.message)) throw Object.assign(new Error('Higgsfield’s safety filter refused this reference video (footage with skin, showers or close-ups often trips it). Nothing was charged. Try the Viral short instead: it follows the same shots without sending their footage.'), { moderated: true, plain: true, made }); throw err; }); const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.swap', provider: 'higgsfield', model: o.id, usd: e.usd ?? 2.5 });
+      const e = await hf.estimate(o.id, input), out = await runHF('swap', o.id, input, { maxMs: 25 * 60e3 }).catch((err) => { if (err.moderated || /nsfw|content safety/i.test(err.message)) throw Object.assign(new Error('Higgsfield’s safety filter refused this reference video (footage with skin, showers or close-ups often trips it). Nothing was charged. Try the Viral short instead: it follows the same shots without sending their footage.'), { moderated: true, refunded: true, plain: true, made }); throw err; }); /* refunded: Higgsfield charges nothing for a refusal, so the day's unit comes back */ const file = engines.keep(await finishVideo(out.buf, size, log), 'mp4'); made.push({ cap: 'video.swap', provider: 'higgsfield', model: o.id, usd: e.usd ?? 2.5 });
       Object.assign(take, { file, recreated: { from: ctx.ref.url || null, by: ctx.ref.author || ctx.ref.brand || null } });
       await finishFilm(take, { words, spoken: true }).catch((e2) => log.warn?.('[studio] finish', e2.message)); /* captions from what is said in it, a cover */
     } else if (st.job === 'viral-short') { /* a viral-style short: several shots, up to 30 s, in the pattern of the reference when there is one */

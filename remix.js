@@ -552,8 +552,8 @@ export function createRemix(o) {
     checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote) });
     const lf = copyFlags(shopperText, { source: src, names: [BN(), o.SEED?.brand?.name, ...(catalogOf(t) || []).map((x) => x?.t)] }); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
     /* the product it sells is in stock today (1.11): an ad or message for a sold-out product waits, unless the card is about the restock */
-    { const cat = catalogOf(t) || []; let pr = null; try { pr = cardProduct(card, cat); } catch {}
-      if (pr?.out && !isRestock(card) && !/\b(?:sold[ -]?out|out of stock)\b/i.test(`${card.title || ''} ${card.sub || ''}`)) /* the card's words only: copy saying "before it sells out" is no restock */ checks.push({ k: `${pr.t} is out of stock on the store right now: pick an in-stock product, or hold this until it’s back`, ok: false, fix: true, stock: true }); }
+    { const cat = catalogOf(t) || []; let pr = null; try { pr = jamProduct(t, ch, card); } catch {} /* the product the jam actually makes (its in-stock twin when the card's sold out), the one Studio uses */
+      if (pr?.out && !isRestock(card) && ch.family !== 'meta_ops') /* one rule with Studio's: only a restock card, or an ad-account change about the sold-out product itself, goes ahead */ /* the card's words only: copy saying "before it sells out" is no restock */ checks.push({ k: `${pr.t} is out of stock on the store right now: pick an in-stock product, or hold this until it’s back`, ok: false, fix: true, stock: true }); }
     if (ch.imagePending) checks.push({ k: 'The new creative is still rendering', ok: false, soft: true });
     checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. Whoever ships it from the brief should know.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^—/.test(act.rollback), soft: true }); /* "Nothing ships until it is sent" is safe, not a failure (QA J-17) */
     /* a connector check only for a tool this build can connect (Marketplaces is not one any more: QA J-17) */
@@ -2295,7 +2295,7 @@ export function createRemix(o) {
     let m = null; try {
       m = byTitle(c.product) || (c.product && matchProduct(String(c.product), cat, { brand, byNameOnly: true })) || pricedProduct(`${c.title || ''}. ${c.sub || ''}`, cat, { brand, byNameOnly: true }) || cardProduct(c, cat, { brand, byNameOnly: true })
         || (touched && words && matchProduct(words, cat, { brand, byNameOnly: true })) || null;
-      if (!m) { const dp = ch.pkg?.draft?.product || (ch.v0 === 'draft' ? o.planOf?.(t, c)?.draft?.product : null) || ''; m = byTitle(dp) || (dp && matchProduct(dp, cat, { brand })) || (words && pricedProduct(words, cat, { brand })) || null; }
+      if (!m) { const dp = ch.pkg?.draft?.product || (ch.v0 === 'draft' ? o.planOf?.(t, c)?.draft?.product : null) || ''; m = byTitle(dp) || (dp && matchProduct(dp, cat, { brand })) || (words && pricedProduct(words, cat, { brand })) || cardProduct(c, cat, { brand }) /* the card's loose words, as before 26 Oct */ || (words && matchProduct(words, cat, { brand })) || null; }
     } catch { m = null; }
     if (!m) { const P = productFor(c, FACTS, words); const hit = byTitle(P?.full) || byTitle(P?.name); m = hit || (P?.img ? { t: P.name, img: P.img } : null); }
     if (!m) return null;

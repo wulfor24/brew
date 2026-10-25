@@ -27,7 +27,7 @@ test('a submit carries the idempotency key and is written down the moment it is 
   const seen = [], hf = createHiggsfield({ env, fetchImpl: fakeHF(seen), log: { warn() {} } }), id = hf.pick('product-shot').id;
   let saved = null;
   const out = await fast(() => hf.run(id, { prompt: 'x', image_urls: ['https://a/p.png'], aspect_ratio: '1:1' }, { idem: 'brew:p1:k', onSubmit: (j) => { saved = j; } }));
-  assert.equal(seen.length, 1); assert.equal(seen[0].headers['idempotency-key'], 'brew:p1:k'); assert.ok(saved?.status_url); assert.ok(out.buf.length > 512);
+  assert.equal(seen.length, 1); assert.match(seen[0].headers['idempotency-key'], /^brew:p1:k:[a-z0-9]+$/, 'the press key, pinned to this exact request'); assert.ok(saved?.status_url); assert.ok(out.buf.length > 512);
   await fast(() => hf.run(id, { prompt: 'x' }, { resume: saved })); assert.equal(seen.length, 1, 'resume polls, never submits');
 });
 
@@ -36,7 +36,7 @@ test('the product shot through the engines passes the hold (key, resume, write-d
   const eng = createEngines({ saveGen: (n, b) => fs.writeFileSync(`${dir}/${n}`, b), genFile: (n) => `${dir}/${n}`, fetchImpl: fakeHF(seen), env, mock: () => false, log: { warn() {}, info() {} } });
   let wrote = null;
   const r = await fast(() => eng.run('still.shot', { prompt: 'p', srcUrl: 'https://a/p.png', ratio: '1:1', hf: { idem: 'brew:press:shot:0:0', onSubmit: (j) => { wrote = j; } } }, { prefer: 'higgsfield' }));
-  assert.equal(r.provider, 'higgsfield'); assert.equal(seen[0].headers['idempotency-key'], 'brew:press:shot:0:0'); assert.ok(wrote, 'written down when bought');
+  assert.equal(r.provider, 'higgsfield'); assert.match(seen[0].headers['idempotency-key'], /^brew:press:shot:0:0:/); assert.ok(wrote, 'written down when bought');
 });
 
 test('Studio holds every paid request in a make, lets the keys go after, and refunds a refunded make', () => {
@@ -64,8 +64,9 @@ test('every Higgsfield picture gets the brand world as context, never as words, 
       kit: { roles: [{ hex: '#82b1ff', role: 'accent' }], fonts: { heading: 'Inter' } }, personas: [{ who: 'women 25–40 who tried one product and gave up' }] } };
   const line = brandScene(ctx);
   assert.match(line, /The scene: a woman holding the serum/); assert.match(line, /window light/); assert.match(line, /#82b1ff accent/); assert.match(line, /women 25–40/);
-  assert.doesNotMatch(line, /Inter|top left|short line/, 'no fonts, logo placement or words-on-image notes'); assert.match(line, /None of this is written on the image\.$/);
-  assert.doesNotMatch(brandScene(ctx, { people: false }), /people it is for/, 'no buyer line where people are not shown');
+  assert.doesNotMatch(line, /Inter|top left|short line/, 'no fonts, logo placement or words-on-image notes'); assert.match(line, /^Context only, never written on the image: /, 'the clause first, so a cut keeps it');
+  assert.doesNotMatch(brandScene(ctx, { people: false }), /people it is for|a woman holding/, 'no buyer line and no scene with a person where people are not shown');
+  assert.doesNotMatch(brandScene(ctx, { scene: false }), /The scene|window light/, 'marketplace and type pieces: colours only'); assert.match(brandScene(ctx, { scene: false }), /#82b1ff/);
   assert.equal(brandScene({}), '', 'nothing known, nothing added');
   const s = fs.readFileSync(new URL('../jam2/studio.js', import.meta.url), 'utf8');
   assert.match(s, /rules, fix, \/\* the brand line last[^\n]*brandScene\(ctx/, 'the brand line is what a cut trims, never the exact-words rule');
@@ -73,8 +74,8 @@ test('every Higgsfield picture gets the brand world as context, never as words, 
 
 test('a person or hands still gets the saved cast photos, so the face is the same in every still', () => {
   const s = fs.readFileSync(new URL('../jam2/studio.js', import.meta.url), 'utf8'), c = fs.readFileSync(new URL('../jam2/creative.js', import.meta.url), 'utf8');
-  assert.match(s, /ctx\.castRefUrls = st0 && \['person', 'hands'\]\.includes\(st0\.people\)/);
-  assert.match(c, /refUrls: \[\.\.\.photos\.slice\(1\), \.\.\.looks\.map\(\(x\) => x\.u\), \.\.\.cast\]/); assert.match(c, /they are not the product/);
+  assert.match(s, /ctx\.castRefUrls = st0 && st0\.people === 'person' && !\['none', 'hands', 'consented'\]/, 'a face only on person styles the Brand Book allows');
+  assert.match(c, /refUrls: \[\.\.\.photos\.slice\(1\), \.\.\.looks\.map\(\(x\) => x\.u\), \.\.\.cast\]/); assert.match(c, /\.\.\.castFiles\]/, 'the fallback partner gets the face too'); assert.match(c, /they are not the product/);
 });
 
 test('a Pinterest pin is a picture made in Studio at 2:3, and "+" refuses what it cannot add instead of making the default piece', () => {
@@ -82,4 +83,30 @@ test('a Pinterest pin is a picture made in Studio at 2:3, and "+" refuses what i
   assert.match(r, /pinterest_pin: 'pin'/); assert.match(r, /!\/pinterest_pin\$\/\.test/); assert.match(r, /w\.id === 'pin'\)\) r = w/);
   assert.match(r, /'creative\.pinterest_pin'\];/, 'offered under "+"');
   assert.match(r, /if \(b\.action && !pickA\) return \{ error:/, 'an action it cannot add is refused, never swapped for the default');
+});
+
+
+/* behaviour, not source: a fake Higgsfield that can answer 404 for status or file */
+const fakeHF2 = (seen, { status404 = false, file404 = false } = {}) => async (url, init = {}) => {
+  const u = String(url);
+  if (/status/.test(u)) return status404 ? new Response('{}', { status: 404 }) : new Response(JSON.stringify({ status: 'completed', images: [{ url: 'https://cdn.example/out.png' }] }), { status: 200 });
+  if (/cdn\.example/.test(u)) return file404 ? new Response('gone', { status: 404 }) : new Response(Buffer.alloc(2048, 1), { status: 200, headers: { 'content-type': 'image/png' } });
+  seen.push({ headers: init.headers || {}, body: init.body }); return new Response(JSON.stringify({ request_id: 'r', status_url: 'https://api.example/requests/r/status' }), { status: 200 });
+};
+test('a key belongs to one exact request; an old, gone or expired request is final, never "still being made"', async () => {
+  const seen = [], hf = createHiggsfield({ env, fetchImpl: fakeHF2(seen), log: { warn() {} } }), id = hf.pick('product-shot').id;
+  await fast(() => hf.run(id, { prompt: 'a', aspect_ratio: '1:1' }, { idem: 'brew:p:k' })); await fast(() => hf.run(id, { prompt: 'b', aspect_ratio: '1:1' }, { idem: 'brew:p:k' }));
+  assert.notEqual(seen[0].headers['idempotency-key'], seen[1].headers['idempotency-key'], 'same press, new words: a new request, no collision');
+  await assert.rejects(() => hf.run(id, {}, { resume: { status_url: 'https://api.example/requests/r/status', at: Date.now() - 25 * 3600e3 } }), (e) => !e.open && /too old/.test(e.message));
+  const gone = createHiggsfield({ env, fetchImpl: fakeHF2([], { status404: true }), log: { warn() {} } });
+  await assert.rejects(() => fast(() => gone.run(id, {}, { resume: { status_url: 'https://api.example/requests/r/status', at: Date.now() } })), (e) => !e.open && /gone/.test(e.message));
+  const expired = createHiggsfield({ env, fetchImpl: fakeHF2([], { file404: true }), log: { warn() {} } });
+  await assert.rejects(() => fast(() => expired.run(id, {}, { resume: { status_url: 'https://api.example/requests/r/status', at: Date.now() } })), (e) => !e.open && /expired/.test(e.message));
+});
+test('every Studio paid request carries the press key; a resumed make keeps its press, claims its board, and writes a purchase at once', () => {
+  const s = fs.readFileSync(new URL('../jam2/studio.js', import.meta.url), 'utf8'), rt = fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8'), c = fs.readFileSync(new URL('../jam2/creative.js', import.meta.url), 'utf8');
+  assert.match(s, /hf\.run\(id, input, \{ \.\.\.o, idem: opts\.press \?/, 'designed, motion, restyle, UGC and viral calls too');
+  assert.match(rt, /press: b\.press \|\| null, \.\.\.\(run/); assert.match(rt, /jobsOf\(t, j, bd, m\.press \|\| null\)/); assert.match(rt, /const claim = await claimMake\(makeKeys\(slugOfT\(t\), j\.id, bd\.id, null\)\); if \(!claim\) continue;/);
+  assert.match(rt, /await store\.put\(slugOfT\(t\), j\); await store\.flush\(slugOfT\(t\)\);/);
+  assert.match(c, /if \(open0 && !outs\.some\(\(o\) => o\.file\)\) throw open0;/, 'a shot still being made is kept, not forgotten'); assert.match(s, /refunded: !!x\.refunded/);
 });

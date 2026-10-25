@@ -93,10 +93,12 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
     const lookSrc = refsFor(ctx.bbv, ctx.kind || '', 2).map((x) => x.src).filter(Boolean), looks = (await Promise.all(lookSrc.map((u) => fileOf(u).then((f) => (f ? { u, f } : null)).catch(() => null)))).filter(Boolean);
     /* the saved cast's own photos (Studio sets ctx.castRefUrls for a person or hands style): after the product and look photos, so
        the same face is in every still, as it already is in every film (a text note alone gave a new face each time) */
-    const cast = (ctx.castRefUrls || []).slice(0, 2), castLine = cast.length ? ` The last ${cast.length === 1 ? 'reference photo shows' : `${cast.length} reference photos show`} the person to cast: keep their face and look exactly; they are not the product, and the product stays exactly as in the first photo.` : '';
-    const spec = { prompt: shotPrompt(d, p, looks.length) + castLine, tier: ctx.tier || null /* the composer's quality: preview, standard, premium 4K */, srcFile: files[0] || null, srcUrl: photos[0] || null, refFiles: [...files.slice(1), ...looks.map((x) => x.f)], refUrls: [...photos.slice(1), ...looks.map((x) => x.u), ...cast], ratio: GEM_RATIO[ratio] || ratio, slug: ctx.slug, product: p ? ctx.product?.name : false, named: p ? { img: photos[0], t: ctx.product?.name || null } : null };
+    const cast = p ? (ctx.castRefUrls || []).slice(0, 2) : [] /* with no product photo the first photo wouldn't be the product: no cast either */, castFiles = (await Promise.all(cast.map((u) => fileOf(u).catch(() => null)))).filter(Boolean), castLine = cast.length ? ` The last ${cast.length === 1 ? 'reference photo shows' : `${cast.length} reference photos show`} the person to cast: keep their face and look exactly; they are not the product, and the product stays exactly as in the first photo.` : '';
+    const spec = { prompt: shotPrompt(d, p, looks.length) + castLine, tier: ctx.tier || null /* the composer's quality: preview, standard, premium 4K */, srcFile: files[0] || null, srcUrl: photos[0] || null, refFiles: [...files.slice(1), ...looks.map((x) => x.f), ...castFiles], refUrls: [...photos.slice(1), ...looks.map((x) => x.u), ...cast], ratio: GEM_RATIO[ratio] || ratio, slug: ctx.slug, product: p ? ctx.product?.name : false, named: p ? { img: photos[0], t: ctx.product?.name || null } : null };
     const outs = await Promise.all(Array.from({ length: n }, (_, k) => engines.run('still.shot', { ...spec, hf: ctx.hfHook?.(`shot:${ctx.hfStep || 0}:${k}`) || null }).catch((e) => ({ error: e }))));
     ctx.hfStep = (ctx.hfStep || 0) + 1; /* a second staticAd in the same make (a film's first frame after a still) gets its own keys */
+    /* a shot Higgsfield is still making is never swallowed: with nothing else back, it goes up as open, so the make keeps its record and picks it up (26 Oct review) */
+    const open0 = outs.find((o) => o.error?.open)?.error; if (open0 && !outs.some((o) => o.file)) throw open0;
     return { cands: outs.filter((o) => o.file), errors: outs.filter((o) => o.error).map((o) => o.error), refFile: files[0] || null };
   }
 
@@ -220,7 +222,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
         const r2 = await shoot(ctx, { ...d, moment: `${d.moment}\nThe last attempt was rejected: ${tidy(why, 300)}. Fix that.` }, size.ratio, 1); cands = [...j0, ...r2.cands]; errors = [...errors, ...r2.errors]; }
       else cands = j0; }
     const made = cands.map((c) => ({ cap: 'still.shot', provider: c.provider, model: c.model, usd: c.usd || 0 }));
-    if (!cands.length) { log.warn?.('[creative] no candidate', errors.map((e) => e.message).join('; ')); return { made, direction: d, fail: errors[0]?.message || 'no picture came back' }; }
+    if (!cands.length) { log.warn?.('[creative] no candidate', errors.map((e) => e.message).join('; ')); return { made, direction: d, fail: errors[0]?.message || 'no picture came back', refunded: !!errors.length && errors.every((e) => e.refunded || e.moderated) }; }
     const judged = await critique(ctx, cands.filter((c) => c.same === undefined), refFile, d).then((x) => [...cands.filter((c) => c.same !== undefined), ...x]), ok = judged.filter((c) => c.same).sort((a, b) => b.shot + b.ad - (a.shot + a.ad));
     keepLog?.({ slug: ctx.slug, board: board.id, direction: d, judged: judged.map(({ file, same, shot, ad, zone, why, provider }) => ({ file, same, shot, ad, zone, why, provider })) });
     if (!ok.length) return { made, direction: d, judged, fail: 'the product changed in every picture' };

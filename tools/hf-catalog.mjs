@@ -32,6 +32,10 @@ for (const f of families) {
    against these schemas, so an empty or shrunken file would stop Studio; keep the old one and say why */
 let old = null; try { old = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch {}
 const had = old?.workflows?.length || 0, lost = old ? old.workflows.filter((w) => !workflows.some((x) => x.id === w.id)).map((w) => w.id) : [];
+/* every workflow Brew routes a job to must still be there, or Studio would find no maker for that job */
+let routed = []; try { const R = JSON.parse(fs.readFileSync(path.join(path.dirname(OUT), 'higgsfield-routes.json'), 'utf8')); routed = [...new Set(Object.values(R.jobs || {}).flatMap((j) => Object.values(j || {}).map((o) => o?.id).filter(Boolean)))]; } catch {}
+const missing = routed.filter((id) => !workflows.some((w) => w.id === id));
+if (missing.length) { console.error(`\nNot written: Brew routes jobs to ${missing.join(', ')}, which the docs no longer list. Update data/higgsfield-routes.json first.`); process.exit(1); }
 if (!workflows.length || workflows.length < had * 0.5 || workflows.some((w) => !w.schema)) {
   console.error(`\nNot written: found ${workflows.length} workflows (${workflows.filter((w) => !w.schema).length} without a schema) against ${had} in hand. The docs may have changed shape; check the link and schema patterns above.`);
   process.exit(1);
