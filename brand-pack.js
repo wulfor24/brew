@@ -178,7 +178,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   const gcsPut = (name, buf, type) => obj.put(name, buf, type);
   const gcsList = (prefix) => obj.list(prefix);
   /* another instance wrote to a pack: the next fresh load here reads it (pg NOTIFY) */
-  obj?.onChange?.((key, version) => { if (key !== '*' && version) { const m0 = /^brands\/(.+)$/.exec(key); const set = m0 && OWN.get(m0[1]); if (set?.has(version)) { set.delete(version); return; } } /* this instance's own write */
+  obj?.onChange?.(async (key, version) => { if (key !== '*' && version) { const m0 = /^brands\/(.+)$/.exec(key); if (m0 && writing.has(m0[1])) await writing.get(m0[1]).catch(() => {}); /* our own write may still be returning */ const set = m0 && OWN.get(m0[1]); if (set?.has(version)) { set.delete(version); return; } } /* this instance's own write */
     if (key === '*') { for (const sl of new Set([...vers.keys(), ...cache.keys()])) bump(sl); return; } /* notices may have been missed: every pack loads fresh */
     const m = /^brands\/([^/]+)\/(.+)$/.exec(key || ''); if (!m || !BUILT_FROM.test(m[2])) return;
     if (m[2] === 'status.json') { getJSON(m[1], 'status.json', null).then((st) => { if (changesPack(m[1], 'status.json', st)) bump(m[1]); }).catch(() => bump(m[1])); return; } /* a seenAt stamp alone keeps the built pack (and so does the notice of this instance's own write) */
@@ -192,6 +192,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   /* a pack's own heals, saved while it is being built (loadGenerated): the pack in hand already has them, so they never make
      it stale; and this instance's own writes come back as notices it ignores (OWN), so one write is one rebuild at most */
   const building = new AsyncLocalStorage(), OWN = new Map(); // `${slug}/${name}` → Set(versions this instance wrote)
+  const writing = new Map(); // `${slug}/${name}` → the write still on its way (its notice can arrive before it returns)
   const ownWrote = (slug, name, v) => { if (!v || typeof v !== 'number') return; const k = `${slug}/${name}`; let set = OWN.get(k); if (!set) OWN.set(k, (set = new Set())); set.add(v); if (set.size > 20) set.delete(set.values().next().value); if (OWN.size > 5000) OWN.delete(OWN.keys().next().value); };
   const put = async (slug, name0, data, type) => {
     await retireReady(); const name = sandboxName(name0) || name0; /* Demo Mode: a session's private files live in its own folder (demo-mode.js sandboxName); reads fall through to the brand's */
@@ -200,7 +201,8 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     // bytes may come as a Uint8Array (a browser screenshot), not a Buffer: never JSON them
     const buf = Buffer.isBuffer(data) ? data : data instanceof Uint8Array || data instanceof ArrayBuffer ? Buffer.from(data) : Buffer.from(typeof data === 'string' ? data : JSON.stringify(data, null, 1));
     fs.writeFileSync(f, buf); if (changesPack(slug, name, buf) && building.getStore() !== slug) bump(slug); /* only a file the pack is built from makes the next load fresh (1.7: page-open logs and caches rebuilt the seed on every load, 2.8 s); anything else is picked up within FRESH_MS */
-    if (remote) ownWrote(slug, name, await gcsPut(`brands/${slug}/${name}`, buf, type || (name.endsWith('.json') ? 'application/json' : undefined)).catch((e) => { log.warn('[packs] gcs put', name, e.message); if (obj?.pg && pgRow(name)) throw e; })); /* Postgres: a lost write is an error, never a quiet disk-only copy */
+    if (remote) { const k = `${slug}/${name}`, w = gcsPut(`brands/${slug}/${name}`, buf, type || (name.endsWith('.json') ? 'application/json' : undefined)); writing.set(k, w);
+      try { ownWrote(slug, name, await w.catch((e) => { log.warn('[packs] gcs put', name, e.message); if (obj?.pg && pgRow(name)) throw e; })); } finally { if (writing.get(k) === w) writing.delete(k); } } /* Postgres: a lost write is an error, never a quiet disk-only copy */
     return f;
   };
   const get = async (slug, name) => {
@@ -245,7 +247,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     } catch (e) { log.warn('[packs] read', slug, name, e.message); return { ok: false, error: e.message }; } };
   /* the same file written so a failed bucket write throws (the caller keeps it dirty and tries again) */
   const putStrict = async (slug, name0, data) => { await retireReady(); const name = sandboxName(name0) || name0; if (wiping(slug)) return null; const f = fileOf(slug, name); fs.mkdirSync(path.dirname(f), { recursive: true });
-    const buf = Buffer.from(JSON.stringify(data, null, 1)); fs.writeFileSync(f, buf); if (changesPack(slug, name, buf) && building.getStore() !== slug) bump(slug); if (remote) ownWrote(slug, name, await gcsPut(`brands/${slug}/${name}`, buf, 'application/json')); return f; };
+    const buf = Buffer.from(JSON.stringify(data, null, 1)); fs.writeFileSync(f, buf); if (changesPack(slug, name, buf) && building.getStore() !== slug) bump(slug); if (remote) { const k = `${slug}/${name}`, w = gcsPut(`brands/${slug}/${name}`, buf, 'application/json'); writing.set(k, w); try { ownWrote(slug, name, await w); } finally { if (writing.get(k) === w) writing.delete(k); } } return f; };
   const getJSON = async (slug, name, d = null) => { const b = await get(slug, name); if (!b) return d; try { return JSON.parse(b.toString('utf8')); } catch { return d; } };
   /* a file other instances write while this one runs (first drafts, made by whichever instance's background job ran): the
      bucket's copy first, kept on disk; this instance's disk only when the bucket can't be reached. get() serves the disk
