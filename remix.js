@@ -483,14 +483,14 @@ export function createRemix(o) {
      made on a yes (Param, 23 Oct). Nothing is drawn free on open. Returns the Studio recipe, or null for words, messages, batches.
      V1_STUDIO=0 brings back the free Gemini draft */
   const STUDIO_FAM = new Set(['meta_ad', 'social', 'post', 'listing', 'print']);
-  const STUDIO_ACT = { short_video: 'reel', ig_carousel: 'ig-carousel', ig_story: 'stories', carousel_ad: 'carousel-ad', listing_content: 'listing', ig_post: 'ig-post' };
+  const STUDIO_ACT = { short_video: 'reel', ig_carousel: 'ig-carousel', ig_story: 'stories', carousel_ad: 'carousel-ad', listing_content: 'listing', ig_post: 'ig-post', pinterest_pin: 'pin' /* a pin is a picture: made in Studio at 2:3 (26 Oct) */ };
   const studioOf = (t, ch, label = null, c = null) => { if (process.env.V1_STUDIO === '0' || process.env.DEMO_MODE === '1' /* the demo has no Studio */ || !ch || ch.batchKey || !STUDIO_FAM.has(ch.family)) return null; c ||= t.cards?.get?.(ch.cardId); if (!c || isBatchCard(c)) return null;
-    if (ch.family === 'post' && !isVideoPost(ch)) return null;
+    if (ch.family === 'post' && !isVideoPost(ch) && !/pinterest_pin$/.test(String(ch.action || ''))) return null; /* posts are words, except a video and a Pinterest pin */
     if (/catalog_ad$/.test(ch.action || '')) return null; /* Meta builds a catalog ad from the catalog itself: real photos, the frame line; nothing to make */
     if (/\.(listing_titles|takedown)$/.test(ch.action || '')) return null; /* words only: marketplace titles and takedown notices have no picture to make */
     try { let r = j2Recipe(j2Plan(c, String(label || ch.studioLabel || ch.ctaMade?.label || c.cta?.label || '').slice(0, 60))[0]?.recipe);
       /* the jam's own action decides what kind of thing is made: a short-video jam on a card whose button says "Make the ad" makes a video, a carousel jam a set */
-      const want = STUDIO_ACT[String(ch.action || '').split('.').pop()], w = want && j2Recipe(want); if (w && (!r || r.kind !== w.kind)) r = w;
+      const want = STUDIO_ACT[String(ch.action || '').split('.').pop()], w = want && j2Recipe(want); if (w && (!r || r.kind !== w.kind || w.id === 'pin')) r = w; /* a pin is always the 2:3 pin, whatever the card's own picture is */
       return r && inStudio({ kind: r.kind, recipe: r.id }) ? r.id : null; } catch { return null; } };
   const bump = (t, ch) => { try { const w = ch && jamOf(t, ch); if (w) w.updatedAt = now(t); } catch {} };
   const on = (m, pat, fn) => on0(m, pat, m === 'GET' || !/:chid/.test(pat) ? fn : async (b, t, p, q) => { try { return await fn(b, t, p, q); } finally { bump(t, changes(t)?.[p?.chid]); } });
@@ -1338,8 +1338,8 @@ export function createRemix(o) {
   /* another deliverable for the same card (v1's "+" beside the jam's pills, as v2 had): the card's own kinds first, then the pieces
      any card can become (a post, a carousel, Stories, a short video, a WhatsApp message, an email), never one it already has and
      never an ad-account change it didn't ask for */
-  const ADD_STAPLES = ['creative.ig_post', 'creative.ig_carousel', 'creative.ig_story', 'creative.short_video', 'creative.carousel_ad', 'creative.film_brief', 'crm.paid_broadcast', 'crm.outreach_email', 'creative.linkedin_post', 'creative.x_post', 'visibility.blog_post'];
-  const DL_NAME = { 'creative.short_video': 'Short video', 'creative.film_brief': 'Film brief', 'crm.paid_broadcast': 'WhatsApp message', 'crm.outreach_email': 'Email', 'creative.linkedin_post': 'LinkedIn post', 'creative.x_post': 'X post', 'visibility.blog_post': 'Blog post', 'crm.flow_copy': 'Message flow', 'creative.creative_brief': 'Creative brief', 'creative.add_variants': 'Static ad' };
+  const ADD_STAPLES = ['creative.ig_post', 'creative.ig_carousel', 'creative.ig_story', 'creative.short_video', 'creative.carousel_ad', 'creative.film_brief', 'crm.paid_broadcast', 'crm.outreach_email', 'creative.linkedin_post', 'creative.x_post', 'visibility.blog_post', 'creative.pinterest_pin'];
+  const DL_NAME = { 'creative.short_video': 'Short video', 'creative.film_brief': 'Film brief', 'crm.paid_broadcast': 'WhatsApp message', 'crm.outreach_email': 'Email', 'creative.linkedin_post': 'LinkedIn post', 'creative.x_post': 'X post', 'visibility.blog_post': 'Blog post', 'crm.flow_copy': 'Message flow', 'creative.creative_brief': 'Creative brief', 'creative.add_variants': 'Static ad', 'creative.pinterest_pin': 'Pinterest pin' };
   const dlName = (key) => DL_NAME[key] || actOf(key)?.label || key;
   const canAdd = (r, key) => !!actOf(key) && (r.actionKeys.includes(key) || ADD_STAPLES.includes(key));
   const addable = (r, have = []) => { const got = new Set(have.map((x) => x.action)); return [...new Set([...r.actionKeys, ...ADD_STAPLES])].filter((k) => canAdd(r, k) && !got.has(k) && !k.startsWith('brew.')).slice(0, 12).map((k) => ({ key: k, label: dlName(k) })); };
@@ -1579,6 +1579,7 @@ export function createRemix(o) {
     if (/^build-/.test(String(c.id || ''))) return { changes: [], navOnly: true }; /* "Read all 57 plans" goes to the moves, never a page-copy jam (QA J-14) */
     if (b.queue) return v2Remix(b, t, c); /* Another take: answers at once, the picture in the background (the block above) */
     const r00 = recipeFor(c), pickA = b.action && canAdd(r00, String(b.action)) ? String(b.action) : null; /* "+": this card as another deliverable */
+    if (b.action && !pickA) return { error: `${dlName(String(b.action))} can't be added to this card yet.` }; /* never a second copy of the card's default piece in its place (26 Oct) */
     const r0 = pickA ? { ...r00, actionKeys: [pickA], primary: pickA, conflict: false, alwaysJam: false } : r00, r = b.as === 'film' && !r0.conflict && !r0.alwaysJam ? { ...r0, actionKeys: ['creative.film_brief'], primary: 'creative.film_brief', intents: ['Founder on camera', 'Cut it to 15 seconds', 'Fewer shots'] } : r0; /* "Brief a film instead": the same card, filmed for real by the founder */
     const cv = ensureCardVersion(t, c);
     const intent = String(b.intent || '').slice(0, 60), prompt = String(b.prompt || '').slice(0, 300);

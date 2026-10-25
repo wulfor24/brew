@@ -76,3 +76,10 @@ test('a person or hands still gets the saved cast photos, so the face is the sam
   assert.match(s, /ctx\.castRefUrls = st0 && \['person', 'hands'\]\.includes\(st0\.people\)/);
   assert.match(c, /refUrls: \[\.\.\.photos\.slice\(1\), \.\.\.looks\.map\(\(x\) => x\.u\), \.\.\.cast\]/); assert.match(c, /they are not the product/);
 });
+
+test('a Pinterest pin is a picture made in Studio at 2:3, and "+" refuses what it cannot add instead of making the default piece', () => {
+  const r = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
+  assert.match(r, /pinterest_pin: 'pin'/); assert.match(r, /!\/pinterest_pin\$\/\.test/); assert.match(r, /w\.id === 'pin'\)\) r = w/);
+  assert.match(r, /'creative\.pinterest_pin'\];/, 'offered under "+"');
+  assert.match(r, /if \(b\.action && !pickA\) return \{ error:/, 'an action it cannot add is refused, never swapped for the default');
+});
