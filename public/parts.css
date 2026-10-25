@@ -253,7 +253,7 @@ p.am-when small{display:inline;margin:0 6px 0 0}
 .st-wide:hover{background:var(--surface)!important;color:var(--fg)!important}
 @media (min-width:861px){
   .st-body.is-wide{grid-template-columns:minmax(360px,1fr) min(640px,50vw)}
-  .st-body.is-wide .cs-panel .j2-st-styles{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .st-body.is-wide .cs-panel .j2-st-styles{grid-template-columns:repeat(3,minmax(0,1fr))}
   .st-body.is-wide .cs-panel .cs-slots{grid-template-columns:repeat(2,minmax(0,1fr))}
   .st-body.is-wide .cs-panel .cs-slots>.cs-pop,.st-body.is-wide .cs-panel .cs-slots>.cs-dir{grid-column:1/-1}
   .st-body.is-wide .cs-panel .cs-pop .cs-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
