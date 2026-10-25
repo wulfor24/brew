@@ -281,7 +281,6 @@ body.is-guest [data-cs-full]:not(.ship-go),body.is-guest [data-cs-slide="redo"],
 .cs-panel .cs-addgal{min-height:0}
 .cs-galhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .cs-galhead b{font-size:15px}
-.cs-galx{width:32px;height:32px;border-radius:999px;display:grid;place-items:center}
 .cs-panel .j2-stgal-side{width:auto;flex-direction:row;gap:6px;padding:0 0 2px;border:0;overflow-x:auto;scrollbar-width:none;order:3}
 .cs-panel .j2-stgal-side::-webkit-scrollbar{display:none}
 .cs-panel .j2-stgal-side button{flex:none;white-space:nowrap;padding:6px 12px;border-radius:999px;background:var(--surface-2,#f1f1f1);font-size:13px}

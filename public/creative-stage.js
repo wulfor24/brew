@@ -112,7 +112,7 @@
   }
   function gallery() { const sp = S.spec, kind = sp.kind === 'video' ? 'video' : 'image', gs = groups().filter((g) => g.kind === kind), g = gs.find((x) => x.id === S.group) || gs[0], q = (S.q || '').toLowerCase();
     const list = q ? gs.flatMap((x) => x.styles.map((y) => ({ ...y, group: y.group || x.label }))).filter((y) => `${y.label} ${y.group}`.toLowerCase().includes(q)) : (g?.styles || []).map((y) => ({ ...y, group: y.group || g.label }));
-    return `<div class="j2-stgal"><div class="cs-galhead"><b>${kind === 'video' ? 'Video styles' : 'Templates'}</b><button class="j2-ghost cs-galx" data-cs-galx aria-label="Close">✕</button></div><div class="j2-stgal-side">${gs.map((x) => `<button data-cs-grp="${H.esc(x.id)}" class="${x.id === g?.id ? 'on' : ''}">${H.esc(x.label)} <small>${x.styles.length}</small></button>`).join('')}</div>
+    return `<div class="j2-stgal"><div class="cs-galhead"><b>${kind === 'video' ? 'Video styles' : 'Templates'}</b><button class="cs-galx" data-cs-galx>Done</button></div><div class="j2-stgal-side">${gs.map((x) => `<button data-cs-grp="${H.esc(x.id)}" class="${x.id === g?.id ? 'on' : ''}">${H.esc(x.label)} <small>${x.styles.length}</small></button>`).join('')}</div>
       <div class="j2-stgal-main"><input id="cs-q" placeholder="Search templates" value="${H.esc(S.q || '')}"><div class="j2-stgrid">${list.map(tile).join('') || '<p>No template matches.</p>'}</div></div></div>`; }
   /* the set-up reads as one sentence (Param 25 Oct: "not fun, not quick to grasp"): "Make one In use picture of <product> with
      <who> for <size>, as a quick preview". Every underlined word is a choice; its picker opens under the sentence */
