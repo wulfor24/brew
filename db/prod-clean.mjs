@@ -18,7 +18,15 @@ for (const s of SERVICES) {
   try {
     const r = await fetch(`https://run.googleapis.com/v2/projects/${P}/locations/${R}/services/${s}`, { headers: { authorization: `Bearer ${await token()}` } });
     if (!r.ok) { bad(`${s}: its settings could not be read (${r.status}), so it was not checked`); continue; }
-    const env = Object.fromEntries((((await r.json()).template?.containers || [])[0]?.env || []).map((e) => [e.name, e.value ?? `(secret ${e.valueSource?.secretKeyRef?.secret || ''})`]));
+    const svc = await r.json(), c0 = (svc.template?.containers || [])[0] || {};
+    const env = Object.fromEntries((c0.env || []).map((e) => [e.name, e.value ?? `(secret ${e.valueSource?.secretKeyRef?.secret || ''})`]));
+    const role = s === 'brew-worker' ? 'worker' : 'web';
+    if (env.ROLE !== role) bad(`${s}: ROLE is ${env.ROLE || 'unset'}, not ${role}`);
+    if (s === 'brew-web' && svc.ingress !== 'INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER') bad(`${s}: takes traffic that skips the load balancer (ingress ${svc.ingress})`);
+    if (s === 'brew-worker' && svc.ingress !== 'INGRESS_TRAFFIC_INTERNAL_ONLY') bad(`${s}: is reachable from outside (ingress ${svc.ingress})`);
+    if (s === 'brew-web' && process.env.EXPECT_IMAGE && c0.image !== process.env.EXPECT_IMAGE) bad(`${s}: the candidate runs ${c0.image}, not the image being promoted`);
+    if (!/brew-prod-runtime@/.test(svc.template?.serviceAccount || '')) bad(`${s}: runs as ${svc.template?.serviceAccount || 'the default account'}, not brew-prod-runtime`);
+    if (env.MIGRATE_ON_BOOT !== '0') bad(`${s}: runs migrations on boot (only the migrate job does on production)`);
     for (const k of ['DEMO_MODE', 'AI_MOCK', 'OPEN_SITE', 'DEV_LOGIN', 'DEV_MEMBER', 'SLOOSH_DUMMY']) if (env[k] && env[k] !== '0') bad(`${s}: ${k}=${env[k]} (never on production)`);
     if (env.ENV !== 'production') bad(`${s}: ENV is ${env.ENV || 'unset'}, not production`);
     if (env.RESEARCH_BUCKET !== 'brew-prod') bad(`${s}: RESEARCH_BUCKET is ${env.RESEARCH_BUCKET || 'unset'}, not brew-prod`);
@@ -30,7 +38,14 @@ for (const s of SERVICES) {
   } catch (e) { bad(`${s}: settings check failed (${e.message})`); }
 }
 
-/* 2. the production database */
+/* 2. the candidate answers (from inside the VPC: the service takes no other outside traffic) */
+if (process.env.SMOKE_URL) {
+  const brandsNow = (await q(`SELECT DISTINCT split_part(key, '/', 2) AS s FROM objects WHERE key LIKE 'brands/%/status.json'`)).rows.map((r) => r.s).filter((x) => x && x !== '_brew').slice(0, 8);
+  for (const p of ['/', '/healthz/ready', '/api/config', '/privacy', ...brandsNow.flatMap((b) => [`/${b}`, `/b/${b}/seed.js`])]) {
+    try { const r = await fetch(process.env.SMOKE_URL + p, { signal: AbortSignal.timeout(30e3), redirect: 'manual' }); if (r.status !== 200) bad(`smoke: ${p} answered ${r.status}`); else console.log(`[clean] smoke ${p} 200`); }
+    catch (e) { bad(`smoke: ${p} did not answer (${e.message})`); } } }
+
+/* 3. the production database */
 const brands = (await q(`SELECT DISTINCT split_part(key, '/', 2) AS s FROM objects WHERE key LIKE 'brands/%'`)).rows.map((r) => r.s).filter((x) => x && x !== '_brew');
 for (const s of brands) { if (TEST_BRANDS.has(s)) bad(`a test brand is on production: ${s}`); if (/^zz-/.test(s)) bad(`a test key is on production: brands/${s}/`); }
 const n = async (sql, args = []) => +(await q(sql, args)).rows[0].n;

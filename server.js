@@ -1061,6 +1061,8 @@ const crossSite = (req, u) => {
 const SLOW_MS = +process.env.SLOW_MS || 1500;
 function timed(req, res, u, fn) {
   const t0 = performance.now(), clock = { ms: 0, n: 0 }, wh = res.writeHead; let ctype = '';
+  /* the same rule when a handler sets its cache header itself and never calls writeHead */
+  const sh = res.setHeader; res.setHeader = function (k, v) { if (String(k).toLowerCase() === 'cache-control' && v && !/\b(public|private|no-store)\b/i.test(String(v))) v = `private, ${v}`; return sh.call(res, k, v); };
   res.writeHead = function (code, ...a) { try { const st = `total;dur=${Math.round(performance.now() - t0)}, db;dur=${Math.round(clock.ms)}`;
     const hd = a.find((x) => x && typeof x === 'object' && !Array.isArray(x));
     /* the CDN in front of production caches only what an answer calls public: anything else (a viewer's own feed, seed.js,
