@@ -203,9 +203,10 @@ test('a Studio film is delivered at the placement’s exact pixels (a 720p clip 
   assert.equal(await finishVideo(Buffer.from('not a video'), { w: 1080, h: 1920 }, { warn: () => {} }).then((x) => x.toString()), 'not a video', 'a clip ffmpeg can’t read is kept as it came');
 });
 
-test('v1: every card button, pictures and videos too, opens v1’s own jam; Studio opens only in v2 (?v=2)', async () => {
+test('v1: every card button, pictures and videos too, opens v1’s own jam; v2’s own screen is retired (no ?v=2, no jam2.js)', async () => {
   const fs = await import('node:fs'), app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(app, /\/api\/jam2\/studio-for/); assert.doesNotMatch(app, /brew-jam2-studio/); assert.match(app, /if \(j2Ok && window\.Jam2\.on\(\)\) \{ closeDetail\(true\); return window\.Jam2\.open/);
+  assert.doesNotMatch(app, /\/api\/jam2\/studio-for/); assert.doesNotMatch(app, /brew-jam2-studio/); assert.doesNotMatch(app, /window\.Jam2/); const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8'); assert.doesNotMatch(html, /jam2\/jam2\.js/); assert.match(html, /jam2\/jam2\.css/, 'the Studio set-up keeps its shared styles'); assert.ok(!fs.existsSync(new URL('../public/jam2/jam2.js', import.meta.url)));
+  assert.match(app, /if \(location\.hash\.startsWith\('#jam2='\)\) history\.replaceState\(null, '', location\.pathname\);/, 'an old v2 address opens the feed');
   const kindOf = (label, card = {}) => recipe(planFor({ title: 'x', ...card }, label)[0].recipe)?.kind;
   assert.ok(['static', 'video', 'carousel'].includes(kindOf('Make the ad'))); assert.ok(['static', 'video', 'carousel'].includes(kindOf('Make the video')));
 });
