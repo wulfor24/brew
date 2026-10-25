@@ -50,3 +50,22 @@ test('every picture card that names a product shows that product (any card sourc
   assert.equal(img('a'), 'https://cdn/x/hukum.jpg'); assert.deepEqual(seed.posts[0].photoFit, { was: 'Aeres DRIFTWOOD', now: 'Aeres HUKUM IVORY' });
   assert.equal(img('b'), 'https://cdn/x/drift.jpg'); assert.equal(img('c'), '/b/acme/a/ad-123.jpg'); assert.equal(img('d'), 'https://cdn/x/drift.jpg'); assert.equal(img('f'), 'https://cdn/x/drift.jpg');
 });
+
+/* 26 Oct, Arata: a ₹2,182 combo card drew a sold-out 15ml conditioner, because the copy named the combo and each of its pieces.
+   Any catalog with bundles and size variants: the bundle written out wins over its pieces, in stock over sold out, and
+   "200ml" is "200 ml" */
+test('copy that names a bundle and its pieces gets the bundle, in stock, at the stated price', () => {
+  const cat2 = catalogOf({ catalog: { products: [
+    { title: 'Anti-Breakage Intensive Conditioner - 15ml', inStock: false, images: ['https://cdn/x/c15.jpg'] },
+    { title: 'Anti-Breakage Intensive Conditioner - 200 ml', price: 399, currency: 'INR', images: ['https://cdn/x/c200.jpg'] },
+    { title: 'Anti-Hair Fall Intensive Shampoo - 200 ml', price: 399, currency: 'INR', images: ['https://cdn/x/s200.jpg'] },
+    { title: 'Glow Hair Growth Serum - 30 ml', price: 1499, currency: 'INR', images: ['https://cdn/x/serum.jpg'] },
+    { title: 'Anti-Hair Fall Shampoo & Conditioner Combo', price: 769.15, currency: 'INR', images: ['https://cdn/x/sc.jpg'] },
+    { title: 'Glow + Anti-Hair Fall Shampoo & Conditioner Combo', price: 2182.15, currency: 'INR', images: ['https://cdn/x/combo.jpg'] },
+    ...Array.from({ length: 20 }, (_, i) => ({ title: `Body Wash ${i}`, images: [`https://cdn/x/b${i}.jpg`] })),
+  ] } });
+  const mm = (t) => matchProduct(t, cat2, { brand: 'Acme' })?.t || null;
+  assert.equal(mm('Your 3-step routine: Glow Hair Growth Serum, Anti-Hair Fall Intensive Shampoo and Anti-Breakage Intensive Conditioner. Get the Glow + Anti-Hair Fall Shampoo & Conditioner Combo for ₹2,182.'), 'Glow + Anti-Hair Fall Shampoo & Conditioner Combo');
+  assert.equal(mm('Anti-Breakage Intensive Conditioner keeps every strand'), 'Anti-Breakage Intensive Conditioner - 200 ml', 'in stock over the sold-out size');
+  assert.equal(mm('Anti-Breakage Intensive Conditioner 200ml'), 'Anti-Breakage Intensive Conditioner - 200 ml');
+});

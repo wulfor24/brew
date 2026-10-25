@@ -8,7 +8,8 @@ const JUNK = /sold.?out|size.?chart|(?<![a-z])(?:logo|wordmark|favicon|banner|ic
 const JUNK_TITLE = /^(?:gift.?card|e-?gift|size.?chart)\b|\bplaceholder\b/i;
 // everyday words that are product names only by accident ("Astra DAY DREAM" is not what "every day" means)
 const COMMON = new Set('day days every all new best top more life love time way made make one two our your you the and for with that this from just last lasts wear feel feels look looks fit fits shop buy get comfort comfortable classic everyday collection edition pair pairs shoe shoes sneaker sneakers product products pack packs combo combos kit kits'.split(' '));
-const words = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s-]/gu, ' ').split(/[\s-]+/).filter((w) => w.length > 2);
+/* "200ml" and "200 ml" are one size (a draft writes either; a title writes either) */
+const words = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/(\d)(ml|l|g|kg|mg|oz|gm)\b/g, '$1 $2').replace(/[^\p{L}\p{N}\s-]/gu, ' ').split(/[\s-]+/).filter((w) => w.length > 2);
 
 // products: [{ title, img | images[] }] from profile.catalog.products → a compact, photo-bearing list
 export const junkPhoto = (u) => JUNK.test(String(u || '').split('?')[0]);
@@ -22,6 +23,7 @@ export const catalogOf = (profile, max = 400) => (profile?.catalog?.products || 
   .map((x) => ({ t: String(x.title || ''), img: [x.img, ...(x.images || [])].find((u) => u && !JUNK.test(u)) || null, ...(priceOf(x) ? { price: priceOf(x) } : {}), ...(x.inStock === false ? { out: true } : {}), ...(x.url ? { url: String(x.url) } : {}), ...((x.claims || [])[0] ? { claim: String(x.claims[0]) } : {}), imgs: [...new Set([x.img, ...(x.images || [])].filter((u) => u && typeof u === 'string' && !JUNK.test(u)))].slice(0, 8) /* every photo of it: a listing's photo set where no photo can be made (remix listingFromCatalog) */ })) /* skip a "sold out" placeholder, keep the product; price and stock for a product grid (draft-mocks.js); its page and first claim for the jam's product line (studio productFor) */
   .filter((x) => x.t && x.img && !JUNK_TITLE.test(x.t)).slice(0, max);
 
+const roundPrice = (p) => priceKey(p);
 export function matchProduct(text, catalog, { brand = '', byNameOnly = false } = {}) {
   if (!catalog?.length || !text) return null;
   const said = new Set(words(text)), joined = words(text).join(''), skip = new Set([...words(brand), ...COMMON]);
@@ -31,7 +33,14 @@ export function matchProduct(text, catalog, { brand = '', byNameOnly = false } =
   const df = new Map(); for (const p of catalog) for (const w of new Set(words(p.t))) df.set(w, (df.get(w) || 0) + 1);
   const N = catalog.length, idf = (w) => Math.log(1 + N / (df.get(w) || N));
   const spaced = ` ${words(text).join(' ')} `, spacedKey = ` ${words(text).filter((w) => !skip.has(w)).join(' ')} `; /* "The Desk Day Kit" is named in "the Desk Day Kit ad" with its common words set aside on both sides */
-  let best = null, bestScore = 0;
+  /* copy that names a bundle and its pieces ("the MitoActive + Anti-Hair Fall Shampoo & Conditioner Combo: serum, shampoo,
+     Anti-Breakage Intensive Conditioner") is about the bundle: among products named outright, the longest name written out wins,
+     then one in stock, then the one at the price the copy states, and only then the rarer words (26 Oct, Arata: a sold-out 15ml
+     conditioner was drawn for a ₹2,182 combo). Works for any catalog: a kit, set, regimen or pack names its pieces the same way */
+  const stated = new Set((String(text).match(/[₹$€£]\s?\d[\d,]*(?:\.\d+)?/g) || []).map(roundPrice));
+  const rank = (c) => [c.byName ? 1 : 0, c.byName ? c.nameLen : 0, c.p.out ? 0 : 1, stated.size && stated.has(roundPrice(c.p.price)) ? 1 : 0, c.score];
+  const better = (a, b) => { const x = rank(a), y = rank(b); for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
+  let best = null, bestC = null;
   for (const p of catalog) {
     const ws = [...new Set(words(p.t))].filter((w) => !skip.has(w));
     const hit = ws.filter(says); if (!hit.length) continue;
@@ -47,7 +56,8 @@ export function matchProduct(text, catalog, { brand = '', byNameOnly = false } =
     const rare = hit.some((w) => (df.get(w) || N) <= Math.max(2, N * 0.08));
     // one word must look like a name in the copy; two words of the title together are enough
     const sure = byName || (!byNameOnly && (hit.length >= 2 || (rare && named(hit[0])))); /* byNameOnly: the product's own name, written out */
-    if (sure && score > bestScore) { best = p; bestScore = score; }
+    const c = { p, byName, nameLen: nameWs.length, score };
+    if (sure && (!bestC || better(c, bestC))) { best = p; bestC = c; }
   }
   return best;
 }
@@ -55,7 +65,8 @@ export function matchProduct(text, catalog, { brand = '', byNameOnly = false } =
 /* an idea's product when its words state a price ("Hydrate curls with your ₹449 conditioner"): the product named outright wins;
    else the loose words choose only among products at that price, so a "conditioner" idea never lands on a ₹349 styling stick
    (25 Oct, Arata; Cozy's "$44 puppy warmer" on a $44 kit). No stated price: the plain match. null when nothing fits */
-const priceKey = (p) => String(p || '').replace(/[^\d.]/g, '').replace(/\.0+$/, '');
+/* a price as whole units: the card's "₹2,182" is the catalog's ₹2,182.15 */
+const priceKey = (p) => { const n = parseFloat(String(p ?? '').replace(/[^\d.]/g, '')); return Number.isFinite(n) ? String(Math.round(n)) : ''; };
 export function pricedProduct(text, catalog, opts = {}) {
   if (!catalog?.length || !text) return null; const strict = matchProduct(text, catalog, { ...opts, byNameOnly: true }); if (strict) return strict;
   const want = new Set((String(text).match(/[₹$€£]\s?\d[\d,]*(?:\.\d+)?/g) || []).map(priceKey)); if (!want.size) return matchProduct(text, catalog, opts);
