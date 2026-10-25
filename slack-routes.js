@@ -4,6 +4,7 @@
 // slackIn); the workspace finds its brand by the Slack connection (connectors slackSlug). Bots, edits and Brew's own posts
 // are skipped, so a message mirrored from the jam never comes back as a reply.
 import { verify } from './connectors/slack.js';
+import { movedAway } from './moved.js'; // production: a brand whose home is staging is answered there
 
 /* Slack's markup to plain words: <@U1> mentions, <url|label> links, <#C1|name> channels */
 export const plain = (s, names = {}) => String(s || '')
@@ -22,7 +23,8 @@ export function createSlackRoutes({ connectors, feed, log = console, secret = ()
     try { const r = await fetchImpl(to.replace(/\/$/, '') + path, { method: 'POST', body, signal: AbortSignal.timeout(10e3), headers: Object.fromEntries(['content-type', 'x-slack-signature', 'x-slack-request-timestamp', 'x-slack-retry-num', 'x-slack-retry-reason'].filter((k) => h[k]).map((k) => [k, h[k]])) });
       log.log?.(`[slack] relayed ${path} to staging: ${r.status}`); } catch (e) { log.warn('[slack] relay', e.message); }
     return true; };
-  const mine = async (team) => !team || !!(await connectors.slackSlug(team).catch(() => null)); /* a workspace a brand here is connected to */
+  /* a workspace a brand here is connected to; a brand whose home is staging (STAGING_HOME, moved.js) is staging's to answer */
+  const mine = async (team) => { if (!team) return true; const slug = await connectors.slackSlug(team).catch(() => null); return !!slug && !movedAway(slug); };
   const seen = new Map(); // event ids already handled (Slack retries): 1 hour
   const once = (id) => { const now = Date.now(); for (const [k, at] of seen) if (now - at > 3600e3) seen.delete(k); if (!id || seen.has(id)) return !id; seen.set(id, now); return true; };
   const raw = (req) => new Promise((r) => { let d = ''; req.on('data', (c) => { d += c; if (d.length > 1e6) req.destroy(); }); req.on('end', () => r(d)); req.on('error', () => r('')); });

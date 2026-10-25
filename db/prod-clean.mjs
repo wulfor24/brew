@@ -55,8 +55,8 @@ if (process.env.SMOKE_URL) {
   for (const r of st) { let s0 = null; try { s0 = JSON.parse(r.body.toString('utf8')); } catch {} if (!s0?.done) continue; brandsNow.push(r.s);
     if (s0.source?.kind === 'shopify-admin') { const pr = (await q('SELECT body FROM objects WHERE key = $1', [`brands/${r.s}/profile.json`])).rows[0]; let p0 = null; try { p0 = JSON.parse(pr?.body?.toString('utf8') || 'null'); } catch {} if (isClosedRead(s0, p0)) closed.add(r.s); } }
   for (const p of ['/', '/healthz/ready', '/api/config', '/privacy', ...brandsNow.slice(0, 12).flatMap((b) => [`/${b}`, `/b/${b}/seed.js`])]) {
-    const b = (/^\/(?:b\/)?([a-z0-9-]+)/.exec(p) || [])[1], ok = (c) => c === 200 || (closed.has(b) && (c === 401 || c === 403));
-    try { const r = await fetch(process.env.SMOKE_URL + p, { signal: AbortSignal.timeout(30e3), redirect: 'manual' }); if (!ok(r.status)) bad(`smoke: ${p} answered ${r.status}`); else console.log(`[clean] smoke ${p} ${r.status}`); }
+    const b = (/^\/(?:b\/)?([a-z0-9-]+)/.exec(p) || [])[1], ok = (c, r) => c === 200 || (closed.has(b) && (c === 401 || c === 403)) || (c === 302 && /^https:\/\/brew\.joinsquareup\.com\//.test(r?.headers?.get?.('location') || '')); /* a partner whose home is staging (STAGING_HOME) is sent there */
+    try { const r = await fetch(process.env.SMOKE_URL + p, { signal: AbortSignal.timeout(30e3), redirect: 'manual' }); if (!ok(r.status, r)) bad(`smoke: ${p} answered ${r.status}`); else console.log(`[clean] smoke ${p} ${r.status}`); }
     catch (e) { bad(`smoke: ${p} did not answer (${e.message})`); } } }
 
 /* the new worker took the background lease (its connection is named after its revision, roles.js): an old revision still holding it

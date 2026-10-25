@@ -17,7 +17,14 @@ test('the moved list: staging reads it, production never does', () => {
     assert.ok(movedAway('nutrova-com')); assert.ok(!movedAway('cozysnugglet-shop')); assert.ok(!movedAway(''));
     assert.deepEqual(stayHere([{ slug: 'scrubroom-in' }, { slug: 'cozysnugglet-shop' }]).map((b) => b.slug), ['cozysnugglet-shop']);
   });
-  withEnv({ ENV: 'production', MOVED_TO_PROD: 'scrubroom-in' }, () => { assert.deepEqual(movedList(), []); assert.ok(!movedAway('scrubroom-in')); });
+  withEnv({ ENV: 'production', MOVED_TO_PROD: 'scrubroom-in', STAGING_HOME: null }, () => { assert.deepEqual(movedList(), []); assert.ok(!movedAway('scrubroom-in')); });
+  /* 26 Oct: partners onboarded on staging first; production leaves them alone and sends their people to staging */
+  withEnv({ ENV: 'production', MOVED_TO_PROD: 'scrubroom-in', STAGING_HOME: 'arata-in,nutrova-com', STAGING_URL: null }, () => {
+    assert.deepEqual(movedList(), ['arata-in', 'nutrova-com']); assert.ok(movedAway('arata-in')); assert.ok(!movedAway('scrubroom-in'));
+    assert.deepEqual(stayHere([{ slug: 'arata-in' }, { slug: 'scrubroom-in' }]).map((b) => b.slug), ['scrubroom-in']);
+    assert.equal(prodUrl(), 'https://brew.joinsquareup.com');
+  });
+  withEnv({ ENV: null, MOVED_TO_PROD: 'scrubroom-in', STAGING_HOME: 'arata-in' }, () => { assert.ok(!movedAway('arata-in')); assert.ok(movedAway('scrubroom-in')); });
   withEnv({ MOVED_TO_PROD: null }, () => { const xs = [{ slug: 'a' }]; assert.equal(stayHere(xs), xs); });
   withEnv({ PROD_URL: 'https://feed.joinsquareup.com/' }, () => assert.equal(prodUrl(), 'https://feed.joinsquareup.com'));
 });
@@ -68,4 +75,11 @@ test('every background loop that spends or writes to people skips moved brands',
   assert.match(c, /async function tick\(\) \{\n    if \(DEMO\) return;\n    for \(const \{ slug \} of await packs\.list\(\)/);
   assert.match(c, /if \(C\.fresh && !\(movedAway\(slug\) && creds\?\.refresh\)\)/);
   assert.match(c, /async function expiryCheck\(slug, id, now = Date\.now\(\)\) \{\n    if \(movedAway\(slug\)\) return null;/);
+});
+
+test('production relays the Slack of a brand whose home is staging, and its sign-ins are renewed by staging only', () => {
+  assert.match(src('slack-routes.js'), /const mine = async \(team\) => \{[^\n]*!movedAway\(slug\)/);
+  assert.match(src('connectors/index.js'), /C\.fresh && !\(movedAway\(slug\) && creds\?\.refresh\)/);
+  assert.match(src('tools/prod-env.sh'), /ENV=production\|[^"]*STAGING_HOME=\$\{STAGING_HOME-arata-in,nutrova-com\}/);
+  assert.ok(!/MOVED_TO_PROD-[^|]*(arata-in|nutrova-com)/.test(src('deploy.sh')), 'Arata and Nutrova live on staging');
 });
