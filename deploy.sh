@@ -46,6 +46,6 @@ LIVE=$(gcloud run services describe shopos-feed --region=asia-south1 --format="v
 # keep the newest 3 revisions (rollback: gcloud run services update-traffic shopos-feed --to-revisions=<rev>=100); older ones go.
 # A revision with no traffic scales to zero and retire.js stops an old one that wakes, so no old build keeps running.
 for r in $(gcloud run revisions list --service=shopos-feed --region=asia-south1 --sort-by="~metadata.creationTimestamp" --format="value(name)" | tail -n +4); do if [ "$r" != "$LIVE" ]; then gcloud run revisions delete "$r" --region=asia-south1 --quiet >/dev/null 2>&1 && echo "removed old revision $r"; fi; done
-for u in "https://brew.joinsquareup.com/" "https://brew.joinsquareup.com/arata-in" "https://brew.joinsquareup.com/api/config"; do
+for u in "https://brew.joinsquareup.com/" "https://brew.joinsquareup.com/cozysnugglet-shop" "https://brew.joinsquareup.com/arata-in" "https://brew.joinsquareup.com/api/config"; do   # arata-in: 302 to production (MOVED_TO_PROD)
   echo "$u -> $(curl -s -o /dev/null -w '%{http_code}' "$u")"
 done

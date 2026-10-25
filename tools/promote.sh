@@ -71,7 +71,13 @@ CHANGED_WORKER=1
 gcloud run deploy brew-worker --image="$IMG" --project=$P --region=$REGION --service-account=$PSA $NET --ingress=internal --no-allow-unauthenticated \
   --memory=4Gi --cpu=2 --no-cpu-throttling --min-instances=1 --max-instances=1 --timeout=3600 --concurrency=80 \
   --set-env-vars="$PROD_ENV|ROLE=worker|PG_POOL_MAX=10" --set-secrets="$PROD_SECRETS" --labels=git-sha=$SHA --quiet >/dev/null || { rollback; die "worker deploy failed"; }
-echo "   worker on $SHA"
+# the new revision gets the traffic by name: a rollback pins traffic to an older revision, and a later deploy alone would leave it
+# there (25 Oct: the worker ran the morning's code all day after one rollback), so min-instances never started the new one
+WREV=$(gcloud run services describe brew-worker --region=$REGION --project=$P --format='value(status.latestCreatedRevisionName)')
+gcloud run services update-traffic brew-worker --to-revisions="$WREV=100" --region=$REGION --project=$P --quiet >/dev/null || { rollback; die "worker traffic switch failed"; }
+WNOW=$(gcloud run services describe brew-worker --region=$REGION --project=$P --format=json | python3 -c "import json,sys; d=json.load(sys.stdin); t=[x for x in d['status'].get('traffic',[]) if x.get('percent')]; print(t[0]['revisionName'] if len(t)==1 and t[0]['percent']==100 else '')")
+[ "$WNOW" = "$WREV" ] || { rollback; die "the worker runs ${WNOW:-a split}, not $WREV"; }
+echo "   worker on $SHA ($WREV)"
 # the worker's own settings, now that the new one runs (before any user traffic moves)
 gcloud run jobs execute brew-prod-clean --project=$P --region=$REGION "--update-env-vars=^|^PROD_SERVICES=brew-worker|SMOKE_URL=" --wait >/dev/null 2>&1 || {
   gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="brew-prod-clean" AND textPayload:"[clean]"' --project=$P --limit=20 --freshness=5m --format='value(textPayload)' | tac; rollback; die "the new worker's settings failed the gate"; }
