@@ -337,12 +337,17 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   /* a saved still whose headline was set over the picture (layout 1) is set again from its own clean picture: the words in their
      own panel above it. Free (Chromium only), a few a tick, never a clip's overlay */
   async function healHeads(p, cache, max = 12) {
-    if (!genFile || !launchBrowser || !M.head) return 0; let n = 0;
+    if (!genFile || !launchBrowser || !M.head) return 0; let n = 0; const skip = {};
     for (const d of Object.values(cache || {})) { if (n >= max) break;
-      if (!d?.render || !d.headline || (d.headV || 0) >= HEAD_V || d.kind === 'collection' || !/^gen\//.test(d.image || '') || !['image', 'video'].includes(d.kind || d.as)) continue;
-      const f = await genFile(String(d.image).slice(4)).catch(() => null); if (!f) { d.headV = HEAD_V; continue; }
-      const h = await headOn(fs.readFileSync(f), d, d.kind === 'video' ? '9:16' : d.ratio || '4:5', d.image); if (h) d.render = h; d.headV = HEAD_V; n++; }
-    return n; }
+      if (!d?.render || !d.headline || (d.headV || 0) >= HEAD_V || d.kind === 'collection' || !['image', 'video'].includes(d.kind || d.as)) continue;
+      /* the clean picture under the words: the draft's own, else the clip's still, else the real photo it stood in with */
+      const src = [d.image, d.clipStill, d.poster !== d.render ? d.poster : null].find((x) => /^\/?gen\//.test(x || '') && x !== d.render);
+      let f = src ? await genFile(String(src).replace(/^\/?gen\//, '')).catch(() => null) : null;
+      if (!f && d.photo && photoAsync) f = await photoAsync(d.photo).catch(() => null);
+      if (!f || !fs.existsSync(f)) { skip[src ? 'no file' : 'no clean picture'] = (skip[src ? 'no file' : 'no clean picture'] || 0) + 1; d.headV = HEAD_V; continue; }
+      const h = await headOn(fs.readFileSync(f), d, d.kind === 'video' ? '9:16' : d.ratio || '4:5', src || d.photo); if (h) { d.render = h; n++; } else skip.failed = (skip.failed || 0) + 1; d.headV = HEAD_V; }
+    if (n || Object.keys(skip).length) log.log?.('[drafts-bg] re-lettered', p?.slug || p?.seed?.brand?.slug || '', n, JSON.stringify(skip));
+    return n + Object.values(skip).reduce((a, b) => a + b, 0); }
   async function healLooks(p, cache, max = 6) {
     if (!genFile) return 0; let n = 0, checked = 0;
     for (const c of rankCards(p.seed?.posts || [])) {
