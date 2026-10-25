@@ -38,6 +38,7 @@ import { inferMake } from './cards-gen.js';
 import { isRivalCard, isResearchImage } from './rival-ad.js'; // a rival's poster is never our product photo
 import { genFlush as genFlush0 } from './gen-store.js';
 import { cleanDraftClaims, packSource } from './claims.js'; // the store's own claims only, in drafts made with nobody watching
+import { collageEdges, plainest, LOOKS_V } from './draft-quality.js'; // every saved draft picture passes the look check once
 import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 
 const H = 3600e3, DAY = 24 * H;
@@ -165,7 +166,7 @@ export function draftsDue(st = {}, cfg, { now = Date.now(), aiLive = true, lastO
 // deps: ai (ai.js, metered), geminiImage (image-guard), saveGen, genFile, photoAsync(rel) → local file, memory (brand-memory),
 // loadPack(slug) → brand pack, treg (video and voice), launchBrowser (Chromium for slides and mocks), zipBuffer, spend(kind) → the
 // server's daily counters (DAILY_VIDEO_CAP, DAILY_VOICE_CAP); makers: the media makers (drafts.js createMakers), replaceable in tests
-export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, genFile = null, genFlush = genFlush0, photoAsync = null, memory = null, loadPack, treg = null, launchBrowser = null, zipBuffer = null, spend = () => true, makers = null, lastOpenOf = async () => 0, onDrafts = async () => {}, log = console, env = process.env, now = () => Date.now() } = {}) {
+export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, genFile = null, genFlush = genFlush0, photoAsync = null, memory = null, loadPack, treg = null, launchBrowser = null, zipBuffer = null, spend = () => true, makers = null, looks = null, lastOpenOf = async () => 0, onDrafts = async () => {}, log = console, env = process.env, now = () => Date.now() } = {}) {
   const cfg = draftsConfig(env), F = 'drafts/cards.json', S = 'drafts/state.json', busy = new Set(), opens = new Map();
   const M = makers || createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save: saveGen || (() => {}), file: genFile || (async () => null), log });
   /* treg charges booked to this job, per brand (tag draftsbg-<slug>, so the brand's spend ledger has them too) */
@@ -174,7 +175,12 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   const cacheOf = async (slug) => (await packs.getJSON(slug, F, null).catch(() => null)) || {};
   const opened = (slug) => { if (slug) opens.set(slug, now()); };
   // the real product photo: a pack asset, a public file, or a store image fetched once into tmp
+  /* the named product's cleanest photo first (a packshot on a plain ground, draft-quality.js plainest): a designed store card copied
+     into a draft or a mock reads as a collage */
   const photo = async (c, named = null) => {
+    const views = named ? [...new Set([named.img, ...(Array.isArray(named.imgs) ? named.imgs : [])].filter((x) => x && !isResearchImage(x)))].slice(0, 5) : [];
+    if (views.length > 1) { const got = (await Promise.all(views.map(async (u) => ({ key: u, file: await photo({}, { img: u }).catch(() => null) })))).filter((x) => x.file);
+      const pick = got.length > 1 ? await plainest(got).catch(() => null) : null, hit = got.find((x) => x.key === pick) || got[0]; if (hit) return hit.file; }
     for (const rel of [named?.img, ...(isRivalCard(c) ? [] : [...(c.images || []), c.img]), ...(c.post?.media?.product?.images || [])].filter((x) => x && !isResearchImage(x))) {
       try {
         if (/^https?:/.test(rel)) { const f = path.join(os.tmpdir(), 'brew-ph-' + sha(rel) + '.jpg'); if (!fs.existsSync(f)) { const r = await safeFetch(rel, { signal: AbortSignal.timeout(20e3) }); if (!r.ok) continue; fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); } return f; }
@@ -220,7 +226,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     const cut0 = cleanDraftClaims(j, packSource(p, c)); if (cut0.length) log.info?.('[drafts-bg] dropped unbacked claims', c.id, cut0.map((f) => f.phrase).join(', ')); /* QA-25: a code, guarantee or timed result the store never made never reaches a first draft */
     /* a clip is 9:16 from its first frame (Veo takes 9:16 or 16:9); Stories too */
     const ratio = kind === 'stories' || kind === 'video' ? '9:16' : DRAFT_RATIOS.includes(j.ratio) && j.ratio !== '16:9' ? j.ratio : c.make?.format === 'reel' ? '9:16' : '4:5';
-    const d = { k: 2, cardId: c.id, key: draftKey(c), kind, format: c.make?.format || null, cardTitle: c.title, as: kind === 'stories' ? 'carousel' : ['email', 'whatsapp', 'page', 'collection', 'catalog'].includes(kind) ? kind : as, title: cut(j.title || 'First draft', 70), copy: String(j.copy || '').trim(), note: cut(j.note || '', 160), ratio, at: now(), by: 'Brew', bg: true };
+    const d = { k: 2, qv: LOOKS_V /* made through the judged guard */, cardId: c.id, key: draftKey(c), kind, format: c.make?.format || null, cardTitle: c.title, as: kind === 'stories' ? 'carousel' : ['email', 'whatsapp', 'page', 'collection', 'catalog'].includes(kind) ? kind : as, title: cut(j.title || 'First draft', 70), copy: String(j.copy || '').trim(), note: cut(j.note || '', 160), ratio, at: now(), by: 'Brew', bg: true };
     if (j.visual) d.visual = cut(j.visual, 400); /* the scene, so the next draft goes elsewhere (and a final reruns it) */
     if (j.headline && ['image', 'collection', 'video'].includes(kind)) { d.headline = cut(String(j.headline).replace(/[#*_>`"“”]/g, ''), 80); d.headSmall = smallOf(d.copy, d.headline); }
     if (take) d.take = { n: o.take + 1, look: take, day: today(now()) };
@@ -324,6 +330,25 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     }
     return n;
   }
+  /* drafts saved before the look check (draft-quality.js LOOKS_V) are judged once: the free pixel check, then the vision judge
+     (looks) against the card's words. A collage, a cropped product or an unrelated picture is dropped: the feed shows the card's
+     own photo at once and the draft is made again in its turn, through the guard that now judges every picture. Every brand,
+     every kind with a picture (a still, a clip's first frame, a collection hero, slides); a few a run so the cost stays small */
+  async function healLooks(p, cache, max = 6) {
+    if (!genFile) return 0; let n = 0, checked = 0;
+    for (const c of rankCards(p.seed?.posts || [])) {
+      const d = draftFor(c, cache); if (!d || d.qv === LOOKS_V || d.photoOnly) continue;
+      const pics = (d.slides?.length ? d.slides.map((x) => x.image) : [d.image]).filter((r) => /^gen\//.test(r || '')).slice(0, 3); if (!pics.length) { d.qv = LOOKS_V; continue; }
+      if (checked++ >= max) break;
+      const words = `${c.title || ''}. ${c.sub || ''}${d.product ? ` Product: ${d.product}.` : ''}`; let bad = null, answered = true;
+      for (const r of pics) { const f = await genFile(String(r).slice(4)).catch(() => null); if (!f) continue; const buf = fs.readFileSync(f);
+        const px = await collageEdges(buf); if (px.collage) { bad = px.why; break; }
+        const q = looks ? await looks(buf, words).catch(() => null) : null; if (!q) { if (looks) answered = false; continue; } /* no answer: judged again on a later run */ if (!q.ok) { bad = q.why; break; } }
+      if (bad) { log.log?.('[drafts-bg] saved draft failed the look check; making it again', c.id, bad); delete cache[c.id]; n++; }
+      else if (answered) d.qv = LOOKS_V;
+    }
+    return n;
+  }
   /* a saved email, chat or page mock whose words are code (a JSON-LD block, a snippet) was shot with a product photo and the
      code as paragraphs: shot again (free, Chromium) as a code block with no photo. Every brand, once per draft */
   async function healCodeMocks(p, cache) {
@@ -350,7 +375,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       const t0 = box.usd; tried++;
       try { const r = await makeStill(slug, c, { src, ip: d.ip, ratio: d.ratio || '4:5', text: d.imgText || '', catalog: p.catalog || null, brand: brand.name, named, retry: true });
         if (r.failed) throw new Error(r.error || 'the picture still showed another product'); /* the real photo again is not a made picture: back off and try later */
-        box.usd += imageCost(r.buf, cfg); d.image = r.rel; d.fromPhoto = true; delete d.imgRetry; delete d.photoOnly; delete d.err; d.note = cut(String(d.note || '').replace(/ ?For now this is the real product photo;.*$/, '').replace(/ The picture comes.*$/, ''), 220);
+        box.usd += imageCost(r.buf, cfg); d.image = r.rel; d.fromPhoto = true; d.qv = LOOKS_V; delete d.imgRetry; delete d.photoOnly; delete d.err; d.note = cut(String(d.note || '').replace(/ ?For now this is the real product photo;.*$/, '').replace(/ The picture comes.*$/, ''), 220);
         if (r.buf?.guard?.labelApprox) d.labelApprox = true;
         if (d.as === 'text') d.as = d.kind === 'collection' ? 'collection' : 'image';
         if (d.kind === 'video' && !d.video) d.wants = 'video';
@@ -385,6 +410,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       if (await healMissing(slug, cache)) await save(slug, cache).catch(() => {});
       if (healWrongProduct(p, cache)) await save(slug, cache).catch(() => {});
       if (await healCodeMocks(p, cache)) await save(slug, cache).catch(() => {});
+      { const n0 = Object.values(cache).filter((d) => d?.qv === LOOKS_V).length; if (await healLooks(p, cache) || Object.values(cache).filter((d) => d?.qv === LOOKS_V).length !== n0) await save(slug, cache).catch(() => {}); }
       /* every card that names a format, and the top few others that show a picture (a text-only card with no format is not an
          ask for an asset), best-valued first; then stills that still wait for their clip */
       const todo = (only?.length ? order.filter((c) => only.includes(c.id)) : order.filter((c) => c.make?.format || (top.has(c.id) && draftKind(c) !== 'text'))).filter((c) => needsDraft(c, cache, now()));

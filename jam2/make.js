@@ -15,6 +15,7 @@ import { addTake, headOf, sizeOf, uid, note } from './core.js';
 import { createCreative } from './creative.js';
 import { refsFor, creativeBlock } from './brandbook.js';
 import { claimFlags, bannedHits } from '../claims.js';
+import { cutQuality } from '../draft-quality.js'; // a cut-out is placed only when it is a clean matte
 
 const tidy = (s, n = 240) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const sha = (b) => crypto.createHash('sha1').update(b).digest('hex').slice(0, 16);
@@ -113,7 +114,9 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
   async function cutout(ctx) {
     const p = ctx.product; if (!p?.img) return null; const src = await fileOf(p.img); if (!src) return null;
     /* v2 (23 Oct): cuts saved before see-through photos were kept as they are may have black fringes, so they are made again */
-    const key = sha(Buffer.from(`${p.img}|cut-v2`)); ctx.cuts ||= {}; if (ctx.cuts[key]) return ctx.cuts[key];
+    /* v3 (25 Oct): a cut-out is checked (draft-quality.js cutQuality) before it is kept: one that is still a rectangle (the
+       photo's own panel came with it) or has a jagged edge is never placed in a scene, so cuts kept before are checked again */
+    const key = sha(Buffer.from(`${p.img}|cut-v3`)); ctx.cuts ||= {}; if (ctx.cuts[key]) return ctx.cuts[key];
     /* a catalog photo that is already cut out (a PNG whose corners are see-through) is the cut-out: cutting it again flattens the
        see-through parts to black (23 Oct, Arata's MitoActive pack). Trimmed and used as it is, free */
     try { const sharp = (await import('sharp')).default, m = await sharp(src).metadata();
@@ -123,6 +126,8 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
     let r; try { r = await engines.run('cutout', { srcFile: src, slug: ctx.slug, product: p.name }); } catch (e) { log.warn?.('[jam2] cutout', e.message); return { file: p.img, raw: true, provider: 'none' }; }
     let file = r.file; /* trim the empty edges so the product fills its box */
     try { const sharp = (await import('sharp')).default; const f = await fileOf(file); if (f) { const t = await sharp(fs.readFileSync(f)).trim({ threshold: 2 }).png().toBuffer(); file = keep(t, 'png'); } } catch (e) { log.warn?.('[jam2] trim', e.message); }
+    if (!r.white) { const f = await fileOf(file).catch(() => null), q = f ? await cutQuality(fs.readFileSync(f)) : { ok: false, why: 'the cut-out file is missing' };
+      if (!q.ok) { log.warn?.('[jam2] cut-out not clean, not placed', p.name || p.img, q.why); const bad = { file: p.img, raw: true, provider: r.provider, poor: q.why, usd: r.usd || 0 }; ctx.cuts[key] = bad; return bad; } }
     const out = { file, provider: r.provider, model: r.model, usd: r.usd || 0, white: !!r.white }; ctx.cuts[key] = out; return out;
   }
 
@@ -152,7 +157,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
     const pw = Math.round(w * (tall ? 0.62 : wide ? 0.34 : 0.5)), ph = Math.round(h * (tall ? 0.42 : wide ? 0.7 : 0.48));
     const px = Math.round(wide ? w * 0.6 : (w - pw) / 2), py = Math.round(tall ? h * 0.44 : wide ? h * 0.18 : h * (preset === 'bottom-bar' ? 0.2 : 0.42));
     const layers = [];
-    if (cut?.file) layers.push({ id: 'product', kind: 'product', src: cut.file, x: px, y: py, w: pw, h: ph, z: 3, locked: true, shadow: true, fit: 'contain', blend: cut.white ? 'multiply' : null });
+    if (cut?.file && !cut.raw) layers.push({ id: 'product', kind: 'product', /* a raw photo (no clean cut-out) is never pasted: it brings its own background */ src: cut.file, x: px, y: py, w: pw, h: ph, z: 3, locked: true, shadow: true, fit: 'contain', blend: cut.white ? 'multiply' : null });
     layers.push(...typePreset(preset, { w, h, kit, headline: words.headline || '', sub: words.sub || '', badge: words.badge || '', cta: '' }));
     if (kit.logo) layers.push({ id: 'logo', kind: 'logo', src: kit.logo, x: w - Math.round(w * 0.2) - Math.round(w * 0.05), y: h - Math.round(h * 0.08) - Math.round(w * 0.05) - (tall ? Math.round(h * 0.14) : 0), w: Math.round(w * 0.2), h: Math.round(h * 0.07), z: 8, fit: 'contain' });
     return { w, h, bg: { color: kit.colors?.[1] || '#efece6', src: bgFile || null }, kit: kitOf(kit), layers };
@@ -206,7 +211,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
       checks.push({ k: 'complete', ok: miss.length <= 1, why: miss.length ? `Still to fill: ${miss.join(', ')}` : 'Every section is there.' }); }
     /* the board has its content: a reply with a missing field never passes as checked */
     const w = take.words || {}, miss = r.kind === 'carousel' ? ((take.slides || []).length < 3 ? 'fewer than 3 slides came back' : '') : r.kind === 'video' ? (!(take.timeline?.shots || []).length ? 'the storyboard has no shots' : !take.file ? 'the video isn’t rendered yet' : '')
-      : r.kind === 'table' ? (!(w.rows || []).length ? 'the list has no rows' : '') : ['post', 'message', 'page'].includes(r.kind) ? (!String(w.body || '').trim() ? 'no text came back' : '') : ['static'].includes(r.kind) ? (!take.file ? 'the picture didn’t render' : '') : '';
+      : r.kind === 'table' ? (!(w.rows || []).length ? 'the list has no rows' : '') : ['post', 'message', 'page'].includes(r.kind) ? (!String(w.body || '').trim() ? 'no text came back' : '') : ['static'].includes(r.kind) ? (!take.file ? (take.held ? `the picture was held back (${take.held}); Redo makes it again` : 'the picture didn’t render') : '') : '';
     checks.push({ k: 'content', ok: !miss, why: miss ? `Not ready: ${miss}.` : 'Everything it needs is there.' });
     const hard = checks.filter((c) => !c.ok && !c.soft); return { pass: !hard.length, checks, at: Date.now() };
   }
@@ -236,8 +241,10 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
         if (shot?.scene) { take.scene = shot.scene; take.file = shot.file; take.shot = shot.shot; take.direction = shot.direction; }
         else {
           if (shot?.fail) take.shotFail = shot.fail;
-          const bg = await scene(ctx, { describe: shot?.direction?.moment || words.scene, ratio: size.ratio }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
-          take.scene = composeScene({ size, bgFile: bg.file, cut, words, kit: ctx.bbv.kit }); take.file = await render(take.scene);
+          /* the paste-up stands in only with a clean cut-out; without one the take is held back (never a collage of the raw photo on a scene) */
+          if (ctx.product && (!cut?.file || cut.raw)) take.held = cut?.poor || shot?.fail || 'no clean cut-out of the product';
+          else { const bg = await scene(ctx, { describe: shot?.direction?.moment || words.scene, ratio: size.ratio }); made.push({ cap: 'still.scene', provider: bg.provider, model: bg.model, usd: bg.usd });
+            take.scene = composeScene({ size, bgFile: bg.file, cut, words, kit: ctx.bbv.kit }); take.file = await render(take.scene); }
         }
       }
     } else if (r.kind === 'video') {

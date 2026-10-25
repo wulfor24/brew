@@ -14,12 +14,17 @@
 // Two more, so a picture never fails for a reason we could have handled:
 //   4. a reference path that isn't on this instance's disk (a brand asset or research photo only in the bucket, a store
 //      URL) is resolved first (resolve), and with none at all the brand's lead catalog photo stands in;
+//   6. the picture is judged as an ad before anyone sees it (draft-quality.js): a collage or paste-up, a product cut off by the
+//      frame, or a picture that isn't about the card's words is made once more with the reason; a second failure is held back
+//      (fallback callers get the real product photo, marked genFailed + held, and remake it later; others get a plain error).
+//      The reference is the product's cleanest photo (plainest): a designed store card copied by the model reads as a collage.
 //   5. the model is tried up to `tries` times with backoff (a 429, a 5xx or "no image came back" is usually gone a few
 //      seconds later). If it still fails and the caller asked for it (fallback: true), the real product photo comes back
 //      instead, marked guard.genFailed, so the caller can show a real picture now and retry the new one later.
 import fs from 'node:fs';
 import { matchProduct, junkPhoto } from './product-match.js';
 import path from 'node:path';
+import { collageEdges, plainest, FIX } from './draft-quality.js';
 
 const KEEP = (name) => `The product${name ? `, ${name},` : ''} must be the same product as in the reference photo: the same product type, shape, colours, materials, pack design and brand mark, and the same number of items. Do not redesign it, swap it for another product, or add a second product; its small print may be soft or turned away, never rewritten.`;
 const STRICT = 'Important: the last attempt showed a different product. Copy the product from the reference photo faithfully; only the scene, light and framing may change.';
@@ -34,7 +39,7 @@ const isFile = (f) => { try { return !!f && fs.statSync(f).isFile(); } catch { r
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // resolve(path) → a local file for a reference this instance lacks (the server maps brand assets, research and gen files to the bucket)
 /* normalize(file) → a file the models accept (img-norm.js: an SVG, GIF or AVIF product photo becomes a PNG); identity by default */
-export function createImageGuard({ balance = null, gen, verify = null, fetchPhoto = async () => null, resolve = async () => null, normalize = async (f) => f, context = () => null, tries = 3, backoffMs = 2000, textModel = process.env.GEMINI_IMAGE_FALLBACK || 'gemini-3-pro-image', log = console }) {
+export function createImageGuard({ balance = null, gen, verify = null, fetchPhoto = async () => null, resolve = async () => null, normalize = async (f) => f, context = () => null, looks = null, pixels = collageEdges, pickRef = plainest, tries = 3, backoffMs = 2000, textModel = process.env.GEMINI_IMAGE_FALLBACK || 'gemini-3-pro-image', log = console }) {
   /* the model, tried again on a failure: 2 s, then 6 s (a refused or blocked prompt is not retried) */
   const genRetry = async (o) => { let last;
     for (let i = 0; i < tries; i++) {
@@ -46,7 +51,25 @@ export function createImageGuard({ balance = null, gen, verify = null, fetchPhot
   const REF = Symbol('ref');
   const finish = async (r) => { if (!balance || !Buffer.isBuffer(r) || r.guard?.fallback) return r; const x = await balance(r, r[REF] || null).catch(() => null);
     return x?.fixed ? Object.assign(x.buf, { guard: { ...r.guard, warmFixed: true } }) : r; };
-  return async (o = {}) => finish(await guardedImage(o));
+  return async (o = {}) => finish(await gated(o));
+  /* looks(buf, words) → { ok, verdict, why } | null (server.js draftLooks); pixels(buf) → { collage, why } (free, first).
+     Judged: every picture meant to show a product (not a background-only scene, an edit of a finished picture, a cut-out) */
+  async function judge(buf, o) {
+    const px = await pixels(buf).catch(() => null); if (px?.collage) return { ok: false, verdict: 'collage', why: px.why };
+    if (!looks) return null; try { return await looks(buf, o.text || ''); } catch (e) { log.warn?.('[image-guard] looks check unavailable', e.message); return null; } }
+  async function gated(o) {
+    const r = await guardedImage(o);
+    if (o.product === false || o.edit || o.gate === false || !Buffer.isBuffer(r) || r.guard?.fallback) return r;
+    const q = await judge(r, o); if (!q || q.ok) { if (q) r.guard.looks = q.verdict; return r; }
+    log.warn?.('[image-guard] picture failed the look check, making it again', q.verdict, q.why);
+    let r2 = null; try { r2 = await guardedImage({ ...o, prompt: `${o.prompt}\n${FIX[q.verdict] || FIX.collage}` }); } catch (e) { log.warn?.('[image-guard] look retry failed', e.message.slice(0, 160)); }
+    const gens = (r.guard?.gens || 1) + (r2?.guard?.gens || 0), pro = (r.guard?.pro || 0) + (r2?.guard?.pro || 0);
+    if (r2 && !r2.guard?.fallback) { const q2 = await judge(r2, o); if (!q2 || q2.ok) { r2.guard = { ...r2.guard, gens, pro, retried: true, looks: q2?.verdict || null, looksFixed: q.verdict }; return r2; } q.why = q2.why || q.why; }
+    /* held back: never shown. The real product photo stands in for callers that take one; the rest get a plain error */
+    const ref = r[REF] || r2?.[REF];
+    if (o.fallback && ref) return Object.assign(fs.readFileSync(ref), { guard: { ...r.guard, gens, pro, fallback: true, genFailed: true, held: q.verdict, error: `held back: ${String(q.why).slice(0, 160)}` }, [REF]: ref });
+    throw Object.assign(new Error(`The picture didn't come out clean enough to show (${String(q.why).slice(0, 140)}). Try again.`), { soft: true, held: q.verdict });
+  }
   async function guardedImage(o = {}) {
     const b = context(), catalog = o.catalog ?? b?.catalog ?? null, brand = o.brand ?? b?.seed?.brand?.name ?? b?.name ?? '';
     /* o.named: the product the caller already knows the picture is about (the card's asset line names it), else the words' */
@@ -54,7 +77,11 @@ export function createImageGuard({ balance = null, gen, verify = null, fetchPhot
     /* a logo or brand mark is never the product: with only that, the brand's lead product stands in, else there is no picture */
     let ref = o.srcFile && !junkPhoto(path.basename(String(o.srcFile))) && !/\/a\/(logo|mark)\.[a-z]+$/i.test(String(o.srcFile)) ? o.srcFile : null, refImg = null; /* refImg: the catalog photo the reference came from, if any */
     if (ref && !isFile(ref)) ref = (await resolve(ref).catch(() => null)) || null; /* a path this instance lacks: the bucket's copy, or nothing */
-    if (named) { const f = await fetchPhoto(named.img).catch(() => null); if (f) { ref = f; refImg = named.img; } }
+    if (named) { /* the product's cleanest photo: a packshot on a plain ground, never a designed card its store also shows */
+      const views = [...new Set([named.img, ...(Array.isArray(named.imgs) ? named.imgs : [])].filter((x) => x && !junkPhoto(x)))].slice(0, 5);
+      const files = (await Promise.all(views.map(async (u) => ({ key: u, file: await fetchPhoto(u).catch(() => null) })))).filter((x) => x.file);
+      const pick = files.length > 1 ? await pickRef(files.map((x) => ({ key: x.key, file: x.file }))).catch(() => null) : files[0]?.key;
+      const hit = files.find((x) => x.key === pick) || files[0]; if (hit) { ref = hit.file; refImg = hit.key; } }
     if (o.srcFile && !ref && catalog?.[0]?.img) { ref = (await fetchPhoto(catalog[0].img).catch(() => null)) || null; if (ref) refImg = catalog[0].img; } /* the caller wanted a reference: the brand's lead product, never an invented one */
     if (o.srcFile && !ref) throw Object.assign(new Error('There is no product photo for this yet. Add one with + (Product photo) and try again.'), { soft: true, noPhoto: true });
     /* every picture the model and the check see is a PNG, JPEG or WebP: a store's SVG or AVIF photo is turned into one first */

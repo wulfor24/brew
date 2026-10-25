@@ -21,6 +21,7 @@ import { createLiveWatch } from './live-watch.js';
 import { createStore } from './store.js';
 import { B, BN, runIn, liveRe, setDefaultBrand, inBrand } from './brand-ctx.js';
 import { createImageGuard } from './image-guard.js';
+import { lookPrompt, lookVerdict } from './draft-quality.js'; // the look check every product picture passes before it is shown
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
 import { createBrandKit, toMarkdown, toJSON, llmsTxt } from './brand-kit.js'; // the Brand Book shared: /<slug>/brand, .md, .json, llms.txt, brand-kit.zip
 import { balanceWarm } from './color-cast.js'; // a picture washed yellow is pulled back toward its product photo (QA 13 Oct)
@@ -225,6 +226,14 @@ const sameProduct = async (refFile, buf, name) => {
   const t = (msg.content || []).map((x) => x.text || '').join(' ').trim(), m = /^\W*(same|text|different|noref)\b/i.exec(t); if (!m) throw new Error(`no verdict (${msg.stop_reason})`);
   const w = m[1].toLowerCase(); return { same: w === 'same' || w === 'noref', text: w === 'text', noref: w === 'noref', verdict: w, why: t.slice(0, 160) };
 };
+/* every product picture is judged as an ad before anyone sees it (draft-quality.js, image-guard.js): GOOD keeps it; COLLAGE,
+   CROPPED or OFFTOPIC (against the card's words) is made once more, then held back. No answer → null (never a failure) */
+const draftLooks = async (buf, words = '') => {
+  if (!anthropic || process.env.AI_MOCK === '1' || process.env.IMAGE_CHECK === '0' || process.env.LOOKS_CHECK === '0') return null;
+  const msg = await anthropic.messages.create({ model: process.env.IMAGE_CHECK_MODEL || 'claude-haiku-5-5', max_tokens: 300, thinking: { type: 'disabled' }, messages: [{ role: 'user', content: [
+    { type: 'image', source: { type: 'base64', media_type: IMG_MIME(buf), data: buf.toString('base64') } }, { type: 'text', text: lookPrompt(words) }] }] });
+  return lookVerdict((msg.content || []).map((x) => x.text || '').join(' '));
+};
 /* the draft image chain (media.js): Vertex Gemini (both models), then OpenAI gpt-image-1; the jam's image chip puts GPT Image
    first when it is picked. Sloosh never sits here: it makes finals only, behind a button, through finals.js */
 const openaiImage = (o) => openaiImageRaw(o, { readFile: (f) => fs.readFileSync(f) });
@@ -237,11 +246,11 @@ const rawImage = async (o, { gptFirst = false } = {}) => {
 };
 /* SVG, GIF, AVIF or HEIC product photos become PNGs before any model or check sees them (img-norm.js) */
 const imgNorm = createImageNorm({ withBrowser, log: console });
-const geminiImage = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
+const geminiImage = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o), verify: sameProduct, looks: draftLooks, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
 /* every picture the build (ad statics, the team's statics), background drafts and story watchers make counts against the day's
    image budget, the brand's share first (budget.js). The jam's own routes count theirs before calling imageGen */
 const countedImage = async (o = {}) => { if (!spend('image', o.slug)) throw Object.assign(new Error(budget.why('image', o.slug) || 'The image budget for today is used up.'), { soft: true, budget: true }); return geminiImage(o); };
-const imageGen = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o, { gptFirst: prefs().image === 'gpt-image' && !!OPENAI_KEY && !!o.srcFile && !o.refFiles?.length }), verify: sameProduct, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
+const imageGen = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o, { gptFirst: prefs().image === 'gpt-image' && !!OPENAI_KEY && !!o.srcFile && !o.refFiles?.length }), verify: sameProduct, looks: draftLooks, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
 
 // ---------- mock replies (free, used when AI is off or fails) ----------
 // three cuts of the card itself when the writer is off: its own numbers, its reason, a smaller first step.
@@ -554,7 +563,7 @@ setTimeout(() => leaderOnly(storiesWarm).catch(() => {}), 90e3).unref?.(); setIn
 const BG_RESERVE = { image: +(process.env.BG_RESERVE_IMAGE ?? 40), video: +(process.env.BG_RESERVE_VIDEO ?? 8), voice: +(process.env.BG_RESERVE_VOICE ?? 10) };
 const bgSpend = (k, slug) => { if (BG_RESERVE[k] != null) { const l = budget.left(slug)?.[k]; if (l && l.left <= BG_RESERVE[k]) return false; } return spend(k, slug); };
 const bgImage = async (o = {}) => { const l = budget.left(o.slug)?.image; if (l && l.left <= BG_RESERVE.image) throw Object.assign(new Error('Pictures are kept for the team for the rest of today.'), { soft: true, budget: true }); return countedImage(o); };
-const draftsBg = createDraftsBg({ packs, ai, geminiImage: bgImage, saveGen, genFile, photoAsync, treg, launchBrowser, zipBuffer, spend: bgSpend, memory: MEMORY_ON() ? memory : null, loadPack: (slug) => packs.load(slug), log: console,
+const draftsBg = createDraftsBg({ packs, ai, looks: draftLooks, geminiImage: bgImage, saveGen, genFile, photoAsync, treg, launchBrowser, zipBuffer, spend: bgSpend, memory: MEMORY_ON() ? memory : null, loadPack: (slug) => packs.load(slug), log: console,
   lastOpenOf: async (slug) => (await social.stateOf(slug))?.lastOpen || 0, onDrafts: async (slug) => { packs.drop(slug); attach(await packs.load(slug)); } });
 draftsBg.start();
 /* first drafts are made by whichever instance's background job ran: every instance re-reads them from the bucket every 3 minutes,

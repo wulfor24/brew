@@ -48,6 +48,7 @@ import { makeVideo as jam2Video, makeVoice as jam2Voice } from './media.js';
 import { genFile as jam2GenFile } from './gen-store.js';
 import { vertexMusic as jam2Music } from './vertex-media.js';
 import { cardProduct, cardScene, matchProduct } from './product-match.js';
+import { LOOKS_V } from './draft-quality.js'; // watcher pictures saved before the look check are swapped for the real product photo (housekeep)
 import { gapFix } from './ai-gap.js';
 import { newsForUs, newsCta, adForUs } from './for-us.js'; // every rival and news story ends on one line for the brand (QA FEED-ARV-10) // the AI-answers gap card's own fix (QA FEED-ARV-09)
 import { seedDrafts, draftFor, draftView } from './drafts-bg.js';
@@ -454,7 +455,16 @@ export function createFeedService(o) {
       if (n - at > 7 * D) t.cards.delete(id); }
     const wk = weekKey(n); t.runs.forEach((r) => { if (r.week !== wk) r.counted = false; });
     healCatalog(t, keep);
+    healWatcherLooks(t);
   };
+  /* a creative watcher's picture made before the look check (LOOKS_V: a generic prompt over the lane's photo, never judged) is
+     swapped, free, for the real photo of the product the card names (else the brand's own product photo): the paste-ups it made
+     (25 Oct, Arata) are never served again. New pictures are made around the named product and judged (creativeIdea) */
+  const healWatcherLooks = (t) => { const cat = B()?.catalog || [];
+    for (const c of t.cards.values()) { if (c.watcher !== 'creative' || c.imgQ === LOOKS_V) continue; c.imgQ = LOOKS_V;
+      if (!/^gen\//.test(String(c.images?.[0] || ''))) continue;
+      const named = cat.length ? matchProduct(`${c.title || ''}. ${c.sub || ''}`, cat, { brand: BN() }) : null, real = named?.img || refPhoto(c.lane);
+      if (real) { c.images = [real]; if (named) c.product = named.t; } else { c.images = []; c.kind = 'rows'; } } };
   /* saved catalog cards are written again from their reading (QA FEED-ARV-08, CAT_V): product · issue · fix, best sellers first.
      The old "products our cards sell" reading is part of the one stock-out card now: its own card steps aside (kept if worked on) */
   const healCatalog = (t, keep = new Set()) => { const evs = live?.get()?.catalog?.events || [], vevs = live?.get()?.visibility?.events || [];
@@ -936,16 +946,23 @@ export function createFeedService(o) {
       const j = await claudeJSON(`You are the Creative director agent, running on a schedule. Propose ONE new ad idea card for ${BN()}'s feed.\nBrand memory:\n${mem}\nThe person hearted: ${hearted.join(' | ') || 'nothing yet'}\nCalendar: ${FESTN()} is ${FESTD()}${FEST() ? ` (${Math.ceil((FEST() - now(t)) / D)} days away)` : ''}.\nAlready in the feed, do not repeat: ${titles.join(' | ')}\nIf an idea about ${FESTN()} is already there, pick a different angle. Every price in the title must appear in the sub, for the same product.\nUse only facts from the claims list, and only these numbers:\n${Object.values(FACTS).filter((f) => f.kind !== 'demo' && f.label).map((f) => `- ${f.label}: ${f.v}`).join('\n')}\nPlain, simple words.\nJSON: {"title":"under 60 chars, point first, one number","sub":"two sentences, 25 to 35 words: what we saw with the number, then the move and what it gets ${BN()}; no fonts, design notes or file names","why":["3 bullets, each under 14 words"],"how":["3 steps, each under 12 words"],"image":"one of: ${STATICS.join(', ')}","lane":"${laneIds().join('|') || 'core'}","scene":"one sentence describing a new product photo for this idea"}`, 1200);
       const lane = laneIds().includes(j.lane) ? j.lane : firstLane();
       const stImg = (id) => `b/${B().slug}/statics/${id}.jpg`;
-      const ref = refPhoto(lane);
-      let img = STATICS.length ? stImg(STATICS.includes(j.image) ? j.image : STATICS[0]) : ref, imgNote = STATICS.length ? 'picked from your statics' : 'your product photo'; /* the brand's own product photo; with none, no picture is made (never the wrong product) */
-      if (ref && photoFile(ref) && spend('image')) {
+      /* context first (25 Oct, Param: "context driven initial assets"): the picture is made around the product this idea names, on
+         that product's cleanest photo, with the card's own words, so the image guard checks it is that product and judges it as an
+         ad (a collage, a cropped product or an unrelated scene is made again, then held back). Never a generic "<brand> product"
+         over the lane's default photo (Arata 25 Oct: a hair swatch and three bottles pasted over a dark panel) */
+      const cat = B()?.catalog || [], words = `${clean(j.title)}. ${clean(j.sub)}`, named = cat.length ? (matchProduct(words, cat, { brand: BN() }) || null) : null;
+      const ref = named?.img || refPhoto(lane);
+      let img = named?.img || (STATICS.length ? stImg(STATICS.includes(j.image) ? j.image : STATICS[0]) : ref), imgNote = named ? `the real photo of ${named.t}` : STATICS.length ? 'picked from your statics' : 'your product photo'; /* the brand's own product photo; with none, no picture is made (never the wrong product) */
+      const refFile = !ref ? null : named ? ref /* the guard fetches the named product's photos itself (a store URL too) */ : await fileOfRel(ref);
+      if (refFile && spend('image')) {
         try {
-          const buf = await geminiImage({ srcFile: photoFile(ref), prompt: buildDraft({ kind: 'image', title: 'ad idea', visual: j.scene || 'the product on a clean surface, soft daylight', hasSrc: true, ratio: '4:5', topSpace: true, product: { name: `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt, ratio: '4:5', model: process.env.WATCHER_IMAGE_MODEL || 'gemini-2.5-flash-image' });
-          const key = crypto.createHash('sha1').update(j.title + j.scene).digest('hex').slice(0, 16);
-          saveGen(key + '.png', buf); img = `gen/${key}.png`; imgNote = 'generated with the cheap image model';
+          const buf = await geminiImage({ srcFile: refFile, prompt: buildDraft({ kind: 'image', title: clean(j.title), visual: j.scene || 'the product in use in a real moment, soft daylight', hasSrc: true, ratio: '4:5', topSpace: true, product: { name: named?.t || `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt,
+            ratio: '4:5', text: words, catalog: cat.length ? cat : null, brand: BN(), ...(named ? { named } : {}), slug: B()?.slug, fallback: true, ...(process.env.WATCHER_IMAGE_MODEL ? { model: process.env.WATCHER_IMAGE_MODEL } : {}) });
+          if (buf?.guard?.genFailed) imgNote = `the real product photo (the new picture was held back: ${String(buf.guard.error || '').slice(0, 80)})`;
+          else { const key = crypto.createHash('sha1').update(j.title + j.scene).digest('hex').slice(0, 16); saveGen(key + '.png', buf); img = `gen/${key}.png`; imgNote = 'made around the product the idea names, checked as an ad'; }
         } catch (e) { log.warn('[creative watcher] image', e.message); }
       }
-      return { cards: [{ id: uid('w-c'), agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], kind: 'media', images: [img], campaign: 'New from your agents', title: clean(j.title), sub: clean(j.sub), detail: { why: (j.why || []).map(clean), how: (j.how || []).map(clean) }, cta: { label: 'Make the ad' } }], how: `written live by Claude, image ${imgNote}` };
+      return { cards: [{ id: uid('w-c'), agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], kind: 'media', images: [img], imgQ: LOOKS_V, ...(named ? { product: named.t } : {}), campaign: 'New from your agents', title: clean(j.title), sub: clean(j.sub), detail: { why: (j.why || []).map(clean), how: (j.how || []).map(clean) }, cta: { label: 'Make the ad' } }], how: `written live by Claude, image ${imgNote}` };
     } catch (e) { log.warn('[creative watcher]', e.message); return { cards: fromPool(t, 'creative'), how: 'from the pool (AI call failed)' }; }
   };
   /* ---------- cards from real research (research.js) ---------- */
