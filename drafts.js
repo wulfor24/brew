@@ -211,7 +211,7 @@ export function createDrafts({ sourceOf = () => '', rivalAdOf = () => null, riva
 // The media makers, shared by the jam (one tap) and the background first drafts (drafts-bg.js): a carousel (a photo per
 // slide, the words set in exact type by Chromium), a 6-second video from a still (Veo 3.1 Fast on our Vertex account), a voice line,
 // the voiceover muxed in with ffmpeg, and any HTML page shot to an image with Chromium (mock emails, chats, pages, grids).
-export const HEAD_V = 2; /* 2 (25 Oct): a still's words in their own panel above the whole picture (drafts-bg healHeads sets saved ones again) */
+export const HEAD_V = 3; /* 2 (25 Oct): a still's words in their own panel above the whole picture; 3: black bars trimmed off first (drafts-bg healHeads sets saved ones again) */
 export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save = saveGen, file = genFile, log = console }) {
   const keyOf = (s) => crypto.createHash('sha1').update(String(s)).digest('hex').slice(0, 16);
   const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -244,7 +244,15 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
         <body><div class="bg"></div><div class="s"></div><div class="t"><h1>${esc(text)}</h1>${small ? `<p>${esc(small)}</p>` : ''}</div>${of > 1 ? `<span class="n">${n}/${of}</span>` : ''}</body></html>`; };
   const setType = async (browser, buf, { text, small, n, of }, ratio) => { const [w, h] = W[ratio] || W['4:5']; return shoot(browser, typeHtml({ w, h, buf, text, small, n, of }), [w, h]); };
   /* one picture with its headline set (a single image ad, the first frame of a clip, a real-photo stand-in): → 'gen/<name>.jpg' */
-  const head = async (buf, { text, small = '' }, ratio = '4:5', key = '') => { if (!buf || !text) return null; const browser = await launchBrowser();
+  /* black bars baked into a picture (a letterboxed video frame) are cut off before it is fitted under the words: ffmpeg finds them */
+  const trimBars = (buf) => new Promise((res) => { const f = path.join(os.tmpdir(), `trim-${keyOf(buf.subarray(0, 4096).toString('base64'))}.img`); try { fs.writeFileSync(f, buf); } catch { return res(buf); }
+    execFile('ffmpeg', ['-v', 'info', '-loop', '1', '-i', f, '-vf', 'cropdetect=limit=24:round=2:reset=0', '-frames:v', '3', '-f', 'null', '-'], { timeout: 20e3 }, (e, out, err) => { /* a still needs a few looped frames before cropdetect reports */
+      const m = [...String(err || '').matchAll(/crop=(\d+):(\d+):(\d+):(\d+)/g)].at(-1); if (e || !m) { fs.rmSync(f, { force: true }); return res(buf); }
+      const [, w, h, x, y] = m.map(Number); const o = f + '.jpg';
+      execFile('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0:s=x', f], { timeout: 10e3 }, (e2, sz) => { const [W, H] = String(sz || '').trim().split('x').map(Number);
+        if (e2 || !W || (W - w < W * 0.04 && H - h < H * 0.04) || w < W * 0.4 || h < H * 0.4) { fs.rmSync(f, { force: true }); return res(buf); } /* no real bars, or a crop too big to trust */
+        execFile('ffmpeg', ['-v', 'error', '-y', '-i', f, '-vf', `crop=${w}:${h}:${x}:${y}`, '-q:v', '2', o], { timeout: 20e3 }, (e3) => { let out2 = buf; try { if (!e3) out2 = fs.readFileSync(o); } catch {} fs.rmSync(f, { force: true }); fs.rmSync(o, { force: true }); res(out2); }); }); }); });
+  const head = async (buf0, { text, small = '' }, ratio = '4:5', key = '') => { if (!buf0 || !text) return null; const buf = await trimBars(buf0).catch(() => buf0); const browser = await launchBrowser();
     try { const out = await setType(browser, buf, { text, small }, ratio); const name = keyOf(`head${HEAD_V}|${key}|${text}|${small}|${ratio}`) + '.jpg'; /* a new layout is a new file, never a cached old one */ save(name, out); return 'gen/' + name; }
     finally { await browser.close?.().catch?.(() => {}); } };
   /* the headline on a clip's first seconds: Chromium sets it on a clear sheet at the clip's own size, ffmpeg lays it over

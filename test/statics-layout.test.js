@@ -41,3 +41,8 @@ test('the draft judge fails a picture that shows an expert, and says how to redo
   assert.deepEqual(lookVerdict('EXPERT: a woman in a lab coat').ok, false);
   assert.match(FIX.expert, /everyday customer/);
 });
+
+test('black bars in a picture are trimmed before it is fitted under the words', () => {
+  const src = fs.readFileSync(new URL('../drafts.js', import.meta.url), 'utf8');
+  assert.match(src, /cropdetect/); assert.match(src, /const buf = await trimBars\(buf0\)/);
+});
