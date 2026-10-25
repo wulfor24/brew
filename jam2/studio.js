@@ -7,6 +7,7 @@ import fs from 'node:fs'; import path from 'node:path';
 import { SIZES } from './catalogue.js';
 import { srtOf } from '../video-finish.js';
 import { claimFlags } from '../claims.js';
+import { isRestock } from '../product-match.js';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(HERE, '..', 'data', f), 'utf8')); } catch { return d; } };
@@ -188,8 +189,10 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
   const v1Words = (ctx, spec = {}) => { if (spec.ask) return null; const v1 = ctx.v1 || {}, h = tidy(v1.headline || v1.overlay || v1.slides?.[0]?.onSlide || v1.heading || v1.front || '', 90); if (!h) return null;
     return { headline: h, sub: tidy(String(v1.primaryText || v1.caption || v1.copy || v1.description || v1.back || '').split(/\n|(?<=[.!?])\s/)[0], 120) || '', cta: v1.cta || '' }; };
   /* a sold-out product isn't made into a paid creative (v1 wouldn't let it be posted), unless the card is about it coming back */
-  const soldOut = (ctx) => { const pn = String(ctx.product?.name || '').trim(); if (!pn) return null; const m = (ctx.catalog || []).find((x) => (x?.t || x?.title) === pn); if (!m?.out) return null;
-    const cw = `${ctx.card?.title || ''} ${ctx.card?.sub || ''} ${ctx.card?.cta?.label || ''}`; return /restock|back in stock|coming back|pre-?order|waitlist/i.test(cw) ? null : `${tidy(pn, 60)} is sold out on your store: pick an in-stock product, or make it when it’s back.`; };
+  const soldOut = (ctx) => { const P = ctx.product || {}, pn = String(P.name || '').trim(); if (!pn && !P.img && !P.handle) return null;
+    /* the catalog row by handle, photo or name: a short name or a References pick of a sold-out product is still that product */
+    const m = (ctx.catalog || []).find((x) => (P.handle && x?.handle === P.handle) || (P.img && (x?.img === P.img || (x?.imgs || []).includes(P.img))) || (pn && (x?.t || x?.title) === pn)); if (!m?.out) return null;
+    return isRestock(ctx.card || {}) ? null : `${tidy(m.t || pn, 60)} is sold out on your store: pick an in-stock product, or make it when it’s back.`; };
   async function plan(ctx, spec) {
     if (spec.product?.img) ctx.product = { ...spec.product }; { const so = soldOut(ctx); if (so) return { error: so }; } if (spec.quality) ctx.tier = spec.quality === 'premium' ? 'premium' : spec.quality === 'preview' ? 'preview' : null;
     if (Array.isArray(spec.set)) { const set = spec.set.map(styleOf).filter((x) => x && x.kind === 'image').slice(0, 10); if (set.length < (spec.fill ? 1 : 2)) return { error: spec.fill ? 'Nothing is missing.' : 'Pick at least two slides.' }; /* filling in left-out slides may be one */

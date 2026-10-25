@@ -19,6 +19,7 @@ import { createReady, tokenFor, parseToken } from './ready.js';
 import { RECIPES, FAMILIES, SIZES, HOW, HOW_LABEL, recipe, recipeFor, alsoFor, planFor } from './catalogue.js';
 import { newJam, newBoard, boardOf, headOf, bumpConcept, fromV1, jamView, note, uid, addTake, OWNERS, BRIEF_STATUS, publicView } from './core.js';
 import { productFor, productTiles } from './ingredients.js';
+import { isRestock } from '../product-match.js';
 import { withBrowser } from '../pdf/render.js';
 import { answerGrounded } from '../jam-answer.js';
 
@@ -51,8 +52,11 @@ export function mountJam2(d) {
     const slug = slugOfT(t), br = brandOfT(t), card = jam.cardId ? cardOf(t, jam.cardId) : null, view = bb.view(await bb.load(slug));
     const refs = await refsOf(slug).catch(() => []), catalog = br?.catalog || [];
     /* the product the v1 jam's copy is about leads, so the picture and the words show the same thing (v1 and Studio used to pick apart) */
-    let v1p = null; if (!pick && !jam.product && jam.v1ch && d.v1Product) { try { v1p = d.v1Product(t, jam.v1ch); } catch { v1p = null; } }
-    const prod = productFor({ card, catalog, refs, pick: pick || jam.product || v1p || null, lanePhoto: null });
+    /* a product swapped in earlier that has sold out since is let go (not rewritten: the saved jam keeps it, and it leads again once
+       back in stock), so the Studio never opens on a product it would refuse to make; a card about the restock keeps it */
+    const keep = jam.product && !(catalog.find((x) => (jam.product.handle && x.handle === jam.product.handle) || x.img === jam.product.img || x.t === jam.product.name)?.out && !isRestock(card || {})) ? jam.product : null;
+    let v1p = null; if (!pick && !keep && jam.v1ch && d.v1Product) { try { v1p = d.v1Product(t, jam.v1ch); } catch { v1p = null; } }
+    const prod = productFor({ card, catalog, refs, pick: pick || keep || v1p || null, lanePhoto: null });
     let memory = ''; try { memory = memoryOf ? memoryOf(t, card?.agent && card.agent !== 'brew' ? card.agent : 'creative') || '' : ''; } catch { memory = ''; }
     const cfg = br?.config || {}, market = br ? askMarket({ country: cfg.country, locale: cfg.locale, market: cfg.market }, cfg) : null; /* who the people in a picture or film look like */
     const ref = card && d.refOf ? d.refOf(t, card) : null; /* the reference the card is about (Recreate, viral shorts) */
@@ -169,7 +173,8 @@ export function mountJam2(d) {
     sp.sizes = [Array.isArray(sp.sizes) && Object.hasOwn(SIZES, sp.sizes[0]) ? sp.sizes[0] : kind === 'video' ? 'story' : 'ig-portrait'];
     sp.count = Math.max(1, Math.min(12, Math.floor(+sp.count || 1))); sp.seconds = kind === 'video' && Number.isFinite(+sp.seconds) ? Math.max(3, Math.min(studio.styleOf(sp.style)?.job === 'viral-short' ? 30 : 15, Math.round(+sp.seconds))) : null; /* a viral short runs to 30 s */
     sp.ask = String(sp.ask || '').replace(/\s+/g, ' ').trim().slice(0, 300); for (const [k, n] of [['direction', 900], ['cast', 160], ['ref', 160]]) sp[k] = String(sp[k] || '').replace(/\s+/g, ' ').trim().slice(0, n) || null; sp.quality = ['preview', 'premium'].includes(sp.quality) ? sp.quality : null; sp.fill = !!sp.fill; if (sp.set != null && !Array.isArray(sp.set)) sp.set = null; if (Array.isArray(sp.set)) sp.set = sp.set.map(String).slice(0, 10);
-    if (sp.product?.img) { const own = await ownProduct(t, j, ctx, sp.product); if (!own) return { error: 'Pick a product from your catalog or References.' }; sp.product = own; } else sp.product = null;
+    if (sp.product?.img) { const own = await ownProduct(t, j, ctx, sp.product); if (!own) return { error: 'Pick a product from your catalog or References.' }; sp.product = own; }
+    else sp.product = ctx.product?.img ? { img: ctx.product.img, name: ctx.product.name || null, handle: ctx.product.handle || null } : null; /* the product that was priced is the one made: a background board job never re-chooses it */
     return { spec: sp }; };
   on('GET', '/api/jam2/jams/:jid/studio', wrap(async (b, t, p, q) => { const j = await load(t, p.jid), bd = boardOf(j, q?.get?.('bid')) || j.boards[0]; const ctx = await ctxOf(t, j);
     const d0 = studio.defaults(ctx, bd), tiles = productTiles(brandOfT(t)?.catalog || [], 400);

@@ -18,9 +18,12 @@ const priceOf = (x) => { if (x.priceLabel) return String(x.priceLabel); const n 
 /* a listing a shopper can buy: never the store's test or duplicate listings ("Sunscreen Gel … Test Product", "GL Event test",
    a "-copy" handle), which became card photos and draft products (QA 20 Oct). A real "test kit" stays */
 const NOT_FOR_SALE = /\b(?:test|dummy|sample|placeholder)\s+(?:product|listing|item|sku)\b|\bdo not (?:buy|use|purchase|order)\b|(?:^|\s)test\s*$|^\s*test\b(?!\s+kits?\b)|\bevent test\b/i;
+/* a give-away the store adds to orders (Arata's 15ml "free-product" sizes, no price): a real listing, never the product a card means
+   when its full size is also there (26 Oct: the jam drew the 15ml conditioner sample for a ₹2,182 combo ad) */
+const freeSample = (x) => (x.tags || []).some((g) => /^free[- ]?(?:product|gift|sample)$/i.test(String(g))) || (x.price == null && !x.priceLabel && x.inStock !== undefined);
 export const sellable = (x) => !!x && !NOT_FOR_SALE.test(String(x.title || x.t || '')) && !/-copy(?:-\d+)?\/?$/i.test(String(x.handle || x.url || '').split('?')[0]);
 export const catalogOf = (profile, max = 400) => (profile?.catalog?.products || []).filter(sellable)
-  .map((x) => ({ t: String(x.title || ''), img: [x.img, ...(x.images || [])].find((u) => u && !JUNK.test(u)) || null, ...(priceOf(x) ? { price: priceOf(x) } : {}), ...(x.inStock === false ? { out: true } : {}), ...(x.url ? { url: String(x.url) } : {}), ...((x.claims || [])[0] ? { claim: String(x.claims[0]) } : {}), imgs: [...new Set([x.img, ...(x.images || [])].filter((u) => u && typeof u === 'string' && !JUNK.test(u)))].slice(0, 8) /* every photo of it: a listing's photo set where no photo can be made (remix listingFromCatalog) */ })) /* skip a "sold out" placeholder, keep the product; price and stock for a product grid (draft-mocks.js); its page and first claim for the jam's product line (studio productFor) */
+  .map((x) => ({ t: String(x.title || ''), img: [x.img, ...(x.images || [])].find((u) => u && !JUNK.test(u)) || null, ...(priceOf(x) ? { price: priceOf(x) } : {}), ...(x.inStock === false ? { out: true } : {}), ...(freeSample(x) ? { free: true } : {}), ...(x.handle ? { handle: String(x.handle) } : {}), ...(x.url ? { url: String(x.url) } : {}), ...((x.claims || [])[0] ? { claim: String(x.claims[0]) } : {}), imgs: [...new Set([x.img, ...(x.images || [])].filter((u) => u && typeof u === 'string' && !JUNK.test(u)))].slice(0, 8) /* every photo of it: a listing's photo set where no photo can be made (remix listingFromCatalog) */ })) /* skip a "sold out" placeholder, keep the product; price and stock for a product grid (draft-mocks.js); its page and first claim for the jam's product line (studio productFor) */
   .filter((x) => x.t && x.img && !JUNK_TITLE.test(x.t)).slice(0, max);
 
 const roundPrice = (p) => priceKey(p);
@@ -36,9 +39,14 @@ export function matchProduct(text, catalog, { brand = '', byNameOnly = false } =
   /* copy that names a bundle and its pieces ("the MitoActive + Anti-Hair Fall Shampoo & Conditioner Combo: serum, shampoo,
      Anti-Breakage Intensive Conditioner") is about the bundle: among products named outright, the longest name written out wins,
      then one in stock, then the one at the price the copy states, and only then the rarer words (26 Oct, Arata: a sold-out 15ml
-     conditioner was drawn for a ₹2,182 combo). Works for any catalog: a kit, set, regimen or pack names its pieces the same way */
+     conditioner was drawn for a ₹2,182 combo). Works for any catalog: a kit, set, regimen or pack names its pieces the same way.
+     Two listings with one name ("Conditioner - 15ml" and "- 200 ml", a single and its "Pack of 3"): the size the words write out,
+     then a priced full size over a free sample, then in stock, the stated price, and a single over a pack nobody asked for */
   const stated = new Set((String(text).match(/[₹$€£]\s?\d[\d,]*(?:\.\d+)?/g) || []).map(roundPrice));
-  const rank = (c) => [c.byName ? 1 : 0, c.byName ? c.nameLen : 0, c.p.out ? 0 : 1, stated.size && stated.has(roundPrice(c.p.price)) ? 1 : 0, c.score];
+  const packSaid = /\b(?:pack|packs|set|duo|trio|bundle)\b|\b\d+\s*x\b/i.test(text);
+  const sizeOf = (x) => { const m = /(\d+(?:\.\d+)?)\s*(ml|g|gm|kg|l|oz|ltr)\b/i.exec(String(x || '')); return m ? `${+m[1]}${m[2].toLowerCase().replace(/^gm$/, 'g').replace(/^ltr$/, 'l')}` : ''; };
+  const sizesSaid = new Set([...String(text).matchAll(/(\d+(?:\.\d+)?)\s*(ml|g|gm|kg|l|oz|ltr)\b/gi)].map((m) => sizeOf(m[0])));
+  const rank = (c) => [c.byName ? 1 : 0, c.byName ? c.nameLen : 0, sizesSaid.size && sizesSaid.has(sizeOf(c.p.t)) ? 1 : 0, c.p.free ? 0 : 1, c.p.out ? 0 : 1, stated.size && stated.has(roundPrice(c.p.price)) ? 1 : 0, !packSaid && /\bpack of \d|\b\d+\s*x\s*\d|\(pack\b/i.test(c.p.t) ? 0 : 1, c.score];
   const better = (a, b) => { const x = rank(a), y = rank(b); for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
   let best = null, bestC = null;
   for (const p of catalog) {
@@ -101,3 +109,16 @@ const VERB = /^(?:design|create|make|use|shoot|build|show|film|feature|style|ope
 const howScene = (c = {}) => { const h = (c?.detail?.how || []).find((x) => typeof x === 'string' && SEE.test(x) && !NOT_SEE.test(x)); const p = tidyScene(String(h || '').replace(VERB, '')); return p.length >= 8 && p.length <= 160 ? p : ''; };
 export const sceneOf = (c = {}) => { const p = tidyScene(String(c?.make?.pieces || '').replace(/^[^:]{0,40}:\s*/, '')); return p.length >= 8 ? p : howScene(c); }; /* "1 static image: X, headline Y" → "X" */
 export const cardScene = (c = {}) => (sceneOf(c) ? `The picture must show what the card promises: ${sceneOf(c)}.` : '');
+
+/* a card about a product coming back (restock, pre-order, waitlist) keeps its sold-out product; one rule for the Studio and the
+   publish check. Only the card's own words count, never the ad's ("before it sells out" is copy, not a restock) */
+export const RESTOCK_RE = /\brestock\w*|back in stock|coming back|pre-?orders?\b|wait-?list|notify me|back soon/i;
+export const isRestock = (c = {}) => RESTOCK_RE.test(`${c?.title || ''} ${c?.sub || ''} ${c?.cta?.label || ''}`);
+/* the product a shopper can buy in place of a sold-out one: the same name in another size or pack that is in stock and priced
+   (Brightening Face Serum 30 ml → its 50 ml), else null: never a different product chosen by loose words */
+export function inStockTwin(p, catalog = []) {
+  if (!p?.out) return p || null; const base = (t) => words(String(t || '').split(/\s+[–—|:-]\s+|,\s|\s+\(/)[0]).join(' ');
+  const b = base(p.t || p.name); if (!b) return null;
+  const same = (catalog || []).filter((x) => x !== p && !x.out && !x.free && x.t !== p.t && base(x.t) === b);
+  return same.find((x) => !/\bpack of \d/i.test(x.t)) || same[0] || null;
+}

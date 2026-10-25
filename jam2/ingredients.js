@@ -16,10 +16,11 @@ export function productFor({ card = null, catalog = [], refs = [], pick = null, 
   if (ref) return { img: ref.url || ref.file, name: ref.label || null, from: 'references' };
   const own = card && !isRivalCard(card) ? (card.images || []).find((u) => u && !isResearchImage(u)) : null;
   if (own) return { img: own, name: null, from: 'card' };
-  const lead = (catalog || []).find((p) => imgOf(p) && !p.out) || (catalog || []).find((p) => imgOf(p)); /* in stock first */
+  const lead = (catalog || []).find((p) => imgOf(p) && !p.out && !p.free) || (catalog || []).find((p) => imgOf(p) && !p.out) || (catalog || []).find((p) => imgOf(p)); /* in stock and for sale first, never a free sample */
   if (lead) return { img: imgOf(lead), name: lead.t || lead.title || null, handle: lead.handle || null, from: 'catalog' };
   if (lanePhoto) return { img: lanePhoto, name: null, from: 'lane' };
   return null;
 }
 /* the brand's products as Library tiles (the photo picker): real catalog photos only */
-export const productTiles = (catalog = [], max = 60) => (catalog || []).filter((p) => imgOf(p)).slice(0, max).map((p) => ({ img: imgOf(p), name: p.t || p.title || null, handle: p.handle || null }));
+/* sold-out products come last and say so (the picker greys them), free samples after the products a shopper can buy */
+export const productTiles = (catalog = [], max = 60) => (catalog || []).filter((p) => imgOf(p)).map((p, i) => [p, i]).sort(([a, i], [b, k]) => (!!a.out - !!b.out) || (!!a.free - !!b.free) || i - k).slice(0, max).map(([p]) => ({ img: imgOf(p), name: p.t || p.title || null, handle: p.handle || null, ...(p.out ? { out: true } : {}) }));

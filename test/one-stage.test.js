@@ -82,7 +82,8 @@ test('a capital call to action on its own line is a button, inside a sentence it
 test('the plan’s copy of the first draft keeps its product, so Studio sets up the product the draft shows', () => {
   const cp = fs.readFileSync(new URL('../card-plan.js', import.meta.url), 'utf8');
   assert.match(cp, /copy: draft\.copy \|\| '', product: draft\.product \|\| null/);
-  assert.match(fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8'), /const dp = ch\.pkg\?\.draft\?\.product \|\| \(ch\.v0 === 'draft' \? o\.planOf\?\.\(t, c\)\?\.draft\?\.product : null\)[^\n]*\n[^\n]*cardProduct\(c, cat0[^\n]*\n\s*const P = productFor\(c, FACTS, named \|\| !dp \? words : dp\)/);
+  const rx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
+  assert.match(rx, /if \(!m\) \{ const dp = ch\.pkg\?\.draft\?\.product \|\| \(ch\.v0 === 'draft' \? o\.planOf\?\.\(t, c\)\?\.draft\?\.product : null\)/, 'the draft product leads when the card names none');
 });
 
 test('the draft view keeps the product its pictures show', async () => {

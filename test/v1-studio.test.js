@@ -73,7 +73,11 @@ test('the composer arrives filled: every slot says why, gaps are said plainly, n
   assert.equal(a.missing.length, 0, `nothing missing: ${a.missing.map((m) => m.text).join(' | ')}`); assert.doesNotMatch(a.slots.direction.value, /\.\./);
   const b = contextOf({ ...base, catalog: [], bbv: { comfort: { people: 'none' }, kit: {} } }, d0);
   assert.equal(b.slots.words.value.review, null, 'no review is ever invented'); assert.equal(b.slots.cast.value, 'none'); assert.match(b.slots.direction.value, /No people/);
-  assert.ok(b.missing.some((m) => /logo/i.test(m.text)) && b.missing.some((m) => /one photo/i.test(m.text)), 'the gaps are said, with a fix');
+  assert.ok(b.missing.some((m) => /logo/i.test(m.text)) && !b.missing.some((m) => /one photo/i.test(m.text)), 'the gaps are said, with a fix; one photo is no gap for a style that shows one side');
+  const b3 = contextOf({ ...base, catalog: [], bbv: { comfort: { people: 'none' }, kit: {} } }, { ...d0, style: 'orbit-360', kind: 'video' });
+  assert.ok(b3.missing.some((m) => /one photo/i.test(m.text)), 'a style that turns the product round says the sides would be drawn');
+  const b4 = contextOf({ ...base, catalog: [{ t: 'Shampoo', img: 'p.jpg', imgs: ['p.jpg', 'p2.jpg'] }], bbv: {} }, { ...d0, style: 'orbit-360', kind: 'video' });
+  assert.equal(b4.slots.products.value[0].photos.length, 2, 'catalog rows keep their photos as imgs (26 Oct: every product read as one photo)');
   const r = contextOf({ ...base, card: { ...base.card, research: { kind: 'ad' }, rivalName: 'Rival', images: ['r.jpg'] }, bbv: {} }, d0); assert.equal(r.slots.reference.value.img, 'r.jpg'); assert.match(r.slots.reference.why, /rival ad/);
 });
 
