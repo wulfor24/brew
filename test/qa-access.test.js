@@ -197,15 +197,15 @@ test('FEED-QA-30: a saved read whose market the site only guessed heals to "to c
 });
 
 /* ---------- FEED-QA-29 / TRU-07 / ACC-12: the account menu ---------- */
-test('FEED-QA-29: everyone’s account menu has Help, Privacy & terms and Delete my data (marked Dummy: the team deletes by hand)', () => {
+test('FEED-QA-29: everyone’s account menu has Help, Privacy & terms and Delete my data (an honest request the team handles by hand)', () => {
   const l = src('public/live.js'), menu = l.slice(l.indexOf('function menu(btn)'), l.indexOf('/* ---------- the team: invite by email'));
   assert.equal((menu.match(/\$\{helpRows\(\)\}/g) || []).length, 2, 'signed in or not, whatever the role');
   assert.match(l, /href="mailto:\$\{HELLO\}\?subject=\$\{encodeURIComponent\(`Brew help\$\{GENB \? ` · \$\{brandTag\(\)\}` : ''\}`\)\}"/);
   assert.match(l, /href="\/privacy"[^>]*>Privacy<\/a> &amp; <a href="\/terms"/);
-  assert.match(l, /\/\* DUMMY: "Delete my data" deletes nothing itself/);
-  assert.match(l, /Delete my data <span class="dummy-tag">Dummy<\/span>/);
+  assert.match(l, /"Delete my data" is a real request, handled by hand/); assert.doesNotMatch(l, /Delete my data <span class="dummy-tag">/);
+  assert.match(l, /This sends a deletion request to the Brew team from your own email\. We delete your data within 7 days/);
   assert.match(l, /Brand: \$\{GENB \? brandTag\(\) : 'none'\}\\nMy email: \$\{em\}/, 'the request names the brand slug and the person’s email');
-  assert.match(src('DUMMY.md'), /\| 9 \| \*\*Delete my data\*\*/);
+  assert.match(src('DUMMY.md'), /\| 9 \| ~~Delete my data~~ \*\*An honest request since 2026-10-25\*\*/);
   assert.match(appSrc(), /\$\{acctRows\(\)\}\$\{window\.LiveConn\?\.helpRows\?\.\(\) \|\| ''\}/, 'the menu without sign-in has them too');
 });
 

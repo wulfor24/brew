@@ -339,14 +339,14 @@
       <a class="lc-it" href="mailto:${HELLO}?subject=${encodeURIComponent(`Brew help${GENB ? ` · ${brandTag()}` : ''}`)}">${ic('info', 's16')}<b>Help</b><span>Email us</span></a>
       <span class="lc-it lc-legal">${ic('shield', 's16')}<b><a href="/privacy" target="_blank" rel="noopener">Privacy</a> &amp; <a href="/terms" target="_blank" rel="noopener">terms</a></b></span>
       ${meMail() ? `<button class="lc-it" type="button" data-ldelete>${ic('minus', 's16')}<b>Delete my data</b></button>` : ''}</div>`;
-  /* DUMMY: "Delete my data" deletes nothing itself. It drafts an email from the person's own mail app to the Brew team with the
-     brand and their address, and the team deletes by hand (DUMMY.md row 9). The sheet says so and carries the Dummy tag */
+  /* "Delete my data" is a real request, handled by hand (Param, 25 Oct): it drafts an email from the person's own mail app to
+     the Brew team with the brand and their address; the team deletes and replies. The sheet says exactly that (DUMMY.md row 9) */
   function deleteSheet() {
     const em = meMail(), n = B()?.brand?.name || 'this brand';
     const body = `Please delete my data from Brew.\n\nBrand: ${GENB ? brandTag() : 'none'}\nMy email: ${em}\n`;
     const href = `mailto:${HELLO}?subject=${encodeURIComponent(`Delete my data${GENB ? ` · ${slug}` : ''}`)}&body=${encodeURIComponent(body)}`;
-    A()?.modal?.(`<div class="sheet del-sheet"><h3>Delete my data <span class="dummy-tag">Dummy</span></h3>
-      <p>This emails the Brew team from your own email. We delete it by hand and reply when it’s done.</p>
+    A()?.modal?.(`<div class="sheet del-sheet"><h3>Delete my data</h3>
+      <p>This sends a deletion request to the Brew team from your own email. We delete your data within 7 days and reply when it’s done.</p>
       <ul class="del-what"><li>Your sign-in: the name, email and photo Google gave us</li><li>Your saved cards, feed settings and jam messages</li>${GENB ? `<li>If you’re ${esc(n)}’s admin and ask for it: the whole workspace (the read, moves, jams and connected keys)</li>` : ''}</ul>
       <div class="cx-btns"><button class="btn btn-ghost" data-close>Cancel</button><a class="btn btn-primary" href="${esc(href)}" data-close>Email the request</a></div></div>`);
   }
