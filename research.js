@@ -557,7 +557,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
      ones): that source is re-read at once instead of waiting for its EVERY slot. At most once every 2 hours a source, never
      while it runs or within the hour after a failure, never with RESEARCH_OFF */
   const needAt = {};
-  const need = (k) => { if (!isLeader() || !JOBS[k] || process.env.RESEARCH_OFF || running.has(k) || Date.now() - failedAt(k) < H || Date.now() - (needAt[k] || 0) < 2 * H) return false;
+  const need = (k) => { if (!isLeader() || movedAway(brand.slug) || !JOBS[k] || process.env.RESEARCH_OFF || running.has(k) || Date.now() - failedAt(k) < H || Date.now() - (needAt[k] || 0) < 2 * H) return false;
     needAt[k] = Date.now(); log.log(`[research] ${brand.slug} ${k}: ring has nothing fresh, reading again`); refresh([k]).catch(() => {}); return true; };
   /* a replaced instance stops its timers */
   let stopped = false; const timers = {};

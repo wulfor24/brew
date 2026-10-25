@@ -55,6 +55,9 @@ const zz = await n(`SELECT count(*) AS n FROM objects WHERE key LIKE '%zz-%'`); 
 let tws = 0; for (const r of (await q(`SELECT key, body, content_type FROM objects WHERE key LIKE 'tenants/%' AND content_type <> 'application/x-parted'`)).rows) { try { if (TEST_BRANDS.has(JSON.parse(r.body.toString('utf8')).brandId)) tws++; } catch {} }
 const tp = (await q(`SELECT o.key, p.body FROM objects o JOIN doc_parts p ON p.key = o.key AND p.part = 'brandId' WHERE o.key LIKE 'tenants/%'`)).rows; for (const r of tp) { try { if (TEST_BRANDS.has(JSON.parse(r.body.toString('utf8')))) tws++; } catch {} }
 if (tws) bad(`${tws} workspace(s) of test brands on production`);
+/* simulated connector accounts (staff testing on staging) and the demo rows they wrote */
+const simRows = (await q(`SELECT key FROM objects WHERE key ~ '^brands/[^/]+/private/(connections|connected-ledger)\\.json$' AND content_type <> 'application/x-parted' AND (convert_from(body, 'UTF8') ~ '"sim"\\s*:\\s*true' OR convert_from(body, 'UTF8') ~ '"demo"\\s*:\\s*true')`)).rows.map((r) => r.key);
+for (const k of simRows) bad(`simulated connector data on production: ${k}`);
 console.log(`[clean] database checked: ${brands.length} brand(s): ${brands.join(', ') || 'none yet'}`);
 
 await close();

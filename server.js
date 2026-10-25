@@ -74,7 +74,7 @@ import { realRows, connectedOk } from './connectors/common.js'; // simulated acc
 import { createLearnings, briefView } from './brand-learnings.js'; // /update-brand-learnings: a pasted call, notes or emails → brief, memory, moves
 import { createDraftsBg } from './drafts-bg.js'; // first drafts on the top cards, in the background
 import { createCardsGen } from './cards-gen.js';
-import { createClosedGate } from './closed-gate.js'; // a store not launched yet (read from its Shopify admin) is its team's only
+import { createClosedGate, slugIn } from './closed-gate.js'; // a store not launched yet (read from its Shopify admin) is its team's only
 import { setMemoryHooks } from './learn.js'; // brand memory
 import { createNotes } from './notes.js'; // margin notes for any brand's cards
 import { createValue } from './value.js'; // move grades for the ranker
@@ -91,7 +91,7 @@ import { createAiQuestions, Q_V } from './ai-questions.js'; // the AI answers qu
 import { awaitingCheck, createConfirmRemind } from './confirm-remind.js'; // "Check what we read" waits for a person: hold the watchers, remind by email // the time left on a brand's moves, from the pace the build really kept
 import { drawableSvg } from './reader/svg-logo.js';
 import { markMoveClaims, packSource } from './claims.js'; // the team's private moves read like the shared ones
-import { movedAway, stayHere, prodUrl } from './moved.js'; // Phase 6: partners moved to production (staging only)
+import { movedList, movedAway, stayHere, prodUrl, guardMovedSends } from './moved.js'; // Phase 6: partners moved to production (staging only)
 import { isFullAccess } from './auth.js'; // staff stay on staging for a moved brand
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -110,6 +110,7 @@ if (fs.existsSync(envFile)) {
 const PORT = +process.env.PORT || 4200;
 const WRITTEN_HW = new Map(); /* slug → { k: the build (status.createdAt), n: the most moves written it has shown } */
 guardFetch(console); // Demo Mode only: no write to a real account, no real message
+guardMovedSends({ isStaff: isFullAccess, current: () => inBrand()?.slug || null, log: console }); // staging: a moved brand's people and Slack hear nothing from here
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const CLAUDE_MODELS = [process.env.FEED_CLAUDE_MODEL || 'claude-sonnet-5-5', 'claude-sonnet-5'];
 const GPROJECT = process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617';
@@ -1084,6 +1085,12 @@ async function serve(req, res, u) {
     if (shopifyApp) { await shopifyApp.attach(req, u); if (await shopifyApp.handle(req, res, u)) return; } // a request from inside the Shopify admin carries a session token, not a cookie
     if (await auth.handle(req, res, u)) return;
     if (await closedGate.gate(req, res, u)) return; // a store not open yet: its team only (pages, /b files, brand routes, x-brand calls)
+    /* staging, a brand moved to production (moved.js): its own people use it there; staff (full-access domains, admins) stay to
+       test. A page, its files or its Brand Book go to the same path on production; an API call says where it moved */
+    if (movedList().length) { const ms = slugIn(req, u) || (/^\/([a-z0-9-]+)\/brand(?:[./]|$)/.exec(u.pathname) || [])[1];
+      if (movedAway(ms) && !isFullAccess(auth.user(req)?.email)) {
+        if (u.pathname.startsWith('/api/')) { res.writeHead(409, { 'content-type': 'application/json', 'cache-control': 'no-store' }); return res.end(JSON.stringify({ error: `This brand moved to ${prodUrl().replace(/^https?:\/\//, '')}.`, moved: `${prodUrl()}/${ms}` })); }
+        res.writeHead(302, { location: `${prodUrl()}${u.pathname}${u.search}`, 'cache-control': 'no-store' }); return res.end(); } }
     if (await slooshHandle(req, res, u)) return;
     if (await jamMail.handle(req, res, u)) return; // the mute / only-tags links in jam emails
     if (slackRoutes && await slackRoutes(req, res, u)) return; // what Slack sends: thread replies, Approve (signed)
@@ -1122,8 +1129,6 @@ async function serve(req, res, u) {
     if (pg.kind === 'api') return send(res, 404, { error: 'not found' });
     if (pg.kind !== 'landing' && /\.[a-z0-9]{2,5}$/i.test(u.pathname)) return send(res, 404, 'no', 'text/plain'); /* /index.html is the landing, never a plain "no" (QA 19 Oct) */
     if (pg.kind === 'legal') return send(res, 200, LEGAL[pg.page](), 'text/html; charset=utf-8');
-    /* staging, a brand moved to production (moved.js): its own people go there; staff (full-access domains, admins) stay to test */
-    if (pg.kind === 'slug' && movedAway(pg.slug) && !isFullAccess(auth.user(req)?.email)) { res.writeHead(302, { location: `${prodUrl()}/${pg.slug}${u.search}`, 'cache-control': 'no-store' }); return res.end(); }
     const html = pg.kind === 'landing' ? await pageFor('') : pg.kind === 'slug' ? await pageFor(pg.slug) : null;
     if (html && pg.redirect) { res.writeHead(302, { location: `/${pg.slug}${u.search}` }); return res.end(); }
     if (html) return send(res, 200, shopifyApp ? shopifyApp.embed(req, u, res, html) : html, 'text/html; charset=utf-8'); /* inside the Shopify admin: App Bridge first */

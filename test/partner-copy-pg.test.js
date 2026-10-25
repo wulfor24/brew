@@ -140,7 +140,24 @@ test('shared rows: only confirmed holidays and video reads, never staging\'s vis
 });
 
 test('media references: research hashes and generated names, wherever they sit in the text', () => {
-  const r = mediaRefs('{"a":"research/0123456789abcdef0123.mp4","b":"/gen/fin-b4d8.jpg","c":"https://x/gen/y.png","d":"myresearch/0123456789abcdef0123.jpg","e":"oxygen/z.png"}');
+  const r = mediaRefs('{"a":"research/0123456789abcdef0123.mp4","b":"/gen/fin-b4d8.jpg","c":"https://x/gen/y.png","d":"myresearch/0123456789abcdef0123.jpg","e":"oxygen/z.png","zip":"gen/abcdef12.zip","brief":"gen/team-brief1.pdf","voice":"0a1b2c3d4e.wav"}');
   assert.deepEqual([...r.research], ['0123456789abcdef0123.mp4']);
-  assert.deepEqual([...r.gen].sort(), ['fin-b4d8.jpg', 'y.png']);
+  assert.deepEqual([...r.gen].sort(), ['abcdef12.zip', 'fin-b4d8.jpg', 'team-brief1.pdf', 'y.png']);
+  assert.deepEqual([...r.maybe], ['0a1b2c3d4e.wav'], 'a voiceover kept as a bare name');
+});
+
+test('simulated connector accounts and their demo rows stay on staging; a bare voiceover name comes along when staging has it', { skip }, async () => {
+  await put(src, 'brands/scrubroom-in/status.json', { name: 'Scrub Room', done: true });
+  await put(src, 'brands/scrubroom-in/private/connections.json', { meta: { state: 'live', sim: true }, ga4: { state: 'live', account: { id: 'p1' } } });
+  await put(src, 'brands/scrubroom-in/private/connected-ledger.json', { rows: [{ k: 'orders', v: 12, demo: true }, { k: 'sessions', v: 900 }] });
+  await put(src, 'brands/scrubroom-in/drafts/cards.json', { c1: { voice: '0a1b2c3d4e.wav', other: 'notafile1.wav' } });
+  const s = fakeStore(); s.add('stg', 'gen/0a1b2c3d4e.wav', 'voice');
+  const r = await copyBrand({ src, dst, slug: 'scrubroom-in', keys, store: s, apply: true, log: quiet });
+  assert.equal(r.simStripped, 2);
+  assert.deepEqual(Object.keys((await read(dst, 'brands/scrubroom-in/private/connections.json')).doc), ['ga4']);
+  assert.deepEqual((await read(dst, 'brands/scrubroom-in/private/connected-ledger.json')).doc.rows, [{ k: 'sessions', v: 900 }]);
+  assert.ok(s.b.prd.has('gen/0a1b2c3d4e.wav'));
+  assert.deepEqual(r.mediaMissing, [], 'a name that was never a file is not reported missing');
+  const again = await copyBrand({ src, dst, slug: 'scrubroom-in', keys, store: s, apply: true, log: quiet });
+  assert.equal(again.copied, 0, 'the stripped copy counts as the same next time');
 });

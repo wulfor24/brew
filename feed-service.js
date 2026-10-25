@@ -81,6 +81,7 @@ import { toolOf, channelFit, paceFit, paceOf, cleanViewer } from './channel-fit.
 import { moveLabel, moveNum, moveSay, playSrc } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 import { claimFlags, cleanDraftClaims, packSource, checkCopy } from './claims.js'; // drafts and finals carry only the store's own claims (QA-25)
 import { isCommunityCard } from './social-feed.js'; // a reply or post in a community, from what listening heard: it keeps a first-screen seat
+import { movedAway } from './moved.js'; // staging: no paid rival pre-read for a brand moved to production
 // cut on a word boundary with an ellipsis, never mid-word or with a dangling space
 const cutWords = (x, n) => { x = String(x).trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s,;:·-]+$/, '') + '…' : x; };
 
@@ -1053,8 +1054,8 @@ export function createFeedService(o) {
       for (const x of order) { const c = researchCard('viral', x.id); if (!c || t.used.has(c.id) || t.cards.has(c.id)) continue; t.used.add(c.id); out.push(c); break; } }
     return out;
   };
-  const wireResearch = (b) => { if (b?.research) setTimeout(() => { if (isLeader()) runIn?.(b, () => prereadRivals(b))?.catch?.(() => {}); }, 90e3).unref?.(); return b.research?.onRefresh((done) => {
-    if (done.includes('ads')) Promise.resolve(runIn ? runIn(b, () => prereadRivals(b)) : prereadRivals(b)).catch((e) => log.warn('[rival preread]', b.slug, e.message));
+  const wireResearch = (b) => { if (b?.research) setTimeout(() => { if (isLeader() && !movedAway(b.slug)) runIn?.(b, () => prereadRivals(b))?.catch?.(() => {}); }, 90e3).unref?.(); return b.research?.onRefresh((done) => {
+    if (done.includes('ads') && !movedAway(b.slug)) Promise.resolve(runIn ? runIn(b, () => prereadRivals(b)) : prereadRivals(b)).catch((e) => log.warn('[rival preread]', b.slug, e.message));
     for (const t of brandTenants(b)) {
       if (done.includes('trends') && t.watchers.trends) t.watchers.trends.nextRun = now(t) + 15e3;
       if ((done.includes('ads') || done.includes('viral')) && t.watchers['ads-library']) t.watchers['ads-library'].nextRun = now(t) + 30e3;

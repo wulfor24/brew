@@ -24,7 +24,8 @@ echo "image $IMG (staging $STAGE_REV, git-sha $SHA)"
 
 # what production runs now, to put back if anything after this point fails
 PREV_WEB=$(gcloud run services describe brew-web --region=$REGION --project=$P --format=json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); t=[x for x in d['status'].get('traffic',[]) if x.get('percent')]; print(t[0]['revisionName'] if t else '')" || true)
-PREV_WORKER=$(gcloud run services describe brew-worker --region=$REGION --project=$P --format='value(status.latestReadyRevisionName)' 2>/dev/null || true)
+# the worker revision that serves now (its traffic), not the newest one: after a rollback those differ, and the newest is the bad one
+PREV_WORKER=$(gcloud run services describe brew-worker --region=$REGION --project=$P --format=json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); t=[x for x in d['status'].get('traffic',[]) if x.get('percent')]; print(t[0]['revisionName'] if t else '')" || true)
 CHANGED_WORKER=0
 rollback() { echo "rolling back"; [ -n "$PREV_WEB" ] && gcloud run services update-traffic brew-web --to-revisions="$PREV_WEB=100" --region=$REGION --project=$P --quiet >/dev/null && echo "   web back on $PREV_WEB"
   [ "$CHANGED_WORKER" = 1 ] && [ -n "$PREV_WORKER" ] && gcloud run services update-traffic brew-worker --to-revisions="$PREV_WORKER=100" --region=$REGION --project=$P --quiet >/dev/null && echo "   worker back on $PREV_WORKER"; }

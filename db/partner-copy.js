@@ -14,6 +14,16 @@ import { isRow, joinDoc } from '../objects.js';
 import { decryptWith, encryptWith } from '../vault.js';
 
 const STUB = 'application/x-parted';
+/* a connection staff tested with a simulated account (sim), and the ledger rows it wrote (demo), stay on staging */
+const SIM_FILES = /^private\/(connections|connected-ledger)\.json$/;
+export function stripSim(body) {
+  let j; try { j = JSON.parse(body.toString('utf8')); } catch { return null; }
+  let n = 0; const fake = (x) => x && typeof x === 'object' && (x.sim === true || x.demo === true);
+  const walk = (v) => { if (Array.isArray(v)) return v.filter((x) => (fake(x) ? (n++, false) : true)).map(walk);
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).filter(([, x]) => (fake(x) ? (n++, false) : true)).map(([k, x]) => [k, walk(x)]));
+    return v; };
+  const out = walk(j); return n ? { body: Buffer.from(JSON.stringify(out)), n } : null;
+}
 /* rel path inside brands/<slug>/ → why it stays on staging */
 export const SKIP = [
   [/^raw\//, 'raw paid answers (only the same day is read back)'],
@@ -38,9 +48,14 @@ const partsSig = (parts) => md5(Buffer.concat(parts.slice().sort((a, b) => (a.pa
 /* what a row means, to compare a staging row with production's copy: a vault row by its plain secret (the ciphertext is new each time) */
 const vaultPlain = (body, key) => { const x = JSON.parse(body.toString('utf8')); return JSON.stringify({ s: x.c ? decryptWith(key, x.c) : null, at: x.at || null }); };
 /* the files rows point at: research media (research/<20 hex>.ext) and generated images (gen/<name>) */
-export function mediaRefs(text, out = { research: new Set(), gen: new Set() }) {
+/* every extension gen-store.js serves (a carousel's zip, a voiceover's wav, a team brief's pdf, a film's srt and gif); a voiceover is
+   kept as a bare name ("<hash>.wav"), so a whole string value shaped like a generated file is a maybe: copied when staging has it */
+const GEN_EXT = 'png|jpe?g|webp|wav|mp4|zip|pdf|srt|gif';
+export function mediaRefs(text, out = { research: new Set(), gen: new Set(), maybe: new Set() }) {
+  out.maybe ||= new Set();
   for (const m of String(text).matchAll(/(?:^|[^A-Za-z0-9_])research\/([a-f0-9]{20}\.(?:jpg|png|mp4))/g)) out.research.add(m[1]);
-  for (const m of String(text).matchAll(/(?:^|[^A-Za-z0-9_-])gen\/([A-Za-z0-9._-]+\.(?:png|jpe?g|webp|mp4|gif))/g)) out.gen.add(m[1]);
+  for (const m of String(text).matchAll(new RegExp(`(?:^|[^A-Za-z0-9_-])gen\\/([A-Za-z0-9._-]+\\.(?:${GEN_EXT}))`, 'g'))) out.gen.add(m[1]);
+  for (const m of String(text).matchAll(new RegExp(`"([a-z0-9_-]{6,64}\\.(?:wav|mp4|zip|pdf|srt|gif))"`, 'gi'))) if (!out.gen.has(m[1])) out.maybe.add(m[1]);
   return out;
 }
 
@@ -51,7 +66,7 @@ export async function copyBrand({ src, dst, slug, keys, store, apply = false, lo
   const prefix = `brands/${slug}/`, r = { slug, rows: 0, parts: 0, copied: 0, same: 0, keptProd: 0, vault: [], skipped: {}, files: 0, filesCopied: 0, media: 0, mediaCopied: 0, mediaMissing: [], bytes: 0 };
   const rows = (await src.query(`SELECT key, body, content_type, updated_at FROM objects WHERE starts_with(key, $1) ORDER BY key`, [prefix])).rows;
   if (!rows.some((x) => x.key === `${prefix}status.json`)) throw new Error(`${slug}: no status.json on staging, not a built brand`);
-  const refs = { research: new Set(), gen: new Set() }, plan = [];
+  const refs = { research: new Set(), gen: new Set(), maybe: new Set() }, plan = [];
   for (const row of rows) {
     const rel = row.key.slice(prefix.length), why = skipWhy(rel);
     if (why) { r.skipped[why] = (r.skipped[why] || 0) + 1; continue; }
@@ -61,9 +76,12 @@ export async function copyBrand({ src, dst, slug, keys, store, apply = false, lo
     } else if (row.body?.length) {
       if (/^private\/vault\//.test(rel)) { const x = JSON.parse(row.body.toString('utf8')); if (!x.c) { r.skipped['an empty sign-in'] = (r.skipped['an empty sign-in'] || 0) + 1; continue; }
         const plain = decryptWith(keys.src, x.c); /* throws on a wrong key: nothing is written with a secret that can't be read */
-        r.vault.push({ file: rel.slice('private/vault/'.length), kinds: Object.keys(JSON.parse(plain)).join(','), at: new Date(x.at || 0).toISOString() });
+        let kinds; try { kinds = Object.keys(JSON.parse(plain)).join(','); } catch { throw new Error(`${row.key}: the sign-in is not readable JSON`); } /* never the text itself */
+        r.vault.push({ file: rel.slice('private/vault/'.length), kinds, at: new Date(x.at || 0).toISOString() });
         plan.push({ ...row, vault: { at: x.at || Date.now(), plain } }); }
-      else { plan.push(row); mediaRefs(row.body.toString('utf8'), refs); }
+      else { const clean = SIM_FILES.test(rel) ? stripSim(row.body) : null; /* simulated connector data from staff testing never goes */
+        if (clean) r.simStripped = (r.simStripped || 0) + clean.n;
+        plan.push(clean ? { ...row, body: clean.body } : row); mediaRefs(row.body.toString('utf8'), refs); }
     } /* an empty body is a row locked for a first write that never came: nothing to copy */
   }
   r.rows = plan.length; r.parts = plan.reduce((n, x) => n + (x.parts?.length || 0), 0);
@@ -94,12 +112,13 @@ export async function copyBrand({ src, dst, slug, keys, store, apply = false, lo
   r.files = files.length;
   for (const f of files) { if (have.get(f.name) === f.md5) continue; r.filesCopied++; r.bytes += +f.size || 0; if (apply) await store.copy(store.src, f.name, store.dst, f.name); }
   /* shared media the copied rows point at */
-  const want = [...[...refs.research].map((n) => ({ to: `research-media/${n}`, from: [`research-media/${n}`, `media/${n}`] })), ...[...refs.gen].map((n) => ({ to: `gen/${n}`, from: [`gen/${n}`] }))];
-  r.media = want.length;
+  const want = [...[...refs.research].map((n) => ({ to: `research-media/${n}`, from: [`research-media/${n}`, `media/${n}`] })), ...[...refs.gen].map((n) => ({ to: `gen/${n}`, from: [`gen/${n}`] })),
+    ...[...refs.maybe].filter((n) => !refs.gen.has(n)).map((n) => ({ to: `gen/${n}`, from: [`gen/${n}`], maybe: true }))];
+  r.media = want.filter((m) => !m.maybe).length;
   for (const m of want) {
     if (await store.exists(store.dst, m.to)) continue;
     let from = null; for (const k of m.from) if (await store.exists(store.src, k)) { from = k; break; }
-    if (!from) { r.mediaMissing.push(m.to); continue; } /* already missing on staging: the card shows what it shows there */
+    if (!from) { if (!m.maybe) r.mediaMissing.push(m.to); continue; } /* already missing on staging: the card shows what it shows there (a maybe was only a name) */
     r.mediaCopied++; if (apply) await store.copy(store.src, from, store.dst, m.to);
   }
   log.log?.(`[partner] ${slug} ${apply ? 'copied' : 'dry run'}: ${JSON.stringify({ ...r, mediaMissing: r.mediaMissing.length })}`);

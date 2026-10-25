@@ -66,6 +66,7 @@ export const daysLeft = (s, now = Date.now()) => (s?.expiresAt ? Math.floor((s.e
 // DUMMY: simulated on the demo site (DEMO_MODE=1)
 export const simOnly = (id) => DEMO || !REAL[id];
 
+import { movedAway } from '../moved.js'; // staging: a moved brand's sign-ins are renewed, and its admins emailed, by production only
 import { PROTECTED, isProtected } from './protected.js'; // brands whose live connections are never dropped or replaced by accident
 export { PROTECTED, isProtected };
 const PROTECTED_WHY = 'This brand’s connections are protected while it is live with a client. Ask a Brew admin if it really has to change.';
@@ -205,7 +206,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     /* a refresh that Google or Shopify refuses (invalid_grant, 401) is a dead sign-in: the admins are told to connect it again */
     /* refresh under the vault row's lock (Postgres): the second instance waits, reads the token the first one just got, and
        asks the provider nothing; a refused refresh keeps the old token (the connection goes stale, never disconnected) */
-    if (C.fresh) { try { creds = vault.refresh ? await vault.refresh(slug, id, (c) => C.fresh(c)) : await (async () => { const f = await C.fresh(creds); if (f !== creds) await vault.save(slug, id, f, { refresh: true }); return f; })(); } catch (e) { dead(e); }
+    /* staging, a brand moved to production (moved.js): a sign-in that rotates (a refresh token) is renewed by production only, or
+       the first site to refresh would retire the other's copy and that site would say "connect again"; staging reads with what it has */
+    if (C.fresh && !(movedAway(slug) && creds?.refresh)) { try { creds = vault.refresh ? await vault.refresh(slug, id, (c) => C.fresh(c)) : await (async () => { const f = await C.fresh(creds); if (f !== creds) await vault.save(slug, id, f, { refresh: true }); return f; })(); } catch (e) { dead(e); }
       if (!creds) throw new Error('Not connected: connect it again.'); } /* removed on another instance while this read ran */
     const exp = C.expires ? { expiresAt: +creds.exp || null, refreshedAt: creds.refreshedAt || null } : null; /* when the sign-in runs out (Meta) */
     const ctx = await ctxOf(slug);
@@ -477,6 +480,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   /* a sign-in that runs out (Meta, about 60 days): the brand's admins get one email a week ahead (and the page says so
      from then on), and one more when it has run out. Brew already tried to renew it on the read before (meta.js fresh) */
   async function expiryCheck(slug, id, now = Date.now()) {
+    if (movedAway(slug)) return null; /* staging, a moved brand: production tells its admins, once */
     const s = (await conns(slug))[id], left = daysLeft(s, now); if (left == null || left > WARN_DAYS) return null;
     const stage = left < 0 ? 'expired' : 'soon', key = `${stage}:${s.expiresAt}`; if (s.expiryWarned === key) return null;
     const m = await auth.getMembers?.(slug).catch(() => null), to = [...new Set((m?.members || []).filter((x) => ['owner', 'admin'].includes(x.role)).map((x) => String(x.email || '').toLowerCase()).filter(Boolean))];

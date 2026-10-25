@@ -7,3 +7,28 @@ export const movedAway = (slug) => !!slug && movedList().includes(String(slug).t
 export const prodUrl = () => String(process.env.PROD_URL || 'https://feed.joinsquareup.com').replace(/\/+$/, '');
 /* background loops: the brands they may still work on here */
 export const stayHere = (list) => (movedList().length ? list.filter((b) => !movedAway(b?.slug ?? b)) : list);
+
+/* staging, staff testing a moved brand: an email about it reaches staff only (full-access domains, admins), never the brand's
+   own people, and nothing is posted to its Slack (the partner's real workspace). "About it": the brand being served (runIn) or a
+   link to it in the message. Production and a staging with no moved brands are untouched */
+const SLACK_SEND = /^\/api\/(chat\.(postMessage|update|postEphemeral|scheduleMessage)|files\.(upload|completeUpload|uploadV2)|files\.getUploadURLExternal)$/;
+export function guardMovedSends({ isStaff, current = () => null, log = console } = {}) {
+  if (!movedList().length || globalThis.fetch.__movedGuard) return false;
+  const real = globalThis.fetch;
+  const about = (text) => { const s = current(); if (movedAway(s)) return s; for (const m of movedList()) if (new RegExp(`/${m}(?=[/#?"'\\s<]|$)`).test(String(text || ''))) return m; return null; };
+  const g = async (url, opts = {}) => {
+    let u = null; try { u = new URL(typeof url === 'string' ? url : url.url); } catch {}
+    const post = String(opts.method || 'GET').toUpperCase() === 'POST', body = typeof opts.body === 'string' ? opts.body : opts.body instanceof URLSearchParams ? opts.body.toString() : '';
+    if (u && post && u.hostname === 'api.resend.com' && u.pathname === '/emails') {
+      let j = null; try { j = JSON.parse(body); } catch {}
+      const slug = j && about(`${j.html || ''}\n${j.text || ''}\n${j.subject || ''}`);
+      if (slug) { const all = [].concat(j.to || []), keep = all.filter((e) => isStaff(String(e).replace(/^.*<|>.*$/g, '')));
+        if (keep.length < all.length) log.warn?.(`[moved] ${slug}: email "${String(j.subject || '').slice(0, 60)}" kept from ${all.length - keep.length} of its people (staging; the brand lives on production)`);
+        if (!keep.length) return new Response(JSON.stringify({ id: 'muted-moved' }), { status: 200, headers: { 'content-type': 'application/json' } });
+        return real(url, { ...opts, body: JSON.stringify({ ...j, to: keep, cc: undefined, bcc: undefined }) }); } }
+    if (u && post && ((u.hostname === 'slack.com' && SLACK_SEND.test(u.pathname)) || u.hostname === 'hooks.slack.com')) {
+      const slug = about(body); if (slug) { log.warn?.(`[moved] ${slug}: Slack post not sent (staging; the brand lives on production)`); return new Response(JSON.stringify({ ok: true, muted: 'moved' }), { status: 200, headers: { 'content-type': 'application/json' } }); } }
+    return real(url, opts);
+  };
+  g.__movedGuard = true; globalThis.fetch = g; return true;
+}
