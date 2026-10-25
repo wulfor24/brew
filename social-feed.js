@@ -12,6 +12,7 @@ import { leaderOnly } from './roles.js'; // timers run their work on the backgro
 import { createListenWatch, sourceName } from './listen-watch.js';
 import { createIdeas, PLATFORMS } from './ideas.js';
 import { usableThread, usableCommunity, topicStems, repliesText, isQuoraQuestion, inMarket } from './community-gate.js'; // which threads any brand may be pointed at
+import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 
 const H = 3600e3, DAY = 24 * H;
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -369,7 +370,7 @@ export function createSocialScheduler({ packs, ai, treg, memory = null, log = co
     try {
       /* a brand that has never been heard (or whose run was cut off) goes first: the 3-a-tick limit never leaves a new brand
          waiting behind ones heard this morning */
-      const all = (await packs.list().catch(() => [])).filter((b) => b.slug && b.status?.name);
+      const all = stayHere(await packs.list().catch(() => [])).filter((b) => b.slug && b.status?.name);
       const never = await Promise.all(all.map(async (b) => { const s = await stateOf(b.slug); return !s.listen?.at || s.listen?.state === 'running'; }));
       const brands = [...all.filter((b, i) => never[i]), ...all.filter((b, i) => !never[i])];
       for (const b of brands) {

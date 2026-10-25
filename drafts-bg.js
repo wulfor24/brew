@@ -38,6 +38,7 @@ import { inferMake } from './cards-gen.js';
 import { isRivalCard, isResearchImage } from './rival-ad.js'; // a rival's poster is never our product photo
 import { genFlush as genFlush0 } from './gen-store.js';
 import { cleanDraftClaims, packSource } from './claims.js'; // the store's own claims only, in drafts made with nobody watching
+import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 
 const H = 3600e3, DAY = 24 * H;
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -461,7 +462,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   /* first: brands to run before the rest (just turned ready); onlyFirst: run only those (the ready watch) */
   async function tick({ list = null, first = null, onlyFirst = false } = {}) {
     if (ticking) return { busy: true }; ticking = true; const ran = [];
-    try { const all = list || await packs.list().catch(() => []), fresh = first || await freshReady(all), ready = all.filter((x) => x.slug && x.status?.ready);
+    try { const all = stayHere(list || await packs.list().catch(() => [])), fresh = first || await freshReady(all), ready = all.filter((x) => x.slug && x.status?.ready);
       for (const b of [...ready.filter((x) => fresh.includes(x.slug)), ...(onlyFirst ? [] : ready.filter((x) => !fresh.includes(x.slug)))]) {
       if (ran.length >= cfg.perTick) break;
       const st = await stateOf(b.slug), lastOpen = Math.max(opens.get(b.slug) || 0, await lastOpenOf(b.slug).catch(() => 0) || 0);

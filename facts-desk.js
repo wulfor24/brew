@@ -10,6 +10,7 @@ import { moneyFmt } from './brand-pack.js';
 import { simulated, realRows } from './connectors/common.js';
 import { dejargon } from './plain.js';
 import { productFromPage, offeringFromPage } from './reader/products.js';
+import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 
 const D = 864e5, today = () => new Date().toISOString().slice(0, 10);
 const NOT_PRODUCT = /gift ?wrap|gift ?card|e-?gift|shipping protection|route protection|insurance|sample|tester|donation/i;
@@ -369,7 +370,7 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
   const off = () => process.env.FACTS_DAILY_OFF === '1' || process.env.AI_MOCK === '1' || (!process.env.K_SERVICE && process.env.FACTS_BG !== '1');
   async function tick() {
     if (T.busy || off()) return; T.busy = true;
-    try { const all = await packs.list().catch(() => []);
+    try { const all = stayHere(await packs.list().catch(() => []));
       /* built brands: done, or paused at their spend cap with the moves written so far (their cards quote prices too; this check is free) */
       const built = all.filter((b) => (b.status?.done || (b.status?.capped && b.status?.ready)) && !b.status?.cancelled);
       /* opened in the last week, or with a live connected account (its sheet stays the truth even when nobody opens it) */

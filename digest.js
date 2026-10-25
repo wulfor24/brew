@@ -17,6 +17,7 @@ import { leaderOnly } from './roles.js'; // timers run their work on the backgro
 import { emailHtml, esc, p as mailP, list as mailList, heading, images as mailImages, footLink } from './mail-layout.js';
 import { officialFor } from './auth.js'; // the read's starter hears about the brand only on its official email
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
+import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 
 const DAY = 864e5, WEEK = 7 * DAY, IST = 5.5;
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/i;
@@ -195,7 +196,7 @@ export function createDigest({ packs, mail, slack = () => null, prefLink = null,
   let busy = false;
   async function tick() {
     if (busy || demo()) return []; busy = true; const out = [];
-    try { for (const b of await packs.list().catch(() => [])) { if (!b?.status?.done || running.has(b.slug)) continue; running.add(b.slug);
+    try { for (const b of stayHere(await packs.list().catch(() => []))) { if (!b?.status?.done || running.has(b.slug)) continue; running.add(b.slug);
       try { const r = await digestFor(b.slug); if (r?.ok || r?.failed) out.push({ slug: b.slug, ...r }); } catch (e) { log.warn?.('[digest]', b.slug, e.message); } finally { running.delete(b.slug); } } }
     finally { busy = false; }
     return out;

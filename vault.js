@@ -10,8 +10,12 @@ const key = () => {
   if (!/^[0-9a-f]{64}$/i.test(k)) throw new Error('FEED_VAULT_KEY is not set');
   return Buffer.from(k, 'hex');
 };
-export const encrypt = (plain) => { const iv = crypto.randomBytes(IV), c = crypto.createCipheriv('aes-256-gcm', key(), iv); const enc = Buffer.concat([c.update(String(plain), 'utf8'), c.final()]); return Buffer.concat([iv, c.getAuthTag(), enc]).toString('base64'); };
-export const decrypt = (b64) => { const raw = Buffer.from(String(b64), 'base64'); const d = crypto.createDecipheriv('aes-256-gcm', key(), raw.subarray(0, IV)); d.setAuthTag(raw.subarray(IV, IV + TAG)); return Buffer.concat([d.update(raw.subarray(IV + TAG)), d.final()]).toString('utf8'); };
+/* with a key given (64 hex chars): the partner copy (db/partner-copy.js) decrypts with staging's key and encrypts with production's */
+const keyBuf = (k) => { if (!/^[0-9a-f]{64}$/i.test(String(k || ''))) throw new Error('vault key is not 64 hex chars'); return Buffer.from(k, 'hex'); };
+export const encryptWith = (k, plain) => { const iv = crypto.randomBytes(IV), c = crypto.createCipheriv('aes-256-gcm', Buffer.isBuffer(k) ? k : keyBuf(k), iv); const enc = Buffer.concat([c.update(String(plain), 'utf8'), c.final()]); return Buffer.concat([iv, c.getAuthTag(), enc]).toString('base64'); };
+export const decryptWith = (k, b64) => { const raw = Buffer.from(String(b64), 'base64'); const d = crypto.createDecipheriv('aes-256-gcm', Buffer.isBuffer(k) ? k : keyBuf(k), raw.subarray(0, IV)); d.setAuthTag(raw.subarray(IV, IV + TAG)); return Buffer.concat([d.update(raw.subarray(IV + TAG)), d.final()]).toString('utf8'); };
+export const encrypt = (plain) => encryptWith(key(), plain);
+export const decrypt = (b64) => decryptWith(key(), b64);
 
 // one file per brand and account: brands/<slug>/private/vault/<id>.json = { c: ciphertext, at }
 export function createVault(packs) {

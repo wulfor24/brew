@@ -91,6 +91,8 @@ import { createAiQuestions, Q_V } from './ai-questions.js'; // the AI answers qu
 import { awaitingCheck, createConfirmRemind } from './confirm-remind.js'; // "Check what we read" waits for a person: hold the watchers, remind by email // the time left on a brand's moves, from the pace the build really kept
 import { drawableSvg } from './reader/svg-logo.js';
 import { markMoveClaims, packSource } from './claims.js'; // the team's private moves read like the shared ones
+import { movedAway, stayHere, prodUrl } from './moved.js'; // Phase 6: partners moved to production (staging only)
+import { isFullAccess } from './auth.js'; // staff stay on staging for a moved brand
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUB = path.join(ROOT, 'public');
@@ -480,7 +482,7 @@ const EV = { busy: false, last: {} }, evOff = () => process.env.EVIDENCE_OFF ===
 const videoRead = createVideoRead({ packs, treg, ai, apify: createApify({ log: console }), log: console, gToken }), VIDEO_V = 2; /* apify: YouTube clips (video-read mediaUrl) */
 async function evidenceTick() {
   if (EV.busy || evOff()) return; EV.busy = true;
-  try { const brands = (await builder.list()).filter((b) => b.state === 'Ready' || /moves/.test(b.state || '')), day = new Date().toISOString().slice(0, 10); let n = 0;
+  try { const brands = stayHere(await builder.list()).filter((b) => b.state === 'Ready' || /moves/.test(b.state || '')), day = new Date().toISOString().slice(0, 10); let n = 0;
     for (const b of brands) { if (n >= 2) break; const st = (await packs.getJSON(b.slug, 'pulse/state.json', null).catch(() => null)) || {};
       if (EV.last[b.slug] === day || String(st.at || '').slice(0, 10) === day) continue; EV.last[b.slug] = day; n++;
       try { const r = await createPulse({ slug: b.slug, packs, treg, ai, apify: apifyPulse, log: console }).run(); console.log('[pulse]', b.slug, r.lines?.length || 0, 'lines', `$${(r.usd || 0).toFixed(3)}`);
@@ -536,7 +538,7 @@ factsDesk.start();
 /* ---------- stories keep moving for brands in use: a brand opened in the last 3 days gets its research (story rings) running even
    when nobody has opened it since the last restart. Off with STORIES_BG=0, under AI_MOCK and on local servers ---------- */
 const storiesWarm = async () => { if (process.env.STORIES_BG === '0' || process.env.AI_MOCK === '1' || !process.env.K_SERVICE) return;
-  for (const b of await builder.list().catch(() => [])) { if (!(b.state === 'Ready' || /moves/.test(b.state || '')) || INST.has(b.slug)) continue;
+  for (const b of stayHere(await builder.list().catch(() => []))) { if (!(b.state === 'Ready' || /moves/.test(b.state || '')) || INST.has(b.slug)) continue;
     const lo = (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0; if (Date.now() - lo > 3 * 864e5) continue;
     try { attach(await packs.load(b.slug)); console.log('[stories] warm', b.slug); } catch (e) { console.warn('[stories] warm', b.slug, e.message); } } };
 setTimeout(() => leaderOnly(storiesWarm).catch(() => {}), 90e3).unref?.(); setInterval(() => leaderOnly(storiesWarm).catch(() => {}), 60 * 60e3).unref?.();
@@ -1120,6 +1122,8 @@ async function serve(req, res, u) {
     if (pg.kind === 'api') return send(res, 404, { error: 'not found' });
     if (pg.kind !== 'landing' && /\.[a-z0-9]{2,5}$/i.test(u.pathname)) return send(res, 404, 'no', 'text/plain'); /* /index.html is the landing, never a plain "no" (QA 19 Oct) */
     if (pg.kind === 'legal') return send(res, 200, LEGAL[pg.page](), 'text/html; charset=utf-8');
+    /* staging, a brand moved to production (moved.js): its own people go there; staff (full-access domains, admins) stay to test */
+    if (pg.kind === 'slug' && movedAway(pg.slug) && !isFullAccess(auth.user(req)?.email)) { res.writeHead(302, { location: `${prodUrl()}/${pg.slug}${u.search}`, 'cache-control': 'no-store' }); return res.end(); }
     const html = pg.kind === 'landing' ? await pageFor('') : pg.kind === 'slug' ? await pageFor(pg.slug) : null;
     if (html && pg.redirect) { res.writeHead(302, { location: `/${pg.slug}${u.search}` }); return res.end(); }
     if (html) return send(res, 200, shopifyApp ? shopifyApp.embed(req, u, res, html) : html, 'text/html; charset=utf-8'); /* inside the Shopify admin: App Bridge first */

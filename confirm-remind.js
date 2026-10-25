@@ -16,6 +16,7 @@
 import { leaderOnly } from './roles.js'; // timers run their work on the background lease holder only
 import { emailHtml, p as mailP, esc as mailEsc } from './mail-layout.js';
 import { officialFor } from './auth.js';
+import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 
 export const REMIND_AT = [3 * 36e5, 24 * 36e5]; // a few hours, then a day
 
@@ -128,7 +129,7 @@ export function createConfirmRemind({ packs, mail, log = console, now = () => Da
   }
   async function tick() {
     if (busy) return []; busy = true; const out = [];
-    try { for (const b of await packs.list().catch(() => [])) { const one = waitingOnCheck(b.status) ? remindOne : waitingOnFeed(b.status) ? remindFeed : null; if (!one) continue;
+    try { for (const b of stayHere(await packs.list().catch(() => []))) { const one = waitingOnCheck(b.status) ? remindOne : waitingOnFeed(b.status) ? remindFeed : null; if (!one) continue;
       try { const r = await one(b.slug, b.status); if (r) out.push({ slug: b.slug, ...r }); } catch (e) { log.warn?.('[remind]', b.slug, e.message); } } }
     finally { busy = false; }
     return out;

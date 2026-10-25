@@ -21,6 +21,7 @@ import { evidenceRows, privId } from './connectors/common.js';
 import { mergeLedger } from './refresh.js';
 import { factTruth } from './facts-desk.js'; // a member's numbers rest on one truth (stale rows out, replaced site values gone)
 import { withLive } from './on-connect.js';
+import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 
 const H = 3600e3, DAY = 24 * H;
 const pad = (n) => String(n).padStart(2, '0');
@@ -580,7 +581,7 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
   let ticking = false;
   async function tick() {
     if (ticking) return { busy: true }; ticking = true; const ran = [];
-    try { for (const b of (await packs.list().catch(() => [])).filter((x) => x.slug && x.status?.ready)) {
+    try { for (const b of stayHere(await packs.list().catch(() => [])).filter((x) => x.slug && x.status?.ready)) {
       if (ran.length >= cfg.perTick) break;
       const d = await dueOf(b.slug); if (!d.families.length) continue;
       ran.push(b.slug); await runOne(b.slug, d.families).catch((e) => log.warn?.('[moves-cadence] run', b.slug, e.message)); } }

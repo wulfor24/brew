@@ -49,6 +49,7 @@ import { markMoveClaims, sourceText } from './claims.js'; // move PDFs mark a cl
 import { COMPANY_V } from './reader/stages/company.js'; // a read from before the about page heals once
 import { SOCIAL_SEARCH_V } from './reader/stages/socials.js';
 import { ASSORT_V, assortmentLine, stillMaker } from './assortment.js'; // whose products a store sells: saved reads work it out once // a site with no social links: its accounts by search, once
+import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
 // addresses that must never be read or built (wrong links, removals): BUILD_BLOCK=slug;slug (deploy.sh needs ; since its env list is comma-separated)
@@ -1636,7 +1637,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   function autoRefresh() {
     if (process.env.BUILD_RESUME_OFF) return;
     const autoOn = process.env.REFRESH_AUTO !== '0';
-    const tick = async () => { if (!isLeader()) return; for (const b of await packs.list().catch(() => [])) {
+    const tick = async () => { if (!isLeader()) return; for (const b of stayHere(await packs.list().catch(() => []))) {
       const s0 = b.status;
       /* a late check that waited (the day's budget, a billing pause, a busy brand) is tried again */
       if (s0?.recheck?.at && !st(b.slug).running && !st(b.slug).checking && !blocked(b.slug)) await drain(b.slug).catch((e) => log.warn('[check] late', b.slug, e.message));
@@ -1708,7 +1709,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         if (r?.ok) await packs.put(sl, 'private/ops-rewrite.json', { done: [...new Set([...(mk.done || []), ...todo])], at: Date.now() }); }
       catch (e) { log.error('[ops] rewrite', sl, e.message); } } }
   async function resumeAll() { setTimeout(() => opsRewrite().catch((e) => log.error('[ops] rewrite', e.message)), 30e3); /* after boot settles */ for (const sl of String(process.env.OPS_FRESH_RELOAD || '').split(',').map((x) => x.trim()).filter(Boolean)) freshReload(sl).catch((e) => log.error('[ops] fresh', sl, e.message));
-    for (const x of await packs.list()) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); restartStatics(x.slug).catch((e) => log.warn('[build] statics restart', x.slug, e.message)); } healCards(x.slug).catch((e) => log.warn('[rewrite] heal cards', x.slug, e.message)).then(() => resumeRewrite(x.slug)).catch((e) => log.warn('[rewrite] resume', x.slug, e.message));
+    for (const x of stayHere(await packs.list())) { if (!x.status.done && !x.status.error && !x.status.capped) resume(x.slug).catch((e) => log.error('[build] resume', x.slug, e.message)); else { if (x.status.done) { rebase(x.slug).catch((e) => log.warn('[build] rebase', x.slug, e.message)); healPdfs(x.slug); healCount(x.slug).catch((e) => log.warn('[build] count', x.slug, e.message)); restartStatics(x.slug).catch((e) => log.warn('[build] statics restart', x.slug, e.message)); } healCards(x.slug).catch((e) => log.warn('[rewrite] heal cards', x.slug, e.message)).then(() => resumeRewrite(x.slug)).catch((e) => log.warn('[rewrite] resume', x.slug, e.message));
       if (x.status.recheck?.at) setTimeout(() => drain(x.slug).catch((e) => log.warn('[check] late', x.slug, e.message)), 60e3); /* a late check a restart cut short: after resumeRewrite has had its turn */
       upd(x.slug).then((u) => { if (u.connectRun) armConnect(x.slug, u.connectRun.due || 0); if ((u.queue || []).some((q) => q.notBefore)) drain(x.slug).catch(() => {});
         if (u.connectDone && !u.connectDone.finished) setTimeout(() => settleConnect(x.slug).catch((e) => log.warn('[connect] settle', e.message)), 90e3); /* after resumeRewrite has had its turn */ }).catch(() => {});

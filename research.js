@@ -19,6 +19,7 @@ import { adCall } from './reader/adlib.js';
 import { providerNow, GEMINI, GEMINI_PRICE } from './gemini-client.js';
 import { createViralFinder } from './viral.js';
 import { viralStems } from './viral-gate.js';
+import { movedAway } from './moved.js'; // staging: a brand moved to production is not refreshed here in the background
 
 const D = 24 * 3600e3, H = 3600e3;
 // how often each story source is re-read (hours); STORY_EVERY_<KEY> overrides one
@@ -548,7 +549,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     } finally { healing = false; } }
   const start = async () => {
     await (loaded = load());
-    const tick = () => { if (!isLeader()) return; const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); healClips().catch(() => {}); };
+    const tick = () => { if (!isLeader() || movedAway(brand.slug)) return; const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); healClips().catch(() => {}); };
     stopped = false; clearTimeout(timers.t); clearInterval(timers.i);
     timers.t = setTimeout(() => { if (!stopped) tick(); }, 5000); timers.i = setInterval(() => { if (!stopped) tick(); }, 30 * 60e3); timers.i.unref?.();
   };

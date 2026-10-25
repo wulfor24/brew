@@ -14,6 +14,7 @@ import crypto from 'node:crypto';
 import { productFromPage, offeringFromPage } from './reader/products.js';
 import { UA as BROWSER_UA, brandRe } from './reader/util.js';
 import { askMarket, DFS_LOC } from './market.js';
+import { movedAway } from './moved.js'; // staging: a brand moved to production is not refreshed here in the background
 
 const H = 3600e3, D = 24 * H;
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
@@ -248,7 +249,7 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
     await load();
     /* a run from before the brands pass gets it once (one fast-model call), so the AI answers card compares against who it names */
     const r0 = snap.visibility?.runs?.[0]; if (r0?.answers?.length && !r0.brandsPass && namePass && !process.env.LIVE_OFF) brandsOf(r0.answers).then((x) => { if (x) { r0.brandsPass = x; persist(); listeners.forEach((f) => f(['visibility'])); } });
-    const tick = () => { if (!isLeader()) return; const d = due(); if (d.length && !process.env.LIVE_OFF) refresh(d); };
+    const tick = () => { if (!isLeader() || movedAway(brand?.slug)) return; const d = due(); if (d.length && !process.env.LIVE_OFF) refresh(d); };
     stopped = false; clearTimeout(timers.t); clearInterval(timers.i);
     timers.t = setTimeout(() => { if (!stopped) tick(); }, 8000); timers.i = setInterval(() => { if (!stopped) tick(); }, 15 * 60e3); timers.i.unref?.();
   };
