@@ -4102,6 +4102,7 @@
     /* a post with no thread to open: its main button copies the post (it said "you post it yourself" over a Send brief button: QA J-20) */
     else if (ch.family === 'post' && ch.target?.conn !== 'meta' && (p.copy || p.title)) { head = `Ready${nm}`; tip = 'Copy the post and paste it where it goes. You post it yourself; Brew never posts in communities for you. The brief carries it too.'; main = `<button class="btn btn-primary ship-go" data-rx="copy-post">${ic('copy', 's16')}${ch.target?.object === 'Review reply' ? 'Copy the reply' : 'Copy the post'}</button>`; }
     else { head = `Ready${nm}`; tip = `${ch.verdict === 'jam' && (ch.reasons || [])[0] ? `${ch.reasons[0]}: the brief carries everything the team needs. ` : ''}Send brief: the ShopOS team, Brew’s build crew, gets it by email and runs it. Its status shows in the top bar.`; main = send; }
+    if (document.body.classList.contains('is-guest') && /data-cs-make|data-cs-full|data-fn-one|data-rx="(?:video|image|images-all|variants|listing-photos)"/.test(main)) main = `<button class="btn btn-primary ship-go" disabled title="Pictures, videos and finals cost money, so ${esc(B.brand.name)}’s team makes them. You can chat and change the words.">${ic('person', 's16')}The team makes it</button>`; /* a jam guest (QV 25 Oct) */
     const items = [];
     /* a final reel or picture is post-ready: its caption and hashtags one tap away, beside Download (Param, 21 Oct) */
     if (media && fin && !fp && (p.copy || p.title)) items.push(['data-rx="copy-post"', 'copy', 'Copy the caption', 'Title, caption and hashtags, ready to paste with the final.']);
@@ -5915,6 +5916,7 @@
     lastSync = stateKey(); ls.set(KEY, JSON.stringify(S));
     /* anyone can look; signing in makes them a guest of this one jam (never the whole team) */
     if (r.guest) ls.set(`${LSP()}guest`, '1'); /* the team wall lets them back in later without the link (signWall) */
+    if (!r.member) document.body.classList.add('is-guest'); /* a guest makes words and drafts; paid pictures, videos and finals are the team's (the server refuses them too) */
     setTimeout(() => toast(r.guest ? `${ic('person', 's16')}You’re in this jam as a guest. You can chat, edit the brief and make drafts.` : r.signedIn ? `${ic('person', 's16')}You’re viewing ${esc(B.brand.name)}’s shared jam` : `${ic('person', 's16')}You’re viewing a shared jam. Sign in to take part.`), 900); };
   // real connected accounts (live.js) replace the demo numbers before anything renders
   if (window.BREW_DEMO && !LANDING) { document.body.insertAdjacentHTML('beforeend', `<button class="demo-pill" type="button" title="Demo controls (press .)" aria-label="Demo controls">${ic('sliders', 's14')}<span>Demo</span></button>`); $('.demo-pill').onclick = () => openDemo(); }

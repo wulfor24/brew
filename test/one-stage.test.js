@@ -169,3 +169,9 @@ test('a still never prints a claim the store does not back, nor another product�
   assert.equal(cleanStill({ sub: 'Now ₹349' }, ctx).sub, 'Now ₹349', 'the product’s own price stays');
   assert.match(fs.readFileSync(new URL('../jam2/studio.js', import.meta.url), 'utf8'), /const words = cleanStill\(mine \|\| await maker\.write/);
 });
+
+test('a jam guest sees words and drafts; paid makers say the team makes them (the server refuses guests too)', () => {
+  assert.match(app, /if \(!r\.member\) document\.body\.classList\.add\('is-guest'\);/);
+  assert.match(fn('stepBar'), /is-guest'\) && \/data-cs-make\|data-cs-full\|data-fn-one/);
+  assert.match(css, /body\.is-guest \[data-cs-full\]:not\(\.ship-go\),body\.is-guest \[data-cs-slide="redo"\]/);
+});
