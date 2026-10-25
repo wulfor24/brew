@@ -12,7 +12,7 @@
 import sharp from 'sharp';
 
 // quality version: drafts and watcher pictures saved before it are judged once (drafts-bg healLooks, feed-service housekeep)
-export const LOOKS_V = 1;
+export const LOOKS_V = 1; /* the judge's words changed 25 Oct (split-screens pass, doubt passes): saved drafts already passed stay passed */
 const N = 64, SEG = 8;
 
 /* the picture shrunk to N×N, transparency on white (a see-through packshot reads as a plain ground) */
@@ -89,11 +89,11 @@ export async function cutQuality(input) {
 
 /* the vision judge's question (server.js draftLooks asks it with the picture). words: what the card says it shows */
 export const lookPrompt = (words = '') => `This is a first-draft ad picture for a card in a brand's feed.${String(words).trim() ? ` The card says: "${String(words).replace(/\s+/g, ' ').trim().slice(0, 500)}".` : ''}
-Judge only the picture. Reply with one word, then a short reason.
-GOOD: one coherent photograph (or a clean product shot) that shows what the card is about.
-COLLAGE: it looks pasted together: cut-out products with hard or jagged edges, flat panels or blocks of colour behind or beside them, two backgrounds meeting, a blank band or border, or a copy of a designed store graphic.
-CROPPED: the product or the main subject is cut off by the frame edge.
-OFFTOPIC: it shows something the card is not about (another product type, an unrelated scene).`;
+Judge only the picture, like a creative director who wants it shippable. Reply with one word, then a short reason.
+GOOD: a coherent photograph (or a clean product shot) that shows what the card is about. A deliberate split-screen or before/after made of real photographs is GOOD. Small soft print on a pack is fine. When in doubt, GOOD.
+COLLAGE: an obvious paste-up: products cut out with hard or jagged edges and no real shadow, flat panels or blocks of colour behind or beside them, a picture framed inside the picture, a blank band, or big words or numbers the image model drew (garbled or doubled lettering).
+CROPPED: the product or the main subject is clearly cut off by the frame edge.
+OFFTOPIC: it shows something the card is not about (another kind of product, an unrelated scene).`;
 /* the judge's reply → { ok, verdict, why }; no clear word → null (the check didn't answer: never counted as a failure) */
 export function lookVerdict(text = '') {
   const t = String(text || '').trim(), m = /^\W*(good|collage|cropped|offtopic|off-topic)\b/i.exec(t); if (!m) return null;

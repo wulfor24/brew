@@ -58,6 +58,7 @@ test('the judge\'s answer is read as one word; no word is no answer (never a fai
   assert.equal(lookVerdict('I think it is fine'), null);
   assert.match(lookPrompt('Protect damaged hair with your ₹449 super shampoo'), /₹449 super shampoo/, 'the card\'s own words are what the picture is judged against');
   assert.ok(FIX.collage && FIX.cropped && FIX.offtopic && LOOKS_V >= 1);
+  assert.match(lookPrompt(''), /split-screen[^.]*GOOD/, 'a deliberate split-screen is not a collage (Cozy cold/warm)'); assert.match(lookPrompt(''), /When in doubt, GOOD/);
 });
 
 /* the guard: a picture that fails the look is made once more with the reason; a second failure is held back */

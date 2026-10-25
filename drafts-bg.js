@@ -338,6 +338,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     if (!genFile) return 0; let n = 0, checked = 0;
     for (const c of rankCards(p.seed?.posts || [])) {
       const d = draftFor(c, cache); if (!d || d.qv === LOOKS_V || d.photoOnly) continue;
+      if (!['image', 'video', 'collection', 'carousel', 'stories'].includes(d.kind || d.as)) { d.qv = LOOKS_V; continue; } /* an email, chat or page mock is our own render, never judged as a photograph */
       const pics = (d.slides?.length ? d.slides.map((x) => x.image) : [d.image]).filter((r) => /^gen\//.test(r || '')).slice(0, 3); if (!pics.length) { d.qv = LOOKS_V; continue; }
       if (checked++ >= max) break;
       const words = `${c.title || ''}. ${c.sub || ''}${d.product ? ` Product: ${d.product}.` : ''}`; let bad = null, answered = true;
