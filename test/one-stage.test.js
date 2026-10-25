@@ -109,3 +109,10 @@ test('chat on a Studio piece: asks go to Studio made or not, the answer and a la
   const rmx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8'); assert.match(rmx, /text: `Made \$\{n\}/); assert.match(rmx, /The make didn’t go through/);
   assert.match(app, /const COUNT_CHIP = /); assert.ok(new RegExp(app.match(/const COUNT_CHIP = \/(.+)\/i;/)[1], 'i').test('Three stories'));
 });
+
+test('the stage presents a set: one slide big (arrows, dots, keys) or all, the pick shared with Set-up', () => {
+  assert.match(app, /const stageFrames = \(\) =>/); assert.match(app, /stageFrames\(\); \/\* a set of slides/);
+  assert.match(fn('stageFrames'), /data-stg-mode/); assert.match(fn('stageFrames'), /data-stg-go/); assert.match(fn('stageFrames'), /cs\?\.sel/);
+  assert.match(cs, /select: \(i\) => \{ if \(S\) S\.sel = \+i \|\| 0; \}/); assert.match(cs, /sel: S\.sel \?\? 0/);
+  assert.match(css, /\.std \.st-asset\[data-stg="one"\] \.as-swipe > figure:not\(\[data-on\]\)\{display:none\}/);
+});

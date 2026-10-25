@@ -1820,6 +1820,8 @@
     const io = new IntersectionObserver((es) => es.forEach((en) => en.isIntersecting && en.target.classList.add('on')), { threshold: .4 });
     $$('#notes .mnote').forEach((n) => io.observe(n));
   };
+  addEventListener('keydown', (e) => { if (view !== 'remix' || !$('.stg-nav') || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('input, textarea, select, [contenteditable]')) return; if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); $(`[data-stg-go="${e.key === 'ArrowLeft' ? -1 : 1}"]`)?.click(); } });
+  { let sr; addEventListener('resize', () => { clearTimeout(sr); sr = setTimeout(() => { if (view === 'remix') stageFrames(); }, 120); }); }
   let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { placeStickers(); placeNotes(); }, 200); });
 
   /* =========================================================
@@ -4654,6 +4656,26 @@
     const w = ch.family === 'social' ? 'Instagram' : ch.family === 'post' ? (a === 'comment_reply' && ch.target?.name ? ch.target.name : a === 'short_video' ? (ch.target?.conn === 'meta' ? 'Meta Ads' : plat) : plat || PM_NAME[a] || '') : ch.target?.conn && ch.target?.name ? ch.target.name : '';
     return w && !/\bon [A-Z]/.test(lab) && !/^comment reply$/i.test(w) ? w.replace(/^Your /, 'your ') /* "on your reviews app" */ : ''; };
   const cutW = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : x; };
+  /* the stage (25 Oct, "the stage doesn't feel like a stage"): a set of slides (stories, carousels, carousel and catalog ads) shows
+     one slide big at the stage's own height, with arrows and numbered dots, or all of them side by side (One | All). The slide
+     picked here and in Set-up is the same one. Everything else on the stage keeps its frame, centred and lit */
+  const stageFrames = () => { const box = $('.std .st-canvas > .st-asset'), sw = box?.querySelector('.as-swipe'), card = sw?.closest('.as');
+    box?.querySelectorAll(':scope > .stg-mode, .stg-nav').forEach((x) => x.remove()); if (!box) return;
+    const items = sw ? [...sw.children].filter((x) => x.matches('figure')) : [];
+    if (!sw || items.length < 2 || !card) { box.removeAttribute('data-stg'); box.style.removeProperty('--stg-w'); return; }
+    const ch = RX.ch, n = items.length, cs = ch?.studio ? window.CreativeStage?.state(ch.id) : null;
+    const i = Math.max(0, Math.min(n - 1, cs?.sel ?? RX.stgI?.[ch?.id] ?? 0)), mode = RX.stgMode === 'all' ? 'all' : 'one';
+    box.dataset.stg = mode; items.forEach((x, k) => x.toggleAttribute('data-on', k === i));
+    /* the slide's shape, and the room the stage has: the card's own header and caption stay, the picture takes the rest */
+    const [aw, ah] = String(getComputedStyle(sw).getPropertyValue('--ar') || '4/5').split('/').map((x) => +x || 1), ar = aw / ah;
+    const chrome = card.offsetHeight - (items[i].offsetHeight || 0), cs0 = getComputedStyle(box), padY = parseFloat(cs0.paddingTop) + parseFloat(cs0.paddingBottom), padX = parseFloat(cs0.paddingLeft) + parseFloat(cs0.paddingRight);
+    const roomW = Math.max(260, box.clientWidth - padX), phone = innerWidth <= 860 /* a phone's stage grows with its piece: fit the width, at most 70% of the screen tall */;
+    const roomH = phone ? Math.min(innerHeight * 0.7, roomW / ar) : Math.max(300, box.clientHeight - padY - chrome - 64);
+    const h = mode === 'one' ? roomH : Math.min(roomH, (roomW - (n - 1) * 8) / n / ar), w = mode === 'one' ? Math.min(roomW, h * ar) : Math.min(roomW, n * h * ar + (n - 1) * 8);
+    box.style.setProperty('--stg-w', `${Math.round(w)}px`);
+    box.insertAdjacentHTML('afterbegin', `<div class="stg-mode" role="tablist" aria-label="Show">${[['one', 'One'], ['all', `All ${n}`]].map(([k, l]) => `<button type="button" role="tab" data-stg-mode="${k}" aria-selected="${mode === k}">${l}</button>`).join('')}</div>`);
+    if (mode === 'one') card.insertAdjacentHTML('afterend', `<div class="stg-nav"><button type="button" class="icon-btn" data-stg-go="-1" aria-label="Previous slide" ${i ? '' : 'disabled'}>${ic('left', 's16')}</button>${items.map((_, k) => `<button type="button" class="stg-dot${k === i ? ' on' : ''}" data-stg-i="${k}" aria-label="Slide ${k + 1}">${k + 1}</button>`).join('')}<button type="button" class="icon-btn" data-stg-go="1" aria-label="Next slide" ${i < n - 1 ? '' : 'disabled'}>${ic('right', 's16')}</button></div>`); };
+  const stagePick = (i) => { const ch = RX.ch; if (!ch) return; RX.stgI = { ...(RX.stgI || {}), [ch.id]: i }; if (ch.studio) window.CreativeStage?.select?.(i); paintStudio(); };
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;
     window.__GR = { Original: 'none', Warm: 'sepia(.25) saturate(1.25) hue-rotate(-8deg)', Quiet: 'saturate(.6) brightness(1.05) contrast(.92)', Vivid: 'saturate(1.6) contrast(1.08)', 'Golden hour': 'sepia(.45) saturate(1.4) brightness(1.05)' };
@@ -4679,6 +4701,7 @@
        button stays put while the slides scroll */
     /* a reel's photo and video tools: one quiet row right under the phone */
     { const at = $('.st-atools'), ph = $('.st-asset .sv-phone'), mk = $('.st-asset .sv-make.is-row'); if (ph) { if (at) { ph.after(at); if (mk) { at.append(...mk.children); mk.remove(); } } } }
+    stageFrames(); /* a set of slides is shown like a stage: one big, or all */
     if (keepOpen.size) pg.querySelectorAll('details[data-keep]').forEach((d) => { if (keepOpen.has(d.dataset.keep)) d.open = true; });
     if (typingAt) { const box = $('#st-in'); if (box) { box.focus(); try { box.setSelectionRange(typingAt[0], typingAt[1]); } catch {} } }
     /* a share in flight keeps its spinner through the jam's repaints */
@@ -4957,7 +4980,10 @@
       if (!fc) { toast(esc(r.error || 'The storyboard didn’t open.')); return paintStudio(); } PRE_CH.set(fc.id, fc); return openStudio(fc.id, { deep: true }); } /* the same card, filmed for real: the founder storyboard */
     if (window.FilmBoard?.click(e)) return; /* the founder storyboard and its teleprompter (film-board.js) */
     if (e.target.closest('[data-cs-make]')) { window.CreativeStage?.make?.(); return; }
-    if (e.target.closest('[data-cs-full]')) { window.CreativeStage?.makeFull?.(); return; } /* a preview made: the full one, priced */ /* the bar's Make it: Studio makes the set-up in the panel, at its price */
+    if (e.target.closest('[data-cs-full]')) { window.CreativeStage?.makeFull?.(); return; } /* a preview made: the full one, priced */
+    { const m = e.target.closest('[data-stg-mode]'); if (m) { RX.stgMode = m.dataset.stgMode; return paintStudio(); }
+      const d = e.target.closest('[data-stg-i]'); if (d) return stagePick(+d.dataset.stgI);
+      const g = e.target.closest('[data-stg-go]'); if (g) { const n = $$('.std .st-asset .as-swipe > figure').length, cur = +($('.stg-dot.on')?.dataset.stgI || 0); return stagePick(Math.max(0, Math.min(n - 1, cur + +g.dataset.stgGo))); } } /* the bar's Make it: Studio makes the set-up in the panel, at its price */
     if (window.CreativeStage?.click(e)) return; /* the creative stage's composer (creative-stage.js) */
     if (e.target.closest('[data-vmenu]')) { RX.vmenu = !RX.vmenu; return paintStudio(); }
     { const k = e.target.closest('[data-j2-pack],[data-j2-impact],[data-j2-remake]'); if (k && RX.ch) return j2Run(k.hasAttribute('data-j2-pack') ? 'pack' : k.hasAttribute('data-j2-impact') ? 'impact' : 'remake', RX.ch, k.dataset.j2Remake); }

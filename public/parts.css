@@ -211,3 +211,28 @@ p.am-when small{display:inline;margin:0 6px 0 0}
 .st-panel-b>.pp{margin:0 0 16px}
 .pp .pp-checks.is-first{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--surface)}
 .pp .pp-checks li{flex-wrap:wrap}.pp .pp-checks li>.linkbtn{flex:1 0 100%;text-align:left;padding:2px 0 0 22px} /* a check's fix sits under it, never squeezing its words */
+
+/* ===== The stage as a stage (25 Oct): a lit backdrop, the piece centred and lifted, a set shown one big (arrows, numbered dots)
+   or all side by side, sized to the stage's own height by app.js stageFrames (--stg-w) ===== */
+.std .st-canvas{background:radial-gradient(ellipse 75% 65% at 50% 40%,color-mix(in srgb,var(--card) 70%,#fff 30%) 0%,var(--surface) 70%)}
+.std .st-canvas > .st-asset > .as.lg,.std .st-canvas > .st-asset > .cs-frame > .as.lg{box-shadow:0 1px 0 var(--line),0 24px 70px -18px rgba(0,0,0,.28)}
+.std .st-canvas > .st-asset[data-stg]{position:relative;justify-content:center}
+.std .st-asset[data-stg] .as.lg{width:var(--stg-w)!important;max-width:100%;flex:0 0 auto;margin-left:auto;margin-right:auto}
+.std .st-asset[data-stg] .cs-frame{display:flex;flex-direction:column;align-items:center;width:100%}
+.std .st-asset[data-stg="one"] .as-swipe{display:block;overflow:visible;padding:0}
+.std .st-asset[data-stg="one"] .as-swipe > figure{width:100%;max-width:none;flex:none;margin:0}
+.std .st-asset[data-stg="one"] .as-swipe > figure:not([data-on]){display:none}
+.std .st-asset[data-stg="one"] .as-ig.is-story .ig-slide{border-radius:0}
+.std .st-asset[data-stg="all"] .as-swipe{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;overflow:visible;padding:0 8px}
+.std .st-asset[data-stg="all"] .as-swipe > figure{width:auto;max-width:none;flex:none;margin:0}
+.std .st-asset[data-stg] .am-count{display:none}
+.stg-mode{position:absolute;top:14px;right:18px;z-index:3;display:inline-flex;padding:3px;border-radius:999px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
+.stg-mode button{border:0;background:transparent;color:var(--fg-2);font:inherit;font-size:13px;font-weight:550;padding:5px 12px;border-radius:999px;cursor:pointer}
+.stg-mode button[aria-selected="true"]{background:var(--fg);color:var(--bg,#fff)}
+.stg-nav{display:flex;align-items:center;justify-content:center;gap:8px;margin:16px 0 0}
+.stg-nav .icon-btn[disabled]{opacity:.35;cursor:default}
+.stg-dot{width:30px;height:30px;border-radius:50%;border:0;background:var(--card);color:var(--fg-2);font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)}
+.stg-dot.on{background:var(--fg);color:var(--bg,#fff);box-shadow:none}
+@media (max-width:860px){.stg-mode{top:8px;right:8px}.std .st-asset[data-stg="all"] .as-swipe{grid-auto-columns:minmax(0,1fr)}}
+.stg-mode{position:static;align-self:flex-end;margin:0 0 10px;flex:0 0 auto} /* its own row above the piece, never over the card's header */
+@media (max-width:860px){.stg-mode{margin:0 0 8px}}

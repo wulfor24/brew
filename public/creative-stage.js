@@ -234,8 +234,8 @@
     const value = off ? null : slot === 'product' ? sp.product?.img : slot === 'cast' ? sp.cast || S.slots?.cast?.label : slot === 'size' ? sp.sizes?.[0] : slot === 'quality' ? sp.quality || 'standard' : null;
     const r = await api('POST', '/api/jam2/studio/remember', { slot, value, kind, name: el.dataset.name || sp.product?.name || '' }); if (r?.error) return H.toast?.(H.esc(r.error));
     S.prefs = r.prefs || S.prefs; H.toast?.(off ? 'Brew won’t always use that any more.' : 'Saved: Brew uses this for every new piece. Change it any time here or in your Brand Book.'); paint(); }
-  const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), working: !!S.working, made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null, frames: Array.isArray(S.spec?.set) ? S.spec.set.length : null /* the stage previews this many frames */, error: S.error || null } : null);
+  const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), working: !!S.working, made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null, frames: Array.isArray(S.spec?.set) ? S.spec.set.length : null /* the stage previews this many frames */, sel: S.sel ?? 0 /* the slide picked here is the one on the stage */, error: S.error || null } : null);
   const reset = () => { clearTimeout(pollT); clearTimeout(planT); S = null; };
   const openSetup = () => { if (!S) return; S.open = true; H.showSetup?.(); paint(); };
-  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), make: () => go(false) /* the bar's Make it */, fullPrice: () => fullPrice(), makeFull: () => makeFull(), afterPaint: () => toSel(false), ask, adjustHtml };
+  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), make: () => go(false) /* the bar's Make it */, select: (i) => { if (S) S.sel = +i || 0; }, fullPrice: () => fullPrice(), makeFull: () => makeFull(), afterPaint: () => toSel(false), ask, adjustHtml };
 })();
