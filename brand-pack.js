@@ -163,7 +163,9 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
   const warmSoon = (slug) => { if (!slug || !freshP?.has?.(`${slug}|`) || process.env.NODE_TEST_CONTEXT) return; clearTimeout(warmT.get(slug)); warmT.set(slug, setTimeout(() => { warmT.delete(slug); load(slug, { fresh: true, share: true }).catch(() => {}); }, 1500)); };
   /* notes.json and move-value.json are written in the background a few seconds after every load (server attach): they show within
      FRESH_MS, and never force the next page load to rebuild the whole pack */
-  const BUILT_FROM = /^(?:seed|status|profile|facts|brief|config|moves|labels|learned|pages|pools|rival-reads|statics|updates|demo|brandbook-read|ledger|findings)\.(?:json|md)$|^(?:moves|docs|pulse)\/|^drafts\/cards\.json$|^private\/(?:brandbook|shop-brand|facts|profile-live|moves|statics)/; /* private/connections.json is rewritten by every connector read and the pack only asks it whether Shopify is connected: a real connect drops the pack itself */
+  /* research.json, live-watch.json and facts-daily.json feed the pack's numbers (pack-numbers.js numbersFor): a refresh of them shows
+     at once, not up to FRESH_MS later (Phase 6 found the feed quoting rival ads two hours old) */
+  const BUILT_FROM = /^(?:seed|status|profile|facts|brief|config|moves|labels|learned|pages|pools|rival-reads|statics|updates|demo|brandbook-read|ledger|findings|research|live-watch|facts-daily)\.(?:json|md)$|^(?:moves|docs|pulse)\/|^drafts\/cards\.json$|^private\/(?:brandbook|shop-brand|facts|profile-live|moves|statics)/; /* private/connections.json is rewritten by every connector read and the pack only asks it whether Shopify is connected: a real connect drops the pack itself */
   /* status.json is part of the pack, but a page view's seenAt stamp is not: a write that changes only seenAt never rebuilds it */
   /* drafts/: only the drafts themselves (cards.json) are part of the pack; the background job's own bookkeeping (state.json,
      written on every tick) never rebuilds it */
