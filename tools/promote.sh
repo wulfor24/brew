@@ -17,7 +17,7 @@ STAGE_REV=$(gcloud run services describe $STAGING --region=$REGION --project=$P 
 IMG=${1:-$(gcloud run revisions describe "$STAGE_REV" --region=$REGION --project=$P --format='value(spec.containers[0].image)')}
 SHA=$(gcloud run revisions describe "$STAGE_REV" --region=$REGION --project=$P --format='value(metadata.labels.git-sha)')
 [ -n "$IMG" ] && [ -n "$SHA" ] || die "could not read staging's live revision"
-git fetch -q origin
+for i in 1 2 3; do git fetch -q origin && break; [ $i = 3 ] && die "could not reach GitHub to check staging's commit (3 tries)"; sleep 5; done
 if [ -z "${1:-}" ] && ! git merge-base --is-ancestor "$SHA" origin/main; then die "staging runs $SHA, which is not on origin/main: deploy staging from main first"; fi
 case "$IMG" in *@sha256:*) ;; *) die "image $IMG is not pinned to a digest";; esac
 echo "image $IMG (staging $STAGE_REV, git-sha $SHA)"
