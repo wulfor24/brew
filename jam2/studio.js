@@ -195,7 +195,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     if (Array.isArray(spec.set)) { const set = spec.set.map(styleOf).filter((x) => x && x.kind === 'image').slice(0, 10); if (set.length < (spec.fill ? 1 : 2)) return { error: spec.fill ? 'Nothing is missing.' : 'Pick at least two slides.' }; /* filling in left-out slides may be one */
       const no = set.map((x) => blockOf(x, ctx)).find(Boolean); if (no) return { error: no };
       const size = sizeOf(spec.sizes?.[0] || 'ig-portrait'), each = await Promise.all(set.map((x) => perTake(ctx, x, x.size ? sizeOf(x.size) : size))), usd = +each.reduce((a, b) => a + b, 0).toFixed(2), prod = spec.product?.name || ctx.product?.name;
-      return { line: `${set.length} slides · ${set.map((x) => x.label).join(', ')}${prod ? ` · ${tidy(prod, 60)}` : ''} · ${size.label}`, usd, per: usd, count: 1, kind: 'image', set: set.map((x) => x.id) }; }
+      return { line: `A ${set.length}-slide set (${set.map((x) => x.label).join(', ')})${prod ? ` of ${tidy(prod, 60)}` : ''} · ${size.label}`, /* plain words, as the single make says it */ usd, per: usd, count: 1, kind: 'image', set: set.map((x) => x.id) }; }
     const st = styleOf(spec.style); if (!st) return { error: 'Pick a style.' }; const no = blockOf(st, ctx); if (no) return { error: no };
     const secs = st.kind === 'video' ? (st.job === 'viral-short' ? Math.max(8, Math.min(30, +spec.seconds || st.seconds || 30)) : +spec.seconds || st.seconds || 10) : null; /* the same length the make runs, so the price is that film's */
     const size = sizeOf(spec.sizes?.[0] || (st.kind === 'video' ? 'story' : 'ig-portrait')), n = Math.max(1, Math.min(12, Math.floor(+spec.count || 1))), per = await perTake(ctx, st, size, secs);
