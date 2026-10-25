@@ -1018,15 +1018,15 @@ const server = http.createServer(async (req, res) => {
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => timed(req, res, u, () => serve(req, res, u))); }
   return timed(req, res, u, () => serve(req, res, u));
 }).listen(PORT, () => console.log(`Brew Feed on http://localhost:${PORT} · AI ${MOCK ? "mock" : `live (${PROVIDER})`} · env ${fs.existsSync(envFile) ? envFile : 'none'}${DEMO ? ' · DEMO MODE' : ''}`));
-/* every web instance on the live stack starts with the brands people use already built in memory (opened in the last 30 days,
-   most recent first): only the pack is built (no watchers, no paid fills: those start when someone opens the brand, as
+/* every web instance on the live stack starts with its ready brands already built in memory (up to WARM_BRANDS, most
+   recently opened first): only the pack is built (no watchers, no paid fills: those start when someone opens the brand, as
    before), one brand at a time with a pause between, so a fresh instance keeps answering while it warms (Phase 4) */
 let warmDone = !(isWeb() && OBJ && process.env.K_SERVICE && !MOCK && !DEMO && process.env.WARM_OFF !== '1'); /* /healthz/ready says so (Cloud Run's startup probe holds traffic until then, at most WARM_READY_MS) */
 const warmStart = Date.now();
 if (isWeb() && OBJ && process.env.K_SERVICE && !MOCK && !DEMO && process.env.WARM_OFF !== '1') setTimeout(async () => { const t0 = Date.now(); let n = 0;
   const all = (await builder.list().catch(() => [])).filter((x) => x.slug && x.status?.ready !== false);
   const lo = new Map(await Promise.all(all.map(async (b) => [b.slug, (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0])));
-  for (const b of all.filter((x) => Date.now() - lo.get(x.slug) < 30 * 864e5).sort((x, y) => lo.get(y.slug) - lo.get(x.slug)).slice(0, +process.env.WARM_BRANDS || 20)) {
+  for (const b of all.sort((x, y) => lo.get(y.slug) - lo.get(x.slug) || String(x.slug).localeCompare(String(y.slug))).slice(0, +process.env.WARM_BRANDS || 20)) { /* only packs are built (nothing paid), so every ready brand up to the cap, most recently opened first */
     if (shuttingDown) break;
     try { await packs.load(b.slug, { fresh: true, share: true }); n++; } catch (e) { console.warn('[warm]', b.slug, e.message); }
     await new Promise((r) => setTimeout(r, warmDone ? 250 : 20)); } /* before traffic (the startup probe): straight through; after, requests go first */
