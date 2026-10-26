@@ -22,6 +22,7 @@ import { createResearch } from './research.js';
 import { createLiveWatch } from './live-watch.js';
 import { createStore } from './store.js';
 import { B, BN, runIn, liveRe, setDefaultBrand, inBrand } from './brand-ctx.js';
+import { moneyWords, symOf } from './jam-words.js'; // prices as the store shows them, in every writer's words (26 Oct)
 import { createImageGuard } from './image-guard.js';
 import { lookPrompt, lookVerdict } from './draft-quality.js'; // the look check every product picture passes before it is shown
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
@@ -131,7 +132,7 @@ const SYSTEM = () => B()?.system || '';
 
 // ---------- guardrails ----------
 const BANNED = liveRe((b) => b.bannedRe); // the claim words this brand's category can't use
-const clean = (s) => String(s || '').replace(/—/g, ',').replace(/ ,/g, ',').replace(/\\n/g, '\n').replace(/\u2039(?=\s?\d)/g, '₹');
+const clean = (s) => moneyWords(String(s || '').replace(/—/g, ',').replace(/ ,/g, ',').replace(/\\n/g, '\n'), symOf(B()?.currency || B()?.config?.currency)); /* a lost currency sign ("‹499", "‑‑2,182") and paise come back as the store shows them: jam-words.js (26 Oct) */
 
 // ---------- Claude ----------
 // Sonnet 5.5 for live latency. Thinking off (`between_tools`, valid at effort high or below) and low effort,

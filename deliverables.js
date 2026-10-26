@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 
 const DATA = JSON.parse(fs.readFileSync(new URL('./data/deliverables.json', import.meta.url), 'utf8'));
-export const DELIVERABLES = DATA.rows;
+export const DELIVERABLES = DATA.rows.map((r) => (/^IG\b/.test(r.name) ? { ...r, name: r.name.replace(/^IG\b/, 'Instagram') } : r)); /* "IG feed post" reads "Instagram feed post" (QV P2-11, 26 Oct); its id stays, so saved jams keep their row */
 const BY_ID = new Map(DELIVERABLES.map((r) => [r.id, r]));
 const BY_KEY = new Map(DELIVERABLES.filter((r) => r.key).map((r) => [r.key, r]));
 export const dlOf = (id) => BY_ID.get(String(id || '')) || null;
@@ -19,10 +19,16 @@ export const dlSpec = (r) => r ? `${r.name} (${r.platform}): ${r.what}. Rules it
 /* what a planning deliverable is, in one word, beside where it goes ("End screen and cards plan on YouTube · Plan") */
 const LAYOUT_NAME = { pic: 'Picture', set: 'Several pictures', reel: 'Video', msg: 'Message', mail: 'Email', page: 'Page', post: 'Community post', acct: 'Account change', check: 'Checklist', brief: 'Brief' };
 const NOUN = { pic: 'Picture', set: 'Set of pictures', reel: 'Video', post: 'Post', msg: 'Message', mail: 'Email', page: 'Page', check: 'Plan', acct: 'Account change', brief: 'Brief' };
+/* who makes it, in a sentence: "Designer" → "your designer", "Social / CRM (ManyChat)" → "your social or CRM team" (QV P2-4, 26 Oct:
+   "made and shipped by Designer") */
+const TEAMS = /^(?:social|crm|support|community|content|marketing|performance|events|sales|ops|pr|marketplace|seo|legal|dev|brand)$/i;
+export const whoOf = (x) => { const s = String(x || '').replace(/\s*\([^)]*\)/g, '').trim(); if (!s) return 'your team'; if (/^whoever\b/i.test(s)) return s.charAt(0).toLowerCase() + s.slice(1);
+  const one = (w) => { w = w.trim(); const l = w.split(' ').map((y) => (/^[A-Z]{2,}$/.test(y) ? y : y.toLowerCase())).join(' '); return TEAMS.test(w) ? `${l} team` : l; };
+  return `your ${s.split(/\s*\+\s*/).map((a) => a.split(/\s*\/\s*|\s+or\s+/i).map(one).join(' or ')).join(' and ')}`.replace(/\b(\w+) team or (\w+) team\b/g, '$1 or $2 team'); };
 /* the planning rows as actions and families, merged into ACTIONS and FAMILY_OF where those are defined */
 export const planActions = () => { const out = {};
   for (const r of DELIVERABLES) if (r.key) (out[r.agent] ||= {})[r.key.split('.')[1]] = { label: r.name, target: { conn: null, object: NOUN[r.layout], name: r.platform === 'Other' ? null : r.platform }, money: false,
-    jam: `Planned in Brew; made and shipped by ${r.who}`, rollback: 'Nothing ships until a person ships it', scope: [[1, `One ${r.name.charAt(0).toLowerCase()}${r.name.slice(1)}`]], preview: r.preview, manual: true, plan: true };
+    jam: `Planned in Brew; made and shipped by ${whoOf(r.who)}`, rollback: 'Nothing ships until a person ships it', scope: [[1, `One ${r.name.charAt(0).toLowerCase()}${r.name.slice(1)}`]], preview: r.preview, manual: true, plan: true };
   return out; };
 export const planFamilies = () => Object.fromEntries(DELIVERABLES.filter((r) => r.key).map((r) => [r.key.split('.')[1], r.family]));
 /* the composer's chips for a planning deliverable, by its layout (each action has 3 or more of its own) */
