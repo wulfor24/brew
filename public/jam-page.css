@@ -763,3 +763,6 @@
 .jp .jp-prof-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;opacity:.5}
 .jp .jp-prof-grid i{aspect-ratio:1;background:var(--surface-2);border-radius:3px}
 .jp .jp-wash{background:linear-gradient(160deg,var(--brand-1,#82b1ff),var(--brand-2,#3b82f6))}
+.jp.jp-portal{height:0;min-height:0;background:none}
+.jp .jp-pk-in.dl-menu{position:relative;top:auto;left:auto;right:auto;bottom:auto;z-index:auto;min-width:0;grid-template-rows:none;border:0}
+@media (max-width:640px){.jp .jp-pk-in.dl-menu{position:relative;left:auto;right:auto;bottom:auto;width:100%}}
