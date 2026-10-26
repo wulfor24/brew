@@ -5,6 +5,7 @@ import { PRODUCT_NAME, productNameScript } from './product-name.js';
 import { makePhotoFile } from './safe-path.js';
 import { createJamMail } from './jam-mail.js';
 import { configureGen, saveGen, genFile, genFlush, researchFile } from './gen-store.js';
+import { lighter } from './img-light.js'; // light copies of big pictures for the page (26 Oct)
 import http from 'node:http';
 import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
 import fs from 'node:fs';
@@ -284,15 +285,15 @@ const serveFile = (req, res, f, o = {}) => {
     const enc = size > 1024 ? encOf(req) : null, body = enc ? (e[enc] ||= zip(e.raw, enc, 9)) : e.raw;
     res.writeHead(200, { ...h, ...(enc ? { 'content-encoding': enc } : {}), 'content-length': body.length }); return res.end(req.method === 'HEAD' ? undefined : body);
   }
-  const etag = `W/"${size.toString(36)}-${Math.round(st.mtimeMs).toString(36)}"`;
-  if (req.headers['if-none-match'] === etag && !req.headers.range) { res.writeHead(304, { etag, 'cache-control': cache }); return res.end(); }
+  const etag = `W/"${size.toString(36)}-${Math.round(st.mtimeMs).toString(36)}"`, vary = o.vary ? { vary: o.vary } : {}; /* one URL, a light copy or the original by Accept: caches keep them apart */
+  if (req.headers['if-none-match'] === etag && !req.headers.range) { res.writeHead(304, { etag, 'cache-control': cache, ...vary }); return res.end(); }
   const m = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
   if (m) {
     const a = m[1] ? +m[1] : size - +m[2], b = m[1] && m[2] ? Math.min(+m[2], size - 1) : size - 1;
-    res.writeHead(206, { 'content-type': type, 'content-range': `bytes ${a}-${b}/${size}`, 'accept-ranges': 'bytes', 'content-length': b - a + 1, 'cache-control': cache, etag });
+    res.writeHead(206, { 'content-type': type, 'content-range': `bytes ${a}-${b}/${size}`, 'accept-ranges': 'bytes', 'content-length': b - a + 1, 'cache-control': cache, etag, ...vary });
     return fs.createReadStream(f, { start: a, end: b }).pipe(res);
   }
-  res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes', 'cache-control': cache, etag });
+  res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes', 'cache-control': cache, etag, ...vary });
   fs.createReadStream(f).pipe(res);
 };
 /* every other answer goes out compressed (http-zip.js zipRes) */
@@ -1147,11 +1148,11 @@ async function serve(req, res, u) {
     }
     if (u.pathname.startsWith('/research/')) { /* shared by every brand: this instance's disk, then the bucket (never the default brand's research, which has none) */
       const f = await researchFile(path.basename(u.pathname)); if (!f) return send(res, 404, 'no', 'text/plain');
-      return serveFile(req, res, f, { immutable: true });
+      return serveFile(req, res, (await lighter(f, req.headers.accept).catch(() => null)) || f, { immutable: true, vary: 'Accept' }); /* a page's <img> gets a light copy; the file itself is untouched (img-light.js, 26 Oct) */
     }
     if (u.pathname.startsWith('/gen/')) {
       const f = await genFile(path.basename(u.pathname)); if (!f) return send(res, 404, 'no', 'text/plain');
-      return serveFile(req, res, f, { immutable: true }); /* every generated file gets a new name: its bytes never change */
+      return serveFile(req, res, (await lighter(f, req.headers.accept).catch(() => null)) || f, { immutable: true, vary: 'Accept' }); /* every generated file gets a new name: its bytes never change */
     }
     let f = path.normalize(path.join(PUB, decodeURIComponent(u.pathname)));
     if (!f.startsWith(PUB)) return send(res, 403, 'no', 'text/plain');
