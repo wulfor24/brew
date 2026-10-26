@@ -6,7 +6,9 @@
 // words, none of the stock-photo clichés that make a picture read as AI (SLOP). Pure functions; the tests pin the shape.
 
 /* words that add noise, not detail: stripped from any sentence a model wrote, refused in the standing lines */
-export const SLOP = /\b(?:4\s?k|8\s?k|ultra[- ]?(?:detailed|realistic|hd)|hyper[- ]?realistic|photo[- ]?realistic|trending(?: on \w+)?|award[- ]winning|masterpiece|cinematic|premium(?:-looking| look| feel)?|luxurious|stunning|breathtaking|gorgeous|magical|epic|aesthetic|vibes?|sparkl\w*|glitter\w*|confetti|lens flares?|bokeh balls?|floating(?: in mid[- ]?air| product)?|levitat\w+|swirl\w*|splash\w* of (?:water|milk|cream)|liquid splash\w*|explod\w+|dramatic (?:smoke|fog|lighting)|neon glow|glowing (?:aura|edges?)|light rays?|god rays?|depth of field|dof|octane|unreal engine|8-bit|high quality|best quality|professional photography|studio quality)\b[,.;: ]*/gi;
+/* only the words that are real AI tells (render buzzwords); light, colour pop, splash, motion and drama are allowed: the brand's book says
+   what its look is, and Sloosh enhances the prompt (27 Oct) */
+export const SLOP = /\b(?:4\s?k|8\s?k|ultra[- ]?(?:detailed|realistic|hd)|hyper[- ]?realistic|photo[- ]?realistic|trending on \w+|award[- ]winning|masterpiece|stunning|breathtaking|octane|unreal engine|high quality|best quality)\b[,.;: ]*/gi;
 export const JOBS = ['product', 'scene', 'style', 'person', 'logo', 'layout', 'frame', 'motion', 'other']; /* layout: the approved draft picture; frame: a video's opening frame (sent as start_frame, never numbered) */
 /* what a reference of each job tells the model, and what must not change from it */
 const JOB_LINE = {
@@ -43,8 +45,10 @@ export const textLines = (text = []) => { const xs = (Array.isArray(text) ? text
   return xs.map((t) => `Text: "${one(t.words).replace(/"/g, '”')}" in ${t.style || 'clean bold sans-serif'}, ${t.where || 'in the clear space'}.`).join(' ') + ' Render each line once, spelled exactly, and add no other text.'; };
 /* light, lens and colours as things you can see: the brand's style line when it has one, else a real phone-camera moment in
    natural light (a still life on a surface reads as a catalog photo and is scrolled past) */
-export const lookOf = (brand = {}, kind = 'image') => scrub(brand.style || brand.editorial || (kind === 'video' ? 'Natural daylight in a real place, true colours, handheld on a phone' : 'A real moment shot on a phone held slightly above, natural daylight in a real home, office or outdoors, true colours, a little lived-in, not a studio still'));
-export const useOf = (ratio, topSpace = false) => `${USE[ratio] || USE['4:5']}${topSpace ? '; keep the top third calm and simple, the words sit there' : ''}`;
+/* the brand's own look when it has one; else a bold, scroll-stopping product hero (the old default, a phone snapshot in daylight, was
+   plain on purpose and was scrolled past). The Brand Book's art direction rides along in sloosh-make.js */
+export const lookOf = (brand = {}, kind = 'image') => scrub(brand.style || brand.editorial || (kind === 'video' ? 'A scroll-stopping product moment with real energy, true colours' : 'A bold, scroll-stopping product hero with a clear focal point, true colours and confident light'));
+export const useOf = (ratio) => `${USE[ratio] || USE['4:5']}`;
 
 /* planning notes a writer left in a picture brief ("Measure: high watch time…", "Goal: …") are not things to draw */
 export const dropNotes = (s) => String(s || '').split(/(?<=[.!?])\s+/).filter((x) => !/^\s*(measure|metric|kpi|goal|why|hypothesis|test|success|target audience|audience|cta|button)\s*:/i.test(x)).join(' ');
@@ -88,7 +92,7 @@ export const motionOnly = (s) => one(String(s || '').replace(/["“”][^"“”
 export const onScreen = (shot) => one(/\b(?:text|overlay|caption|title|super|headline|on-?screen)\b[^"“]{0,60}["“]([^"”]{2,80})["”]/i.exec(String(shot || ''))?.[1] || '');
 export const VEO_NO_TEXT = 'Draw no words anywhere: no text overlays, captions, subtitles, titles, price tags, signs or logos; any words are added afterwards.';
 export const VEO_SAME_PEOPLE = 'Only the people already in the first frame appear, each keeping the same face, hair, build and clothes throughout; no one new enters and no cuts.';
-export function veoDraft(b) { return one(`${sentence(motionOnly(b.motion)) || 'A hand picks the product up and uses it.'} One continuous handheld phone shot at a natural pace that fills the whole frame; hands may move and use the product; the product keeps its shape, colours and brand mark as in the first frame. ${VEO_SAME_PEOPLE} ${b.sound ? 'Quiet room tone.' : ''} ${VEO_NO_TEXT}`); }
+export function veoDraft(b) { return one(`${sentence(motionOnly(b.motion)) || 'The product in use, with real energy from the first second.'} Fill the whole frame; the product keeps its shape, colours and brand mark as in the first frame. ${VEO_SAME_PEOPLE} ${b.sound ? 'Sound that fits the moment.' : ''} ${VEO_NO_TEXT}`); }
 /* what a script line is: words shown on screen, a sound, or a line said. The jam writes "(On-screen text) Keeping your feet warm…",
    "(Sound effect) Loud crinkling" or a plain line; a reel final used to send all three as speech, so its joke never showed (21 Oct).
    Emoji go: video models draw them as garbage */
@@ -111,7 +115,7 @@ export function seedanceBeats(b) {
   const n = beats.length || 1, cut = (i) => Math.round((S * i) / n); let shows = 0;
   const body = beats.length ? beats.map((x, i) => { const shot = scrub(motionOnly(typeof x === 'string' ? x : x.shot || x.beat || '') || (typeof x === 'string' ? x : x.shot || x.beat || '')), w = beatWords(x); if (w.show) shows++;
     return `${cut(i)}-${cut(i + 1)}s: ${sentence(shot) || 'The same shot carries on.'}${w.show ? ` On screen, in clean bold white type in the top third, exactly: "${w.show.replace(/"/g, '”')}"` : ''}${w.sfx ? ` <${w.sfx.replace(/[<>]/g, '')}>` : ''}${w.say ? ` "${w.say.replace(/"/g, '”')}"` : ''}`; }).join('\n') : `0-${S}s: ${sentence(b.motion) || 'The camera pushes in slowly on the product.'}`;
-  return [b.frame ? FRAME_LINE : `${refLines(b.refs)}`.trim(), one(`A ${b.title ? `${b.title}: ` : ''}${b.subject}${b.visual || b.scene ? `, ${[b.visual, b.scene].filter(Boolean).join(' ')}` : ''}. ${b.look} One camera move per beat, slow and steady.`), body, one(`${b.sound ? 'Quiet ambient sound that fits the room.' : 'No music.'} ${shows ? 'Only the on-screen words given appear, spelled exactly, one line at a time; no other subtitles or captions, no logo, no watermark.' : 'No subtitles, no captions, no logo, no watermark.'} ${keepLine({ brand: b.brand, text: !!shows, people: b.people })}`)].filter(Boolean).join('\n');
+  return [b.frame ? FRAME_LINE : `${refLines(b.refs)}`.trim(), one(`A ${b.title ? `${b.title}: ` : ''}${b.subject}${b.visual || b.scene ? `, ${[b.visual, b.scene].filter(Boolean).join(' ')}` : ''}. ${b.look} A hook in the first second, then one clear camera move per beat.`), body, one(`${b.sound ? 'Sound and music that fit the brand and the moment.' : ''} ${shows ? 'Only the on-screen words given appear, spelled exactly, one line at a time; no other subtitles or captions, no logo, no watermark.' : 'No subtitles, no captions, no logo, no watermark.'} ${keepLine({ brand: b.brand, text: !!shows, people: b.people })}`)].filter(Boolean).join('\n');
 }
 /* a clip that opens on the approved draft's first frame (sent as start_frame; Seedance takes a frame or references, not both) */
 export const FRAME_LINE = 'The video opens exactly on the start frame given and moves on from it. Keep the product exactly as it appears in that frame: its shape, colours, label and brand mark; never redraw it.';

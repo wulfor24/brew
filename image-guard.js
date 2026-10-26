@@ -112,7 +112,7 @@ export function createImageGuard({ balance = null, gen, verify = null, fetchPhot
       for (const x of [...list.slice(at + 1), ...list.slice(0, Math.max(0, at))]) { if (n++ >= 3) break; const f = await fetchPhoto(x.img).catch(() => null); if (f && f !== ref) { refImg = x.img; refName = x.t || refName; return normalize(f).catch(() => f); } }
       return null; };
     let w = await check(); note.verdict = w;
-    if (w === null) { if (named) return standIn(); note.unchecked = true; return done(); } /* a named product that can't be confirmed falls back to its real photo */
+    if (w === null) { note.unchecked = true; return done(); } /* a check that can't answer keeps the Sloosh picture (made on the product photo with a keep line), marked unchecked: a raw store photo never stands in for it (27 Oct) */
     if (w === 'noref') { /* the reference was not a product photo: the next catalog photo, else the picture as made, unchecked */
       const next = await nextRef(); if (!next) { log.warn?.('[image-guard] the reference is not a product photo; keeping the picture unchecked', named?.t || ''); note.unchecked = true; note.same = null; return done(); }
       log.warn?.('[image-guard] the reference is not a product photo; trying the next catalog photo', refImg);

@@ -31,12 +31,14 @@ test('a submit carries the idempotency key and is written down the moment it is 
   await fast(() => hf.run(id, { prompt: 'x' }, { resume: saved })); assert.equal(seen.length, 1, 'resume polls, never submits');
 });
 
-test('the product shot through the engines passes the hold (key, resume, write-down) on to Higgsfield', async () => {
-  const seen = [], dir = fs.mkdtempSync(tmpBase());
-  const eng = createEngines({ saveGen: (n, b) => fs.writeFileSync(`${dir}/${n}`, b), genFile: (n) => `${dir}/${n}`, fetchImpl: fakeHF(seen), env, mock: () => false, log: { warn() {}, info() {} } });
-  let wrote = null;
-  const r = await fast(() => eng.run('still.shot', { prompt: 'p', srcUrl: 'https://a/p.png', ratio: '1:1', hf: { idem: 'brew:press:shot:0:0', onSubmit: (j) => { wrote = j; } } }, { prefer: 'higgsfield' }));
-  assert.equal(r.provider, 'higgsfield'); assert.match(seen[0].headers['idempotency-key'], /^brew:press:shot:0:0:/); assert.ok(wrote, 'written down when bought');
+test('the product shot goes to the guarded Sloosh maker; Higgsfield is retired from every route (27 Oct)', async () => {
+  const routes = JSON.parse(fs.readFileSync(new URL('../data/engines.json', import.meta.url), 'utf8')).route;
+  for (const [cap, list] of Object.entries(routes)) assert.ok(list.every((a) => ['vertex', 'higgsfield', 'local'].includes(a)), cap);
+  const src = fs.readFileSync(new URL('../jam2/engines.js', import.meta.url), 'utf8');
+  assert.match(src, /const HF = createSlooshStudio\(/); assert.doesNotMatch(src, /createHiggsfield\(/);
+  const eng = createEngines({ geminiImage: async () => Object.assign(Buffer.from('PNG'), { model: 'gemini-nano-banana-2.1' }), saveGen: () => {}, genFile: () => null, env, mock: () => false, log: { warn() {}, info() {} } });
+  assert.deepEqual(eng.candidates('still.shot'), ['vertex']);
+  const r = await eng.run('still.shot', { prompt: 'p', ratio: '1:1', slug: 'acme' }); assert.equal(r.provider, 'vertex'); assert.equal(r.model, 'gemini-nano-banana-2.1');
 });
 
 test('Studio holds every paid request in a make, lets the keys go after, and refunds a refunded make', () => {
@@ -105,7 +107,7 @@ test('a key belongs to one exact request; an old, gone or expired request is fin
 });
 test('every Studio paid request carries the press key; a resumed make keeps its press, claims its board, and writes a purchase at once', () => {
   const s = fs.readFileSync(new URL('../jam2/studio.js', import.meta.url), 'utf8'), rt = fs.readFileSync(new URL('../jam2/routes.js', import.meta.url), 'utf8'), c = fs.readFileSync(new URL('../jam2/creative.js', import.meta.url), 'utf8');
-  assert.match(s, /hf\.run\(id, input, \{ \.\.\.o, idem: opts\.press \?/, 'designed, motion, restyle, UGC and viral calls too');
+  assert.match(s, /hf\.run\(id, \{ \.\.\.input, slug: ctx\.slug[^\n]*\{ \.\.\.o, idem: opts\.press \?/, 'designed, motion, restyle, UGC and viral calls too (on Sloosh, with the brand)');
   assert.match(rt, /press: b\.press \|\| null, \.\.\.\(run/); assert.match(rt, /jobsOf\(t, j, bd, m\.press \|\| null\)/); assert.match(rt, /const claim = await claimMake\(makeKeys\(slugOfT\(t\), j\.id, bd\.id, null\)\); if \(!claim\) continue;/);
   assert.match(rt, /await store\.put\(slugOfT\(t\), j\); await store\.flush\(slugOfT\(t\)\);/);
   assert.match(c, /if \(open0 && !outs\.some\(\(o\) => o\.file\)\) throw open0;/, 'a shot still being made is kept, not forgotten'); assert.match(s, /refunded: !!x\.refunded/);

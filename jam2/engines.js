@@ -7,7 +7,8 @@
 //   higgsfield  api.higgsfield.ai queue: POST /<model> { ...input } → request_id → /requests/<id>/status (HF_API_KEY_ID/SECRET)
 //   local       free: background cut-out (@imgly/background-removal-node when installed)
 //   fal, heygen, elevenlabs   not connected yet (their keys are not set); the router skips them
-import { createHiggsfield } from './higgsfield.js';
+import { createSlooshStudio } from './sloosh-studio.js'; // Studio's makers on Sloosh (27 Oct; Higgsfield retired)
+import { makersNow } from '../media.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -26,22 +27,25 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
 
   /* ---------- vertex (live) ---------- */
   const vertex = {
-    id: 'vertex', label: 'Google (Gemini, Veo)', live: () => !!geminiImage,
+    id: 'vertex', label: 'Sloosh', live: () => !!geminiImage, /* the id stays 'vertex' (saved boards name it); every picture and clip behind it is Sloosh since 27 Oct */
     caps: {
-      'still.scene': { quote: () => ({ usd: V.still }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile || null, refFiles: s.refFiles || [], prompt: s.prompt, ratio: s.ratio || '4:5', slug: s.slug, productName: s.product || null, ...(s.product === false ? { product: false } : {}), text: s.text || '', fallback: false }); return { file: keep(buf, 'png'), model: 'gemini-image', usd: V.still, guard: buf.guard || null }; } },
-      'still.edit': { quote: () => ({ usd: V.still }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, refFiles: s.refFiles || [], prompt: s.prompt, ratio: s.ratio || '4:5', slug: s.slug, text: s.text || '', fallback: false, edit: true }); return { file: keep(buf, 'png'), model: 'gemini-image-edit', usd: V.still }; } },
-      'still.harmonize': { quote: () => ({ usd: V.still }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, refFiles: s.refFiles || [], prompt: s.prompt, ratio: s.ratio || '4:5', slug: s.slug, productName: s.product || null, fallback: false }); return { file: keep(buf, 'png'), model: 'gemini-image', usd: V.still, guard: buf.guard || null }; } },
+      'still.scene': { quote: () => ({ usd: V.still }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile || null, refFiles: s.refFiles || [], prompt: s.prompt, ratio: s.ratio || '4:5', slug: s.slug, productName: s.product || null, ...(s.product === false ? { product: false } : {}), text: s.text || '', fallback: false }); return { file: keep(buf, 'png'), model: buf.model || 'sloosh', usd: V.still, guard: buf.guard || null }; } },
+      'still.edit': { quote: () => ({ usd: V.still }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, refFiles: s.refFiles || [], prompt: s.prompt, ratio: s.ratio || '4:5', slug: s.slug, text: s.text || '', fallback: false, edit: true }); return { file: keep(buf, 'png'), model: buf.model || 'sloosh', usd: V.still }; } },
+      'still.harmonize': { quote: () => ({ usd: V.still }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, refFiles: s.refFiles || [], prompt: s.prompt, ratio: s.ratio || '4:5', slug: s.slug, productName: s.product || null, fallback: false }); return { file: keep(buf, 'png'), model: buf.model || 'sloosh', usd: V.still, guard: buf.guard || null }; } },
       /* the shoot (creative.js): the whole photograph made around the real product, its photos as references, on the pro model; the
          product check (image guard) runs on each one and throws on a different product, so the engine moves to the next candidate */
       'still.shot': { quote: () => ({ usd: V.stillPro }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile || null, refFiles: s.refFiles || [], prompt: s.prompt, ratio: s.ratio || '4:5', slug: s.slug, ...(s.product ? { named: s.named || null } : { product: false }), fallback: false, model: 'gemini-3-pro-image' });
         /* the guard hands back the real photo when the product still differs: for a shoot that is a failed candidate, not a picture */
         if (buf.guard?.fallback) throw Object.assign(new Error(`the product changed (${buf.guard.why || 'different product'})`), { mismatch: true });
-        return { file: keep(buf, 'png'), model: 'gemini-3-pro-image', usd: V.stillPro, guard: buf.guard || null }; } },
+        return { file: keep(buf, 'png'), model: buf.model || 'sloosh', usd: V.stillPro, guard: buf.guard || null }; } },
       /* another placement of the same photo: shot wider or taller (outpaint), the photo itself kept */
-      'still.extend': { quote: () => ({ usd: V.stillPro }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, prompt: s.prompt, ratio: s.ratio || '9:16', slug: s.slug, product: false, fallback: false, edit: true, model: 'gemini-3-pro-image' }); return { file: keep(buf, 'png'), model: 'gemini-3-pro-image', usd: V.stillPro }; } },
-      'still.full': { quote: () => ({ usd: V.stillPro }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, refFiles: s.refFiles || [], prompt: s.prompt, ratio: s.ratio || '4:5', slug: s.slug, productName: s.product || null, fallback: false, model: 'gemini-3-pro-image' }); return { file: keep(buf, 'png'), model: 'gemini-3-pro-image', usd: V.stillPro, guard: buf.guard || null }; } },
-      'cutout': { quote: () => ({ usd: V.still }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, prompt: 'Image 1 is a product photo. Return the exact same product, unchanged in shape, label, colour and text, alone on a plain pure white (#FFFFFF) background, centred, filling 80% of the frame, soft even light, no shadow, no props, no text added.', ratio: '1:1', slug: s.slug, productName: s.product || null, fallback: false, gate: false /* a packshot on white, not an ad: never judged as one */ }); return { file: keep(buf, 'png'), model: 'gemini-image', usd: V.still, white: true }; } },
-      'video.shot': { quote: (s) => ({ usd: +(V.videoPerSecond * (s.seconds || 6)).toFixed(2) }), run: async (s) => { const frame = fs.readFileSync(s.srcFile); const buf = await vertexVideo(frame, s.prompt, { ratio: s.ratio === '16:9' ? '16:9' : '9:16', seconds: s.seconds || 6 }); return { file: keep(buf, 'mp4'), model: 'veo-3.1-fast', usd: +(V.videoPerSecond * (s.seconds || 6)).toFixed(2) }; } },
+      'still.extend': { quote: () => ({ usd: V.stillPro }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, prompt: s.prompt, ratio: s.ratio || '9:16', slug: s.slug, product: false, fallback: false, edit: true, model: 'gemini-3-pro-image' }); return { file: keep(buf, 'png'), model: buf.model || 'sloosh', usd: V.stillPro }; } },
+      'still.full': { quote: () => ({ usd: V.stillPro }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, refFiles: s.refFiles || [], prompt: s.prompt, ratio: s.ratio || '4:5', slug: s.slug, productName: s.product || null, fallback: false, model: 'gemini-3-pro-image' }); return { file: keep(buf, 'png'), model: buf.model || 'sloosh', usd: V.stillPro, guard: buf.guard || null }; } },
+      'cutout': { quote: () => ({ usd: V.still }), run: async (s) => { const buf = await geminiImage({ srcFile: s.srcFile, prompt: 'Image 1 is a product photo. Return the exact same product, unchanged in shape, label, colour and text, alone on a plain pure white (#FFFFFF) background, centred, filling 80% of the frame, soft even light, no shadow, no props, no text added.', ratio: '1:1', slug: s.slug, productName: s.product || null, fallback: false, gate: false /* a packshot on white, not an ad: never judged as one */ }); return { file: keep(buf, 'png'), model: buf.model || 'sloosh', usd: V.still, white: true }; } },
+      'video.shot': { quote: (s) => ({ usd: +(V.videoPerSecond * (s.seconds || 6)).toFixed(2) }), run: async (s) => { const frame = fs.readFileSync(s.srcFile); const buf = await vertexVideo(frame, s.prompt, { ratio: s.ratio === '16:9' ? '16:9' : '9:16', seconds: s.seconds || 6 }); return { file: keep(buf, 'mp4'), model: buf.model || 'sloosh', usd: +(V.videoPerSecond * (s.seconds || 6)).toFixed(2) }; } },
+      /* a garment on a model: Sloosh's own Virtual Try-On space, as it is */
+      'still.tryon': { quote: () => ({ usd: V.stillPro }), run: async (s) => { const M = makersNow(); if (!M?.space) throw new Error('Sloosh is not connected here'); const rec = await M.space({ slug: s.slug, id: 'sp_a4048a80-a935-45aa-a784-a46010077c06', name: 'Virtual Try-On', ctx: { person: s.personUrl || null, garment: s.srcUrl || null, product: s.product || null }, refs: [s.personUrl && { url: pub(s.personUrl), job: 'person' }, s.srcUrl && { url: pub(s.srcUrl), job: 'product' }].filter(Boolean) });
+        if (rec.state !== 'done') throw new Error(rec.error || 'Sloosh has not finished it yet'); return { file: rec.file, model: 'sloosh:virtual-try-on', usd: V.stillPro, provider: 'sloosh' }; } },
       'music.gen': { quote: () => ({ usd: V.music ?? 0.06 }), run: async (s) => { if (!vertexMusic) throw new Error('music is not set up'); const wav = await vertexMusic(s.prompt); return { file: keep(wav, 'wav'), model: 'lyria', usd: V.music ?? 0.06 }; } },
       'voice.tts': { quote: () => ({ usd: V.voice }), run: async (s) => { const wav = await vertexVoice(s.text, s.voice || 'Kore'); return { file: keep(wav, 'wav'), model: 'gemini-tts', usd: V.voice }; } }
     }
@@ -74,7 +78,7 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
   };
   /* the routed offerings (jam2/higgsfield.js + data/higgsfield-routes.json): each job's best workflow, its input fitted to the
      workflow's schema and priced by Higgsfield's own estimate before anything runs */
-  const HF = createHiggsfield({ env, fetchImpl, log });
+  const HF = createSlooshStudio({ log });
   /* the caller's hold on a paid request (Studio's make): the job to pick up again after a restart, where to write it down the moment
      it is bought, and an idempotency key so a retried submit never buys twice. Absent, a request runs as before */
   const hfOpts = (s) => { const h = s?.hf; return h ? { idem: h.idem || null, resume: h.resume || null, onSubmit: h.onSubmit || null } : {}; };
@@ -83,10 +87,10 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
     return { o, input: { ...o.input, prompt: s.prompt, image_urls: urls, aspect_ratio: HF.nearestRatio(o.id, s.ratio || '1:1') } }; };
   const hfImage = (cap) => cap === 'still.shot'
     ? { quote: async (s) => { const { o, input } = shotInput(s); const e = await HF.estimate(o.id, input); return { usd: e.usd ?? H.usd.shot ?? H.usd.still, model: o.id }; },
-        run: async (s) => { const { o, input } = shotInput(s); const e = await HF.estimate(o.id, input); const out = await HF.run(o.id, input, hfOpts(s));
+        run: async (s) => { const { o, input } = shotInput(s); const e = await HF.estimate(o.id, input); const out = await HF.run(o.id, { ...input, slug: s.slug }, hfOpts(s));
           return { file: keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png'), model: o.id, usd: e.usd ?? H.usd.shot, provider: 'higgsfield' }; } }
     : { quote: () => ({ usd: H.usd.still }), run: async (s) => { const urls = [s.srcUrl, ...(s.refUrls || [])].filter(Boolean).map(pub);
-        const out = await hfCall(H.models[cap], { prompt: s.prompt, quality: 'high', resolution: '2k', aspect_ratio: HF.nearestRatio(H.models[cap], s.ratio || '1:1'), image_urls: urls, enhance_prompt: false, moderation: 'auto' });
+        const out = await HF.run('sloosh:product-shot', { slug: s.slug, prompt: s.prompt, aspect_ratio: s.ratio || '1:1', image_urls: urls });
         return { file: keep(out.buf, /jpe?g/.test(out.type) ? 'jpg' : 'png'), model: H.models[cap], usd: H.usd.still, provider: 'higgsfield' }; } };
   /* a video shot: Kling 3.0 from the shot's first frame (product-motion), or a person with the product (ugc-video, Seedance) */
   const vidInput = (cap, s) => { const job = cap === 'video.ugc' ? 'ugc-video' : 'product-motion', o = HF.pick(job, tierOf(s)); const urls = [s.srcUrl, ...(s.refUrls || [])].filter(Boolean).map(pub);
@@ -94,11 +98,11 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
       : { ...o.input, prompt: s.prompt, image_url: urls[0], duration: Math.max(3, Math.round(s.seconds || 5)) };
     return { o, input }; };
   const hfVideo = (cap) => ({ quote: async (s) => { const { o, input } = vidInput(cap, s); const e = await HF.estimate(o.id, input); return { usd: e.usd ?? +(H.usd.videoPerSecond * (s.seconds || 5)).toFixed(2), model: o.id }; },
-    run: async (s) => { const { o, input } = vidInput(cap, s); const e = await HF.estimate(o.id, input); const out = await HF.run(o.id, input, { maxMs: 20 * 60e3, ...hfOpts(s) });
+    run: async (s) => { const { o, input } = vidInput(cap, s); const e = await HF.estimate(o.id, input); const out = await HF.run(o.id, { ...input, slug: s.slug }, { maxMs: 20 * 60e3, ...hfOpts(s) });
       return { file: keep(out.buf, 'mp4'), model: o.id, usd: e.usd ?? +(H.usd.videoPerSecond * (s.seconds || 5)).toFixed(2), provider: 'higgsfield' }; } });
-  const higgsfield = { id: 'higgsfield', label: 'Higgsfield', live: () => !!hfAuth(),
+  const higgsfield = { id: 'higgsfield', label: 'Sloosh (Studio)', live: () => HF.live(), /* the id stays for saved boards; it runs on Sloosh */
     caps: { 'still.full': hfImage('still.full'), 'still.shot': hfImage('still.shot'), 'still.scene': hfImage('still.scene'), 'still.edit': hfImage('still.edit'), 'video.shot': hfVideo('video.shot'), 'video.ugc': hfVideo('video.ugc'),
-      'cast.create': { quote: () => ({ usd: H.usd.cast }), run: async (s) => { const out = await hfCall(H.models['cast.create'], { tier: 'normal', brief: s.prompt || '', image_url: s.srcUrl ? pub(s.srcUrl) : null, selection: {}, item_image_urls: [], variation_index: 0 }); return { file: keep(out.buf, 'png'), model: H.models['cast.create'], usd: H.usd.cast, provider: 'higgsfield' }; } } } };
+      'cast.create': { quote: () => ({ usd: V.stillPro }), run: async (s) => { const out = await HF.run('sloosh:cast', { slug: s.slug, prompt: s.prompt || 'A real, everyday person for the brand, a natural portrait in soft light', image_url: s.srcUrl ? pub(s.srcUrl) : null }); return { file: keep(out.buf, 'png'), model: out.model, usd: V.stillPro, provider: 'sloosh' }; } } } };
 
   /* ---------- local (free) ---------- */
   /* the cut-out runs in one worker thread (jam2/cutout-worker.js), one photo at a time, so a batch never stalls the server;

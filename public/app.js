@@ -3812,7 +3812,7 @@
   /* when a post goes up, as a person says it ("Sat 24 Oct, 6 pm"): a writer's machine date (2026-10-24T18:00:00Z) is never shown */
   const whenLine = (v) => { const s0 = String(v || ''); if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?/.test(s0)) return s0; const d = new Date(s0); if (Number.isNaN(+d)) return s0;
     return d.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', ...(/T\d{2}:\d{2}/.test(s0) ? { hour: 'numeric', minute: d.getMinutes() ? '2-digit' : undefined } : {}) }).replace(/:00(?=\s?[ap]m)/i, ''); };
-  const wordsOver = (img, p = {}, ch = null) => !!img && /^\/?gen\//.test(img) && !/^\/?gen\/(j2-|att-)/.test(img) && p.wordsIn !== img
+  const wordsOver = (img, p = {}, ch = null) => !!img && /^\/?gen\//.test(img) && !/^\/?gen\/(j2-|att-)/.test(img) && p.wordsIn !== img && !(p.wordsInAll || []).includes(img)
     && !(p.draft?.as === 'carousel' && (p.draft.images || []).includes(img)) /* a first draft's slides have their words set in already: never printed twice */
     && !(ch && (ch.rival || ch.ref)) /* our version of a rival's ad or a viral post copies its layout, words included */;
   const assetHtml0 = (ch, size = 'sm') => {
@@ -4777,12 +4777,16 @@
     /* before anything is made the frame shows the composer's product photo in the picture's place, never an empty grey box */
     /* not made yet, the frame previews the set-up itself (25 Oct: an 8-slide shampoo draft sat over a 3-slide styling-stick set-up):
        its product in every frame, as many frames as the set-up makes, each with the words the jam wrote for it */
+    /* a Sloosh first draft of this same product (27 Oct) shows as it is, a picture per frame; the product photo stands in only before
+       any draft exists or when the set-up moved to another product (never one photo repeated over every slide when drafts exist) */
     const pv = made || viewing || !st?.productImg ? pkgCh : (() => { const p0 = pkgCh.pkg || {}, n = st.frames, rows = p0.cards || p0.slides;
+      const sameProd = !p0.draft?.product || !st.productName || String(p0.draft.product).toLowerCase() === String(st.productName).toLowerCase();
+      const drafted = sameProd ? [...(p0.draft?.images || []), ...(p0.cardImages || [])].filter((x, i, a) => /^gen\//.test(x || '') && a.indexOf(x) === i) : [];
       if (n && Array.isArray(rows) && rows.length) { const k = p0.cards ? 'cards' : 'slides', list = Array.from({ length: n }, (_, i) => rows[i] || { onSlide: '', headline: '' });
-        return { ...pkgCh, pkg: { ...p0, [k]: list, image: st.productImg, cardImages: list.map(() => st.productImg), draft: null, wordsIn: null } }; }
-      return /^gen\//.test(p0.image || '') && !(p0.draft?.images || []).includes(p0.image) ? pkgCh : { ...pkgCh, pkg: { ...p0, image: st.productImg, cardImages: null, draft: null, wordsIn: null, ...(st.ratio ? { format: st.ratio } : {}) } }; })();
+        return { ...pkgCh, pkg: { ...p0, [k]: list, image: drafted[0] || st.productImg, cardImages: list.map((_, i) => drafted[i] || st.productImg), draft: drafted.length ? p0.draft : null, wordsIn: drafted.length ? p0.wordsIn : null } }; }
+      return (/^gen\//.test(p0.image || '') && (sameProd || !(p0.draft?.images || []).includes(p0.image))) ? pkgCh : { ...pkgCh, pkg: { ...p0, image: st.productImg, cardImages: null, draft: null, wordsIn: null, ...(st.ratio ? { format: st.ratio } : {}) } }; })();
     /* not made yet: the frame says plainly that the picture is the product photo standing in, dressed like the style picked, and fits above the bar */
-    const pvNote = !made && !making && st?.styleLabel ? `Your photo for now · Make it for ${st.styleLabel}` : '';
+    const pvDraft = /^gen\//.test(pv.pkg?.image || ''), pvNote = !made && !making && st?.styleLabel ? (pvDraft ? `First draft · in your look · Make it for ${st.styleLabel}` : `Your photo for now · Make it for ${st.styleLabel}`) : '';
     /* the first draft still being written: the card's own words (its task, "Enforce strict lowercase UTM…") never stand in as the ad's copy; the words are a skeleton until the draft lands, as on every other layout (26 Oct, QV P1-20) */
     const wr = !made && !making && !viewing && !!ch.copyPending;
     return `<div class="st-asset cs-stage${wr ? ' is-writing' : ''}">${wr ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made · you can leave' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ` is-preview cs-t-${esc(st?.treat || 'plain')}` : ''}${making ? ' is-making' : ''}"${pvNote ? ` style="--pv:'${esc(pvNote.replace(/['"\\]/g, ''))}'${/^#[0-9a-f]{3,8}$/i.test(st?.bc || '') ? `;--bc:${st.bc}` : ''}"` : ''}>${assetHtml(pv, 'lg')}</div>

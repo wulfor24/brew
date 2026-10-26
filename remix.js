@@ -768,7 +768,7 @@ export function createRemix(o) {
     const d = pl?.draft; if (!d || !(d.images?.length || d.video) || versionsOf(t, ch.id).length > 1) return false;
     const imgs = d.images || [], text = TEXT_DRAFT.test(d.as || '') && !d.video;
     ch.pkg = { ...ch.pkg, draft: { as: d.as, images: imgs, video: d.video || null, poster: d.poster || null, ratio: d.ratio || null, title: d.title || '', product: d.product || null /* the product the draft's pictures show: Studio sets up the same one */, text, ...(text ? { code: d.code || null } : {}) } }; /* code: a draft that is markup or a snippet shows on the stage as code */
-    if (!text) { if (imgs[0]) { ch.pkg.image = imgs[0]; ch.pkg.wordsIn = d.wordsIn && d.wordsIn === imgs[0] ? imgs[0] : null; } if (imgs.length > 1) ch.pkg.cardImages = imgs; if (d.video) { ch.pkg.video = d.video; ch.pkg.poster = d.poster || imgs[0] || null; } if (d.ratio && RATIO[d.ratio] && ['meta_ad', 'social'].includes(ch.family)) ch.pkg.format = d.ratio; }
+    if (!text) { if (imgs[0]) { ch.pkg.image = imgs[0]; ch.pkg.wordsIn = d.wordsIn && d.wordsIn === imgs[0] ? imgs[0] : null; ch.pkg.wordsInAll = d.wordsInAll || null; } if (imgs.length > 1) ch.pkg.cardImages = imgs; if (d.video) { ch.pkg.video = d.video; ch.pkg.poster = d.poster || imgs[0] || null; } if (d.ratio && RATIO[d.ratio] && ['meta_ad', 'social'].includes(ch.family)) ch.pkg.format = d.ratio; }
     ch.v0 = 'draft'; sync(t, ch, c);
     const v0 = versionsOf(t, ch.id)[0]; if (v0) { v0.snapshot = snapOf(ch); v0.reason = 'The first draft on the card'; v0.label = 'First draft'; try { mirror(t, ch, v0); } catch {} }
     return true;
@@ -2413,7 +2413,7 @@ export function createRemix(o) {
         ...(take.words?.headline ? { overlay: tidyL(take.words.headline, 90), ...(ch.family === 'meta_ad' && take.words.headline !== ch.pkg.headline ? { headline: (() => { const h = tidyL(take.words.headline, 200); return h.length <= 40 ? h : h.slice(0, 41).replace(/\s+\S*$/, '').replace(/[\s,;:–-]+$/, ''); })() } : {}) } : {}) };
     /* the new take replaces the last one's media: a picture after a film drops the film, a single after a set drops the set's pictures */
     /* a listing keeps its photo set and its A+ modules side by side (a marketplace needs both); the card's free first draft gives way to what Studio made */
-    const base = { ...ch.pkg }; for (const k of ['video', 'poster', 'film', 'cardImages', 'wordsIn', 'draft', ...(ch.family === 'listing' ? [] : ['photoSet', 'aplus'])]) delete base[k];
+    const base = { ...ch.pkg }; for (const k of ['video', 'poster', 'film', 'cardImages', 'wordsIn', 'wordsInAll', 'draft', ...(ch.family === 'listing' ? [] : ['photoSet', 'aplus'])]) delete base[k];
     if (ch.family === 'listing' && !media.photoSet && !media.aplus && slides.length <= 1) delete base.photoSet; /* a single listing image replaces the set it was made instead of */
     const fmt = J2SIZES[st.size]?.ratio; if (fmt && ['meta_ad', 'social'].includes(ch.family) && RATIO[fmt]) media.format = fmt; /* the pack and the frame use the shape it was made in */
     ch.pkg = { ...base, ...media }; ch.imageError = null; sync(t, ch);

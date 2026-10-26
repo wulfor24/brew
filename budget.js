@@ -10,7 +10,10 @@ const NOUN = { text: 'writing', image: 'picture', video: 'video', voice: 'voice'
 const dayOf = (ms = Date.now()) => new Date(ms).toISOString().slice(0, 10); /* UTC: one reset time for every brand */
 
 export function capsFrom(env = process.env) {
-  const all = { text: +env.DAILY_TEXT_CAP || 400, image: +env.DAILY_IMAGE_CAP || 60, video: +env.DAILY_VIDEO_CAP || 15, voice: +env.DAILY_VOICE_CAP || 60, credits: +env.DAILY_CREDITS_CAP || 300 };
+  /* pictures, clips and credits are all Sloosh since 27 Oct, on an account Param keeps unlimited for now: counted, not capped (set the
+     env caps to cap them again) */
+  const OPEN = 1e9;
+  const all = { text: +env.DAILY_TEXT_CAP || 400, image: +env.DAILY_IMAGE_CAP || OPEN, video: +env.DAILY_VIDEO_CAP || OPEN, voice: +env.DAILY_VOICE_CAP || 60, credits: +env.DAILY_CREDITS_CAP || OPEN };
   const share = Math.min(1, Math.max(0.01, +(env.DAILY_BRAND_SHARE ?? 1 / 3) || 1 / 3));
   const brand = Object.fromEntries(KINDS.map((k) => [k, Math.max(1, +env[`BRAND_${k.toUpperCase()}_CAP`] || Math.ceil(all[k] * share))]));
   return { all, brand };

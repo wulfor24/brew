@@ -60,7 +60,7 @@ export const beatsEnd = (script) => { let end = 0; for (const b of Array.isArray
 export const beatTime = (x) => String(x || '').replace(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*(?:s|sec|secs|seconds)?\.?$/i, '$1–$2 s');
 
 /* every text field of a package, walked: money, "None", lists. Keys that hold addresses, pictures or ids are left as they are */
-const SKIP = /^(?:id|url|link|href|src|img|image|images|cardImages|photos|photoSet|poster|video|draft|knobs|grade|wordsIn|film|aplus|utm)$/i;
+const SKIP = /^(?:id|url|link|href|src|img|image|images|cardImages|photos|photoSet|poster|video|draft|knobs|grade|wordsIn|wordsInAll|film|aplus|utm)$/i;
 const walk = (v, f, k = '', d = 0) => { if (d > 4 || SKIP.test(k)) return v; if (typeof v === 'string') return f(v, k);
   if (Array.isArray(v)) { let ch = false; const out = v.map((x) => { const y = walk(x, f, k, d + 1); if (y !== x) ch = true; return y; }); return ch ? out : v; }
   if (v && typeof v === 'object') { let ch = false; const out = {}; for (const [kk, x] of Object.entries(v)) { const y = walk(x, f, kk, d + 1); if (y !== x) ch = true; out[kk] = y; } return ch ? out : v; }

@@ -1,56 +1,42 @@
 {
   "v": 1,
-  "note": "Jam v2 partner routing: capability → adapters in order of preference. The first one that is connected and can do it runs; the next is the fallback. Change the order here, not in code. Costs are estimates until the partner bench; every priced button asks the adapter for a fresh quote.",
+  "note": "Jam v2 routing: capability \u2192 adapters in order. Since 27 Oct every picture and clip is made by Sloosh: 'vertex' is the guarded Sloosh image/clip maker (the id is kept for saved boards), 'higgsfield' is Studio's Sloosh helper (jam2/sloosh-studio.js), 'local' the free cut-out. No other maker sits behind them.",
   "route": {
     "still.scene": [
-      "vertex",
-      "higgsfield",
-      "sloosh"
+      "vertex"
     ],
     "still.edit": [
-      "vertex",
-      "higgsfield"
+      "vertex"
     ],
     "still.harmonize": [
       "vertex"
     ],
     "still.full": [
-      "sloosh",
-      "higgsfield",
       "vertex"
     ],
     "still.tryon": [
-      "sloosh",
-      "fal"
+      "vertex"
     ],
     "cutout": [
       "local",
       "vertex"
     ],
     "upscale": [
-      "fal",
-      "sloosh"
+      "vertex"
     ],
     "video.shot": [
-      "higgsfield",
-      "vertex",
-      "sloosh"
+      "vertex"
     ],
     "video.ugc": [
-      "higgsfield",
-      "sloosh",
-      "heygen"
+      "higgsfield"
     ],
     "video.avatar": [
-      "heygen",
       "higgsfield"
     ],
     "video.edit": [
-      "higgsfield",
-      "fal"
+      "higgsfield"
     ],
     "voice.tts": [
-      "elevenlabs",
       "vertex"
     ],
     "cast.create": [
@@ -60,7 +46,6 @@
       "vertex"
     ],
     "still.shot": [
-      "higgsfield",
       "vertex"
     ],
     "still.extend": [
@@ -87,9 +72,9 @@
   },
   "vertex": {
     "usd": {
-      "still": 0.04,
-      "stillPro": 0.14,
-      "videoPerSecond": 0.15,
+      "still": 0.18,
+      "stillPro": 0.36,
+      "videoPerSecond": 0.32,
       "voice": 0.002,
       "music": 0.06
     }

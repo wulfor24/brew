@@ -65,7 +65,7 @@ test('old packs get "make" at load, with the button fitted to it', async () => {
 test('drafts are keyed by card id, move and format: a rewrite in the same format keeps its draft, a new format re-drafts', () => {
   const card = { id: 'm21-1', src: 'Move 21 · Ads', title: 'Run the carousel', type: 'idea', make: { format: 'carousel ad' } };
   assert.equal(draftKey(card), 'm21-1|21|carousel');
-  const all = { 'm21-1': { k: 2, key: draftKey(card), as: 'carousel', slides: [{ image: 'gen/a.jpg' }], cardTitle: card.title } };
+  const all = { 'm21-1': { k: 3, key: draftKey(card), as: 'carousel', slides: [{ image: 'gen/a.jpg' }], cardTitle: card.title } };
   assert.ok(draftFor(card, all)); assert.ok(draftFor({ ...card, title: 'Run the Hukum carousel', sub: 'rewritten' }, all), 'same format, new words: the draft stays');
   assert.equal(draftFor({ ...card, make: { format: 'instagram carousel' } }, all) && 'kept', 'kept', 'carousel ad and Instagram carousel are one draft format');
   assert.equal(draftFor({ ...card, make: { format: 'reel' } }, all), null, 'a new format: the old draft is not shown');
@@ -75,11 +75,11 @@ test('drafts are keyed by card id, move and format: a rewrite in the same format
   const old = { 'm21-1': { key: 'abc', cardTitle: 'Run the carousel', as: 'text', copy: 'x' } };
   assert.ok(draftFor(card, old)); assert.equal(draftFor({ ...card, title: 'Other' }, old), null); assert.equal(needsDraft(card, old, NOW), true);
   // a failure is tried again with backoff (30 min after the first, 2 h after the second, never more than a day), and is never shown
-  const failed = { 'm21-1': { k: 2, key: draftKey(card), failedAt: NOW - 20 * 60e3 } };
+  const failed = { 'm21-1': { k: 3, key: draftKey(card), failedAt: NOW - 20 * 60e3 } };
   assert.equal(draftFor(card, failed), null); assert.equal(needsDraft(card, failed, NOW), false); assert.equal(needsDraft(card, failed, NOW + 15 * 60e3), true);
-  const twice = { 'm21-1': { k: 2, key: draftKey(card), failedAt: NOW - 3600e3, fails: 2 } };
+  const twice = { 'm21-1': { k: 3, key: draftKey(card), failedAt: NOW - 3600e3, fails: 2 } };
   assert.equal(needsDraft(card, twice, NOW), false, 'the second failure waits 2 hours'); assert.equal(needsDraft(card, twice, NOW + 3600e3), true);
-  const many = { 'm21-1': { k: 2, key: draftKey(card), failedAt: NOW, fails: 9 } };
+  const many = { 'm21-1': { k: 3, key: draftKey(card), failedAt: NOW, fails: 9 } };
   assert.equal(needsDraft(card, many, NOW + DAY - 1), false); assert.equal(needsDraft(card, many, NOW + DAY), true, 'never more than a day');
   // the feed sees only drafts with something to look at
   assert.deepEqual(draftView({ as: 'carousel', ratio: '4:5', title: 'T', copy: '**Bold** words', slides: [{ image: 'gen/1.jpg' }, { image: 'gen/2.jpg' }], image: 'gen/1.jpg' }), { as: 'carousel', kind: 'carousel', images: ['gen/1.jpg', 'gen/2.jpg'], video: null, poster: null, ratio: '4:5', title: 'T', copy: 'Bold words' });
@@ -173,4 +173,12 @@ test('Chromium renders the mocks at 1080 x 1350 (skipped without Chrome)', { ski
   const out = await M.render(emailHtml({ brand: { name: 'Acme', colors: ['#123456'] }, title: 'Hi', copy: 'Subject: Your size\nHello' }), '4:5');
   assert.match(out, /^gen\/[a-f0-9]{16}\.jpg$/); const buf = Buffer.from(saved[0][1]); assert.equal(buf[0], 0xff, 'a JPEG');
   assert.equal(buf.readUInt16BE(buf.indexOf(Buffer.from([0xff, 0xc0])) + 5), 1350); assert.equal(buf.readUInt16BE(buf.indexOf(Buffer.from([0xff, 0xc0])) + 7), 1080);
+});
+
+test('a draft made before Sloosh (k 2) stays on its card until its Sloosh draft lands, and is asked for again (27 Oct)', async () => {
+  const { draftFor, needsDraft, draftKey: dk, DRAFT_K } = await import('../drafts-bg.js');
+  const card = { id: 'm9-1', title: 'Warm feet at the desk', make: { format: 'image' } };
+  const old = { 'm9-1': { k: 2, key: dk(card), as: 'image', image: 'gen/old.png', cardTitle: card.title } };
+  assert.equal(DRAFT_K, 3); assert.ok(draftFor(card, old), 'still shown'); assert.equal(needsDraft(card, old), true, 'remade on Sloosh');
+  assert.equal(needsDraft(card, { 'm9-1': { ...old['m9-1'], k: 3 } }), false);
 });

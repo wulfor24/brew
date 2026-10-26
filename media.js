@@ -1,9 +1,8 @@
 // Draft asset generation, one chain per kind, on our own keys (never treg). Each step that fails hands over to the next, and
 // the result says which provider made it, so a draft never loses its picture, clip or voice to one provider's bad minute.
-// Sloosh (sloosh.ai) is not a step here: it makes the finals only, quote first and behind a button (sloosh-mcp.js, finals.js).
-//   image: Vertex Gemini image (the chosen model, then the other one; server.js rawGeminiImage) → OpenAI gpt-image-1
-//   video: Veo 3.1 fast → Veo 3.1 → (the caller keeps the still)
-//   voice: Gemini TTS → OpenAI TTS
+// Since 27 Oct every picture and clip is made by Sloosh (sloosh-make.js): server.js registers it here with setMakers, and makeVideo
+// sends every clip to it, with no Veo behind it (a clip Sloosh can't make now waits and is tried again; never a weaker model).
+//   voice: Gemini TTS → OpenAI TTS (a spoken line on its own; a clip's own sound comes from the Sloosh video model)
 import { mimeOf } from './img-norm.js';
 import { vertexVoice, vertexVideo, pcmToWav } from './vertex-media.js';
 
@@ -44,8 +43,19 @@ export async function makeVoice(text, voiceName = 'Kore', o = {}, log = console)
   return Object.assign(r.buf, { provider: r.provider });
 }
 
-/** first frame + motion prompt → MP4 buffer (same shape as vertexVideo) */
+let makers = null; /* { video({ slug, frame, prompt, ratio, seconds, sound, line, tier }) → MP4 buffer } from sloosh-make.js */
+export const setMakers = (m) => { makers = m; };
+/* the Sloosh makers for modules that can't be handed them (Studio's helper, jam2/sloosh-studio.js): { image, edit, video, editVideo, space } */
+export const makersNow = () => makers;
+/** first frame + motion prompt → MP4 buffer: Sloosh (o.slug, o.ratio, o.seconds, o.sound, o.line, o.tier) */
 export async function makeVideo(frame, prompt, o = {}, log = console) {
+  if (makers?.video) { const buf = await makers.video({ slug: o.slug, frame, prompt, ratio: o.ratio, seconds: o.seconds, sound: o.sound, line: o.line, tier: o.tier, kind: o.kind });
+    return Object.assign(buf, { provider: 'sloosh' }); }
+  if (!process.env.VEO_LOCAL) throw Object.assign(new Error('Video is made by Sloosh, which is not connected here'), { soft: true });
+  return veoVideo(frame, prompt, o, log);
+}
+/* Veo, kept only for a local run with VEO_LOCAL=1 and no Sloosh (never on a server) */
+async function veoVideo(frame, prompt, o = {}, log = console) {
   const fast = process.env.VEO_MODEL || 'veo-3.1-fast-generate-001', full = process.env.VEO_FALLBACK_MODEL || 'veo-3.1-generate-001';
   let filtered = false; /* a clip the model filtered is filtered by the stronger one too: only an outage or a quota moves on to it */
   /* a filtered clip is tried once more with the plainest motion (Veo's filter mostly reacts to people, words and fast action in

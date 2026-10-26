@@ -6,9 +6,9 @@ import { buildDraft, buildFinal, scrub, hasSlop, reviseBrief, seedanceBeats, see
 
 const brand = { name: 'Cozy Snugglet', noun: 'heated hand warmer', style: 'Soft window light from the left, warm cream tones, true colours, phone camera at eye level', avoid: 'No people shown as results, no medical claims.', colors: ['#F6C9D2', '#2B2B2B'] };
 
-test('scrub strips keyword strings and mood words and keeps the visible facts', () => {
-  assert.equal(scrub('a stunning, cinematic 4k shot of the mug on an oak desk, premium look, morning light from the window'), 'A shot of the mug on an oak desk, morning light from the window');
-  assert.ok(hasSlop('floating product with sparkles')); assert.ok(!hasSlop('the mug on an oak desk'));
+test('scrub strips only real AI tells (render buzzwords); drama, colour pop and motion stay (27 Oct)', () => {
+  assert.equal(scrub('a stunning, cinematic 4k shot of the mug on an oak desk, premium look, morning light from the window'), 'A cinematic shot of the mug on an oak desk, premium look, morning light from the window');
+  assert.ok(hasSlop('8k masterpiece, best quality')); assert.ok(!hasSlop('the mug on an oak desk')); assert.ok(!hasSlop('a floating product with a splash of milk'));
 });
 
 test('a draft reads as a scene, names the product reference by position, says the use and never the ratio', () => {
@@ -16,20 +16,21 @@ test('a draft reads as a scene, names the product reference by position, says th
   assert.match(d.prompt, /^A photograph for Instagram ad: desk warmth\./);
   assert.match(d.prompt, /Image 1 is the product, Snugglet Toe Toasters\. Keep its shape/);
   assert.match(d.prompt, /Made for a feed ad seen on a phone/);
-  assert.ok(!/4:5|cinematic/.test(d.prompt)); assert.equal(d.ratio, '4:5');
+  assert.ok(!/4:5/.test(d.prompt)); assert.equal(d.ratio, '4:5');
   assert.match(d.prompt, /No people shown as results/); /* the brand's own avoid line */
   assert.match(d.prompt, /Nothing in the picture carries writing/);
 });
 
-test('a carousel slide names its place in the set and keeps the top third calm', () => {
+test('a carousel slide names its place in the set; no plain top third is asked for (the words go on the picture, 27 Oct)', () => {
   const d = buildDraft({ kind: 'image', title: 'the fit room carousel', visual: 'A side table with the mask', index: 2, count: 6, topSpace: true, hasSrc: true, brand, ratio: '4:5' });
   assert.match(d.prompt, /^Photograph 2 of 6 for one the fit room carousel; every photo in the set shares the same look/);
-  assert.match(d.prompt, /keep the top third calm and simple, the words sit there/);
+  assert.doesNotMatch(d.prompt, /top third calm/);
 });
 
-test('a video draft is one handheld shot where hands may use the product, which keeps its shape and mark', () => {
+test('a video draft has energy from the first second, keeps the product and the people of its first frame, and draws no words', () => {
   const d = buildDraft({ kind: 'video', motion: 'the camera drifts right as steam rises, epic', ratio: '9:16' });
-  assert.equal(d.prompt, 'The camera drifts right as steam rises. One continuous handheld phone shot at a natural pace that fills the whole frame; hands may move and use the product; the product keeps its shape, colours and brand mark as in the first frame. Only the people already in the first frame appear, each keeping the same face, hair, build and clothes throughout; no one new enters and no cuts. Draw no words anywhere: no text overlays, captions, subtitles, titles, price tags, signs or logos; any words are added afterwards.');
+  assert.match(d.prompt, /^The camera drifts right as steam rises, epic\. Fill the whole frame; the product keeps its shape, colours and brand mark as in the first frame\./);
+  assert.doesNotMatch(d.prompt, /handheld phone shot at a natural pace|slow and steady|No music/);
 });
 
 test('a final with text picks Nano Banana Pro, quotes each line with a place and renders it once; three lines go to Ideogram', () => {
@@ -58,7 +59,7 @@ test('Seedance beats cover the whole clip in whole seconds with no gaps, lines i
   const f = buildFinal({ kind: 'video', title: 'reel', subject: 'the Paw Warmer', visual: 'on a desk at night', seconds: 10, sound: true, refs: [{ job: 'product', label: 'the Paw Warmer' }], beats: [{ shot: 'Wide, the warmer glows on the desk', line: 'Cold hands?' }, { shot: 'A hand slides in, close up' }, { shot: 'The camera holds on the smile, sparkles' }], brand });
   assert.equal(f.model, MODELS.video); assert.deepEqual(f.settings, { aspect_ratio: '3:4', resolution: '1080p', duration: 10, sound: true }); /* Seedance has no 4:5: the nearest it offers */
   const beats = f.prompt.split('\n').filter((l) => /^\d+-\d+s:/.test(l)); assert.deepEqual(beats.map((l) => l.split(':')[0]), ['0-3s', '3-7s', '7-10s']);
-  assert.match(beats[0], /"Cold hands\?"$/); assert.ok(!/sparkles/.test(f.prompt)); assert.match(f.prompt, /No subtitles/); assert.match(f.prompt, /^Image 1 is the product, the Paw Warmer\./);
+  assert.match(beats[0], /"Cold hands\?"$/); assert.match(f.prompt, /No subtitles/); assert.match(f.prompt, /^Image 1 is the product, the Paw Warmer\./);
   const s = seedanceShots(brief({ kind: 'video', beats: [{ shot: 'a' }, { shot: 'b' }], seconds: 8 })); assert.match(s, /Shot 1: A\.\nShot 2: B\./);
   assert.match(seedanceBeats(brief({ kind: 'video', seconds: 5 })), /0-5s: The camera pushes in slowly on the product\./);
 });

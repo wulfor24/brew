@@ -41,7 +41,7 @@ export const fitTo = async (file, shape) => { const r = SHAPES[shape]; if (!r) r
     const fg = await sharp(file).resize(W, H, { fit: 'inside' }).toBuffer();
     return await sharp(bg).composite([{ input: fg, gravity: 'center' }]).jpeg({ quality: 90 }).toBuffer(); } catch { return null; } };
 /* the picture's words are in it: a Brew Studio take (gen/j2-…) or a version marked so */
-export const hasWords = (rel, p = {}) => !!rel && (p.wordsIn === rel || /^\/?gen\/j2-/.test(rel));
+export const hasWords = (rel, p = {}) => !!rel && (p.wordsIn === rel || (p.wordsInAll || []).includes(rel) || /^\/?gen\/j2-/.test(rel));
 
 /* Ads Editor wants one row per keyword with its match type in its own column: "minoxidil alternative (phrase)" → phrase */
 const kwRow = (s) => { const m = /^\[(.+)\]$/.exec(s) || /^"(.+)"$/.exec(s); if (m) return [m[1], s.startsWith('[') ? 'Exact' : 'Phrase'];

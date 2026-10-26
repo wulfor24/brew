@@ -94,17 +94,19 @@ export function createDrafts({ sourceOf = () => '', rivalAdOf = () => null, riva
   /* never an invented product: with no real photo there is no picture, and the jam says how to add one */
   const needPhoto = (src) => { if (!src) throw Object.assign(new Error('There is no product photo for this yet. Add one with + (Product photo) and try again.'), { soft: true }); return src; };
 
-  const makeImage = async (j, c, ratio, t = null) => {
+  const makeImage = async (j, c, ratio, t = null, wordsIn = false) => {
     const src = needPhoto(await productPhoto(c, j, t));
     /* our version of a rival's ad: its composition and look in words (rival-ad.js), our product the only picture; our words sit where theirs do */
     const rv = await rivalRead(t, c).catch(() => null);
     const pic = rv?.style ? rivalPicture(rv.ad, rv.style, { headline: j.headline || String(j.copy || '').replace(/[#*_>`]/g, '').split('\n').map((x) => x.trim()).find(Boolean) || '', button: (String(j.copy || '').match(/button[^:]*:\s*([^\n]+)/i) || [])[1] || '' }) : null; /* the words on the picture, never the draft's internal title */
     const prompt = pic ? buildDraft({ kind: 'image', title: j.title, visual: `${j.visual || ''} ${pic.visual}`, refs: [{ ...pic.refs[0], label: `${brandName(t) || 'the brand'}'s product` }], text: pic.text, hasSrc: true, ratio, brand: { style: pic.look } }).prompt : imagePrompt(j, true, c, { name: brandName(t), product: c?.refImages?.length ? '' : namedItem(t, j, c)?.t || '' }, { ratio, topSpace: !!j.headline });
     /* the guard tries the model again and the other Gemini model; with no picture at all, the real product photo stands in (failed) */
-    const buf = await geminiImage({ srcFile: src, prompt, ratio, named: cardNamed(t, c), text: [c?.make?.pieces, j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true });
-    const failed = !!buf?.guard?.genFailed, name = keyOf(prompt + ratio + (failed ? '|photo' : '')) + (failed ? '.jpg' : '.png');
+    /* a still ad's headline is set in the picture by Sloosh, in the brand's type (27 Oct); a clip's first frame stays clean (its words go on with headClip) */
+    const words = !pic && wordsIn && j.headline ? clean(j.headline).slice(0, 80) : null;
+    const buf = await geminiImage({ srcFile: src, prompt, ratio, named: cardNamed(t, c), text: [c?.make?.pieces, j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true, ...(words ? { words } : {}), kind: c?.make?.format || j.as });
+    const failed = !!buf?.guard?.genFailed, name = keyOf(prompt + ratio + (words || '') + (failed ? '|photo' : '')) + (failed ? '.jpg' : '.png');
     saveGen(name, buf);
-    return { name, buf, failed, rival: !!pic }; /* rival: the words sit in the picture already (our version of a rival's ad) */
+    return { name, buf, failed, rival: !!pic || (!!words && !failed) }; /* rival: the words sit in the picture already (our version of a rival's ad) */
   };
 
   /* the media makers live in createMakers (below), shared with the background first drafts (drafts-bg.js) */
@@ -135,7 +137,7 @@ export function createDrafts({ sourceOf = () => '', rivalAdOf = () => null, riva
       if (j.as === 'video') { d.ratio = d.ratio === '16:9' ? '16:9' : '9:16'; const no = budgetWhy('video'); if (no) throw Object.assign(new Error(`${no} The words and motion are here.`), { soft: true }); }
       if (!spend('image')) throw Object.assign(new Error((budgetWhy('image') || 'The image budget for today is used up.') + ' The words are here; try the picture tomorrow.'), { soft: true });
       step(t, w, d, j.as === 'video' ? 'Making the first frame' : 'Making the image');
-      const im = await makeImage(j, c, d.ratio, t); d.image = 'gen/' + im.name;
+      const im = await makeImage(j, c, d.ratio, t, j.as === 'image'); d.image = 'gen/' + im.name;
       /* the headline set on the picture in exact type (never drawn by the image model); a rival remake has its words in place already */
       if (j.headline) d.headline = clean(j.headline).slice(0, 80);
       if (j.as === 'image' && d.headline && !im.failed && !im.rival && launchBrowser && im.buf) d.render = await M.head(im.buf, { text: d.headline, small: smallOf(d.copy, d.headline) }, d.ratio, im.name).catch((e) => { log.warn('[draft headline]', e.message); return undefined; });
@@ -276,21 +278,26 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   /* product and brand name the subject ("The subject is the Paw Warmer"), never "The subject is The product." */
   const carousel = async ({ slides, src, lookLine = '', ratio, title, cardTitle, scene = '', named = null, product = '', brand = {}, id, slug = undefined, clean = (x) => String(x || ''), canSpend = () => true, onStep = () => {} }) => {
     const raws = []; let budgetHit = false; /* a slide refused by the day's picture budget: the caller makes the set again tomorrow */
-    for (let k = 0; k < slides.length; k += 3) {
-      onStep(`Making the photos (${Math.min(k + 3, slides.length)} of ${slides.length})`);
-      raws.push(...(await Promise.all(slides.slice(k, k + 3).map(async (x, m) => {
+    for (let k = 0; k < slides.length; k += k === 0 ? 1 : 3) { /* slide 1 first (the set's look), then three at a time */
+      const step = k === 0 ? 1 : 3;
+      onStep(`Making the photos (${Math.min(k + step, slides.length)} of ${slides.length})`);
+      raws.push(...(await Promise.all(slides.slice(k, k + step).map(async (x, m) => {
         if (!canSpend(k + m)) { budgetHit = true; return null; }
-        const prompt = buildDraft({ kind: 'image', title: `${title} carousel`, visual: `${x.visual || ''}${lookLine}`, scene: scene ? `The set as a whole shows what the card promises: ${scene}.` : '', index: k + m + 1, count: slides.length, topSpace: true, hasSrc: !!src, ratio, product: (product || named?.t) ? { name: product || named.t } : undefined, brand: brand?.name ? { name: brand.name } : {} }).prompt;
-        try { return await geminiImage({ srcFile: src, prompt, ratio, named, slug, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true }); } catch (e) { if (e.budget) budgetHit = true; log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
+        const prompt = buildDraft({ kind: 'image', title: `${title} carousel`, visual: `${x.visual || ''}${lookLine}`, scene: scene ? `The set as a whole shows what the card promises: ${scene}.` : '', index: k + m + 1, count: slides.length, hasSrc: !!src, ratio, product: (product || named?.t) ? { name: product || named.t } : undefined, brand: brand?.name ? { name: brand.name } : {} }).prompt;
+        /* slide 1 is the set's look: every later slide gets it as a reference (same light and colours, a new composition); each slide's
+           words are set in the picture by Sloosh, in the brand's type */
+        const first = k + m > 0 && raws[0] && !raws[0].guard?.genFailed ? [{ src: raws[0], job: 'style', label: 'slide 1 of this set', keep: 'the same light, colours and type style, a different composition and angle' }] : [];
+        try { return await geminiImage({ srcFile: src, prompt, ratio, named, slug, text: [x?.onSlide, title, cardTitle].filter(Boolean).join('. '), fallback: true, words: clean(x.onSlide), refs: first, kind: 'carousel' }); } catch (e) { if (e.budget) budgetHit = true; log.warn('[draft slide]', e.message); return null; } /* fallback: a slide with no new photo carries the real product photo under its words */
       }))));
     }
     if (!raws.some(Boolean)) throw Object.assign(new Error(budgetHit ? 'The slides wait for the picture budget.' : 'no slide photo came back'), { budget: budgetHit, noSlides: true });
-    onStep('Setting the words on each slide');
-    const browser = await launchBrowser(), out = [];
-    try { for (let i = 0; i < slides.length; i++) { if (!raws[i]) continue; const buf = await setType(browser, raws[i], { text: clean(slides[i].onSlide), small: clean(slides[i].small || ''), n: i + 1, of: slides.length }, ratio);
-      const name = keyOf(id + i + slides[i].onSlide) + '.jpg'; save(name, buf); out.push({ text: clean(slides[i].onSlide), image: 'gen/' + name, buf, n: i + 1 }); } }
-    finally { await browser.close().catch(() => {}); }
-    const r = { slides: out.map(({ text, image }) => ({ text, image })), image: out[0]?.image || null, made: raws.filter(Boolean).length, retried: raws.filter((b) => b?.guard?.retried).length };
+    /* the words are in each Sloosh picture already; a slide that fell back to the real product photo gets them set in exact type */
+    const out = []; let browser = null;
+    try { for (let i = 0; i < slides.length; i++) { if (!raws[i]) continue; let buf = raws[i];
+        if (buf.guard?.genFailed && launchBrowser) { browser ||= await launchBrowser(); buf = await setType(browser, raws[i], { text: clean(slides[i].onSlide), small: clean(slides[i].small || ''), n: i + 1, of: slides.length }, ratio); }
+        const name = keyOf(id + i + slides[i].onSlide + (buf === raws[i] ? '|sloosh' : '')) + (buf === raws[i] ? '.png' : '.jpg'); save(name, buf); out.push({ text: clean(slides[i].onSlide), image: 'gen/' + name, buf, n: i + 1, wordsIn: buf === raws[i] }); } }
+    finally { await browser?.close().catch(() => {}); }
+    const r = { slides: out.map(({ text, image, wordsIn }) => ({ text, image, ...(wordsIn ? { wordsIn: true } : {}) })), image: out[0]?.image || null, made: raws.filter(Boolean).length, retried: raws.filter((b) => b?.guard?.retried).length };
     if (zipBuffer && out.length > 1) { const z = keyOf(id + 'zip') + '.zip'; save(z, zipBuffer(out.map((x) => ({ name: `slide-${String(x.n).padStart(2, '0')}.jpg`, data: x.buf })))); r.zip = 'gen/' + z; }
     if (out.length < slides.length) r.err = `${slides.length - out.length} of ${slides.length} slides didn’t come through. The rest are here.`;
     const stand = raws.filter((b) => b?.guard?.genFailed).length; if (stand) { r.made -= stand; r.err = [r.err, `${stand} slide${stand > 1 ? 's use' : ' uses'} the real product photo for now.`].filter(Boolean).join(' '); }

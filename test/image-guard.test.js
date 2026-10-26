@@ -32,10 +32,10 @@ test('a different product is regenerated once, then replaced by the real photo',
   assert.equal(b2.toString(), 'HUKUM-PHOTO', 'never ships the wrong product'); assert.equal(b2.guard.fallback, true); assert.equal(b2.guard.genFailed, true, 'a stand-in photo is a failure, retried later');
 });
 
-test('when the check itself fails, a named product falls back to its real photo', async () => {
+test('when the check itself fails, the made picture is kept, marked unchecked: a raw store photo never stands in (27 Oct)', async () => {
   const { guard } = rig([new Error('down'), new Error('down')]);
   const buf = await guard({ srcFile: DEFAULT, prompt: 'p', text: 'The Hukum collection', catalog });
-  assert.equal(buf.toString(), 'HUKUM-PHOTO'); assert.equal(buf.guard.fallback, true);
+  assert.notEqual(buf.toString(), 'HUKUM-PHOTO'); assert.equal(buf.guard.unchecked, true); assert.ok(!buf.guard.fallback);
 });
 
 test('with no named product the caller photo is kept and still checked', async () => {

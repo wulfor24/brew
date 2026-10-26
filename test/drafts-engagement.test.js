@@ -123,21 +123,20 @@ test('slides the budget refused are a failure that waits for the reset, then the
 });
 
 /* ---------- 3. the headline, in exact type ---------- */
-test('the headline is set on the picture by Chromium, never asked of the image model, and the feed shows the set picture', async () => {
+test('a still ad headline is set in the picture by Sloosh, in the brand type, and the feed shows that picture (27 Oct; it was a Chromium panel)', async () => {
   const posts = [card({ id: 'm01-1', title: 'A Runner ad', src: 'Move 01', make: { format: 'single image ad', pieces: '1 static image: a nurse on a bench in the Runner, headline "Shift-proof", price line $40' } }),
     card({ id: 'm03-1', title: 'The Slide post', src: 'Move 03', make: { format: 'instagram post' } })];
   const { P, photo } = await setup(posts);
-  const pages = [], prompts = [], saved = new Map(), ai = fakeAI((n) => plan(n === 2 ? { headline: 'Slip on, walk out', visual: 'A hand drops the Slide by the door' } : {}));
-  const J = createDraftsBg({ packs: P, ai, geminiImage: async (o) => { prompts.push(o.prompt); return Buffer.from('png'); }, saveGen: (n, b) => saved.set(n, b), genFile: async () => photo, genFlush: async () => {}, photoAsync: async () => photo,
+  const pages = [], prompts = [], wordsAsked = [], saved = new Map(), ai = fakeAI((n) => plan(n === 2 ? { headline: 'Slip on, walk out', visual: 'A hand drops the Slide by the door' } : {}));
+  const J = createDraftsBg({ packs: P, ai, geminiImage: async (o) => { prompts.push(o.prompt); wordsAsked.push(o.words || null); return Buffer.from('png'); }, saveGen: (n, b) => saved.set(n, b), genFile: async () => photo, genFlush: async () => {}, photoAsync: async () => photo,
     launchBrowser: fakeBrowser(pages), spend: (k) => k !== 'video', loadPack: (slug) => P.load(slug, { fresh: true }), lastOpenOf: async () => NOW, log: quiet, env: { DRAFTS_BG: '1' }, now: () => NOW });
   await J.runOne('acme-com');
   const all = await J.cacheOf('acme-com'), d = all['m01-1'];
   assert.equal(d.headline, 'My feet stopped aching by noon'); assert.equal(d.headSmall, 'Shop the Runner', 'the button line under it');
-  assert.match(d.render, /^gen\/[a-f0-9]{16}\.jpg$/); assert.ok(saved.has(d.render.slice(4)));
-  const page = pages.find((h) => h.includes('My feet stopped aching by noon')); assert.ok(page, 'Chromium set the headline'); assert.match(page, /Shop the Runner/); assert.match(page, /data:image\/png;base64/);
-  assert.match(prompts[0], /keep the top third calm and simple, the words sit there/); assert.doesNotMatch(prompts[0], /My feet stopped|Shop the Runner|Shift-proof|\$40/, 'no words asked of the image model');
+  assert.equal(wordsAsked[0], 'My feet stopped aching by noon', 'the headline goes to Sloosh as the words to set'); assert.equal(d.wordsIn, true); assert.equal(d.render, undefined, 'nothing laid over it');
+  assert.ok(!pages.some((h) => h.includes('My feet stopped aching by noon')), 'no Chromium panel'); assert.doesNotMatch(prompts[0], /top third calm|Shift-proof|\$40/);
   assert.equal(sceneOf(posts[0]), 'a nurse on a bench in the Runner');
-  const v = draftView(d, posts[0]); assert.deepEqual(v.images, [d.render]); assert.equal(v.headline, 'My feet stopped aching by noon'); assert.ok(!v.photoOnly && !v.remaking);
+  const v = draftView(d, posts[0]); assert.deepEqual(v.images, [d.image]); assert.equal(v.headline, 'My feet stopped aching by noon'); assert.ok(!v.photoOnly && !v.remaking);
   // the plan opens on what buyers say, the rival ads that keep running, and (for the next card) the scenes already shown
   assert.match(ai.prompts[0], /WHAT BUYERS SAY[\s\S]*My feet stopped aching by noon, first time in years/); assert.doesNotMatch(ai.prompts[0], /box was crushed/, 'no low ratings');
   assert.match(ai.prompts[0], /RIVAL ADS THAT KEEP RUNNING[\s\S]*live 210 days, video ad; hook pattern: names a daily pain as a question; what stops the scroll: a sore foot/);

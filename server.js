@@ -26,6 +26,8 @@ import { createStore } from './store.js';
 import { B, BN, runIn, liveRe, setDefaultBrand, inBrand } from './brand-ctx.js';
 import { moneyWords, symOf } from './jam-words.js'; // prices as the store shows them, in every writer's words (26 Oct)
 import { createImageGuard } from './image-guard.js';
+import { createSlooshMake } from './sloosh-make.js'; // Sloosh makes and edits every picture and clip (27 Oct)
+import { setMakers } from './media.js';
 import { lookPrompt, lookVerdict } from './draft-quality.js'; // the look check every product picture passes before it is shown
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
 import { createBrandKit, toMarkdown, toJSON, llmsTxt } from './brand-kit.js'; // the Brand Book shared: /<slug>/brand, .md, .json, llms.txt, brand-kit.zip
@@ -51,7 +53,6 @@ import { watchView } from './watch-view.js';
 import { attachHealthStore, sourceTable, flush as healthFlush } from './source-health.js'; // how well each outside source works // What Brew watches for you: the four blocks
 import { PLATFORMS as SHELF_PLATFORMS } from './shelf.js';
 const SHELF_KEYS = Object.keys(SHELF_PLATFORMS);
-import { chain as mediaChain, openaiImage as openaiImageRaw, makeVideo } from './media.js';
 import { createVault } from './vault.js';
 import { createSlooshAuth } from './sloosh-auth.js';
 import { createSloosh } from './sloosh-mcp.js';
@@ -120,7 +121,6 @@ guardMovedSends({ isStaff: isFullAccess, current: () => inBrand()?.slug || null,
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const CLAUDE_MODELS = [process.env.FEED_CLAUDE_MODEL || 'claude-sonnet-5-5', 'claude-sonnet-5'];
 const GPROJECT = process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617';
-const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'; /* drafts on the cheap image model; a premium picture is an explicit Make the final (Sloosh, finals.js), never a first draft */
 const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 let MOCK = process.env.AI_MOCK === '1' || (PROVIDER === 'anthropic' && !ANTHROPIC_KEY); // Gemini needs only Google sign-in
 /* the day's AI budget (budget.js): one ceiling for the server and a share for each brand (DAILY_BRAND_SHARE, BRAND_<KIND>_CAP),
@@ -191,29 +191,6 @@ async function gToken() {
   const v = await new Promise((res, rej) => execFile('gcloud', ['auth', 'print-access-token'], { timeout: 15000 }, (e, out, err) => e ? rej(new Error(String(err || e.message).trim())) : res(out.trim())));
   tok = { v, exp: Date.now() + 40 * 60 * 1000 }; return v;
 }
-/* Vertex (Google ADC, never treg): the model asked for, then the other Gemini image model when it fails (an outage, a quota,
-   or a reply with no picture in it), so one model's bad minute never costs a draft its picture */
-const IMAGE_FALLBACK = process.env.GEMINI_IMAGE_FALLBACK || 'gemini-3-pro-image';
-/* refFiles: more reference pictures after the product photo (image 2, 3…), e.g. a rival's ad as the look for "Make our version" */
-async function geminiOnce({ srcFile, refFiles = [], prompt, ratio, model }) {
-  const t = await gToken();
-  const parts = [];
-  for (const f of [srcFile, ...refFiles].filter(Boolean)) { const b = fs.readFileSync(f); parts.push({ inlineData: { mimeType: IMG_MIME(b), data: b.toString('base64') } }); }
-  parts.push({ text: prompt });
-  const url = `https://aiplatform.googleapis.com/v1/projects/${GPROJECT}/locations/global/publishers/google/models/${model}:generateContent`;
-  const r = await fetch(url, { method: 'POST', headers: { authorization: `Bearer ${t}`, 'x-goog-user-project': GPROJECT, 'content-type': 'application/json' }, signal: AbortSignal.timeout(120e3),
-    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { aspectRatio: ratio || '1:1' } } }) });
-  if (!r.ok) { const t = await r.text(); noteVertex(r.status, t); throw new Error(`Gemini ${model} ${r.status}: ${t.slice(0, 300)}`); }
-  const j = await r.json();
-  const img = j.candidates?.[0]?.content?.parts?.find((p) => p.inlineData)?.inlineData;
-  if (!img) throw new Error(`Gemini ${model} returned no image (${j.candidates?.[0]?.finishReason || 'no reason'})`);
-  return Buffer.from(img.data, 'base64');
-}
-async function rawGeminiImage(o) {
-  const models = [...new Set([o.model || IMAGE_MODEL, IMAGE_FALLBACK, IMAGE_MODEL])];
-  let last; for (const model of models) { try { return await geminiOnce({ ...o, model }); } catch (e) { last = e; console.warn('[image] model failed', e.message.slice(0, 200)); } }
-  throw last;
-}
 /* every generated picture shows the right product (image-guard.js): the product the words name is the reference,
    and a vision check after each picture regenerates or falls back to the real photo on a mismatch */
 const IMG_MIME = (b) => (b[0] === 0x89 ? 'image/png' : b[0] === 0xff ? 'image/jpeg' : b.slice(0, 4).toString() === 'RIFF' ? 'image/webp' : b.slice(0, 3).toString() === 'GIF' ? 'image/gif' : 'image/jpeg');
@@ -239,23 +216,17 @@ const draftLooks = async (buf, words = '') => {
     { type: 'image', source: { type: 'base64', media_type: IMG_MIME(buf), data: buf.toString('base64') } }, { type: 'text', text: lookPrompt(words) }] }] });
   return lookVerdict((msg.content || []).map((x) => x.text || '').join(' '));
 };
-/* the draft image chain (media.js): Vertex Gemini (both models), then OpenAI gpt-image-1; the jam's image chip puts GPT Image
-   first when it is picked. Sloosh never sits here: it makes finals only, behind a button, through finals.js */
-const openaiImage = (o) => openaiImageRaw(o, { readFile: (f) => fs.readFileSync(f) });
-const rawImage = async (o, { gptFirst = false } = {}) => {
-  /* GPT Image takes the product photo only: a picture with a look reference (our version of a rival's ad) stays on Gemini, so
-     the look is never silently dropped */
-  const steps = [['gemini', () => rawGeminiImage(o)], ['gpt-image', OPENAI_KEY && !o.refFiles?.length && (() => openaiImage(o))]];
-  if (gptFirst) steps.reverse();
-  return (await mediaChain('image', steps, console)).buf;
-};
+/* every picture is made by Sloosh (sloosh-make.js, wired once finals exist below): the image guard's model. Nothing else makes
+   pictures: when Sloosh can't answer, the caller shows its loader and tries later (never a weaker model) */
+let slooshMake = null;
+const rawImage = async (o) => { if (!slooshMake) throw Object.assign(new Error('Sloosh is not ready yet'), { soft: true }); return slooshMake.image({ ...o, slug: o.slug || inBrand()?.slug || null }); };
 /* SVG, GIF, AVIF or HEIC product photos become PNGs before any model or check sees them (img-norm.js) */
 const imgNorm = createImageNorm({ withBrowser, log: console });
 const geminiImage = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o), verify: sameProduct, looks: draftLooks, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
 /* every picture the build (ad statics, the team's statics), background drafts and story watchers make counts against the day's
    image budget, the brand's share first (budget.js). The jam's own routes count theirs before calling imageGen */
 const countedImage = async (o = {}) => { if (!spend('image', o.slug)) throw Object.assign(new Error(budget.why('image', o.slug) || 'The image budget for today is used up.'), { soft: true, budget: true }); return geminiImage(o); };
-const imageGen = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o, { gptFirst: prefs().image === 'gpt-image' && !!OPENAI_KEY && !!o.srcFile && !o.refFiles?.length }), verify: sameProduct, looks: draftLooks, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
+const imageGen = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o), verify: sameProduct, looks: draftLooks, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
 
 // ---------- mock replies (free, used when AI is off or fails) ----------
 // three cuts of the card itself when the writer is off: its own numbers, its reason, a smaller first step.
@@ -594,9 +565,12 @@ const slooshAuth = createSlooshAuth({ packs, vault: createVault(packs), auth, lo
 const sloosh = createSloosh({ tokenFor: slooshAuth.tokenFor, log: console });
 /* finals (finals.js): the go-live image or video a team asks Sloosh for, quote first, behind a button; records per brand so a
    restart never pays twice (reconcileAll at boot); counted in budget 'credits' and in /api/ops/busy */
-const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, slugs: async () => (await packs.list()).map((x) => x.slug), log: console, geminiImage: countedImage, photo: photoAny,
-  onDone: async (slug, rec) => { const ok = await feedSvc?.finalDone?.(slug, rec); console.log(`[finals] ${slug} ${rec.runKey} ${rec.state} after the restart: ${ok ? 'landed on its card' : 'no card to land on'}`); return !!ok; }, /* a run reconcileAll settles lands where it was asked */ /* the Gemini fallback until Brew's workspace can pay: the drafts' own makers, counted in the image/video budget */
-  makeVideo: async (frame, prompt, { ratio = '9:16', seconds = 6, slug } = {}) => { if (!spend('video', slug)) throw Object.assign(new Error(budget.why('video', slug) || 'The video budget for today is used up.'), { soft: true, budget: true }); return makeVideo(frame, prompt, { ratio, seconds }, console); } });
+const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, slugs: async () => (await packs.list()).map((x) => x.slug), log: console, photo: photoAny,
+  onDone: async (slug, rec) => { const ok = await feedSvc?.finalDone?.(slug, rec); console.log(`[finals] ${slug} ${rec.runKey} ${rec.state} after the restart: ${ok ? 'landed on its card' : 'no card to land on'}`); return !!ok; } /* a run reconcileAll settles lands where it was asked */ });
+/* Sloosh makes and edits every picture and clip (sloosh-make.js): the image guard's model above, every clip (media.js), the jam's
+   engines and Studio. Each charge is recorded per brand (budget 'credits'), never capped while the account is unlimited */
+slooshMake = createSlooshMake({ sloosh, finals, packs, saveGen, genFlush, log: console, record: (slug, credits) => { if (slug && credits > 0) budget.spend('credits', slug, Math.ceil(credits)); } });
+setMakers(slooshMake);
 /* Sloosh's health for the ops alerts: when it needs a reconnect or can't pay, finals quietly go to Gemini, so staff hear it once a day */
 /* SLOOSH_CHECK=0: Sloosh is off on purpose here (production until Param says, 25 Oct): finals use Gemini and nobody is emailed about it */
 if (process.env.K_SERVICE && process.env.DEMO_MODE !== '1' && process.env.AI_MOCK !== '1' && process.env.SLOOSH_CHECK !== '0') { const slooshCheck = () => finals.status({ fresh: true }).then((st) => { if (!st.ok && !st.dummy) noteAlert('sloosh', st.fallbackWhy || st.why || 'not ready'); }).catch((e) => noteAlert('sloosh', e.message));

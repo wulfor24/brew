@@ -197,7 +197,7 @@ test('draft job picks the top cards that have no draft, never progress, live or 
   const top = pickTopCards(POSTS, { n: 6 });
   assert.equal(top.length, 6); assert.equal(top[0].id, 'm51-1', 'a fresh cadence move that asks for an asset leads');
   assert.ok(!top.some((c) => ['build-moves', 'heard-t-x', 'live-1'].includes(c.id)));
-  const have = { 'm51-1': { k: 2, key: draftKey(POSTS[1]) } }; assert.ok(!pickTopCards(POSTS, { n: 6, have }).some((c) => c.id === 'm51-1'), 'a cached draft is not made again');
+  const have = { 'm51-1': { k: 3, key: draftKey(POSTS[1]) } }; assert.ok(!pickTopCards(POSTS, { n: 6, have }).some((c) => c.id === 'm51-1'), 'a cached draft is not made again');
   const stale = { 'm51-1': { key: 'old' } }; assert.ok(pickTopCards(POSTS, { n: 6, have: stale }).some((c) => c.id === 'm51-1'), 'a draft for another move or format is made again');
   assert.equal(draftKind(POSTS[1]), 'image'); assert.equal(draftKind(POSTS[2]), 'video', 'a reel is drafted as a clip');
   assert.equal(draftKind(POSTS[3]), 'email'); assert.equal(draftKind(POSTS[4]), 'text'); assert.equal(draftKind(POSTS[5]), 'text');
@@ -213,9 +213,10 @@ test('draft gating: kill switch, mock, local, the 3-day open window and the dail
   assert.equal(draftsDue({}, draftsConfig({ LIVE_OFF: '1', DRAFTS_BG: '1' }), { now: NOW, lastOpen: open }).ok, true);
   assert.equal(draftsDue({}, cfg, { now: NOW, lastOpen: NOW - 4 * DAY }).ok, false);
   assert.equal(draftsDue({}, cfg, { now: NOW, lastOpen: 0 }).ok, false);
-  assert.equal(draftsDue({ spend: { day: '2026-10-14', usd: 3.99 } }, cfg, { now: NOW, lastOpen: open }).ok, false, 'the $4 day is spent');
-  assert.equal(draftsDue({ spend: { day: '2026-10-13', usd: 9 } }, cfg, { now: NOW, lastOpen: open }).ok, true);
-  assert.equal(cfg.dayCapUsd, 4);
+  const capped = draftsConfig({ DRAFTS_DAY_CAP_USD: '4' });
+  assert.equal(draftsDue({ spend: { day: '2026-10-14', usd: 3.99 } }, capped, { now: NOW, lastOpen: open }).ok, false, 'a set cap still holds');
+  assert.equal(draftsDue({ spend: { day: '2026-10-13', usd: 9 } }, capped, { now: NOW, lastOpen: open }).ok, true);
+  assert.ok(cfg.dayCapUsd >= 1e6, 'Sloosh is unlimited for now (27 Oct): counted, not capped');
 });
 
 test('the draft job caches each draft per card, respects the cap, and the jam opens with it', async () => {
