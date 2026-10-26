@@ -2008,7 +2008,7 @@
     const r = await tapi('GET', '/api/tenants/:t/work'); if (r.error) return;
     const known = new Set(WORK.notes.map((n) => n.id)), first = !WORK.loaded;
     // anything that moved: a lane change, a new reading, a new version, read state. Not every move posts a note (readings never do)
-    const sig = (x) => (x.items || []).map((w) => `${w.id}:${w.stage}:${w.updatedAt}:${w.unread ? 1 : 0}:${w.current}:${w.measure?.readings?.length || 0}:${w.result?.verdict || ''}`).join('|');
+    const sig = (x) => (x.items || []).map((w) => `${w.id}:${w.stage}:${w.lane?.k || ''}:${w.lane?.line || ''}:${w.updatedAt}:${w.unread ? 1 : 0}:${w.current}:${w.measure?.readings?.length || 0}:${w.result?.verdict || ''}`).join('|');
     const moved = !first && sig(r) !== sig(WORK), before = new Map(WORK.items.map((w) => [w.id, sig({ items: [w] })]));
     const wasMaking = new Set(WORK.items.filter((w) => w.creative?.state === 'making').map((w) => w.id));
     (r.items || []).forEach(teamFix); WORK = { ...r, loaded: true };
@@ -2655,12 +2655,18 @@
   // Lanes run in the order work moves; the server moves every item between them on its own.
   // lanes in the order that matters to you: what waits on you first, the background AI lane last and slim (Param 2026-10-16)
   /* every lane header is one short line of one height, so the underlines align; the full words and what the lane holds are its title */
+  /* the board by whose move it is (Param, 26 Oct: "this is missing: when AI is working, when AI has completed its work… planned from the
+     user's perspective, humans + AI"). The server puts each jam in one lane (jams.js laneOf, w.lane) with whose move it is and one line
+     for what comes next; Needs you is the same rule as the feed's count and the bell. `empty`: the quiet line a lane says with nothing in it */
   const WB_COLS = [
-    { k: 'you', name: 'Needs you', full: 'Needs you', sub: 'Someone is waiting on your answer', stages: ['needs_you'], emo: '✋', dot: 'var(--warn)' },
-    { k: 'drafting', name: 'Drafting', full: 'Drafting', sub: 'You and AI, before anyone else sees it', stages: ['drafting'], emo: '✏️', dot: 'var(--fg-3)' },
-    { k: 'with', name: 'With teammate', full: 'With a teammate', sub: 'A teammate is looking at it', stages: ['team'], emo: '💬', dot: 'var(--info)' },
-    { k: 'ready', name: 'Ready', full: 'Ready to share', sub: 'Approved; share the brief from the jam', stages: ['ready'], emo: '✅', dot: 'var(--ok)' },
-    { k: 'shared', name: 'Brief shared', full: 'Brief shared', sub: 'With our team or yours; the jam ends here', stages: ['shared'], emo: '📋', dot: '#16a37f' }];
+    { k: 'you', name: 'Needs you', full: 'Needs you', sub: 'Your answer, your yes or a fix', empty: 'Nothing is waiting on you.', dot: 'var(--warn)' },
+    { k: 'brew', name: 'Brew is on it', full: 'Brew is on it', sub: 'Making or writing now. You can leave', empty: 'Brew isn’t making anything right now.', dot: 'var(--info)' },
+    { k: 'look', name: 'Ready for you', full: 'Ready for you', sub: 'Brew finished: take a look', empty: 'Nothing new from Brew since you last looked.', dot: 'var(--ok)' },
+    { k: 'doing', name: 'In progress', full: 'In progress', sub: 'Drafts the team is shaping; nobody is waiting', empty: 'No drafts open.', dot: 'var(--fg-3)' },
+    { k: 'with', name: 'With a teammate', full: 'With a teammate', sub: 'Given to or asked of a teammate', empty: 'Nothing is with a teammate.', dot: '#8b5cf6' },
+    { k: 'sent', name: 'Brief sent', full: 'Brief sent', sub: 'Sent, opened, done', empty: 'No briefs sent yet.', dot: '#16a37f' }];
+  /* a jam's lane: the server's (w.lane), else the old stage rule for a list from before it */
+  const laneK = (w) => w.lane?.k || (needsMe(w) ? 'you' : ['team', 'needs_you'].includes(w.stage) ? 'with' : ['shared', 'out', 'measuring', 'result'].includes(w.stage) ? 'sent' : 'doing');
   // a remixed message keeps its copy as the title ("नमस्ते {first_name}, …"). On the board the title is what the work is; the copy goes underneath
   const MSGY = /\{\{?\s*\w+|\n|^(hi|hey|hello|dear|नमस्ते)\b/i;
   const wbTitle = (w) => { const t = String(w.title || curV(w)?.title || '').trim(); return !MSGY.test(t) && t.length <= 90 ? t : w.chg?.actionLabel || byId(w.cardId)?.title || plain(t).slice(0, 70); };
@@ -2689,26 +2695,28 @@
       <header class="card-head">${face(w.agent || 'brew')}<div class="who"><b>${esc(AGENT[w.agent] || 'Our team')}</b><span>${ago(w.updatedAt)}</span></div>${wbBadge(w)}</header>
       ${w.img ? `<div class="media portrait"><img src="${esc(w.img)}" alt="" loading="lazy"></div>` : ''}
       <div class="body">${(() => { const c = w.whose || w.cardSnap || {}, rv = rivalOf(c), wa = rv ? ourVersionOf(rv.name) : whoseAd({ ...c, images: c.images?.length ? c.images : w.img ? [w.img] : [] }); return wa ? `<small class="wb-whose">${esc(wa)}</small>` : ''; })() /* whose ad it is, like the feed: "Made for you" on our own (FEED-NOT-02) */}<h3>${w.unread ? '<i class="wb-new"></i>' : ''}${esc(wbTitle(w))}</h3>${wbBody(w)}</div>${wbFoot(w)}</article>`;
-  /* a creative Brew Studio is making for this jam, or just made: the Work card says so first (fresh for 40 minutes) */
-  const creativeSay = (w) => { const c = w.creative; if (!c || Date.now() - (c.at || 0) > 40 * 60e3 && c.state === 'making') return null;
-    return c.state === 'making' ? `<brew-load class="spin"></brew-load>Making ${esc(c.line || 'it')}` : c.state === 'made' && w.unread ? `Ready · ${esc(c.line || 'your creative')}` : c.state === 'failed' && w.unread ? `Couldn’t make it · ${esc(String(c.error || '').slice(0, 60))}` : null; };
-  const wbStrip = (w) => { const say = creativeSay(w) || (needsMe(w) ? `Answer ${esc(w.askMe?.who || w.with?.name || 'them')}` : w.stage === 'needs_you' ? `Waiting on ${esc(w.assignee?.name || 'your team')}` : w.stage === 'team' ? `With ${esc(w.with?.name || 'your team')}` : w.stage === 'ready' ? 'Approved · share the brief' : w.stage === 'shared' ? `Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}` : w.versions?.length > 1 ? `Draft v${w.current} of ${w.versions.length}` : 'Draft');
-    return `<div class="wb-strip is-${esc(needsMe(w) ? 'needs_you' : w.stage === 'needs_you' ? 'team' : w.stage)}">${w.unread ? '<i class="wb-new"></i>' : ''}<b>${say}</b><span>${ago(w.updatedAt)}</span>${ic('right', 's14')}</div>`; };
+  /* who has the next move: you, Brew, or a teammate's face, and its name */
+  const moverOf = (w) => { const x = w.lane?.who || { kind: needsMe(w) ? 'you' : 'team' };
+    if (x.kind === 'brew') return { av: brewAv(20), name: x.name && !/^brew$/i.test(x.name) ? x.name : PRODUCT };
+    if (x.kind === 'you') return { av: pAv(WORK.me || { email: 'you' }, 20), name: 'You' };
+    return { av: pAv(x, 20), name: String(x.name || 'A teammate').split(/\s+/)[0] }; };
+  const secsSince = (at) => Math.max(0, Math.round((Date.now() - (+at || Date.now())) / 1e3));
+  const runPct = (ln) => ln?.since && ln.eta ? Math.min(92, Math.max(4, Math.round(100 * secsSince(ln.since) / ln.eta))) : 30;
+  const etaSay = (s) => !s ? '' : s <= 90 ? 'usually about a minute' : s <= 240 ? `usually ${Math.round(s / 60)} minutes` : 'usually 3 to 8 minutes';
+  const wbStrip = (w) => { const k = laneK(w), ln = w.lane, m = moverOf(w), line = ln?.line || (needsMe(w) ? `Answer ${w.askMe?.who || w.with?.name || 'them'}` : 'Draft');
+    const time = k === 'brew' && ln?.since ? `<span data-since="${+ln.since}">${mins(secsSince(ln.since))}</span>` : k === 'look' ? '' : `<span>${ago(w.updatedAt)}</span>`; /* Ready for you: the line and Take a look, no age */
+    /* Brew's lane: a live clock and bar, and that you can leave (it lands in Ready for you) */
+    const run = k === 'brew' ? `<div class="wb-run"><div class="wb-bg-bar"><i data-from="${+ln?.since || 0}" data-eta="${+ln?.eta || 0}" style="width:${runPct(ln)}%"></i></div><small>${[etaSay(ln?.eta), ln?.usd != null ? `$${(+ln.usd).toFixed(2)}` : ''].filter(Boolean).join(' · ')}${ln?.eta || ln?.usd != null ? ' · ' : ''}You can leave: it lands in Ready for you</small></div>` : '';
+    return `<div class="wb-strip is-${esc(k)}" title="Next move: ${esc(m.name)}">${w.unread && k !== 'look' ? '<i class="wb-new"></i>' : ''}<span class="wb-mv">${m.av}<em>${esc(m.name)}</em></span><b>${k === 'brew' ? '<brew-load class="spin"></brew-load>' : ''}${esc(line)}</b>${time}${k === 'look' ? `<span class="wb-look">Take a look${ic('right', 's14')}</span>` : ic('right', 's14')}</div>${run}`; };
   const workTile = (w) => { const p = w.cardId && byId(w.cardId), i = p ? FEED.indexOf(p) : -1;
-    return i < 0 ? tileHtml(w) : `<div class="wb-fc${w.unread ? ' is-unread' : ''}" data-witem="${w.id}">${wbStrip(w)}${postCard(p, i)}</div>`; };
+    return `<div class="wb-fc is-${esc(laneK(w))}${w.unread ? ' is-unread' : ''}" data-witem="${w.id}" tabindex="0">${wbStrip(w)}${i < 0 ? tileHtml(w).replace(` data-witem="${w.id}"`, '') : postCard(p, i)}</div>`; }; /* every tile says whose move it is on top (26 Oct) */
   /* the background lane: many moves written at once read as one row, not one row each */
   const bgGroup = (xs) => { const runs = xs.filter((x) => /^bg-m/.test(x.id)), q = xs.filter((x) => /^bg-q/.test(x.id)), rest = xs.filter((x) => !/^bg-[mq]/.test(x.id));
     const one = runs.length > 1 ? [{ id: 'bg-mall', kind: 'run', t: `Writing ${runs.length} plays`, s: runs.slice(0, 3).map((x) => x.s).filter(Boolean).join(' · ') + (runs.length > 3 ? ` · ${runs.length - 3} more` : ''), meta: 'Each takes 6 to 9 minutes; they run side by side', pct: Math.round(runs.reduce((a, x) => a + (x.pct || 0), 0) / runs.length) }] : runs;
     const nx = q.length > 1 ? [{ id: 'bg-qall', kind: 'next', t: `Up next: ${q.length} plays`, s: q.map((x) => x.s).filter(Boolean).join(' · '), meta: 'Start as a slot frees up' }] : q;
     return [...one, ...rest, ...nx]; };
-  /* ---------- the Work board's last lane: what AI is doing in the background, right now ---------- */
-  const WB_IC = { ai: 'cpu', drafting: 'txt', with: 'chat', you: 'hand', ready: 'check', shared: 'copy' };
-  const AI_COL0 = { k: 'ai', name: 'AI is working on', sub: 'In the background, right now', stages: [], emo: '⚙️', dot: '#111' };
-  /* the lane says what is really happening: "Working on 1, 2 queued", "3 queued", never "working on 3" when all wait */
-  const bgState = (xs) => { const run = xs.filter((x) => x.kind === 'run').length, q = xs.filter((x) => x.kind === 'next' && x.id !== 'bg-w').length, f = xs.filter((x) => x.kind === 'fail').length;
-    const parts = [run && `working on ${run}`, q && `${q} queued`, f && `${f} stopped`].filter(Boolean), line = parts.join(', ');
-    return { name: run ? 'AI is working on' : q ? 'AI, queued' : 'AI in the background', n: run || q || f || xs.length, sub: line ? line[0].toUpperCase() + line.slice(1) : 'In the background, right now' }; };
-  const aiCol = () => { const b = bgState(BG.items); return { ...AI_COL0, name: b.name, sub: b.sub, count: b.n }; };
+  /* ---------- the background work in Brew is on it: plays, research and statics, under the jams ---------- */
+  const WB_IC = { you: 'hand', brew: 'cpu', look: 'sparkles', doing: 'txt', with: 'chat', sent: 'copy' };
   const BG = { items: [], t: null };
   const mins = (s) => s < 60 ? 'under a minute' : `${Math.round(s / 60)} min`;
   const loadBG = async () => {
@@ -2722,11 +2730,9 @@
         if (!b.inflight.length && b.done < 51 && !b.failed.length && !b.queue.length) out.push({ id: 'bg-w', kind: 'next', t: 'Waiting to start', s: b.state || '', meta: '' });
       } }
     /* every jam with a revision, picture or video being made right now (3.7): each its own tile with its step and time, several at once */
-    if (TID) { const j = await tapi('GET', '/api/jobs').catch(() => null); (j?.jobs || []).forEach((x) => out.push({ id: 'bg-j' + x.id + x.kind, kind: 'run', t: `${{ revision: 'Writing a new version', picture: 'Making a picture', video: 'Making a video' }[x.kind] || 'Working'}: ${x.title}`, s: x.step, meta: x.since ? `${mins(Math.round((Date.now() - x.since) / 1000))} so far` : '', pct: x.since ? Math.min(92, Math.round(100 * (Date.now() - x.since) / (x.kind === 'video' ? 6e5 : 12e4))) : 30, open: x.cardId ? `#remix=${encodeURIComponent(x.cardId)}/${encodeURIComponent(x.id)}` : null })); }
+    if (TID) { const j = await tapi('GET', '/api/jobs').catch(() => null); (j?.jobs || []).forEach((x) => out.push({ id: 'bg-j' + x.id + x.kind, kind: 'run', chId: x.id /* shown on its own jam in Brew is on it: not twice */, t: `${{ revision: 'Writing a new version', picture: 'Making a picture', video: 'Making a video' }[x.kind] || 'Working'}: ${x.title}`, s: x.step, meta: x.since ? `${mins(Math.round((Date.now() - x.since) / 1000))} so far` : '', pct: x.since ? Math.min(92, Math.round(100 * (Date.now() - x.since) / (x.kind === 'video' ? 6e5 : 12e4))) : 30, open: x.cardId ? `#remix=${encodeURIComponent(x.cardId)}/${encodeURIComponent(x.id)}` : null })); }
     const r = await api('/api/research'); (r?.running || []).forEach((k) => out.push({ id: 'bg-r' + k, kind: 'run', t: { ads: 'Reading rival ads', own: 'Reading your live ads', trends: 'Reading Google Trends', news: 'Reading industry news', howto: 'Writing this week’s playbooks' }[k] || 'Research', s: 'For your story rings', meta: 'A minute or two', pct: 50 }));
-    /* creatives Brew Studio is making right now, from any jam: in the background lane with what they cost */
-    WORK.items.filter((w) => w.creative?.state === 'making' && Date.now() - (w.creative.at || 0) < 40 * 60e3).forEach((w) => { const secs = (Date.now() - w.creative.at) / 1e3, vid = w.creative.kind === 'video';
-      out.unshift({ id: 'bg-cs' + w.id, kind: 'run', t: `Making ${w.creative.n > 1 ? `${w.creative.n} creatives` : vid ? 'a video' : 'a creative'}`, s: w.creative.line || w.title || '', meta: `${mins(secs)} so far · usually ${vid ? '3 to 8 min' : 'about a minute'}${w.creative.usd != null ? ` · $${(+w.creative.usd).toFixed(2)}` : ''}`, pct: Math.min(92, Math.round(100 * secs / (vid ? 360 : 70))) }); });
+    /* creatives Brew Studio is making ride on their own jams in Brew is on it (w.lane, 26 Oct), with their clock and cost */
     const was = JSON.stringify(BG.items); BG.items = out;
     if (view === 'work' && was !== JSON.stringify(out)) renderWork();
     BG.t = view === 'work' || view === 'moves' ? setTimeout(loadBG, 10e3) : null;
@@ -2739,21 +2745,22 @@
     view = 'work'; document.body.classList.add('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
     $$('.seg [role=tab]').forEach((t) => t.setAttribute('aria-selected', 'false'));
     const items = WORK.items.filter((w) => !w.archived && !w.discarded);
-    /* the AI lane only while AI is doing something; the five lanes only once something is in progress */
-    const ai = BG.items.length ? aiCol() : null, cols = ai ? [...WB_COLS, ai] : WB_COLS;
-    const nOf = (c) => c.count ?? by(c).length; /* the AI lane counts what is running, else what waits */
-    const by = (c) => c.k === 'ai' ? bgGroup(BG.items) : items.filter((w) => c.k === 'you' ? needsMe(w) : !needsMe(w) && (c.stages.includes(w.stage) || (c.k === 'with' && w.stage === 'needs_you'))).sort((a, b) => (b.unread - a.unread) || b.updatedAt - a.updatedAt);
+    /* six lanes by whose move it is (26 Oct). Brew is on it holds the jams it is making for, then the brand's background work (plays,
+       research, statics) as slim tiles; a job already shown on its jam is not shown twice */
+    const cols = WB_COLS, jamsOf = (k) => items.filter((w) => laneK(w) === k).sort((a, b) => k === 'brew' ? (+a.lane?.since || 0) - (+b.lane?.since || 0) : (b.unread - a.unread) || b.updatedAt - a.updatedAt);
+    const onJam = new Set(jamsOf('brew').map((w) => w.changeId).filter(Boolean)), bg = bgGroup(BG.items.filter((x) => !/^bg-cs/.test(x.id) && !(x.chId && onJam.has(x.chId))));
+    const by = (c) => jamsOf(c.k), nOf = (c) => by(c).length + (c.k === 'brew' ? bg.filter((x) => x.kind === 'run').length : 0);
     // the board redraws on its own as work moves: keep where you were scrolled, sideways and in every column
     const keep = $('#wb-deck') ? { x: $('#wb-deck').scrollLeft, y: Object.fromEntries($$('.wb-col').map((c) => [c.dataset.bcol, $('.col-body', c)?.scrollTop || 0])) } : null;
-    /* an empty lane is its title only: no 0, no placeholder sentence */
-    const lane = (c) => { const list = by(c), n = nOf(c), tip = c.k === 'ai' ? c.sub : `${c.full || c.name}: ${c.sub}`;
-      return `<section class="dcol wb-col${list.length ? '' : ' is-empty'}${c.k === 'ai' ? ' is-ai' : ''}" data-bcol="${c.k}" style="--lane:${c.dot}"><div class="col-head"><div class="col-top" title="${esc(tip)}"><h2><span class="col-emo" aria-hidden="true">${ic(WB_IC[c.k] || 'board', 's16')}</span>${esc(c.name)}</h2><span class="col-fill"></span>${n ? `<span class="wb-n">${n}</span>` : ''}</div><hr></div>
-          <div class="col-body">${c.k === 'ai' ? `<p class="wb-ai-sub">${esc(c.sub)}</p>` : ''}${list.map(c.k === 'ai' ? bgTile : workTile).join('')}</div></section>`; };
-    const head = `<div class="wb-head"><span><b>Work</b><small>From first draft to a shared brief. Cards move on their own as people reply.</small></span><button class="side-act" data-wbjam>${ic('hand', 's16')} Start a new jam</button><button class="side-act" data-nav="jams">${ic('book', 's16')} Jams in the Library</button></div>`;
-    const tabs = cols.filter((c) => nOf(c) > 0); /* phones and tablets: a chip per lane that has something */
+    /* an empty lane says one quiet line, never a 0 */
+    const lane = (c) => { const list = by(c), xs = c.k === 'brew' ? bg : [], n = nOf(c), tip = `${c.full || c.name}: ${c.sub}`;
+      return `<section class="dcol wb-col${list.length || xs.length ? '' : ' is-empty'}" data-bcol="${c.k}" style="--lane:${c.dot}"><div class="col-head"><div class="col-top" title="${esc(tip)}"><h2><span class="col-emo" aria-hidden="true">${ic(WB_IC[c.k] || 'board', 's16')}</span>${esc(c.name)}</h2><span class="col-fill"></span>${n ? `<span class="wb-n">${n}</span>` : ''}</div><hr></div>
+          <div class="col-body">${list.length || xs.length ? `<p class="wb-sub">${esc(c.sub)}</p>` : `<p class="wb-none">${esc(c.empty)}</p>`}${list.map(workTile).join('')}${xs.length ? `${list.length ? '<h4 class="wb-bg-h4">In the background</h4>' : ''}${xs.map(bgTile).join('')}` : ''}</div></section>`; };
+    const head = `<div class="wb-head"><span><b>Work</b><small>Each card says whose move it is: yours, Brew’s or a teammate’s.</small></span><button class="side-act" data-wbjam>${ic('hand', 's16')} Start a new jam</button><button class="side-act" data-nav="jams">${ic('book', 's16')} Jams in the Library</button></div>`;
+    const tabs = cols.filter((c) => c.k === 'you' || by(c).length || (c.k === 'brew' && bg.length)); /* phones and tablets: a chip per lane that has something, and Needs you always (its count, or its quiet line) */
     $('#view').innerHTML = `<div class="deck-wrap wb-deck"><div class="deck-main">${head}
-      ${!items.length ? `<div class="deck wb-zero-deck" id="wb-deck" style="--col-w:440px"><div class="wb-zero-main"><div class="wb-zero">${ic('board')}<h2>Nothing in progress yet</h2><p>Open a card in the feed and start a jam. It shows up here and moves on its own, from first draft to shared brief.</p><button class="btn btn-primary" data-nav="feed">${ic('feed', 's16')}Open the feed</button></div></div>${ai ? lane(ai) : ''}</div>`
-        : `<div class="wb-tabs" role="tablist">${tabs.map((c, i) => `<button role="tab" data-wbnav="${c.k}" aria-current="${i === 0}" title="${esc(c.full || c.name)}"><i style="background:${c.dot}"></i>${esc(c.name)}<em>${nOf(c)}</em></button>`).join('')}</div><div class="deck" id="wb-deck" style="--col-w:440px">${cols.map(lane).join('')}</div>`}</div></div>`;
+      ${!items.length ? `<div class="deck wb-zero-deck" id="wb-deck" style="--col-w:440px"><div class="wb-zero-main"><div class="wb-zero">${ic('board')}<h2>Nothing in progress yet</h2><p>Open a card in the feed and start a jam. It shows up here and moves on its own, from first draft to shared brief.</p><button class="btn btn-primary" data-nav="feed">${ic('feed', 's16')}Open the feed</button></div></div>${bg.length ? lane(WB_COLS[1]) : ''}</div>`
+        : `<div class="wb-tabs" role="tablist">${tabs.map((c, i) => `<button role="tab" data-wbnav="${c.k}" aria-current="${i === 0}" title="${esc(c.full || c.name)}"><i style="background:${c.dot}"></i>${esc(c.name)}${nOf(c) ? `<em>${nOf(c)}</em>` : ''}</button>`).join('')}</div><div class="deck" id="wb-deck" style="--col-w:440px">${cols.map(lane).join('')}</div>`}</div></div>`;
     // phones: the lane tabs follow your swipe
     { const d = $('#wb-deck'); let tm; if (d) d.addEventListener('scroll', () => { clearTimeout(tm); tm = setTimeout(() => { const cols = $$('.wb-col', d).filter((c) => c.offsetParent !== null), x = d.scrollLeft + 8; if (!cols.length) return; const cur = cols.reduce((a, c) => (c.offsetLeft - cols[0].offsetLeft <= x ? c : a), cols[0]); $$('.wb-tabs [data-wbnav]').forEach((b) => { const on = b.dataset.wbnav === cur.dataset.bcol; b.setAttribute('aria-current', on); if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }); }, 80); }, { passive: true }); }
     if (keep && $('#wb-deck')) { const d = $('#wb-deck'); d.style.scrollBehavior = 'auto'; d.scrollLeft = keep.x; $$('.wb-col').forEach((c) => { const b = $('.col-body', c); if (b) b.scrollTop = keep.y[c.dataset.bcol] || 0; }); d.style.scrollBehavior = ''; }
@@ -2763,11 +2770,15 @@
     const n = e.target.closest('[data-wbnav]'); if (n) { const col = $(`[data-bcol="${n.dataset.wbnav}"]`), d = $('#wb-deck'); if (col && d) d.scrollTo({ left: d.scrollLeft + col.getBoundingClientRect().left - d.getBoundingClientRect().left, behavior: e.isTrusted ? 'smooth' : 'instant' }); $$('[data-wbnav]').forEach((b) => b.setAttribute('aria-current', b === n)); return; }
     if (e.target.closest('[data-wbjam]')) openJam({});
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches?.('.wb-card[data-witem]')) e.target.click(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches?.('.wb-card[data-witem], .wb-fc[data-witem]') && e.target === document.activeElement) e.target.click(); });
+  /* Brew is on it ticks: the clock and the bar move every second while the board is open (26 Oct), between the 5 s reads */
+  setInterval(() => { if (view !== 'work' || document.hidden) return; $$('#wb-deck [data-since]').forEach((x) => { x.textContent = mins(secsSince(+x.dataset.since)); });
+    $$('#wb-deck .wb-run i[data-from]').forEach((x) => { const f = +x.dataset.from, e = +x.dataset.eta; if (f && e) x.style.width = `${runPct({ since: f, eta: e })}%`; }); }, 1000);
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-witem]'); if (!t) return;
     if (t.classList.contains('wb-fc') && e.target.closest('.card button, .card a, .card input, .card textarea, .card select, .card label, .card [data-more], .card .ask')) return; /* the feed card's own buttons work as in the feed */
     const w = WORK.items.find((x) => x.id === t.dataset.witem); if (!w) return; closePop();
+    if (t.classList.contains('wb-fc') && laneK(w) === 'look' && w.changeId && w.cardId && byId(w.cardId)) return openRemix(byId(w.cardId), w.changeId); /* Ready for you: straight to the made piece on the jam's stage (26 Oct) */
     // the exact item you tapped: one card can have several (one per remix), so never let the card pick its own
     openDetail(w.cardId && byId(w.cardId) ? { ...byId(w.cardId), _work: w } : pseudoPost(w));
   });
@@ -2784,7 +2795,8 @@
     // one row per jam: its newest note, with how many earlier ones it folds (readings would otherwise flood the list)
     const per = new Map(); all.forEach((n) => { const k = n.itemId || n.id; if (!per.has(k)) per.set(k, { ...n, more: 0, unread: n.read ? 0 : 1 }); else { const x = per.get(k); x.more++; if (!n.read) { x.unread++; x.read = false; } } });
     const rows = [...per.values()];
-    const you = rows.filter((n) => !n.read && (n.kind === 'needs_you' || WORK.items.find((w) => w.id === n.itemId)?.stage === 'needs_you')), rest = rows.filter((n) => !you.includes(n));
+    /* Needs you is the board's rule (w.waitsOnMe, jams.js whyWaits): a note about a jam waiting on you, never one waiting on a teammate (26 Oct) */
+    const you = rows.filter((n) => { const w = WORK.items.find((x) => x.id === n.itemId); return w ? needsMe(w) : !n.read && n.kind === 'needs_you'; }), rest = rows.filter((n) => !you.includes(n));
     const today = rest.filter((n) => now - n.at < 864e5), older = rest.filter((n) => now - n.at >= 864e5);
     const grp = (name, list) => list.length ? `<section class="np-g"><h4>${name}<em>${list.length}</em></h4>${list.map(noteRow).join('')}</section>` : '';
     const unread = all.filter((n) => !n.read).length; // same count as the bell badge
@@ -2821,7 +2833,7 @@
         if (pill && ids.length) { NEWIDS = ids; pill.hidden = false; pill.innerHTML = `<button data-newcards>${ic('up', 's14')}${ids.length} new card${ids.length > 1 ? 's' : ''} · show</button>`; }
         if ((r.updated || []).length) await redrawTakes(r.updated); /* the take landed on the card it was asked from, same place in the feed */ }
     }
-    pulseT = setTimeout(pulse, DP?.w && DP.w.stage === 'team' && window.BREW_DEMO ? 2500 : 10e3);
+    pulseT = setTimeout(pulse, DP?.w && DP.w.stage === 'team' && window.BREW_DEMO ? 2500 : view === 'work' && WORK.items.some((w) => w.lane?.k === 'brew') ? 5e3 : 10e3); /* Brew is on it: the move to Ready for you shows within seconds (26 Oct) */
   };
   /* the open jam: every 3 s it says who's here (and typing) and comes back only when the jam changed, so a teammate's
      message, edit or new version shows up within seconds (the server marks it read for you) */

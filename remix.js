@@ -1714,6 +1714,20 @@ export function createRemix(o) {
       if (ch.videoPending && VID_JOBS.has(ch.id)) out.push({ id: ch.id, cardId: ch.cardId, kind: 'video', title: name, step: ch.videoStep || 'Making the video', since: ch.videoAt || ch.videoPending?.at || null }); }
     return { jobs: out.sort((x, y) => (x.since || 0) - (y.since || 0)) };
   });
+  /* what Brew is doing on this jam right now, for the Work board's "Brew is on it" lane (26 Oct): one line, when it started and about how
+     long it takes. The Studio's make is saved on the jam (any instance sees it); a rewrite, the first words, a picture or a video are this
+     instance's own jobs (the same sets /api/jobs reads), so a restart never leaves a jam "on it" for ever */
+  const busyOf = (t, w) => { const cr = w?.creative, fresh = (at, ms) => Date.now() - (+at || 0) < ms;
+    if (cr?.state === 'making' && fresh(cr.at, 40 * 60e3)) { const vid = cr.kind === 'video'; return { k: 'make', line: `Making ${cr.line || (vid ? 'a video' : 'your creative')}`, since: cr.from || cr.at, eta: vid ? 360 : 70, usd: cr.usd ?? null }; }
+    const ch = w?.changeId && changes(t)?.[w.changeId]; if (!ch) return null;
+    if (ch.job && ITER_JOBS.has(ch.job.id)) return { k: 'words', line: ch.thinking?.step || 'Writing the next version', since: ch.job.at, eta: 90 };
+    if (ch.videoPending && VID_JOBS.has(ch.id)) return { k: 'make', line: ch.videoStep || 'Making the video', since: ch.videoAt || ch.videoPending?.at || null, eta: 360 };
+    if (ch.imagePending && IMG_JOBS.has(ch.id)) return { k: 'make', line: 'Making the picture', since: ch.imageAt || null, eta: 70 };
+    if (ch.ctaPending && CTA_JOBS.has(ch.id)) return { k: 'make', line: ch.ctaPending, since: ch.thinking?.at || null, eta: 90 };
+    if (ch.copyPending && FILL_JOBS.has(ch.id)) return { k: 'draft', line: 'Writing the first draft', since: +ch.copyPending || null, eta: 60 };
+    if (ch.thinking && fresh(ch.thinking.at, 300e3)) return { k: 'words', line: ch.thinking.step || 'Working on it', since: ch.thinking.at, eta: 60 };
+    return null; };
+  const finalOf = (t, w) => { const ch = w?.changeId && changes(t)?.[w.changeId]; if (!ch?.lastFinal?.versionId) return null; const v = versionsOf(t, ch.id).find((x) => x.id === ch.lastFinal.versionId); return v?.at ? { at: v.at } : null; }; /* a Sloosh final landed */
   on('GET', '/api/changes/:chid', async (b, t, p) => { const ch = C(t, p.chid); return ch ? { change: pubChange(t, evaluate(t, ch)) } : { error: 'not found' }; });
   /* Brew never changes the brand's accounts (read-only by design): a change that went out went to the team as a brief, and the next one is a new version */
   const editable = (ch) => (!['running', 'live', 'deploy_team'].includes(ch.state) ? null : ch.state === 'deploy_team' ? 'It’s in a shared brief. Share a new version from the jam instead.' : 'It was sent to your team. Open a jam for the next version.');
@@ -2413,7 +2427,7 @@ export function createRemix(o) {
     studioState(t, chId, { state: 'made', line: Array.isArray(take.missing) && take.missing.length ? `${label} · ${take.missing.length} couldn’t be made: open it to add ${take.missing.length > 1 ? 'them' : 'it'}` : label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
   const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; if (st.state === 'failed' && st.error && ch.studioState?.state !== 'failed') { ch.thread ||= []; ch.thread.push({ from: 'ai', text: `The make didn’t go through: ${st.error}${st.paid ? ` The tries cost about $${st.paid}; nothing more is charged.` : ' Nothing was charged.'}`, at: now(t), ...(Array.isArray(st.claims) && st.claims.length ? { claims: st.claims.slice(0, 6) } : {}) }); } /* the words it printed, approvable in the chat (26 Oct); the cost said as it was, never "nothing" when two tries were paid */
-    ch.studioState = { ...st, at: now(t) }; const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };
+    ch.studioState = { ...st, at: now(t), ...(st.state === 'making' ? { from: ch.studioState?.state === 'making' ? ch.studioState.from || ch.studioState.at : now(t) } : {}) }; /* from: when the make began, so the board's clock never restarts at "2 of 4 made" (26 Oct) */ const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };
   /* the product a jam's copy is about (the card's, or the one its words name now), with its catalog photo: Studio shows the same one */
   /* the product Studio sets up: the one the jam's words name, else the one the card names, else the one its first draft's pictures
      show (never a stale draft over the card's own product), and only then the brand's first in-stock product */
@@ -2463,5 +2477,5 @@ export function createRemix(o) {
     const r = recipeFor(c); if (!r.primary || r.actionKeys.includes(ch.action)) return false;
     if ((ch.thread || []).some((m) => m.from === 'you') || versionsOf(t, ch.id).some((v) => v.author === 'you' || v.studio || v.final)) return false;
     ch.discarded = true; ch.discardedWhy = `The card is ${actOf(r.primary).label}, not ${ch.actionLabel}`; w.changeId = null; return true; };
-  return { retype, productOfCh, landStudio, studioOf, studioState, remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
+  return { busyOf, finalOf, retype, productOfCh, landStudio, studioOf, studioState, remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
 }

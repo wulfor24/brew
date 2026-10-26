@@ -24,8 +24,8 @@ test('P0-1: a rows card with no rows and no picture has no slot; one naming a pr
 test('P0-2: "needs you" is the Work board\'s rule; the statics batch is finished work, never "needs you"', () => {
   assert.match(fsvc, /st: st\.statics\.state === 'done' \? 'Done'/);
   assert.doesNotMatch(fsvc, /s: st\.statics\.state === 'done' \? `\$\{st\.statics\.n\} ads ready for your review/);
-  assert.match(fsvc, /const mine = waitsOn\(w, me, studioOf\(t, w\)\);/, 'a jam says Needs you only when it waits on this viewer');
-  assert.match(fsvc, /const waiting = t\.work\.filter\(\(w\) => [^\n]*waitsOn\(w, meOf\(t\)\?\.email/, 'the brand story\'s "Waiting on you" too');
+  assert.match(fsvc, /const mine = waits\(t, w\);/, 'a jam says Needs you only when it waits on this viewer (one rule, feed-service waits: jams.js waitsOn, 26 Oct)');
+  assert.match(fsvc, /const waiting = t\.work\.filter\(\(w\) => [^\n]*waits\(t, w\)\)/, 'the brand story\'s "Waiting on you" too');
   const w = { id: 'w1', title: 'Budget rules', stage: 'needs_you', updatedAt: 2000, versions: [] };
   const say = (waits) => JSON.stringify(buildRecap({ since: 1000, sinceReal: 1000, work: [w], notes: [], cards: [], waits }));
   assert.match(say(() => true), /Needs your OK/);

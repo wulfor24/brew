@@ -115,7 +115,9 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
   /* one writing at a time per brief: the open's read and the PDF's warm-up asked at once and each wrote its own brief (26 Oct, QV P1-16) */
   const BUILDS = new Map();
   const build = (t, w, opts = {}) => { const k = `${w?.id || ''}|${w?.changeId || ''}|${opts.fresh ? 1 : 0}`, run = BUILDS.get(k); if (run) return run;
-    const p = build0(t, w, opts).finally(() => { if (BUILDS.get(k) === p) BUILDS.delete(k); }); BUILDS.set(k, p); return p; };
+    const p = build0(t, w, opts).finally(() => { if (BUILDS.get(k) === p) BUILDS.delete(k); }); BUILDS.set(k, p); p.at = Date.now(); return p; };
+  /* the brief being written right now, for the Work board's Brew is on it lane (26 Oct): when it began, else null */
+  const writing = (wid) => { for (const [k, p] of BUILDS) if (k.startsWith(`${wid}|`)) return p.at || Date.now(); return null; };
   const build0 = async (t, w, { fresh = false } = {}) => {
     const x = await handoff.build(t, w, { base: '' }); const key = keyOf(w, x), old = w.teamBrief;
     /* a brief written without the AI (offline, out of credit) is tried again at most every 15 minutes, never on every open: each open
@@ -256,5 +258,5 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
         w.teamBrief.pdf = { url: `gen/${name}`, name: fileName(v), bytes: buf.length, at: now(t) }; return { pdf: w.teamBrief.pdf, brief: view(w, x) }; }
       catch (e) { log.warn?.('[team brief pdf]', e.message); return { error: 'The PDF didn’t come together. Try again.' }; } });
   };
-  return { build, view, routes, pdfHtml, aiEdit, isBriefAsk, follow, forCh, opened };
+  return { build, writing, view, routes, pdfHtml, aiEdit, isBriefAsk, follow, forCh, opened };
 }
