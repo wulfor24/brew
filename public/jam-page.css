@@ -860,6 +860,59 @@
 /* the frame no longer guesses a width from the window height (it pinned a short window's ad at 240px): fitAd sizes the ad */
 .jp .jp-stage-in .cs-stage .cs-frame.is-preview{width:100%!important}
 
+/* ---------- QV 26 Oct (docs/qv/jam.md): layout, the bar and the frames, for every layout and brand ---------- */
+/* P1-10: a carousel ad on the slide stage is still an ad: its page header shows, its primary text is two whole lines under it (the
+   clamp rules above already forced the text on, so the header :811 hid left the copy jammed at the frame's top edge) */
+.jp .st-asset[data-stg] .as-meta:not(.is-story) .am-h{display:flex}
+.jp .st-asset[data-stg] .as-meta.lg:not(.is-story) .am-text{-webkit-line-clamp:2;max-height:2lh!important}
+/* P1-1: the sizes sit in the flow under the piece: sticky, they were pulled up over the slide dots whenever the stage ran a few px
+   short, and the stage's overflow (what stageFrames and fitAd measure) never showed it. The piece is fitted so nothing scrolls */
+.jp .cs-sizes{position:static}
+/* P1-1/P1-10: a set that still runs under the bar steps back (app.js stageFrames adds stg-tight): one line of copy, no card
+   description, the dots and sizes closer; the headline, the button and the dots always stay */
+.jp .st-asset[data-stg].stg-tight .as-meta.lg:not(.is-story) .am-text{-webkit-line-clamp:1;max-height:1lh!important;margin-bottom:6px!important}
+.jp .st-asset[data-stg].stg-tight .am-card figcaption span{display:none}
+.jp .st-asset[data-stg].stg-tight .am-card figcaption b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jp .st-asset[data-stg].stg-tight .am-h{padding-top:6px;padding-bottom:6px}
+.jp .st-asset[data-stg].stg-tight .stg-nav{margin-top:4px}
+.jp .st-asset[data-stg].stg-tight .stg-dot{width:26px;height:26px}
+.jp .st-asset[data-stg].stg-tight .cs-sizes{display:none} /* the size is in the Set-up sentence too */
+.jp .jp-stage-in.st-canvas:has(> .st-asset.stg-tight){padding-bottom:8px}
+/* P1-2: the bar's line keeps room to be read; a narrow stage (1024 wide with the panel) puts it on its own row over the buttons
+   when the window has the height for it, and it may take two lines before it is cut, the whole of it on hover */
+.jp .jp-stage{container:jp-stage/inline-size}
+@media (min-height:700px){@container jp-stage (max-width:860px){.jp .jp-ship{grid-template-columns:minmax(0,1fr)}
+.jp .jp-ship > .jp-tx{grid-column:1;grid-row:2}
+.jp .jp-ship > .jp-btns{grid-column:1;grid-row:3;justify-content:flex-end}}}
+.jp .jp-tx .jp-l{white-space:normal}
+.jp .jp-ship .ship-one{flex:1 1 auto;width:100%}
+.jp .jp-ship .ship-one > span{min-width:8em;white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:1.35}
+/* P1-13: the ask box stands on the Memory · Connectors line, never on top of it, however short the window (both were sticky at 0) */
+.jp .st-panel-b.is-chat{--cmp-foot-h:40px}
+.jp .st-panel-b.is-chat > .it-ask{bottom:var(--cmp-foot-h)}
+.jp .st-panel-b.is-chat > .cmp{position:sticky;bottom:0;z-index:4;box-sizing:border-box;min-height:var(--cmp-foot-h);margin:0 -16px;padding:6px 16px 10px;background:var(--bg)}
+@media (max-width:640px){.jp .st-panel-b.is-chat > .cmp{position:static}}
+/* P2-15/P2-7: one scroll on the stage, the stage's own; the frames inside it (a thread, an email, the old studio box) grow instead of
+   scrolling again, and the tag scrolls with the piece instead of floating over the words */
+.jp .jp-stage-in.st-canvas{position:relative}
+.jp .jp-stage-in > .st-asset{overflow:visible;min-height:auto}
+.jp .jp-framed .jp-thread,.jp .jp-framed .jp-mail{max-height:none;overflow:visible}
+/* P2-6: a slide's number sits top right when its words sit under the picture (bottom right covered them) */
+.jp .ig-slide:has(.ig-below) .ig-n{top:10px;bottom:auto}
+/* P2-5: the brand's logo in the avatar (contained, on white), and the profile grid is its own pictures */
+.jp .jp-post-av img.is-logo{object-fit:contain;background:#fff;padding:3px;box-sizing:border-box}
+.jp .jp-prof-grid{opacity:.9}
+.jp .jp-prof-grid i{background-position:center;background-size:cover;background-repeat:no-repeat}
+/* P2-20: "For:" reads as one left-aligned line in every layout, never centred with a hanging indent */
+.jp .jp-for{text-align:left;text-indent:0}
+.jp .jp-for .st-for{display:inline;text-align:left;font:inherit;line-height:inherit}
+/* P2-22: a priced link in a check list reads as a link in dark mode too, never as a disabled grey */
+.jp .linkbtn[data-cs-full],.jp .linkbtn[data-cs-open]{color:var(--fg);opacity:1}
+/* P2-16: on a phone the title keeps the room the hidden version and status controls leave */
+@media (max-width:640px){.jp .jp-ttl{max-width:none;flex:1 1 auto;min-width:0}
+.jp .jp-mode button{font-size:0;gap:0;padding:0 9px}
+.jp .jp-mode button svg{opacity:.55}}
+
 /* ---------- The panel, every state in one look (26 Oct, Param: "better the UI for the right side panel, for each state") ----------
    Chat, Set-up, Before it goes, Brief details: one header pattern (back link, the view's name, the width toggle), one gutter, one
    type scale (15 / 14 / 12.5), one radius (12), and quiet rows instead of boxes inside boxes. */
