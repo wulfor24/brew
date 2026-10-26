@@ -830,3 +830,5 @@
 .jp .jp-stage-in.st-canvas{padding-bottom:24px}
 .jp .jp-art.has-bg{background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.55)),var(--bg) center/cover no-repeat}
 .jp .jp-art .jp-mark{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:34%;max-width:120px;border-radius:24%;opacity:.95;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+/* the primary text as the feed shows it: three lines, then "…See more" (Meta cuts it there too) */
+.jp .as-meta.lg:not(.is-story) .am-text{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
