@@ -54,6 +54,7 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
     if (x.decided) L.push(`Decided: ${x.decided.name}. ${one(x.decided.says, 240)} What changes: ${one(x.decided.effect, 240)}`);
     if (x.page?.moves?.length) L.push('From the brand’s plan (moves):', ...x.page.moves.slice(0, 3).map((m) => `- Move ${m.n}: ${one(m.says || m.plain || m.title, 260)}`));
     if (x.pkg) L.push(`The package: ${x.pkg.action} on ${x.pkg.target} (v${x.pkg.version}) · ${x.pkg.money} · ${x.pkg.undo}`, 'Its fields:', ...x.pkg.fields.map((f) => `- ${f.label}${f.pub ? ' (customers see this)' : ''}: ${one(f.value, 400)}`));
+    if (x.pkg?.deliverable) { const d = x.pkg.deliverable; L.push(`The deliverable: ${d.name} (${d.platform}). ${d.what}.`, `Its rules: ${d.rules}.`, `Who makes and ships it: ${d.who}.`, `Files to hand over: ${d.files}.`); }
     const cr = creativesOf(x); if (cr.length) L.push(`Files attached: ${cr.map((c) => c.label).join(', ')}`);
     if (x.pkg?.notes?.length) L.push('The team’s notes:', ...x.pkg.notes.map((n) => `- ${one(n, 200)}`));
     if (x.pkg?.checks?.length) L.push('Their own checks before it ships:', ...x.pkg.checks.map((c) => `- ${c.text}${c.done ? ' (done)' : ''}`));
@@ -80,7 +81,7 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
   const fallback = (w, x) => { const bp = w.doc?.plan || {};
     return { title: x.pkg ? `${x.pkg.action}: ${x.card.title}` : x.title, what: x.pkg ? `${x.pkg.action}${x.pkg.target && !/^a person$/i.test(x.pkg.target) ? ` on ${x.pkg.target}` : ''}.` : x.card.title, /* plain words, never an internal family name */ why: one(x.page?.reason || x.card.sub, 500),
       who: bp.audience || 'To confirm.', creative: creativesOf(x).length ? `Use the attached ${creativesOf(x).length === 1 ? (creativesOf(x)[0].kind === 'video' ? 'video' : 'picture') : 'files'} as the final. Keep the real product exactly as it is.` : 'To confirm.',
-      specs: 'As the placement needs; to confirm.', rules: 'Use the real product photo, never a redrawn one.\nOnly claims the store and its reviews already make.', when: [bp.when, bp.budget, bp.owner].filter(Boolean).join(' · ') || 'To confirm.',
+      specs: x.pkg?.deliverable ? `${x.pkg.deliverable.what}.\nHand over: ${x.pkg.deliverable.files}.` : 'As the placement needs; to confirm.', rules: `${x.pkg?.deliverable ? `${x.pkg.deliverable.rules}.\n` : ''}Use the real product photo, never a redrawn one.\nOnly claims the store and its reviews already make.`, when: [bp.when, bp.budget, bp.owner].filter(Boolean).join(' · ') || 'To confirm.',
       done: 'The final files are back in the jam and approved.', open: [...(x.brief?.missing || []), ...x.questions.filter((q) => !q.a).map((q) => q.q)].slice(0, 6),
       evidence: x.card.rows.slice(0, 5).map(([k, v]) => ({ say: `${k}: ${v}`, src: 'The card' })) }; };
 

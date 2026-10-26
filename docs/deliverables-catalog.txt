@@ -1,0 +1,245 @@
+## Social: Instagram
+IG feed post|Instagram|C|pic|creative.ig_post|One 4:5 picture (1080×1350) with the product, caption with the hook in line 1, up to 5 hashtags, alt text|Caption ≤2,200; hashtags ≤5; claim check; no cure/regrow|Social manager|PNG + caption.txt
+IG carousel|Instagram|C|set|creative.ig_carousel|Up to 20 slides: promise on slide 1, save/share ask on the last; one style per slide; Hinglish option|1–20 slides; text readable at phone size; claims on each slide|Social manager|PNGs in order + caption
+Reel|Instagram|C|reel|creative.short_video|Script in beats (hook in 1–2s), captions burned in, then the 9:16 video; cover frame|≤3 min for the Reels tab; licensed audio only for business accounts; captions on|Editor or creator|MP4 + cover + .srt + caption
+Trial reel|Instagram|S|reel|NEW|Two hooks on one body, made as trial reels to test on non-followers first|Same as Reel; says which hook won before posting to followers|Social manager|2 MP4s + test note
+Story (3–5 frames)|Instagram|C|set|creative.ig_story|A 3–5 frame arc with one link sticker, a poll or quiz frame|9:16; text clear of top 14% and bottom 20%; one link|Social manager|PNG/MP4 frames + sticker notes
+Highlight covers|Instagram|C|set|NEW|Cover set in the brand kit: Reviews, How to use, Ingredients, Offers|1080×1920 with the icon centred in the circle|Designer|PNG set
+Broadcast channel message|Instagram|S|msg|NEW|A drop or poll for the brand's channel, written by the founder's voice|One message, one ask; no fake urgency (CCPA)|Founder or social|Text + image
+Collab post|Instagram|C|pic|NEW|Post co-authored with a creator or brand: shared caption, both handles, ASCI label|#collab/#ad up front; usage rights noted|Social + creator|PNG + caption + invite note
+Live session plan|Instagram|S|check|NEW|Run sheet for a Live: guest (derm/nutritionist), questions, product moments, pinned link|Qualified expert for health advice (ASCI 2025); no cure claims|Social + founder|Run sheet PDF
+Comment-to-DM keyword flow|Instagram|C|msg|NEW|“Comment ROUTINE to get the link”: post line, auto-reply DM, follow-up|One link; DPDP opt-in for follow-ups|Social / CRM (ManyChat)|Flow text + setup steps
+Comment and DM replies|Instagram|C|post|creative.comment_reply|Reply pack for the latest comments and DMs, in the language the person wrote|No incentives for reviews; escalate complaints|Social manager|Reply sheet
+Bio and link-in-bio|Instagram|C|page|NEW|Bio (150 chars) and up to 5 links ordered by what sells now|Links live; UTMs on each|Social manager|Bio text + link list
+## Social: Facebook
+Page post|Facebook|S|pic|NEW|Post for the older and tier-2/3 audience, often Hindi; image or link|Claim check; link with UTM|Social manager|PNG + text
+Facebook Reel|Facebook|S|reel|creative.short_video|The Instagram reel re-cut for Facebook, Hindi captions option|Same specs as Reel|Editor|MP4 + caption
+Brand group plan and post|Facebook|S|post|creative.fb_group_post|Weekly prompt for the brand's own group, plus group rules|Disclose the brand; no medical advice|Community manager|Post text + rules doc
+## Social: X (Twitter), Threads and text networks
+X post|X (Twitter)|S|post|creative.x_post|One post (≤280) for a moment or a reply-worthy take; image optional|280 characters; no rival put-downs (ASCI)|Social or founder|Text + image
+X thread|X (Twitter)|N|post|creative.x_post|Numbered thread, each post ≤280, hook first, link at the end|Each post ≤280; sources for numbers|Founder|Thread text, one block per post
+X Spaces / Community plan|X (Twitter)|N|check|NEW|Topic, speakers, run of show, follow-up post|Disclose sponsorship|Founder|Run sheet
+X customer-care replies|X (Twitter)|S|post|creative.comment_reply|Public reply then move to DM, for each open mention|No order details in public|Support|Reply sheet
+Threads post|Threads|S|post|NEW|Post ≤500 with an optional 10,000-character text attachment and one topic tag|One topic tag; link counted separately|Social or founder|Text
+Bluesky / Tumblr / Lemon8 post|Other|N|post|NEW|Same post adapted for the network (Lemon8 is not in India)|Network limits (Bluesky 300)|Social|Text + image
+## Social: LinkedIn
+LinkedIn post|LinkedIn|S|post|creative.linkedin_post|Founder story or hiring post: first 140 characters carry the hook|3,000 characters; no unbacked numbers|Founder|Text + image
+LinkedIn document carousel|LinkedIn|S|set|NEW|8–12 page PDF carousel at 1080×1350 from one idea|PDF ≤100 MB; one idea per page|Founder + designer|PDF
+LinkedIn article / newsletter|LinkedIn|N|page|NEW|Monthly founder letter as a LinkedIn article|Sources for every number|Founder|Article text + cover
+LinkedIn company page refresh|LinkedIn|S|page|NEW|Tagline, about, banner (1128×191), featured posts|Matches the Brand Book|Social|Text + banner PNG
+## Social: YouTube
+YouTube long video|YouTube|S|reel|NEW|Script and shot list for a tutorial, routine or founder documentary; Hindi version option|Title ≤100, description ≤5,000; claims checked|Editor / creator|Script + shot list + metadata
+YouTube Short|YouTube|C|reel|creative.short_video|The reel re-cut for Shorts with a link to a long video|≤3 min; 9:16|Editor|MP4 + title
+Thumbnail|YouTube|S|pic|NEW|1280×720 thumbnail: a face, 3–4 words, high contrast|Readable at 160 px wide|Designer|PNG
+Chapters, title and description|YouTube|S|page|NEW|Title, description with keyword and link in the first 2 lines, chapters from 0:00, tags|≥3 chapters ≥10s each; tags ≤500 chars|Social|Text
+Community post|YouTube|N|post|NEW|Poll, quiz or image post for subscribers|One question|Social|Text + image
+End screen and cards plan|YouTube|N|check|NEW|Which video or playlist each end screen and card points to|Last 5–20 seconds|Editor|Plan
+YouTube Shopping tags|YouTube|S|check|NEW|Products to tag per video (India: Flipkart/Myntra affiliate)|Products in stock|Social|Tag list
+## Social: other platforms
+Pinterest pin|Pinterest|S|pic|creative.pinterest_pin|2:3 pin (1000×1500) with keyword title and description|Title ≤100, description ≤500|Social|PNG + text
+Pinterest video pin / board|Pinterest|N|reel|NEW|6–15 second vertical pin and keyword board plan|9:16 or 2:3|Social|MP4 + board list
+Snapchat Story / Public Profile|Snapchat|S|set|NEW|Story frames for Gen Z, Hinglish|9:16|Social|Frames
+Snapchat Spotlight|Snapchat|S|reel|NEW|Short vertical video cut for Spotlight|9:16|Creator / editor|MP4
+Snapchat Lens brief|Snapchat|S|check|NEW|Brief for an AR lens: try-on or game, look, triggers|Lens Studio specs; brand safety|AR studio|Brief PDF
+Reddit post / reply / AMA|Reddit|S|post|creative.reddit_post|Answer-first reply or post that says who is posting; AMA plan|Each subreddit's rules; disclosure; no link in a first reply|Founder or social|Text + subreddit notes
+Quora answer|Quora|N|post|creative.quora_answer|Expert answer that AI answers can cite|Disclosure; sources|Founder / content|Text
+Telegram channel post|Telegram|N|msg|NEW|Deal or drop post for the brand's channel|4,096 chars (captions 1,024); no fake urgency|CRM|Text + image
+WhatsApp Channel update|WhatsApp|S|msg|NEW|One-way update: drop, poll or voice note|Opt-in audience only|CRM / social|Text + media
+WhatsApp Community plan|WhatsApp|S|check|NEW|VIP club: groups, rules, weekly rhythm, first announcement|Opt-in only (DPDP)|CRM|Plan + first message
+Discord server plan|Discord|N|check|NEW|Channels, roles, rules and launch posts for a fandom brand|Moderation rules|Community|Plan
+ShareChat / Moj post|ShareChat|S|reel|NEW|Vernacular short video and caption in the chosen Indian language|Language checked by a native reader|Creator / social|MP4 + caption
+Josh / Chingari video|Josh|N|reel|NEW|Short video for India short-video apps|9:16|Creator|MP4
+TikTok video / photo carousel (non-India)|TikTok|S|reel|NEW|TikTok-native video or up to 35-photo carousel for US brands; never for India|Region check: blocked for India brands|Social / creator|MP4 or images
+TikTok Shop listing / LIVE (US)|TikTok|S|page|NEW|Shop listing and a LIVE selling run sheet|US only|Marketplace / creator|Listing text + run sheet
+## Paid: Meta
+Single image ad|Meta Ads|C|pic|creative.add_variants|4:5 or 1:1 image, primary text (~125 shown), headline (~40), CTA, link|Claim check; text limits; product in stock|Media buyer|PNG + copy + bulk-upload CSV
+Single video ad|Meta Ads|C|reel|creative.add_variants|15–30s video with product in 3 seconds, captions on|4:5 or 9:16; captions|Media buyer|MP4 + copy + CSV
+Reels / Stories ad|Meta Ads|C|reel|creative.add_variants|9:16 cut with text clear of the bottom safe zone|Safe zones|Media buyer|MP4 + copy
+Carousel ad|Meta Ads|C|set|creative.carousel_ad|2–10 cards, each with its own headline and link|1:1 or 4:5; each link live|Media buyer|Card images + CSV
+Collection ad + Instant Experience|Meta Ads|S|set|creative.collection_ad|Cover (square) plus a product grid from the catalog|Products in stock; feed clean|Media buyer|Cover + product set
+Advantage+ catalog ad|Meta Ads|C|set|creative.catalog_ad|Catalog overlays (price, offer) and a feed-fix list|Feed titles, prices, images valid|Media buyer|Overlay spec + feed fixes
+Advantage+ creative pack|Meta Ads|C|set|NEW|10+ varied creatives from one idea for an Advantage+ sales campaign|Variety across hook, format, person|Media buyer|Pack zip + CSV
+Partnership ad (creator whitelisting)|Meta Ads|C|reel|NEW|Ad run from the creator's handle: brief, ad code request, copy|Usage rights contract; ASCI label|Media buyer + creator|Brief + copy + contract note
+Lead ad (instant form)|Meta Ads|S|page|NEW|Form questions, consent line, thank-you screen, follow-up message|DPDP consent wording|Media buyer|Form spec
+Click-to-WhatsApp ad|Meta Ads|C|msg|creative.whatsapp_ad|Ad plus the pre-filled message and the welcome flow|Opt-in; flow tested|Media buyer + CRM|Ad + flow text
+Threads ad|Meta Ads|N|pic|NEW|Image or carousel adapted for Threads|Meta specs|Media buyer|PNG + copy
+WhatsApp Status ad / promoted Channel|Meta Ads|S|pic|NEW|9:16 Status creative and copy|Meta specs|Media buyer|PNG/MP4 + copy
+Collaborative (retail) ad|Meta Ads|S|set|NEW|Meta ad pointing to the brand on Myntra, Nykaa or Amazon|Marketplace listing live|Media buyer|Creative + retailer link
+Pause the losers / stop rule / budgets|Meta Ads|C|acct|performance.pause_losers,performance.stop_rule,performance.scale_budget|Rows of ad sets to pause, scale, shift or limit, with the rule and the undo|Reads the live account; nothing new spent unless said|Media buyer|Change sheet + undo
+Exclude past buyers|Meta Ads|C|acct|performance.exclude_audience|Audience exclusion per ad set from the customer list|List size; undo|Media buyer|Change sheet
+Sold-out pauses and restarts|Meta Ads|C|acct|performance.pause_pointing,performance.restart_paused|Ads pointing at sold-out products to pause, and restart when back|Stock read today|Media buyer|Change sheet
+Price in ads|Meta Ads|S|acct|performance.price_in_ads|Every live ad that quotes an old price, with the new copy|Price matches the store today|Media buyer|Change sheet + copy
+Launch a test|Meta Ads|C|check|performance.new_test|Test plan: hypothesis, ad set, budget, read date, win rule|One variable per test|Media buyer|Test plan
+Swap a tired creative|Meta Ads|C|pic|creative.swap_creative,performance.swap_copy|New creative for the ad with the highest frequency|Frequency read from the account|Media buyer|Creative + CSV
+## Paid: Google and AI assistants
+Search ad (RSA)|Google Ads|C|page|performance.search_ad|15 headlines (30), 4 descriptions (90), paths, keywords and negatives|Character limits; claims; landing page live|Media buyer|Google Ads Editor CSV
+Search assets|Google Ads|C|page|NEW|Sitelinks, callouts, snippets, price and promotion assets|Limits per asset|Media buyer|Editor CSV
+Performance Max asset group|Google Ads|C|set|NEW|3–15 headlines, long headlines, descriptions, images in 3 ratios, logos, videos|Google's official limits; at least one headline ≤15|Media buyer|Asset group zip + CSV
+Merchant Center feed fixes|Google|C|acct|NEW|Title rewrites (brand + type + key attribute + size), GTINs, images, product types|Title ≤150, description ≤5,000|Media buyer / dev|Supplemental feed CSV
+Demand Gen ad|Google Ads|S|set|NEW|Image, video and carousel for YouTube, Discover, Gmail|Google specs|Media buyer|Assets + copy
+YouTube in-stream / bumper ad|Google Ads|S|reel|NEW|6s bumper and 15–30s skippable cut, hook before 5 seconds|Length per format|Editor / media buyer|MP4s
+YouTube Shorts ad|Google Ads|S|reel|NEW|10–30s vertical ad|9:16|Editor|MP4
+Responsive display ad|Google Ads|N|set|NEW|Images in PMax ratios + short and long headlines|Ratios|Media buyer|Assets
+Local inventory / Business Profile ads|Google Ads|N|acct|NEW|Store-level set-up for brands with stores|Stores listed|Media buyer|Plan
+AI Max settings brief|Google Ads|S|check|NEW|Which URLs to allow, brand controls, text customisation on/off|Brand safety|Media buyer|Settings brief
+ChatGPT ad|ChatGPT|S|pic|NEW|Sponsored unit copy and image for answers in the category (India live Aug 2026)|Claims; category rules|Media buyer / agency|Copy + image
+AI shopping product feed|ChatGPT / Perplexity|S|acct|NEW|Feed fixes so AI shopping answers show the right products and prices|Prices match the store|Dev|Feed CSV
+## Paid: marketplaces and quick commerce
+Amazon Sponsored Products|Amazon Ads|C|acct|NEW|Keywords, ASIN targets, negatives and bids to start or change|Reads search terms; no new spend unless said|Marketplace manager|Bulk sheet
+Amazon Sponsored Brands (+ video)|Amazon Ads|C|set|NEW|Headline (~50), logo, custom image, 15–30s video|Amazon specs; claims|Marketplace manager|Assets + bulk sheet
+Amazon Sponsored Display / DSP|Amazon Ads|S|acct|NEW|Audience and retargeting plan with creative|Amazon specs|Marketplace / agency|Plan + creative
+Flipkart ads|Flipkart|C|acct|NEW|Listing and contextual ad plan plus banner creative|Flipkart specs|Marketplace manager|Plan + banners
+Myntra ads|Myntra|C|acct|NEW|Listing, contextual and sale-event placements|Myntra specs|Marketplace manager|Plan + creative
+Nykaa ads|Nykaa|C|acct|NEW|Sponsored listings, banners, Pink Friday package plan|Nykaa specs|Marketplace manager|Plan + creative
+Meesho / AJIO / Tata CLiQ ads|Marketplaces|S|acct|NEW|Sponsored listing plan|Platform specs|Marketplace manager|Plan
+Quick-commerce ads|Blinkit · Zepto · Instamart|C|set|NEW|Search ads, banners and widgets; 0–15s video for Blinkit, 16–30s for Instamart|Pack readable at thumbnail; city stock|Key account manager|Banners + plan
+## Paid: other channels
+Snapchat ads|Snapchat|S|reel|NEW|Snap ad (9:16, 3–180s), Sponsored Snap message, Sponsored Lens brief|Snap specs|Media buyer|MP4 + copy
+Pinterest / LinkedIn / X / Reddit ads|Other ads|N|pic|NEW|Creative and copy adapted per network|Network specs|Media buyer|Assets + copy
+Microsoft (Bing) ads|Microsoft Ads|N|acct|NEW|Import plan from Google Ads with fixes|Same as Google|Media buyer|Import notes
+Audio ad|Spotify · JioSaavn · Pocket FM|S|reel|NEW|15–30s script, voice direction (Hindi/regional), companion banner|Claims; licensed music|Agency|Script + banner
+TV-screen / streaming ad|JioHotstar · YouTube TV|S|reel|NEW|10–30s 16:9 script and storyboard; IPL window plan|Broadcast claims rules|Agency|Script + storyboard
+Lock-screen / news-app ads|Glance · Inshorts · Truecaller|N|pic|NEW|Creative and copy per app|App specs|Agency|Assets
+Native ads + advertorial|Taboola · Outbrain|N|page|NEW|Headline set and an advertorial landing page|Labelled as sponsored (CCPA)|Media buyer|Headlines + page
+Outdoor / digital outdoor|OOH · DOOH|S|pic|NEW|Hoarding, metro, mall and society-gate designs: few words, big logo|Legible at distance|Agency|Print-ready PDFs
+Print ad|Newspapers · magazines|N|pic|NEW|Full page, jacket or insert, regional language option|Print specs, bleed|Agency|Print PDF
+Radio spot|FM|N|reel|NEW|10–30s script and city plan|Claims|Agency|Script
+Cinema ad|PVR INOX|N|reel|NEW|Cinema cut of the TV ad|Cinema specs|Agency|Script
+Affiliate network pack|Cuelinks · EarnKaro · vCommission|S|check|NEW|Commission sheet, creative pack, coupon rules|No misleading coupons|Media buyer|Sheet + assets
+## Marketplaces and listings
+Amazon title, bullets and backend terms|Amazon|C|page|storefront.listing_titles|Title (75 in some markets, 200 old), 5 bullets (~255), 249-byte search terms|New title rules per market; claims|Marketplace manager|Flat-file rows
+Amazon listing images|Amazon|C|set|storefront.listing_content|Main on white (≥2000 px), infographic, lifestyle, how-to|Main image white; no badges on main|Designer|Image set
+Amazon A+ / Premium A+|Amazon|C|set|storefront.listing_content|5 modules (7 for Premium) with copy and images|Module sizes; no price or review claims|Designer|Module images + copy
+Amazon Brand Story|Amazon|C|set|NEW|Brand story carousel above A+|Amazon sizes|Designer|Images + copy
+Amazon Brand Store|Amazon|S|page|NEW|Store pages: home hero, category tiles, best sellers|Amazon specs|Designer|Page plan + images
+Amazon listing video|Amazon|S|reel|NEW|Product video for the listing|Amazon video rules|Editor|MP4
+Amazon Rufus answers / Q&A|Amazon|S|page|NEW|Listing copy that answers likely questions; Q&A answers|Facts from the label|Marketplace manager|Text
+Amazon Vine plan|Amazon|S|check|NEW|Which products to enrol and when|Amazon rules|Marketplace manager|Plan
+Takedown request|Amazon / marketplaces|S|page|storefront.takedown|Request for a fake or infringing listing with evidence|Evidence attached|Marketplace manager|Request text
+Flipkart listing|Flipkart|C|page|storefront.listing_content|Title, key features, description, images|Flipkart rules|Marketplace manager|Listing sheet
+Myntra listing|Myntra|C|set|storefront.listing_content|3:4 images, size chart, fabric and fit notes|Myntra rules|Marketplace manager|Images + sheet
+Nykaa listing|Nykaa|C|page|storefront.listing_content|Ingredients, how to use, compliance-cleared claims|Cosmetics rules|Marketplace manager|Listing sheet
+AJIO / Tata CLiQ / Meesho / JioMart listing|Marketplaces|S|page|storefront.listing_content|Listing per platform|Platform rules|Marketplace manager|Listing sheet
+Quick-commerce listing|Blinkit · Zepto · Instamart|C|set|NEW|Hero packshot readable at thumbnail, back-of-pack and label images, short title with size|Label images legible; Legal Metrology|Key account manager|Image set + titles
+Sale-event pack|Big Billion Days · GIF · EORS · Pink Friday|C|brief|NEW|Deal plan and creative set for one sale event across every channel|Real discounts only (CCPA)|Marketing lead|Plan + creative pack
+Google Business Profile|Google|S|post|NEW|Posts (≤1,500), offers, products, photos, review replies|Facts match the store|Social / ops|Post text + photos
+Apple Business Connect|Apple Maps|N|post|NEW|Place card and Showcase|Apple specs|Ops|Text + image
+ONDC / brand app listing|ONDC|N|page|NEW|Listing for ONDC buyer apps|ONDC fields|Marketplace manager|Sheet
+## Owned web
+Homepage hero and sections|Website|C|page|storefront.new_section|Hero copy and image, section order, proof|Page speed; claims|Developer|Section spec + assets
+Product page copy|Website|C|page|storefront.page_copy|Title, promise, benefits, ingredients, how to use, results timeline, FAQ; COD/returns trust|Claims (cosmetics/FSSAI); facts from the label|Content / dev|Copy doc
+Product page blocks|Website|C|page|storefront.pdp_block|Proof block, comparison table, UGC strip, bundle upsell, sticky add-to-cart|ASCI comparative rules|Developer|Block spec
+Collection page intro|Website|C|page|storefront.page_copy|100–200 word intro with keywords and filter set-up|SEO basics|Content|Copy
+Ad-matched landing page / advertorial|Website|C|page|storefront.new_section|Page that repeats the ad's promise; advertorial or listicle version|Labelled advertorial; message match|Developer|Page spec + copy
+Quiz|Website|S|page|NEW|5–8 questions that end in a routine and capture consent|DPDP consent; no diagnosis|Developer / CRM|Quiz logic + copy
+Bundle / kit builder|Website|S|page|storefront.bundle_offer|Bundle tiles with real savings|No fake MRP (CCPA)|Developer|Spec
+Popup|Website|C|page|NEW|Email/WhatsApp capture, exit intent; no fake timers|CCPA false urgency; DPDP consent|CRM|Copy + rules
+Banner / announcement bar|Website|C|pic|NEW|Bar text and banner image|One message|Designer|Image + text
+Blog / SEO article|Website|C|page|visibility.blog_post|Article from keyword research, topic cluster plan, Hindi version option|Claims with sources|Content|Article + meta
+FAQ hub|Website|C|page|visibility.faq_entry|FAQ answers grouped by worry|Facts from the label|Content|Text
+AI answers (AEO): llms.txt, schema, fact pages|Website|S|page|visibility.llms_txt,visibility.new_claim|llms.txt, Product/FAQ/Review schema, citable fact pages, claims list|Valid schema; facts match|Developer|Files + JSON-LD
+Comparison / vs page|Website|S|page|NEW|Fair, verifiable comparison with a named rival|ASCI comparative rules|Content|Page copy
+Size guide / ingredient glossary / how-to|Website|S|page|NEW|Guide pages|Facts from the label|Content|Page copy
+Store locator|Website|N|page|NEW|Store list and map embed plan|Stores current|Developer|Spec
+About / founder story|Website|C|page|NEW|Story page in the founder's words|No unbacked claims|Founder / content|Copy
+Reviews and UGC wall|Website|C|page|NEW|Wall of real reviews and creator posts with permission|Genuine reviews only (CCPA)|CRM / dev|Spec + content
+Press, sustainability and policy pages|Website|S|page|NEW|Press page, sustainability claims page, policy pages|Green-claims rules|Content / legal|Copy
+Thank-you page and checkout copy|Website|S|page|NEW|Post-purchase upsell, prepaid-over-COD nudge (GoKwik, Shopflo)|No dark patterns|Developer|Copy
+Gift card and corporate gifting page|Website|S|page|NEW|Gifting pages and order form|DPDP|Developer|Copy + spec
+Fix dead links / store setting / price change|Shopify|C|acct|storefront.fix_links,storefront.store_setting,storefront.price_change|Rows of links, settings or prices to change, with undo|Read from the store today|Developer / store manager|Change sheet
+## Lifecycle and CRM
+Welcome series|Klaviyo / email|C|mail|crm.flow_copy|3–5 emails: promise, story, proof, first-order nudge|Gmail/Yahoo sender rules; one-click unsubscribe|CRM|Email HTML + flow map
+Browse abandon|Klaviyo / email|C|mail|crm.flow_copy|1–2 emails with the viewed product|Product in stock|CRM|Email HTML
+Cart abandon|Klaviyo / email|C|mail|crm.flow_copy|2–3 messages; no discount first|Price matches; no fake timers|CRM|Email HTML + timing
+Checkout abandon|Klaviyo / email|C|mail|crm.flow_copy|Reminder with trust (COD, returns)|Same|CRM|Email HTML
+Post-purchase / how to use|Klaviyo / email|C|mail|crm.flow_copy|How to use, what to expect by week, review ask later|Results timeline claims|CRM|Email HTML
+Replenishment reminder|Klaviyo / email|C|mail|crm.flow_copy|Timed to when the bottle runs out|Pack size and use rate|CRM|Email HTML + timing
+Win-back|Klaviyo / email|C|mail|crm.flow_copy|2–3 emails to lapsed buyers|Offer is real|CRM|Email HTML
+VIP flow|Klaviyo / email|C|mail|crm.flow_copy|Early access and perks for top buyers|Segment defined|CRM|Email HTML + segment
+Sunset / clean-up|Klaviyo / email|C|mail|crm.flow_copy|Last-chance email, then suppress|Deliverability|CRM|Email HTML + rule
+Review request|Klaviyo / email · Judge.me|C|mail|crm.review_ask|Ask after the product has had time to work|No incentives for positive reviews|CRM|Email HTML
+Back in stock|Klaviyo / email|C|mail|crm.flow_copy|Alert when the product returns|Stock confirmed|CRM|Email HTML
+Price drop / birthday / quiz follow-up / points expiry / subscription reminder|Klaviyo / email|S|mail|crm.flow_copy|Each flow's emails|Each flow's rules|CRM|Email HTML
+Send timing and segments|Klaviyo|C|acct|crm.flow_timing|Rows of timing and segment changes with undo|Reads the flows|CRM|Change sheet
+Retention offer|Klaviyo / store|C|acct|crm.discount_offer|Offer, who gets it, margin check|Real discount; margin|CRM|Offer sheet
+Email campaign / newsletter|Klaviyo / email|C|mail|NEW|Launch, sale, festival, educational or founder letter: subject 40–50, preheader 40–90|Sender rules; claims|CRM / designer|Email HTML
+SMS|SMS (DLT)|S|msg|NEW|160 chars (70 in Hindi/Unicode), header and template for DLT|DLT template, whitelisted link, 9am–9pm, -P header|CRM|DLT template + text
+WhatsApp broadcast|WhatsApp|C|msg|crm.paid_broadcast|Template: header media, body ≤1,024, buttons, carousel option; Hinglish|Opt-in; Meta frequency cap; template category|CRM|Template text + media
+WhatsApp flows (cart, COD confirm, delivery failed)|WhatsApp|C|msg|crm.flow_copy|Cart (marketing), COD confirmation and failed-delivery (utility) messages|Template category right; opt-in|CRM|Templates + flow map
+WhatsApp catalog / Flows form / bot|WhatsApp|S|msg|NEW|Catalog set-up, in-chat form, bot answers from the FAQ|Facts from the label|CRM|Spec + answers
+RCS rich message|RCS|S|msg|NEW|Rich card or carousel for Jio/Airtel/Vi|Verified business agent|CRM|Card spec
+Web / app push|Push|S|msg|NEW|Title ~50, body ~120, deep link|One message|CRM|Text
+In-app message|App|N|msg|NEW|Banner or modal copy for brand apps|One message|CRM|Text
+Loyalty programme|Store|S|check|NEW|Points, tiers, rewards and their copy|Margin; terms|CRM|Programme doc
+Referral programme|Store|S|check|NEW|Give/get offer and WhatsApp share text|Terms|CRM|Programme doc + copy
+Subscription programme|Store|S|check|NEW|Subscribe-and-save copy and rules|Clear cancel (CCPA subscription traps)|CRM|Copy + rules
+Calling / IVR script|Phone|N|check|NEW|COD confirmation call script|140/1600 numbers (TRAI)|Ops|Script
+Outreach email|Email|S|mail|crm.outreach_email|Email to a partner, salon, gym or journalist|No spam; one ask|Founder / sales|Email text
+New segment|Klaviyo|C|acct|crm.new_segment|Segment rules and size|Reads the list|CRM|Segment sheet
+## Creators, community and PR
+Influencer brief|Creators|C|brief|creative.creative_brief|One message, do's and don'ts, ASCI label, deliverables, dates|ASCI label; qualified for health advice|Social / creator|Brief PDF
+Creator shortlist and outreach|Creators|C|mail|crm.outreach_email|Shortlist with reasons and outreach DMs/emails|No spam|Social|List + messages
+Creator contract / statement of work|Creators|C|check|NEW|Deliverables, usage rights, whitelisting, exclusivity, disclosure, 194R TDS, GST|Legal review|Legal / social|Contract checklist
+UGC brief and shot list|Creators|C|brief|creative.film_brief|Hook options in one script, shot list, do's and don'ts|ASCI; no cure claims|Creator|Brief + shot list
+Affiliate / creator storefront programme|Creators|S|check|NEW|Wishlink, Amazon Influencer or Shopify Collabs set-up and commission|Terms|Performance|Programme doc
+Ambassador programme|Community|S|check|NEW|Who, perks, asks, rhythm|Disclosure|Community|Programme doc
+Seeding / PR box and gifting list|PR|C|brief|NEW|Box contents, note, who gets it, follow-up|194R TDS over ₹20k|PR / designer|Box spec + list
+Press release|PR|S|page|NEW|Release with quotes, facts and boilerplate|Every number sourced|PR|Release text
+Media pitch and list|PR|S|mail|NEW|Pitch email and list (ET, YourStory, Inc42, Vogue India)|One angle per outlet|PR|Pitch + list
+Founder bylined article|PR|S|page|NEW|Article in the founder's voice|Sources|Founder / PR|Article
+Podcast guest pitch|PR|N|mail|NEW|Pitch and talking points|Claims|PR|Pitch
+Award entry|PR|N|page|NEW|Entry answers and proof|Facts true|PR|Entry text
+Event / pop-up / stall|Events|S|check|NEW|Plan, booth, staff script, sampling, lead capture|DPDP consent for leads|Events|Plan + designs
+Webinar / live selling|Social|S|check|NEW|Run of show, guest, offers, follow-up|Real offers|Social|Run sheet
+AMA|Community|N|post|creative.reddit_post|Intro post and prepared answers|Disclosure|Founder|Text
+Co-brand collab drop|Brand|S|brief|NEW|Partner brief, product idea, launch plan|Both brands' rules|Brand lead|Brief
+Crisis statement and review responses|PR / ops|C|post|creative.comment_reply|Statement and replies to bad reviews|No incentives; facts only|Ops / PR|Statement + replies
+UGC rights request|Social|C|msg|NEW|DM asking a customer to use their post, with terms|Written permission saved|Social|DM text
+## Offline and retail
+Packaging copy and design brief|Packaging|C|brief|NEW|Front and back copy, claims, legal panel|Legal Metrology; FSSAI/Cosmetics rules|Designer / legal|Copy deck + brief
+Box insert / thank-you / QR card|Print|C|pic|crm.print_insert|Insert front and back with a QR to reviews, how-to or WhatsApp opt-in|Print bleed; QR works|Designer / printer|Print PDF
+Sample sachets / trial pack|Packaging|S|brief|NEW|Trial pack copy and where it goes|Label rules|Ops|Brief
+Shelf talker / wobbler / counter card / standee|Retail|S|pic|NEW|Retail print pieces with QR|Print specs|Designer|Print PDFs
+Salon / clinic kit and staff training deck|Retail|S|set|storefront.buyer_deck|Kit contents, staff deck, detailing aid|Claims for professionals|Sales|Deck PDF
+Sampling programme plan|Retail|S|check|NEW|Where (gyms, colleges, quick commerce), how many, how to measure|Consent for leads|Marketing|Plan
+Trade / B2B buyer deck|Retail|S|set|storefront.buyer_deck|Deck for modern trade and pharmacy chains|Numbers sourced|Sales|Deck PDF
+Distributor scheme sheet|Retail|N|check|NEW|Schemes and margins|Margin|Sales|Sheet
+Catalogue / line sheet|Retail|S|set|NEW|Product catalogue with prices and specs|Prices current|Designer|PDF
+Planogram / merchandising guide|Retail|N|check|NEW|Shelf layout and display rules|Store specs|Sales|Guide
+Booth / exhibition design|Events|N|pic|NEW|Booth panels and backdrop|Print specs|Designer|Print PDFs
+Corporate / festive gifting catalogue|Sales|S|set|NEW|Diwali gifting catalogue and order sheet|Prices current|Sales|PDF
+## Creative formats
+UGC / founder-led / explainer / unboxing video|Creative|C|reel|creative.short_video|Script and video in the chosen format|ASCI; licensed audio|Creator / editor|MP4 + script
+Before/after|Creative|S|pic|NEW|Representative before/after with the method stated|High risk: no retouching of results, no cure/fairness claims|Designer / legal|Image + proof note
+Testimonial ad|Creative|C|pic|NEW|Real review turned into a static or video|Genuine reviews only (CCPA)|Designer|PNG/MP4
+Meme / moment marketing|Creative|S|pic|NEW|Topical post in the brand voice|No copyrighted IPL/film material|Social|PNG + caption
+GIFs and WhatsApp sticker pack|Creative|N|set|NEW|GIPHY channel set and 3–30 stickers (512×512 WebP, <100 KB)|Sticker specs|Designer|WebP set
+AR effect brief|Creative|N|check|NEW|Lens brief for Snap or TikTok (Meta Spark closed 2025)|Platform rules|AR studio|Brief
+Music / jingle / sonic logo brief|Creative|N|check|NEW|Brief for a jingle or sound mark|Licensing|Audio studio|Brief
+Podcast host-read ad|Creative|N|reel|NEW|Host-read script and talking points|Claims|Agency|Script
+Static ad templates (us vs them, notes app, chat, listicle, review card)|Creative|C|pic|creative.add_variants|One static in a proven template|ASCI comparative rules|Designer|PNG + copy
+AI avatar / synthetic video|Creative|S|reel|NEW|Avatar video with an AI label where required|AI-content labelling (MeitY draft, Meta AI info)|Editor|MP4
+## Ops, analytics and planning
+Tracking fix|Meta · GA4 · Google|C|check|performance.tracking_fix|Pixel/CAPI audit, event match fix, GA4 event plan, enhanced conversions, COD-delivered offline upload|Test order shows in each tool|Developer|Checklist
+UTM plan|Analytics|C|check|NEW|Naming rules and a link sheet|One naming rule|Marketing|Sheet
+Test plan / creative test grid|Planning|C|check|performance.new_test|What to vary, budget, read date, win rule|One variable per test|Media buyer|Plan
+Budget / media / festive plan|Planning|C|check|performance.shift_budget|Spend by channel and week with stop lines|Reads past results|Marketing lead|Plan sheet
+Weekly / monthly report|Reporting|C|check|NEW|What happened, why, what next, from connected accounts|Numbers from accounts only|Marketing lead|Report PDF
+Lift / incrementality / MMM study plan|Analytics|S|check|NEW|Design of a holdout or MMM study|Method sound|Analyst|Plan
+Cohort and lifetime-value analysis|Analytics|C|check|NEW|Cohorts by month and channel with repeat rates|Store data|Analyst|Report
+Competitor teardown|Research|C|brief|NEW|Rival ads, prices and pages, with a plan to beat them|Rival content labelled theirs|Marketing lead|Teardown PDF
+SEO / CRO audit|Research|C|check|visibility.schema_fix|Issues with fixes, ordered by impact|Read from the site today|Developer / content|Checklist
+Review mining and customer research|Research|C|brief|NEW|What customers say, in their words, by theme|Real quotes only|Marketing lead|Research doc
+Support macros and bot knowledge base|Support|C|page|NEW|Macros and FAQ answers for Gorgias or the bot|Facts from the label|Support|Macro sheet
+Content calendar|Planning|C|check|NEW|Calendar by week with India festivals and sale events|Dates right|Social / marketing|Calendar
+Campaign brief|Planning|C|brief|creative.creative_brief|One brief for a campaign across channels|Rules from the Brand Book|Marketing lead|Brief PDF
+DPDP consent and notice audit|Legal|S|check|NEW|Where consent is collected, notice text, opt-out paths|DPDP Rules timeline|Legal / dev|Checklist
+Team plan / settle a question|Team|C|check|brew.plan,brew.resolution|Decision, owner, date, what it changes|—|Team|Plan
+Any brief (agency, client, email, PDF, voice)|Brief|C|brief|NEW|Reads any brief, finds the pieces, asks what's missing, opens each piece on its layout|Rules from the brief and the Brand Book|Whoever the brief names|Jam with one tab per piece
+Review reply pack|Judge.me · Google · Amazon|C|post|NEW|Replies to new reviews in the brand voice; bad ones get a fix and a contact path|No incentives; no order details in public|Support / CRM|Reply sheet
+Review summary block|Website|S|page|NEW|“What customers say” block on the product page from real reviews|Genuine reviews only; counts true|Developer|Block spec + text
+Clip pack from a long video|Creative|S|set|NEW|5–10 short clips with captions cut from one long video, podcast or Live|Captions; rights to the footage|Editor|MP4s + captions
+Translate or dub any piece|Creative|C|brief|NEW|Hindi, Hinglish or regional version of any piece; voice dub for video|Native reader check; claims unchanged|Whoever ships the original|Same files, per language
+Stock-aware promo plan|Store · ads|S|acct|NEW|Products with too much or too little stock turned into promote, pause or bundle actions|Stock read today|Marketing lead|Change sheet
+Listening digest|Research|C|brief|NEW|What people said this week about the brand and category, with quotes and what to do|Sources named; failed sources said|Marketing lead|Digest
+AI-search visibility check|Research|C|check|NEW|Which AI answers name the brand and rivals, for which questions, and the fixes|Real answers read this week|Content / SEO|Report + fixes
