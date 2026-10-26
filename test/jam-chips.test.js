@@ -27,7 +27,7 @@ test('every studio family gets a pack: README first, its own files, and nothing 
     const r = await pack(family, action, pkg);
     assert.equal(names(r)[0], 'README.txt', family);
     for (const f of EXPECT[family]) assert.ok(names(r).includes(f), `${family}: ${f} in ${names(r)}`);
-    assert.match(r.readme, /changes nothing in your accounts/, family);
+    assert.match(r.readme, /change nothing in your accounts/, family);
     assert.match(r.readme, /WHERE EACH PART GOES\n- /, `${family}: says where it goes`);
     for (const e of r.entries) assert.doesNotMatch(e.data.toString('latin1'), /posted to|published to|we posted|is live now/i, `${family} ${e.name}`);
     assert.doesNotMatch(r.readme, /^0$/m, `${family}: no stray 0 line`);
@@ -46,7 +46,7 @@ test('pack contents: Ads Editor rows with match types, a marketplace CSV, FAQ ma
   const v = await pack('vis', 'llms_txt', { file: 'llms.txt', entries: [{ q: 'Is it vegan?', a: 'Yes.', source: 'Label' }] });
   assert.ok(names(v).includes('llms.txt')); assert.match(text(v, 'faq-jsonld.html'), /"@type": "FAQPage"/); assert.match(text(v, 'llms.txt'), /## Is it vegan\?\nYes\.\nSource: Label/);
   const m = await pack('meta_ops', 'pause_losers', { summary: 'Pause two', items: [{ name: 'Set A', now: 'On', next: 'Paused' }], rule: 'CPA over stop line 48h' });
-  assert.match(text(m, 'do-this-in-ads-manager.txt'), /Brew changes nothing in your ad account/); assert.match(text(m, 'ads-manager-changes.csv'), /Set A,On,Paused/);
+  assert.match(text(m, 'do-this-in-ads-manager.txt'), /We change nothing in your ad account/); assert.match(text(m, 'ads-manager-changes.csv'), /Set A,On,Paused/);
   const p = await pack('print', 'print_insert', { front: 'Thanks', size: 'A6 card', quantity: 500, goesIn: 'Every box' }, { renderPdf: async () => Buffer.from('%PDF-1.4 fake') });
   assert.ok(names(p).includes('print.pdf') && !names(p).includes('print.html'), 'a PDF when the renderer works');
   const p2 = await pack('print', 'print_insert', { front: 'Thanks', size: 'A6 card' }, { renderPdf: async () => { throw new Error('no chrome'); } });
@@ -79,7 +79,7 @@ test('impact: a labelled estimate from the grade, the family and real account ro
   assert.equal(x.window, 14, 'the family’s window leads'); assert.deepEqual(x.rows.map((e) => e.key), ['meta.spend.30d']);
   const r = rulesImpact(x);
   assert.equal(r.metric, 'Cost per first order'); assert.equal(r.direction, 'down'); assert.ok(r.low < r.high && r.low >= 0);
-  assert.ok(r.basis.some((b) => /graded this move 3 of 5/.test(b)) && r.basis.some((b) => /Meta spend, 30 days: ₹1,20,000/.test(b)));
+  assert.ok(r.basis.some((b) => /graded this play 3 of 5/.test(b)) && r.basis.some((b) => /Meta spend, 30 days: ₹1,20,000/.test(b)));
   assert.ok(!JSON.stringify(r).includes('9.9x'), 'a simulated row is never a basis');
   const none = rulesImpact(impactInputs({ card: {}, ch: {}, recipe, measure: { from: 'meta' }, ledger: [], connected: {} }));
   assert.equal(none.confidence, 'low'); assert.ok(none.assumptions.some((a) => /no grade yet/.test(a)) && none.assumptions.some((a) => /isn’t connected/.test(a)));

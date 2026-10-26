@@ -1,7 +1,7 @@
 {
   "name": "Brew Feed",
   "short_name": "Brew",
-  "description": "Your growth feed: ideas, jams, work and results from Brew.",
+  "description": "Your growth feed: ideas, jams, work and results, in one place.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

@@ -6,6 +6,7 @@
   // the brand this page is for (server.js injects its seed): a generated brand's, or the Brew landing shell
   const BR = window.BRAND || Object.keys(window.FEED_DATA)[0];
   const B = window.FEED_DATA[BR];
+  const PRODUCT = globalThis.PRODUCT_NAME || ''; /* the product's public name (product-name.js, set in the page head) */
   // the reviews connector goes by its app's own name when we know it (Judge.me, Loox), from its name, account or the read's review platforms
   { const rc = B?.connectors?.reviews; if (rc) { const t = [rc.name, rc.account, ...(B.reviews?.platforms || []).map((p) => p?.name)].join(' ');
     rc.name = /judge\.?me/i.test(t) ? 'Judge.me' : /loox/i.test(t) ? 'Loox' : String(rc.name || 'Reviews').replace(/^(reviews on\s+)+/i, 'Reviews on '); } }
@@ -86,7 +87,7 @@
   const workEmailHref = () => { const back = location.pathname + location.search + location.hash; return window.LIVE?.me ? `/auth/logout?next=${encodeURIComponent(`/auth/google?next=${encodeURIComponent(back)}`)}` : `/auth/google?next=${encodeURIComponent(back)}`; };
   const demoSheet = (host) => setTimeout(() => demoSheetNow(host), 120); // after the click's own render, which may close sheets
   const demoSheetNow = (host) => { if (document.querySelector('.demo-sheet')) return; if (window.LIVE?.access?.full || window.LIVE?.full) return; /* Brew's own people have every brand: switching email can't help them */ const h = host || window.LIVE?.access?.host || B.brand.host, n = B.brand.name, me = window.LIVE?.me;
-    modal(`<div class="sheet demo-sheet"><h3>You’re seeing ${esc(n)} in demo mode</h3><p>Brew makes new work for ${esc(n)}${/s$/i.test(n || '') ? '’' : '’s'} team. Sign in with your work email at ${esc(h)}, or ask the team to invite you.${me ? ` You’re signed in as ${esc(me.email)}.` : ''}</p>
+    modal(`<div class="sheet demo-sheet"><h3>You’re seeing ${esc(n)} in demo mode</h3><p>We make new work for ${esc(n)}${/s$/i.test(n || '') ? '’' : '’s'} team. Sign in with your work email at ${esc(h)}, or ask the team to invite you.${me ? ` You’re signed in as ${esc(me.email)}.` : ''}</p>
       <div class="cx-btns"><a class="btn btn-ghost" href="${DEMO_STORES}" target="_blank" rel="noopener">See demo stores</a><a class="btn btn-primary" href="${workEmailHref()}">${me ? 'Switch to your work email' : 'Sign in with your work email'}</a></div></div>`); };
 
   /* ---------- icons (lucide, 2px) ---------- */
@@ -157,7 +158,7 @@
   };
   const ic = (k, s = '') => `<svg class="ic ${s}" viewBox="0 0 24 24" aria-hidden="true">${P[k]}</svg>`;
   const SO = (bg = 'currentColor', ink = 'var(--bg)') => `<svg viewBox="0 0 200 200" aria-hidden="true"><rect width="200" height="200" rx="56" fill="${bg}"/><path d="M62 38h26v62.5a50 50 0 1 1-26 43.8z" fill="${ink}"/><circle cx="112" cy="138" r="24" fill="${bg}"/><path d="M128 30c10 9 10 19 0 28M150 34c10 9 10 19 0 28" fill="none" stroke="${ink}" stroke-width="9" stroke-linecap="round"/></svg>`; // the Brew mark
-  const AGENT = { creative: 'Creative director', performance: 'Performance marketer', storefront: /[?&]storefront=1\b/.test(location.search) ? 'Storefront manager' : 'Catalog manager' /* Storefront hidden: it owns catalog cards (FEED-ARV-05) */, visibility: 'AI visibility', crm: 'CRM specialist', brew: 'Brew' };
+  const AGENT = { creative: 'Creative director', performance: 'Performance marketer', storefront: /[?&]storefront=1\b/.test(location.search) ? 'Storefront manager' : 'Catalog manager' /* Storefront hidden: it owns catalog cards (FEED-ARV-05) */, visibility: 'AI visibility', crm: 'CRM specialist', brew: PRODUCT };
   const face = (a) => `<span class="face ${a}" aria-hidden="true"><i></i><i></i></span>`;
   // real brand marks: a padded mark on a white tile, or the brand's own full-bleed app icon; marketplaces stack three
   const LOGOS = { shopify: ['shopify.svg'], meta: ['meta.svg'], google: ['google.svg'], ga4: ['google-analytics.svg'], whatsapp: ['whatsapp.svg'], slack: ['slack.svg'], klaviyo: ['klaviyo.png'], loox: ['loox.png', 1], judgeme: ['judgeme.png', 1], amazon: ['amazon.svg', 1], nykaa: ['nykaa.png', 1], blinkit: ['blinkit.png', 1], flipkart: ['flipkart.svg'], myntra: ['myntra.png', 1], walmart: ['walmart.svg'], target: ['target.svg'], etsy: ['etsy.svg'], ebay: ['ebay.svg'] };
@@ -179,7 +180,7 @@
     return `<span class="cx-glyph" style="--gc:${c.color};width:${size}px;height:${size}px;font-size:${Math.round(size * .5)}px">${esc(c.glyph)}</span>`; };
   const avatar = (c, s = 28) => `<span class="av" style="--ac:${c.color};width:${s}px;height:${s}px">${esc(c.ini)}</span>`;
   /* the live site has no fictional pod: Brew's lines carry the Brew mark (the demo keeps its sample roster) */
-  const brewAv = (px = 24) => `<span class="av pod-av brew-av" style="width:${px}px;height:${px}px" title="Brew">${SO()}</span>`;
+  const brewAv = (px = 24) => `<span class="av pod-av brew-av" style="width:${px}px;height:${px}px" title="${esc(PRODUCT)}">${SO()}</span>`;
   const podFaces = () => window.BREW_DEMO ? `<span class="pod">${B.pod.map((p) => `<span class="av pod-av" title="${esc(p.role)}">${esc(p.ini)}</span>`).join('')}</span>` : `<span class="pod">${brewAv(24)}</span>`;
 
   /* ---------- theme ---------- */
@@ -270,8 +271,8 @@
   const waitsOnCheck = (s) => !!s && !s.done && !s.cancelled && !s.error && !s.confirmedAt && s.stages?.read?.state === 'done' && s.stages?.confirm?.state === 'waiting';
   /* the time left on a brand's moves: only the server's measured pace (status.etaMin), never a guess */
   /* when Brew starts writing on its own if nobody checks the read (status/check writeAt), in the reader's local time */
-  const writeAtLine = (s) => { const t = typeof s?.writeAt === 'number' ? s.writeAt : Date.parse(s?.writeAt || ''); if (!(t > Date.now())) return `Brew starts your brief ${Number.isFinite(t) ? 'in a moment' : 'in a few minutes'} with what it read, unless you check first.`;
-    return `Brew starts your brief at ${new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} with what it read, unless you check first.`; };
+  const writeAtLine = (s) => { const t = typeof s?.writeAt === 'number' ? s.writeAt : Date.parse(s?.writeAt || ''); if (!(t > Date.now())) return `We start your brief ${Number.isFinite(t) ? 'in a moment' : 'in a few minutes'} with what we read, unless you check first.`;
+    return `We start your brief at ${new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} with what we read, unless you check first.`; };
   const etaOf = (s) => { const m = s?.etaMin; if (!(m > 0)) return ''; return ` · about ${m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 >= 10 ? ` ${m % 60} min` : ''}`} left`; };
   const signWall = (after) => {
     /* signed in, but not with an email at the brand (and not invited): the read is theirs to look at, the moves wait for the team */
@@ -285,7 +286,7 @@
         <div class="sw-mark"><img src="${B.brand.mark}" alt=""></div>
         <h1>${n} is for ${n}${/s$/i.test(B.brand.name || '') ? '’' : '’s'} team</h1>
         <p>${free ? `A personal email like ${esc(me)} can’t open a brand.` : `You’re signed in as ${esc(me)}, which isn’t on ${n}${/s$/i.test(B.brand.name || '') ? '’' : '’s'} team.`} ${A0.claimed ? `Sign in with your work email at ${esc(h)}, or ask the team to invite you.` : `Sign in with your work email at ${esc(h)} to open it.`}</p>
-        <p>Just looking around? The demo stores show Brew end to end, with nothing to set up.</p>
+        <p>Just looking around? The demo stores show it all end to end, with nothing to set up.</p>
         <a class="btn btn-primary lg sw-go" href="${DEMO_STORES}">See demo stores</a>
         <a class="btn btn-ghost" href="${workEmailHref()}">Switch to your work email</a></div></main>`;
       return true;
@@ -300,9 +301,9 @@
       <div class="sw-mark"><img src="${B.brand.mark}" alt=""></div>
       ${team ? '' : `<span class="sw-ok">${ic('check', 's14')}${esc(B.brand.name)} is read</span>`}
       <h1>${team ? `Sign in to open ${esc(B.brand.name)}` : 'Sign in to see your feed'}</h1>
-      <p>${team ? `${esc(B.brand.name)}’s feed and moves are for its team. Sign in with your work email at ${esc(B.brand.host)}, or ask the team to invite you.` : `We’ve read ${esc(B.brand.host)}: the store, reviews, rivals and ads. Sign in with your work email at ${esc(B.brand.host)} to open ${esc(B.brand.name)}’s feed and get the moves written.`}</p>
+      <p>${team ? `${esc(B.brand.name)}’s feed and plays are for its team. Sign in with your work email at ${esc(B.brand.host)}, or ask the team to invite you.` : `We’ve read ${esc(B.brand.host)}: the store, reviews, rivals and ads. Sign in with your work email at ${esc(B.brand.host)} to open ${esc(B.brand.name)}’s feed and get the plays written.`}</p>
       <a class="btn btn-primary lg sw-go" href="/auth/google?next=${encodeURIComponent(next)}"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continue with Google</a>
-      <small>Brew gets your Google name, email and photo, nothing else.</small></div></main>`;
+      <small>We get your Google name, email and photo, nothing else.</small></div></main>`;
     return true;
   };
   const fitSeat = () => { const m = mySeats(); if (m?.length && !m.includes(S.viewer.role)) { S.viewer.role = m[0]; if (!S.viewer.wantsTouched) S.viewer.wants = defaultWants(m[0]); return true; } return false; };
@@ -376,8 +377,8 @@
      ========================================================= */
   /* onboarding frame: the form on the left, a live preview of the feed on the right */
   const OB_STEPS = ['Your role', 'Focus', 'Tools', 'Team'];
-  const lockup = () => /^brew$/i.test(B.brand.name || '') ? `<span class="ob2-lock"><span class="so-mark">${SO()}</span><span><b>Brew</b></span></span>`
-    : `<span class="ob2-lock"><span class="so-mark">${SO()}</span><i>×</i><img src="${B.brand.mark}" alt=""><span><b>Brew</b> for ${esc(B.brand.name)}</span></span>`;
+  const lockup = () => /^brew$/i.test(B.brand.name || '') ? `<span class="ob2-lock"><span class="so-mark">${SO()}</span><span><b>${esc(PRODUCT)}</b></span></span>`
+    : `<span class="ob2-lock"><span class="so-mark">${SO()}</span><i>×</i><img src="${B.brand.mark}" alt=""><span><b>${esc(PRODUCT)}</b> for ${esc(B.brand.name)}</span></span>`;
   /* only the steps this person will see: the role tapped on the reading screen, or "Just me" (no team step), drop out */
   const obSteps = () => OB_STEPS.map((t, i) => ({ t, n: i + 1 })).filter((x) => !(x.n === 1 && !S.onboarded && qAns('seat')) && !(x.n === 4 && S.viewer.teamSize === 'me'));
   const shell = (inner, step, show) => { const all = step ? obSteps() : [], at = Math.max(1, all.findIndex((x) => x.n === step) + 1); return `<main class="screen ob2${step ? '' : ' ob2-start'}">
@@ -388,7 +389,7 @@
   /* why a read failed, said once: the server's reason when it already tells them what to do, else the reason and what to do */
   const readFail = (msg) => { const m = String(msg || '').trim() || 'The store did not open for us.'; return /try again|check the address/i.test(m) ? m : `${m.replace(/\.?$/, '.')} Check the address, or try again in a few minutes.`; };
   /* who may run Brew on a store, said once on the landing and the check page (no gate behind it) */
-  const OWN_LINE = 'Run Brew on your own store, or one you work on. Your team claims the workspace; others only see what’s public.';
+  const OWN_LINE = `Run ${PRODUCT} on your own store, or one you work on. Your team claims the workspace; others only see what’s public.`;
   /* is it a website address? { ok } | { name, guess } (a brand name with no dot: one guess, <name>.com) | { bad } */
   const siteOf = (raw) => { const x = String(raw || '').trim(), host = x.replace(/^[a-z]+:\/\//i, '').replace(/[/?#].*$/, '').replace(/^www\./i, '').toLowerCase();
     if (/^([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(host)) return { ok: true };
@@ -403,11 +404,11 @@
     window.scrollTo(0, 0); root.innerHTML = shell(`
         <span class="ob2-eyebrow">Design partner preview</span>
         <h1 class="ob2-h">Your store’s marketing team, in one feed.</h1>
-        <p class="ob2-lede">${DEMO_LAND ? 'Pick a real brand below and watch it run. Brew reads' : 'Add your website. Brew reads'} your store, reviews, rivals and AI answers, then ${SF_ON ? 'five' : 'four'} agents bring you ideas you shape together and hand over as one brief.</p>
+        <p class="ob2-lede">${DEMO_LAND ? 'Pick a real brand below and watch it run. We read' : 'Add your website. We read'} your store, reviews, rivals and AI answers, then ${SF_ON ? 'five' : 'four'} agents bring you ideas you shape together and hand over as one brief.</p>
         ${DEMO_LAND ? `<div class="ob2-demos" id="demos" aria-busy="true">${loader('Finding the demo brands', '', 'sm')}</div>` : `<form class="ob2-url" id="url-form" autocomplete="off">${ic('link', 's18')}<input id="url-in" value="${LANDING ? '' : B.brand.host}" placeholder="yourbrand.com" aria-label="Your website" aria-describedby="url-err" inputmode="url" enterkeyhint="go" autocapitalize="off" spellcheck="false"${window.BREW_DEMO && !LANDING ? ` readonly aria-readonly="true" title="This demo is set up for ${esc(B.brand.host)}"` : ''}><button class="btn btn-primary" id="go" type="submit">Build my feed ${ic('right', 's16')}</button></form>${LANDING ? `<p class="ob2-err" id="url-err" role="alert" hidden></p><p class="ob2-own">${OWN_LINE}</p>` : ''}`}
         <div class="ob2-agents">${AGENTS_ON.map((a) => `<span title="${AGENT[a]}">${face(a)}</span>`).join('')}<small>${SF_ON ? 'Creative, ads, storefront, AI answers and retention agents' : 'Creative, ads, AI answers and retention agents'}</small></div>
-        <p class="ob2-foot">${LANDING ? `Brew reads the live site, its reviews, rivals and AI answers, then writes its moves. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'Sign in with Google. Email sign-in is coming.' : window.LIVE?.dummy === false ? '' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the Brew × ${esc(B.brand.name)} move documents.${window.LIVE?.dummy === false ? '' : ' Connected numbers are a demo workspace.'}`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}${LANDING ? '<p class="ob2-legal">Preview · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>' : ''}`, 0,
-      `<div class="ob2-wash"></div><div class="ob2-collage">${LANDING ? LAND_CARDS.map((c, i) => `<figure class="cl cl${i} cl-txt" style="--clc:${c[3]}">${face(c[0])}<small>${esc(c[1])}</small><b>${esc(c[2])}</b></figure>`).join('') : art.map((src, i) => `<figure class="cl cl${i}"><img src="${src}" alt=""></figure>`).join('')}
+        <p class="ob2-foot">${LANDING ? `We read the live site, its reviews, rivals and AI answers, then write its plays. Every number has a source. ${DEMO_LAND ? 'Connected accounts are a demo workspace, and nothing is sent.' : window.LIVE?.me ? `Signed in as ${esc(window.LIVE.me.email)}.` : window.LIVE?.signin ? 'Sign in with Google. Email sign-in is coming.' : window.LIVE?.dummy === false ? '' : 'Connected accounts are a demo workspace.'}` : `Every idea comes from the ${esc(B.brand.name)} play documents.${window.LIVE?.dummy === false ? '' : ' Connected numbers are a demo workspace.'}`}</p>${LANDING && !DEMO_LAND ? '<div class="ob2-recent" id="recent"></div>' : ''}${LANDING ? '<p class="ob2-legal">Preview · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>' : ''}`, 0,
+      `<div class="ob2-wash"></div><div class="ob2-collage">${LANDING ? LAND_CARDS.map((c, i) => `<figure class="cl cl${i} cl-txt" style="--clc:${c[3]}">${face(c[0])}<span class="badge" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.16);color:#fff">Sample</span><small>${esc(c[1])}</small><b>${esc(c[2])}</b></figure>`).join('') : art.map((src, i) => `<figure class="cl cl${i}"><img src="${src}" alt=""></figure>`).join('')}
         <div class="cl-chip c1">${face('creative')}<span><b>Creative director</b>12 ads ready for this week</span></div>
         <div class="cl-chip c2">${face('performance')}<span><b>Performance marketer</b>Two ad versions, drafted</span><em>Jam</em></div></div>`);
     // the tap shows at once: the button spins and says what is happening until the brand's page opens
@@ -535,7 +536,7 @@
           <div class="scr-grid" id="scr"></div>
         </section>
       </main>
-      <div class="buddy" id="buddy" style="opacity:0">${cursorSvg()}<span>Brew</span></div>`;
+      <div class="buddy" id="buddy" style="opacity:0">${cursorSvg()}<span>${esc(PRODUCT)}</span></div>`;
     let skipped = false, failed = false, readIn = false, Q = null, qOpened = false;
     const buddy = $('#buddy');
     /* the done bar waits for both: the read (readP) and, with the questions, the last answer (qP, which also says whether the
@@ -556,11 +557,11 @@
       window.OB2.questions({
         onShow: qLayer, /* a product or rival question whose data landed late */
         onStep: (i, n) => { const el = $('#qf-prog'); if (el) el.innerHTML = Array.from({ length: n }, (_, k) => `<li class="${k < i ? 'done' : k === i ? 'on' : ''}"></li>`).join(''); },
-        onWait: () => { qClose(); if (!readIn && !$('#su-wait')) document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-wait"><brew-load class="spin"></brew-load><div><b>Thanks. Brew is still reading ${esc(B.brand.name)}.</b><span>Your feed opens from here the moment the read is in.</span></div></div>`); },
+        onWait: () => { qClose(); if (!readIn && !$('#su-wait')) document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-wait"><brew-load class="spin"></brew-load><div><b>Thanks. We’re still reading ${esc(B.brand.name)}.</b><span>Your feed opens from here the moment the read is in.</span></div></div>`); },
         onDone: (r) => { qClose(); keepSetup(); qGo(r || {}); }
       }).then((h) => { Q = h; qBuf.splice(0).forEach((ev) => h.feed(ev)); }); };
     /* the read once: after a handful of findings (or a few seconds) a bar offers the questions; the read never stops for them */
-    const askText = () => readIn ? `<b>${esc(B.brand.name)} is read.</b><span>Five quick taps, so your feed fits you.</span>` : '<b>Brew keeps reading in the background.</b><span>Five quick taps meanwhile, so your feed fits you.</span>';
+    const askText = () => readIn ? `<b>${esc(B.brand.name)} is read.</b><span>Five quick taps, so your feed fits you.</span>` : '<b>We keep reading in the background.</b><span>Five quick taps meanwhile, so your feed fits you.</span>';
     const askBar = () => { const t0 = $('#su-ask-t'); if (t0) t0.innerHTML = askText(); if (!QM || qOpened || skipped || failed || $('#su-ask')) return;
       document.body.insertAdjacentHTML('beforeend', `<div class="su-done" id="su-ask"><span class="su-ok">${ic('sparkles', 's18')}</span><div id="su-ask-t">${askText()}</div><button class="linkbtn" id="su-ask-no">Skip</button><button class="btn btn-primary lg" id="su-ask-go">Answer 5 questions ${ic('right', 's18')}</button></div>`);
       $('#su-ask-go').onclick = qOpen; $('#su-ask-go').focus();
@@ -637,18 +638,18 @@
     const sourceRow = (x) => `<div class="ck2-s${x.found ? '' : ' is-miss'}" data-sk="${x.key}"><div><span>${esc(x.label)}</span><b>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.v)}</a>` : esc(x.v)}</b></div>
       <button class="linkbtn" data-fix="${x.key}">${x.found ? 'Change' : 'Add the link'}</button><div class="ck2-fix" hidden><input data-src="${x.key}" placeholder="${esc(x.hint)}" inputmode="url"><small>We read it from that link. Typed numbers are never used.</small></div></div>`;
     root.innerHTML = `<main class="screen ck2"><div class="ck2-wrap">
-      <header class="ck2-head">${D.logo ? `<span class="ck2-logo"><img src="${esc(D.logo)}" alt=""></span>` : ''}<button class="btn btn-ghost sm ck2-skip" id="ck-skip">${S.onboarded ? 'Skip to my feed' : 'Skip for now'}</button><div><h1>Is this right?</h1><p>${D.started ? 'Brew is writing with what it read. Fix anything that’s off and the brief and your first moves are rewritten with it.' : `${writeAtLine(D)} Fix anything that’s off.`}</p></div></header>
+      <header class="ck2-head">${D.logo ? `<span class="ck2-logo"><img src="${esc(D.logo)}" alt=""></span>` : ''}<button class="btn btn-ghost sm ck2-skip" id="ck-skip">${S.onboarded ? 'Skip to my feed' : 'Skip for now'}</button><div><h1>Is this right?</h1><p>${D.started ? 'We’re writing with what we read. Fix anything that’s off and the brief and your first plays are rewritten with it.' : `${writeAtLine(D)} Fix anything that’s off.`}</p></div></header>
       <section class="ck2-card"><h2>Who you are <small>${readFrom(D.who)}</small></h2><div class="ck2-grid">${D.who.map((x) => field(x, 'who')).join('')}</div></section>
       <section class="ck2-card"><h2>What you sell <small>${D.read != null && D.count > D.read ? `${D.read} of ${Number(D.count).toLocaleString('en-IN')}` : D.count} read · tap to choose the ones to lead with</small></h2>${D.storeNote ? `<p class="ck2-note">${ic('info', 's14')}${esc(D.storeNote)}</p>` : ''}<div class="ck2-prods${D.products.length > 8 ? ' is-cap' : ''}" id="ck2-prods">${D.products.map(prodTile).join('')}</div>${D.products.length > 8 ? `<button class="linkbtn ck2-all" data-ckall>Show ${D.products.length - 8} more</button>` : ''}
         <form class="ck2-add" data-add="product"><input placeholder="Paste a product page link to add it" inputmode="url"><button class="btn btn-ghost sm">Add product</button></form></section>
       <section class="ck2-card"><h2>Who you compete with</h2><div class="ck2-rivals" id="ck2-rivals">${D.rivals.length ? D.rivals.map(rivalTile).join('') : '<p class="ck2-empty">No rivals yet. Add the brands you lose sales to.</p>'}</div>
         <form class="ck2-add" data-add="rival"><input placeholder="Paste a rival’s website, e.g. rivalbrand.com" inputmode="url"><button class="btn btn-ghost sm">Add rival</button></form></section>
       <section class="ck2-card"><h2>Where you show up</h2><div class="ck2-srcs">${D.sources.map(sourceRow).join('')}</div></section>
-      ${(D.sells || []).length ? `<section class="ck2-card"><h2>Where you sell</h2><p class="q-note">Brew checks your prices, stock and reviews here every week, next to your rivals’.</p><div class="ck2-srcs">${D.sells.map((x) => `<div class="ck2-s${x.found ? '' : ' is-miss'}"><div><span>${esc(x.label)}</span><b>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.v)}</a>` : esc(x.v)}</b></div></div>`).join('')}</div></section>` : ''}
+      ${(D.sells || []).length ? `<section class="ck2-card"><h2>Where you sell</h2><p class="q-note">We check your prices, stock and reviews here every week, next to your rivals’.</p><div class="ck2-srcs">${D.sells.map((x) => `<div class="ck2-s${x.found ? '' : ' is-miss'}"><div><span>${esc(x.label)}</span><b>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.v)}</a>` : esc(x.v)}</b></div></div>`).join('')}</div></section>` : ''}
       ${D.company.length ? `<details class="q-more ck2-co"><summary>Company details (optional)</summary><div class="ck2-grid">${D.company.map((x) => field(x, 'company')).join('')}</div></details>` : ''}
       <p class="q-note">Anything without a source is written as “to confirm”.</p>
       <p class="q-note">${OWN_LINE}</p>
-      <div class="ck2-bar"><button class="btn btn-primary lg" id="ck-go">${D.started ? 'Save my corrections' : 'Looks right, write my moves'} ${ic('right', 's18')}</button></div>
+      <div class="ck2-bar"><button class="btn btn-primary lg" id="ck-go">${D.started ? 'Save my corrections' : 'Looks right, write my plays'} ${ic('right', 's18')}</button></div>
     </div></main>`;
     const paintStars = () => $$('.ck2-p').forEach((el) => { const on = st.hero.has(el.dataset.h); el.classList.toggle('is-hero', on); el.setAttribute('aria-pressed', on); });
     root.onclick = (e) => {
@@ -672,9 +673,9 @@
       $$('[data-src]').forEach((el) => { if (el.value.trim()) v2.sources[el.dataset.src] = el.value.trim(); });
       const r = await api(`/api/brands/${slug}/confirm`, { v2 }); if (r?.notes?.length) toast(`${ic('info', 's16')}${esc(r.notes.join(' '))}`);
       /* the moves write in the background: straight on to the seat picker (a reload, so the feed has the brand's real look and cards) */
-      if (r?.signin || r?.error) { toast(`${ic('info', 's16')}${esc(r.error || 'Sign in to continue.')}`); go.disabled = false; go.innerHTML = `${D.started ? 'Save my corrections' : 'Looks right, write my moves'} ${ic('right', 's18')}`; return; }
+      if (r?.signin || r?.error) { toast(`${ic('info', 's16')}${esc(r.error || 'Sign in to continue.')}`); go.disabled = false; go.innerHTML = `${D.started ? 'Save my corrections' : 'Looks right, write my plays'} ${ic('right', 's18')}`; return; }
       /* a correction after the moves started still reaches the brief: say what is being rewritten, then carry on */
-      if (r?.recheck?.words) { toast(`${ic('refresh', 's16')}Rewriting the brief and your first moves with ${esc(r.recheck.words)}`); await wait(1800); }
+      if (r?.recheck?.words) { toast(`${ic('refresh', 's16')}Rewriting the brief and your first plays with ${esc(r.recheck.words)}`); await wait(1800); }
       if (S.onboarded) { clearTimeout(waitMoves.t); location.replace(location.pathname + location.search); } else continueToFeed(); }; /* set up already: back to the feed, not the seat picker */
   };
   /* ---------- the moves take a while: show what we have now, and email when they are ready ---------- */
@@ -687,7 +688,7 @@
     const stages = (s) => { const g = s?.stages || {}, n = s?.movesDone || 0, N = +s?.total || 0; /* one count: the brand's playbook (status.total); none until the engine has counted it */
       const row = (state, t, sub) => `<li class="is-${state}"><i>${state === 'done' ? ic('check', 's14') : state === 'run' ? '<brew-load class="spin"></brew-load>' : ''}</i><div><b>${t}</b>${sub ? `<span>${sub}</span>` : ''}</div></li>`;
       return `<ol class="wt2-steps">${row('done', 'Read your site', 'Products, reviews, ads, rivals, AI answers')}${row(g.brief?.state === 'done' ? 'done' : g.confirm?.state === 'done' ? 'run' : 'wait', 'Write the brand brief', '')}
-        ${row(n >= 10 ? 'done' : g.brief?.state === 'done' ? 'run' : 'wait', 'The first 10 moves', `${Math.min(n, 10)} of 10 · positioning, customers, rivals, pricing`)}${row(N && n >= N ? 'done' : n >= 10 ? 'run' : 'wait', N ? `All ${N} moves` : 'The rest of the plays', N ? `${n} of ${N} written${etaOf(s)}` : `${n} written`)}</ol>
+        ${row(n >= 10 ? 'done' : g.brief?.state === 'done' ? 'run' : 'wait', 'The first 10 plays', `${Math.min(n, 10)} of 10 · positioning, customers, rivals, pricing`)}${row(N && n >= N ? 'done' : n >= 10 ? 'run' : 'wait', N ? `All ${N} plays` : 'The rest of the plays', N ? `${n} of ${N} written${etaOf(s)}` : `${n} written`)}</ol>
         <div class="wt2-bar"><i style="width:${Math.max(4, N ? Math.round(100 * Math.min(n, N) / N) : 0)}%"></i></div>`; };
     const mailBox = (em) => mailMe() && !window.BREW_DEMO && ls.get(`${LSP()}mail-mute`) !== mailMe() ? mailOnHtml(mailMe(), 'wt2-mailed') /* signed in: already on, with Mute */
       : em ? `<div class="wt2-mailed">${ic('check', 's16')}<span>We’ll email <b>${esc(em)}</b> when they’re ready.</span><button class="linkbtn" id="wt-change">Change</button></div>`
@@ -713,7 +714,7 @@
     bindMail();
     $('#wt-go').onclick = continueToFeed;
     const poll = async () => { if (view !== 'wait') return; const s2 = await api(`/api/brands/${slug}/status`); const el = $('#wt-stages'); if (el && s2) el.innerHTML = stages(s2);
-      if (s2?.done) { const lv = $('.wt2-live'); if (lv) lv.innerHTML = `${ic('check', 's14')}Ready`; const go = $('#wt-go'); if (go) go.innerHTML = `${+s2.total ? `All ${+s2.total}` : 'All the'} moves are ready. Open the feed ${ic('right', 's18')}`; return; } /* every move is written: say so, and stop asking */
+      if (s2?.done) { const lv = $('.wt2-live'); if (lv) lv.innerHTML = `${ic('check', 's14')}Ready`; const go = $('#wt-go'); if (go) go.innerHTML = `${+s2.total ? `All ${+s2.total}` : 'All the'} plays are ready. Open the feed ${ic('right', 's18')}`; return; } /* every move is written: say so, and stop asking */
       waitMoves.t = setTimeout(poll, 12e3); };
     waitMoves.t = setTimeout(poll, 12e3);
   };
@@ -783,14 +784,14 @@
     const noWants = !S.onboarded && qAns('first'), noLane = !S.onboarded && qAns('lead'); if (!S.onboarded) obAt('want');
     const laneIds = Object.keys(B.lanes || {}), lanePics = laneIds.every((k) => LANE_IMG[k]) && new Set(laneIds.map((k) => LANE_IMG[k])).size === laneIds.length; /* a photo only when each product has its own: one shared picture on every chip tells them apart by nothing */
     window.scrollTo(0, 0); root.innerHTML = shell(`
-      <div class="ob3">${noWants && noLane ? '<h1 class="ob2-h">Anything Brew should know?</h1><p class="ob2-lede">What works for you, what doesn’t, what you’ve learned. Optional.</p>' : noWants ? '<h1 class="ob2-h">Anything Brew should know?</h1><p class="ob2-lede">The product you’re pushing, and what you’ve learned. Both optional.</p>' : '<h1 class="ob2-h">What should come first?</h1><p class="ob2-lede">Pick up to two, and tell Brew what you’ve learned.</p>'}
+      <div class="ob3">${noWants && noLane ? '<h1 class="ob2-h">Anything we should know?</h1><p class="ob2-lede">What works for you, what doesn’t, what you’ve learned. Optional.</p>' : noWants ? '<h1 class="ob2-h">Anything we should know?</h1><p class="ob2-lede">The product you’re pushing, and what you’ve learned. Both optional.</p>' : '<h1 class="ob2-h">What should come first?</h1><p class="ob2-lede">Pick up to two, and tell us what you’ve learned.</p>'}
       ${noWants ? '' : `<section class="ob3-s"><small class="ob3-k">Show me first</small>
         <div class="ob3-pills">${Object.entries(B.wants).map(([k, w]) => `<button class="ob3-pill" data-want="${k}" aria-pressed="${S.viewer.wants.includes(k)}" title="${esc(w.line)}">${ic('check', 's14')}${esc(w.name)}</button>`).join('')}</div></section>`}
       ${noLane ? '' : `<section class="ob3-s"><small class="ob3-k">The product you’re pushing</small>
         <div class="ob3-pills">${Object.entries(B.lanes).map(([k, l]) => `<button class="ob3-pill${lanePics ? ' ob3-prod' : ''}" data-lane="${k}" aria-pressed="${S.viewer.lane === k}">${lanePics ? `<img src="${LANE_IMG[k]}" alt="">` : ''}${esc(l.name)}</button>`).join('')}</div></section>`}
       <section class="ob3-s"><small class="ob3-k">In your own words</small>
         <div class="ob3-say"><textarea id="ob-say" data-nomic data-ownmic rows="1" placeholder="Type here, or tap the mic and talk.">${esc(S.viewer.focusNote || '')}</textarea>${window.Mic?.supported ? `<button type="button" class="ob3-mic" id="ob-say-mic" aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}</div>
-        <small id="ob-said" class="ob3-said">${S.viewer.focusNote ? `${ic('check', 's14')}Saved. Your moves, docs and cards follow this.` : ''}</small></section></div>
+        <small id="ob-said" class="ob3-said">${S.viewer.focusNote ? `${ic('check', 's14')}Saved. Your plays, docs and cards follow this.` : ''}</small></section></div>
       ${obNav('Next', true)}`, 2);
     obPreview();
     $$('[data-want]').forEach((b) => b.onclick = () => {
@@ -805,7 +806,7 @@
       const r = await tapi('POST', '/api/tenants/:t/focus', { text }); window.__obSayBusy = false; if (r.error) { said.textContent = r.error; return false; }
       S.viewer.focusNote = text; S.viewer.focusTerms = r.terms || []; if (r.wants?.length) { S.viewer.wants = r.wants; S.viewer.wantsTouched = true; } if (r.lane) S.viewer.lane = r.lane; save();
       $$('[data-want]').forEach((x) => x.setAttribute('aria-pressed', S.viewer.wants.includes(x.dataset.want))); $$('[data-lane]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.lane === S.viewer.lane));
-      said.innerHTML = `${ic('check', 's14')}${r.learning ? 'Got it. Brew is learning from this. Your moves, docs and cards follow it.' : 'Got it. Your feed follows this.'}`; obPreview(); return true; };
+      said.innerHTML = `${ic('check', 's14')}${r.learning ? 'Got it. We’re learning from this. Your plays, docs and cards follow it.' : 'Got it. Your feed follows this.'}`; obPreview(); return true; };
     $('#ob-say-mic')?.addEventListener('click', (e) => { const b = e.currentTarget; if (window.Mic?.on) { window.Mic.stop(); b.classList.remove('is-on'); b.setAttribute('aria-label', 'Talk instead of typing'); return; } window.Mic?.talk($('#ob-say')); b.classList.add('is-on'); b.setAttribute('aria-label', 'Stop and use what I said'); const w = setInterval(() => { if (!window.Mic?.on) { b.classList.remove('is-on'); clearInterval(w); } }, 400); }); $('#ob-say').addEventListener('blur', () => sayIt()); const fitSay = (t) => { t.style.height = 'auto'; t.style.height = Math.min(200, t.scrollHeight + 2) + 'px'; }; /* grows with what they write (a saved note opens at its full height) */
     $('#ob-say').addEventListener('input', (e) => fitSay(e.target)); fitSay($('#ob-say')); $('.ob3-say').addEventListener('click', (e) => { if (e.target === e.currentTarget) $('#ob-say').focus(); });
     $('#ob-say').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sayIt(); } });
@@ -817,7 +818,7 @@
     window.scrollTo(0, 0); root.innerHTML = shell(`
       <h1 class="ob2-h">Connect your tools</h1><p class="ob2-lede">${window.LiveConn?.boss?.() === false ? 'Your admin connects these. Once they’re on, your cards use your own numbers instead of estimates.' : 'Connected, your cards use your own numbers instead of estimates. Optional: you can do it later from any card.'}</p>
       <div class="ob2-cx">${ids.map((id) => cxRow(id)).join('')}</div>
-      <p class="ob2-foot">${ic('lock', 's14')} ${window.LIVE?.dummy === false ? `Read-only. Brew never changes your accounts: every budget or ad change it suggests is a brief your team makes${ids.includes('slack') ? '; Slack posts only to the channel you pick' : ''}.` : 'Demo workspace. No real account is touched.'}</p>
+      <p class="ob2-foot">${ic('lock', 's14')} ${window.LIVE?.dummy === false ? `Read-only. We never change your accounts: every budget or ad change we suggest is a brief your team makes${ids.includes('slack') ? '; Slack posts only to the channel you pick' : ''}.` : 'Demo workspace. No real account is touched.'}</p>
       ${obNav('Next', true)}`, 3);
     obPreview();
     $('#ob-back').onclick = wantWhat; $('#ob-next').onclick = () => (S.viewer.teamSize === 'me' ? finishOnboarding() : teamStep()); /* "Just me" on the reading screen: no invite step */
@@ -902,7 +903,7 @@
       ${n ? `<h3>Your feed is ready${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
       <p>${n} ${n === 1 ? 'card' : 'cards'}, picked for ${/^[AEIOU]/i.test(R.name) ? 'an' : 'a'} ${esc(R.name.toLowerCase())}. Each comes from a play in your plan. Tap any card to see more.</p>`
       : `<h3>Your cards are on their way${myFirst() ? ', ' + esc(myFirst()) : ''}.</h3>
-      <p>Brew starts writing the plays your cards come from when you open your feed. Each card lands there as its play is done.</p>`}
+      <p>We start writing the plays your cards come from when you open your feed. Each card lands there as its play is done.</p>`}
       <div class="counts">${n ? `<div><b class="tnum">${n}</b>${CARDS_WORD(n)}</div>` : ''}${mvTile()}<div><b class="tnum">${na}</b>agents</div>${nc ? `<div><b class="tnum">${nc}</b>${nc === 1 ? 'account' : 'accounts'} connected</div>` : ''}</div>
       ${ny || ns ? `<p class="ready-next">First, on your feed: ${[ny && `${ny} ${ny === 1 ? 'call needs' : 'calls need'} your yes`, ns && `${ns} ${ns === 1 ? 'card costs' : 'cards cost'} ad money`].filter(Boolean).join(' and ')}. ${ny ? 'Start with the yes calls.' : ''}</p>` : ''}
       ${window.BREW_NUMBERS?.storeNote ? `<p class="ready-note">${esc(window.BREW_NUMBERS.storeNote)}</p>` : ''}
@@ -957,11 +958,11 @@
       <span class="sp"></span>
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>${p.proof?.seen ? `<button class="pf-seen" data-act="proof" aria-label="Seen in ${esc(p.proof.seen)}: open the proof">${ic('search', 's14')}<span>Seen in ${esc(p.proof.seen)}</span></button>` : ''}`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
-  const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 plays are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="${n ? `${n} ${n === 1 ? 'proof' : 'proofs'} behind this card` : 'Why this card, and the proof'}" title="Why Brew suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n} ${n === 1 ? 'proof' : 'proofs'}</span>` : ''}</button>`; }; /* a number on a card always says what it counts (1.14) */
+  const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 plays are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="${n ? `${n} ${n === 1 ? 'proof' : 'proofs'} behind this card` : 'Why this card, and the proof'}" title="Why we suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n} ${n === 1 ? 'proof' : 'proofs'}</span>` : ''}</button>`; }; /* a number on a card always says what it counts (1.14) */
   const pfDay = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
   /* the sheet says only what a brand needs: the one reason, the few numbers behind it (each with where it came from) and the plan it
      belongs to. Kind labels, move source lists and repeats stay out; the full plan is one tap away */
-  const pfSrc = (x) => { const src = /^what brew counted$/i.test(x.src || '') || x.kind === 'row' && !x.src ? 'Brew’s count' : /^brew’s maths/i.test(x.src || '') ? 'Brew’s maths' : /^(?:https?:\/\/)?(?:www\.)?([\w-]+(?:\.[\w-]+)+)\/\S*$/i.test(x.src || '') ? x.src.replace(/^(?:https?:\/\/)?(?:www\.)?([^/]+).*$/i, '$1') /* a page address reads as its site */ : x.src || '';
+  const pfSrc = (x) => { const src = /^what brew counted$/i.test(x.src || '') || x.kind === 'row' && !x.src ? 'Our count' : /^brew’s maths/i.test(x.src || '') ? 'Our maths' : /^(?:https?:\/\/)?(?:www\.)?([\w-]+(?:\.[\w-]+)+)\/\S*$/i.test(x.src || '') ? x.src.replace(/^(?:https?:\/\/)?(?:www\.)?([^/]+).*$/i, '$1') /* a page address reads as its site */ : x.src || '';
     const t = esc([src, pfDay(x.at)].filter(Boolean).join(' · '));
     return x.url ? `<a class="pf-src" href="${esc(x.url)}" target="_blank" rel="noopener">${t || 'Source'}${ic('external', 's12')}</a>` : t ? `<span class="pf-src">${t}</span>` : ''; };
   /* a short number sits in its own column; a longer value ("226 reviews, 4.47★") goes on its own line; what people wrote reads as a quote.
@@ -981,11 +982,11 @@
     for (const x of items) { const src = `${x.src || ''} ${x.url || ''}`;
       if (x.kind === 'account') acct.add(String(x.src || '').replace(/^Your\s+|\s+account$/gi, ''));
       else if (x.kind === 'voice' || /judge\.?me|loox|okendo|yotpo|reviews?/i.test(src) && !/ad library/i.test(src)) said.add('customer reviews');
-      else if (x.kind === 'team') said.add('what your team told Brew');
+      else if (x.kind === 'team') said.add('what your team told us');
       else if (x.kind === 'quote') said.add('what people say online');
       else if (x.kind === 'ad') said.add('rivals’ live ads');
       else if (x.kind === 'trend') said.add('Google searches');
-      else if (x.kind === 'web' || x.url && !on(x) && x.kind === 'source') said.add('other sites Brew read');
+      else if (x.kind === 'web' || x.url && !on(x) && x.kind === 'source') said.add('other sites we read');
       else said.add('your public store pages'); }
     const list = [...said], join = (a) => a.length > 1 ? `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}` : a[0] || '';
     const ids = [...new Set([...(needs || []), ...(PF_CX[c.family] || []), ...(PF_CX[c.sector] || []), 'shopify', 'ga4', 'meta'])].filter((id) => B.connectors?.[id] && !conn(id)).slice(0, 3);
@@ -1006,24 +1007,24 @@
     const cl = { ...(e.claim || {}) };
     /* a result only the brand's own accounts show: what this page has connected decides whether it asks to connect or says it isn't matched yet */
     if (cl.metric) { const miss = (cl.metricNeeds || []).filter((id) => B.connectors?.[id] && !conn(id)); cl.needs = miss;
-      cl.note = miss.length ? `Brew can’t see your ${cl.metric} yet, so this part is a guess.` /* the connect buttons below ask */ : `Brew hasn’t matched this to your ${cl.metric} yet, so treat that part as a guess.`; }
+      cl.note = miss.length ? `We can’t see your ${cl.metric} yet, so this part is a guess.` /* the connect buttons below ask */ : `We haven’t matched this to your ${cl.metric} yet, so treat that part as a guess.`; }
     const check = cl.note ? `<p class="pf-note is-claim">${ic('info', 's14')}<span>${esc(cl.note)}</span></p>` : '';
     const none = !items.length && !cl.note ? `<p class="pf-note">${ic('info', 's14')}<span>No real data behind this one yet. Treat it as an idea to check, not a fact.</span></p>` : '';
     /* the move is Brew's reasoning from this data, never proof itself: a quiet link to the write-up, after the data */
-    const plan = moves.length ? `<button type="button" class="pf-wu" data-pf-move="${moves[0].n}">How Brew worked it out: ${esc(moves[0].title)}${ic('right', 's14')}</button>` : '';
+    const plan = moves.length ? `<button type="button" class="pf-wu" data-pf-move="${moves[0].n}">How we worked it out: ${esc(moves[0].title)}${ic('right', 's14')}</button>` : '';
     /* stepped back on what the team said (brand-learnings.js): said first, so nobody acts on it without knowing */
-    const contra = e.contra ? `<p class="pf-note is-claim">${ic('info', 's14')}<span>Brew moved this off the top: ${esc(e.contra)}</span></p>` : '';
+    const contra = e.contra ? `<p class="pf-note is-claim">${ic('info', 's14')}<span>We moved this off the top: ${esc(e.contra)}</span></p>` : '';
     return `${lead}${contra}${check}${rows}${gap}${none}${pfBasis(items, p, cl.needs)}${plan}`;
   };
   /* "what's the evidence behind this?" in the jam: the card's proof as Saw / Plan / Data / So, and a way to the whole sheet */
   const proofMsg = (m) => { const x = m.proof || {}, a = (u, l) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l));
     const rows = [...(x.saw || []).map((s) => ['Saw', `<b>${esc(s.v)}</b> · ${esc(s.l)}${s.src ? ` <small>(${s.url ? a(s.url, s.src) : esc(s.src)})</small>` : ''}`]), ...((x.data || []).length ? [['Read', x.data.map((d) => a(d.url, d.l)).join(' · ')]] : []), ...(x.so ? [['So', esc(x.so)]] : []), ...((x.unbacked || []).length ? [['Check', `Not matched to a source yet: ${esc(x.unbacked.join(', '))}`]] : [])];
-    return `<p>Here’s what this card is based on.</p>${rows.length ? `<dl class="pf-ev">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : '<p>Brew has no source line for this card yet, so treat it as an idea to check, not a fact.</p>'}${m.cardId ? `<button type="button" class="chip j1-chip" data-pf-card="${esc(m.cardId)}">${ic('shield', 's14')}See all the proof</button>` : ''}`; };
+    return `<p>Here’s what this card is based on.</p>${rows.length ? `<dl class="pf-ev">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : '<p>We have no source line for this card yet, so treat it as an idea to check, not a fact.</p>'}${m.cardId ? `<button type="button" class="chip j1-chip" data-pf-card="${esc(m.cardId)}">${ic('shield', 's14')}See all the proof</button>` : ''}`; };
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-pf-card]'); if (!b) return; const p = byId(b.dataset.pfCard); if (p) openProof(p); });
   const openProof = async (p) => {
-    modal(`<div class="sheet pick-sheet pf-sheet" role="dialog" aria-label="Why this card, and the proof"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}Why Brew suggests this</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
+    modal(`<div class="sheet pick-sheet pf-sheet" role="dialog" aria-label="Why this card, and the proof"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}Why we suggest this</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <div class="pf-b"><div class="sk" style="height:44px"></div><div class="sk" style="height:140px;margin-top:16px"></div></div></div>`, (w) => {
-      w.addEventListener('click', (ev) => { const x = ev.target.closest('[data-pf-cx]'); if (x) { ev.stopPropagation(); closeModal(); return openConnect(x.dataset.pfCx, { why: 'Brew checks its cards against your real numbers, not just your public pages.', then: () => openProof(p) }); }
+      w.addEventListener('click', (ev) => { const x = ev.target.closest('[data-pf-cx]'); if (x) { ev.stopPropagation(); closeModal(); return openConnect(x.dataset.pfCx, { why: 'We check our cards against your real numbers, not just your public pages.', then: () => openProof(p) }); }
         const m = ev.target.closest('[data-pf-move]'); if (!m) return; closeModal(); openMove(+m.dataset.pfMove); }); });
     const r = await tapi('GET', `/api/cards/${encodeURIComponent(p.id)}/evidence`).catch(() => null), box = $('#modal .pf-b'); if (!box) return;
     box.innerHTML = r?.evidence ? proofHtml(r.evidence, p) : `<p class="pf-note">${ic('info', 's14')}The proof didn’t load. Try again in a moment.</p>`;
@@ -1064,10 +1065,10 @@
     /* the sector names the team that handles a card, not its source: it only stands in when the card's words back it */
     const words = `${c.title || ''} ${c.sub || ''}`;
     if (c.sector === 'visibility') return /\bAI\b|ChatGPT|Gemini|Perplexity|assistants?\b/i.test(words) ? 'From AI answers' : 'Getting found';
-    if (c.sector === 'signals') return /customer|buyer|shopper|review|order|repeat|people (say|ask)/i.test(words) ? 'From your customers' : c.type === 'idea' ? 'New idea for you' : 'From Brew';
+    if (c.sector === 'signals') return /customer|buyer|shopper|review|order|repeat|people (say|ask)/i.test(words) ? 'From your customers' : c.type === 'idea' ? 'New idea for you' : 'From us';
     if (FROM_SECTOR[c.sector]) return FROM_SECTOR[c.sector];
     if (c.type === 'idea') return 'New idea for you';
-    return 'From Brew';
+    return 'From us';
   };
   /* the campaign line only when it adds something the label does not already say */
   const campLine = (c) => (c.campaign && !FROM_CAMPAIGN[c.campaign] && String(c.campaign).toLowerCase() !== String(fromLabel(c) || '').toLowerCase() ? c.campaign : ''); /* never "Move 08 · Move 08" (1.14) */
@@ -1077,7 +1078,7 @@
   const slotHtml = (c) => {
     if (c.kind === 'media') return mediaSlot(c.images, { fit: c.fit, fitBg: c.fitBg, alt: c.title, filter: c.gradeF });
     if (c.kind === 'conflict') { const dec = S.decided?.[c.id];
-      return `<div class="inset cf-slot">${c.options.map((o) => `<div class="cf-opt${o.id === (dec || c.pick) ? ' on' : ''}"><span class="cf-dot">${o.id === dec ? ic('check', 's14') : ''}</span><span class="lg-tx"><b>${esc(o.name)}</b><span>Moves ${esc(o.moves)}</span></span>${o.id === c.pick && !dec ? '<span class="badge info">Brew pick</span>' : ''}</div>`).join('')}${c.needs ? `<p class="cf-needs">${ic('person', 's14')}Needs ${esc(c.needs)} before anything ships</p>` : ''}</div>`; }
+      return `<div class="inset cf-slot">${c.options.map((o) => `<div class="cf-opt${o.id === (dec || c.pick) ? ' on' : ''}"><span class="cf-dot">${o.id === dec ? ic('check', 's14') : ''}</span><span class="lg-tx"><b>${esc(o.name)}</b><span>Moves ${esc(o.moves)}</span></span>${o.id === c.pick && !dec ? '<span class="badge info">Our pick</span>' : ''}</div>`).join('')}${c.needs ? `<p class="cf-needs">${ic('person', 's14')}Needs ${esc(c.needs)} before anything ships</p>` : ''}</div>`; }
     if (c.kind === 'answer') return `<div class="inset ans-slot"><div class="ans-q">${ic('chat', 's14')}${esc(c.q)}</div><p>${esc(c.a)}</p><span class="badge bad">${B.brand.name} not named</span></div>`;
     if (c.kind === 'variants') return `${c.images?.length ? mediaSlot(c.images.slice(0, 1), { filter: c.gradeF }) : ''}<div class="inset var-slot">${c.loading ? '<div class="sk" style="height:58px"></div><div class="sk" style="height:58px"></div><div class="sk" style="height:58px"></div>' : (c.variants || []).map((v) => `<div class="var"><span class="chip">${esc(v.angle || 'Version')}</span><b>${esc(v.title)}</b><span>${esc(v.sub)}</span></div>`).join('')}</div>`;
     /* a long value stacks under its label (left, full width) so the label never wraps word by word beside it */
@@ -1137,14 +1138,14 @@
   const needOf = (p) => { const tn = (p?.toolNeeds || []).filter((id) => B.connectors?.[id] && !conn(id)); if (tn.length) return tn[0]; /* a card on a platform not connected (2.6) */ if (p?.sector !== 'signals') return null; const ids = (p.proof?.needs || []).filter((id) => B.connectors?.[id] && !conn(id));
     return ids.includes('shopify') ? 'shopify' : ids[0] || null; };
   const needLine = (p) => { const id = needOf(p); if (!id) return ''; const nm = B.connectors[id].name, admin = window.LiveConn?.boss?.() === false;
-    return `<div class="card-need">${ic('plug', 's14')}<span>${(p.toolNeeds || []).includes(id) ? `Not connected: these ${esc(nm)} figures are Brew’s estimate. Connect it for your own` : `Connect ${esc(nm)} to see this`}</span>${admin ? '<small>Your admin connects it</small>' : `<button class="btn btn-ghost sm" data-cx="${esc(id)}">Connect</button>`}</div>`; };
+    return `<div class="card-need">${ic('plug', 's14')}<span>${(p.toolNeeds || []).includes(id) ? `Not connected: these ${esc(nm)} figures are our estimate. Connect it for your own` : `Connect ${esc(nm)} to see this`}</span>${admin ? '<small>Your admin connects it</small>' : `<button class="btn btn-ghost sm" data-cx="${esc(id)}">Connect</button>`}</div>`; };
   const postCard = (p, i) => {
     const c = cardOf(p);
     const isNew = PINNED.has(p.id);
     const sub = [isNew ? 'Just in' : agoText(c.time), campLine(c), SCORES[p.id]?.rankWhy && FEED.indexOf(p) < 12 ? SCORES[p.id].rankWhy : ''].filter(Boolean).join(' · '); /* why it is this high, in a few words (3.11) */
     const lc = null; /* Do it now was cut: nothing goes live from Brew, so no card shows a Live row */
-    const live = lc ? `<button class="live-row" data-livech data-card="${esc(p.id)}" title="${esc(`${lc.label}${lc.scope ? ' · ' + lc.scope : ''} · ${byTeam(lc.by) ? 'shipped by the ShopOS team' : 'shipped by Brew'}. Open the history`)}"><span class="live-pill"><i class="pulse"></i>Live</span><span class="live-tx">${esc(lc.label)}</span><span class="live-v">v${lc.v}</span>${ic('right', 's14')}</button>` : '';
-    const body = `<div class="body">${live || statusRow(p, c)}${p.told && !isToldCard(c) ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${aisLine(p)}${needLine(p)}${isToldCard(c) ? '' : srcLine(c)}</div>`;
+    const live = lc ? `<button class="live-row" data-livech data-card="${esc(p.id)}" title="${esc(`${lc.label}${lc.scope ? ' · ' + lc.scope : ''} · ${byTeam(lc.by) ? 'shipped by our team' : 'shipped by us'}. Open the history`)}"><span class="live-pill"><i class="pulse"></i>Live</span><span class="live-tx">${esc(lc.label)}</span><span class="live-v">v${lc.v}</span>${ic('right', 's14')}</button>` : '';
+    const body = `<div class="body">${live || statusRow(p, c)}${p.told && !isToldCard(c) ? `<span class="told-tag" title="This card uses what your team told us">${ic('book', 's12')}From what your team told us</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p>${makeChip(c)}${aisLine(p)}${needLine(p)}${isToldCard(c) ? '' : srcLine(c)}</div>`;
     const fd = ['conflict', 'answer'].includes(c.kind) ? '' : draftSlot(c); /* a draft replaces the lane photo; a rows card keeps its rows under the words */
     const media = !!fd || c.kind === 'media' || (c.kind === 'variants' && c.images?.length);
     const dn = doneText(p, c), rows = fd && c.kind === 'rows' && c.rows?.length ? slotHtml(c) : '';
@@ -1202,10 +1203,10 @@
       return qs.length ? `Named for “${esc(aisClip(qs[0]))}”${qs.length > 1 ? ` and ${qs.length - 1} more` : ''}` : 'Not named in any of these answers'; };
     const row = (r, you) => `<div class="ais-row${you ? ' is-you' : ''}"><b>${esc(r.name)}${you ? ' <small>you</small>' : ''}</b><span class="ais-bar"><i style="width:${of ? Math.round((100 * cnt(r)) / of) : 0}%"></i></span><em>${cnt(r)} of ${of}</em>${compact ? '' : `<p class="ais-q">${forOf(r, you)}</p>`}</div>`;
     const rv = st.rivals.slice(0, compact ? 3 : 6), top = [...st.rivals].sort((a, b) => b.n - a.n).find((r) => r.n);
-    return `${compact ? '' : `<div class="ais-hd"><p class="ais-h">Who AI names when shoppers ask</p><button class="icon-btn pf-btn" data-ais-proof="${esc(st.src || 'weekly')}" aria-label="The questions Brew asked, why, and each AI’s answer" title="The questions Brew asked, why, and each AI’s answer">${ic('shield')}<span class="pf-n">${st.questions || ''}</span></button></div>`}<p class="ais-sub">${st.unOf ? `${of} answers to ${nq} question${nq === 1 ? '' : 's'} where the shopper named no brand` : `${of} answers to ${nq} shopper question${nq === 1 ? '' : 's'}`}, from ${st.tools} AI tool${st.tools === 1 ? '' : 's'}${st.at ? ` · ${esc(fmtDay(Date.parse(st.at)) || st.at)}` : ''}</p>
+    return `${compact ? '' : `<div class="ais-hd"><p class="ais-h">Who AI names when shoppers ask</p><button class="icon-btn pf-btn" data-ais-proof="${esc(st.src || 'weekly')}" aria-label="The questions we asked, why, and each AI’s answer" title="The questions we asked, why, and each AI’s answer">${ic('shield')}<span class="pf-n">${st.questions || ''}</span></button></div>`}<p class="ais-sub">${st.unOf ? `${of} answers to ${nq} question${nq === 1 ? '' : 's'} where the shopper named no brand` : `${of} answers to ${nq} shopper question${nq === 1 ? '' : 's'}`}, from ${st.tools} AI tool${st.tools === 1 ? '' : 's'}${st.at ? ` · ${esc(fmtDay(Date.parse(st.at)) || st.at)}` : ''}</p>
       <div class="ais-rows">${row(st.brand, true)}${rv.map((r) => row(r)).join('')}</div>
       ${!compact && (st.knownUnnamed || []).length ? `<p class="ais-note">Not named in any of these answers: ${esc(st.knownUnnamed.join(', '))}.</p>` : ''}
-      ${st.rivalsError ? `<p class="ais-note">${esc(st.rivalsError)}</p>` : !st.rivals.length ? `<p class="ais-note">Brew hasn’t found ${esc(B.brand.name)}’s rivals yet, so only ${esc(B.brand.name)} is counted.</p>` : ''}
+      ${st.rivalsError ? `<p class="ais-note">${esc(st.rivalsError)}</p>` : !st.rivals.length ? `<p class="ais-note">We haven’t found ${esc(B.brand.name)}’s rivals yet, so only ${esc(B.brand.name)} is counted.</p>` : ''}
       ${!compact && st.unOf && st.of > st.unOf ? `<p class="ais-note">Counting the questions that name a brand too: ${esc(st.brand.name)} ${st.brand.n} of ${st.of}${top ? `, ${esc(top.name)} ${top.n} of ${st.of}` : ''}.</p>` : ''}
       ${st.named?.error ? `<p class="ais-note">${esc(st.named.error)}</p>` : (() => { const nm = aisNamed(st.named); if (!nm) return '';
         return `<p class="ais-h2">Named most often</p>${nm.of !== of ? `<p class="ais-sub">Counted in ${nm.of} answers${st.named.at ? ` from ${esc(fmtDay(Date.parse(st.named.at)) || st.named.at)}` : ''}</p>` : ''}${nm.top.length ? `<div class="ais-rows">${nm.top.slice(0, compact ? 3 : 5).map((r) => `<div class="ais-row"><b>${esc(r.name)}</b><span class="ais-bar"><i style="width:${nm.of ? Math.round((100 * nm.c(r)) / nm.of) : 0}%"></i></span><em>${nm.c(r)} of ${nm.of}</em></div>`).join('')}</div>` : `<p class="ais-note">These answers name no other brands.</p>`}`; })()}`; };
@@ -1224,7 +1225,7 @@
     const all = un.flatMap((x) => x.answers), named = all.filter((y) => y.named).length;
     /* 1. the score: a big number and one dot per answer */
     const hero = all.length ? `<div class="aiv-hero"><div class="aiv-big${!named ? ' is-zero' : named / all.length < 1 / 3 ? ' is-low' : ''}"><b>${named}</b><span>of ${all.length}</span></div><div class="aiv-hm"><p>answers name <b>${esc(a.brand)}</b> when a shopper asks without naming a brand</p><div class="aiv-dots" aria-hidden="true">${all.map((y) => `<i class="${y.named ? 'is-y' : ''}"></i>`).join('')}</div></div></div>`
-      : `<p class="pf-because">Brew asks ${esc(toolList)} what shoppers ask, every week.</p>`;
+      : `<p class="pf-because">We ask ${esc(toolList)} what shoppers ask, every week.</p>`;
     /* 2. the biggest gap: the most-searched question no tool names the brand for */
     const gap = un.filter((x) => x.answers.length && !x.answers.some((y) => y.named)).map((x) => ({ x, v: aivVol(x.why) })).sort((p, q) => q.v - p.v)[0];
     const gapHtml = gap ? `<div class="aiv-gap">${ic('trendup', 's16')}<p><b>Biggest gap:</b> “${esc(gap.x.q)}”${gap.v ? ` gets ${esc(aivFmt(gap.v))} searches a month` : ''}, and no AI names ${esc(a.brand)}.</p></div>` : '';
@@ -1241,21 +1242,21 @@
     const vmax = Math.max(1, ...a.questions.map((x) => aivVol(x.why)));
     const head = `<div class="aiv-th"><span>Question, and how many search it</span><span class="aiv-cols">${tools.map((t) => { const [s, c] = aivTool(t); return `<abbr title="${esc(t)}" style="--tc:${c}">${esc(s)}</abbr>`; }).join('')}</span></div>`;
     const demand = (x) => { const v = aivVol(x.why); if (v) return `<span class="aiv-d"><i><u style="width:${Math.max(4, Math.round((v / vmax) * 100))}%"></u></i>${esc(aivFmt(v))} a month</span>`;
-      const w = x.why || {}; const l = w.kind === 'thread' ? String(w.label || '').split(':')[0].replace(/^Asked on (\w)/, (m, c) => `Asked on ${c.toUpperCase()}`).replace(/, (\S+ replies)$/, ' · $1') : w.kind === 'suggest' ? 'Google suggests it' : w.kind === 'team' ? 'Added by your team' : w.kind === 'product' ? String(w.label || '').split(' (')[0] : 'Written by Brew';
+      const w = x.why || {}; const l = w.kind === 'thread' ? String(w.label || '').split(':')[0].replace(/^Asked on (\w)/, (m, c) => `Asked on ${c.toUpperCase()}`).replace(/, (\S+ replies)$/, ' · $1') : w.kind === 'suggest' ? 'Google suggests it' : w.kind === 'team' ? 'Added by your team' : w.kind === 'product' ? String(w.label || '').split(' (')[0] : 'Written by us';
       return `<span class="aiv-d is-txt">${w.url ? `<a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(l)}</a>` : esc(l)}</span>`; };
     const ansRow = (y) => { const names = [...new Set([...(y.rivals || []), ...(y.brands || [])])].slice(0, 8);
       return `<li class="aiq-a"><b>${esc(y.tool)}</b><div class="aiq-ab"><span class="aiq-names">${names.length ? esc(names.join(', ')) : 'Names no brand'}</span>${y.text ? `<details class="aiq-full"><summary>Read the answer</summary><p class="aiq-t">${esc(y.text)}${y.full ? '' : '…'}</p>${y.sources.length ? `<p class="aiq-src">Sources: ${esc(y.sources.join(', '))}</p>` : ''}</details>` : ''}</div><span class="aiq-tag ${y.named ? 'is-y' : 'is-n'}">${y.named ? `${ic('check', 's14')}You` : 'Not you'}</span></li>`; };
     const row = (x) => { const cells = tools.map((t) => { const y = x.answers.find((z) => z.tool === t); return `<i class="aiv-c${!y ? ' is-none' : y.named ? ' is-y' : ''}" title="${esc(t)}: ${!y ? 'not asked yet' : y.named ? `names ${esc(a.brand)}` : `doesn’t name ${esc(a.brand)}`}">${y?.named ? ic('check', 's12') : ''}</i>`; }).join('');
       return `<details class="aiv-q${gap && gap.x === x ? ' is-gap' : ''}"><summary><span class="aiv-qm"><span class="aiv-qt">${esc(x.q)}</span>${demand(x)}</span><span class="aiv-cols">${cells}</span></summary>${x.answers.length ? `<ul class="aiq-as">${x.answers.map(ansRow).join('')}</ul>` : ''}</details>`; };
     const block = (xs, h) => xs.length ? `<section class="aiv-sec"><h4 class="pf-h">${h}</h4>${head}${xs.map(row).join('')}</section>` : '';
-    const note = !a.sourced && a.questions.length ? `<p class="pf-note">${ic('info', 's14')}<span>Brew wrote these questions from your category; they aren’t checked against real searches yet. Questions people really search for land within the day.</span></p>`
-      : a.pending ? `<p class="pf-note">${ic('clock', 's14')}<span>Brew is asking new questions from real searches now. These are the last answers until they land.</span></p>` : '';
-    const add = a.canAdd ? (a.teamLeft ? `<form class="aiq-add" data-aiq-add><label for="aiq-in">Add a question your customers ask</label><div><input id="aiq-in" maxlength="160" placeholder="Which serum works for thinning at the crown?" autocomplete="off"><button class="btn btn-primary sm" type="submit">Ask it</button></div></form>` : `<p class="pf-basis">Your team has added 3 questions, the most Brew keeps.</p>`) : '';
+    const note = !a.sourced && a.questions.length ? `<p class="pf-note">${ic('info', 's14')}<span>We wrote these questions from your category; they aren’t checked against real searches yet. Questions people really search for land within the day.</span></p>`
+      : a.pending ? `<p class="pf-note">${ic('clock', 's14')}<span>We’re asking new questions from real searches now. These are the last answers until they land.</span></p>` : '';
+    const add = a.canAdd ? (a.teamLeft ? `<form class="aiq-add" data-aiq-add><label for="aiq-in">Add a question your customers ask</label><div><input id="aiq-in" maxlength="160" placeholder="Which serum works for thinning at the crown?" autocomplete="off"><button class="btn btn-primary sm" type="submit">Ask it</button></div></form>` : `<p class="pf-basis">Your team has added 3 questions, the most we keep.</p>`) : '';
     return `${hero}${gapHtml}${note}${inst}${block(un, 'When shoppers name no brand')}${block(br, `When shoppers ask about ${esc(a.brand)}`)}
       <p class="pf-basis aiv-how">Asked ${esc(toolList)} as a shopper in ${esc(a.country || 'your market')} would${day ? `, on ${esc(day)}` : ''}. The same questions every week, so weeks compare. Tap a question to read each answer.</p>
       ${a.method?.errors?.length ? `<p class="pf-basis">Some sources couldn’t be read last time; the next refresh tries again.</p>` : ''}${add}`; };
   const openAiProof = async (src) => {
-    modal(`<div class="sheet pick-sheet pf-sheet ai-sheet" role="dialog" aria-label="How Brew checks AI answers"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}How Brew checks AI answers</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
+    modal(`<div class="sheet pick-sheet pf-sheet ai-sheet" role="dialog" aria-label="How we check AI answers"><header class="sh-h"><b class="sh-t">${ic('shield', 's16')}How we check AI answers</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <div class="pf-b"><div class="sk" style="height:64px"></div><div class="sk" style="height:180px;margin-top:12px"></div></div></div>`, (w) => {
       w.addEventListener('submit', async (ev) => { const f = ev.target.closest('[data-aiq-add]'); if (!f) return; ev.preventDefault(); const i = $('input', f), b = $('button', f), v = i.value.trim(); if (!v) return;
         const done = busyBtn(b, 'Asking…'); const r = await tapi('POST', '/api/tenants/:t/ai-questions', { q: v }).catch(() => null); done();
@@ -1314,8 +1315,8 @@
     return { yes: yesOf(RANKED), spend: vis.filter((p) => B.spends.includes(p.cta?.label)), board: WORK.items.filter(needsMe).sort((a, b) => b.updatedAt - a.updatedAt) }; };
   const QHEAD = {
     yes: ['Need your yes', 'Calls only you can make', 'Calls only you can make. Each opens its jam: the plan, the draft, then your yes.', 'check'],
-    spend: ['Costs ad money', 'Budgets and campaigns', 'These cost ad money. Each opens its jam with the brief; your team makes the change in your own tools. Brew never spends or changes anything.', 'wallet'],
-    board: ['On your board', 'Work sent back for your OK', 'Work your team or Brew sent back. Each one waits on you before it can ship.', 'board']
+    spend: ['Costs ad money', 'Budgets and campaigns', 'These cost ad money. Each opens its jam with the brief; your team makes the change in your own tools. We never spend or change anything.', 'wallet'],
+    board: ['On your board', 'Work sent back for your OK', 'Work your team or ours sent back. Each one waits on you before it can ship.', 'board']
   };
   /* the greeting's tiles, from the same lists the pages behind them read (gLists: yesOf on the ranked feed). Drawn again on every
      refresh (counts), so "Need your yes" never drifts from its list (QA FEED-QA-07/21) */
@@ -1341,10 +1342,10 @@
   const qRow = (p, i) => { const c = cardOf(p);
     return `<article class="card q-card${(c.images || p.images || [])[0] ? '' : ' no-img'}${dummyCard(p) ? ' is-dummy' : ''}" data-post="${i}" data-id="${esc(p.id)}">${qThumb(p, c)}
       <div class="q-body"><div class="q-meta">${face(p.agent)}${c.badge ? `<span class="badge ${c.badge[1]}">${esc(c.badge[0])}</span>` : `<span>${esc(fromLabel(c))}</span>`}</div>
-        ${p.told && !isToldCard(c) ? `<span class="told-tag" title="This card uses what your team told Brew">${ic('book', 's12')}From what your team told Brew</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p></div>
+        ${p.told && !isToldCard(c) ? `<span class="told-tag" title="This card uses what your team told us">${ic('book', 's12')}From what your team told us</span>` : ''}<h3>${esc(c.title)}</h3><p>${esc(c.sub)}</p></div>
       <div class="q-acts">${barHtml(c.cta || { label: 'Open' }, c.done)}</div></article>`; };
   const wRow = (w) => `<article class="card q-card${w.img ? '' : ' no-img'}">${w.img ? `<span class="q-thumb"><img src="${w.img}" alt=""></span>` : ''}
-      <div class="q-body"><div class="q-meta">${w.askMe ? pAv(w.askMe, 22) : w.with?.kind === 'team' ? avatar(colleague(w.with.id), 22) : face(w.agent || 'brew')}<b>${w.askMe ? `From ${esc(w.askMe.who)}` : w.with ? `From ${esc(w.with.name)}` : 'From Brew'}</b><span>· ${ago(w.updatedAt)}</span><span class="badge warn">Needs you</span></div>
+      <div class="q-body"><div class="q-meta">${w.askMe ? pAv(w.askMe, 22) : w.with?.kind === 'team' ? avatar(colleague(w.with.id), 22) : face(w.agent || 'brew')}<b>${w.askMe ? `From ${esc(w.askMe.who)}` : w.with ? `From ${esc(w.with.name)}` : 'From us'}</b><span>· ${ago(w.updatedAt)}</span><span class="badge warn">Needs you</span></div>
         <h3>${esc(curV(w)?.title || w.title)}</h3><p>${esc(w.askMe ? plain(w.askMe.body) : curV(w)?.sub || 'Version ' + w.current + ' is ready for your OK.')}</p></div>
       <div class="q-acts"><button class="btn btn-primary" data-witem="${w.id}">Review ${ic('right', 's16')}</button></div></article>`;
   const renderQueue = async (k = QTAB) => {
@@ -1383,7 +1384,7 @@
     if (r.error || !r.products) { $('#view').innerHTML = `<div class="qpage"><p class="lx-empty">The products didn’t load. Reload the page.</p></div>`; return; }
     const row = (x) => `<section class="shf"><header class="shf-h">${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy">` : ''}<div><b>${esc(x.name)}</b><small>${esc([x.price, x.units != null ? `${x.units} sold in 30 days` : '', x.out ? 'Out of stock' : ''].filter(Boolean).join(' · '))}</small></div>${x.url ? `<a class="linkbtn" href="${esc(x.url)}" target="_blank" rel="noopener">Product page</a>` : ''}</header>
       ${x.assets.length ? `<div class="shf-stack">${x.assets.map((a) => `<a class="shf-a" href="#remix=${encodeURIComponent(a.cardId)}${a.changeId ? '/' + encodeURIComponent(a.changeId) : ''}">${a.video && !a.img ? `<video src="${esc(a.video)}" muted playsinline preload="none"></video>` : `<img src="${esc(a.img)}" alt="${esc(a.label)}" loading="lazy">`}<span class="badge ${SHELF_ST[a.state]?.[1] || 'muted'}">${esc(SHELF_ST[a.state]?.[0] || 'Draft')}</span><small>${esc(a.label)}${a.v ? ` · v${a.v}` : ''}</small></a>`).join('')}</div>` : `<p class="shf-none">Nothing made for it yet.</p>`}</section>`;
-    $('#view').innerHTML = `<div class="qpage shf-page"><button class="q-back" data-nav="learned">${ic('left', 's16')}What Brew learned</button><header class="q-head"><h1>Products <span>${r.products.length}</span></h1><p>Ordered by ${esc(r.order || 'the store’s own order')}.</p></header>${r.products.map(row).join('') || '<p class="lx-empty">No products read yet.</p>'}</div>`;
+    $('#view').innerHTML = `<div class="qpage shf-page"><button class="q-back" data-nav="learned">${ic('left', 's16')}What we learned</button><header class="q-head"><h1>Products <span>${r.products.length}</span></h1><p>Ordered by ${esc(r.order || 'the store’s own order')}.</p></header>${r.products.map(row).join('') || '<p class="lx-empty">No products read yet.</p>'}</div>`;
     window.scrollTo(0, 0); };
   /* rivals (3.5): the ads filtered by rival, and one page per rival (its ads, prices and how AI answers name it) */
   let RIV = null;
@@ -1395,7 +1396,7 @@
     const page = (r) => `<section class="shf"><header class="shf-h">${r.avatar ? `<img src="${esc(r.avatar)}" alt="" loading="lazy">` : ''}<div><b>${esc(r.name)}</b><small>${esc([r.live != null ? `${r.live} live ads` : r.error ? 'Their ads couldn’t be read this time; the next refresh tries again' : '', r.ai != null ? `AI answers name them ${typeof r.ai === 'number' && r.ai <= 1 ? Math.round(r.ai * 100) + '%' : r.ai} of the time` : ''].filter(Boolean).join(' · '))}</small></div>${pick ? '' : `<button class="linkbtn" data-rv="${esc(r.name)}">Their page ${ic('right', 's14')}</button>`}</header>
       ${pick && r.prices.length ? `<div class="rv-prices">${r.prices.map((x) => `<span>${esc(x.title)} · <b>${esc(String(x.price))}</b></span>`).join('')}</div>` : ''}
       ${r.ads.length ? `<div class="shf-stack">${r.ads.slice(0, pick ? 24 : 6).map((a) => ad(a, r)).join('')}</div>` : `<p class="shf-none">${r.error ? 'Their ads couldn’t be read this time.' : 'No live ads read for them.'}</p>`}</section>`;
-    $('#view').innerHTML = `<div class="qpage shf-page"><button class="q-back" data-nav="${pick ? 'rivals' : 'learned'}">${ic('left', 's16')}${pick ? 'All rivals' : 'What Brew learned'}</button><header class="q-head"><h1>${pick ? esc(pick.name) : `Rivals <span>${L.length}</span>`}</h1><p>${RIV.at ? `Ads read ${esc(new Date(RIV.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }))}` : ''}</p></header>
+    $('#view').innerHTML = `<div class="qpage shf-page"><button class="q-back" data-nav="${pick ? 'rivals' : 'learned'}">${ic('left', 's16')}${pick ? 'All rivals' : 'What we learned'}</button><header class="q-head"><h1>${pick ? esc(pick.name) : `Rivals <span>${L.length}</span>`}</h1><p>${RIV.at ? `Ads read ${esc(new Date(RIV.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }))}` : ''}</p></header>
       ${pick ? '' : `<div class="q-tabs rv-filter" role="tablist"><button role="tab" aria-selected="true" data-rv="">All</button>${L.map((r) => `<button role="tab" aria-selected="false" data-rv="${esc(r.name)}">${esc(r.name)}<span class="q-n">${r.ads.length}</span></button>`).join('')}</div>`}
       ${list.map(page).join('') || '<p class="lx-empty">No rivals read yet.</p>'}</div>`;
     $$('[data-rv]').forEach((b) => (b.onclick = () => { const n = b.dataset.rv; nav(n ? `#v=rivals&r=${encodeURIComponent(n)}` : '#v=rivals', true, 'view', 'rivals'); renderRivals(n); }));
@@ -1413,7 +1414,7 @@
             <button class="icon-btn rb rl" aria-label="Notifications" data-bell>${ic('bell')}<span class="rl-tx" aria-hidden="true">Notifications</span><i data-count="bell"></i></button>
           </div>
           <div class="rl-foot">
-            <button class="icon-btn rl" aria-label="What Brew learned" data-nav="learned">${ic('book')}<span class="rl-tx" aria-hidden="true">What Brew learned</span></button>
+            <button class="icon-btn rl" aria-label="What we learned" data-nav="learned">${ic('book')}<span class="rl-tx" aria-hidden="true">What we learned</span></button>
             <button class="icon-btn rl" aria-label="Connectors" data-nav="connectors">${ic('plug')}<span class="rl-tx" aria-hidden="true">Connectors</span></button>
             <button class="icon-btn rl lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}<span class="rl-tx" aria-hidden="true">${window.LIVE?.me ? esc(window.LIVE.me.email) : 'Account'}</span></button>
           </div>
@@ -1425,7 +1426,7 @@
               <button role="tab" aria-selected="true" data-nav="feed">${ic('feed', 's16')}Feed</button>
               <button role="tab" aria-selected="false" data-nav="deck">${ic('deck', 's16')}Deck</button>
             </div>
-            <div class="topbar-r"><button class="chip j1-pill" data-team-pill hidden title="Briefs with the ShopOS team">${ic('send', 's14')}<span data-count="team"></span><i class="t2-live" aria-hidden="true"></i></button><button class="icon-btn rb phone-only" aria-label="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button><button class="icon-btn phone-only lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}</button><button class="chip viewing" data-viewing aria-label="Switch the seat you view as">${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}</button>${themeBtn()}</div>
+            <div class="topbar-r"><button class="chip j1-pill" data-team-pill hidden title="Briefs with our team">${ic('send', 's14')}<span data-count="team"></span><i class="t2-live" aria-hidden="true"></i></button><button class="icon-btn rb phone-only" aria-label="Notifications" data-bell>${ic('bell')}<i data-count="bell"></i></button><button class="icon-btn phone-only lc-acct" aria-label="Your account" data-lacct>${window.LIVE?.me?.pic ? `<img src="${esc(window.LIVE.me.pic)}" alt="" referrerpolicy="no-referrer">` : ic('person')}</button><button class="chip viewing" data-viewing aria-label="Switch the seat you view as">${face(ROLE().face)}<span><i class="va">Viewing as </i><b>${esc(ROLE().name)}</b></span>${ic('chev', 's14')}</button>${themeBtn()}</div>
           </div>
           <div id="view"></div>
           <div class="stk-layer" id="stk" aria-hidden="true"></div>
@@ -1611,7 +1612,7 @@
   const mailOnHtml = (em, cls) => `<p class="${cls}" data-mailon>${ic('check', 's14')}<span>We’ll email <b>${esc(em)}</b> when your plays are ready.</span> <button class="linkbtn" type="button" data-mailmute>Mute</button></p>`;
   const brewingInner = () => { const n = BREW?.movesDone || 0, N = +BREW?.total || 50, em = ls.get(`${LSP()}mail`), stuck = brewStuck();
     return `<div class="bw-art"><img src="assets/brew/moves-brewing.jpg" alt="" decoding="async"><span class="bw-k"><span class="dot"></span>${stuck ? 'Paused' : 'Brewing'}</span></div>
-      <div class="body">${stuck ? `<h3>${esc(BREW.state || 'The moves are paused')}</h3><p>${n} of ${N} plays in your plan are written. The cards from them are in your feed now.</p>`
+      <div class="body">${stuck ? `<h3>${esc(BREW.state || 'The plays are paused')}</h3><p>${n} of ${N} plays in your plan are written. The cards from them are in your feed now.</p>`
         : `<h3>New cards land here as each play is written</h3><p>${n} of ${N} plays in your plan written${etaOf(BREW)}. Start with the top ad.</p>`}${BREW?.recheck?.words && !BREW.recheckDone ? `<p class="bw-meta">${ic('refresh', 's14')}Rewriting the brief and your first plays with ${esc(BREW.recheck.words)}</p>` : ''}
         <div class="bw-bar"><i style="width:${Math.max(3, Math.round(100 * Math.min(n, N) / N))}%"></i></div>${stuck ? `<button class="btn btn-primary sm" type="button" data-mvpro>${PAYWALL ? 'Continue with Pro' : 'Write the rest'}</button>` : ''}
         ${window.BREW_DEMO ? '' /* the demo sends no email, and its visitor has no real address */
@@ -1622,11 +1623,11 @@
   /* Mute: only said once the server confirms it (until it can, the email's own mute link does it) */
   document.addEventListener('click', async (e) => { const b = e.target.closest('[data-mailmute]'); if (!b) return; const em = mailMe(); if (!em) return; b.disabled = true;
     const r = await api(`/api/brands/${B.slug || BR}/notify`, { email: em, mute: true }).catch(() => null);
-    if (r?.muted) { ls.set(`${LSP()}mail-mute`, em); ls.del(`${LSP()}mail`); const p = b.closest('[data-mailon]'); if (p) p.innerHTML = `<span>No emails from Brew for this brand. Turn them back on from any Brew email.</span>`; toast(`${ic('check', 's16')}Muted`); }
+    if (r?.muted) { ls.set(`${LSP()}mail-mute`, em); ls.del(`${LSP()}mail`); const p = b.closest('[data-mailon]'); if (p) p.innerHTML = `<span>No emails from us for this brand. Turn them back on from any of our emails.</span>`; toast(`${ic('check', 's16')}Muted`); }
     else { b.disabled = false; toast(`${ic('info', 's16')}Couldn’t mute it from here. Use the mute link in the email.`); } });
   /* Write the rest, on the feed's paused card (the Learned page binds its own) */
-  document.addEventListener('click', async (e) => { const b = e.target.closest('[data-brewing] [data-mvpro]'); if (!b) return; const go = async () => { const r = await api(`/api/brands/${B.slug || BR}/pro`, {}); if (!r || r.error) { toast(r?.error || 'Couldn’t start the moves. Try again.'); return false; } return true; };
-    if (!S.pro && PAYWALL) return openPlan('moves', go); const done = busyBtn(b, 'Starting…'); if (await go()) { toast('Writing the rest of the moves.'); BREW = null; await loadMV(); const el = $('[data-brewing]'); if (el) { const h = brewingCard(); if (h) el.outerHTML = h; else el.remove(); } done(); b.disabled = true; } else done(); }); /* started: it stays off, so the rest is never asked for twice */
+  document.addEventListener('click', async (e) => { const b = e.target.closest('[data-brewing] [data-mvpro]'); if (!b) return; const go = async () => { const r = await api(`/api/brands/${B.slug || BR}/pro`, {}); if (!r || r.error) { toast(r?.error || 'Couldn’t start the plays. Try again.'); return false; } return true; };
+    if (!S.pro && PAYWALL) return openPlan('moves', go); const done = busyBtn(b, 'Starting…'); if (await go()) { toast('Writing the rest of the plays.'); BREW = null; await loadMV(); const el = $('[data-brewing]'); if (el) { const h = brewingCard(); if (h) el.outerHTML = h; else el.remove(); } done(); b.disabled = true; } else done(); }); /* started: it stays off, so the rest is never asked for twice */
   /* the read waits a little for a person to check it; then Brew starts writing with what it read (status.writeAt, local time) */
   const checkWaitCard = () => GEN && waitsOnCheck(BREW) ? `<article class="card brew-wait is-check" data-brewing><div class="body"><span class="bw-k2">${ic('clock', 's14')}Waiting for you${BREW.waitingSince ? ` · ${ago(BREW.waitingSince)}` : ''}</span>
       <h3>Check what we read for ${esc(B.brand.name)}</h3><p>The brand brief and the plays are written from what you confirm. ${writeAtLine(BREW)}</p>
@@ -1835,7 +1836,7 @@
   const barBox = (bar) => bar.closest('.card,[data-cp-cta]');
   // the money question, as a tray under the action: what it spends, the weekly meter, launch or not yet
   /* buttons that are a place to go, not a card's action */
-  const NAV_CTA = { 'Open the deck': () => renderDeck(), 'See all with Pro': () => openPlan('feed'), 'Start a new batch': () => openJam({ batch: true, tab: 'team' }), 'Open the moves': () => { renderMoves(); nav('#v=moves', true, 'view', 'moves'); } };
+  const NAV_CTA = { 'Open the deck': () => renderDeck(), 'See all with Pro': () => openPlan('feed'), 'Start a new batch': () => openJam({ batch: true, tab: 'team' }), 'Open the moves': () => { renderMoves(); nav('#v=moves', true, 'view', 'moves'); }, 'Open the plays': () => { renderMoves(); nav('#v=moves', true, 'view', 'moves'); } };
   /* the card's jam, opened on its plan: the same place tapping the card goes */
   const openCardJam = (p) => { if (!p) return; $$('.sp-ask').forEach((x) => x.remove()); S.jamOn = { ...(S.jamOn || {}), [p.id]: true }; save(); return openDetail(p, { fromCta: true }); };
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-start]'); if (!b) return; const card = b.closest('.card[data-post]'); const p = card && FEED[+card.dataset.post]; if (p) openCardJam(p); }); /* Start here opens its jam */
@@ -1938,11 +1939,11 @@
   const postSlack = async (c, url) => {
     const L0 = await fetch(`/api/brands/${window.BRAND}/slack/channels`, { credentials: 'same-origin' }).then((r) => r.json()).catch(() => ({ error: 'You look offline. Try again.' }));
     if (L0.error) return toast(esc(L0.error));
-    let ch = (L0.channels || []).find((x) => x.id === L0.channel) || (L0.channels || [])[0]; if (!ch) return toast('Brew can’t see any channel in Slack yet. Invite @Brew to one.');
+    let ch = (L0.channels || []).find((x) => x.id === L0.channel) || (L0.channels || [])[0]; if (!ch) return toast(`We can’t see any channel in Slack yet. Invite @${PRODUCT} to one.`);
     const top = (L0.channels || []).slice(0, 8);
     modal(`<div class="sheet pick-sheet sl-sheet"><header class="sh-h"><b class="sh-t">Post to Slack</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <div class="sl-chans">${top.map((x) => `<button class="chip" data-sl-id="${esc(x.id)}" aria-pressed="${x.id === ch.id}">${esc(x.name)}</button>`).join('')}</div>
-      <div class="sl-post"><span class="slack-ic">#</span><div><b>Brew <small>APP</small></b><p><b>${esc(c.title)}</b></p><p>${esc(c.sub || '')}</p><div class="sl-unfurl">${face(c.agent)}<span><b>${esc(AGENT[c.agent])}</b><small>${esc(url.replace(/^https?:\/\//, '').slice(0, 46))}…</small></span></div></div></div>
+      <div class="sl-post"><span class="slack-ic">#</span><div><b>${esc(PRODUCT)} <small>APP</small></b><p><b>${esc(c.title)}</b></p><p>${esc(c.sub || '')}</p><div class="sl-unfurl">${face(c.agent)}<span><b>${esc(AGENT[c.agent])}</b><small>${esc(url.replace(/^https?:\/\//, '').slice(0, 46))}…</small></span></div></div></div>
       <label class="sl-note"><input id="sl-note" placeholder="Add a note (optional)" maxlength="240"></label>
       <div class="sh-foot"><button class="btn btn-ghost sm" data-close>Cancel</button><button class="btn btn-primary sm" data-sl-go>${ic('send', 's16')}Post to <span data-sl-ch>${esc(ch.name)}</span></button></div></div>`, (m) => {
       $$('[data-sl-id]', m).forEach((b) => (b.onclick = () => { ch = top.find((x) => x.id === b.dataset.slId) || ch; $$('[data-sl-id]', m).forEach((x) => x.setAttribute('aria-pressed', String(x === b))); $('[data-sl-ch]', m).textContent = ch.name; }));
@@ -1960,7 +1961,7 @@
     const chans = ['#growth', '#brand', '#d2c-ops', '#founders'];
     modal(`<div class="sheet pick-sheet sl-sheet"><header class="sh-h"><b class="sh-t">Share to Slack</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <div class="sl-chans">${chans.map((ch) => `<button class="chip" data-sl-chan="${ch}" aria-pressed="${S.slack.channel === ch}">${ch}</button>`).join('')}</div>
-      <div class="sl-post"><span class="slack-ic">#</span><div><b>Brew <small>APP</small></b><p><b>${esc(c.title)}</b></p><p>${esc(c.sub || '')}</p><div class="sl-unfurl">${face(c.agent)}<span><b>${esc(AGENT[c.agent])}</b><small>${esc(url.replace(/^https?:\/\//, '').slice(0, 46))}…</small></span></div></div></div>
+      <div class="sl-post"><span class="slack-ic">#</span><div><b>${esc(PRODUCT)} <small>APP</small></b><p><b>${esc(c.title)}</b></p><p>${esc(c.sub || '')}</p><div class="sl-unfurl">${face(c.agent)}<span><b>${esc(AGENT[c.agent])}</b><small>${esc(url.replace(/^https?:\/\//, '').slice(0, 46))}…</small></span></div></div></div>
       <label class="sl-note"><input id="sl-note" placeholder="Add a note (optional)" maxlength="240"></label>
       <div class="sh-foot"><button class="btn btn-ghost sm" data-close>Cancel</button><button class="btn btn-primary sm" data-sl-go>${ic('copy', 's16')}Copy for <span data-sl-ch>${esc(S.slack.channel)}</span></button></div></div>`, (m) => {
       $$('[data-sl-chan]', m).forEach((b) => (b.onclick = () => { S.slack.channel = b.dataset.slChan; save(); $$('[data-sl-chan]', m).forEach((x) => x.setAttribute('aria-pressed', String(x === b))); $('[data-sl-ch]', m).textContent = S.slack.channel; }));
@@ -1985,7 +1986,7 @@
   const pseudoPost = (w) => ({ id: 'work:' + w.id, agent: w.agent || 'brew', sector: w.sector || 'creatives', kind: w.img ? 'media' : 'rows', images: w.img ? [w.img] : null, title: w.title, sub: curV(w)?.sub || '', cta: { label: w.cta || 'Deploy' }, time: ago(w.updatedAt), _work: w });
   /* the people who ship are the ShopOS team; work saved before the rename still says "Brew team" */
   const byTeam = (s) => /^(the )?(brew|shopos) team$/i.test(String(s || ''));
-  const teamFix = (w) => { if (w?.with?.kind === 'brew' && byTeam(w.with.name)) w.with = { ...w.with, name: 'ShopOS team' }; if (w?.deploy && byTeam(w.deploy.by)) w.deploy = { ...w.deploy, by: 'ShopOS team' }; return w; };
+  const teamFix = (w) => { if (w?.with?.kind === 'brew' && byTeam(w.with.name)) w.with = { ...w.with, name: 'Our team' }; if (w?.deploy && byTeam(w.deploy.by)) w.deploy = { ...w.deploy, by: 'Our team' }; return w; };
   const putWork = (w) => { if (!w) return; teamFix(w); const i = WORK.items.findIndex((x) => x.id === w.id); if (i < 0) WORK.items.unshift(w); else WORK.items[i] = w; };
   /* one read of the work list at a time, and none again within 5 s of the last one unless something changed since (1.7: fetched
      3 to 4 times on open) */
@@ -2032,7 +2033,7 @@
     const fb = DP?.fb?.[id] || null;
     return `<details class="cp-rank"${DP?.rankOpen ? ' open' : ''}><summary><i class="cp-m-ic">${ic('sliders', 's16')}</i><span><small>Why you’re seeing this</small><b>${esc(top[0] || 'Ranked for your seat')}</b></span>${pos >= 0 ? `<em class="cp-rank-sc">#${pos + 1}<small>in your feed</small></em>` : ''}${ic('down', 's16')}</summary>
       <div class="cp-rank-b"><ul class="cp-why">${rs.map((x) => `<li class="${x.up ? 'is-up' : 'is-down'}"><i>${ic(x.ic, 's14')}</i><span>${esc(x.t)}</span></li>`).join('')}</ul>
-        <div class="cp-fb">${fb === 'sent' ? `<p class="cp-fb-done">${ic('check', 's14')}Thanks. Your feed and Brew both learn from this.</p>` : `<span>Was this useful?</span>
+        <div class="cp-fb">${fb === 'sent' ? `<p class="cp-fb-done">${ic('check', 's14')}Thanks. Your feed and our team both learn from this.</p>` : `<span>Was this useful?</span>
           <button class="cp-act sm${S.hearts[id] ? ' is-on' : ''}" data-fb="up">${ic('heart', 's14')}More like this</button>
           <button class="cp-act sm" data-fb="down">${ic('eyeoff', 's14')}Not for me</button>
           <button class="cp-act sm" data-fb="why">${ic('chat', 's14')}Tell us why</button>
@@ -2201,7 +2202,7 @@
     // the plan at a glance: the fields read from the brief (exact values), falling back to the keyword scan
     const PLAN_ROWS = [['What changes', 'change'], ['Who it’s for', 'audience'], ['When', 'when'], ['Budget', 'budget'], ['Owner', 'owner'], ['How we measure it', (b) => b.metric && `${b.metric}${b.target ? `: ${b.target}` : ''}${b.window ? `, read on day ${b.window}` : ''}`], ['Stop rule', 'guard']];
     const spec = d.plan ? PLAN_ROWS.map(([label, k]) => ({ label, value: String((typeof k === 'function' ? k(bp) : bp[k]) || '').replace(/^what changes:\s*/i, '').replace(/^(owner|when|budget):\s*(open\.?\s*)?(to be named\.?)?$/i, '').trim() })) : (d.spec || []), gaps = spec.filter((x) => !x.value).length, sent = !!w?.jamBrief;
-    const people = [...new Set(th.filter((m) => m.from !== 'system').map((m) => m.from === 'me' ? 'You' : m.from === 'ai' ? (AGENT[w.agent] || 'AI') : m.who || 'Brew'))];
+    const people = [...new Set(th.filter((m) => m.from !== 'system').map((m) => m.from === 'me' ? 'You' : m.from === 'ai' ? (AGENT[w.agent] || 'AI') : m.who || 'Our team'))];
     return `<header class="jb-head"><span class="jb-kind">${face(w?.agent && w.agent !== 'brew' ? w.agent : 'brew')}${esc(d.kind || 'Brief')}${sent ? ` · ${esc(w.ticket || 'sent')}` : ''}</span><h1>${esc(title)}</h1>
         <p class="jb-who">${people.map(esc).join(', ')} · ${said} message${said > 1 ? 's' : ''}${gaps ? ` · <b>${gaps} to settle</b>` : ' · <b class="ok">ready to send</b>'}</p></header>
       <div class="jb-grid">
@@ -2212,7 +2213,7 @@
           ${spec.filter((x) => x.value).map((x) => `<div class="jb-row"><small>${esc(x.label)}</small><p>${esc(x.value)}</p></div>`).join('') || '<p class="jb-none">Nothing settled yet. It fills in as you jam.</p>'}
           ${gaps ? `<div class="jb-gaps"><small>Still to settle</small><div>${spec.filter((x) => !x.value).map((x) => `<button class="chip" data-jm-fill="${esc(x.label)}" title="Write it yourself">${esc(x.label)}</button>`).join('')}</div>
             <button class="jb-ask" data-jb-send="${esc(`Draft these for the brief: ${spec.filter((x) => !x.value).map((x) => x.label.toLowerCase()).join(', ')}. Use only what we know, and ask me for anything missing.`)}">${ic('sparkles', 's14')}Ask AI to draft ${gaps > 1 ? `these ${gaps}` : 'it'}</button></div>` : ''}
-          ${!gaps && !sent ? `<button class="cp-go jb-ship" data-jm-ship>${ic('send', 's16')}Send to the ShopOS team${ic('right', 's16')}</button>` : ''}</section>
+          ${!gaps && !sent ? `<button class="cp-go jb-ship" data-jm-ship>${ic('send', 's16')}Send to our team${ic('right', 's16')}</button>` : ''}</section>
       </div>
       <section class="jb-next"><small class="jb-label">${ic('chat', 's14')}Ask next</small><div>${(d.next?.length ? d.next : JB_NEXT[prof] || JB_NEXT.general).filter((x) => !th.some((m) => m.from === 'me' && mdPlain(m.body).toLowerCase() === x.toLowerCase())).map((x) => `<button class="chip" data-jb-send="${esc(x)}">${esc(x)}</button>`).join('')}</div></section>`;
   };
@@ -2248,11 +2249,11 @@
     if (ph === 'jamming') {
       const st = w.stage;
       const title = st === 'drafting' ? 'Shaping the brief' : st === 'needs_you' ? `v${w.current} needs your yes` : st === 'team' ? `With ${w.with?.name || 'your team'}${w.with?.channel ? ` in ${w.with.channel}` : ''}` : `Shaping the brief`;
-      const auto = last && /usually (replies|back)/i.test(last.body || ''), line = last && !auto ? `<b>${esc(last.who || (last.from === 'ai' ? AGENT[w.agent] : 'Brew'))}:</b> ${esc(String(last.body).slice(0, 220))}` : st === 'brew' ? 'Usually back in 12 to 24 hours. Add anything in the chat.' : '';
+      const auto = last && /usually (replies|back)/i.test(last.body || ''), line = last && !auto ? `<b>${esc(last.who || (last.from === 'ai' ? AGENT[w.agent] : 'Our team'))}:</b> ${esc(String(last.body).slice(0, 220))}` : st === 'brew' ? 'Usually back in 12 to 24 hours. Add anything in the chat.' : '';
       return band('jamming', STAGE[st], title, line, planRows(w), st === 'needs_you' ? `<button class="btn btn-primary sm" data-approve>${ic('check', 's14')}Approve v${w.current}</button>` : '');
     }
     if (ph === 'ready') return band('ready', 'Ready to share', `v${w.current} is approved`, chosen ? `Going with <b>${esc(chosen.name)}</b>. Share the brief from the jam.` : 'Share the brief from the jam.', planRows(w));
-    if (ph === 'shared') return band('shared', 'Brief shared', w.ticket ? `Brief ${w.ticket}` : 'The brief is out', `Shared with ${w.jamBrief?.to === 'team' ? 'your team' : 'the ShopOS team'}${w.jamBrief?.sharedAt ? ` ${esc(ago(w.jamBrief.sharedAt))}` : ''}. The jam ends here.`, planRows(w), `<button class="btn btn-ghost sm" data-cp-ship>${ic('copy', 's14')}Copy it again</button>`);
+    if (ph === 'shared') return band('shared', 'Brief shared', w.ticket ? `Brief ${w.ticket}` : 'The brief is out', `Shared with ${w.jamBrief?.to === 'team' ? 'your team' : 'our team'}${w.jamBrief?.sharedAt ? ` ${esc(ago(w.jamBrief.sharedAt))}` : ''}. The jam ends here.`, planRows(w), `<button class="btn btn-ghost sm" data-cp-ship>${ic('copy', 's14')}Copy it again</button>`);
     return '';
   };
   // the trail: the path we chose, the others, why, and when each step happened
@@ -2260,8 +2261,8 @@
     const dec = S.decided?.[p.id] || w?.decided, L = 'ABCD', chosen = pg?.options.find((o) => o.id === dec);
     const hist = (w?.history || []).map(([st, at]) => `<li><b>${esc(STAGE[st] || st)}</b><small>${esc(ago(at))}</small></li>`).join('');
     return `<details class="cp-how"><summary>${ic('clock', 's16')}<span><small>How we got here</small><b>${chosen ? `Went with ${esc(chosen.name)}` : 'The options and the steps so far'}</b></span>${ic('down', 's16')}</summary>
-      <div class="cp-how-b">${pg ? pg.options.map((o, i) => `<div class="cp-how-o${o.id === dec ? ' is-chosen' : ''}"><span class="cp-n">${o.id === dec ? ic('check', 's14') : L[i]}</span><div><b>${esc(o.name)}</b>${o.id === dec ? '<em class="cp-tag ok">Chosen</em>' : o.pick ? `<em class="cp-tag pick">Brew pick</em>` : ''}<p>${esc(o.effect || o.says || '')}</p></div></div>`).join('') : ''}
-        ${pg?.reason ? `<p class="cp-how-why"><b>Why Brew picked it:</b> ${esc(pg.reason)}</p>` : ''}
+      <div class="cp-how-b">${pg ? pg.options.map((o, i) => `<div class="cp-how-o${o.id === dec ? ' is-chosen' : ''}"><span class="cp-n">${o.id === dec ? ic('check', 's14') : L[i]}</span><div><b>${esc(o.name)}</b>${o.id === dec ? '<em class="cp-tag ok">Chosen</em>' : o.pick ? `<em class="cp-tag pick">Our pick</em>` : ''}<p>${esc(o.effect || o.says || '')}</p></div></div>`).join('') : ''}
+        ${pg?.reason ? `<p class="cp-how-why"><b>Why we picked it:</b> ${esc(pg.reason)}</p>` : ''}
         ${hist ? `<ol class="cp-how-t">${hist}</ol>` : ''}
         ${pg?.moves?.length ? `<p class="cp-how-mv">${ic('link', 's14')}Backed by ${pg.moves.map((x) => `${mvLabel(x.n)}`).join(', ')}</p>` : ''}</div></details>`;
   };
@@ -2345,12 +2346,12 @@
     const tile = (o, i) => { const chosen = dec === o.id, on = o.id === cur?.id;
       return `<button class="cp-tile${on ? ' is-on' : ''}${chosen ? ' is-chosen' : ''}${o.pick ? ' is-pick' : ''}${dec && !chosen ? ' is-dim' : ''}" role="tab" aria-selected="${on}" data-cp-open="${esc(o.id)}" style="--d:${160 + i * 60}ms">
         <span class="cp-n">${chosen ? ic('check', 's14') : L[i]}</span><b>${esc(o.name)}</b>
-        ${chosen ? '<em class="cp-tag ok">Going with this</em>' : o.pick ? `<em class="cp-tag pick">${ic('sparkles', 's14')}Brew pick${pg.reason ? `<span class="cp-why" role="tooltip"><b>Why Brew suggests this</b>${esc(pg.reason)}${o.moves?.length ? `<small>Backed by ${o.moves.length === 1 ? 'Move' : 'Moves'} ${o.moves.map((n) => esc(mv2(n))).join(', ')}</small>` : ''}</span>` : ''}</em>` : '<em class="cp-tag"></em>'}</button>`; };
+        ${chosen ? '<em class="cp-tag ok">Going with this</em>' : o.pick ? `<em class="cp-tag pick">${ic('sparkles', 's14')}Our pick${pg.reason ? `<span class="cp-why" role="tooltip"><b>Why we suggest this</b>${esc(pg.reason)}${o.moves?.length ? `<small>Backed by ${o.moves.length === 1 ? 'Play' : 'Plays'} ${o.moves.map((n) => esc(mv2(n))).join(', ')}</small>` : ''}</span>` : ''}</em>` : '<em class="cp-tag"></em>'}</button>`; };
     const panel = (o) => { const i = pg.options.indexOf(o), chosen = dec === o.id;
       return `<div class="cp-panel${chosen ? ' is-chosen' : o.pick ? ' is-pick' : ''}" role="tabpanel" style="--x:${(i + .5) / pg.options.length}">
         <p class="cp-says">${esc(o.says || o.name)}</p>
         ${o.effect ? `<div class="cp-eff">${ic('zap', 's16')}<div><small>What changes</small><p>${esc(o.effect)}</p></div></div>` : ''}
-        <footer>${o.moves?.length ? `<span class="cp-backs"><small>Backed by</small>${o.moves.map((n) => `<button class="cp-mv" data-cp-mv="${n}">Move ${mv2(n)}</button>`).join('')}</span>` : '<span></span>'}
+        <footer>${o.moves?.length ? `<span class="cp-backs"><small>Backed by</small>${o.moves.map((n) => `<button class="cp-mv" data-cp-mv="${n}">Play ${mv2(n)}</button>`).join('')}</span>` : '<span></span>'}
           ${chosen ? `<span class="cp-done">${ic('check', 's16')}Your pick<button class="linkbtn" data-cp-undo>Change</button></span>` : `<button class="cp-go" data-cp-go="${esc(o.id)}">Go with ${L[i]}${ic('right', 's16')}</button>`}</footer></div>`; };
     const mvCard = (x, i) => `<article class="cp-move" id="cp-mv-${x.n}" style="--d:${i * 50}ms">
         <header><span class="cp-move-n">${mv2(x.n)}</span><h4>${esc(x.title)}</h4></header>
@@ -2368,11 +2369,11 @@
       <div class="cp-do">${(ph === 'fresh' || (ph === 'jamming' && w?.stage === 'drafting')) && c.cta?.label && !p._work && FEED.some((x) => x.id === p.id) ? `<div class="cp-cta" data-cp-cta data-post="${FEED.findIndex((x) => x.id === p.id)}"><span class="cp-cta-k">${ic('zap', 's14')}${c.done ? 'Done' : 'The action this card recommends'}</span>${barHtml(c.cta, c.done)}</div>` : ''}${cpActs(p, ch)}</div>
       ${p.sector === 'visibility' && aiStand() ? `<section class="cp-sec ais"><h2>Where you stand in AI answers</h2>${aisHtml(aiStand())}</section>` : ''}${past ? howHtml(p, w, pg) : pg && c.kind !== 'variants' ? `<section class="cp-sec cp-pick-sec"><h2>${dec ? 'Your call' : 'Pick your path'}<small>${dec ? 'it’s in the brief' : `${pg.options.length} ways to play it`}</small></h2>
           <div class="cp-tiles" role="tablist" style="--n:${pg.options.length}">${pg.options.map(tile).join('')}</div>${cur ? panel(cur) : ''}</section>
-        ${pick && pg.reason && ['fresh', 'decided'].includes(ph) ? `<section class="cp-rec">${face(ag)}<div><small>Why Brew picks ${L[pg.options.indexOf(pick)]}</small><p>${esc(pg.reason)}</p>
+        ${pick && pg.reason && ['fresh', 'decided'].includes(ph) ? `<section class="cp-rec">${face(ag)}<div><small>Why we pick ${L[pg.options.indexOf(pick)]}</small><p>${esc(pg.reason)}</p>
           ${pg.follows?.length ? `<ol class="cp-follows" aria-label="What follows"><li class="cp-follows-k">Then</li>${pg.follows.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
           ${c.needs ? `<p class="cp-needs">${ic('person', 's14')}Needs ${esc(c.needs)} before anything ships.</p>` : ''}
           ${weighedHtml(LEARNED[p.id])}</div></section>` : ''}
-        ${pg.moves?.length ? `<section class="cp-sec"><h2>Backed by ${pg.moves.length} move${pg.moves.length > 1 ? 's' : ''}<small>the plans Brew wrote for ${B.brand.name}</small></h2><div class="cp-moves">${pg.moves.map(mvCard).join('')}</div></section>` : ''}`
+        ${pg.moves?.length ? `<section class="cp-sec"><h2>Backed by ${pg.moves.length} play${pg.moves.length > 1 ? 's' : ''}<small>the plans we wrote for ${B.brand.name}</small></h2><div class="cp-moves">${pg.moves.map(mvCard).join('')}</div></section>` : ''}`
       : c.kind === 'variants' ? '' : `<section class="cp-sec"><h2>Pick your path</h2><div class="cp-tiles" style="--n:3">${[0, 1, 2].map(() => '<div class="sk" style="height:92px;border-radius:18px"></div>').join('')}</div></section>`}
       ${c.detail?.watch || m || om || ms || c.know ? `<div class="cp-duo">${c.detail?.watch && !past ? `<p class="cp-watch">${ic('eyeoff', 's16')}<span><b>Watch out</b>${esc(c.detail.watch)}</span></p>` : ''}
         ${ms ? `<details class="cp-measure is-spec"${DP.mOpen ? ' open' : ''}><summary><i class="cp-m-ic">${ic('trendup', 's16')}</i><span><small>How we measure it</small><b>${esc(ms.metric)}</b></span><em class="cp-m-goal">${esc(ms.summary || 'Set with you')}<small>${ms.how === 'ai' ? 'designed from your brief' : 'from your brief'}</small></em>${ic('down', 's16')}</summary>${cpSpec(ms, mB, w, mFmt)}</details>`
@@ -2402,11 +2403,11 @@
   /* the jam plan: goal, the change, open questions with owners, readiness. It ends with Share the brief. */
   /* a question a person owns goes to a real teammate (the demo site keeps its simulated ones) */
   const REALQ = !window.BREW_DEMO;
-  const ownerName = (o, w, q) => o === 'ai' ? AGENT[w.agent] || 'AI' : o === 'brew' ? 'ShopOS team' : REALQ ? (q?.waiting || 'someone') : colleague(o).name;
+  const ownerName = (o, w, q) => o === 'ai' ? AGENT[w.agent] || 'AI' : o === 'brew' ? 'Our team' : REALQ ? (q?.waiting || 'someone') : colleague(o).name;
   const ownerChip = (o, w, q) => o === 'ai' ? face(w.agent || 'creative') : o === 'brew' ? `<span class="av pod-av">B</span>` : REALQ ? (q?.ownerEmail ? pAv({ email: q.ownerEmail, name: q.waiting, pic: (window.LIVE?.access?.team || []).find((x) => x.email === q.ownerEmail)?.pic }, 20) : `<span class="av" style="width:20px;height:20px;border-radius:50%">${ic('person', 's12')}</span>`) : avatar(colleague(o), 20);
   const askPick = (q) => { const me = String(ME()?.email || '').toLowerCase(), ppl = (window.LIVE?.access?.team || []).filter((x) => x.email !== me);
     return ppl.length ? `<select class="jq-who" data-jq-person="${q.id}" aria-label="Who to ask"><option value="">Ask someone…</option>${ppl.map((x) => `<option value="${esc(x.email)}">${esc(x.name || x.email)}</option>`).join('')}</select>` : `<small>Invite your team to ask them</small>`; };
-  const qBy = (by = '') => by === 'you' ? 'You' : by.startsWith('ai:') ? AGENT[by.slice(3)] || 'AI' : by.startsWith('teammate:') ? by.slice(9) : by === 'brew' ? 'ShopOS team' : by === 'learned' ? 'Learned check' : by === 'earlier' ? 'Earlier' : by;
+  const qBy = (by = '') => by === 'you' ? 'You' : by.startsWith('ai:') ? AGENT[by.slice(3)] || 'AI' : by.startsWith('teammate:') ? by.slice(9) : by === 'brew' ? 'Our team' : by === 'learned' ? 'Learned check' : by === 'earlier' ? 'Earlier' : by;
   document.addEventListener('change', async (e) => { const sel = e.target.closest?.('[data-jq-person]'); if (!sel || !sel.value || !DP?.w) return; sel.disabled = true;
     const r = await tapi('POST', `/api/work/${DP.w.id}/plan/ask`, { qid: sel.dataset.jqPerson, email: sel.value }); if (r.error) { sel.disabled = false; return toast(esc(r.error)); }
     putWork(r.work); repaintDetail(); toast(`${ic('send', 's16')}Asked. ${esc(sel.selectedOptions[0]?.textContent || 'They')} will get an email.`); });
@@ -2452,12 +2453,12 @@
     const st = w?.stage, si = st ? STEPS.findIndex(([k]) => k === stepOf(st)) : -1;
     const stepper = w ? `<div class="stepper">${STEPS.map(([k, n], i) => `<span class="${i < si ? 'done' : i === si ? 'on' : ''}">${i < si ? ic('check', 's14') : ''}${n}</span>`).join('')}</div>
       <div class="stage-line"><span class="badge ${st === 'needs_you' ? 'warn' : st === 'result' ? (w.result?.win ? 'ok' : 'warn') : 'info'}">${STAGE[st]}</span>${w.with ? `<span>with ${esc(w.with.name)}${w.with.channel ? ' in ' + esc(w.with.channel) : ''}</span>` : ''}${w.ticket ? `<span>${esc(w.ticket)}</span>` : ''}<span>v${w.current} of ${w.versions.length}</span></div>` : '';
-    const versions = w && w.versions.length > 1 ? `<div class="vers">${w.versions.map((x) => `<button class="${x.n === w.current ? 'on' : ''}" data-ver="${x.n}" title="${esc(x.note || '')}">v${x.n}<small>${esc(x.by === 'you' ? 'You' : x.by === 'ai' ? 'AI' : x.by === 'brew' ? 'Brew' : x.by === 'colleague' ? 'Team' : 'Agent')}</small></button>`).join('')}</div>` : '';
+    const versions = w && w.versions.length > 1 ? `<div class="vers">${w.versions.map((x) => `<button class="${x.n === w.current ? 'on' : ''}" data-ver="${x.n}" title="${esc(x.note || '')}">v${x.n}<small>${esc(x.by === 'you' ? 'You' : x.by === 'ai' ? 'AI' : x.by === 'brew' ? 'Our team' : x.by === 'colleague' ? 'Team' : 'Agent')}</small></button>`).join('')}</div>` : '';
     const preview = v && w.current > 1 ? `<div class="dp-ver">${v.images?.[0] ? `<img src="${v.images[0]}" alt="">` : ''}<div><small>v${v.n} · ${esc(v.note || '')}</small><b>${esc(v.title)}</b><p>${esc(v.sub)}</p></div></div>` : '';
     const footer = (() => {
       const to = DP.to;
-      const seg = `<div class="to-seg" role="tablist"><span>To</span><button data-to="ai" aria-selected="${to === 'ai'}">${ic('sparkles', 's14')}AI</button><button data-to="team" aria-selected="${to === 'team'}"># Team</button><button data-to="brew" aria-selected="${to === 'brew'}">${ic('person', 's14')}Brew</button></div>`;
-      const ph = to === 'ai' ? 'Tell AI how you want it…' : to === 'team' ? (w?.with?.kind === 'team' ? `Reply to ${w.with.name}…` : 'Add a note for your colleague…') : (w?.with?.kind === 'brew' ? 'Reply to the ShopOS team…' : 'What should Brew do with it?');
+      const seg = `<div class="to-seg" role="tablist"><span>To</span><button data-to="ai" aria-selected="${to === 'ai'}">${ic('sparkles', 's14')}AI</button><button data-to="team" aria-selected="${to === 'team'}"># Team</button><button data-to="brew" aria-selected="${to === 'brew'}">${ic('person', 's14')}Our team</button></div>`;
+      const ph = to === 'ai' ? 'Tell AI how you want it…' : to === 'team' ? (w?.with?.kind === 'team' ? `Reply to ${w.with.name}…` : 'Add a note for your colleague…') : (w?.with?.kind === 'brew' ? 'Reply to our team…' : 'What should we do with it?');
       const chips = to === 'ai' && (!st || st === 'drafting') ? `<div class="sugg dp-chips">${(c.images ? ['Make it shorter', 'A Hindi version', 'Try a different angle', 'Cut it for Reels'] : ['Make it simpler', 'Say it for WhatsApp', 'What would this cost?', 'Add a stronger number']).map((x) => `<button class="chip" data-chip="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : '';
       const compose = `${chips}${seg}<form class="compose" id="dp-f"><input id="dp-in" placeholder="${esc(ph)}" autocomplete="off"><button aria-label="Send">${ic('up', 's16')}</button></form>`;
       const two = `<div class="dp-ctas"><button class="btn btn-ghost" data-send="team"><span class="slack-ic sm">#</span>Jam with team</button></div>`;
@@ -2466,7 +2467,7 @@
       const open = w?.plan ? w.plan.questions.filter((q) => !q.answer).length : 0;
       const ready = w?.plan ? (open ? `<button class="btn btn-ghost dp-rfs" disabled>${ic('zap', 's14')}Ready to share · ${open} open</button>` : `<button class="btn btn-primary dp-rfs" data-approve>${ic('zap', 's16')}Ready to share</button>`) : `<button class="linkbtn dp-ready" data-approve ${w ? '' : 'hidden'}>${ic('check', 's14')} Looks good, mark ready</button>`;
       if (!w || st === 'drafting') return `${compose}${two}${ready}`;
-      if (st === 'team' || st === 'brew') return `<p class="dp-wait"><brew-load class="spin"></brew-load>${st === 'team' ? `Waiting on ${esc(w.with.name)} in ${esc(w.with.channel)}` : `Shared with the ShopOS team as ${esc(w.ticket || 'a brief')}.`}</p>${compose}`;
+      if (st === 'team' || st === 'brew') return `<p class="dp-wait"><brew-load class="spin"></brew-load>${st === 'team' ? `Waiting on ${esc(w.with.name)} in ${esc(w.with.channel)}` : `Shared with our team as ${esc(w.ticket || 'a brief')}.`}</p>${compose}`;
       if (st === 'needs_you') return `<div class="dp-ctas"><button class="btn btn-primary" data-approve>${ic('check', 's16')}Approve v${w.current}</button></div>${compose}`;
       if (st === 'ready') return `<div class="dp-ctas"><button class="btn btn-primary" data-cp-ship>${ic('copy', 's16')}Share the brief</button></div><button class="linkbtn" data-reopen>Another round first</button>`;
       return '';
@@ -2482,7 +2483,7 @@
         ${String(p.id).startsWith('jam-') ? stepper : ''}
         ${cardPageHtml(p, c, w, ch, m)}
       </div>
-      <aside class="dp-side"><div class="dp-side-b">${ch && (ch.thread?.length || w?.thread?.length) ? `<section class="dp-thread"><h4>Conversation <small>studio and jam</small></h4>${mergedThread(w, ch)}</section>` : w?.thread?.length ? `<section class="dp-thread"><h4>Conversation</h4>${threadHtml(w)}</section>` : `<div class="dp-side-empty">${ic('hand')}<b>Jam on this card</b><span>Ask AI to change it, pull in a teammate on Slack, or hand it to the ShopOS team. Everything you say and every version lands here.</span></div>`}</div>
+      <aside class="dp-side"><div class="dp-side-b">${ch && (ch.thread?.length || w?.thread?.length) ? `<section class="dp-thread"><h4>Conversation <small>studio and jam</small></h4>${mergedThread(w, ch)}</section>` : w?.thread?.length ? `<section class="dp-thread"><h4>Conversation</h4>${threadHtml(w)}</section>` : `<div class="dp-side-empty">${ic('hand')}<b>Jam on this card</b><span>Ask AI to change it, pull in a teammate on Slack, or hand it to our team. Everything you say and every version lands here.</span></div>`}</div>
       <div class="dr-f dp-f">${footer}</div></aside></div>`;
     window.JamRoom?.decorateDetail(dp, DP);
     if (before) flashLeft(dp, before);
@@ -2493,7 +2494,7 @@
   const busy = (on, label) => { const f = $('#dp .dp-f'); if (!f) return; f.classList.toggle('is-busy', on); if (on) f.insertAdjacentHTML('afterbegin', `<p class="dp-wait dp-busy"><brew-load class="spin"></brew-load>${esc(label)}</p>`); else $('.dp-busy', f)?.remove(); };
   /* moves disagree: brief the owner on Slack with every option and our pick */
   const conflictNote = (p) => { const c = cardOf(p), pk = c.options.find((o) => o.id === c.pick);
-    return `Moves disagree: ${c.title} ${c.options.map((o, i) => `(${i + 1}) ${o.name}, moves ${o.moves}`).join('. ')}. We recommend ${pk.name}: ${c.reason} Agree, or pick another?`; };
+    return `Plays disagree: ${c.title} ${c.options.map((o, i) => `(${i + 1}) ${o.name}, moves ${o.moves}`).join('. ')}. We recommend ${pk.name}: ${c.reason} Agree, or pick another?`; };
   const pullIn = (p) => { if (!DP) return; DP.picking = p.owner || colleagueForCard(p).id; return sendTo('team', conflictNote(p)); };
   const sendTo = async (to, note) => {
     /* the live site: "Jam with team" is the jam on Slack (the real post and its thread); the demo keeps the simulated teammate */
@@ -2535,7 +2536,7 @@
   document.addEventListener('submit', async (e) => { const f = e.target.closest?.('[data-fb-form]'); if (!f || !DP) return; e.preventDefault();
     const text = f.querySelector('input').value.trim(), p = DP.p, was = DP.fb?.[p.id];
     if (text) await tapi('POST', `/api/cards/${p.id}/feedback`, { kind: 'note', text, useful: was === 'down' ? false : null });
-    DP.fb = { ...(DP.fb || {}), [p.id]: 'sent' }; repaintDetail(); toast(`${ic('check', 's16')}Thanks. Brew will learn from it.`); });
+    DP.fb = { ...(DP.fb || {}), [p.id]: 'sent' }; repaintDetail(); toast(`${ic('check', 's16')}Thanks. We’ll learn from it.`); });
   document.addEventListener('click', async (e) => {
     const dp = e.target.closest('#dp'); if (!dp || !DP) return;
     const t = e.target;
@@ -2647,7 +2648,7 @@
     { k: 'drafting', name: 'Drafting', full: 'Drafting', sub: 'You and AI, before anyone else sees it', stages: ['drafting'], emo: '✏️', dot: 'var(--fg-3)' },
     { k: 'with', name: 'With teammate', full: 'With a teammate', sub: 'A teammate is looking at it', stages: ['team'], emo: '💬', dot: 'var(--info)' },
     { k: 'ready', name: 'Ready', full: 'Ready to share', sub: 'Approved; share the brief from the jam', stages: ['ready'], emo: '✅', dot: 'var(--ok)' },
-    { k: 'shared', name: 'Brief shared', full: 'Brief shared', sub: 'With the ShopOS team or your team; the jam ends here', stages: ['shared'], emo: '📋', dot: '#16a37f' }];
+    { k: 'shared', name: 'Brief shared', full: 'Brief shared', sub: 'With our team or yours; the jam ends here', stages: ['shared'], emo: '📋', dot: '#16a37f' }];
   // a remixed message keeps its copy as the title ("नमस्ते {first_name}, …"). On the board the title is what the work is; the copy goes underneath
   const MSGY = /\{\{?\s*\w+|\n|^(hi|hey|hello|dear|नमस्ते)\b/i;
   const wbTitle = (w) => { const t = String(w.title || curV(w)?.title || '').trim(); return !MSGY.test(t) && t.length <= 90 ? t : w.chg?.actionLabel || byId(w.cardId)?.title || plain(t).slice(0, 70); };
@@ -2665,7 +2666,7 @@
     if (w.askMe) return `<div class="wb-say">${pAv(w.askMe, 22)}<div><b>${esc(w.askMe.who)}</b><span>${esc(plain(w.askMe.body).slice(0, 200))}</span></div></div>`;
     const msg = (w.thread || []).filter((x) => x.body && !['system', 'me'].includes(x.from)).slice(-1)[0];
     if (['needs_you', 'team'].includes(w.stage) && msg) { const tm = w.with?.kind === 'team' ? colleague(w.with.id) : null;
-      const who = msg.who || w.with?.name || 'Brew';
+      const who = msg.who || w.with?.name || 'Our team';
       return `<div class="wb-say">${tm ? avatar({ ...tm, ini: who.trim().split(/\s+/).slice(0, 2).map((x) => x[0]).join('').toUpperCase() }, 22) : face(msg.from === 'brew' ? 'brew' : w.agent || 'brew')}<div><b>${esc(who)}</b><span>${esc(plain(msg.body).slice(0, 200))}</span></div></div>`; }
     const copy = wbCopy(w); if (copy) return `<blockquote class="wb-copy">${esc(copy)}</blockquote>`;
     const sub = plain(curV(w)?.sub || byId(w.cardId)?.sub || ''); return sub ? `<p>${esc(sub.slice(0, 220))}</p>` : ''; };
@@ -2673,7 +2674,7 @@
     : w.stage === 'ready' ? `<span class="wb-go">Share the brief${ic('right', 's16')}</span>`
     : `<span class="wb-go is-quiet">Open${ic('right', 's16')}</span>`;
   const tileHtml = (w) => `<article class="card wb-card${w.unread ? ' is-unread' : ''}" data-witem="${w.id}" tabindex="0">
-      <header class="card-head">${face(w.agent || 'brew')}<div class="who"><b>${esc(AGENT[w.agent] || 'Brew')}</b><span>${ago(w.updatedAt)}</span></div>${wbBadge(w)}</header>
+      <header class="card-head">${face(w.agent || 'brew')}<div class="who"><b>${esc(AGENT[w.agent] || 'Our team')}</b><span>${ago(w.updatedAt)}</span></div>${wbBadge(w)}</header>
       ${w.img ? `<div class="media portrait"><img src="${esc(w.img)}" alt="" loading="lazy"></div>` : ''}
       <div class="body">${(() => { const c = w.whose || w.cardSnap || {}, rv = rivalOf(c), wa = rv ? ourVersionOf(rv.name) : whoseAd({ ...c, images: c.images?.length ? c.images : w.img ? [w.img] : [] }); return wa ? `<small class="wb-whose">${esc(wa)}</small>` : ''; })() /* whose ad it is, like the feed: "Made for you" on our own (FEED-NOT-02) */}<h3>${w.unread ? '<i class="wb-new"></i>' : ''}${esc(wbTitle(w))}</h3>${wbBody(w)}</div>${wbFoot(w)}</article>`;
   /* a creative Brew Studio is making for this jam, or just made: the Work card says so first (fresh for 40 minutes) */
@@ -2685,8 +2686,8 @@
     return i < 0 ? tileHtml(w) : `<div class="wb-fc${w.unread ? ' is-unread' : ''}" data-witem="${w.id}">${wbStrip(w)}${postCard(p, i)}</div>`; };
   /* the background lane: many moves written at once read as one row, not one row each */
   const bgGroup = (xs) => { const runs = xs.filter((x) => /^bg-m/.test(x.id)), q = xs.filter((x) => /^bg-q/.test(x.id)), rest = xs.filter((x) => !/^bg-[mq]/.test(x.id));
-    const one = runs.length > 1 ? [{ id: 'bg-mall', kind: 'run', t: `Writing ${runs.length} moves`, s: runs.slice(0, 3).map((x) => x.s).filter(Boolean).join(' · ') + (runs.length > 3 ? ` · ${runs.length - 3} more` : ''), meta: 'Each takes 6 to 9 minutes; they run side by side', pct: Math.round(runs.reduce((a, x) => a + (x.pct || 0), 0) / runs.length) }] : runs;
-    const nx = q.length > 1 ? [{ id: 'bg-qall', kind: 'next', t: `Up next: ${q.length} moves`, s: q.map((x) => x.s).filter(Boolean).join(' · '), meta: 'Start as a slot frees up' }] : q;
+    const one = runs.length > 1 ? [{ id: 'bg-mall', kind: 'run', t: `Writing ${runs.length} plays`, s: runs.slice(0, 3).map((x) => x.s).filter(Boolean).join(' · ') + (runs.length > 3 ? ` · ${runs.length - 3} more` : ''), meta: 'Each takes 6 to 9 minutes; they run side by side', pct: Math.round(runs.reduce((a, x) => a + (x.pct || 0), 0) / runs.length) }] : runs;
+    const nx = q.length > 1 ? [{ id: 'bg-qall', kind: 'next', t: `Up next: ${q.length} plays`, s: q.map((x) => x.s).filter(Boolean).join(' · '), meta: 'Start as a slot frees up' }] : q;
     return [...one, ...rest, ...nx]; };
   /* ---------- the Work board's last lane: what AI is doing in the background, right now ---------- */
   const WB_IC = { ai: 'cpu', drafting: 'txt', with: 'chat', you: 'hand', ready: 'check', shared: 'copy' };
@@ -2720,7 +2721,7 @@
   };
   const bgTile = (x) => `<article class="card wb-card wb-bg is-${x.kind}"><div class="wb-bg-h">${face('brew')}<span><b>${esc(x.t)}</b><small>${esc(x.s || '')}</small></span>${x.kind === 'run' ? '<span class="wb-bg-live"><span class="dot"></span>Now</span>' : x.kind === 'fail' ? `<button class="btn btn-ghost sm" data-bgretry>Retry</button>` : ''}</div>
     ${x.kind === 'run' ? `<div class="wb-bg-bar"><i style="width:${x.pct || 30}%"></i></div>` : ''}${x.meta ? `<p class="wb-bg-meta">${esc(x.meta)}</p>` : ''}${x.open ? `<a class="linkbtn" href="${esc(x.open)}">Open the jam ${ic('right', 's14')}</a>` : ''}</article>`;
-  document.addEventListener('click', async (e) => { if (!e.target.closest('[data-bgretry]')) return; const r = await api(`/api/brands/${B.slug || BR}/retry`, {}); toast(`${ic('refresh', 's16')}${esc(r?.note || 'Retrying the stopped moves')}`); loadBG(); });
+  document.addEventListener('click', async (e) => { if (!e.target.closest('[data-bgretry]')) return; const r = await api(`/api/brands/${B.slug || BR}/retry`, {}); toast(`${ic('refresh', 's16')}${esc(r?.note || 'Retrying the stopped plays')}`); loadBG(); });
   const renderWork = () => {
     if (!BG.t) loadBG();
     view = 'work'; document.body.classList.add('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
@@ -2889,8 +2890,8 @@
       else { if (r.made) { await insertNew(); window.scrollTo({ top: Math.max(0, ($('#col .card.is-new') || $('#col'))?.getBoundingClientRect().top + scrollY - 90), behavior: 'smooth' }); } toast(`${ic(r.made ? 'sparkles' : 'info', 's16')}${esc(r.message || (r.made ? 'New cards at the top.' : 'Nothing new right now.'))}`); }
       const b = $('[data-find-more]'); if (b) { b.disabled = false; b.innerHTML = `${ic('refresh', 's14')}Find more`; } })(); return; }
     const tpl = e.target.closest('[data-team-pill]'); if (tpl) { e.stopPropagation(); if ($('#pop.t2-pop')) return closePop(); closePop(); const it = WORK.withTeam?.items || [];
-      const pop = document.createElement('div'); pop.id = 'pop'; pop.className = 'pop t2-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Briefs with the ShopOS team');
-      pop.innerHTML = `<header><b>With the ShopOS team</b><small>Brew’s build crew: briefs you sent and where each one is</small></header>${it.map((x) => `<button class="t2-bi" data-witem="${esc(x.wid)}"><span class="t2-bt"><b>${esc(x.title || 'Brief')}</b><small>${esc([x.ticket, x.sentAt ? sentLine(x.sentAt) : '', x.at && x.at !== x.sentAt ? `${x.label || 'Updated'} ${ago(x.at)}` : ''].filter(Boolean).join(' · '))}</small></span><span class="t2-bs is-${esc(x.status)}">${esc(x.label || x.status)}</span></button>`).join('') || '<p class="t2-empty">Nothing with the team right now.</p>'}<footer><button class="linkbtn" data-nav="done">All briefs ${ic('right', 's14')}</button></footer>`;
+      const pop = document.createElement('div'); pop.id = 'pop'; pop.className = 'pop t2-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Briefs with our team');
+      pop.innerHTML = `<header><b>With our team</b><small>The build crew: briefs you sent and where each one is</small></header>${it.map((x) => `<button class="t2-bi" data-witem="${esc(x.wid)}"><span class="t2-bt"><b>${esc(x.title || 'Brief')}</b><small>${esc([x.ticket, x.sentAt ? sentLine(x.sentAt) : '', x.at && x.at !== x.sentAt ? `${x.label || 'Updated'} ${ago(x.at)}` : ''].filter(Boolean).join(' · '))}</small></span><span class="t2-bs is-${esc(x.status)}">${esc(x.label || x.status)}</span></button>`).join('') || '<p class="t2-empty">Nothing with the team right now.</p>'}<footer><button class="linkbtn" data-nav="done">All briefs ${ic('right', 's14')}</button></footer>`;
       document.body.appendChild(pop); const r = tpl.getBoundingClientRect(); pop.style.top = `${r.bottom + 8}px`; pop.style.right = `${Math.max(12, innerWidth - r.right)}px`; return; }
     if (e.target.closest('[data-viewing]')) { openViewing(e.target.closest('[data-viewing]')); return; }
     const cx = e.target.closest('[data-cx]'); if (cx) { openConnect(cx.dataset.cx); return; }
@@ -2932,7 +2933,7 @@
   /* ui=1 has no brand menu: the account popup holds what it did. Library, Fact sheet, Sounds, Add to home screen, Start again,
      and demo controls (demo site or Brew staff only); What Brew learned and Connectors only on phones (the rail has them on desktop). */
   const acctIt = (attr, icon, label, meta = '', cls = '') => `<button class="lc-it${cls}" ${attr}>${ic(icon, 's16')}<b>${label}</b>${meta ? `<span>${meta}</span>` : ''}</button>`;
-  const acctRows = () => `<div class="lc-grp">${acctIt('data-nav="saved"', 'bookmark', 'Library', S.saved.length ? `${S.saved.length} saved` : '')}${acctIt('data-nav="learned"', 'book', 'What Brew learned', '', ' lc-phone')}${acctIt('data-nav="facts"', 'doc', 'Fact sheet')}${acctIt('data-nav="connectors"', 'plug', 'Connectors', cxCount(true), ' lc-phone')}</div>
+  const acctRows = () => `<div class="lc-grp">${acctIt('data-nav="saved"', 'bookmark', 'Library', S.saved.length ? `${S.saved.length} saved` : '')}${acctIt('data-nav="learned"', 'book', 'What we learned', '', ' lc-phone')}${acctIt('data-nav="facts"', 'doc', 'Fact sheet')}${acctIt('data-nav="connectors"', 'plug', 'Connectors', cxCount(true), ' lc-phone')}</div>
     <div class="lc-grp">${acctIt('data-acct="sound"', 'bell', 'Sounds', `<i class="sw" aria-checked="${SND.on}" aria-hidden="true"><i></i></i>`)}${isStandalone() ? '' : acctIt('data-acct="install"', 'phone', 'Add to home screen')}</div>
     <div class="lc-grp">${demoOk() ? acctIt('data-acct="demo"', 'sliders', 'Demo controls', 'Press .') : ''}${acctIt(`data-acct="restart" title="${window.BREW_DEMO ? 'Reset the demo and start from the website' : 'Clears what this browser kept for this feed and goes back to the first page. Your saved cards stay with your account'}"`, 'link', 'Start again')}</div>`;
   const acctBind = (pop) => pop.addEventListener('click', (e) => { const t = e.target.closest('[data-acct],[data-nav]'); if (!t) return; const k = t.dataset.acct;
@@ -2963,14 +2964,14 @@
   api(`/api/config?brand=${encodeURIComponent((B && B.slug) || BR || '')}`).then((c) => { aiMode = c.ai || 'mock';
     /* the AI credit is out (ai.js pause): say so once per visit, rather than letting chats and drafts fail quietly */
     let seen = false; try { seen = !!sessionStorage.getItem('brew-paused'); sessionStorage.setItem('brew-paused', c.paused ? '1' : ''); } catch {}
-    if (c.paused && !seen) { setTimeout(() => toastLong(`${ic('info', 's16')}Brew’s writing is paused for a while. Everything here still opens; new replies, drafts and rewrites wait until it’s back.`, 12000), 1500); }
+    if (c.paused && !seen) { setTimeout(() => toastLong(`${ic('info', 's16')}Our writing is paused for a while. Everything here still opens; new replies, drafts and rewrites wait until it’s back.`, 12000), 1500); }
     /* this brand's share of today's budget (server budget.js) is used up: say which part, once per visit, instead of drafts failing quietly */
     const NOUN = { text: 'writing', image: 'pictures', video: 'videos', voice: 'voiceovers' }, out = Object.entries(c.share || {}).filter(([, x]) => x && x.out).map(([k, x]) => [NOUN[k] || k, x.out]);
     let told = false; try { told = sessionStorage.getItem('brew-share') === out.map((x) => x.join(':')).join(','); sessionStorage.setItem('brew-share', out.map((x) => x.join(':')).join(',')); } catch {}
     if (out.length && !told && !c.paused) { const mine = out.filter(([, w]) => w === 'brand').map(([n]) => n), all = out.filter(([, w]) => w === 'all').map(([n]) => n);
       const sayLater = (f) => (['setup', 'ob'].includes(view) || $('#qfull') ? setTimeout(() => sayLater(f), 4000) : f()); /* never over the read or the questions: it waits for the feed */
       /* said when someone goes to make something, not as a 12-second overlay on the first screen (QA UI 20 Oct) */
-      const msg = `${ic('info', 's16')}${mine.length ? `This brand’s share of today’s ${mine.join(' and ')} is used up. ` : ''}${all.length ? `Brew’s budget for ${all.join(' and ')} is used up today across all brands. ` : ''}It resets at midnight UTC; everything else still works.`;
+      const msg = `${ic('info', 's16')}${mine.length ? `This brand’s share of today’s ${mine.join(' and ')} is used up. ` : ''}${all.length ? `Our budget for ${all.join(' and ')} is used up today across all brands. ` : ''}It resets at midnight UTC; everything else still works.`;
       const onMake = (e) => { if (!e.target.closest?.('[data-jm-make],[data-cv-ask],[data-cta-make],.jm-go')) return; document.removeEventListener('click', onMake, true); setTimeout(() => toastLong(msg, 7000), 300); };
       document.addEventListener('click', onMake, true); void sayLater; } }).catch(() => {});
   /* ---------- the demo site (DEMO_MODE): a session per visitor, its accounts are demo accounts the server connects ---------- */
@@ -2988,7 +2989,7 @@
     if (view === 'ob') $$('[data-cxrow]').forEach((r) => (r.outerHTML = cxRow(r.dataset.cxrow))); else await refreshAfterConnect();
     toast(`${ic('check', 's16')}${what[0].toUpperCase() + what.slice(1)} ${on ? 'connected' : 'disconnected'}`); };
   const openDemoSite = async () => { const ses = await api(`/api/demo/${DSLUG()}/session`).catch(() => null); const on = new Set(ses?.connected || []);
-    modal(`<div class="sheet pick-sheet demo"><b class="sh-t">Demo controls</b><p class="sh-p">This is a demo of ${esc(B.brand.name)}. Moves, PDFs and drafts are ready; connected accounts are demo accounts built from ${esc(B.brand.host || 'the store')}'s real products and prices. Everything else is live.</p>
+    modal(`<div class="sheet pick-sheet demo"><b class="sh-t">Demo controls</b><p class="sh-p">This is a demo of ${esc(B.brand.name)}. Plays, PDFs and drafts are ready; connected accounts are demo accounts built from ${esc(B.brand.host || 'the store')}'s real products and prices. Everything else is live.</p>
       <h4>Start again</h4><div class="row2"><button class="btn btn-primary sm" data-x="onboarding">From onboarding</button><button class="btn btn-ghost sm" data-x="feed">Straight to the connected feed</button></div>
       <h4>Jump to</h4><div class="row2"><button class="btn btn-ghost sm" data-x="j-setup">The read</button><button class="btn btn-ghost sm" data-x="j-check">Check what we read</button><button class="btn btn-ghost sm" data-x="j-wait">Plays being written</button><button class="btn btn-ghost sm" data-x="j-feed">Feed</button><button class="btn btn-ghost sm" data-x="j-moves">Plays</button><button class="btn btn-ghost sm" data-x="j-cx">Connectors</button></div>
       <h4>Accounts</h4><div class="sugg">${(ses?.all || []).filter((k) => B.connectors[k] || ['slack', 'linear', 'asana', 'notion'].includes(k)).map((k) => `<button class="chip" data-dcx="${k}" aria-pressed="${on.has(k)}">${esc(B.connectors[k]?.name || k[0].toUpperCase() + k.slice(1))}</button>`).join('')}</div>
@@ -3051,23 +3052,23 @@
     const c = B.connectors[id]; if (!c) return;
     if (conn(id)) { opts.then?.(); return; }
     /* the live site connects real accounts through live.js only: never the sample sign-in sheet, never S.conn set by hand */
-    if (!window.BREW_DEMO) { if (window.LiveConn?.open(id, { ...opts })) return; toast(`${ic('info', 's16')}${window.LiveConn && !window.LiveConn.isReady?.() || window.LIVE?.off ? 'Connecting isn’t available here.' : 'Couldn’t reach Brew. Reload and try again.'}`); return; }
+    if (!window.BREW_DEMO) { if (window.LiveConn?.open(id, { ...opts })) return; toast(`${ic('info', 's16')}${window.LiveConn && !window.LiveConn.isReady?.() || window.LIVE?.off ? 'Connecting isn’t available here.' : 'Couldn’t reach us. Reload and try again.'}`); return; }
     if (!opts.demo && window.LiveConn?.open(id, { ...opts, demo: () => openConnect(id, { ...opts, demo: true }) })) return;
     const onboarding = view === 'ob';
     modal(`<div class="sheet cx-sheet">
       <div class="cx-step" data-s="1">
         <div class="cx-pair"><span class="cx-so">${SO()}</span><span class="cx-link" aria-hidden="true"><i></i><i></i><i></i></span>${glyph(id, 52)}</div>
-        <header class="cx-head"><h3>Connect ${esc(c.name)}</h3>${opts.why ? `<p>${esc(opts.why)}</p>` : `<p>Brew reads it to put your real numbers on the cards.</p>`}</header>
+        <header class="cx-head"><h3>Connect ${esc(c.name)}</h3>${opts.why ? `<p>${esc(opts.why)}</p>` : `<p>We read it to put your real numbers on the cards.</p>`}</header>
         <div class="cx-box">
           <label class="cx-acct"><input type="radio" checked name="acct">${glyph(id, 32)}<span class="cx-acct-t"><b>${esc(c.account)}</b><small>${esc(B.brand.name)} · ${esc(B.brand.tagline || B.brand.host)}</small></span><i class="cx-tick">${ic('check', 's14')}</i></label>
-          <div class="cx-can"><small>Brew will be able to</small><ul class="cx-perms">${c.perms.map((p) => `<li>${ic('check', 's14')}<span>${esc(p)}</span></li>`).join('')}</ul></div></div>
+          <div class="cx-can"><small>We will be able to</small><ul class="cx-perms">${c.perms.map((p) => `<li>${ic('check', 's14')}<span>${esc(p)}</span></li>`).join('')}</ul></div></div>
         ${id === 'slack' ? `<div class="cx-chan"><small>Post jams to</small>${['#growth', '#brand', '#d2c-ops', '#founders'].map((ch) => `<button class="chip" data-chan="${ch}" aria-pressed="${S.slack.channel === ch}">${ch}</button>`).join('')}</div>` : ''}
         <div class="cx-btns"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" data-allow>Allow access</button></div>
         <small class="cx-fine">${ic('lock', 's14')}<span>${opts.demo ? 'Demo account: numbers built from what we read. Nothing touches a real account.' : 'Demo workspace. Nothing leaves this page.'}</span></small>
       </div>
       <div class="cx-step" data-s="2" hidden><div class="cx-pair sm">${glyph(id, 36)}<b>Connecting ${esc(c.name)}</b></div><ol class="cx-log"></ol></div>
       <div class="cx-step" data-s="3" hidden><span class="plan-check">${ic('check')}</span><h3>${esc(c.name)} is connected</h3>
-        ${(c.stats || []).length ? `<div class="cx-read"><small>What Brew read${c.demo ? ' <em>Demo account</em>' : ''}</small><dl>${c.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></div>` : ''}
+        ${(c.stats || []).length ? `<div class="cx-read"><small>What we read${c.demo ? ' <em>Demo account</em>' : ''}</small><dl>${c.stats.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></div>` : ''}
         <p class="sh-p">Here is what changed in your feed:</p>
         <ul class="cx-changed">${((c.demo && c.changedDemo?.length) ? c.changedDemo : c.changed).map((t) => `<li>${ic('sparkles', 's14')}${esc(t)}</li>`).join('')}</ul>
         <button class="btn btn-primary" data-see>${onboarding ? 'Continue' : opts.then ? 'Carry on' : 'See it in the feed'}</button></div></div>`, (m) => {
@@ -3151,7 +3152,7 @@
       title: c.title, line: esc(plain(c.sub || '')), who: p.cta?.label ? `${ic('right', 's14')}${esc(p.cta.label)}` : '', pill: B.spends.includes(p.cta?.label) ? pillOf('Costs ad money', 'warn') : '' }); };
     const agents = [...new Set(list.map((p) => p.agent))];
     const cats = agents.map((a) => ({ k: a, name: AGENT[a] || a, items: list.filter((p) => p.agent === a).map(row) }));
-    libPage('saved', 'Cards you kept for later. Open one, jam on them together, or send the brief to the ShopOS team.',
+    libPage('saved', 'Cards you kept for later. Open one, jam on them together, or send the brief to our team.',
       libGrid('saved', cats, libEmpty('bookmark', 'Nothing saved yet', 'Tap the bookmark on any card to keep it here.'),
         list.length ? `<span class="lib-acts"><button class="btn btn-ghost sm" data-bulk="jam">${ic('hand', 's16')}Jam on all</button><button class="btn btn-primary sm" data-bulk="team">${ic('send', 's16')}Send brief</button></span>` : ''));
     $$('[data-bulk]').forEach((b) => b.onclick = () => openJam({ bulk: list, tab: b.dataset.bulk === 'team' ? 'team' : 'ai' }));
@@ -3172,10 +3173,10 @@
     return `<span class="lt-faces">${others.slice(0, 3).map((x) => pAv(x)).join('')}</span>${esc(others.slice(0, 2).map(firstOf).join(', '))}${others.length > 2 ? ` +${others.length - 2}` : ''}${ppl.some((x) => x.email === me) ? ' and you' : ''}`; };
   const jamWho = (w) => window.BREW_DEMO ? jamWho0(w) : realWho(w);
   const jamWho0 = (w) => ({ team: `${ic('send', 's14')}${esc(w.with?.name || 'Your team')} on Slack`, shared: `${ic('copy', 's14')}Brief shared${w.ticket ? ' · ' + esc(w.ticket) : ''}`, ai: `${ic('sparkles', 's14')}You and AI` })[withKind(w)];
-  const jamLast = (w) => { const m = (w.thread || []).filter((x) => x.body).slice(-1)[0]; if (m) return `<i>${m.from === 'me' ? (m.by && m.by.email !== String(ME()?.email || '').toLowerCase() ? esc(firstOf(m.by)) : 'You') : esc(m.who || AGENT[m.from] || 'Brew')}:</i> ${esc(plain(m.body))}`; return esc(plain(curV(w)?.sub || '') || 'Brief started'); };
+  const jamLast = (w) => { const m = (w.thread || []).filter((x) => x.body).slice(-1)[0]; if (m) return `<i>${m.from === 'me' ? (m.by && m.by.email !== String(ME()?.email || '').toLowerCase() ? esc(firstOf(m.by)) : 'You') : esc(m.who || AGENT[m.from] || 'Our team')}:</i> ${esc(plain(m.body))}`; return esc(plain(curV(w)?.sub || '') || 'Brief started'); };
   const STAGE_PILL = { needs_you: ['Needs you', 'warn'], ready: ['Ready to share', 'ok'], shared: ['Brief shared', 'ok'], team: ['With your team', ''], drafting: ['Drafting', ''] };
   const jamTile = (w) => { const [pt, tone] = STAGE_PILL[w.stage] || [w.stage, ''];
-    return tile({ attr: `data-witem="${w.id}"`, img: w.img, agent: w.agent, icon: 'hand', eyebrow: esc(AGENT[w.agent] || 'Brew'), when: ago(w.discarded || w.updatedAt), title: w.title, line: jamLast(w), who: w.discarded ? `${ic('minus', 's14')}Discarded` : jamWho(w), pill: !w.discarded && ['ready', 'shared'].includes(w.stage) ? pillOf(pt, tone) : '', dot: !w.discarded && w.unread, menu: `jam:${w.id}${w.discarded ? ':off' : ''}`, off: !!w.discarded }); };
+    return tile({ attr: `data-witem="${w.id}"`, img: w.img, agent: w.agent, icon: 'hand', eyebrow: esc(AGENT[w.agent] || 'Our team'), when: ago(w.discarded || w.updatedAt), title: w.title, line: jamLast(w), who: w.discarded ? `${ic('minus', 's14')}Discarded` : jamWho(w), pill: !w.discarded && ['ready', 'shared'].includes(w.stage) ? pillOf(pt, tone) : '', dot: !w.discarded && w.unread, menu: `jam:${w.id}${w.discarded ? ':off' : ''}`, off: !!w.discarded }); };
   const renderJams = async (fresh = true) => {
     view = 'jams';
     const paint = () => {
@@ -3190,7 +3191,7 @@
         const cats = [
           { k: 'you', name: 'Needs you', hint: 'Given to you, or waiting on your OK', tone: 'hot', items: items.filter((w) => !JAM_DONE.includes(w.stage) && needs(w)).map(jamTile) },
           { k: 'open', name: 'Jamming', hint: scope === 'mine' ? 'Jams you’re in' : 'Every jam on the team', items: open.map(jamTile) },
-          { k: 'shipped', name: 'Brief shared', hint: 'With the ShopOS team or your team', items: items.filter((w) => JAM_DONE.includes(w.stage)).map(jamTile) },
+          { k: 'shipped', name: 'Brief shared', hint: 'With our team or yours', items: items.filter((w) => JAM_DONE.includes(w.stage)).map(jamTile) },
           { k: 'off', name: 'Discarded', hint: 'Restore any of these from the ··· menu', tone: 'muted', hideInAll: true, items: [...(WORK.discarded || [])].filter((w) => scope === 'team' || w.mine).sort((a, b) => b.discarded - a.discarded).map(jamTile) }];
         const seg = `<div class="lib-scope" role="tablist"><button role="tab" data-jscope="mine" aria-selected="${scope === 'mine'}">My jams<em>${mine.length}</em></button><button role="tab" data-jscope="team" aria-selected="${scope === 'team'}">Team jams<em>${all.length}</em></button></div>`;
         return libPage('jams', 'Jams you’re in, and everything your team is jamming on.', seg + libGrid('jams', cats, libEmpty('hand', scope === 'mine' ? 'Nothing for you yet' : 'No jams yet', scope === 'mine' ? 'Jam on any card, or wait for a teammate to tag you. Team jams shows what everyone is on.' : 'Open any card and press Jam. Your team sees it here and can join in.'), `<button class="lib-link" data-nav="work">${ic('board', 's16')}Work board</button>`));
@@ -3201,7 +3202,7 @@
         { k: 'you', name: 'Needs you', hint: 'Answer these to keep them moving', tone: 'hot', items: items.filter(needsMe).map(jamTile) },
         { k: 'team', name: 'With your team', hint: 'On Slack', items: open.filter((w) => withKind(w) === 'team').map(jamTile) },
         { k: 'ai', name: 'Drafting with AI', hint: 'Just you and AI so far', items: open.filter((w) => withKind(w) === 'ai').map(jamTile) },
-        { k: 'shipped', name: 'Brief shared', hint: 'With the ShopOS team or your team', items: items.filter((w) => JAM_DONE.includes(w.stage)).map(jamTile) },
+        { k: 'shipped', name: 'Brief shared', hint: 'With our team or yours', items: items.filter((w) => JAM_DONE.includes(w.stage)).map(jamTile) },
         { k: 'off', name: 'Discarded', hint: 'Restore any of these from the ··· menu', tone: 'muted', hideInAll: true, items: [...(WORK.discarded || [])].sort((a, b) => b.discarded - a.discarded).map(jamTile) }];
       libPage('jams', 'Everything you’re planning with AI and your team.',
         libGrid('jams', cats, libEmpty('hand', 'No jams yet', 'Open any card and press Jam. The brief, the chat and who it’s with live here.'), `<button class="lib-link" data-nav="work">${ic('board', 's16')}Work board</button>`));
@@ -3241,9 +3242,9 @@
       const up = `<label class="btn btn-primary sm rf-up">${ic('plus', 's16')}Upload<input type="file" multiple accept="image/png,image/jpeg,image/webp,video/mp4" data-rf-file hidden></label>`;
       const chips = all.length ? `<div class="lib-cats"><button class="lib-cat" data-rfcat="all" aria-pressed="${cur === 'all'}">All<em>${all.length}</em></button>${REFS.jobs.filter((j) => all.some((r) => r.job === j)).map((j) => `<button class="lib-cat" data-rfcat="${j}" aria-pressed="${cur === j}">${REF_JOB[j] || j}<em>${all.filter((r) => r.job === j).length}</em></button>`).join('')}<span class="lib-acts">${up}</span></div>` : '';
       const body = !REFS.items ? `<div class="lib-load"><brew-load class="spin"></brew-load></div>`
-        : !all.length ? `<div class="lib-empty"><span class="le-ic">${ic('pic')}</span><b>No references yet</b><span>Upload the photos, past ads and looks you want Brew to work from.</span>${up}</div>`
+        : !all.length ? `<div class="lib-empty"><span class="le-ic">${ic('pic')}</span><b>No references yet</b><span>Upload the photos, past ads and looks you want us to work from.</span>${up}</div>`
         : chips + `<section class="lib-sec"><header><b>${cur === 'all' ? 'All' : esc(REF_JOB[cur])}</b><em>${shown.length}</em>${cur !== 'all' ? `<small>${esc(REF_HINT[cur] || '')}</small>` : ''}</header><div class="lt-grid rf-grid">${shown.map(refTile).join('')}</div></section>`;
-      libPage('refs', 'Photos, past ads, looks, logos and clips Brew works from. Each one says what it is for and what to keep.', body); };
+      libPage('refs', 'Photos, past ads, looks, logos and clips we work from. Each one says what it is for and what to keep.', body); };
     paint(); if (fresh || !REFS.items) { await pullRefs(); paint(); }
   };
   document.addEventListener('change', (e) => { if (e.target.matches?.('[data-rf-file]')) { refUpload(e.target.files); e.target.value = ''; } });
@@ -3342,7 +3343,7 @@
         <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic(id === 'slack' ? 'send' : 'lock', 's14')}${accessOf(id)}</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></article>`;
     const sec = (name, hint, items) => items.length ? `<section class="cn-sec"><h3>${name}<em>${items.length}</em>${hint ? `<small>${hint}</small>` : ''}</h3><div class="cn-grid">${items.map(card).join('')}</div></section>` : '';
     const pct = Math.round(on.length / list.length * 100);
-    libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || (LC?.L?.dummy === false ? `Every source Brew reads for ${B.brand.name}. Connected accounts are read-only (Slack posts to the channel you pick) and only ${B.brand.name}’s team sees them.` : `Every source Brew reads for ${B.brand.name}. Connected accounts are simulated in this demo (Dummy): connecting shows what would change, and nothing touches a real account.`),
+    libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || (LC?.L?.dummy === false ? `Every source we read for ${B.brand.name}. Connected accounts are read-only (Slack posts to the channel you pick) and only ${B.brand.name}’s team sees them.` : `Every source we read for ${B.brand.name}. Connected accounts are simulated in this demo (Dummy): connecting shows what would change, and nothing touches a real account.`),
       `<div class="cn-sum">${on.length ? `<div class="cn-sum-n"><b>${on.length}</b><span>of ${list.length} connected</span></div><div class="cn-bar"><i style="width:${pct}%"></i></div>` : '<div class="cn-sum-n"><span>Connect your accounts</span></div>'}<div class="cn-logos">${list.map(([id]) => `<span class="${conn(id) ? '' : 'is-off'}" title="${esc(B.connectors[id].name)}">${glyph(id, 28)}</span>`).join('')}</div></div>
        ${sec('Not connected yet', 'Connect these to unlock the cards that need them', need)}${sec('Connected', '', on)}${sec('Optional', 'Nice to have', opt)}${soonSec()}`);
     $('#col')?.classList.add('lib-col', 'cn-col'); if (LC && $('#col')) { LC.bindPage(document.getElementById('view') || $('#col')); }
@@ -3366,7 +3367,7 @@
   let colW = 480;
   /* DUMMY: a sample signal with made-up numbers, shown only with a simulated Shopify (DUMMY.md row 2); tagged Dummy in the card */
   const SIGS = [
-    { h: '642 people whose payment failed or whose order came back', why: 'Brew drafts a short note for each reason the order failed. Your team sends it from your own tools.', n: '642', r: '511', ch: B.config?.country === 'IN' || B.sym === '₹' ? 'WhatsApp' : 'Email', when: '3h' }
+    { h: '642 people whose payment failed or whose order came back', why: 'We draft a short note for each reason the order failed. Your team sends it from your own tools.', n: '642', r: '511', ch: B.config?.country === 'IN' || B.sym === '₹' ? 'WhatsApp' : 'Email', when: '3h' }
   ];
   /* what Signals reads, in the order it needs them: the store first (nothing to read without it), then reviews, then email.
      WhatsApp is not here: Brew sending was cut, so there is nothing for it to read */
@@ -3407,8 +3408,8 @@
         <p class="sig-sec">What it needs</p>
         <div class="sig-srcs">${srcs.map(srcRow).join('')}</div>
         <p class="sig-sec">How it works</p>
-        <ol class="sig-steps"><li><b>You connect ${esc(store)}.</b> Read-only: Brew can look, but can't change anything or message anyone.</li>
-          <li><b>Brew reads it once a day.</b> Orders, checkouts${srcs.includes('reviews') ? ', reviews' : ''}${srcs.includes('klaviyo') ? ' and email flows' : ''}.</li>
+        <ol class="sig-steps"><li><b>You connect ${esc(store)}.</b> Read-only: we can look, but can't change anything or message anyone.</li>
+          <li><b>We read it once a day.</b> Orders, checkouts${srcs.includes('reviews') ? ', reviews' : ''}${srcs.includes('klaviyo') ? ' and email flows' : ''}.</li>
           <li><b>A card lands here.</b> It says who, how many, and what to tell them. Your team sends it from your own tools.</li></ol>
         ${gets.length ? `<p class="sig-sec">What you get</p><div class="sig-will">${gets.map((g) => `<div><i></i>${esc(g)}</div>`).join('')}</div>` : ''}
       </div></article>`; };
@@ -3416,7 +3417,7 @@
   const sigStrip = () => { const more = sigSources().filter((id) => id !== 'shopify' && !conn(id) && !sigState(id)), bad = sigSources().filter((id) => sigState(id)?.[0] === 'bad');
     const n = byCol('signals').length;
     return `<div class="sig-strip"><p>${bad.length ? `${ic('info', 's14')}${esc(B.connectors[bad[0]].name)} stopped reading. Connect it again so Signals keeps finding people.`
-      : `<i class="pulse"></i>Brew keeps reading ${esc(andList(sigSources().filter(conn).map((id) => B.connectors[id].name)))}. ${n ? 'Each card below is a group of people to reach.' : 'Nothing to act on yet; new people land here as Brew finds them.'}`}${!bad.length && more.length ? ` Connect ${esc(andList(more.map((id) => B.connectors[id].name)))} to find more.` : ''}</p>
+      : `<i class="pulse"></i>We keep reading ${esc(andList(sigSources().filter(conn).map((id) => B.connectors[id].name)))}. ${n ? 'Each card below is a group of people to reach.' : 'Nothing to act on yet; new people land here as we find them.'}`}${!bad.length && more.length ? ` Connect ${esc(andList(more.map((id) => B.connectors[id].name)))} to find more.` : ''}</p>
       <div class="sig-pills">${sigSources().map((id) => { const c = B.connectors[id], st = sigState(id); return st?.[0] === 'ok' ? `<span class="sig-pill is-on">${glyph(id, 16)}${esc(c.name)}${ic('check', 's14')}</span>` : window.LiveConn?.boss?.() === false ? '' : `<button class="sig-pill" data-cx="${id}">${glyph(id, 16)}${esc(c.name)}${st ? '<small>connect again</small>' : SIG_WHY[id]?.need === 'Optional' ? '<small>optional</small>' : ''}</button>`; }).join('')}</div></div>`; };
   const sigBody = () => {
     if (!sigSources().length) return '';
@@ -3500,7 +3501,7 @@
           const fresh = byCol(k).filter(([p]) => !had.has(p.id)).length; toast(fresh ? `${ic('sparkles', 's16')}${fresh} new in ${SECTORS[k].name}` : `${ic('check', 's16')}${SECTORS[k].name} is up to date`); })(); }
       if (act.dataset.colact === 'hide') { colState[k].hidden = true; saveLayout(); buildDeck(); toast(`${SECTORS[k].name} hidden`); }
       return; }
-    const sg = window.BREW_DEMO ? t.closest('.sig-card') : null; if (sg) { const s0 = SIGS[$$('.sig-card').indexOf(sg)]; if (s0) openDetail({ id: 'sig-' + s0.n, agent: 'crm', sector: 'signals', type: 'decision', kind: 'rows', lane: 'core', time: s0.when, title: s0.h, sub: s0.why, rows: [['People', s0.n], ['Can be reached', s0.r], ['Best way to reach them', s0.ch]], cta: { label: 'Draft the message' }, detail: { why: [s0.why], how: ['Brew drafts one short note for each reason the order failed.', 'You check it in the jam.', 'Your team sends it from your own tools.'] } }); return; }
+    const sg = window.BREW_DEMO ? t.closest('.sig-card') : null; if (sg) { const s0 = SIGS[$$('.sig-card').indexOf(sg)]; if (s0) openDetail({ id: 'sig-' + s0.n, agent: 'crm', sector: 'signals', type: 'decision', kind: 'rows', lane: 'core', time: s0.when, title: s0.h, sub: s0.why, rows: [['People', s0.n], ['Can be reached', s0.r], ['Best way to reach them', s0.ch]], cta: { label: 'Draft the message' }, detail: { why: [s0.why], how: ['We draft one short note for each reason the order failed.', 'You check it in the jam.', 'Your team sends it from your own tools.'] } }); return; }
     const side = t.closest('[data-side]'); if (side) { const s = side.dataset.side; if (s === 'jam') openJam({ tab: 'ai' }); if (s === 'dash') openDash(); if (s === 'tune') openTune(); }
   });
   let colDrag = null, wRaf = null;
@@ -3535,17 +3536,17 @@
   };
 
   /* ---------- Pro: offered the moment you reach for it; the demo starts a trial ---------- */
-  const PLAN_WHY = { deck: ['Open the deck with Pro', 'Every agent gets its own column.'], feed: ['See everything with Pro', 'Every card your agents make, all day.'], moves: ['Write every move with Pro', 'Brew carries on from where it paused and writes the rest of the moves.'] };
+  const PLAN_WHY = { deck: ['Open the deck with Pro', 'Every agent gets its own column.'], feed: ['See everything with Pro', 'Every card your agents make, all day.'], moves: ['Write every play with Pro', 'We carry on from where we paused and write the rest of the plays.'] };
   /* the Pro paywall is off for now (Param 2026-10-16): the deck opens for everyone, a Pro button just goes where it leads,
      and nothing switches S.pro on (that would start the paid all-day feed). Set PAYWALL = true to bring the offer back. */
   const PAYWALL = false;
   const openPlan = (why = 'deck', onPro = null) => !PAYWALL ? (why === 'moves' ? onPro?.() : renderDeck()) : modal(`<div class="sheet plan-sheet plan2"><button class="icon-btn plan-x" data-close aria-label="Close">${ic('x', 's18')}</button>
       <div class="plan-pick"><div class="plan-top"><h3>${esc((PLAN_WHY[why] || PLAN_WHY.feed)[0])}<span class="dummy-tag" title="No billing in this prototype: the trial switches Pro on">Dummy</span></h3><p>${esc((PLAN_WHY[why] || PLAN_WHY.feed)[1])}</p></div>
         <div class="plans"><div class="plan"><header><b>Free</b><span>Your plan</span></header><span class="price">$0</span><ul><li>${ic('check', 's14')}Every card in the feed</li><li>${ic('check', 's14')}Jam on every card</li><li>${ic('check', 's14')}Stories and trends</li></ul></div>
-        <div class="plan pro"><header><b>Pro</b></header><span class="price">$7<em>a month, billed yearly</em></span><ul><li>${ic('check', 's14')}A feed that keeps going</li><li>${ic('check', 's14')}The deck</li><li>${ic('check', 's14')}Signals: who to talk to next</li><li>${ic('check', 's14')}Custom agents</li>${why === 'moves' ? `<li>${ic('check', 's14')}Every move written</li>` : ''}</ul></div></div>
+        <div class="plan pro"><header><b>Pro</b></header><span class="price">$7<em>a month, billed yearly</em></span><ul><li>${ic('check', 's14')}A feed that keeps going</li><li>${ic('check', 's14')}The deck</li><li>${ic('check', 's14')}Signals: who to talk to next</li><li>${ic('check', 's14')}Custom agents</li>${why === 'moves' ? `<li>${ic('check', 's14')}Every play written</li>` : ''}</ul></div></div>
         <button class="btn btn-primary plan-go" data-up>Start the 14-day trial</button><small class="plan-fine">No card needed. Dummy: there is no billing in this prototype.</small></div>
-      <div class="plan-done" hidden><span class="plan-check">${ic('check')}</span><h3>You’re on Pro</h3><p>${why === 'moves' ? 'Brew is writing the rest of the moves. Cards land as each one is written.' : 'Your agents now post all day. The deck and Signals are open.'}</p>
-        <button class="btn btn-primary" data-resume>${why === 'moves' ? 'Back to the moves' : 'Open the deck'}</button><button class="btn btn-ghost sm" data-close>Back to my feed</button></div></div>`,
+      <div class="plan-done" hidden><span class="plan-check">${ic('check')}</span><h3>You’re on Pro</h3><p>${why === 'moves' ? 'We’re writing the rest of the plays. Cards land as each one is written.' : 'Your agents now post all day. The deck and Signals are open.'}</p>
+        <button class="btn btn-primary" data-resume>${why === 'moves' ? 'Back to the plays' : 'Open the deck'}</button><button class="btn btn-ghost sm" data-close>Back to my feed</button></div></div>`,
     (m) => {
       $('[data-up]', m).onclick = (e) => { const b = e.currentTarget; b.disabled = true; b.textContent = 'Starting your trial'; setTimeout(async () => { S.pro = true; save(); if (onPro) await onPro(); $('.plan-pick', m).hidden = true; $('.plan-done', m).hidden = false; refreshAfterConnect(null, 'pro'); }, 1100); };
       $('[data-resume]', m).onclick = () => { closeModal(); if (why === 'moves') return renderLearned(); renderDeck(); toast(matchMedia('(max-width:700px)').matches ? 'Swipe sideways between columns' : 'Drag a column edge to resize it'); };
@@ -3575,7 +3576,7 @@
     fix: { tone: 'warn', icon: 'sparkles', tag: 'Needs a fix', btn: 'Fix it with AI', note: '' },
     confirm: { tone: 'warn', icon: 'check', tag: 'Confirm your checks', btn: 'Review my checks', note: '' }
   };
-  const authorName = (a = '') => a === 'you' ? 'You' : a.startsWith('ai:') ? AGENT[a.slice(3)] || 'AI' : a === 'deploy-team' ? 'ShopOS team' : a === 'learning' ? 'Learning' : a.startsWith('teammate:') ? a.slice(9) : a === 'brew' ? 'ShopOS team' : 'System';
+  const authorName = (a = '') => a === 'you' ? 'You' : a.startsWith('ai:') ? AGENT[a.slice(3)] || 'AI' : a === 'deploy-team' ? 'Our team' : a === 'learning' ? 'Learning' : a.startsWith('teammate:') ? a.slice(9) : a === 'brew' ? 'Our team' : 'System';
   const showLearned = (arr) => { (arr || []).forEach((r, i) => setTimeout(() => toastLong(`${ic('sparkles', 's16')}<span><b>Learned:</b> ${esc(r.text)}</span> <button class="linkbtn" data-nav="learned">See it</button>`, 5200), i * 2600)); };
   let toastLT = null;
   const toastLong = (html, ms = 10000) => { $('.toast')?.remove(); clearTimeout(toastT); clearTimeout(toastLT); const t = document.createElement('div'); t.className = 'toast toast-long'; t.setAttribute('role', 'status'); t.innerHTML = html; document.body.appendChild(t); toastLT = setTimeout(() => t.remove(), ms); };
@@ -3583,9 +3584,9 @@
   const claimsOf = (m) => (m?.meta?.issues || []).filter((x) => / (fact|quote|motive|absent|disclaimer):/.test(String(x))).map((x) => String(x).replace(/^\S+\s+\w+:\s*/, '').trim()).filter(Boolean).slice(0, 15);
   /* Asking a teammate copies the question: Brew sends nothing, and their answer is added here by hand. */
   const askedCopy = (r) => {
-    if (!r?.copy) { toast(r?.work ? 'Brew suggested what it could. The rest is yours to answer.' : 'Couldn’t ask right now.'); return; }
+    if (!r?.copy) { toast(r?.work ? 'We suggested what we could. The rest is yours to answer.' : 'Couldn’t ask right now.'); return; }
     const who = [...new Set(r.asked || [])].join(', ');
-    navigator.clipboard?.writeText(r.copy).then(() => toast(`${ic('copy', 's16')}Copied the question for ${esc(who)}. Brew doesn’t send it: paste it to them, then add their answer here.`), () => toast(`Ask ${esc(who)} directly, then add their answer here.`));
+    navigator.clipboard?.writeText(r.copy).then(() => toast(`${ic('copy', 's16')}Copied the question for ${esc(who)}. We don’t send it: paste it to them, then add their answer here.`), () => toast(`Ask ${esc(who)} directly, then add their answer here.`));
   };
   const imgOf = (ch) => ch.pkg?.image || ch.after?.images?.[0] || null;
   /* until a photo is made for it, the jam shows the card's own product photo (never a static: those carry their own words) */
@@ -3732,7 +3733,7 @@
             <div class="am3-bar" role="img" aria-label="${esc(r.now)} now, ${esc(r.next)} after"><span class="is-now" style="width:${Math.round(100 * r.nowN / top)}%"></span><span class="is-next" style="width:${Math.round(100 * r.nextN / top)}%"></span></div>
             <div class="am3-v"><span>Now ${esc(r.now.replace(/^About /, ''))}</span><strong>After ${esc(r.next.replace(/^About /, ''))}</strong></div>
             ${r.link ? `<a class="linkbtn" href="${esc(r.link)}" target="_blank" rel="noopener">Open in Ads Manager ${ic('right', 's14')}</a>` : ''}</div></div>`).join('')}
-        ${p.rule ? `<p class="am2-rule">${ic('eyeoff', 's14')}<span><b>Rule</b> ${esc(p.rule)}</span></p>` : ''}<p class="am2-note">Total spend stays the same. Brew changes nothing in Ads Manager: your team makes the move.</p></div>${when}</div>`;
+        ${p.rule ? `<p class="am2-rule">${ic('eyeoff', 's14')}<span><b>Rule</b> ${esc(p.rule)}</span></p>` : ''}<p class="am2-note">Total spend stays the same. We change nothing in Ads Manager: your team makes the change.</p></div>${when}</div>`;
       return `<div class="as as-pm lg">${head}<div class="pm am2"><table><thead><tr><th>Campaign</th><th>Now</th><th>After</th></tr></thead>
         <tbody>${items.map((r) => `<tr><td><span class="am2-on"></span>${nm(r)}</td><td>${esc(r.now)}</td><td><b>${esc(r.next)}</b></td></tr>`).join('')}</tbody></table>
         ${p.rule ? `<p class="am2-rule">${ic('eyeoff', 's14')}<span><b>Rule</b> ${esc(p.rule)}</span></p>` : ''}${p.spendChangeWeek ? `<p class="am2-spend ${p.spendChangeWeek > 0 ? 'up' : 'down'}">${p.spendChangeWeek > 0 ? '+' : '−'}${inrS(Math.abs(p.spendChangeWeek))} a week</p>` : ''}</div>${when}</div>`; }
@@ -3945,7 +3946,7 @@
           ${items.length ? `<span class="bt-all"><button class="linkbtn" data-pick-all="keep">Keep all</button><button class="linkbtn" data-pick-all="drop">Drop all</button></span>` : ''}</div>
         <div class="bt-grid">${items.length ? items.map(batchTile).join('') : '<div class="sk bt-sk"></div>'.repeat(8)}</div>
       </section>
-      ${items.length ? `<div class="bt-bar"><div class="ship-tx"><b>${waiting.length ? `${waiting.length} ad${waiting.length > 1 ? 's' : ''} ready for the jam` : shipped ? 'Everything you kept is in the jam' : 'Keep at least one ad'}</b><span>${fixes.length ? `Fix ${fixes.map((x) => `ad ${x.batchIndex + 1}`).join(', ')} first: open it and tap “Fix it with AI”.` : 'The ads you keep open as one jam with their brief: download them, or share the brief. Nothing is launched from Brew.'}</span></div>
+      ${items.length ? `<div class="bt-bar"><div class="ship-tx"><b>${waiting.length ? `${waiting.length} ad${waiting.length > 1 ? 's' : ''} ready for the jam` : shipped ? 'Everything you kept is in the jam' : 'Keep at least one ad'}</b><span>${fixes.length ? `Fix ${fixes.map((x) => `ad ${x.batchIndex + 1}`).join(', ')} first: open it and tap “Fix it with AI”.` : 'The ads you keep open as one jam with their brief: download them, or share the brief. Nothing is launched from here.'}</span></div>
         ${!waiting.length && shipped ? `<button class="btn btn-primary ship-go" data-nav="work">${ic('right', 's16')}Follow it in Work</button>` : `<button class="btn btn-primary ship-go" data-bt-queue ${!waiting.length || fixes.length || RX.queueing ? 'disabled' : ''}>${RX.queueing ? '<brew-load class="spin"></brew-load>Opening the jam…' : `${ic('zap', 's16')}Open as a jam${waiting.length ? ` · ${waiting.length}` : ''}`}</button>`}</div>` : ''}`;
   };
   const loadBatch = async () => { const g = await tapi('GET', `/api/cards/${RX.p.id}/batch`); if (g.batch) { RX.batch = g; if (view === 'remix' && !RX.ch) paintBatch(); } return g; };
@@ -4037,7 +4038,7 @@
     if (f.st === 'loading') return `<button class="btn btn-primary ship-go" disabled><brew-load class="spin"></brew-load>Make it</button>`;
     if (f.st === 'err') return `<button class="btn btn-primary ship-go" data-fn-one title="${esc(f.err)}">${ic('sparkles', 's16')}Make it</button>`;
     const q = f.q, n = Math.round((q.credits || 0) * 100) / 100, cost = q.dummy ? 'simulated' : q.provider === 'gemini' ? 'with Gemini' : n ? `${n} credits` : 'no credits';
-    return `<button class="btn btn-primary ship-go" data-fn-one title="${esc(q.provider === 'gemini' ? `Sloosh isn’t ready (${q.fallbackWhy || 'no credits'}), so Brew makes it with Gemini.` : `Made on Sloosh with ${q.label || q.model || 'its best model'}. Tap once to make the final ${what}.`)}">${ic('sparkles', 's16')}Make it<small class="btn-free">${esc(cost)}</small></button>`; };
+    return `<button class="btn btn-primary ship-go" data-fn-one title="${esc(q.provider === 'gemini' ? `Sloosh isn’t ready (${q.fallbackWhy || 'no credits'}), so we make it with Gemini.` : `Made on Sloosh with ${q.label || q.model || 'its best model'}. Tap once to make the final ${what}.`)}">${ic('sparkles', 's16')}Make it<small class="btn-free">${esc(cost)}</small></button>`; };
   /* a final the person started here stays "making" on this screen until it lands or fails: a read that left before the tap
      (the job poll, the jam tick) can come back after it without finalPending, and the button turned clickable again (Param, 21 Oct) */
   const nFinals = (ch) => (ch.versions || []).filter((v) => v.final).length;
@@ -4081,34 +4082,34 @@
     const job = jobOf(ch), fp = finalGoing(ch);
     const csS = ch.studio ? window.CreativeStage?.state(ch.id) : null, csPl = csS?.plan;
     if (ch.studio && (csS?.making || csS?.working || (!sv && !studioMade(ch)))) { /* a Studio piece being made (a first make, a redo, the full one), or not made yet: priced in the Set-up tab, made from here */
-      if (csS?.making || csS?.working) { head = `<brew-load class="spin"></brew-load>Being made · you can leave`; tip = 'It lands on the stage and in Work when it’s ready, and Brew tells you.'; main = `<button class="btn btn-primary ship-go" disabled aria-busy="true"><brew-load class="spin"></brew-load>Making it…</button>`; }
-      else { head = csS?.error ? esc(csS.error) : !csS || csS.loading ? 'Setting it up from the card…' : csPl?.error ? esc(csPl.error) : csPl ? esc(csPl.line || 'Set up from the card') : 'Pricing it…'; tip = 'Brew set it up from the card and your Brand Book: change anything in the Set-up tab, or tell me in the chat. Nothing is made, or paid, before you press Make it.';
+      if (csS?.making || csS?.working) { head = `<brew-load class="spin"></brew-load>Being made · you can leave`; tip = 'It lands on the stage and in Work when it’s ready, and we tell you.'; main = `<button class="btn btn-primary ship-go" disabled aria-busy="true"><brew-load class="spin"></brew-load>Making it…</button>`; }
+      else { head = csS?.error ? esc(csS.error) : !csS || csS.loading ? 'Setting it up from the card…' : csPl?.error ? esc(csPl.error) : csPl ? esc(csPl.line || 'Set up from the card') : 'Pricing it…'; tip = 'We set it up from the card and your Brand Book: change anything in the Set-up tab, or tell me in the chat. Nothing is made, or paid, before you press Make it.';
         main = `<button class="btn btn-primary ship-go" data-cs-make ${!csPl || csPl.error || csPl.usd == null || csS?.working ? 'disabled' : ''}>${ic('sparkles', 's16')}${csS?.working ? 'Starting…' : 'Make it'}${csPl?.usd != null ? `<small class="btn-free">${esc(moneyOf(csPl.usd))}</small>` : ''}</button>`; } }
-    else if (job && !fp) { head = `<brew-load class="spin"></brew-load>${esc(job)}${nm}`; tip = media ? 'Brew makes a quick draft first, so you can check the idea. The final is made after.' : 'It lands here on its own in a moment.'; main = `<button class="btn btn-primary ship-go" disabled>${esc(job)}…</button>`; }
+    else if (job && !fp) { head = `<brew-load class="spin"></brew-load>${esc(job)}${nm}`; tip = media ? 'We make a quick draft first, so you can check the idea. The final is made after.' : 'It lands here on its own in a moment.'; main = `<button class="btn btn-primary ship-go" disabled>${esc(job)}…</button>`; }
     else if (op && !op.picked) { head = `Pick one of ${op.list.length}`; tip = 'Tap the options above the stage to compare them, then use the one you like. The others stay in History.';
       main = `<button class="btn btn-primary ship-go" ${opt ? `data-opt-use="${esc(opt.id)}"` : 'disabled'}>${ic('check', 's16')}${opt ? `Use ${esc(opt.name)}` : 'Pick one above'}</button>`; }
     else if (fix) { const fx = ch.fixes || []; head = fx.length ? `<details class="ship-fixes" data-keep="fixes"><summary>${fx.length > 1 ? `${fx.length} things to fix before it ships` : `Needs a fix · ${esc(String(fx[0]).replace(/^Claims to check before shipping:\s*/i, '').split(/[:;]/)[0].slice(0, 60))}`}</summary><ol>${fx.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>` : 'Needs a fix: see the checks'; /* one line on the bar, the whole of it a tap away (26 Oct: three lines crowded the buttons) */ tip = `Before it can ship: ${fx.join('; ')}.`; main = `<button class="btn btn-primary ship-go" data-rx="fix">${ic('sparkles', 's16')}Fix it with AI${freeTag()}</button>`; }
-    else if (blockOf(ch)) { const bk = blockOf(ch); head = `Can’t ship yet: ${esc(bk)}`; tip = 'A check failed that Brew can’t fix by rewriting: ask in the chat what to do, or change the plan.'; main = `<button class="btn btn-primary ship-go" data-tab="iterate">${ic('sparkles', 's16')}Ask Brew what to do</button>`; }
+    else if (blockOf(ch)) { const bk = blockOf(ch); head = `Can’t ship yet: ${esc(bk)}`; tip = 'A check failed that we can’t fix by rewriting: ask in the chat what to do, or change the plan.'; main = `<button class="btn btn-primary ship-go" data-tab="iterate">${ic('sparkles', 's16')}Ask what to do</button>`; }
     else if (ch.verdict === 'confirm' && (ch.confirm || []).length) { head = `Tick your own checks first · ${(ch.confirm || []).length}`; tip = `Your checks: ${(ch.confirm || []).join('; ')}. Tick them in the Details tab, then Send brief.`; main = `<button class="btn btn-primary ship-go" data-tab="details">${ic('check', 's16')}Tick your checks</button>`; }
-    else if (fp) { head = `<brew-load class="spin"></brew-load>${fp.fallback ? 'Brew' : 'Sloosh'} is making the final${nm}`; tip = 'It takes a few minutes. We’ll notify you when it’s ready; you can leave this page.'; main = `<button class="btn btn-primary ship-go" disabled aria-busy="true"><brew-load class="spin"></brew-load>Making the final ${reel ? 'reel' : 'picture'}…</button>`; }
+    else if (fp) { head = `<brew-load class="spin"></brew-load>${fp.fallback ? 'We’re' : 'Sloosh is'} making the final${nm}`; tip = 'It takes a few minutes. We’ll notify you when it’s ready; you can leave this page.'; main = `<button class="btn btn-primary ship-go" disabled aria-busy="true"><brew-load class="spin"></brew-load>Making the final ${reel ? 'reel' : 'picture'}…</button>`; }
     else if (media && !fin && isReel(ch) && !p.video) { head = `Script ready${nm}`; tip = 'Make the video to see it moving. It’s a quick draft; the final reel is made after.'; main = `<button class="btn btn-primary ship-go" data-rx="video" title="Make the video">${ic('vid', 's16')}Make it${freeTag(true)}</button>`; }
-    else if (media && !fin) { head = `Draft ${reel ? 'video' : 'photo'} ready${nm}`; tip = `A quick draft made by Brew to check the idea. The final ${reel ? 'reel' : 'picture'} is made on Sloosh, ready to post. Then Send brief.`; main = finalBtn(ch); }
+    else if (media && !fin) { head = `Draft ${reel ? 'video' : 'photo'} ready${nm}`; tip = `A quick draft we made to check the idea. The final ${reel ? 'reel' : 'picture'} is made on Sloosh, ready to post. Then Send brief.`; main = finalBtn(ch); }
     else if (media || sv) { const look = sv && ch.publish?.made ? lookOf(ch).map((x) => x.t) : []; /* soft ones too: a preview is "ready" yet still needs the full one */ /* what needs the look, said: "Needs a look · 1" named nothing (25 Oct, Arata stories) */
       const fullOf = sv && sv.quality === 'preview' && !RX.viewing ? window.CreativeStage?.fullPrice?.() : undefined; /* a quick preview: the next step is the full one */
-      head = look.length ? `<details class="ship-fixes" data-keep="fixes"><summary>${look.length > 1 ? `${look.length} things to look at before you post it` : `Needs a look · ${esc(String(look[0]).split(/[:;]/)[0].slice(0, 60))}`}</summary><ol>${look.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>` : `${sv ? (ch.publish?.made ? (ch.publish.ready ? 'Ready to publish' : `Needs a look · ${ch.publish.bad}`) : 'Made by Brew Studio') : 'Final ready'}${nm}`; tip = 'Send brief: the ShopOS team, Brew’s build crew, gets it by email and posts or runs it. Its status shows in the top bar.'; main = send;
+      head = look.length ? `<details class="ship-fixes" data-keep="fixes"><summary>${look.length > 1 ? `${look.length} things to look at before you post it` : `Needs a look · ${esc(String(look[0]).split(/[:;]/)[0].slice(0, 60))}`}</summary><ol>${look.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>` : `${sv ? (ch.publish?.made ? (ch.publish.ready ? 'Ready to publish' : `Needs a look · ${ch.publish.bad}`) : `Made by ${esc(PRODUCT)} Studio`) : 'Final ready'}${nm}`; tip = 'Send brief: our team, the build crew, gets it by email and posts or runs it. Its status shows in the top bar.'; main = send;
       if (fullOf !== undefined) { tip = 'This is the quick, low-resolution preview of the idea. The full one is made the same way at standard quality, priced first; then send the brief.';
         main = `<button class="btn btn-primary ship-go" data-cs-full ${!fullOf || fullOf.error || fullOf.usd == null || window.CreativeStage?.state(ch.id)?.working ? 'disabled' : ''} title="${esc(fullOf?.error || 'The same set-up at standard quality')}">${ic('sparkles', 's16')}Make the full one${fullOf?.usd != null ? `<small class="btn-free">${esc(moneyOf(fullOf.usd))}</small>` : ''}</button>`; } }
-    else if (po) { head = `Ready${nm}`; tip = `${po.filled ? `Opens ${PO_WHERE(po)} with the post filled in, and copies it too.` : `Copies the post and opens ${PO_WHERE(po)}; paste it there.`} You post it yourself; Brew never posts in communities for you.${po.rule ? ` ${po.rule}` : ''}`; main = poBtn(po, true); }
+    else if (po) { head = `Ready${nm}`; tip = `${po.filled ? `Opens ${PO_WHERE(po)} with the post filled in, and copies it too.` : `Copies the post and opens ${PO_WHERE(po)}; paste it there.`} You post it yourself; we never post in communities for you.${po.rule ? ` ${po.rule}` : ''}`; main = poBtn(po, true); }
     /* a post with no thread to open: its main button copies the post (it said "you post it yourself" over a Send brief button: QA J-20) */
-    else if (ch.family === 'post' && ch.target?.conn !== 'meta' && (p.copy || p.title)) { head = `Ready${nm}`; tip = 'Copy the post and paste it where it goes. You post it yourself; Brew never posts in communities for you. The brief carries it too.'; main = `<button class="btn btn-primary ship-go" data-rx="copy-post">${ic('copy', 's16')}${ch.target?.object === 'Review reply' ? 'Copy the reply' : 'Copy the post'}</button>`; }
-    else { head = `Ready${nm}`; tip = `${ch.verdict === 'jam' && (ch.reasons || [])[0] ? `${ch.reasons[0]}: the brief carries everything the team needs. ` : ''}Send brief: the ShopOS team, Brew’s build crew, gets it by email and runs it. Its status shows in the top bar.`; main = send; }
+    else if (ch.family === 'post' && ch.target?.conn !== 'meta' && (p.copy || p.title)) { head = `Ready${nm}`; tip = 'Copy the post and paste it where it goes. You post it yourself; we never post in communities for you. The brief carries it too.'; main = `<button class="btn btn-primary ship-go" data-rx="copy-post">${ic('copy', 's16')}${ch.target?.object === 'Review reply' ? 'Copy the reply' : 'Copy the post'}</button>`; }
+    else { head = `Ready${nm}`; tip = `${ch.verdict === 'jam' && (ch.reasons || [])[0] ? `${ch.reasons[0]}: the brief carries everything the team needs. ` : ''}Send brief: our team, the build crew, gets it by email and runs it. Its status shows in the top bar.`; main = send; }
     if (document.body.classList.contains('is-guest') && /data-cs-make|data-cs-full|data-fn-one|data-rx="(?:video|image|images-all|variants|listing-photos)"/.test(main)) main = `<button class="btn btn-primary ship-go" disabled title="Pictures, videos and finals cost money, so ${esc(B.brand.name)}’s team makes them. You can chat and change the words.">${ic('person', 's16')}The team makes it</button>`; /* a jam guest (QV 25 Oct) */
     const items = [];
     /* a final reel or picture is post-ready: its caption and hashtags one tap away, beside Download (Param, 21 Oct) */
     if (media && fin && !fp && (p.copy || p.title)) items.push(['data-rx="copy-post"', 'copy', 'Copy the caption', 'Title, caption and hashtags, ready to paste with the final.']);
     if (po && !fix && !job && !/data-rx="post-open"/.test(main)) items.push(['data-rx="post-open"', 'send', po.label, po.filled ? `Opens ${PO_WHERE(po)} with the post filled in.` : `Copies the post and opens ${PO_WHERE(po)}.`]);
     if (/data-cs-full/.test(main)) items.unshift(['data-tb-open', 'send', 'Send the preview’s brief anyway', 'The brief with this low-resolution preview; the team can make the full one.']);
-    if (!/data-rx="share-shopos"/.test(main)) items.push(['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team, Brew’s build crew, gets it by email and makes it.']);
+    if (!/data-rx="share-shopos"/.test(main)) items.push(['data-rx="share-shopos"', 'send', 'Send the brief now', 'Our team, the build crew, gets it by email and makes it.']);
     items.push(['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']);
     /* a customer message (WhatsApp, email, SMS) goes out from the brand's own tool: copy its words, or take the template file (2.5) */
     if (ch.family === 'crm' && (p.message || p.subject)) { const tool = ch.target?.name && !/^a person$/i.test(ch.target.name) ? ch.target.name : 'your messaging tool';
@@ -4142,28 +4143,28 @@
     }
     /* the jam page: one way out, the tray (it shows exactly what changes, the limit, how we'll know and what's missing) */
     /* sent: the bar says where it is, not how to send it again */
-    if (!ch.batchKey) { const w0 = workOfCard(RX.p?.id); if (w0 && w0.stage === 'needs_you') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}${esc(w0.with?.name || 'The ShopOS team')} needs your OK${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>They replied in the conversation. Read it, then approve or change it.</span></div><div class="ship-btns"><button class="btn btn-primary" data-st-convo>${ic('chat', 's16')}Open the conversation</button>${lnk}</div></div>`;
+    if (!ch.batchKey) { const w0 = workOfCard(RX.p?.id); if (w0 && w0.stage === 'needs_you') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}${esc(w0.with?.name || 'Our team')} needs your OK${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>They replied in the conversation. Read it, then approve or change it.</span></div><div class="ship-btns"><button class="btn btn-primary" data-st-convo>${ic('chat', 's16')}Open the conversation</button>${lnk}</div></div>`;
       if (w0 && w0.stage === 'team') return `<div class="ship info"><div class="ship-tx"><b>${ic('send', 's16')}With ${esc(w0.with?.name || 'your team')}</b><span>They look at it in the conversation. Share the brief when it’s ready.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-convo>${ic('chat', 's16')}Open the conversation</button>${lnk}</div></div>`;
       /* shared, but the email never went out (the demo, a mail that failed): it is ready to paste, never "Sent" */
       if (w0 && w0.stage === 'shared' && w0.jamBrief?.to !== 'team' && !w0.jamBrief?.sentAt && !w0.jamBrief?.status) return `<div class="ship info"><div class="ship-tx"><b>${ic('doc', 's16')}Brief ready to paste${w0.ticket ? ` · ${esc(w0.ticket)}` : ''}</b><span>It didn’t go out by email. Open it, copy it and paste it where your team works, or send it again.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button><button class="btn btn-primary ship-go" data-tb-open>${ic('send', 's16')}Send again</button></div></div>`;
       /* our team (staff only, brief-staff.js): where the brief is and the next step; a brand member never gets this bar */
       if (w0 && window.BriefStaff?.shows(w0)) return window.BriefStaff.html(w0, { esc, ic });
       /* sent, then changed: the team has the older version, so the bar offers the new one */
-      { const sAt = w0?.jamBrief?.sentAt || 0, hv = ch.versions?.find((v) => v.id === ch.head); if (w0 && w0.stage === 'shared' && sAt && hv && (hv.at || 0) > sAt + 1000) return `<div class="ship warn"><div class="ship-tx"><b>${ic('send', 's16')}Changed since it was sent · v${hv.n} is on the stage</b><span>The ShopOS team has the version from ${esc(sentLine(sAt))}. Send v${hv.n} so they make this one.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button><button class="btn btn-primary ship-go" data-tb-open>${ic('send', 's16')}Send v${hv.n}</button></div></div>`; }
+      { const sAt = w0?.jamBrief?.sentAt || 0, hv = ch.versions?.find((v) => v.id === ch.head); if (w0 && w0.stage === 'shared' && sAt && hv && (hv.at || 0) > sAt + 1000) return `<div class="ship warn"><div class="ship-tx"><b>${ic('send', 's16')}Changed since it was sent · v${hv.n} is on the stage</b><span>Our team has the version from ${esc(sentLine(sAt))}. Send v${hv.n} so they make this one.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button><button class="btn btn-primary ship-go" data-tb-open>${ic('send', 's16')}Send v${hv.n}</button></div></div>`; }
       if (w0 && w0.stage === 'shared' && w0.jamBrief?.to !== 'team') { const it = (WORK.withTeam?.items || []).find((x) => x.wid === w0.id); /* sent: the ShopOS team has it by email; its status follows in the top bar */
-        return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Sent to the ShopOS team${w0.ticket ? ` · ${esc(w0.ticket)}` : ''}${it?.label ? ` · ${esc(it.label)}` : ''}${w0.jamBrief?.sharedAt ? ` · ${esc(sentLine(w0.jamBrief.sharedAt))}` : ''}</b><span>Brew’s build crew takes it from here. Its status shows in the top bar.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button>${lnk}</div></div>`; }
-      if (w0 && w0.stage === 'shared') return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Brief shared${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>With ${w0.jamBrief?.to === 'team' ? 'your team' : 'the ShopOS team'}. The jam ends here.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button><button class="btn btn-ghost" data-rx="share-${w0.jamBrief?.to === 'team' ? 'team' : 'shopos'}">${ic('copy', 's16')}Copy it again</button>${lnk}</div></div>`; }
+        return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Sent to our team${w0.ticket ? ` · ${esc(w0.ticket)}` : ''}${it?.label ? ` · ${esc(it.label)}` : ''}${w0.jamBrief?.sharedAt ? ` · ${esc(sentLine(w0.jamBrief.sharedAt))}` : ''}</b><span>The build crew takes it from here. Its status shows in the top bar.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button>${lnk}</div></div>`; }
+      if (w0 && w0.stage === 'shared') return `<div class="ship ok"><div class="ship-tx"><b>${ic('check', 's16')}Brief shared${w0.ticket ? `: ${esc(w0.ticket)}` : ''}</b><span>With ${w0.jamBrief?.to === 'team' ? 'your team' : 'our team'}. The jam ends here.</span></div><div class="ship-btns"><button class="btn btn-ghost" data-st-brief>${ic('doc', 's16')}The brief</button><button class="btn btn-ghost" data-rx="share-${w0.jamBrief?.to === 'team' ? 'team' : 'shopos'}">${ic('copy', 's16')}Copy it again</button>${lnk}</div></div>`; }
     /* before the plan's make step has run, the jam's main button is the card's own action: it makes the work, it ships nothing */
     if (!ch.batchKey && ch.state !== 'jam' && ch.studio && !studioMade(ch)) return stepBar(ch); /* Studio, not made yet: Make it, priced */
     if (!ch.batchKey && ch.state !== 'jam' && jobOf(ch)) return stepBar(ch); /* being made: the bar says what, never Draft or Ready */
     if (!ch.batchKey && ch.state !== 'jam' && !planMade(ch)) { const pl = planOf(ch);
       const media0 = PH_FAM.includes(ch.family) && !ch.realOnly && (ch.family !== 'post' || isReel(ch) || ch.pkg?.image || ch.pkg?.media || ch.pkg?.video); /* the same steps as every other bar (stepBar) */
       return `<div class="ship one ok"><ol class="ship-steps" aria-label="Steps">${(media0 ? ['Draft', 'Make', 'Send'] : ['Draft', 'Send']).map((x, i) => `<li class="${i ? '' : 'is-on'}">${x}</li>`).join('')}</ol><div class="ship-tx is-step"><b>${ic('sparkles', 's16')}<span class="ship-l">${ch.v0 === 'draft' ? 'First draft' : 'Draft'} · v${curN(ch)}</span>${tipBtn(`${planGo(ch, pl).line}. Then share the brief.`)}</b></div>
-        <div class="ship-btns">${shipMenu(ch, [['data-rx="share-shopos"', 'send', 'Send the brief now', 'The ShopOS team, Brew’s build crew, gets it by email and makes it.'], ['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']])}<button class="btn btn-primary" data-rx="plan">${ic('sparkles', 's16')}${esc(planGo(ch, pl).label)}${freeTag(isReel(ch))}</button></div></div>`; }
+        <div class="ship-btns">${shipMenu(ch, [['data-rx="share-shopos"', 'send', 'Send the brief now', 'Our team, the build crew, gets it by email and makes it.'], ['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']])}<button class="btn btn-primary" data-rx="plan">${ic('sparkles', 's16')}${esc(planGo(ch, pl).label)}${freeTag(isReel(ch))}</button></div></div>`; }
     if (!ch.batchKey && ch.state !== 'jam') return stepBar(ch);
     if (ch.state === 'jam') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}Being planned in a jam</b><span>Answer the open questions there, then it ships.</span></div><div class="ship-btns">${postOpenOf(ch) ? poBtn(postOpenOf(ch), false) /* a ready post can still be copied out while the jam plans it */ : ''}<button class="btn btn-primary" data-rx="open">Open the jam</button></div></div>`;
     const R = RXROUTE[ch.verdict] || RXROUTE.jam, blocks = ch.checks.filter((x) => !x.ok && !x.soft);
-    const what = ch.verdict === 'confirm' ? `Tick your own checks first: ${esc((ch.confirm || []).join('; '))}.` : ch.verdict === 'fix' ? `Before it can ship: ${esc((ch.fixes || []).join('; '))}.` : ch.verdict === 'live' ? `Ready for your team: they make this change in ${esc(ch.target.name)} from the brief. Brew reads your accounts and never changes them.` /* read-only, always (2.3) */ : ch.verdict === 'deploy' ? `${esc(ch.teamWhy || 'It needs a person')}, so the ShopOS team ships it. You send them a brief with everything they need${ch.money && ch.amount > 0 ? `: about ${inrS(ch.amount)} a week` : ''}.` : esc(blocks[0]?.k || ch.reasons[0] || 'A person needs to plan or decide this first.');
+    const what = ch.verdict === 'confirm' ? `Tick your own checks first: ${esc((ch.confirm || []).join('; '))}.` : ch.verdict === 'fix' ? `Before it can ship: ${esc((ch.fixes || []).join('; '))}.` : ch.verdict === 'live' ? `Ready for your team: they make this change in ${esc(ch.target.name)} from the brief. We read your accounts and never change them.` /* read-only, always (2.3) */ : ch.verdict === 'deploy' ? `${esc(ch.teamWhy || 'It needs a person')}, so our team ships it. You send them a brief with everything they need${ch.money && ch.amount > 0 ? `: about ${inrS(ch.amount)} a week` : ''}.` : esc(blocks[0]?.k || ch.reasons[0] || 'A person needs to plan or decide this first.');
     const scopes = ch.verdict === 'live' && ch.scope.length > 1 ? `<div class="ship-scope"><small>Run on</small>${ch.scope.map((s) => `<button class="chip" data-scope="${s.n}" aria-pressed="${(RX.scope[ch.id] || ch.scope[0].n) === s.n}" title="${s.locked ? `Above ${esc(ch.trust.name)} trust, so it goes to a jam` : ''}">${s.locked ? ic('lock', 's14') : ''}${esc(s.label)}</button>`).join('')}</div>` : '';
     return `<div class="ship ${R.tone}"><div class="ship-tx"><b>${ic(R.icon, 's16')}${R.tag}: v${curN(ch)}</b><span>${what}</span>${scopes}</div>
       <div class="ship-btns">${ch.verdict !== 'jam' ? `<button class="btn btn-ghost" data-rx="jam">${ic('hand', 's16')}Jam with my team</button>` : ''}${ch.verdict === 'fix' ? `<button class="btn btn-ghost" data-tab="details">Edit details</button>` : ''}<button class="btn btn-primary ship-go" data-rx="${ch.verdict === 'fix' ? 'fix' : ch.verdict === 'confirm' ? 'mychecks' : 'share'}">${ic(R.icon, 's16')}${ch.verdict === 'fix' && (ch.thread || []).slice(-1)[0]?.text?.startsWith('I couldn’t fix') ? 'Try again' : R.btn}</button></div></div>`;
@@ -4186,13 +4187,13 @@
      holds it (a short video's clip, an ad's or a post's picture, a written family's words), so the plan's button steps aside */
   /* the one job running on this change right now, in plain words ('' when nothing is): every status line (the step bar,
      the case’s next step, the chips) asks this first, so none says Ready or Draft while something is being made */
-  const jobOf = (ch) => !ch ? '' : finalGoing(ch) ? `${finalGoing(ch).fallback ? 'Brew' : 'Sloosh'} is making the final` : ch.copyPending || ch.ctaQueued ? 'Writing the first draft' : ch.remakePending ? (ch.remakePending.step || 'Making it') : ch.videoPending ? (ch.videoStep || 'Making the video') : ch.ctaPending ? String(ch.ctaPending) : ch.imagePending ? (ch.family === 'listing' ? 'Making the listing photos' : 'Making the photo') : '';
+  const jobOf = (ch) => !ch ? '' : finalGoing(ch) ? `${finalGoing(ch).fallback ? 'We’re' : 'Sloosh is'} making the final` : ch.copyPending || ch.ctaQueued ? 'Writing the first draft' : ch.remakePending ? (ch.remakePending.step || 'Making it') : ch.videoPending ? (ch.videoStep || 'Making the video') : ch.ctaPending ? String(ch.ctaPending) : ch.imagePending ? (ch.family === 'listing' ? 'Making the listing photos' : 'Making the photo') : '';
   const hasDraft = (ch) => { const p = ch?.pkg || {}; return ch?.v0 === 'draft' || !!(p.video || /^\/?gen\//.test(p.image || '') || p.draft?.images?.length || p.draft?.video); };
   const hasMade = (ch) => { if (!ch || ch.copyPending) return false; if (ch.videoPending || ch.imagePending || ch.remakePending || ch.ctaPending) return true; /* being made: the button that makes it steps aside */ const p = ch.pkg || {}, rows = p.cards || p.slides || [];
     if (isReel(ch)) return !!p.video; if (['meta_ad', 'social'].includes(ch.family) && !ch.realOnly) return rows.length > 1 ? rows.every((_, i) => (p.cardImages || [])[i]) : !!(/^\/?gen\//.test(p.image || '') || p.draft?.images?.length); return true; };
   /* a saved plan may still carry the card's own non-making label ("Open the scoreboard"): the button says what it does (card-plan.js NOT_MAKING_LABEL) */
   const planLabel = (l) => (!l ? 'Make it' : /^(?:open|see|agree|approve|publish|shift|pause|restart|launch|turn on|queue|start the tests|fix tracking|fix the links|update the prices|review draft|win their|show how|work on this|send|set the watch|set up the rules|ship|apply|run|lock)\b/i.test(l) ? 'Make the draft' : l);
-  const planGo = (ch, pl) => ({ label: planLabel(pl?.cta), line: `Brew makes the ${pl?.make?.one || pl?.make?.what || 'version'} on the stage${isReel(ch) ? ' and films it' : ['meta_ad', 'social'].includes(ch?.family) ? ' with its picture' : ''}; redo it if it isn’t right` });
+  const planGo = (ch, pl) => ({ label: planLabel(pl?.cta), line: `We make the ${pl?.make?.one || pl?.make?.what || 'version'} on the stage${isReel(ch) ? ' and films it' : ['meta_ad', 'social'].includes(ch?.family) ? ' with its picture' : ''}; redo it if it isn’t right` });
   const planMade = (ch) => !!(ch?.planRun || ch?.batchKey || planOf(ch)?.batch || ch?.state === 'jam' || !planOf(ch) || hasMade(ch));
   const planBusy = (ch) => { const pl = planOf(ch); return pl?.n ? `Making ${pl.n > 1 ? `${pl.n} ${pl.make?.what || 'versions'}` : `the ${pl.make?.what || 'version'}`}…` : 'Working on it…'; };
   /* first thing on the chat: the case in plain words, the card's plan toward its action, and the one thing to press next */
@@ -4229,14 +4230,14 @@
   const chatTab = (ch, edit) => {
     /* "the first draft didn't get written" sat beside a finished ad (25 Oct): it says what is true (the words came from the facts) and
        goes once there is a newer version */
-    const msgs = (ch.thread || []).filter((m) => !(m.rewrite && (ch.versions || []).length > 1)).map((m) => (m.rewrite ? { ...m, text: 'Brew’s AI couldn’t write this one just now, so the words come from your product facts. Redo it for a written take.' } : m)), vById = (id) => ch.versions.find((v) => v.id === id), JR = window.JamRoom, w = RX.p ? workOfCard(RX.p.id) : null, me = String(ME()?.email || '').toLowerCase();
+    const msgs = (ch.thread || []).filter((m) => !(m.rewrite && (ch.versions || []).length > 1)).map((m) => (m.rewrite ? { ...m, text: 'Our AI couldn’t write this one just now, so the words come from your product facts. Redo it for a written take.' } : m)), vById = (id) => ch.versions.find((v) => v.id === id), JR = window.JamRoom, w = RX.p ? workOfCard(RX.p.id) : null, me = String(ME()?.email || '').toLowerCase();
     const one = (m) => m.from === 'you' ? (me && m.by?.email && String(m.by.email).toLowerCase() !== me && JR?.teamMsg /* a teammate's ask, with their face and name */ ? `<div class="st-jm">${JR.teamMsg({ from: 'me', by: m.by, body: m.text }, w || {})}</div>` : `<div class="lgm you">${(m.imgs || []).length ? `<div class="st-msg-imgs">${m.imgs.map((u) => `<a href="${esc(/^(data:|https?:|\/)/.test(u) ? u : '/' + u)}" target="_blank" rel="noopener"><img src="${esc(/^(data:|https?:|\/)/.test(u) ? u : '/' + u)}" alt="Attached screenshot"></a>`).join('')}</div>` : ''}<p>${esc(m.text)}</p></div>`)
       : `<div class="lgm ai">${face(ch.agent)}<div>${m.proof ? proofMsg(m) : `<p>${esc(m.text)}</p>`}${m.v && ch.versions[m.v - 1] ? madeNote(ch, [ch.versions[m.v - 1]]) : ''}${(m.vs || []).length && !(ch.options && m.vs.every((id) => ch.options.list.some((x) => x.id === id))) /* options show as tabs above the stage */ ? (m.cuts && PH_FAM.includes(ch.family) ? cutsStrip(ch, m.vs.map(vById).filter(Boolean)) : madeNote(ch, m.vs.map(vById).filter(Boolean))) : ''}${m.rewrite && edit ? `<button type="button" class="chip j1-chip" data-say="Rewrite it"${RX.sending ? ' disabled' : ''}>${ic('shuffle', 's14')}Redo it</button>` : ''}${m.remakeAgain && edit && !ch.remakePending && !ch.realOnly ? `<button type="button" class="chip j1-chip" data-j2-remake="${esc(m.remakeAgain)}"${RX.sending ? ' disabled' : ''}>${ic('refresh', 's14')}Make it again</button>` : ''}${m.retry && edit && m === msgs[msgs.length - 1] ? `<button type="button" class="chip j1-chip" data-say="${esc(m.retry)}"${RX.sending ? ' disabled' : ''}>${ic('refresh', 's14')}Try again</button>` : '' /* a revision that failed or timed out: the same ask again, one tap (1.6) */}</div></div>`;
     const jam = w && JR?.teamMsg ? (w.thread || []).filter((m) => m && m.id !== 'tmp' && !m.learn && (m.from !== 'system' || m.edited?.length || JAM_SYS.test(m.body || ''))).map((m, i) => ({ at: m.at || 0, i: 1e4 + i, html: `<div class="st-jm" data-st-jam>${JR.teamMsg(m, w)}</div>` })) : [];
     const log = [...msgs.map((m, i) => ({ at: m.at || 0, i, html: one(m) })), ...jam].sort((a, b) => a.at - b.at || a.i - b.i).map((x) => x.html).join('') + (w && JR?.typingHtml ? JR.typingHtml(w) : '');
     /* the ShopOS team asked for something: what they need sits on the composer until it is answered */
     const ni = w?.jamBrief?.status === 'needs_info' ? (w.jamBrief.history || []).find((h) => h.s === 'needs_info') : null;
-    const niHtml = ni ? `<div class="st-needs" role="status">${ic('hand', 's16')}<div><b>${esc(ni.name || 'The ShopOS team')} needs something from you${w.ticket ? ` · ${esc(w.ticket)}` : ''}</b>${ni.note ? `<p>${esc(ni.note)}</p>` : ''}<small>Answer with @ShopOS team in your message: it goes to them by email.</small></div></div>` : '';
+    const niHtml = ni ? `<div class="st-needs" role="status">${ic('hand', 's16')}<div><b>${esc(ni.name || 'Our team')} needs something from you${w.ticket ? ` · ${esc(w.ticket)}` : ''}</b>${ni.note ? `<p>${esc(ni.note)}</p>` : ''}<small>Answer with @Our team in your message: it goes to them by email.</small></div></div>` : '';
     return `<div class="it-log">${RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (RX.p ? '' : `<div class="it-empty">${face(ch.agent)}<p>What should change? Each change makes a new version, and you can always go back.</p></div>`)}${j2Extra(ch)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><brew-load class="spin"></brew-load>${esc(RX.sending)}</p></div>` : ''}</div>
       ${edit ? `<form class="it-ask" id="st-say">${niHtml}${v1Chips(ch)}${stAttHtml()}<div class="it-row${window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2" data-nomic placeholder="What should change? Or @ someone">${esc(RX.draft || '')}</textarea>${window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</div></form>${window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
@@ -4253,7 +4254,7 @@
       ${edit ? `<form class="mc-add" id="mc-add"><input name="t" placeholder="e.g. Legal OK’d the study footnote" autocomplete="off"><label class="mc-always"><input type="checkbox" name="always"> Every ${esc((ch.familyName || 'package').toLowerCase())}</label><button class="btn btn-ghost sm">Add</button></form>` : ''}
     </section>
     <section class="dt-mine"><h4 class="dt-h">Your notes</h4>
-      ${(ch.notes || []).map((n) => `<div class="nt"><p>${esc(n.text)}</p><small>${ago(n.at)}${edit ? ` · <button class="linkbtn" data-nt-rm="${n.id}">Remove</button>` : ''}</small></div>`).join('') || '<p class="dt-empty">Notes stay with this package. The AI reads them, and the ShopOS team sees them in the brief.</p>'}
+      ${(ch.notes || []).map((n) => `<div class="nt"><p>${esc(n.text)}</p><small>${ago(n.at)}${edit ? ` · <button class="linkbtn" data-nt-rm="${n.id}">Remove</button>` : ''}</small></div>`).join('') || '<p class="dt-empty">Notes stay with this package. The AI reads them, and our team sees them in the brief.</p>'}
       <form class="mc-add nt-add" id="nt-add"><textarea name="t" rows="2" placeholder="Add a note"></textarea><button class="btn btn-ghost sm">Add note</button></form>
     </section>`;
   const briefTop2 = (ch) => { const w = workOfCard(RX.p?.id), bp = w?.doc?.plan || {}, k = w?.contract, kn = RX.p ? cardOf(RX.p).know : null;
@@ -4287,7 +4288,7 @@
   const bfPopForm = () => { const el = bfPop.el; if (!el) return; el.classList.add('is-form');
     const tbK = bfPop.mode === 'tb' && bfPop.k ? (TBS.brief?.sections || []).find((x) => x.k === bfPop.k) : null;
     el.innerHTML = bfPop.mode === 'tb'
-      ? `<q>${esc(bfPop.quote.length > 120 ? bfPop.quote.slice(0, 119) + '…' : bfPop.quote)}</q><textarea id="bf-cm-in" rows="3" placeholder="What should it say instead?"></textarea><div>${tbK?.edited ? '<button class="linkbtn" data-tb-putback>Put Brew’s back</button><span class="sp"></span>' : ''}<button class="btn btn-ghost sm" data-bf-cancel>Cancel</button><button class="btn btn-primary sm" data-tb-aigo>${ic('sparkles', 's14')}Change it</button></div>`
+      ? `<q>${esc(bfPop.quote.length > 120 ? bfPop.quote.slice(0, 119) + '…' : bfPop.quote)}</q><textarea id="bf-cm-in" rows="3" placeholder="What should it say instead?"></textarea><div>${tbK?.edited ? '<button class="linkbtn" data-tb-putback>Put ours back</button><span class="sp"></span>' : ''}<button class="btn btn-ghost sm" data-bf-cancel>Cancel</button><button class="btn btn-primary sm" data-tb-aigo>${ic('sparkles', 's14')}Change it</button></div>`
       : `<q>${esc(bfPop.quote.length > 120 ? bfPop.quote.slice(0, 119) + '…' : bfPop.quote)}</q><textarea id="bf-cm-in" rows="3" placeholder="What’s wrong or what should it say?"></textarea><div><button class="btn btn-ghost sm" data-bf-cmadd>Add comment</button><button class="btn btn-primary sm" data-bf-cmfix>${ic('sparkles', 's14')}Fix with AI</button></div>`;
     const r = el.getBoundingClientRect(); if (r.bottom > innerHeight - 8) el.style.top = `${Math.max(8, innerHeight - r.height - 8)}px`; if (r.right > innerWidth - 8) el.style.left = `${Math.max(8, innerWidth - r.width - 8)}px`; $('#bf-cm-in', el)?.focus(); };
   const bfSel = () => { if (bfPop.el?.classList.contains('is-form')) return; const s = getSelection(), art = $('[data-bf-md]'), tb = $('.tbm-doc:not(.tbm-wait)');
@@ -4315,7 +4316,7 @@
     : `${briefTop2(ch)}<div class="dt-head"><span class="pill ${ch.missing.length ? 'warn' : 'ok'}">${ch.missing.length ? `${ch.missing.length} missing` : 'Complete'}</span>${edit && !RX.viewing ? `<button class="btn btn-ghost sm" data-spec-edit>Edit details</button>` : ''}</div>
        <dl class="dt-list">${ch.fields.map((f) => fieldView(f, pkgCh.pkg)).join('')}</dl>
        ${mineHtml(ch, edit)}
-       <h4 class="dt-h">Brew checks</h4><ul class="dt-checks">${ch.checks.filter((x) => !x.mine).map((x) => `<li class="${x.ok ? 'ok' : x.soft ? 'soft' : 'bad'}">${ic(x.ok ? 'check' : 'x', 's14')}<span>${esc(x.k)}</span>${x.learned ? '<em>learned</em>' : ''}</li>`).join('')}</ul>
+       <h4 class="dt-h">Our checks</h4><ul class="dt-checks">${ch.checks.filter((x) => !x.mine).map((x) => `<li class="${x.ok ? 'ok' : x.soft ? 'soft' : 'bad'}">${ic(x.ok ? 'check' : 'x', 's14')}<span>${esc(x.k)}</span>${x.learned ? '<em>learned</em>' : ''}</li>`).join('')}</ul>
        <p class="dt-note">${ic('refresh', 's14')}If it goes wrong: ${esc(ch.rollback)}.</p>
        ${briefExtra(ch)}`);
   const historyTab = (ch) => {
@@ -4433,11 +4434,11 @@
   const rivalReadHtml = (ch) => { const r = ch?.rival; if (!r) return '';
     const rd = r.read, row = (k, v) => (v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '');
     const sum = [r.angle, rd?.from === 'video' ? 'from the video' : null].filter(Boolean).join(' · ');
-    return `<details class="rv-read" data-keep="rv-read"><summary>${r.poster ? `<img src="/${esc(String(r.poster).replace(/^\//, ''))}" alt="" loading="lazy">` : ''}<span><b>What Brew read from ${esc(r.brand)}’s ad</b>${sum ? `<small>${esc(sum)}</small>` : ''}</span></summary>
+    return `<details class="rv-read" data-keep="rv-read"><summary>${r.poster ? `<img src="/${esc(String(r.poster).replace(/^\//, ''))}" alt="" loading="lazy">` : ''}<span><b>What we read from ${esc(r.brand)}’s ad</b>${sum ? `<small>${esc(sum)}</small>` : ''}</span></summary>
       ${rd ? `<dl>${row('What stops the scroll', rd.stopper)}${row('Hook', rd.hookPattern)}${row('Who it speaks to', rd.audience)}${row('Proof', rd.proof)}${row('Layout', rd.layout)}${row('Look', rd.look)}${(rd.beats || []).length ? `<div><dt>Beats</dt><dd><ol>${rd.beats.map((b) => `<li>${esc(b)}</li>`).join('')}</ol></dd></div>` : ''}</dl>
         ${(rd.works || []).length ? `<p class="rv-works"><b>What makes it work</b></p><ul>${rd.works.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
         <p class="rv-note">Ours keeps the angle, hook and composition, with your product and your words. Nothing of theirs is copied.</p>`
-        : `<p class="rv-note">${r.hook ? `Their hook: “${esc(r.hook)}”. ` : ''}Brew reads the rest of their ad as it writes the first version.</p>`}
+        : `<p class="rv-note">${r.hook ? `Their hook: “${esc(r.hook)}”. ` : ''}We read the rest of their ad as we write the first version.</p>`}
       ${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">See their ad in the Ad Library ${ic('external', 's14')}</a>` : ''}</details>`; };
   /* View references: the ad or viral video "Make our version" remakes (feed-service refSummary), theirs, shown only as a reference.
      The jam's canvas never uses their picture; this sheet is the one place it plays */
@@ -4448,7 +4449,7 @@
   const bigN = (n) => (n == null ? '' : n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(n));
   const openRefs = (r) => { if (!r) return; const src = (u) => `/${String(u).replace(/^\//, '')}`, row = (k, v) => (v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '');
     const ytId = !r.video && r.platform === 'youtube' ? (String(r.url || '').match(/(?:shorts\/|v=|youtu\.be\/)([\w-]{11})/) || [])[1] : null; /* YouTube files can't be saved (403): its own player */
-    const media = ytId ? `<iframe class="ref-media ref-yt" src="https://www.youtube-nocookie.com/embed/${esc(ytId)}" title="${esc(r.author || 'YouTube video')}" allow="encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>` : r.video ? `<video class="ref-media" src="${esc(src(r.video))}"${r.poster ? ` poster="${esc(src(r.poster))}"` : ''} controls playsinline preload="metadata"></video>` : r.poster ? `<img class="ref-media" src="${esc(src(r.poster))}" alt="">` : `<p class="rv-note">Brew couldn’t save their file this time. Open the original below.</p>`;
+    const media = ytId ? `<iframe class="ref-media ref-yt" src="https://www.youtube-nocookie.com/embed/${esc(ytId)}" title="${esc(r.author || 'YouTube video')}" allow="encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>` : r.video ? `<video class="ref-media" src="${esc(src(r.video))}"${r.poster ? ` poster="${esc(src(r.poster))}"` : ''} controls playsinline preload="metadata"></video>` : r.poster ? `<img class="ref-media" src="${esc(src(r.poster))}" alt="">` : `<p class="rv-note">We couldn’t save their file this time. Open the original below.</p>`;
     const stats = r.kind === 'viral' ? [row('Views', bigN(r.views)), r.scoreText && row('Their usual', `${bigN(r.usual)} · this got ${r.scoreText}`), row('Posted', r.days != null ? `${r.days} day${r.days === 1 ? '' : 's'} ago` : ''), row('Format', [r.format, r.pacing].filter(Boolean).join(' · '))].join('')
       : [row('Running', r.days != null ? `${r.days} day${r.days === 1 ? '' : 's'}${r.versions ? ` in ${r.versions} version${r.versions > 1 ? 's' : ''}` : ''}` : ''), row('Angle', r.angle)].join('');
     const link = r.url ? `<a class="btn btn-ghost" href="${esc(r.url)}" target="_blank" rel="noopener">${r.kind === 'viral' ? `Watch it on ${esc(r.platformName)}` : 'See it in the Ad Library'} ${ic('external', 's14')}</a>` : '';
@@ -4475,7 +4476,7 @@
   const j2Num = (x) => { const v = +x; return Number.isFinite(v) ? (Math.abs(v) >= 100 ? Math.round(v).toLocaleString('en-IN') : String(+v.toFixed(1))) : '–'; };
   const j2Key = (ch) => `${ch.id}:${RX.viewing || ch.head || 'v0'}`, j2ImpKey = (ch) => `${ch.id}:${ch.head || 'v0'}`; /* a projection is always of the head version */
   const j2Extra = (ch) => { const im = J2.imp[j2ImpKey(ch)], pk = J2.pack[j2Key(ch)]; let h = '';
-    if (pk) h += `<div class="lgm ai">${face(ch.agent)}<div>${pk.busy ? `<p><brew-load class="spin"></brew-load>Putting the files together…</p>` : pk.error ? `<p>${esc(pk.error)}</p>` : `<p>${esc(j2PackLabel(ch))}: your files are ready. The final ${esc((ch.familyName || 'files').toLowerCase())} and its copy, to post yourself. Brew changes nothing in your accounts.</p><div class="j2-pack"><a class="btn btn-ghost sm" href="/${esc(pk.url)}" download="${esc(pk.name)}">${ic('down', 's14')}${esc(pk.name)}</a><small>${(pk.files || []).length} files</small></div>${(pk.todo || []).length ? `<p class="j2-todo">Still to do: ${pk.todo.map(esc).join(' · ')}</p>` : ''}`}</div></div>`;
+    if (pk) h += `<div class="lgm ai">${face(ch.agent)}<div>${pk.busy ? `<p><brew-load class="spin"></brew-load>Putting the files together…</p>` : pk.error ? `<p>${esc(pk.error)}</p>` : `<p>${esc(j2PackLabel(ch))}: your files are ready. The final ${esc((ch.familyName || 'files').toLowerCase())} and its copy, to post yourself. We change nothing in your accounts.</p><div class="j2-pack"><a class="btn btn-ghost sm" href="/${esc(pk.url)}" download="${esc(pk.name)}">${ic('down', 's14')}${esc(pk.name)}</a><small>${(pk.files || []).length} files</small></div>${(pk.todo || []).length ? `<p class="j2-todo">Still to do: ${pk.todo.map(esc).join(' · ')}</p>` : ''}`}</div></div>`;
     if (im) h += `<div class="lgm ai">${face('performance')}<div>${im.busy ? `<p><brew-load class="spin"></brew-load>Reading this card’s results and benchmarks, then handing it to the Performance marketer…</p>` : im.error ? `<p>${esc(im.error)}</p>` : `<p>Here’s the likely lift if this runs. ${esc(im.label || 'A projection, not a promise')}.</p>
         <div class="j2-imp"><b>${j2Range(im)}</b><span>${esc(im.metric || '')}${im.windowLabel ? `, ${esc(im.windowLabel)}` : ''}</span><em class="j2-conf is-${esc(im.confidence || 'low')}">${esc(im.confidence || 'low')} confidence</em></div>
         ${(im.basis || []).length ? `<details class="j2-why" data-keep="j2-why"><summary>What it’s based on</summary><ul>${im.basis.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${(im.assumptions || []).length ? `<small>Assumed</small><ul>${im.assumptions.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${(im.gaps || []).length ? `<small>Couldn’t read</small><ul>${im.gaps.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</details>` : ''}${im.note ? `<p class="j2-todo">${esc(im.note)}</p>` : ''}`}</div></div>`;
@@ -4535,7 +4536,7 @@
       ${cr.length ? `<div class="tbm-files">${cr.map((c) => `<figure><a href="/${esc(c.url)}" target="_blank" rel="noopener">${c.kind === 'video' ? `<video src="/${esc(c.url)}" ${c.poster ? `poster="/${esc(c.poster)}"` : ''} muted playsinline preload="metadata"></video>` : `<img src="/${esc(c.url)}" alt="">`}</a><figcaption>${esc(c.label)}</figcaption></figure>`).join('')}</div>` : ''}
       ${b.sections.map((x) => `<section class="tbm-sec${x.locked ? ' is-locked' : ''}${(RX.tbNew || []).includes(x.k) ? ' is-new' : ''}"${x.locked ? ` title="The final words come from the ad: change them on the Creative side"` : ` data-tb-ai="${esc(x.k)}" tabindex="0" role="button" aria-label="Change ${esc(x.h)} with AI"`}><h2>${esc(x.h)}${x.edited ? '<em>changed</em>' : ''}${x.locked ? '<em>from the ad</em>' : `<span class="tbm-pen">${ic('sparkles', 's14')}</span>`}</h2>${x.k === 'words' ? `<div class="tbm-words">${esc(x.t)}</div>` : tbText(x.t)}</section>`
         + (x.k === 'why' && (b.evidence || []).length ? `<section class="tbm-sec tbm-ev"><h2>The evidence${tbOneSrc(b) ? `<em>from ${esc(tbOneSrc(b))}</em>` : ''}</h2><ul>${b.evidence.map((e, i) => `<li><span>${esc(e.say)}</span>${e.src && !tbOneSrc(b) ? `<small>${esc(e.src)}</small>` : ''}<button class="icon-btn" data-tb-evrm="${i}" aria-label="Leave this out">${ic('x', 's14')}</button></li>`).join('')}</ul></section>` : '')).join('')}
-      <footer class="tbm-f"><span class="sp"></span><button class="btn btn-ghost" data-tb-pdf>${ic('down', 's16')}Download PDF</button><button class="btn btn-primary" data-tb-send>${ic('send', 's16')}Send to ${esc(b.recipient?.kind === 'shopos' ? 'the ShopOS team' : b.recipient?.email || b.memo.to.replace(/^(Your|A|An|The) /, (m) => m.toLowerCase()))}</button></footer>
+      <footer class="tbm-f"><span class="sp"></span><button class="btn btn-ghost" data-tb-pdf>${ic('down', 's16')}Download PDF</button><button class="btn btn-primary" data-tb-send>${ic('send', 's16')}Send to ${esc(b.recipient?.kind === 'shopos' ? 'our team' : b.recipient?.email || b.memo.to.replace(/^(Your|A|An|The) /, (m) => m.toLowerCase()))}</button></footer>
     </article>`; };
   /* the PDF (made once per state of the brief) and the creatives, as files */
   /* Brief mode's Details: who it goes to, when, the files and where its facts come from; the maker's Set-up belongs to Creative */
@@ -4565,7 +4566,7 @@
     const flat = (t) => t.split('\n').map((l) => l.replace(/^[-•]\s+/, '').trim()).filter(Boolean).join(' ');
     const pdfName = o.pdf?.name || 'the brief (PDF)', cr = b.creatives || [], files = [pdfName, ...cr.map((c) => c.name)];
     const L = [];
-    if (o.gmail) L.push(`[Before you send: attach the ${files.length} file${files.length > 1 ? 's' : ''} Brew just saved to your Downloads (${files.join(', ')}), then delete this line.]`, '');
+    if (o.gmail) L.push(`[Before you send: attach the ${files.length} file${files.length > 1 ? 's' : ''} we just saved to your Downloads (${files.join(', ')}), then delete this line.]`, '');
     L.push('Hi,', '', `We’d like you to make this for ${b.brand || 'us'}: ${clipT(flat(sec('what')), 260)}`, '', `Why: ${clipT(flat(sec('why')), 360)}`);
     const ev = (b.evidence || []).slice(0, 3); if (ev.length) L.push('', 'What backs it:', ...ev.map((e) => `- ${clipT(e.say, 160)}${e.src ? ` (${e.src})` : ''}`));
     const who = flat(sec('who')); if (who && !/^to confirm/i.test(who)) L.push('', `Who it’s for: ${clipT(who, 220)}`);
@@ -4583,10 +4584,10 @@
   /* Send PDF asks where: Gmail (the files download, the draft opens written) or a Mail / Outlook draft with everything attached */
   /* Send to…: who it goes to first (the To line and the email's address follow), then how. The ShopOS team is one of the people,
      sent and tracked as before (Param, 26 Oct: the grey "Or send it to the ShopOS team" read like a label) */
-  const TB_TO = [['team', 'Your team'], ['agency', 'Your agency'], ['designer', 'A designer'], ['media', 'A media buyer'], ['creator', 'A creator'], ['editor', 'A video editor'], ['shopos', 'The ShopOS team']];
+  const TB_TO = [['team', 'Your team'], ['agency', 'Your agency'], ['designer', 'A designer'], ['media', 'A media buyer'], ['creator', 'A creator'], ['editor', 'A video editor'], ['shopos', 'Our team']];
   const tbSendSheet = () => { const r = TBS.brief?.recipient || {}, k = r.kind || 'team'; modal(`<div class="sheet pick-sheet tbm-send" role="dialog" aria-label="Send the brief"><header class="sh-h"><b class="sh-t">${ic('send', 's16')}Send the brief</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
       <p class="sh-p">Who is it for?</p><div class="tbm-who" role="radiogroup" aria-label="Who it goes to">${TB_TO.map(([v, n]) => `<button role="radio" aria-checked="${v === k}" data-tb-to="${v}">${esc(n)}</button>`).join('')}</div>
-      ${k === 'shopos' ? `<p class="sh-p">The ShopOS team gets the brief and the files by email, makes it and runs it for you. You see where it stands in the top bar.</p><button class="btn btn-primary tbm-go" data-rx="share-shopos">${ic('send', 's16')}Send to the ShopOS team</button></div>` : `<label class="tbm-email"><span>Their email</span><input id="tbm-email" type="email" inputmode="email" autocomplete="email" placeholder="name@company.com" value="${esc(r.email || '')}"></label>
+      ${k === 'shopos' ? `<p class="sh-p">Our team gets the brief and the files by email, makes it and runs it for you. You see where it stands in the top bar.</p><button class="btn btn-primary tbm-go" data-rx="share-shopos">${ic('send', 's16')}Send to our team</button></div>` : `<label class="tbm-email"><span>Their email</span><input id="tbm-email" type="email" inputmode="email" autocomplete="email" placeholder="name@company.com" value="${esc(r.email || '')}"></label>
       <button class="tbm-opt" data-tb-gmail><span class="tbm-opt-i tbm-gm" aria-hidden="true">M</span><span><b>Open in Gmail</b><small>The PDF and ${(TBS.brief?.creatives || []).length ? 'the creatives download' : 'downloads'}, and a Gmail draft opens with the email written. Attach the files from Downloads and send.</small></span>${ic('right', 's16')}</button>
       <button class="tbm-opt" data-tb-mail><span class="tbm-opt-i" aria-hidden="true">${ic('send', 's16')}</span><span><b>Mail or Outlook draft</b><small>Everything already attached. It opens as a draft in Mail or Outlook, or in your share menu.</small></span>${ic('right', 's16')}</button></div>`}`); };
   /* the picked person is saved on the brief (its To line), with the email when one is typed */
@@ -4645,7 +4646,7 @@
   /* one check as a line, with its own fix when it has one */
   const ckLi = (c) => `<li class="${c.ok ? 'ok' : c.soft ? 'warn' : 'bad'}">${ic(c.ok ? 'check' : 'x', 's14')}<span>${esc(c.t)}</span>${!c.ok && c.k === 'preview' ? ' <button class="linkbtn" data-cs-full>Make the full one</button>' : !c.ok && c.fix === 'redo' ? ' <button class="linkbtn" data-cs-open>Change the set-up</button>' : ''}</li>`;
   const publishPanel = (ch, pkgCh) => { const pb = ch.publish; if (!pb?.made) return ''; const img = pkgCh.pkg?.image, lk = lookOf(ch);
-    const row = (x) => `<div class="pp-r${x.ok ? (x.warn.length ? ' is-warn' : '') : ' is-bad'}"><dt>${esc(x.label)}${x.max || x.soft ? `<small>${x.n}${x.soft ? `/${x.soft}` : x.max ? `/${x.max}` : ''}</small>` : ''}${x.made ? '<small class="pp-by">Brew filled this in</small>' : ''}</dt>
+    const row = (x) => `<div class="pp-r${x.ok ? (x.warn.length ? ' is-warn' : '') : ' is-bad'}"><dt>${esc(x.label)}${x.max || x.soft ? `<small>${x.n}${x.soft ? `/${x.soft}` : x.max ? `/${x.max}` : ''}</small>` : ''}${x.made ? '<small class="pp-by">We filled this in</small>' : ''}</dt>
       ${x.opts ? `<dd><select data-pp-sel="${esc(x.k)}">${x.opts.map((o) => `<option${o === x.value ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></dd>` : `<dd data-pp-edit="${esc(x.k)}" title="Click to change" tabindex="0">${esc(x.value || '') || `<em>Empty · click to write it</em>`}</dd>`}
       ${[...x.why, ...x.warn].map((w) => `<p class="pp-why">${ic(x.why.includes(w) ? 'x' : 'info', 's14')}${esc(w)}</p>`).join('')}</div>`;
     return `<section class="pp${pb.ready ? ' is-ready' : ''}"><header><b>${ic(pb.ready && !lk.length ? 'check' : 'info', 's16')}${lk.length ? `Before you post · ${lk.length} thing${lk.length > 1 ? 's' : ''} to look at` : 'Ready to publish'}</b><span>Everything ${esc(stWhere(ch) || ch.target?.name || 'the platform')} needs, checked. Click any part to change it.</span></header>
@@ -4808,7 +4809,7 @@
       /* WhatsApp is checked first: not connected, so the sheet says so; copying the link is the way that works, and opening WhatsApp yourself stays */
       $('[data-share-wa]', m).onclick = () => { if (!url) return toast('One moment, making the link…'); const msg = text || `${p.title}\n${url}`;
         if (conn('whatsapp')) { window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener'); return; }
-        waNeed({ title: 'Share on WhatsApp', p: 'Brew can’t send it on WhatsApp or see what your team says there. Copy the link and paste it in your chat: what they say in the jam comes back here.', primary: 'Copy the link',
+        waNeed({ title: 'Share on WhatsApp', p: 'We can’t send it on WhatsApp or see what your team says there. Copy the link and paste it in your chat: what they say in the jam comes back here.', primary: 'Copy the link',
           onPrimary: async () => toast(await copyText(url) ? `${ic('check', 's16')}Link copied` : 'Couldn’t copy. Try again.'), onSelf: () => window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener') }); }; });
     const m = $('#modal'), wa = () => {};
     const w = workOfCard(p.id) || (await tapi('POST', '/api/work', { cardId: p.id })).work; if (!w) { if (m?.isConnected) closeModal(); return toast('Couldn’t make the link. Try again.'); }
@@ -4952,7 +4953,7 @@
       const g = await tapi('GET', `/api/changes/${ch.id}`).catch(() => ({})); if (g.change) { RX.ch = g.change; putCh(g.change); } RX.tab = 'iterate'; RX.resetScroll = true; return paintStudio(); }
     /* one rule for every studio (1.9): a message sent while Brew works is kept, shown as queued, and goes as the next ask the
        moment this one lands; a chip or button pressed while busy waits too, never vanishes */
-    if (RX.sending || RX.saying) { if (path === 'iterate' && String(msg || '').trim()) { (RX.queue ||= []).push({ msg, body }); if ($('#st-in')) $('#st-in').value = ''; RX.draft = ''; toast(`${ic('clock', 's16')}Queued: Brew applies it to the next version.`); paintStudio(); } return; }
+    if (RX.sending || RX.saying) { if (path === 'iterate' && String(msg || '').trim()) { (RX.queue ||= []).push({ msg, body }); if ($('#st-in')) $('#st-in').value = ''; RX.draft = ''; toast(`${ic('clock', 's16')}Queued: we apply it to the next version.`); paintStudio(); } return; }
     RX.saying = true; try { await stSay0(ch, msg, path, body); } finally { RX.saying = false; }
     const next = (RX.queue || []).shift(); if (next && RX.ch?.id === ch.id) return stSay(next.msg, 'iterate', next.body);
   };
@@ -5143,13 +5144,13 @@
   const pdfUrl = (f, dl) => `/b/${mvSlug()}/pdf/${encodeURIComponent(f)}${dl ? '?dl=1' : ''}`;
   const MVT = { tab: 'moves' };
   const renderMoves = async () => {
-    const stop = view !== 'moves' ? holdView('Opening your moves') : () => {}; view = 'moves'; counts(); $('#stk').innerHTML = ''; $('#notes').innerHTML = ''; /* header title and rail match the section on a direct link too */ clearTimeout(MV.t); const slug = mvSlug();
+    const stop = view !== 'moves' ? holdView('Opening your plays') : () => {}; view = 'moves'; counts(); $('#stk').innerHTML = ''; $('#notes').innerHTML = ''; /* header title and rail match the section on a direct link too */ clearTimeout(MV.t); const slug = mvSlug();
     const [r, bd, up, hs] = await Promise.all([api(`/api/brands/${slug}/moves`), GEN ? api(`/api/brands/${slug}/build`) : null, GEN ? api(`/api/brands/${slug}/updates`) : null, null /* the weekly history route is not in Brew yet (feed/ work never ported): no 404 on every visit (QA UI) */]); stop(); if (view !== 'moves') return;
     const U = up && !up.error ? up : null, nStale = U?.stale?.length || 0;
     const ms = r?.moves || [], by = Object.fromEntries(ms.map((m) => [m.n, m])), pdfs = r?.pdfs || {}, st = r?.status || {}, b = bd && !bd.error ? bd : null;
     const done = ms.filter((m) => m.n >= 1 && m.n < 1000 && !m.cadence).length, extra = ms.length - done, building = !!b && !st.done; // the playbook (status.total): not the index, not weekly moves (1001+)
     const live = new Map((b?.inflight || []).map((x) => [x.n, x])), failed = new Map((b?.failed || []).map((x) => [x.n, x]));
-    const kick = (m) => String(m?.kicker || '').replace(/\s*·\s*(?:weekly\s+|timely\s+)?move\s+\d+.*$/i, ''); /* the number shows once, on the left; a timely move's hidden number never shows (QA 20 Oct) */
+    const kick = (m) => String(m?.kicker || '').replace(/\s*·\s*(?:weekly\s+|timely\s+)?(?:move|play)\s+\d+.*$/i, ''); /* the number shows once, on the left; a timely move's hidden number never shows (QA 20 Oct) */
     const card = (m) => `<article class="mv2-c" data-mv="${m.n}" tabindex="0"><div class="mv2-k"><span>${mvNum(m.n)}</span>${kick(m) ? `<i>${esc(kick(m).toLowerCase())}</i>` : ''}</div>
       <h4>${esc(m.title)}</h4>${m.past ? `<p class="mv2-st is-past"><b>Ended</b> ${esc(m.past.name)} finished ${esc(fmtDay(Date.parse(m.past.end)) || m.past.end)}</p>` /* a festival plan after its festival (festival-past.js) */ : m.stat ? `<p class="mv2-st"><b>${esc(m.stat)}</b> ${esc(String(m.statLabel || '').toLowerCase())}</p>` : m.gives ? `<p>${esc(m.gives)}</p>` : ''}
       ${m.n != null ? `<a class="mv2-pdf" href="${pdfUrl(`move-${m.n}.pdf`)}" target="_blank" rel="noopener" title="Open the PDF" aria-label="Open the PDF" data-stop>${ic('doc', 's14')}</a>` : ''}</article>`;
@@ -5166,13 +5167,13 @@
     const wks = hs && !hs.error ? hs.weeks || [] : [], wkArrow = (m) => (m.dir === 'up' ? ' ↑' : m.dir === 'down' ? ' ↓' : '');
     const wkLine = (w) => { const mv = w.moves || {}, ch = [mv.new ? `${mv.new} new` : '', mv.rewritten ? `${mv.rewritten} rewritten` : '', mv.retired ? `${mv.retired} retired` : ''].filter(Boolean).join(' · ');
       const q = (w.summary?.metrics || []).filter((m) => !m.thin && m.den && m.now != null && (m.num > 0 || m.dir === 'down')).map((m) => `<span class="${m.better === true ? 'is-up' : m.better === false ? 'is-down' : ''}">${esc(m.label)} ${Math.round(m.now * 100)}%${wkArrow(m)}</span>`).join('');
-      return `<li><time>${fmtDay(w.start)}</time><div><p>${ch || 'No move changes'}${ch ? ` <button class="linkbtn" data-wk="${esc(w.week)}">See changes</button>` : ''}</p><p class="wk-q">${q || `<em>${w.summary?.verdict === 'first' ? 'First week on record' : 'Too few cards seen to call it'}</em>`}</p><div class="wk-x" data-wkx="${esc(w.week)}" hidden></div></div></li>`; };
+      return `<li><time>${fmtDay(w.start)}</time><div><p>${ch || 'No play changes'}${ch ? ` <button class="linkbtn" data-wk="${esc(w.week)}">See changes</button>` : ''}</p><p class="wk-q">${q || `<em>${w.summary?.verdict === 'first' ? 'First week on record' : 'Too few cards seen to call it'}</em>`}</p><div class="wk-x" data-wkx="${esc(w.week)}" hidden></div></div></li>`; };
     const histHtml = wks.length > 1 ? `<details class="q-more mv2-wk"><summary>Week by week</summary><ul class="bd-log wk-log">${wks.map(wkLine).join('')}</ul></details>` : '';
     const stepper = (b) => { const s1 = b.stages, one = (state, t) => `<li class="is-${state}"><i>${state === 'done' ? ic('check', 's14') : state === 'run' ? '<brew-load class="spin"></brew-load>' : ''}</i><span>${t}</span></li>`;
       const d10 = b.core ?? Math.min(b.done, 10);
       return `<ol class="bd-steps">${one(s1.read === 'done' ? 'done' : 'run', 'Read the site')}${one(s1.confirm === 'done' ? 'done' : s1.read === 'done' ? 'run' : 'wait', 'You checked it')}${one(s1.brief === 'done' ? 'done' : s1.confirm === 'done' ? 'run' : 'wait', 'Brand brief')}
-        ${one(d10 >= 10 ? 'done' : s1.brief === 'done' ? 'run' : 'wait', `First 10 · ${d10}/10`)}${one(b.done >= (+b.total || 50) ? 'done' : d10 >= 10 ? 'run' : 'wait', `All moves · ${b.done}/${+b.total || 50}`)}${one(b.done >= (+b.total || 50) ? 'done' : 'wait', 'PDFs on download')}${one(b.statics?.state === 'done' ? 'done' : b.statics?.state === 'running' ? 'run' : b.statics?.state === 'failed' ? 'fail' : 'wait', 'Static ads')}</ol>`; };
-    const buildHtml = !b ? `<div class="bd-empty">${GEN ? 'Build details are not available yet.' : `${poss(B.brand.name)} moves were written by the Brew team by hand, so there is no live build to show.`}</div>` : `
+        ${one(d10 >= 10 ? 'done' : s1.brief === 'done' ? 'run' : 'wait', `First 10 · ${d10}/10`)}${one(b.done >= (+b.total || 50) ? 'done' : d10 >= 10 ? 'run' : 'wait', `All plays · ${b.done}/${+b.total || 50}`)}${one(b.done >= (+b.total || 50) ? 'done' : 'wait', 'PDFs on download')}${one(b.statics?.state === 'done' ? 'done' : b.statics?.state === 'running' ? 'run' : b.statics?.state === 'failed' ? 'fail' : 'wait', 'Static ads')}</ol>`; };
+    const buildHtml = !b ? `<div class="bd-empty">${GEN ? 'Build details are not available yet.' : `${poss(B.brand.name)} plays were written by our team by hand, so there is no live build to show.`}</div>` : `
       ${stepper(b)}
       <div class="q-stack">
         ${!b.inflight.length && !b.failed.length && !b.queue.length && b.done >= (+b.total || 50) ? `<section class="bd-card bd-fin"><h3>${ic('check', 's16')}All ${b.done} plays are written</h3><p>Each one opens as a PDF when you download it, and Updates rewrites the ones that go out of date.</p><div class="bd-fin-b"><button class="btn btn-ghost sm" data-mvt="moves">See the plays</button>${GEN ? '<button class="btn btn-ghost sm" data-mvt="updates">Updates</button>' : ''}</div></section>` : ''}
@@ -5182,25 +5183,25 @@
         ${b.usd > 0 ? `<p class="q-note">Spent $${b.usd.toFixed(2)} of a $${b.cap} cap on writing, research and images for this brand.</p>` : ''}
         ${b.events.length ? `<details class="q-more"><summary>Activity</summary><ul class="bd-log">${b.events.map((e) => `<li class="is-${e.type}"><time>${new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time><span>${esc(e.text)}</span></li>`).join('')}</ul></details>` : ''}
       </div>`;
-    const upHtml = !U ? `<div class="bd-empty">${GEN ? 'Updates open once the moves are written.' : `${poss(B.brand.name)} moves were written by hand, so Brew doesn’t refresh them.`}</div>` : (() => {
+    const upHtml = !U ? `<div class="bd-empty">${GEN ? 'Updates open once the plays are written.' : `${poss(B.brand.name)} plays were written by hand, so we don’t refresh them.`}</div>` : (() => {
       const lc = U.lastCheck, chk = U.checking, rw = U.rewriting;
       const est = (n) => `about $${Math.max(1, Math.round(n * U.estMove))}`;
       const stale = U.stale.map((x) => `<label class="up-mv is-${x.priority}"><input type="checkbox" data-upn="${x.n}" ${x.priority === 'high' ? 'checked' : ''} ${U.canRewrite ? '' : 'disabled'}><div><div class="up-mvh"><span>${mvNum(x.n)}</span><button class="linkbtn" data-mv="${x.n}">${esc(x.title)}</button>${x.priority === 'high' ? '' : '<em>worth a look</em>'}</div>
         <p>${esc(x.why)}</p></div></label>`).join('');
       return `<div class="up q-stack">
         <section class="up-hero"><div class="up-hl"><h3>${chk ? 'Checking now…' : lc ? `Last checked ${fmtWhen(lc.at)}` : 'Not checked yet'}</h3>
-          <p>${chk ? `<brew-load class="spin"></brew-load> Reading ${esc(B.brand.name)} again. About 3 minutes.` : lc ? esc(lc.summary || 'Nothing material changed.') : 'Brew re-reads the site, reviews, ads and rivals, then rewrites only the plays that quote what changed.'}</p>
+          <p>${chk ? `<brew-load class="spin"></brew-load> Reading ${esc(B.brand.name)} again. About 3 minutes.` : lc ? esc(lc.summary || 'Nothing material changed.') : 'We re-read the site, reviews, ads and rivals, then rewrites only the plays that quote what changed.'}</p>
           ${U.lastError && !chk ? `<p class="up-err">The last check stopped: ${esc(U.lastError.msg)}</p>` : ''}</div>
-          <button class="btn btn-ghost" data-upcheck ${chk || !U.canRewrite ? 'disabled' : ''} title="${U.building ? 'Opens once the core moves are written' : 'About 3 min · about $1'}">${ic('refresh', 's16')}${chk ? 'Checking…' : 'Check now'}</button>
+          <button class="btn btn-ghost" data-upcheck ${chk || !U.canRewrite ? 'disabled' : ''} title="${U.building ? 'Opens once the core plays are written' : 'About 3 min · about $1'}">${ic('refresh', 's16')}${chk ? 'Checking…' : 'Check now'}</button>
           <label class="up-auto"><input type="checkbox" data-upauto ${U.auto ? 'checked' : ''}><span class="up-sw"></span><span><b>Keep them current on their own</b><small>${U.auto ? `Weekly${U.next ? `, next ${fmtDay(U.next)}` : ''}, and the day your catalog changes, within a weekly budget.` : 'Off. Nothing is checked or rewritten unless you ask.'}</small></span></label></section>
-        ${U.pot ? `<p class="q-note up-pot">This week: $${U.pot.spent.toFixed(2)} of $${U.pot.cap} spent on rewrites${U.pot.waiting ? ` · ${U.pot.waiting} move${U.pot.waiting === 1 ? ' waits' : 's wait'} for next week` : ''}.</p>` : ''}
+        ${U.pot ? `<p class="q-note up-pot">This week: $${U.pot.spent.toFixed(2)} of $${U.pot.cap} spent on rewrites${U.pot.waiting ? ` · ${U.pot.waiting} play${U.pot.waiting === 1 ? ' waits' : 's wait'} for next week` : ''}.</p>` : ''}
         ${U.connect ? `<p class="q-note up-conn">${(() => { const c = U.connect, who = c.names.join(' and ') || 'Your account', are = c.names.length > 1 ? 'are' : 'is';
-          return c.waiting ? `${esc(who)} ${are} connected. Brew rewrites your moves with your real numbers ${c.due && c.due > Date.now() ? `in about ${Math.max(1, Math.round((c.due - Date.now()) / 60e3))} min` : 'shortly'}, in case you connect more.`
-            : c.later ? `${esc(who)} ${are} connected. ${c.written} of ${c.n} moves are rewritten with your real numbers; the rest carry on tomorrow.`
-            : `${esc(who)} ${are} connected. Rewriting ${c.n ? `all ${c.n}` : 'your'} moves with your real numbers.`; })()}</p>` : ''}
+          return c.waiting ? `${esc(who)} ${are} connected. We rewrite your plays with your real numbers ${c.due && c.due > Date.now() ? `in about ${Math.max(1, Math.round((c.due - Date.now()) / 60e3))} min` : 'shortly'}, in case you connect more.`
+            : c.later ? `${esc(who)} ${are} connected. ${c.written} of ${c.n} plays are rewritten with your real numbers; the rest carry on tomorrow.`
+            : `${esc(who)} ${are} connected. Rewriting ${c.n ? `all ${c.n}` : 'your'} plays with your real numbers.`; })()}</p>` : ''}
         ${rw ? `<section class="bd-card"><h3>Rewriting now <small>${rw.length}</small></h3>${rw.map((x) => `<div class="bd-run">${x.done ? `<span class="up-done">${ic('check', 's14')}</span>` : '<brew-load class="spin"></brew-load>'}<div><b>${mvLabel(x.n)} · ${esc(x.title)}</b><span>${x.done ? 'Rewritten' : x.secs != null ? `${mins(x.secs)} so far` : 'Waiting its turn'}</span></div></div>`).join('')}</section>` : ''}
         ${nStale ? `<section class="up-out"><h3>Out of date <small>${nStale}</small></h3><div class="up-list">${stale}</div>
-          <footer class="up-foot"><button class="btn btn-primary" data-uprw ${U.canRewrite ? '' : 'disabled'}>Rewrite the ticked moves</button><span data-upest>${est(U.stale.filter((x) => x.priority === 'high').length)}</span></footer></section>` : lc ? '<p class="q-note">Every move matches the latest read.</p>' : ''}
+          <footer class="up-foot"><button class="btn btn-primary" data-uprw ${U.canRewrite ? '' : 'disabled'}>Rewrite the ticked plays</button><span data-upest>${est(U.stale.filter((x) => x.priority === 'high').length)}</span></footer></section>` : lc ? '<p class="q-note">Every play matches the latest read.</p>' : ''}
         ${lc && (lc.changes || []).length ? `<details class="q-more"><summary>What changed · ${lc.changes.length}</summary><ul class="up-ch">${lc.changes.slice(0, 24).map((c) => `<li class="is-${c.kind}"><i>${c.kind === 'new' ? 'New' : c.kind === 'removed' ? 'Gone' : 'Changed'}</i><span>${esc(c.label)}</span><b>${c.kind === 'changed' ? `${esc(c.was)} → ${esc(c.now)}` : esc(c.now || c.was || '')}</b></li>`).join('')}</ul>
           ${(lc.spotted || []).length ? `<p class="up-note">New rivals spotted, not added: ${lc.spotted.map((x) => esc(x.name || x.host)).join(', ')}.</p>` : ''}</details>` : ''}
         ${U.history.length ? `<details class="q-more"><summary>Rewritten before</summary><ul class="bd-log">${U.history.map((h) => `<li><time>${fmtDay(h.at)}</time><span>${h.auto ? 'On its own' : 'You asked'}: ${h.moves.map((x) => `${mvLabel(x.n)}`).join(', ')}${h.usd ? ` · $${h.usd.toFixed(2)}` : ''}</span></li>`).join('')}</ul></details>` : ''}
@@ -5209,7 +5210,7 @@
     const showBuild = building || !!b?.failed?.length || MVT.tab === 'build';
     if (MVT.tab === 'build' && !b && GEN) MVT.tab = 'moves';
     $('#view').innerHTML = `<div class="feedcol lib-col mv2">
-      <header class="mv2-head"><button class="rd-back" data-nav="learned">${ic('right', 's16')}<span>What Brew learned</span></button><h2>The plays</h2><p>${(() => { const core = ms.filter((m) => m.n >= 1 && m.n < 1000).length, wk = fam.length; /* one count everywhere: the playbook (status.total), never the index (00) or weekly moves (1001+), which count apart */
+      <header class="mv2-head"><button class="rd-back" data-nav="learned">${ic('right', 's16')}<span>What we learned</span></button><h2>The plays</h2><p>${(() => { const core = ms.filter((m) => m.n >= 1 && m.n < 1000).length, wk = fam.length; /* one count everywhere: the playbook (status.total), never the index (00) or weekly moves (1001+), which count apart */
           return building ? `${core} of ${+st.total || 50} plays written for ${esc(B.brand.name)} so far.` : `${+st.total || core} plays for ${esc(B.brand.name)}${wk ? `, plus ${wk} new this week` : ''}. Every card in your feed comes from one of them.`; })()}</p>
         <div class="mv2-meta">${by[0] ? '<button class="linkbtn" data-mv="0">Read the index</button>' : ''}<button class="linkbtn" data-nav="facts">Fact sheet</button>${!showBuild && b ? '<button class="linkbtn" data-mvt="build">Build log</button>' : ''}</div></header>
       <div class="mv2-seg" role="tablist"><button role="tab" data-mvt="moves" aria-selected="${MVT.tab === 'moves'}">Plays</button>${GEN ? `<button role="tab" data-mvt="updates" aria-selected="${MVT.tab === 'updates'}">Updates${nStale ? `<span class="cnt">${nStale}</span>` : U?.checking || U?.rewriting ? '<span class="dot"></span>' : ''}</button>` : ''}${showBuild ? `<button role="tab" data-mvt="build" aria-selected="${MVT.tab === 'build'}">Build${building ? '<span class="dot"></span>' : ''}</button>` : ''}</div>
@@ -5226,7 +5227,7 @@
       box.hidden = false; });
     $$('[data-mvall]').forEach((x) => x.addEventListener('click', (e) => { e.currentTarget.previousElementSibling.classList.remove('mv2-cap'); e.currentTarget.remove(); }));
     $$('[data-mvjump]').forEach((x) => x.onclick = (e) => { e.preventDefault(); $(`#mvg-${x.dataset.mvjump}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-    const upEst = () => { const k = $$('[data-upn]:checked').length, el = $('[data-upest]'); if (el) el.textContent = `${k ? `about $${Math.max(1, Math.round(k * (U?.estMove || 1.7)))}` : 'Tick a move'} · 8 to 10 min`; const bt = $('[data-uprw]'); if (bt) bt.disabled = !k || !U?.canRewrite; };
+    const upEst = () => { const k = $$('[data-upn]:checked').length, el = $('[data-upest]'); if (el) el.textContent = `${k ? `about $${Math.max(1, Math.round(k * (U?.estMove || 1.7)))}` : 'Tick a play'} · 8 to 10 min`; const bt = $('[data-uprw]'); if (bt) bt.disabled = !k || !U?.canRewrite; };
     $$('[data-upn]').forEach((x) => x.onchange = upEst); if ($('[data-upn]')) upEst();
     $('[data-upcheck]')?.addEventListener('click', async (e) => { busyBtn(e.currentTarget, 'Checking…'); const r = await api(`/api/brands/${slug}/updates`, { action: 'check' }); toast(r?.error ? esc(r.error) : 'Checking for updates. This takes about 3 minutes.'); renderMoves(); });
     $('[data-uprw]')?.addEventListener('click', async (e) => { const ns = $$('[data-upn]:checked').map((x) => +x.dataset.upn); if (!ns.length) return; busyBtn(e.currentTarget, 'Starting…'); const r = await api(`/api/brands/${slug}/updates`, { action: 'rewrite', moves: ns }); toast(r?.error ? esc(r.error) : `Rewriting ${ns.length} play${ns.length === 1 ? '' : 's'}. About 8 to 10 minutes.`); renderMoves(); });
@@ -5247,7 +5248,7 @@
     if (!m || m.error) { $('#view').innerHTML = `<div class="rd"><div class="bd-empty">${mvLabel(n)} is not written yet. <button class="linkbtn" data-nav="moves">Back to the plays</button></div></div>`; return; }
     const pdfs = list?.pdfs || {}, all = (list?.moves || []).map((x) => x.n).sort((a, b) => a - b), at = all.indexOf(n), prev = all[at - 1], next = all[at + 1];
     const byN = Object.fromEntries((list?.moves || []).map((x) => [x.n, x]));
-    const grp = MV_GROUPS.find(([, , a, z]) => n >= a && n <= z), kick = String(m.kicker || '').replace(/\s*·\s*move\s+\d+\s+of\s+\d+\s*$/i, '');
+    const grp = MV_GROUPS.find(([, , a, z]) => n >= a && n <= z), kick = String(m.kicker || '').replace(/\s*·\s*(?:move|play)\s+\d+\s+of\s+\d+\s*$/i, '');
     const t = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
     const block = (b) => {
       if (b.t === 'h3') return `<h3>${t(b.text)}</h3>`;
@@ -5262,27 +5263,27 @@
     /* the index is written once, at the start; this part is live: every move written so far, new ones included, by group */
     const allW = (list?.moves || []).filter((x) => x.n > 0).sort((a2, b2) => a2.n - b2.n);
     const written = allW.filter((x) => x.n < 1000); /* one count with the Moves page: weekly moves (1001+) are listed but counted apart (QA 20 Oct) */
-    const liveIdx = n === 0 && written.length ? `<section id="rd-all" class="rd-all"><h2>Every move so far <small>${written.length}</small></h2>${[...MV_GROUPS, ['new', 'Added since', 51, 9999]].map(([, name, lo, hi]) => { const g = allW.filter((x) => x.n >= lo && x.n <= hi); return g.length ? `<h3>${esc(name)}</h3><ol class="rd-all-l">${g.map((x) => `<li><button data-goto="${x.n}"><span>${mvNum(x.n)}</span><b>${esc(x.title || '')}</b>${x.n > 50 ? '<em>New</em>' : ''}</button></li>`).join('')}</ol>` : ''; }).join('')}</section>` : '';
+    const liveIdx = n === 0 && written.length ? `<section id="rd-all" class="rd-all"><h2>Every play so far <small>${written.length}</small></h2>${[...MV_GROUPS, ['new', 'Added since', 51, 9999]].map(([, name, lo, hi]) => { const g = allW.filter((x) => x.n >= lo && x.n <= hi); return g.length ? `<h3>${esc(name)}</h3><ol class="rd-all-l">${g.map((x) => `<li><button data-goto="${x.n}"><span>${mvNum(x.n)}</span><b>${esc(x.title || '')}</b>${x.n > 50 ? '<em>New</em>' : ''}</button></li>`).join('')}</ol>` : ''; }).join('')}</section>` : '';
     const feedCards = allPosts().filter((p) => new RegExp(`^moves?\\s[^·]*\\b0?${n}\\b`, 'i').test(p.src || '')).slice(0, 4);
     $('#view').innerHTML = `<div class="rd">
       <div class="rd-bar rd2-bar"><button class="rd-back" data-nav="moves">${ic('right', 's16')}<span>All plays</span></button>
-        <div class="rd-acts"><span class="rd-pn"><button ${prev == null ? 'disabled' : `data-goto="${prev}"`} title="Previous move" aria-label="Previous move">${ic('right', 's16')}</button><button ${next == null ? 'disabled' : `data-goto="${next}"`} title="Next move" aria-label="Next move">${ic('right', 's16')}</button></span>
+        <div class="rd-acts"><span class="rd-pn"><button ${prev == null ? 'disabled' : `data-goto="${prev}"`} title="Previous play" aria-label="Previous play">${ic('right', 's16')}</button><button ${next == null ? 'disabled' : `data-goto="${next}"`} title="Next play" aria-label="Next play">${ic('right', 's16')}</button></span>
           ${n != null ? `<a class="btn btn-primary sm" href="${pdfUrl(`move-${n}.pdf`)}" target="_blank" rel="noopener">${ic('doc', 's16')}Open the PDF</a>
-          <details class="rd2-more"><summary class="icon-btn" aria-label="More for this move" title="More">${ic('more', 's16')}</summary><div class="rd2-menu"><a href="${pdfUrl(`move-${n}.pdf`, 1)}">${ic('down', 's16')}Download the PDF</a>${GEN && n ? `<button data-rdrw ${!up?.canRewrite || rwing ? 'disabled' : ''} title="${up?.building ? 'Opens once the moves are written' : 'Writes this move again from the latest evidence'}">${rwing ? '<brew-load class="spin"></brew-load>Rewriting…' : `${ic('refresh', 's16')}Rewrite with the latest`}</button>` : ''}</div></details>` : ''}</div></div>
+          <details class="rd2-more"><summary class="icon-btn" aria-label="More for this play" title="More">${ic('more', 's16')}</summary><div class="rd2-menu"><a href="${pdfUrl(`move-${n}.pdf`, 1)}">${ic('down', 's16')}Download the PDF</a>${GEN && n ? `<button data-rdrw ${!up?.canRewrite || rwing ? 'disabled' : ''} title="${up?.building ? 'Opens once the plays are written' : 'Writes this play again from the latest evidence'}">${rwing ? '<brew-load class="spin"></brew-load>Rewriting…' : `${ic('refresh', 's16')}Rewrite with the latest`}</button>` : ''}</div></details>` : ''}</div></div>
       ${(() => { /* the move at one glance, weighted for the brand reading it (Param, 19 Oct: "simple, visual, one quick-glance
          grasp; right weight to the right elements, from the brand's point of view"): what the move is, the problem in their own
          number, what is live in 30 days; then the plan, week by week, what we need from them and how we'll know; trust and
          freshness are one quiet line each, and the full write-up sits under it for whoever wants the detail */
-        const claims = GEN && !m.meta?.verified ? claimsOf(m) : [], about = topicCase(String(kick || '').replace(/\s*·\s*move\s+\d+\s*$/i, '').trim().toLowerCase()).replace(/(\d+\s)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/g, (x, d, mo) => d + mo[0].toUpperCase() + mo.slice(1)) || (grp ? grp[1] : '');
+        const claims = GEN && !m.meta?.verified ? claimsOf(m) : [], about = topicCase(String(kick || '').replace(/\s*·\s*(?:move|play)\s+\d+\s*$/i, '').trim().toLowerCase()).replace(/(\d+\s)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/g, (x, d, mo) => d + mo[0].toUpperCase() + mo.slice(1)) || (grp ? grp[1] : '');
         const statB = n === 0 && written.length ? String(written.length) : m.stat, g = n === 0 ? {} : moveGlance(m), bn = esc(B.brand.name);
         const fresh = stl ? (() => { const st0 = rwing ? 'now' : stl.refresh || (up?.auto === false ? 'off' : 'soon'), why = `<small>${esc(stl.why)}</small>`, wd = up?.potNext ? new Date(up.potNext).toLocaleDateString('en-IN', { weekday: 'long' }) : 'next week';
           if (st0 === 'now') return `<div class="rd2-fresh is-now"><brew-load class="spin"></brew-load><p><b>Refreshing with the latest now.</b> It updates here when done.${why}</p></div>`;
-          if (st0 === 'queued' || st0 === 'soon') return `<div class="rd2-fresh is-now">${ic('refresh', 's16')}<p><b>Out of date. Brew is refreshing it with the latest</b>, usually within the hour.${why}</p></div>`;
+          if (st0 === 'queued' || st0 === 'soon') return `<div class="rd2-fresh is-now">${ic('refresh', 's16')}<p><b>Out of date. We’re refreshing it with the latest</b>, usually within the hour.${why}</p></div>`;
           if (st0 === 'next-week') return `<div class="rd2-fresh">${ic('refresh', 's16')}<p><b>Out of date.</b> It refreshes on its own on ${esc(wd)}, when the week’s refresh budget starts again.${why}</p>${GEN && up?.canRewrite ? `<button class="btn btn-ghost sm" data-rdrw>Refresh now</button>` : ''}</div>`;
           return `<div class="rd2-fresh">${ic('refresh', 's16')}<p><b>Out of date.</b> Automatic updates are off for ${bn}.${why}</p>${GEN && up?.canRewrite ? `<button class="btn btn-primary sm" data-rdrw>Refresh now</button>` : ''}</div>`; })() : '';
         return `<header class="rd-hero rd2-hero">
         <p class="rd2-kick">${n === 0 ? 'The index' : `${mvLabel(n)}${about ? ` · ${esc(about)}` : ''}`}</p>
-        <h1>${esc(n === 0 && written.length ? String(m.title || '').replace(/^\S+(?=\s+moves?\b)/i, String(written.length)) : m.title)}</h1>
+        <h1>${esc(n === 0 && written.length ? String(m.title || '').replace(/^\S+(?=\s+(?:moves?|plays?)\b)/i, String(written.length)) : m.title)}</h1>
         ${m.gives ? `<p class="rd2-sub">${esc(m.gives)}</p>` : ''}
         ${fresh}
         <div class="rd2-why">${statB ? `<div class="rd2-num"><b>${esc(statB)}</b>${m.statLabel ? `<span>${esc(/[a-z]/.test(m.statLabel) ? m.statLabel : capsOff(m.statLabel))}</span>` : ''}</div>` : ''}
@@ -5295,7 +5296,7 @@
         <div class="rd2-foot">${m.meta?.verified ? `<p class="rd2-trust is-ok">${ic('check', 's14')}Every number checked</p>` : claims.length ? `<details class="rd2-trust"><summary>${ic('check', 's14')}Numbers checked · ${claims.length} ${claims.length === 1 ? 'line' : 'lines'} to confirm${ic('right', 's14 chev')}</summary><ul>${claims.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p>Read these as the writer’s view until someone confirms them.</p></details>` : ''}
           ${!stl && m.meta?.version > 1 ? `<p class="rd2-ver">Updated ${fmtDay(m.meta.rewrittenAt)}${m.meta.because ? `: ${esc(m.meta.because)}` : ''}</p>` : ''}</div>
         ${secs.length ? `<p class="rd2-full">The full play<small>Every finding, table and source</small></p>` : ''}</header>`; })()}
-      <div class="rd-main"><nav class="rd-toc" aria-label="Contents"><small>On this page</small>${liveIdx ? '<a href="#rd-all" data-toc="all">Every move so far</a>' : ''}${secs.map((x, i) => `<a href="#${sid(i)}" data-toc="${i}">${esc(x.h)}</a>`).join('')}${(m.sources || []).length && !hasSrc ? `<a href="#rd-src" data-toc="src">Sources</a>` : ''}</nav>
+      <div class="rd-main"><nav class="rd-toc" aria-label="Contents"><small>On this page</small>${liveIdx ? '<a href="#rd-all" data-toc="all">Every play so far</a>' : ''}${secs.map((x, i) => `<a href="#${sid(i)}" data-toc="${i}">${esc(x.h)}</a>`).join('')}${(m.sources || []).length && !hasSrc ? `<a href="#rd-src" data-toc="src">Sources</a>` : ''}</nav>
         <article class="rd-art">${liveIdx}${secs.map((x, i) => `<section id="${sid(i)}"><h2>${esc(x.h)}</h2>${legacy ? (x.paras || []).map((p) => `<p>${t(p)}</p>`).join('') : (x.blocks || []).map(block).join('')}</section>`).join('')}
           ${(m.toConfirm || []).length ? `<section class="rd-tc"><h2>To confirm with ${esc(B.brand.name)}</h2><ul>${m.toConfirm.map((x) => `<li>${t(x)}</li>`).join('')}</ul></section>` : ''}
           ${(m.sources || []).length && !hasSrc ? `<section id="rd-src" class="rd-src"><h2>Sources</h2><ol>${m.sources.map((x) => `<li>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label || x.url)}</a>` : esc(x.label)}${x.at ? `<time>${esc(x.at)}</time>` : ''}</li>`).join('')}</ol></section>` : ''}
@@ -5365,7 +5366,7 @@
   const FS = { open: null, all: new Set() };
   const renderFacts = async (embed = false) => {
     if (!embed) view = 'facts'; counts(); const slug = mvSlug();
-    if (!$('#fs')) { libShell('Fact sheet', `Every number and name Brew may quote for ${esc(B.brand.name)}, and where it came from.`, `<div class="fsx" id="fs">${loader('Opening the fact sheet')}</div>`); $('#col')?.classList.add('lib-col', 'fs-col'); }
+    if (!$('#fs')) { libShell('Fact sheet', `Every number and name we may quote for ${esc(B.brand.name)}, and where it came from.`, `<div class="fsx" id="fs">${loader('Opening the fact sheet')}</div>`); $('#col')?.classList.add('lib-col', 'fs-col'); }
     const D = await api(`/api/brands/${slug}/facts`); if (embed ? !$('#fs') : view !== 'facts') return;
     if (!D || D.error) { $('#fs').innerHTML = `<p class="lx-empty">${esc(D?.error || 'The fact sheet did not open. Try again.')}</p>`; return; }
     paintFacts(D);
@@ -5379,7 +5380,7 @@
     const lab = (t) => String(t || '').replace(/\s*\((?:shopify\s*)?\/[^)]*\)/i, '').replace(/\s*\([^)]*\.(?:json|xml)\)/i, '');
     const row = (r) => `<li class="fs-r${FS.open === r.k ? ' is-open' : ''}" data-fk="${esc(r.k)}"><span class="fs-l">${esc(lab(r.label))}</span><div class="fs-m"><b class="fs-v">${esc(r.v)}</b>${r.was ? `<small class="fs-was">site said ${esc(r.was.v)}</small>` : ''}${r.by === 'team' ? '<em class="fs-tag">Fixed by your team</em>' : r.by === 'daily' ? '<em class="fs-tag">Checked today</em>' : ''}</div><span class="fs-meta">${srcOf(r)}</span>
       ${r.canRemove || r.canLink ? `<button class="linkbtn fs-e" data-fslink="${esc(r.k)}" aria-expanded="${FS.open === r.k}">${FS.open === r.k ? 'Close' : 'Edit'}</button>
-      <form class="fs-fix" data-fsform="${esc(r.k)}" ${FS.open === r.k ? '' : 'hidden'}>${r.canLink ? `<input type="url" inputmode="url" required placeholder="${esc(hint(r))}"><button class="btn btn-primary sm">Read it</button>` : ''}${r.canRemove ? `<button type="button" class="btn btn-ghost sm" data-fsrm="${esc(r.k)}">Not true any more</button>` : ''}${r.canLink ? '<small>Brew reads the page and takes the value from it. Typed numbers are never used.</small>' : ''}</form>` : ''}</li>`;
+      <form class="fs-fix" data-fsform="${esc(r.k)}" ${FS.open === r.k ? '' : 'hidden'}>${r.canLink ? `<input type="url" inputmode="url" required placeholder="${esc(hint(r))}"><button class="btn btn-primary sm">Read it</button>` : ''}${r.canRemove ? `<button type="button" class="btn btn-ghost sm" data-fsrm="${esc(r.k)}">Not true any more</button>` : ''}${r.canLink ? '<small>We read the page and take the value from it. Typed numbers are never used.</small>' : ''}</form>` : ''}</li>`;
     const C = D.choices, chip = (on, attr, label) => `<button class="fs-chip${on ? ' is-on' : ''}" ${attr} aria-pressed="${!!on}" title="${label.replace(/<[^>]*>/g, '')}">${label}</button>`; /* a long product name is cut with an ellipsis; the title holds it whole */
     const choices = !C ? '' : `<section class="fs-g fs-ch" id="fsg-choices"><header><h3>Products, rivals and market</h3></header>
       <div class="fs-cb"><h4>Hero products <small>★ the ones to lead with · × not a real product</small></h4><div class="fs-chips">${C.products.map((x) => `<span class="fs-pc">${chip(x.hero, `data-fshero="${esc(x.handle)}"`, `★ ${esc(x.title)}`)}<button class="fs-px" data-fsrmp="${esc(x.handle)}" title="Not a real product, remove" aria-label="Remove ${esc(x.title)}">×</button></span>`).join('')}</div>
@@ -5402,13 +5403,13 @@
     const send = async (body, b, t) => { if (b) busy(b, true, t); const r = await api(`/api/brands/${mvSlug()}/facts`, body); if (b) busy(b, false);
       if (!r || r.error) { toast(`${ic('info', 's16')}${esc(r?.error || 'That did not go through. Try again.')}`); return null; }
       (r.notes || []).slice(0, 1).forEach((n) => toast(`${ic('info', 's16')}${esc(n)}`));
-      toast(`${ic('check', 's16')}Saved.${r.flagged?.length ? ` ${r.flagged.length} move${r.flagged.length === 1 ? '' : 's'} that quoted it marked out of date.` : ''}`);
+      toast(`${ic('check', 's16')}Saved.${r.flagged?.length ? ` ${r.flagged.length} play${r.flagged.length === 1 ? '' : 's'} that quoted it marked out of date.` : ''}`);
       FS.open = null; if (r.data && $('#fs')) paintFacts(r.data); return r; };
     el.onclick = async (e) => {
       const fj = e.target.closest('[data-fsjump]'); if (fj) { e.preventDefault(); document.getElementById(`fsg-${fj.dataset.fsjump}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
       const sa = e.target.closest('[data-fsall]'); if (sa) { FS.all.add(sa.dataset.fsall); paintFacts(D); return; }
       const lk = e.target.closest('[data-fslink]'); if (lk) { const k = lk.dataset.fslink; FS.open = FS.open === k ? null : k; $$('.fs-fix', el).forEach((f) => { f.hidden = f.dataset.fsform !== FS.open; }); $$('[data-fslink]', el).forEach((b) => { const on = b.dataset.fslink === FS.open; b.textContent = on ? 'Close' : 'Edit'; b.setAttribute('aria-expanded', on); }); $(`.fs-fix[data-fsform="${CSS.escape(k)}"] input`, el)?.focus(); return; }
-      const rm = e.target.closest('[data-fsrm]'); if (rm) { const r = D.groups.flatMap((g) => g.rows).find((x) => x.k === rm.dataset.fsrm); if (r && confirm(`Remove “${r.label}: ${r.v}” from the fact sheet? Brew stops quoting it, and moves that quote it are marked out of date.`)) send({ action: 'remove', key: r.k }, rm, 'Removing'); return; }
+      const rm = e.target.closest('[data-fsrm]'); if (rm) { const r = D.groups.flatMap((g) => g.rows).find((x) => x.k === rm.dataset.fsrm); if (r && confirm(`Remove “${r.label}: ${r.v}” from the fact sheet? We stop quoting it, and plays that quote it are marked out of date.`)) send({ action: 'remove', key: r.k }, rm, 'Removing'); return; }
       const hr = e.target.closest('[data-fshero]'); if (hr) { const hero = C.products.filter((x) => (x.handle === hr.dataset.fshero ? !x.hero : x.hero)).map((x) => x.handle); send({ action: 'choices', hero }, null); return; }
       const rp = e.target.closest('[data-fsrmp]'); if (rp) { if (confirm('Remove this product? Its price leaves the fact sheet.')) send({ action: 'choices', removed: [rp.dataset.fsrmp] }, null); return; }
       const rr = e.target.closest('[data-fsrmr]'); if (rr) { if (confirm('Remove this rival?')) send({ action: 'choices', removeRivals: [rr.dataset.fsrmr] }, null); return; }
@@ -5423,7 +5424,7 @@
     view = 'heard'; if (!more) { HD.x = null; libShell('What we heard', `Everything people said about ${esc(B.brand.name)}. Tap a quote to open where it was said.`, `<div class="hd" id="hd">${loader('Gathering what people said')}</div>`); $('#col')?.classList.add('lib-col', 'hd-col'); }
     const off = more ? HD.x?.items.length || 0 : 0, [r, sm] = await Promise.all([api(`/api/brands/${encodeURIComponent(BR)}/heard/items?${hdQs({ ...HD.f, offset: off, limit: 60 })}`), more ? null : api(`/api/brands/${encodeURIComponent(BR)}/heard`)]);
     if (sm?.heard) HD.st = { failed: sm.heard.failed || [], carried: sm.heard.carried || [] };
-    if (view !== 'heard' || !r || r.error) { if (!more && $('#hd')) $('#hd').innerHTML = `<p class="lx-empty">${r?.error ? esc(r.error) : 'Nothing heard yet. Brew listens every day; the first quotes land here within a day.'}</p>`; return; }
+    if (view !== 'heard' || !r || r.error) { if (!more && $('#hd')) $('#hd').innerHTML = `<p class="lx-empty">${r?.error ? esc(r.error) : 'Nothing heard yet. We listen every day; the first quotes land here within a day.'}</p>`; return; }
     HD.x = more && HD.x ? { ...r, items: [...HD.x.items, ...r.items] } : r; paintHeard(); };
   const paintHeard = () => { const el = $('#hd'); if (!el || !HD.x) return; const x = HD.x, f = HD.f, n0 = (n) => Number(n || 0).toLocaleString(), focus = document.activeElement?.matches?.('[data-hd-q]');
     const all = (x.sources || []).reduce((a, s) => a + (s.n || 0), 0), md = x.modes || {};
@@ -5444,8 +5445,8 @@
     const sum = !f.theme && !f.q && top.length >= 3 ? `<section class="hd-sum" aria-label="What people talk about most"><span class="hd-l">What people talk about most</span><div class="hd-bars">${top.map((t, i) => `<button class="hd-bar${i ? '' : ' is-top'}" data-hd-f="theme" data-v="${esc(t.name)}"><span class="hd-bt"><b>${esc(topicCase(t.name))}</b><em>${n0(t.n)}</em></span><i style="--w:${Math.round((t.n || 0) / topMx * 100)}%"></i></button>`).join('')}</div></section>` : '';
     /* what couldn't be read this time, and what is shown from an earlier read: one folded line, never hidden */
     const fl = HD.st?.failed || [], cr = HD.st?.carried || [], cantHtml = fl.length || cr.length ? `<details class="q-more hd-cant"><summary>${fl.length ? `Couldn’t read ${esc(fl.map((s) => s.name).join(', '))} this time` : `${cr.length} source${cr.length === 1 ? '' : 's'} from an earlier read`}</summary>
-      ${fl.map((s) => `<p><b>${esc(s.name)}</b>: couldn’t be read this time${s.why ? ` (${esc(s.why.replace(/^\w+: /, '').replace(/^apify [\w/~.-]+ /, '').slice(0, 80))})` : ''}. What came in before still counts, and Brew tries again on the next read.</p>`).join('')}
-      ${cr.map((s) => `<p><b>${esc(s.name)}</b>: ${s.partial ? 'read in part this time' : `showing what Brew read${s.at ? ` on ${fmtDay(s.at)}` : ' earlier'}`}. The next full read brings it up to date.</p>`).join('')}</details>` : '';
+      ${fl.map((s) => `<p><b>${esc(s.name)}</b>: couldn’t be read this time${s.why ? ` (${esc(s.why.replace(/^\w+: /, '').replace(/^apify [\w/~.-]+ /, '').slice(0, 80))})` : ''}. What came in before still counts, and we try again on the next read.</p>`).join('')}
+      ${cr.map((s) => `<p><b>${esc(s.name)}</b>: ${s.partial ? 'read in part this time' : `showing what we read${s.at ? ` on ${fmtDay(s.at)}` : ' earlier'}`}. The next full read brings it up to date.</p>`).join('')}</details>` : '';
     el.innerHTML = `${sum}${cantHtml}<div class="hd-top"><b class="hd-n">${n0(x.total)}</b><span>${f.src || f.mode || f.theme || f.q ? 'match' : `quotes${x.at ? ` · read ${ago(x.at)}` : ''}`}</span></div>
       <div class="hd-grid"><aside class="hd-tools" aria-label="Filters">
         <label class="hd-search">${ic('search', 's16')}<input data-hd-q data-nomic type="search" placeholder="Search the words" value="${esc(f.q)}" aria-label="Search what people said"></label>
@@ -5468,12 +5469,12 @@
   const lxTools = (kind, id) => `<span class="lx-tools"><button class="linkbtn" data-lx-edit="${kind}:${id}">Edit</button><button class="linkbtn" data-lx-forget="${kind}:${id}">Forget</button></span>`;
   const lxHead = (id, h, n, hint) => `<header class="lx-h" id="${id}"><h3>${h}${n !== '' ? `<em>${n}</em>` : ''}</h3>${hint ? `<p>${hint}</p>` : ''}</header>`;
   const lxMeter = (n, of) => `<span class="lx-meter" aria-label="${n} of ${of}">${Array.from({ length: of }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
-  const lxBuildLine = (st) => { const N = +st.total || 50, n = Math.max(0, Math.min(N, +st.movesDone || 0)); return /\bmoves?\b/i.test(st.state || '') ? String(st.state) : `Writing the moves: ${n} of ${N}`; };
+  const lxBuildLine = (st) => { const N = +st.total || 50, n = Math.max(0, Math.min(N, +st.movesDone || 0)); return /\b(?:moves?|plays?)\b/i.test(st.state || '') ? String(st.state) : `Writing the plays: ${n} of ${N}`; };
   const lxBuild = (st) => { const n = Math.max(0, Math.min(51, +st.movesDone || 0)); return `<small class="lx-build" data-lx-build>${esc(lxBuildLine(st))}</small><i class="lx-bar" aria-hidden="true"><b style="width:${Math.round((n / 51) * 100)}%"></b></i>`; };
   const lxBuildPoll = async () => { if (view !== 'learned' || !$('[data-lx-build]')) return; const st = await api(`/api/brands/${mvSlug()}/status`); if (view !== 'learned' || !st || st.error) return;
     if (st.done) return renderLearned(); const el = $('[data-lx-build]'); if (!el) return; el.textContent = lxBuildLine(st); const bar = $('.lx-bar b'); if (bar) bar.style.width = `${Math.round((Math.min(51, +st.movesDone || 0) / 51) * 100)}%`; lxBuild.t = setTimeout(lxBuildPoll, 15e3); };
   const renderLearned0 = async () => {
-    const stop = view !== 'learned' ? holdView('Opening what Brew learned') : () => {}; view = 'learned';
+    const stop = view !== 'learned' ? holdView('Opening what we learned') : () => {}; view = 'learned';
     const bq = encodeURIComponent(BR), [L, HD, MEM, MVS, CAL, UPS, TOLD] = await Promise.all([tapi('GET', '/api/tenants/:t/learning'), api(`/api/brands/${bq}/heard`), api(`/api/brands/${bq}/memory`), api(`/api/brands/${mvSlug()}/moves`), api(`/api/brands/${bq}/calendar?days=120`), GEN ? api(`/api/brands/${mvSlug()}/updates`) : null, api(`/api/brands/${bq}/told`)]); if (L.error || view !== 'learned') return;
     const heard = HD?.heard || null, memLines = (MEM?.facts || []).filter((f) => f.scope === 'brand').sort((a, b) => (b.n || 1) - (a.n || 1) || (b.updatedAt || 0) - (a.updatedAt || 0));
     const agents = Object.keys(L.trust), all = L.lessons || [], on = (xs) => xs.filter((x) => x.on).length;
@@ -5494,7 +5495,7 @@
         <div class="lx-res">${x.results.slice(0, 3).map((m) => `<div class="lx-m"><small>${esc(m.metric)}${m.where ? ` · ${esc(m.where)}` : ''}${m.window ? ` · ${m.window} days` : ''}</small><span><b>${esc(m.before)}</b>${ic('right', 's14')}<b class="${m.win ? 'up' : 'flat'}">${esc(m.after)}</b><em>${esc(lxDir(m))}</em><i>target ${esc(m.target)}</i></span></div>`).join('')}</div></div>
         <div class="lx-ctl">${lxSw(x.on, 'data-ls-on', x.id, 'Use this lesson')}${lxTools('lesson', x.id)}</div></article>`; };
     const ruleHtml = (r) => `<article class="lx-item${r.on ? '' : ' off'}">
-        <div class="lx-body"><div class="lx-meta"><span class="lx-tag is-rule">${r.source === 'you' ? 'You taught it' : r.source === 'jam' ? `From ${r.n} jam answers` : /Brew|deploy/i.test(r.source || '') ? `From ${r.n} ShopOS team changes` : `From ${r.n} of your edits`}</span><span>${ago(r.createdAt)}</span></div>
+        <div class="lx-body"><div class="lx-meta"><span class="lx-tag is-rule">${r.source === 'you' ? 'You taught it' : r.source === 'jam' ? `From ${r.n} jam answers` : /Brew|deploy/i.test(r.source || '') ? `From ${r.n} changes by our team` : `From ${r.n} of your edits`}</span><span>${ago(r.createdAt)}</span></div>
         <p class="lx-text" data-lx-text="rule:${r.id}">${esc(r.text)}</p>
         ${r.example ? `<div class="lx-ex"><span class="lx-b">${esc(r.example.before)}</span>${ic('right', 's14')}<span class="lx-a">${esc(r.example.after)}</span></div>` : ''}</div>
         <div class="lx-ctl">${lxSw(r.on, 'data-ln-on', r.id, 'Follow this rule')}${lxTools('rule', r.id)}</div></article>`;
@@ -5514,12 +5515,12 @@
       const parts = [...Object.entries(cnt).map(([k, n]) => (k === 'measured result' || k === 'shipped work' ? k : `${n + (k === 'Meta ad' || k === 'Instagram post' ? more : 0)} ${k}${n + more > 1 ? 's' : ''}`)), ...other.slice(0, 1)];
       const at = f.updatedAt || f.source?.at; return [parts[0] ? parts.join(', ') : '', at ? fmtDay(at) : ''].filter(Boolean).join(' · '); };
     const memGroups = MEM_T.map(([k, name]) => [name, memLines.filter((f) => f.topic === k).slice(0, 3)]).filter(([, xs]) => xs.length);
-    const memHtml = memGroups.length ? `<details class="q-more"><summary>What Brew knows about ${esc(B.brand.name)}</summary>
+    const memHtml = memGroups.length ? `<details class="q-more"><summary>What we know about ${esc(B.brand.name)}</summary>
       ${memGroups.map(([name, xs]) => `<div class="mem-g"><h4>${esc(name)}</h4>${xs.map((f) => `<div class="mem-l"><p>${esc(f.text)}</p><small>${esc(memSrc(f))}</small></div>`).join('')}</div>`).join('')}</details>` : '';
     // the brand's own upcoming moments (its markets only), each with when Brew starts planning it
     const evs = (CAL?.events || []).slice(0, 4), dd = (t) => Math.round((new Date(t) - (SRV.clock || Date.now())) / 864e5);
     const calHtml = evs.length ? `<section class="lx-sec">${lxHead('lx-cal', 'Coming up', '', '')}
-      <ul class="hd-cal">${evs.map((e) => { const d = dd(e.date), p = e.planAt ? dd(e.planAt) : null; return `<li><span class="hd-cal-d"><b>${new Date(e.date).toLocaleDateString([], { day: 'numeric' })}</b><small>${new Date(e.date).toLocaleDateString([], { month: 'short' })}</small></span><div><b>${esc(e.name)}</b><small>${d > 0 ? `in ${d} day${d === 1 ? '' : 's'}` : e.end && e.end !== e.date ? `on now, until ${new Date(e.end).toLocaleDateString([], { day: 'numeric', month: 'short' })}` : 'today'}${d > 0 && p != null ? ` · ${p <= 0 ? (e.move ? 'move ready' : 'planning now') : `planning in ${p} day${p === 1 ? '' : 's'}`}` : ''}</small></div>${e.move?.n != null ? `<button class="linkbtn" data-goto-move="${e.move.n}">Open play</button>` : ''}</li>`; }).join('')}</ul></section>` : '';
+      <ul class="hd-cal">${evs.map((e) => { const d = dd(e.date), p = e.planAt ? dd(e.planAt) : null; return `<li><span class="hd-cal-d"><b>${new Date(e.date).toLocaleDateString([], { day: 'numeric' })}</b><small>${new Date(e.date).toLocaleDateString([], { month: 'short' })}</small></span><div><b>${esc(e.name)}</b><small>${d > 0 ? `in ${d} day${d === 1 ? '' : 's'}` : e.end && e.end !== e.date ? `on now, until ${new Date(e.end).toLocaleDateString([], { day: 'numeric', month: 'short' })}` : 'today'}${d > 0 && p != null ? ` · ${p <= 0 ? (e.move ? 'play ready' : 'planning now') : `planning in ${p} day${p === 1 ? '' : 's'}`}` : ''}</small></div>${e.move?.n != null ? `<button class="linkbtn" data-goto-move="${e.move.n}">Open play</button>` : ''}</li>`; }).join('')}</ul></section>` : '';
     /* trust: one line while every agent sits at the same level; the list only once they differ */
     const tl = agents.map((a) => L.trust[a]), same = tl.length && tl.every((t) => t.level === tl[0].level && !t.clean);
     const trustHtml = !agents.length ? '' : same ? `<p class="q-note">${tl[0].level < tl[0].max ? `Every agent is at ${esc(tl[0].name)}: ${L.cleanToLevelUp} clean launches move one up, an undo moves it down.` : `Every agent is at the top level.`}</p>`
@@ -5528,14 +5529,14 @@
     const mvAll = MVS?.moves || [], mvCore = mvAll.filter((m) => m.n >= 1 && m.n < 1000).length, mvWk = mvAll.filter((m) => m.n >= 1000).length, mvStale = UPS?.stale?.length || 0;
     /* while the moves are still being written, the row says how far along (one line and a thin bar), from the build status */
     const mvSt = GEN ? MVS?.status : null, mvBuilding = !!mvSt && !mvSt.done && !mvSt.error && !mvSt.cancelled;
-    const movesHtml = mvAll.length || mvBuilding ? `<section class="lx-sec">${lxHead('lx-moves', 'The plays', '', '')}<button class="lx-heard-row" data-nav="moves"><span class="lg-ic">${ic('doc', 's16')}</span><span><b>${mvCore} move${mvCore === 1 ? '' : 's'} for ${esc(B.brand.name)}${mvWk ? `, plus ${mvWk} new this week` : ''}</b>${mvBuilding ? lxBuild(mvSt) : `<small>${mvStale ? `${mvStale} out of date · ` : ''}Every card in your feed comes from one of them</small>`}</span>${ic('right', 's16')}</button>${mvBuilding && mvSt.capped ? `<div class="lx-pro"><button class="btn btn-primary sm" data-mvpro>${PAYWALL ? 'Continue with Pro' : 'Write the rest'}</button></div>` : ''}</section>` : '';
+    const movesHtml = mvAll.length || mvBuilding ? `<section class="lx-sec">${lxHead('lx-moves', 'The plays', '', '')}<button class="lx-heard-row" data-nav="moves"><span class="lg-ic">${ic('doc', 's16')}</span><span><b>${mvCore} play${mvCore === 1 ? '' : 's'} for ${esc(B.brand.name)}${mvWk ? `, plus ${mvWk} new this week` : ''}</b>${mvBuilding ? lxBuild(mvSt) : `<small>${mvStale ? `${mvStale} out of date · ` : ''}Every card in your feed comes from one of them</small>`}</span>${ic('right', 's16')}</button>${mvBuilding && mvSt.capped ? `<div class="lx-pro"><button class="btn btn-primary sm" data-mvpro>${PAYWALL ? 'Continue with Pro' : 'Write the rest'}</button></div>` : ''}</section>` : '';
     clearTimeout(lxBuild.t); if (mvBuilding) lxBuild.t = setTimeout(lxBuildPoll, 15e3);
     // What your team told Brew (brand-learnings.js, learned.json): goals, beliefs and facts from the calls, notes and emails the team added; about 6 show, the rest fold
     const told = TOLD?.told, toldRows = told ? [['essence', 'Essence'], ['goals', 'Goals and plans'], ['beliefs', 'Beliefs'], ['tried', 'What they tried'], ['facts', 'Facts they stated']].flatMap(([k, h]) => (told[k] || []).map((x) => ({ ...x, h }))) : [];
     // one heading per group (Goals, Beliefs, Facts), each line plain; with more than one source, each line names its own
     const oneSrc = (told?.sources || []).length <= 1, toldList = (xs) => xs.map((x, i) => `${i === 0 || xs[i - 1].h !== x.h ? `<h4>${esc(x.h)}</h4>` : ''}<div class="mem-l"><p>${esc(x.text)}</p>${oneSrc || !x.source ? '' : `<small>${esc(x.source)}</small>`}</div>`).join('');
     const TOLD_N = 4;
-    const toldHtml = toldRows.length ? `<section class="lx-sec mem-g">${lxHead('lx-told', 'What your team told Brew', toldRows.length, `From ${oneSrc ? esc(told.sources?.[0]?.label || 'your team') : `${told.sources.length} calls, notes and emails`}. The moves follow these.`)}
+    const toldHtml = toldRows.length ? `<section class="lx-sec mem-g">${lxHead('lx-told', 'What your team told us', toldRows.length, `From ${oneSrc ? esc(told.sources?.[0]?.label || 'your team') : `${told.sources.length} calls, notes and emails`}. The plays follow these.`)}
       ${toldList(toldRows.slice(0, TOLD_N))}${toldRows.length > TOLD_N ? `<details class="q-more"><summary>${toldRows.length - TOLD_N} more</summary>${toldList(toldRows.slice(TOLD_N))}</details>` : ''}</section>` : '';
     const anyLearned = moved.length + lessons.length + L.rules.length + L.autoChecks.length + toldRows.length;
     /* ui=1: one row of what Brew holds, each tile opens its part; a tile with nothing in it never shows */
@@ -5547,8 +5548,8 @@
         L.rules.length && t('data-lx-jump="lx-rules"', L.rules.length, L.rules.length === 1 ? 'Rule' : 'Rules', 'Every agent follows'),
         ppl && t('data-nav="watch"', ppl.toLocaleString(), 'Things people said', srcs.length > 2 ? `${srcs.slice(0, 2).map((x) => x.name).join(', ')} +${srcs.length - 2} more` : srcs.map((x) => x.name).join(', '))].filter(Boolean);
       return tiles.length ? `<div class="lx-ov">${tiles.join('')}</div>` : ''; };
-    libShell('What Brew learned', 'From what you pick, edit and ship, and anything you drop on this page. Edit, pause or forget any of it.',
-      `<div class="lx" data-m2-drop>${`<div class="lx-pair">${lxBook() + lxWatch(heard)}</div>` + `<button class="lx-heard-row lx-shelf" data-nav="rivals"><span class="lg-ic">${ic('search', 's16')}</span><span class="lg-tx"><b>Rivals and their ads</b><span>Every rival ad Brew read, by rival, with a page for each</span></span>${ic('right', 's16')}</button><button class="lx-heard-row lx-shelf" data-nav="products"><span class="lg-ic">${ic('layers', 's16')}</span><span class="lg-tx"><b>Products and their creative</b><span>Every product, best sellers first, with what Brew made for it</span></span>${ic('right', 's16')}</button>` + lxDropBig() + lxOverview()}
+    libShell('What we learned', 'From what you pick, edit and ship, and anything you drop on this page. Edit, pause or forget any of it.',
+      `<div class="lx" data-m2-drop>${`<div class="lx-pair">${lxBook() + lxWatch(heard)}</div>` + `<button class="lx-heard-row lx-shelf" data-nav="rivals"><span class="lg-ic">${ic('search', 's16')}</span><span class="lg-tx"><b>Rivals and their ads</b><span>Every rival ad we read, by rival, with a page for each</span></span>${ic('right', 's16')}</button><button class="lx-heard-row lx-shelf" data-nav="products"><span class="lg-ic">${ic('layers', 's16')}</span><span class="lg-tx"><b>Products and their creative</b><span>Every product, best sellers first, with what we made for it</span></span>${ic('right', 's16')}</button>` + lxDropBig() + lxOverview()}
         ${mvBuilding ? movesHtml : ''}
         
         ${toldHtml}
@@ -5567,8 +5568,8 @@
     $('#col')?.classList.add('lib-col', 'lx-col');
     $$('[data-hd-open]').forEach((b) => b.addEventListener('click', () => openHeard())); /* the overview tile and the row both open it */
     /* paused at the free spend cap: Pro carries the build on to every move */
-    $('[data-mvpro]')?.addEventListener('click', (e) => { const b = e.currentTarget, go = async () => { const r = await api(`/api/brands/${mvSlug()}/pro`, {}); if (!r || r.error) { toast(r?.error || 'Pro couldn’t start the moves. Try again.'); return false; } return true; };
-      if (!S.pro && PAYWALL) return openPlan('moves', go); const done = busyBtn(b, 'Starting…'); go().then((ok) => { done(); if (ok) { b.disabled = true; toast('Writing the rest of the moves.'); renderLearned(); } }); });
+    $('[data-mvpro]')?.addEventListener('click', (e) => { const b = e.currentTarget, go = async () => { const r = await api(`/api/brands/${mvSlug()}/pro`, {}); if (!r || r.error) { toast(r?.error || 'Pro couldn’t start the plays. Try again.'); return false; } return true; };
+      if (!S.pro && PAYWALL) return openPlan('moves', go); const done = busyBtn(b, 'Starting…'); go().then((ok) => { done(); if (ok) { b.disabled = true; toast('Writing the rest of the plays.'); renderLearned(); } }); });
     $$('[data-hd-theme]').forEach((b) => b.onclick = () => openHeard({ theme: b.dataset.hdTheme }));
     $$('[data-goto-move]').forEach((b) => b.onclick = () => openMove(+b.dataset.gotoMove));
   };
@@ -5578,18 +5579,18 @@
     view = 'brand'; counts(); document.body.classList.remove('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
     $('#view').innerHTML = '<div class="bb-host" id="bbk"></div>';
     if (!window.BrandBook) { $('#bbk').innerHTML = '<p class="lx-empty">The Brand Book didn’t load. Reload the page.</p>'; return; }
-    window.BrandBook.render($('#bbk'), { slug: mvSlug(), api: tapi, toast, back: { nav: 'learned', label: 'What Brew learned' } });
+    window.BrandBook.render($('#bbk'), { slug: mvSlug(), api: tapi, toast, back: { nav: 'learned', label: 'What we learned' } });
   };
   /* What Brew watches for you (watch.js): everything read from outside, in the brand's own colours, the Brand Book's toys */
   const renderWatch = () => {
     view = 'watch'; counts(); document.body.classList.remove('deck-on'); $('#stk').innerHTML = ''; $('#notes').innerHTML = '';
     $('#view').innerHTML = '<div class="bb-host" id="wxk"></div>';
     if (!window.BrandWatch) { $('#wxk').innerHTML = '<p class="lx-empty">This page didn’t load. Reload the page.</p>'; return; }
-    window.BrandWatch.render($('#wxk'), { slug: mvSlug(), api: tapi, toast, openHeard, back: { label: 'What Brew learned', go: () => { nav('#v=learned', true, 'view', 'learned'); renderLearned(); } } });
+    window.BrandWatch.render($('#wxk'), { slug: mvSlug(), api: tapi, toast, openHeard, back: { label: 'What we learned', go: () => { nav('#v=learned', true, 'view', 'learned'); renderLearned(); } } });
   };
   /* its entry on What Brew learned, under the Brand Book: the places it reads, as a small stack of marks */
   const lxWatch = (heard) => { const ps = (heard?.sources || []).map((x) => (typeof x === 'string' ? { id: x, name: x } : x)).slice(0, 4);
-    return `<button class="lx-tile lx-watch" data-nav="watch"><span class="lx-tile-txt"><span class="lx-live"><i></i>Daily</span><b>What Brew watches</b><span class="lx-go">${ic('right', 's16')}</span></span>
+    return `<button class="lx-tile lx-watch" data-nav="watch"><span class="lx-tile-txt"><span class="lx-live"><i></i>Daily</span><b>What we watch</b><span class="lx-go">${ic('right', 's16')}</span></span>
       <span class="lx-stks" aria-hidden="true">${(ps.length ? ps : [{}]).map((x, i) => `<span class="lx-stk" style="--i:${i}">${x.id || x.name ? srcMark(x.id, x.name) : ic('search')}</span>`).join('')}</span></button>`; };
   /* ui=1: the big drop box on What Brew learned (the whole page still takes a drop) */
   /* the Brand Book sits at the top of what Brew learned: the brand's voice, look and own best work, in one place (brand-book.js) */
@@ -5598,7 +5599,7 @@
       lum = (c) => { const n = hx(c); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; }, glow = cols.find((c) => Math.abs(lum(c) - lum(bg)) > 0.2) || '#ffffff';
     return `<button class="lx-tile lx-book" data-nav="brand" style="--bk-bg:${bg};--bk-glow:${glow};--bk-on:${lum(bg) > 0.6 ? '#141414' : '#fff'};--bk-face:${esc(br.face || 'Georgia, serif')}"><span class="lx-tile-txt"><span class="lx-kick">${br.mark ? `<img src="${esc(br.mark)}" alt="">` : ic('palette', 's14')}${esc(br.name || 'Your brand')}</span><b>Brand Book</b><span class="lx-go">${ic('right', 's16')}</span></span>
       <span class="lx-cover" aria-hidden="true"><span class="lx-aa">Aa</span><span class="lx-sw">${(cols.length ? cols : [glow]).map((c, i) => `<i style="--c:${c};--i:${i}"></i>`).join('')}</span></span></button>`; };
-  const lxDropBig = () => `<div class="m2-drop lx-drop" data-m2-drop><span class="m2-up">${ic('upload')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. Brew reads them and keeps what matters.</span><button class="lx-drop-btn" data-m2-pick>Upload files</button><input type="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.mp4" data-m2-file></div>`;
+  const lxDropBig = () => `<div class="m2-drop lx-drop" data-m2-drop><span class="m2-up">${ic('upload')}</span><b>Drop anything here</b><span>Brand guides, past ads, product sheets, screenshots. We read them and keep what matters.</span><button class="lx-drop-btn" data-m2-pick>Upload files</button><input type="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.tsv,.json,.png,.jpg,.jpeg,.webp,.mp4" data-m2-file></div>`;
   /* Drop anything here: pick or drop files, then say where they go (brand memory / my preferences).
      Brand memory reads every file (PDF, Word, PowerPoint, Excel and photos through the server, drop-read.js), shows the learnings
      draft to check, and on Save they reach the brief, Brew's memory, the moves they change and the feed (brand-learnings.js) */
@@ -5625,7 +5626,7 @@
   const m2Drop = (files) => { files = [...files].slice(0, 8); if (!files.length) return;
     const dest = (k, icon, t, d) => `<button class="m2-dest" data-m2-dest="${k}">${ic(icon, 's18')}<span><b>${t}</b><small>${d}</small></span></button>`;
     const name1 = files.length === 1 ? files[0].name : `${files.length} files`;
-    modal(`<div class="sheet m2-sheet"><header class="sh-h dz-h"><span class="dz-ht"><b class="sh-t">${esc(name1)}</b><small class="dz-sub">${files.length === 1 ? dzKb(files[0].size) : files.map((f) => esc(f.name)).join(', ')}</small></span><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header><div class="m2-body"><p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'Brew reads it, you check what it learned, then the brief, moves and feed follow.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}</div></div>`, (m) => {
+    modal(`<div class="sheet m2-sheet"><header class="sh-h dz-h"><span class="dz-ht"><b class="sh-t">${esc(name1)}</b><small class="dz-sub">${files.length === 1 ? dzKb(files[0].size) : files.map((f) => esc(f.name)).join(', ')}</small></span><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header><div class="m2-body"><p class="m2-q">Where should this go?</p>${dest('memory', 'book', 'Add to brand memory', 'We read it, you check what we learned, then the brief, plays and feed follow.')}${dest('prefs', 'person', 'Save to my preferences', 'Shapes what the feed shows me, not what the brand says.')}</div></div>`, (m) => {
       const sheet = $('.m2-sheet', m), body = $('.m2-body', m), paint = (html, foot = '') => { body.innerHTML = html; $('.dz-foot', sheet)?.remove(); if (foot) sheet.insertAdjacentHTML('beforeend', `<footer class="dz-foot">${foot}</footer>`); };
       const head = (t, sub) => { $('.sh-t', sheet).textContent = t; $('.dz-sub', sheet).textContent = sub || ''; };
       const after = () => { if (['learned', 'rules'].includes(document.body.dataset.m2) || view === 'learned') renderLearned(); if (view === 'tune') renderTune(); };
@@ -5639,20 +5640,20 @@
           r.pending ? `<p class="dz-k">${r.pending.all} plays change with this</p><p class="dz-note">Rewrite all of them, or the ${r.pending.top} that matter most within this upload’s budget.</p><div class="dz-acts"><button class="btn btn-primary sm" data-dl-say="go ahead">Rewrite all ${r.pending.all}</button><button class="btn btn-ghost sm" data-dl-say="just the top ones">Just the top ${r.pending.top}</button></div>` : '',
           c.weekly.length ? `<details class="dz-more"><summary>${c.weekly.length} more in the weekly run</summary><ul class="dz-ul">${c.weekly.map(mv).join('')}</ul></details>` : '',
           c.fresh ? `<p class="dz-k">New plays · up to ${c.fresh}</p><p class="dz-note">Written from this in a few minutes, once the rewrite is in.</p>` : c.freshWhy ? `<p class="dz-note">New plays from this ${esc(c.freshWhy)}.</p>` : '',
-          c.rewriteError ? `<p class="dz-note is-warn">The rewrite can’t start now: ${esc(c.rewriteError)}. The moves are marked on the Moves tab.</p>` : ''].join('') || '<p class="dz-note">No move needed changing.</p>';
-        const feed = [c.add.length ? `<p class="dz-k">New on your feed · ${c.add.length}</p><ul class="dz-ul">${c.add.map(t).join('')}</ul>` : '', c.up.length ? `<p class="dz-k">Moved to the top · ${c.up.length}</p><ul class="dz-ul">${c.up.map(t).join('')}</ul>` : '', c.hide.length ? `<p class="dz-k">Off the top · ${c.hide.length}</p><ul class="dz-ul">${c.hide.map(t).join('')}</ul>` : ''].join('') || `<p class="dz-note">${c.rewrite.length || r.pending ? 'The feed reorders as the rewritten moves land.' : 'No card needed to move.'}</p>`;
-        paint(`<div class="dz-res"><section class="dz-card"><h4>${ic('book', 's16')}Brief and memory</h4><p class="dz-note">Every move, card and jam reads these now, each with its source. They sit on this page under What the team told Brew.</p></section>
-          <section class="dz-card"><h4>${ic('layers', 's16')}Plays</h4>${moves}</section><section class="dz-card"><h4>${ic('feed', 's16')}Your feed</h4>${feed}<p class="dz-note">Cards built on this carry “From what your team told Brew”.</p></section></div>`,
+          c.rewriteError ? `<p class="dz-note is-warn">The rewrite can’t start now: ${esc(c.rewriteError)}. The plays are marked on the Plays tab.</p>` : ''].join('') || '<p class="dz-note">No play needed changing.</p>';
+        const feed = [c.add.length ? `<p class="dz-k">New on your feed · ${c.add.length}</p><ul class="dz-ul">${c.add.map(t).join('')}</ul>` : '', c.up.length ? `<p class="dz-k">Moved to the top · ${c.up.length}</p><ul class="dz-ul">${c.up.map(t).join('')}</ul>` : '', c.hide.length ? `<p class="dz-k">Off the top · ${c.hide.length}</p><ul class="dz-ul">${c.hide.map(t).join('')}</ul>` : ''].join('') || `<p class="dz-note">${c.rewrite.length || r.pending ? 'The feed reorders as the rewritten plays land.' : 'No card needed to move.'}</p>`;
+        paint(`<div class="dz-res"><section class="dz-card"><h4>${ic('book', 's16')}Brief and memory</h4><p class="dz-note">Every play, card and jam reads these now, each with its source. They sit on this page under What your team told us.</p></section>
+          <section class="dz-card"><h4>${ic('layers', 's16')}Plays</h4>${moves}</section><section class="dz-card"><h4>${ic('feed', 's16')}Your feed</h4>${feed}<p class="dz-note">Cards built on this carry “From what your team told us”.</p></section></div>`,
           `<span></span><button class="btn btn-ghost sm" data-close>Done</button><button class="btn btn-primary sm" data-dz-feed>Open the feed</button>`);
         loadFeed().catch(() => {}); after();
         $('[data-dz-feed]', sheet)?.addEventListener('click', () => { closeModal(); location.hash = ''; location.reload(); });
         $$('[data-dl-say]', body).forEach((b) => (b.onclick = async () => { const done = busyBtn(b, 'Starting…'); const x = await say(b.dataset.dlSay); done(); if (x.error) return toast(esc(x.error)); toast(`${ic('check', 's16')}${esc(String(x.reply || '').split('\n')[0])}`); b.closest('.dz-acts')?.remove(); })); };
       /* the review: every line kept unless unticked, editable in place, with the words it rests on */
       const showDraft = (r, notes) => { const d = r.draft, gone = new Set(), edits = new Map(), n = d.items.length; sheet.classList.add('is-wide');
-        head(`What Brew learned from ${files.length === 1 ? files[0].name : `${files.length} files`}`, `${n} learning${n === 1 ? '' : 's'}${d.chars ? ` from ${d.chars.toLocaleString('en-US')} characters` : ''}${d.again ? ` · ${d.again} it already knew left out` : ''} · nothing saved yet`);
+        head(`What we learned from ${files.length === 1 ? files[0].name : `${files.length} files`}`, `${n} learning${n === 1 ? '' : 's'}${d.chars ? ` from ${d.chars.toLocaleString('en-US')} characters` : ''}${d.again ? ` · ${d.again} it already knew left out` : ''} · nothing saved yet`);
         const ks = Object.keys(KIND_H).filter((k) => d.items.some((x) => x.kind === k));
         const row = (x, i) => `<li class="dz-row" data-i="${i + 1}"><button class="dz-tog" role="checkbox" aria-checked="true" aria-label="Keep line ${i + 1}" data-dz-tog>${ic('check', 's14')}</button><span class="dz-n" aria-hidden="true">${i + 1}</span><div class="dz-txt"><p class="dz-t" data-dz-t>${esc(x.text)}</p>${x.quote && !dzSame(x.quote, x.text) ? `<p class="dz-q">“${esc(x.quote)}”</p>` : ''}</div><button class="dz-ed" data-dz-ed>Edit</button></li>`;
-        paint(`${notes}${d.replace ? '<p class="dz-note">Brew saved this upload before. Change what it keeps, then Save.</p>' : ''}${d.clipped ? `<p class="dz-note">It was long, so Brew read the first ${d.clipped.toLocaleString('en-US')} characters.</p>` : ''}
+        paint(`${notes}${d.replace ? '<p class="dz-note">We saved this upload before. Change what we keep, then Save.</p>' : ''}${d.clipped ? `<p class="dz-note">It was long, so we read the first ${d.clipped.toLocaleString('en-US')} characters.</p>` : ''}
           <nav class="dz-chips">${ks.map((k) => `<a href="#dz-${k}" data-dz-jump="${k}">${KIND_H[k]}<b>${d.items.filter((x) => x.kind === k).length}</b></a>`).join('')}</nav>
           ${ks.map((k) => `<section class="dz-sec" id="dz-${k}"><header><h4>${KIND_H[k]}</h4><button class="linkbtn" data-dz-all="${k}">Untick all</button></header><ul>${d.items.map((x, i) => [x, i]).filter(([x]) => x.kind === k).map(([x, i]) => row(x, i)).join('')}</ul></section>`).join('')}
           ${d.conflicts?.length ? `<section class="dz-sec"><header><h4>Left out: the fact sheet wins on numbers</h4></header>${d.conflicts.map((c) => `<p class="dz-note">It says ${esc(c.says)}; ${esc(c.label || 'the fact sheet')} reads ${esc(String(c.v))}${c.src ? ` from ${esc(c.src)}` : ''}.</p>`).join('')}</section>` : ''}`,
@@ -5672,7 +5673,7 @@
         $('[data-dl-save]', sheet).onclick = async (e) => { const done = busyBtn(e.currentTarget, 'Saving…');
           for (const [i, v] of edits) if (!gone.has(i)) { const x = await say(`change ${i} to ${v}`); if (x.error) { done(); return toast(esc(x.error)); } } /* edits first: dropping renumbers the lines */
           if (gone.size) { const x = await say(`drop ${[...gone].sort((a, b) => a - b).join(' ')}`); if (x.error) { done(); return toast(esc(x.error)); } }
-          head('Saving', 'Updating the brief, finding the moves this changes and reordering your feed'); paint(`<ol class="dz-steps">${dzStep('done', 'Brief and memory')}${dzStep('on', 'Finding the moves this changes', 'Brew reads every move against what you saved')}${dzStep('todo', 'Reordering your feed')}</ol>`);
+          head('Saving', 'Updating the brief, finding the plays this changes and reordering your feed'); paint(`<ol class="dz-steps">${dzStep('done', 'Brief and memory')}${dzStep('on', 'Finding the plays this changes', 'We read every play against what you saved')}${dzStep('todo', 'Reordering your feed')}</ol>`);
           const x = await say('save'); done(); if (x.error) { head('That didn’t save', ''); return paint(`<p class="dz-note is-warn">${esc(x.error)}</p>`, `<span></span><button class="btn btn-primary sm" data-close>Close</button>`); } answered(x); }; sync(); };
       $$('[data-m2-dest]', m).forEach((b) => (b.onclick = async () => { const d = b.dataset.m2Dest; $$('[data-m2-dest]', m).forEach((x) => (x.disabled = true)); b.classList.add('is-busy');
         /* brand memory: read every file, then one learnings draft for all of them; steps and a clock while it works */
@@ -5680,7 +5681,7 @@
           const st = files.map((f) => ({ f, note: dzKb(f.size) })), t0 = Date.now(); let phase = 'read', timer = null;
           const slow = files.some((f) => !isTxtFile(f) && !/\.(docx|pptx|xlsx)$/i.test(f.name));
           const draw = () => { if (!document.body.contains(body)) return clearInterval(timer);
-            paint(`<ol class="dz-steps">${dzStep(phase === 'read' ? 'on' : 'done', files.length === 1 ? 'Reading the file' : `Reading ${files.length} files`, st.map((x) => `${esc(x.f.name)} · ${esc(x.note)}`).join('<br>'))}${dzStep(phase === 'learn' ? 'on' : phase === 'read' ? 'todo' : 'done', 'Pulling out what Brew should learn', 'Goals and plans, beliefs, facts and what they tried')}${dzStep('todo', 'You check it, then save')}</ol>
+            paint(`<ol class="dz-steps">${dzStep(phase === 'read' ? 'on' : 'done', files.length === 1 ? 'Reading the file' : `Reading ${files.length} files`, st.map((x) => `${esc(x.f.name)} · ${esc(x.note)}`).join('<br>'))}${dzStep(phase === 'learn' ? 'on' : phase === 'read' ? 'todo' : 'done', 'Pulling out what we should learn', 'Goals and plans, beliefs, facts and what they tried')}${dzStep('todo', 'You check it, then save')}</ol>
               <p class="dz-clock">${dzClock(Date.now() - t0)}<small>${slow ? 'PDFs and photos take a minute or two. You can leave this open.' : 'Usually under a minute.'}</small></p>`); };
           head('Reading what you dropped', 'Nothing is saved until you check it'); draw(); timer = setInterval(draw, 1000);
           const texts = [], bad = []; let refs = 0;
@@ -5704,9 +5705,9 @@
           if (img || txt) { const v = await dropRead(f, img ? 'readAsDataURL' : 'readAsText'); if (v == null) { skipped.push(f.name); continue; } body0 = img ? { data: v } : { text: v }; }
           else { const x = await dropText(f, d); if (x?.error || !x?.text) { skipped.push(f.name); continue; } body0 = { text: x.text }; }
           r = await tapi('POST', `/api/brands/${encodeURIComponent(mvSlug())}/drop`, { dest: d, name: f.name, ...body0 }); if (r?.error) break; if (r?.cut) cut = true; }
-        if (!r && skipped.length) { closeModal(); return toast(`Brew couldn’t read ${esc(skipped.join(', '))}. It reads PDF, Word, PowerPoint, Excel, text files and photos (PNG, JPG, WebP).`); }
+        if (!r && skipped.length) { closeModal(); return toast(`We couldn’t read ${esc(skipped.join(', '))}. We read PDF, Word, PowerPoint, Excel, text files and photos (PNG, JPG, WebP).`); }
         closeModal(); if (!r || r.error) { sound('error'); return toast(esc(r?.error || 'That didn’t save. Try again.')); }
-        sound('ready'); toast(`${ic('check', 's16')}Saved to your preferences${cut ? '. It was long, so Brew kept the first 4,000 characters' : ''}${skipped.length ? `. Couldn’t read ${esc(skipped.join(', '))}` : ''}`); if (d === 'prefs') { loadFeed().catch(() => {}); after(); } })); }); };
+        sound('ready'); toast(`${ic('check', 's16')}Saved to your preferences${cut ? '. It was long, so we kept the first 4,000 characters' : ''}${skipped.length ? `. Couldn’t read ${esc(skipped.join(', '))}` : ''}`); if (d === 'prefs') { loadFeed().catch(() => {}); after(); } })); }); };
   document.addEventListener('click', (e) => { const pk = e.target.closest('[data-m2-pick]'); if (pk) { (pk.closest('.m2-drop') || pk.parentElement)?.querySelector('[data-m2-file]')?.click(); } });
   document.addEventListener('change', (e) => { if (e.target.matches?.('[data-m2-file]')) { m2Drop(e.target.files); e.target.value = ''; } });
   ['dragover', 'dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { const z = e.target.closest?.('[data-m2-drop]'); if (!z) return; e.preventDefault(); z.classList.toggle('is-over', ev === 'dragover'); if (ev === 'drop') sound('send'), m2Drop(e.dataTransfer?.files || []); }));
@@ -5715,12 +5716,12 @@
      your saved preferences, and your seat. /api/tenants/:t/tuning; ranking moves an agent ±4 and a topic +2 */
   const TU = { d: null };
   const renderTune = async () => { view = 'tune'; const R = ROLE();
-    const tuT = 'Your feed', tuS = 'What Brew shows you more and less of. Only you see this.';
+    const tuT = 'Your feed', tuS = 'What we show you more and less of. Only you see this.';
     if (!TU.d) libShell(tuT, tuS, loader('Opening your feed settings'));
     const r = await tapi('GET', '/api/tenants/:t/tuning'); if (view !== 'tune') return; if (r.error) { libShell(tuT, tuS, `<p class="lx-empty">${esc(r.error)}</p>`); return; }
     TU.d = r; const tn = r.tuning || {}, sig = r.signals || [], W = r.weights || ['less', 'normal', 'more'];
     const ign = new Set(tn.ignored || []);
-    libShell(tuT, tuS, `<section class="lx-sec">${lxHead('lx-picked', 'Picked up from your choices', sig.length || '', sig.length ? 'From your hearts, Not for me and Fewer. Drop any that are wrong.' : 'Heart, save or skip cards; Brew learns what to show you more of.')}
+    libShell(tuT, tuS, `<section class="lx-sec">${lxHead('lx-picked', 'Picked up from your choices', sig.length || '', sig.length ? 'From your hearts, Not for me and Fewer. Drop any that are wrong.' : 'Heart, save or skip cards; we learn what to show you more of.')}
         ${sig.map((x) => `<div class="tu-sig${ign.has(x.id) ? ' is-off' : ''}"><span class="tu-k is-${esc(x.kind)}">${ic(x.kind === 'like' ? 'heart' : 'minus', 's14')}</span><span class="tu-t"><b>${esc(x.text)}</b>${x.why ? `<small>${esc(x.why)}</small>` : ''}</span>${ign.has(x.id) ? `<button class="linkbtn" data-tu-sigback="${esc(x.id)}">Use it again</button>` : `<button class="icon-btn" data-tu-sigx="${esc(x.id)}" aria-label="Stop counting this">${ic('x', 's16')}</button>`}</div>`).join('')}</section>
       <section class="lx-sec">${lxHead('lx-topics', 'Topics', (tn.topics || []).length || '', 'Cards about these come first.')}<form class="tu-add" data-tu-topic><input placeholder="Add a topic, e.g. sunscreen" maxlength="40" autocomplete="off"><button class="btn btn-ghost sm">Add</button></form>
         <div class="m2-chips">${(tn.topics || []).map((t) => `<span class="chip">${esc(t)}<button class="linkbtn" data-tu-topicx="${esc(t)}" aria-label="Remove ${esc(t)}">${ic('x', 's14')}</button></span>`).join('')}</div></section>
@@ -5735,8 +5736,8 @@
   const TU_CH = [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['google', 'Google'], ['email', 'Email'], ['whatsapp', 'WhatsApp'], ['marketplace', 'Marketplaces']];
   const tuSetup = () => { const v = S.viewer, team = !!(window.LIVE?.me && window.LIVE.access?.role) && GEN; /* the voice saves for the brand's members only (brand-memory saveVoicePick) */
     const seg = (k, label, cur) => `<div class="tu-ag"><span class="tu-t"><b>${label}</b></span><span class="tu-seg" role="radiogroup" aria-label="${label}">${TU_SET[k].map(([x, t]) => `<button role="radio" aria-checked="${String(cur) === String(x)}" data-tu-v="${k}:${x}">${t}</button>`).join('')}</span></div>`;
-    return `<section class="lx-sec">${lxHead('lx-setup', 'Your setup', '', 'From the questions while Brew read your store.')}
-      ${seg('perDay', 'Moves a morning', v.perDay || '')}
+    return `<section class="lx-sec">${lxHead('lx-setup', 'Your setup', '', 'From the questions while we read your store.')}
+      ${seg('perDay', 'Plays a morning', v.perDay || '')}
       <div class="tu-ag"><span class="tu-t"><b>Channels you run</b><small>Every one you run. Cards for the others sit lower.</small></span><span class="tu-seg">${TU_CH.map(([x, t]) => `<button aria-pressed="${(v.channels || []).includes(x)}" data-tu-ch="${x}">${t}</button>`).join('')}</span></div>
       ${seg('adPace', 'Ads last month', v.adPace || '')}
       ${team ? seg('voice', 'Brand voice', v.voice || 'site') : ''}</section>`; };
@@ -5936,7 +5937,7 @@
   /* ---------- go ---------- */
   // jam-room.js (the Jam Room) works from these
   window.BriefStaff?.onPaint(() => { if (view === 'remix') paintStudio(); });
-  window.__BREW = { pullWork: (q) => pullWork(q), sound: (k) => sound(k), openRefs: (r) => openRefs(r), shoposWho: 'the ShopOS team, Brew’s build crew', waNeed: (o) => waNeed(o), busyBtn: (b, l) => busyBtn(b, l), loader: (t, s2, z) => loader(t, s2, z), putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
+  window.__BREW = { pullWork: (q) => pullWork(q), sound: (k) => sound(k), openRefs: (r) => openRefs(r), shoposWho: 'our team, the build crew', waNeed: (o) => waNeed(o), busyBtn: (b, l) => busyBtn(b, l), loader: (t, s2, z) => loader(t, s2, z), putCh: (ch) => putCh(ch), paintStudio: () => paintStudio(), modal: (h, b) => modal(h, b), closeModal: () => closeModal(), refreshAfterConnect: (id) => refreshAfterConnect(id), glyph: (id, n) => glyph(id, n), demoSheet: (h) => demoSheet(h), shareSheet: (p) => shareSheet(p), pageOf: (id) => PAGE[id] || null, studioCard: () => (view === 'remix' ? RX.p : null), studioV: () => (view === 'remix' && RX.ch ? curN(RX.ch) : null) /* the version on the jam's stage, for the sheets */, libAct, cxDone: (id) => $$(`[data-cxrow="${id}"]`).forEach((r) => (r.outerHTML = cxRow(id))), $, $$, esc, wait, ic, face, avatar, podFaces, brewAv, SO, movesTotal: () => +BREW?.total || 0, toast, toastLong, B, AGENT, save, ROLE, colleague, conn, cardOf, byId, tapi, putWork, counts, inrS, openConnect, openDetail, closeDetail, closePop, closeModal, modal, assetHtml, renderView, renderWork, workOfCard, pseudoPost, colleagueForCard,
     get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest,
     /* the reading screen's questions (questions.js), canvas.js */ isRival, GEN, LANDING, DEMO_LAND, api, ls, LSP, get TID() { return TID; }, signWall, needSignin, ensureTenant, scrCard, seatEntries, defaultWants, loadFeed, rank, openRemix, openPlan, teamStep, finishOnboarding, checkRead, waitMoves, whoFor, continueToFeed, hashParams };
   // #setup replays onboarding (it only plays once otherwise, because finishing it is saved in this browser)

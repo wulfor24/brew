@@ -17,6 +17,7 @@ import { leaderOnly } from './roles.js'; // timers run their work on the backgro
 import { emailHtml, esc, p as mailP, list as mailList, heading, images as mailImages, footLink } from './mail-layout.js';
 import { officialFor } from './auth.js'; // the read's starter hears about the brand only on its official email
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
+import { PRODUCT_NAME } from './product-name.js';
 import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 
 const DAY = 864e5, WEEK = 7 * DAY, IST = 5.5;
@@ -127,15 +128,15 @@ export function digestMail({ name, slug, base = process.env.PUBLIC_URL || 'https
   const nMoves = c.rewritten.length + c.teamOnly.rewritten, nNew = c.weekly.length + c.teamOnly.weekly, nAds = c.rivalAds.length;
   const empty = !nMoves && !nNew && !nAds && !(c.shelf || []).length && !c.theme && !c.question && !c.event && !jams.length;
   if (empty) return { empty: true };
-  const parts = [nNew && plural(nNew, 'new move'), nMoves && plural(nMoves, 'updated move'), nAds && (nAds === 1 ? 'a rival ad' : `${nAds} rival ads`), (c.shelf || []).length && ((c.shelf || []).length === 1 ? 'a change on the shelf' : `${c.shelf.length} changes on the shelf`), jams.length && `${plural(jams.length, 'jam')} waiting on you`,
+  const parts = [nNew && plural(nNew, 'new play'), nMoves && plural(nMoves, 'updated play'), nAds && (nAds === 1 ? 'a rival ad' : `${nAds} rival ads`), (c.shelf || []).length && ((c.shelf || []).length === 1 ? 'a change on the shelf' : `${c.shelf.length} changes on the shelf`), jams.length && `${plural(jams.length, 'jam')} waiting on you`,
     c.question && 'a question people asked', c.event && `${c.event.name} coming up`].filter(Boolean);
   const subject = parts.length ? `${parts.slice(0, 2).join(' and ')} for ${name} this week` : `What people said about ${name} this week`;
   const html = [], text = [];
   const sec = (h, items, after = '') => { if (!items.length) return; html.push(heading(h) + mailList(items) + after); text.push(`${h}\n${items.map((x) => `- ${x}`).join('\n')}`); };
   if (jams.length) sec('Waiting on you', jams.map((j) => `“${j.title}” ${j.ask}`));
-  sec('Moves Brew rewrote', [...c.rewritten.slice(0, 8).map((m) => `${moveLabel(m.n)} · ${m.title}${m.because ? `: ${m.because}` : ''}`), ...(c.teamOnly.rewritten ? [`and ${plural(c.teamOnly.rewritten, 'more move')} for your team, in Brew`] : [])]);
-  sec('New this week', [...c.weekly.slice(0, 6).map((m) => m.title), ...(c.teamOnly.weekly ? [`and ${plural(c.teamOnly.weekly, 'more')} for your team, in Brew`] : [])]);
-  sec(nAds === 1 ? 'A rival ad Brew spotted' : 'Rival ads Brew spotted', c.rivalAds.slice(0, 3).map((a) => (a.title ? `${a.brand}: ${a.title}` : a.brand)));
+  sec('Plays we rewrote', [...c.rewritten.slice(0, 8).map((m) => `${moveLabel(m.n)} · ${m.title}${m.because ? `: ${m.because}` : ''}`), ...(c.teamOnly.rewritten ? [`and ${plural(c.teamOnly.rewritten, 'more play')} for your team, in the feed`] : [])]);
+  sec('New this week', [...c.weekly.slice(0, 6).map((m) => m.title), ...(c.teamOnly.weekly ? [`and ${plural(c.teamOnly.weekly, 'more')} for your team, in the feed`] : [])]);
+  sec(nAds === 1 ? 'A rival ad we spotted' : 'Rival ads we spotted', c.rivalAds.slice(0, 3).map((a) => (a.title ? `${a.brand}: ${a.title}` : a.brand)));
   sec('On the shelf this week', c.shelf || []);
   if (c.theme || c.question) {
     const t = c.theme ? `Most talked about: “${c.theme.name}” (${plural(c.theme.n, 'mention')}).` : '';
@@ -145,7 +146,7 @@ export function digestMail({ name, slug, base = process.env.PUBLIC_URL || 'https
   }
   if (c.event) { const l = `${c.event.name}, ${dayLabel(c.event.date)}: ${c.event.days === 0 ? 'today' : `${plural(c.event.days, 'day')} away`}.`; html.push(heading('Coming up') + mailP(esc(l))); text.push(`Coming up\n${l}`); }
   if (c.images.length) html.push(mailImages(c.images, { href, alt: `From ${name}’s feed` }));
-  const footer = prefHref ? `You’re getting this because you’re on ${esc(name)}’s team on Brew.<br>${footLink(prefHref, 'No more emails like this')}` : `You’re getting this because you’re on ${esc(name)}’s team on Brew.`;
+  const footer = prefHref ? `You’re getting this because you’re on ${esc(name)}’s team.<br>${footLink(prefHref, 'No more emails like this')}` : `You’re getting this because you’re on ${esc(name)}’s team.`;
   return { empty: false, subject,
     html: emailHtml({ title: `This week for ${name}`, eyebrow: name, preheader: cut(subject, 140), body: html.join(''), cta: { href, label: 'Open the feed' }, footer, base }),
     text: `This week for ${name}\n\n${text.join('\n\n')}\n\nOpen the feed: ${href}${prefHref ? `\n\nNo more emails like this: ${prefHref}` : ''}` };
@@ -154,8 +155,8 @@ export function digestMail({ name, slug, base = process.env.PUBLIC_URL || 'https
 export function digestSlack({ name, slug, base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', c }) {
   const L = [];
   const nMoves = c.rewritten.length + c.teamOnly.rewritten, nNew = c.weekly.length + c.teamOnly.weekly;
-  if (nMoves) L.push(`• ${plural(nMoves, 'move')} rewritten: ${c.rewritten.slice(0, 4).map((m) => m.title).join('; ')}${nMoves > 4 ? '…' : ''}`);
-  if (nNew) L.push(`• ${plural(nNew, 'new move')}: ${c.weekly.slice(0, 3).map((m) => m.title).join('; ')}${nNew > 3 ? '…' : ''}`);
+  if (nMoves) L.push(`• ${plural(nMoves, 'play')} rewritten: ${c.rewritten.slice(0, 4).map((m) => m.title).join('; ')}${nMoves > 4 ? '…' : ''}`);
+  if (nNew) L.push(`• ${plural(nNew, 'new play')}: ${c.weekly.slice(0, 3).map((m) => m.title).join('; ')}${nNew > 3 ? '…' : ''}`);
   if (c.rivalAds.length) L.push(`• Rival ads: ${c.rivalAds.slice(0, 3).map((a) => a.brand).join(', ')}`);
   if ((c.shelf || []).length) L.push(`• On the shelf: ${c.shelf.slice(0, 2).join('; ')}`);
   if (c.theme) L.push(`• Most talked about: “${c.theme.name}” (${plural(c.theme.n, 'mention')})`);
@@ -163,7 +164,7 @@ export function digestSlack({ name, slug, base = process.env.PUBLIC_URL || 'http
   if (c.event) L.push(`• Coming up: ${c.event.name}, ${dayLabel(c.event.date)}`);
   if (c.needsOk) L.push(`• ${plural(c.needsOk, 'jam')} waiting for an OK`);
   if (!L.length) return null;
-  return `*This week in Brew for ${name}*\n${L.join('\n')}\n<${base}/${slug}?go=feed|Open the feed>`;
+  return `*This week in ${PRODUCT_NAME} for ${name}*\n${L.join('\n')}\n<${base}/${slug}?go=feed|Open the feed>`;
 }
 
 /* ---------- the job ---------- */

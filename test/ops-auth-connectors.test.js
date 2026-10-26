@@ -47,7 +47,7 @@ test('the live site’s gate never says “Demo mode”, and sign-in can’t be 
   assert.match(s, /const demoErr = \(host\) => \(\{ error: DEMO \?/);
   /* outsiders spend nothing and hear nothing (23 Oct): a new brand is read only for its own email; the moves emails only for the team */
   assert.match(s, /!officialFor\(me\.email, host\) && !\(await packs\.getJSON\(sl, 'status\.json', null\)/);
-  assert.match(s, /if \(me && !v\.gen\) return send\(res, 403, \{ error: 'The moves emails are for the brand’s team/);
+  assert.match(s, /if \(me && !v\.gen\) return send\(res, 403, \{ error: 'The plays emails are for the brand’s team/);
   assert.match(s, /const visSeen = [^\n]*!a\?\.host/);
   assert.match(s, /process\.env\.K_SERVICE && !auth\.signinOn\(\) && process\.env\.OPEN_SITE !== '1'\) throw/);
   assert.match(s, /budget\.flush\(\), tregLedger\.flush\(\), apifyLedger\.flush\(\), healthFlush\(\), visFlush\(\), jamMail\.drain\(\), closed/, 'SIGTERM flushes everything');

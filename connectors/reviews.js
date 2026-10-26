@@ -23,7 +23,7 @@ export default {
   oauthOn: () => !!(app().id && app().secret),
   authorize({ state, redirect }) { return `https://app.judge.me/oauth/authorize?${form({ client_id: app().id, redirect_uri: redirect, response_type: 'code', scope: app().scopes, state })}`; },
   async exchange({ query, redirect }) {
-    if (query.get('error')) throw Object.assign(new Error('Judge.me didn’t allow Brew in. Try again and approve it.'), { user: true });
+    if (query.get('error')) throw Object.assign(new Error('Judge.me didn’t let us in. Try again and approve it.'), { user: true });
     const t = await tokenOf({ grant_type: 'authorization_code', code: query.get('code'), redirect_uri: redirect });
     const info = await get({ oauth: true, token: t.token }, 'shops/info').catch(() => ({}));
     const shop = String(info.shop?.domain || '').toLowerCase();

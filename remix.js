@@ -39,6 +39,7 @@ import { createFamilies } from './measure-families.js';
 import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
 import { fitsRatio } from './vertex-media.js'; // a reused first frame must already be the clip's shape
 import { addV, versionsOf, versionById, signal, answered, autoCheck, outcome, ruleChecks, promptBlock, orderIntents, pickScore, takeNew, trustOf, summary, L, DETECTORS } from './learn.js';
+import { PRODUCT_NAME } from './product-name.js'; // the product's public name, where copy has to name it
 import { moveLabel } from './move-label.js'; // "Weekly move 11", never "Move 1011"
 
 /* ---------- what each agent can change, live ---------- */
@@ -89,7 +90,7 @@ export const ACTIONS = {
     listing_titles: { label: 'Rewrite marketplace titles', target: { conn: 'marketplaces', object: 'Listing titles' }, money: false, rollback: 'Restore the old titles on each marketplace', scope: [[1, 'One listing to start'], [5, 'The top 5 listings'], [12, 'Every listing']], preview: 'listing' },
     listing_content: { label: 'Rewrite listing content', target: { conn: 'marketplaces', object: 'Bullets, description and images' }, money: false, rollback: 'Restore the old content', scope: [[1, 'One listing to start'], [5, 'The top 5 listings'], [12, 'Every listing']], preview: 'listing' },
     takedown: { label: 'Request a takedown', target: { conn: 'marketplaces', object: 'Seller listing' }, money: false, irreversible: 'A filed takedown can’t be pulled back', rollback: 'None once filed', scope: [[1, 'One listing']], preview: 'listing' },
-    page_copy: { label: 'Change page copy', target: { conn: 'shopify', object: 'Product description' }, money: false, rollback: 'Take Brew’s section out in one click (your own edits stay)', scope: [[1, 'This product'], [4, '4 hero products'], [12, 'All 12 product pages']], preview: 'copy', settings: [['Where', 'Added to the product description, in your theme’s own style'], ['Before it runs', 'Shown on your live product page and checked against your theme']] },
+    page_copy: { label: 'Change page copy', target: { conn: 'shopify', object: 'Product description' }, money: false, rollback: 'Take our section out in one click (your own edits stay)', scope: [[1, 'This product'], [4, '4 hero products'], [12, 'All 12 product pages']], preview: 'copy', settings: [['Where', 'Added to the product description, in your theme’s own style'], ['Before it runs', 'Shown on your live product page and checked against your theme']] },
     pdp_block: { label: 'Add a proof block', target: { conn: 'shopify', object: 'Product page' }, money: false, rollback: 'Hide the block', scope: [[1, 'This product'], [4, '4 hero products'], [12, 'All 12 product pages']], preview: 'copy', settings: [['Where', 'Under the add-to-cart button']] },
     new_section: { label: 'New page or layout', target: { conn: 'shopify', object: 'Theme layout' }, money: false, jam: 'A layout change needs design and mobile QA', rollback: 'Revert the theme', scope: [[1, 'One page']], preview: 'checklist' },
     price_change: { label: 'Change a price', target: { conn: 'shopify', object: 'Product price' }, money: true, irreversible: 'Orders placed at the new price stay at that price', rollback: 'Put the old price back', scope: [[1, 'One product']], preview: 'numbers', settings: [['Changes', 'The price customers pay'], ['Where', 'Store and checkout']] },
@@ -375,7 +376,7 @@ const JAM_TPL = {
   storefront: [['mobile_qa', 'Has it been checked on mobile?', 'ops'], ['stock', 'Is there stock for the traffic this sends?', 'ops'], ['legal', 'Are the page claims cleared?', 'brandm'], ['rollback', 'How do we roll it back if conversion drops?', 'ai']],
   visibility: [['source', 'Which claims-list row backs each line?', 'ai'], ['dated', 'Is the “as of” date in the first line?', 'brandm']],
   crm: [['segment', 'How big is the segment, and who is left out?', 'growth'], ['window', 'When does it send, and how often at most?', 'ai'], ['compliance', 'Are opt-out and the WhatsApp template approved?', 'growth']],
-  brew: [['owner', 'Who makes the final call?', 'growth'], ['moves', 'Which moves change if we pick this?', 'ai']]
+  brew: [['owner', 'Who makes the final call?', 'growth'], ['moves', 'Which plays change if we pick this?', 'ai']]
 };
 /* No canned answers: a readiness question is answered by the person who owns it (Brew copies the question for them)
    or drafted by AI as a suggestion. Brew never claims a check, an approval or a sign-off happened. */
@@ -559,7 +560,7 @@ export function createRemix(o) {
     /* a connector check only for a tool this build can connect (Marketplaces is not one any more: QA J-17) */
     { const tg = msgTarget(t, ch) || act.target, cn = tg.msgTool ? null : act.target.conn; /* a change on the brand's own tool asks for no Klaviyo (2.4) */
       if (cn && SEED.connectors?.[cn] && cn !== 'marketplaces') checks.push({ k: `${SEED.connectors[cn]?.name || cn} connected`, ok: !!t.conn[cn], soft: true, conn: cn });
-      if (tg.unknown) checks.push({ k: 'Which tool sends this? Say it in the chat once (“we use GoKwik”) and Brew remembers', ok: true, soft: true }); }
+      if (tg.unknown) checks.push({ k: 'Which tool sends this? Say it in the chat once (“we use GoKwik”) and we’ll remember it', ok: true, soft: true }); }
     if (act.money) checks.push({ k: `${ch.amount > 0 ? `Spends about ${inr(ch.amount)} a week` : 'Costs money'}: the brief carries it, the team that runs it sets the budget`, ok: true, money: true });
     checks.push(...ruleChecks(t, act.agent, ch.after));
     L(t).autoChecks.filter((a) => a.on && (JAM_TPL[act.agent] || []).some(([k]) => k === a.k)).forEach((a) => checks.push({ k: `Learned check: ${a.q}`, ok: true, learned: true, auto: true }));
@@ -1205,7 +1206,7 @@ export function createRemix(o) {
       const lines = [rf.hook && `Their hook: ${rf.hook}`, rf.angle && `Angle: ${rf.angle}`, rf.format && `Format: ${rf.format}`, rf.pacing && `Pacing: ${rf.pacing}`, rf.why && `Why it works: ${rf.why}`,
         rf.views != null && `Views: ${rf.views.toLocaleString('en-US')}${rf.scoreText ? ` (${rf.scoreText} the creator’s usual)` : ''}`,
         (rf.beats || []).length && `Beats:\n${rf.beats.map((b, i) => `${i + 1}. ${[b.t, b.shot, b.text && `“${b.text}”`].filter(Boolean).join(' · ')}`).join('\n')}`].filter(Boolean);
-      if (lines.length) out.push({ kind: 'copy', label: 'How the reference is made (Brew’s read; their words are never reused)', text: lines.join('\n'), ref: true }); }
+      if (lines.length) out.push({ kind: 'copy', label: 'How the reference is made (our read; their words are never reused)', text: lines.join('\n'), ref: true }); }
     const urls = [p.utm, p.pages, p.file].filter((x) => x && (String(x).includes(BH()) || /utm_/.test(x)));
     urls.forEach((u) => out.push({ kind: 'link', label: /utm_/.test(u) ? 'Landing page with tracking' : 'Page', url: (/^https?:/.test(u) ? u : 'https://' + u.replace(/^\/*/, '').replace(/\s.*$/, '')) }));
     if (ch.family === 'outreach' && p.body) out.push({ kind: 'copy', label: `Email to ${[p.to, p.company].filter(Boolean).join(', ') || 'the business'}, a person sends it`, text: [p.subject && `Subject: ${p.subject}`, p.body].filter(Boolean).join('\n\n') });
@@ -1234,7 +1235,7 @@ export function createRemix(o) {
     return { id: ch.id, family: FAMILY_NAME[ch.family], action: actName(ch.actionLabel), target: `${ch.target.name}${ch.target.object ? ' · ' + actName(ch.target.object) : ''}`, version: head?.n || 1, versions: versionsOf(t, ch.id).length,
       money: ch.money ? (ch.amount > 0 ? `About ${inr(ch.amount)} a week` : ch.costLabel || 'Costs money') : 'No spend', undo: ch.irreversible ? `Can’t be undone: ${ch.irreversible}` : `Rollback: ${ch.rollback}`, angle: ch.angle || '',
       fields, assets: assetsFor(t, ch), thread: (ch.thread || []).map((m) => ({ who: m.from === 'you' ? m.by?.name || m.by?.email || 'You' : `${AGENT[ch.agent] || 'AI'} (studio)`, text: m.text, at: m.at, v: m.v || null })),
-      notes: (ch.notes || []).map((n) => n.text), checks: [...(ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })), ...(ch.checks || []).filter((x) => !x.ok && !x.soft && !x.mine).map((x) => ({ text: `Brew’s check: ${x.k}`, done: false, brew: true }))] /* what Brew's own checks still flag travels with the brief: the team never ships it unseen */, studio: `#remix=${ch.cardId}/${ch.id}` }; };
+      notes: (ch.notes || []).map((n) => n.text), checks: [...(ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })), ...(ch.checks || []).filter((x) => !x.ok && !x.soft && !x.mine).map((x) => ({ text: `Our check: ${x.k}`, done: false, brew: true }))] /* what Brew's own checks still flag travels with the brief: the team never ships it unseen */, studio: `#remix=${ch.cardId}/${ch.id}` }; };
 
   /* hooks from the feed service */
   const onWorkVersion = (t, w, v) => {
@@ -1320,7 +1321,7 @@ export function createRemix(o) {
   { const jb = setInterval(() => { for (const [id, x] of MINE_JOBS) { if (stillMine(x.ch)) { x.ch.busyBy = { by: INSTANCE, beat: Date.now() }; } else { if (x.ch.busyBy?.by === INSTANCE) delete x.ch.busyBy; MINE_JOBS.delete(id); } try { o.save?.(x.t); } catch {} } }, 60e3); jb.unref?.(); }
   const elsewhereJob = (ch) => !!ch.busyBy && ch.busyBy.by !== INSTANCE && Date.now() - (+ch.busyBy.beat || 0) < JOB_FRESH;
   const C = (t, id) => { const ch = changes(t)[id]; if (!ch) return ch; if (elsewhereJob(ch)) return ch; /* being made on another instance: its own reads settle it */
-    if (ch.job && !ITER_JOBS.has(ch.job.id)) { const job = ch.job; delete ch.job; ch.thinking = null; ch.thread = [...(ch.thread || []), { from: 'ai', text: 'Brew restarted while I was working on that, so nothing changed. Try again.', at: Date.now(), retry: job.ask || '' }]; } /* a revision a restart cut off says so, never spins for ever */
+    if (ch.job && !ITER_JOBS.has(ch.job.id)) { const job = ch.job; delete ch.job; ch.thinking = null; ch.thread = [...(ch.thread || []), { from: 'ai', text: 'A restart cut in while I was working on that, so nothing changed. Try again.', at: Date.now(), retry: job.ask || '' }]; } /* a revision a restart cut off says so, never spins for ever */
     if (ch.pkg && ch.pkg.wordsIn === undefined && ch.lastFinal?.versionId && /^gen\/fin-/.test(ch.pkg.image || '') && ch.pkg.overlay) ch.pkg.wordsIn = ch.pkg.image; /* a final made before 18 Oct: its words are set in the picture */
     if (ch.pkg && ch.pkg.wordsIn === undefined && /^gen\//.test(ch.pkg.image || '') && ch.cardId && o.planOf) { const w = o.planOf(t, t.cards?.get?.(ch.cardId) || {})?.draft?.wordsIn; ch.pkg.wordsIn = w && w === ch.pkg.image ? w : null; } /* a jam opened from a first draft before 20 Oct: its picture may already carry the headline */
     if (ch.imagePending && !IMG_JOBS.has(ch.id)) { ch.imagePending = false; ch.imageError = 'The photo stopped before it finished. Make it again.'; }
@@ -1330,7 +1331,7 @@ export function createRemix(o) {
     if (ch.videoPending && !VID_JOBS.has(ch.id)) { if (ch.finalPending && ch.finalPending.provider === 'sloosh' && Date.now() - (ch.finalPending.at || 0) < 40 * 60e3) ch.videoStep = 'Sloosh is still making the final (picked up after a restart)'; else { ch.videoPending = null; ch.videoStep = null; ch.videoError = 'The video stopped before it finished. Make it again.'; } }
     if (!REMAKE_JOBS.has(ch.id)) { const as = ch.remakePending?.as || ch.pkg?.draft?.as, was = !!ch.remakePending; ch.remakePending = null;
       if (unstick(t, ch) || was) { const what = as === 'video' ? 'reel' : as === 'carousel' ? 'carousel' : 'picture';
-        ch.remakeError = `The ${what} stopped before it finished (Brew restarted). Tap Make it again.`; ch.thread.push({ from: 'ai', text: ch.remakeError, at: now(t), remakeAgain: as || null }); } }
+        ch.remakeError = `The ${what} stopped before it finished (a restart cut it off). Tap Make it again.`; ch.thread.push({ from: 'ai', text: ch.remakeError, at: now(t), remakeAgain: as || null }); } }
     if (ch.ctaQueued && !FILL_JOBS.has(ch.id) && !CTA_JOBS.has(ch.id)) ch.ctaQueued = null; /* a queued button whose writer stopped with the server: the studio stops polling on it */
     if (ch.copyPending && !FILL_JOBS.has(ch.id)) { ch.copyPending = false; if (!touchedCh(t, ch)) ch.thread.push(startingPoint(t)); } /* the writer stopped with the server */
     healTakesOf(t, ch); /* a v2 take left drawing by a server that stopped resolves to drawError, never hangs */
@@ -1490,7 +1491,7 @@ export function createRemix(o) {
   /* the words, rewritten by the fast text model (the same client the fast jam path uses); the card's why is not in the ask */
   const rewriteWords = async (t, c, ch, ask) => {
     if (isMock()) return mockWords(t, ch, ask);
-    if (!spend('text')) throw Object.assign(new Error(budgetWhy('text', o.slugOfT?.(t), BN()) || 'Brew’s text budget for today is used up, so the words can’t be rewritten right now. Try again after midnight UTC.'), { refused: true });
+    if (!spend('text')) throw Object.assign(new Error(budgetWhy('text', o.slugOfT?.(t), BN()) || 'Today’s text budget is used up, so the words can’t be rewritten right now. Try again after midnight UTC.'), { refused: true });
     const { title, body } = takeWords(ch), rv = await rivalRead(t, c).catch(() => null);
     const j = await claudeTool(`${cardBrief(c, seatLine(t.viewer), t)}${rv ? `\n\n${rivalBlock(rv.ad, rv.style, BN())}` : viralLine(t, c)}\n\nYou are the ${AGENT[ch.agent] || 'creative'} agent. Rewrite only the WORDS of this ${FAMILY_NAME[ch.family] || 'change'} (${ch.actionLabel} on ${ch.target.name}) the way the person asks. Same product, same action, same promise; the card's reason (its signal and source) is not yours to change, and no new claims.\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\n${productLine(c, jamProduct(t, ch, c)?.t || pkgWords(ch))}\nNow: title “${title}”\nbody: “${body}”\nThe person asks: “${ask || 'Rewrite the words'}”\nReturn the new title (one line) and body. ${factsLine}`, WORDS_SCHEMA, 700, 'v2_words');
     const w = { title: clean(String(j.title || '')).slice(0, 160), body: clean(String(j.body || '')).slice(0, 1200), label: j.label };
@@ -1516,7 +1517,7 @@ export function createRemix(o) {
   };
   const failTake = (t, c, ch, v, why) => { v.drawing = false; v.drawError = String(why || 'The picture didn’t come through.').slice(0, 200); if (c) mirrorTake(t, c, ch, v); };
   /* a take whose draw is not running in this process (a restart, a deploy): it is over, and says so */
-  const healTakesOf = (t, ch) => { let n = 0; for (const v of versionsOf(t, ch.id)) if (v.drawing && !TAKE_JOBS.has(v.id)) { failTake(t, t.cards.get(ch.cardId) || null, ch, v, 'The picture stopped before it finished (Brew restarted). Ask for another take.'); n++; } return n; };
+  const healTakesOf = (t, ch) => { let n = 0; for (const v of versionsOf(t, ch.id)) if (v.drawing && !TAKE_JOBS.has(v.id)) { failTake(t, t.cards.get(ch.cardId) || null, ch, v, 'The picture stopped before it finished (a restart cut it off). Ask for another take.'); n++; } return n; };
   const healTakes = (t) => { let n = 0; for (const ch of Object.values(changes(t))) n += healTakesOf(t, ch); return n; };
   const updatedSince = (t, since = 0) => Object.entries(t.cardUpdated || {}).filter(([id, at]) => at > since && t.cards.has(id)).map(([id]) => id);
   /* the picture for a take, in the background: the studio's own path (product photo, brief, rival look), one picture, capped */
@@ -1600,7 +1601,7 @@ export function createRemix(o) {
     if (!opts) { opts = mockOptions(t, c, r, intent, 1); /* opening a jam builds the one package it opens on, never two orphans beside it */ line = r.conflict ? 'A way to settle it. A person decides, so it opens a jam.' : 'The change from this card: where it goes and who ships it.';
       /* no AI writer is coming (it failed, is paused, or today's text budget is spent): the draft says it is a starting point
          from the brand's own facts, never passed off as written work */
-      if (!writeLater && !isMock()) { line = `${line} Brew’s AI couldn’t write this one just now, so this first draft is built from your own product facts. Redo it for a fresh take.`; opts = opts.map((o) => ({ ...o, fromTemplate: true })); } }
+      if (!writeLater && !isMock()) { line = `${line} Our AI couldn’t write this one just now, so this first draft is built from your own product facts. Redo it for a fresh take.`; opts = opts.map((o) => ({ ...o, fromTemplate: true })); } }
     // the card's own suggestion always leads; the rest are ranked by what this team tends to pick
     const made = opts.map((x) => build(t, c, cv, r, x, { intent, prompt })).sort((a, b) => (b.fromCard - a.fromCard) || (b.score - a.score));
     if (intent) signal(t, 'pick', { agent: made[0]?.agent, intent }, now(t));
@@ -1837,7 +1838,7 @@ export function createRemix(o) {
       return { change: pubChange(t, ch), learned: learnedOut(t) }; }
     if (!b.fix && !isQuestion(msg) && (REDO_RE.test(msg) || CUTS_RE.test(msg))) { ch.thread.push(youSaid(t, msg)); await redoOne(t, ch, REDO_RE.test(msg) ? '' : msg.replace(CUTS_RE, 'a new take')); return { change: pubChange(t, ch), learned: learnedOut(t) }; }
     /* a Studio jam's picture or film changes through its set-up, at its price: the chat says so and the set-up opens, never a free picture in its place */
-    if (!b.fix && !isQuestion(msg) && studioOf(t, ch) && (photoAsk(msg) === 'change' || REMAKE_RE.test(msg))) { ch.thread.push(youSaid(t, msg)); ch.thread.push({ from: 'ai', text: 'This one is made by Brew Studio, so its picture changes in the set-up on the stage: I opened it. Change the style, the product, who is on camera or Image / Video there, then Redo it (the price is on the button). Words I can change here.', at: now(t) }); return { change: pubChange(t, ch), openSetup: true, learned: learnedOut(t) }; }
+    if (!b.fix && !isQuestion(msg) && studioOf(t, ch) && (photoAsk(msg) === 'change' || REMAKE_RE.test(msg))) { ch.thread.push(youSaid(t, msg)); ch.thread.push({ from: 'ai', text: `This one is made by ${PRODUCT_NAME} Studio, so its picture changes in the set-up on the stage: I opened it. Change the style, the product, who is on camera or Image / Video there, then Redo it (the price is on the button). Words I can change here.`, at: now(t) }); return { change: pubChange(t, ch), openSetup: true, learned: learnedOut(t) }; }
     const rm = !b.fix && !isQuestion(msg) && ['meta_ad', 'social', 'post'].includes(ch.family) ? REMAKE_RE.exec(msg) : null;
     if (rm) { ch.thread.push(youSaid(t, msg)); const r = await remakeOf(t, ch, /carousel/i.test(rm[1]) ? 'carousel' : 'video');
       const why = r.error || (r.making === false ? r.why : null); if (why) ch.thread.push({ from: 'ai', text: why, at: now(t) }); else if (r.version) ch.thread.push({ from: 'ai', text: `Remade it as ${/carousel/i.test(rm[1]) ? 'a carousel' : 'a reel'}: v${r.version.n}. The media lands on it in a minute or two.`, at: now(t), v: r.version.n });
@@ -1963,7 +1964,7 @@ export function createRemix(o) {
     const x = impactInputs({ card: c, ch, grade, recipe, measure, ledger: t.member ? realRows(t.liveLedger) : [], connected: t.liveConn || {} });
     const ai = mem && !mock && claudeTool && spend('text') ? (prompt, schema) => claudeTool(prompt, schema, 1500, 'impact') : null;
     const out = await projectImpact(x, { ai, unbacked: (s) => unbackedNums(s, t), brand: BN(), log });
-    if (!ai && !out.aiError) out.note = mock ? 'Brew’s rule-based range: AI estimates are off here.' : !mem ? 'Brew’s rule-based range: the AI estimate is for the brand’s team.' : 'Brew’s rule-based range: today’s AI budget is used up.';
+    if (!ai && !out.aiError) out.note = mock ? 'Our rule-based range: AI estimates are off here.' : !mem ? 'Our rule-based range: the AI estimate is for the brand’s team.' : 'Our rule-based range: today’s AI budget is used up.';
     if (!out.aiError && (ai || mock || !mem)) { ch.impact[key] = { ...out, at: now(t) }; const ks = Object.keys(ch.impact); if (ks.length > 6) delete ch.impact[ks[0]]; }
     return { impact: out, version: head?.n || 1 };
   });
@@ -2208,8 +2209,8 @@ export function createRemix(o) {
     if (email && o.askPerson) { const x = await o.askPerson(t, w, q, email); if (x?.error) return x; if (x) { q.asked = true; q.waiting = x.name || x.email; q.ownerEmail = x.email; q.at = now(t); return { who: q.waiting, q: q.q, email: x.email }; } }
     if (q.owner === 'ai') { const a = await aiAnswer(t, w, q); if (!a) return null; answerQ(t, w, q, a, `ai:${w.agent}`); say(t, w, { from: 'ai', who: AGENT[w.agent], body: `${q.q} ${a}` }); return null; }
     if (q.owner !== 'brew' && process.env.DEMO_MODE !== '1') return null; /* a teammate's question waits for a real person to be picked: never a made-up colleague */
-    if (q.owner === 'brew') o.onShopos?.(t, w, { why: 'asked the ShopOS team a question', text: q.q }); /* its inbox gets the question and the jam link */
-    const who = q.owner === 'brew' ? 'ShopOS team' : colName(q.owner);
+    if (q.owner === 'brew') o.onShopos?.(t, w, { why: 'asked our team a question', text: q.q }); /* its inbox gets the question and the jam link */
+    const who = q.owner === 'brew' ? 'our team' : colName(q.owner);
     q.asked = true; q.waiting = who; q.at = now(t);
     return { who, q: q.q };
   };

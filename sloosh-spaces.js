@@ -80,7 +80,7 @@ export function prefill(fields = [], ctx = {}) {
     else if (f.type === 'number') { const k = norm(f.key + ' ' + f.label); v = /second|length|duration/.test(k) && ctx.seconds ? Math.min(f.max ?? 1e9, Math.max(f.min ?? 0, ctx.seconds)) : f.default ?? f.min ?? null; from = v != null ? 'the draft' : null; }
     else if (f.type === 'boolean') { v = f.default ?? (/sound|audio/.test(norm(f.key)) ? !!ctx.sound : /caption|subtitle/.test(norm(f.key)) ? false : null); from = v != null ? 'the brand’s defaults' : null; }
     else if (f.type === 'color') { v = (brand.colors || [])[0] || null; from = v ? 'the brand' : null; } else if (f.type === 'folder') { v = null; } else if (f.type === 'list') { v = null; }
-    if (v != null) { values[f.key] = v; filled[f.key] = from; } else if (f.required) missing.push({ key: f.key, type: f.type, label: f.label, why: f.type === 'folder' ? 'Batch folders are not in Brew yet.' : `Upload or type ${f.label.toLowerCase()}.` }); }
+    if (v != null) { values[f.key] = v; filled[f.key] = from; } else if (f.required) missing.push({ key: f.key, type: f.type, label: f.label, why: f.type === 'folder' ? 'Batch folders aren’t supported yet.' : `Upload or type ${f.label.toLowerCase()}.` }); }
   return { values, filled, missing };
 }
 export const JOB_FOR_FIELD = (f) => { const k = norm(`${f.key} ${f.label} ${f.help}`); return /logo/.test(k) ? 'logo' : /creator|person|model|face|selfie|influencer/.test(k) ? 'person' : /background|scene|place|location/.test(k) ? 'scene' : /reference ad|style|look|inspiration/.test(k) ? 'style' : /product|photo|pack/.test(k) ? 'product' : 'other'; };

@@ -1,4 +1,5 @@
 import { B, BN, BH, CTRY, FESTN, FESTD } from './brand-ctx.js';
+import { PRODUCT_NAME } from './product-name.js';
 /* The jam brief: one free-flowing document per jam, in Markdown (w.doc).
    It starts as the continuation of the card (what it says, what it recommends, how we measure it, what the moves say)
    and grows as people jam: you type in it, you add selections from the card or the moves, AI edits it on request,
@@ -81,7 +82,7 @@ export function createJamBrief(o) {
     if (lead) parts.push(`**The call:** ${trim(lead, 220)}`);
     const plan = [];
     if (pick) {
-      plan.push(`**${chosen ? 'We go with' : 'Brew recommends'}:** ${pick.name}. ${trim(pick.says, 200)}`);
+      plan.push(`**${chosen ? 'We go with' : 'We recommend'}:** ${pick.name}. ${trim(pick.says, 200)}`);
       if (pick.effect) plan.push(`**What changes:** ${trim(pick.effect, 220)}`);
       /* one, always (Param, 19 Oct): the brief carries the one way forward, never the other options */
     } else if (d.how?.length && !cp) plan.push(...d.how.slice(0, 3));
@@ -96,7 +97,7 @@ export function createJamBrief(o) {
     if (c.needs) parts.push(`## Who decides\n${c.needs}${/\.$/.test(c.needs) ? '' : '.'}`);
     if (d.watch) parts.push(`## Watch-outs\n${trim(d.watch, 240)}`);
     const ns = MOVES ? MOVES.numsOf(c.src) : [];
-    if (ns.length) parts.push(`## Backed by\n${ns.length > 3 ? `${ns.length} of the plans Brew wrote for ${BN()} (${ns.map(moveLabel).join(', ').replace(/, ([^,]+)$/, ' and $1')}).` : ns.map((n) => `${moveLabel(n)}: ${MOVES.short ? MOVES.short(n) : ''}`).join(' · ')}`);
+    if (ns.length) parts.push(`## Backed by\n${ns.length > 3 ? `${ns.length} of the plans we wrote for ${BN()} (${ns.map(moveLabel).join(', ').replace(/, ([^,]+)$/, ' and $1')}).` : ns.map((n) => `${moveLabel(n)}: ${MOVES.short ? MOVES.short(n) : ''}`).join(' · ')}`);
     return parts.filter(Boolean).join('\n\n');
   };
   // several cards jammed together ("Jam on all"): one brief, one plan per card. They stay separate unless someone asks to merge them.
@@ -166,7 +167,7 @@ export function createJamBrief(o) {
   const PLAN_KEYS = ['option', 'change', 'audience', 'when', 'budget', 'owner', 'metric', 'target', 'window', 'guard', 'headline', 'body', 'button', 'why'];
   const PLAN_SCHEMA = { type: 'object', required: PLAN_KEYS, properties: { option: { type: 'string', description: 'The id of the option the brief goes with (from the list), or empty' }, change: { type: 'string', description: 'What changes, one line' }, audience: { type: 'string', description: 'Who it is for or where it runs' }, when: { type: 'string', description: 'When it starts or runs' }, budget: { type: 'string', description: 'Spend or budget' }, owner: { type: 'string', description: 'Who owns it' }, metric: { type: 'string', description: 'The number we measure' }, target: { type: 'string', description: 'The target for that number, exactly as the brief writes it' }, window: { type: 'string', description: 'When we read it, as a number of days (digits only)' }, guard: { type: 'string', description: 'When we stop' }, headline: { type: 'string', description: 'The exact headline customers will see, only if the brief contains finished customer-facing copy; never a question, an instruction or an internal note; else empty' }, body: { type: 'string', description: 'The exact customer-facing body or caption, same rule; else empty' }, button: { type: 'string', description: 'The customer-facing button text, if given; else empty' }, why: { type: 'string', description: 'Why we are doing this, one plain line for the team' } } };
   const planAsk = (t, c) => { const opts = (pageOf(t, c)?.options || []).map((o) => `${o.id}: ${o.name}`).join(' | ');
-    return `Also return plan: what the brief now says for each field, copied from the brief's own words (empty when the brief doesn't say). For option, the id of the option the team has chosen, from: ${opts || '(no options)'}; only when the brief says it was chosen ("We go with…"). A recommendation or Brew pick is not a choice: leave option empty.`; };
+    return `Also return plan: what the brief now says for each field, copied from the brief's own words (empty when the brief doesn't say). For option, the id of the option the team has chosen, from: ${opts || '(no options)'}; only when the brief says it was chosen ("We go with…"). A recommendation or our pick is not a choice: leave option empty.`; };
   // offline: read the measure lines straight from the Markdown
   const planFromMd = (md) => { const L = String(md || '').split('\n'); const find = (re) => (L.find((l) => re.test(l)) || '');
     const val = (l) => l.replace(/\*\*/g, '').replace(/^\s*[-*]\s*/, '').replace(/^[^:]{1,40}:\s*/, '').trim();
@@ -211,7 +212,7 @@ export function createJamBrief(o) {
           : mode === 'hear' ? `${who} said this in the jam. Fold any new decision, fact or answer into the brief where it belongs. If it adds nothing to the brief, return the brief unchanged.\n"""${String(text).slice(0, 3000)}"""`
           : `${who} asks: """${String(text).slice(0, 2000)}"""\nDo exactly what they ask. "Rewrite", "it's wrong", "all details are wrong" mean rewrite those parts properly, not a recap. If it's a question, answer it in the reply and change the brief only if the answer belongs in it.`;
         const multi = MULTI(t, c) || ((w.doc.md.match(/^## Plan \d/gm) || []).length > 1 ? `\nThis brief holds several SEPARATE plans ("## Plan N: ..." sections). Keep them separate and never merge them into one plan unless the person explicitly asks to merge or combine them.` : '');
-        const j = await claudeTool(`${cardBrief({ ...c, agent: w.agent }, seatLine(t.viewer), t)}\n\nYou keep the jam brief for this card at ${BN()}: a free-flowing document the team, AI and the ShopOS team write together. The next people (the ShopOS team, an agency, a teammate) act from it, so it must be specific: who, what, where, when, how much, how we measure, who owns it.${multi}\n${promptBlock(t, w.agent === 'brew' ? 'creative' : w.agent)}${accountLine(t)}\nThe brand's fact sheet at the very top is reference for facts and numbers only: never copy its title, sections, tables or [k:…] tags into the jam brief.\nThe jam brief now:\n"""\n${w.doc.md}\n"""\n\n${task}\n\nRules: plain short sentences; keep the person's own words where they wrote them; numbers only from the facts list, the card or what people said; no internal jargon; Markdown only (# title once, ## headings, - bullets, **bold**). When someone asks for copy (a headline, caption, message, button, subject line) or to change it, write the finished words customers will see in a ## The copy section (- **Headline:** …, - **Body:** …, - **Button:** …), not a description of them, and fill them in the plan too. Return the whole brief. ${planAsk(t, c)}\n${MEASURE_ASK}`, SCHEMA, 4500, 'jam_doc');
+        const j = await claudeTool(`${cardBrief({ ...c, agent: w.agent }, seatLine(t.viewer), t)}\n\nYou keep the jam brief for this card at ${BN()}: a free-flowing document the brand's team, AI and our team write together. The next people (our team, an agency, a teammate) act from it, so it must be specific: who, what, where, when, how much, how we measure, who owns it.${multi}\n${promptBlock(t, w.agent === 'brew' ? 'creative' : w.agent)}${accountLine(t)}\nThe brand's fact sheet at the very top is reference for facts and numbers only: never copy its title, sections, tables or [k:…] tags into the jam brief.\nThe jam brief now:\n"""\n${w.doc.md}\n"""\n\n${task}\n\nRules: plain short sentences; keep the person's own words where they wrote them; numbers only from the facts list, the card or what people said; no internal jargon; Markdown only (# title once, ## headings, - bullets, **bold**). When someone asks for copy (a headline, caption, message, button, subject line) or to change it, write the finished words customers will see in a ## The copy section (- **Headline:** …, - **Body:** …, - **Button:** …), not a description of them, and fill them in the plan too. Return the whole brief. ${planAsk(t, c)}\n${MEASURE_ASK}`, SCHEMA, 4500, 'jam_doc');
         const md = unleak(clean(String(j.doc || '')).trim(), w.doc.md, w.title);
         if (md.length > 40) { const changed = setDoc(t, w, md, who === 'You' ? 'you' : who, mode === 'ask' ? String(text).slice(0, 80) : mode);
           if (j.plan) applyPlan(t, w, j.plan, 'ai', j.measure);
@@ -240,7 +241,7 @@ export function createJamBrief(o) {
   const syncHead = async (t, w, { text = '' } = {}) => {
     const ch = changeOf(t, w); if (!ch?.pkg) return null; const head = headOfCh(t, ch)?.id || null;
     if (head && w.doc.syncedHead === head) return { changed: [], same: true };
-    const r = await edit(t, w, text || syncText(t, w, ch), { who: 'Brew', mode: 'ask', sync: true });
+    const r = await edit(t, w, text || syncText(t, w, ch), { who: PRODUCT_NAME, mode: 'ask', sync: true });
     if (r?.ai) { w.doc.syncedHead = head; w.doc.asks = []; } /* offline nothing was rewritten: it stays behind and tries again */
     return r; };
 
@@ -251,10 +252,10 @@ export function createJamBrief(o) {
     if (!w?.doc || !m || !m.real || !['colleague', 'brew'].includes(m.from)) return;
     if (/^(the brew team has it|taking so-|noted\.|got the brief)/i.test(m.body || '')) return;
     clearTimeout(queue.get(w.id));
-    queue.set(w.id, setTimeout(() => { queue.delete(w.id); edit(t, w, m.body, { who: m.who || (m.from === 'brew' ? 'ShopOS team' : 'A teammate'), mode: 'hear' }).catch((e) => log.warn('[jam doc bg]', e.message)); }, 300));
+    queue.set(w.id, setTimeout(() => { queue.delete(w.id); edit(t, w, m.body, { who: m.who || (m.from === 'brew' ? 'Our team' : 'A teammate'), mode: 'hear' }).catch((e) => log.warn('[jam doc bg]', e.message)); }, 300));
   };
 
-  const waText = (t, w) => `*Jam: ${w.title}*\n\n${seed(t, w).md.replace(/^#{1,3}\s+/gm, '*').replace(/^(\*[^\n*]+)$/gm, '$1*')}\n\nReply here. When we’re done, paste this chat back into Brew and the brief updates. (jam ${w.id})`;
+  const waText = (t, w) => `*Jam: ${w.title}*\n\n${seed(t, w).md.replace(/^#{1,3}\s+/gm, '*').replace(/^(\*[^\n*]+)$/gm, '$1*')}\n\nReply here. When we’re done, paste this chat back into the jam and the brief updates. (jam ${w.id})`;
   const finalDoc = (t, w) => { const d = seed(t, w); return { kind: d.kind, md: d.md, missing: d.missing, contributors: [...new Set((d.edits || []).map((e) => e.by).filter(Boolean))], at: now(t) }; };
 
   const routes = ({ on, W, say, move, notify, nextTicket, handoff, learn = null, toSlack = null, askMake = null }) => {
@@ -273,7 +274,7 @@ export function createJamBrief(o) {
       const w = get(t, p.wid); if (!w) return { error: 'not found' }; const text = String(b.text || '').trim().slice(0, 3000);
       /* lazy (every studio edit): only what was asked is noted, no AI; the brief catches up on open or send */
       if (b.lazy) { const said = String(b.said || '').replace(/\s+/g, ' ').trim().slice(0, 200); if (said) w.doc.asks = [...(w.doc.asks || []), said].slice(-6); return { work: w, behind: behind(t, w) }; }
-      if (!changeOf(t, w)) { if (!text) return { error: 'empty' }; const r = await edit(t, w, text, { who: 'Brew', mode: 'ask', sync: true }).catch((e) => ({ error: e.message })); return { work: w, changed: r?.changed || [] }; }
+      if (!changeOf(t, w)) { if (!text) return { error: 'empty' }; const r = await edit(t, w, text, { who: PRODUCT_NAME, mode: 'ask', sync: true }).catch((e) => ({ error: e.message })); return { work: w, changed: r?.changed || [] }; }
       /* now (the Brief opened): one AI pass, only when the studio's head moved since the brief last followed it */
       const r = await syncHead(t, w, { text }).catch((e) => ({ error: e.message })); return { work: w, changed: r?.changed || [], same: !!r?.same };
     });
@@ -281,17 +282,17 @@ export function createJamBrief(o) {
       const w = get(t, p.wid); if (!w) return { error: 'not found' }; const text = String(b.text || '').trim(); if (!text) return { error: 'empty' };
       /* /update-brand-learnings (or a pasted call transcript in a fresh jam): Brew learns from it, the brief is left alone (brand-learnings.js) */
       const L = learn ? await learn(t, w, text).catch((e) => { log.warn('[learn]', e.message); return { said: null, reply: 'That didn’t go through, so nothing changed. Try again in a minute.' }; }) : null;
-      if (L) { say(t, w, { from: 'me', body: L.said || text, learn: true }); say(t, w, { from: 'ai', who: 'Brew', body: L.reply, learn: true }); return { work: w, changed: [], learned: L.n ?? null }; } /* learn: not the jam's own ask (the board keeps asking what to make) */
+      if (L) { say(t, w, { from: 'me', body: L.said || text, learn: true }); say(t, w, { from: 'ai', who: PRODUCT_NAME, body: L.reply, learn: true }); return { work: w, changed: [], learned: L.n ?? null }; } /* learn: not the jam's own ask (the board keeps asking what to make) */
       say(t, w, { from: 'me', body: text });
       /* "make it a reel": a paid image or video is proposed first, with Make it / Not now (feed-service propose) */
       const pd = askMake ? await askMake(t, w, text) : null; if (pd) return { work: w, changed: [], pending: pd };
       /* a question: one small grounded answer (the card, the brief, the facts, the connected numbers), checked, and the
          brief is not rewritten. Faster than re-writing the whole brief to answer it, and it never invents a result */
       /* "what's the evidence for this?": the card's own proof as the shield shows it, never the general answer and never a note in the brief (final QA pass 19 Oct, FEED-ARV-01) */
-      if (EVIDENCE_ASK.test(text) && o.proofOf) { const pa = o.proofOf(t, w); if (pa) { say(t, w, { from: 'ai', who: AGENT[w.agent] || 'Brew', body: pa, edited: [], answer: true }); return { work: w, changed: [], answered: true }; } }
+      if (EVIDENCE_ASK.test(text) && o.proofOf) { const pa = o.proofOf(t, w); if (pa) { say(t, w, { from: 'ai', who: AGENT[w.agent] || PRODUCT_NAME, body: pa, edited: [], answer: true }); return { work: w, changed: [], answered: true }; } }
       if (isQuestion(text)) {
         const c = cardOf(t, w.cardId) || { title: w.title, sub: '', agent: w.agent }; let body = 'AI is offline right now, so I can’t answer that. Type the answer into the brief, or ask a teammate with @.';
-        if (!isMock() && spend('text')) try { const a = await answerGrounded({ ai: (pr, sc, mx, tag) => claudeTool(pr, sc, mx, tag), question: text, who: AGENT[w.agent] || 'Brew',
+        if (!isMock() && spend('text')) try { const a = await answerGrounded({ ai: (pr, sc, mx, tag) => claudeTool(pr, sc, mx, tag), question: text, who: AGENT[w.agent] || PRODUCT_NAME,
           evidence: `${cardBrief({ ...c, agent: w.agent }, seatLine(t.viewer), t)}${accountLine(t) || '\n\nConnected accounts: none with results for this yet.'}\n\nThe jam brief:\n${w.doc.md}`,
           history: (w.thread || w.messages || []).slice(-6).map((m) => `${m.from === 'me' ? 'Them' : 'Brew'}: ${String(m.body || '').slice(0, 300)}`) }); body = clean(a.answer); } catch (e) { log.warn('[jam answer]', e.message); body = 'That didn’t go through, so nothing changed. Ask again in a minute.'; }
         say(t, w, { from: 'ai', who: AGENT[w.agent] || 'AI', body, edited: [], answer: true });
@@ -367,7 +368,7 @@ export function createJamBrief(o) {
       /* what's still missing is asked first, at once: the catch-up pass runs once they say send anyway (Param, 23 Oct: the ask
          came up late, after the AI pass) */
       if (w.doc.missing.length && !b.force) return { needs: w.doc.missing, work: w };
-      { const ch0 = changeOf(t, w), blk = (ch0?.checks || []).filter((x) => !x.ok && !x.soft && !x.mine).map((x) => `Brew’s check: ${x.k}`); if (blk.length && !b.force) return { needs: blk.slice(0, 4), work: w }; } /* what Brew still flags is asked before it goes, the same as a missing part */
+      { const ch0 = changeOf(t, w), blk = (ch0?.checks || []).filter((x) => !x.ok && !x.soft && !x.mine).map((x) => `Our check: ${x.k}`); if (blk.length && !b.force) return { needs: blk.slice(0, 4), work: w }; } /* what Brew still flags is asked before it goes, the same as a missing part */
       if (behind(t, w)) await syncHead(t, w).catch((e) => log.warn('[brief sync at send]', e.message));
       if (w.doc.missing.length && !b.force) return { needs: w.doc.missing, work: w };
       if (b.decided !== undefined) w.decided = b.decided || null;
@@ -386,14 +387,14 @@ export function createJamBrief(o) {
       if (to === 'shopos' && resend) return { work: w, share, status: w.jamBrief.status || null, already: true, emailed: true };
       let emailed = false;
       if (to === 'shopos') {
-        const sent = o.onBriefSent ? await o.onBriefSent(t, w).catch((e) => { log.warn('[brief sent]', e.message); return false; }) : (o.onShopos?.(t, w, { why: 'shared a brief with the ShopOS team', text: '' }), false);
+        const sent = o.onBriefSent ? await o.onBriefSent(t, w).catch((e) => { log.warn('[brief sent]', e.message); return false; }) : (o.onShopos?.(t, w, { why: 'shared a brief with our team', text: '' }), false);
         if (sent) Object.assign(w.jamBrief, { sentMd: w.jamBrief.md, sentAt: now(t) }); /* only what really went out counts as sent for the double-tap check */
         else { /* nothing went out (the demo site, or the mail failed): it is not "sent", so no status, no stamp, no pill; it stays ready to paste */
           const h = w.jamBrief.history || []; if (h[0]?.s === 'sent') h.shift();
           const keep = prev?.status && prev.to !== 'team'; w.jamBrief.status = keep ? prev.status : null; w.jamBrief.statusAt = keep ? prev.statusAt : null; }
         emailed = !!sent;
-        say(t, w, { from: 'system', body: `Brief ${w.ticket} ${sent ? 'sent to' : 'ready for'} the ShopOS team: the brief, deliverables, assets, rules and when it is done${open}. ${sent ? 'You’ll see each step here as they pick it up.' : 'Paste it where they work.'}` });
-        move(t, w, 'shared', `${w.ticket}: brief ${sent ? 'sent to' : 'shared with'} the ShopOS team`);
+        say(t, w, { from: 'system', body: `Brief ${w.ticket} ${sent ? 'sent to' : 'ready for'} our team: the brief, deliverables, assets, rules and when it is done${open}. ${sent ? 'You’ll see each step here as they pick it up.' : 'Paste it where they work.'}` });
+        move(t, w, 'shared', `${w.ticket}: brief ${sent ? 'sent to' : 'shared with'} our team`);
       } else {
         say(t, w, { from: 'system', body: `Brief ${w.ticket} copied for your team: the card, options, plan, assets and both chats${open}. Paste it where they work.` });
         if (teamOfShopos) w.jamBrief = { ...prev, teamCopyAt: now(t) }; else move(t, w, 'shared', `${w.ticket}: brief shared with your team`);
@@ -408,8 +409,8 @@ export function createJamBrief(o) {
       const to = String(b.status || ''), note = String(b.note || '').trim().slice(0, 2000);
       const r = moveStatus(w.jamBrief, to, { by: me, note, at: now(t) }); if (r.error) return { error: r.error, work: w };
       /* a status with a note is a real reply (it folds into the brief, jam-brief onSay); a bare status changes nothing in it */
-      say(t, w, { from: 'brew', who: me.name || 'ShopOS team', real: !!note, body: `${LABEL[to]}${note ? `: ${note}` : '.'}`, status: to });
-      notify(t, w, to === 'needs_info' ? `${w.ticket || 'Brief'}: the ShopOS team needs something from you` : `${w.ticket || 'Brief'}: ${LABEL[to].toLowerCase()} by the ShopOS team`, to === 'needs_info' ? 'needs_you' : 'update');
+      say(t, w, { from: 'brew', who: me.name || 'Our team', real: !!note, body: `${LABEL[to]}${note ? `: ${note}` : '.'}`, status: to });
+      notify(t, w, to === 'needs_info' ? `${w.ticket || 'Brief'}: our team needs something from you` : `${w.ticket || 'Brief'}: ${LABEL[to].toLowerCase()} by our team`, to === 'needs_info' ? 'needs_you' : 'update');
       o.onBriefStatus?.(t, w, { by: me, status: to, label: LABEL[to], note });
       return { work: w, status: w.jamBrief.status, history: w.jamBrief.history };
     });

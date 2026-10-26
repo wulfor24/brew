@@ -31,7 +31,7 @@ test('a move card says its move discipline, whatever team it was routed to', () 
 test('the team, ideas and Brew news say so', () => {
   assert.equal(cardFrom({ id: 'told-1', origin: 'told', sector: 'ads' }), 'From your team');
   assert.equal(cardFrom({ id: 'idea-1', origin: 'ideas', sector: 'visibility' }), 'New idea for you');
-  assert.equal(cardFrom({ id: 'b-1', origin: 'build', sector: 'signals', type: 'report' }), 'From Brew');
+  assert.equal(cardFrom({ id: 'b-1', origin: 'build', sector: 'signals', type: 'report' }), 'From us');
   assert.equal(cardFrom({ id: 'b-2', origin: 'build', campaign: 'From your ad plan' }), null);
 });
 
@@ -52,7 +52,7 @@ test('the page reads card.from, and the AI line only rides on AI answers cards',
 
 test('served cards say their source even though the workspace stores them with origin "seed"', () => {
   assert.equal(cardFrom({ id: 'idea-412e9b86ba', origin: 'seed', stream: 'ideas', sector: 'visibility' }), 'New idea for you');
-  assert.equal(cardFrom({ id: 'build-moves', origin: 'seed', family: 'result' }), 'From Brew');
+  assert.equal(cardFrom({ id: 'build-moves', origin: 'seed', family: 'result' }), 'From us');
   assert.equal(cardFrom({ id: 'ow-own-long-2026-10-19', origin: 'seed' }), 'From your ads');
   assert.equal(cardFrom({ id: 'lv-vis-score-2026-10-18' }), 'From AI answers');
   assert.equal(cardFrom({ id: 'lv-cat-oos-1' }), 'From your store');

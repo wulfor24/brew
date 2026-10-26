@@ -53,11 +53,11 @@ test('the email: one button into the product, on the check page; says honestly w
   const m = reminderMail({ name: 'Gully', slug: 'gully-com', i: 0, base: 'https://brew.example', hours: 3.2 });
   assert.match(m.html, /href="https:\/\/brew\.example\/gully-com\?go=feed#check"/);
   assert.match(m.text, /https:\/\/brew\.example\/gully-com\?go=feed#check/);
-  assert.match(m.subject, /Gully is waiting for you to check what Brew read/);
+  assert.match(m.subject, /Gully is waiting for you to check what we read/);
   assert.doesNotMatch(m.html, /never confirms/, 'Brew does go on without the check: the email never says otherwise');
-  assert.match(m.text, /Brew starts your brief once someone on the team checks it\./, 'no time limit (a read started signed out)');
+  assert.match(m.text, /We start your brief once someone on the team checks it\./, 'no time limit (a read started signed out)');
   const at = Date.UTC(2026, 9, 15, 9, 30), w = reminderMail({ name: 'Gully', slug: 'g', i: 0, hours: 3, writeAt: at, now: at - 60e3, cfg: { timezone: 'Asia/Kolkata' } });
-  assert.match(w.text, /Brew starts your brief at 15:00 \S+ with what it read, unless you check first\./);
+  assert.match(w.text, /We start your brief at 15:00 \S+ with what we read, unless you check first\./);
   assert.match(reminderMail({ name: 'Gully', slug: 'g', i: 1, hours: 26 }).text, /waited 1 day\. This is the last reminder/);
 });
 
@@ -111,7 +111,7 @@ test('feed wait: due after a few hours and a day, never once the feed opened, th
 
 test('feed email: the check layout, one button that opens the feed', () => {
   const m = feedReminderMail({ name: 'Gully', slug: 'gully-com', i: 0, base: 'https://brew.test', hours: 3.2 });
-  assert.match(m.subject, /Open your feed to start Gully’s moves/);
+  assert.match(m.subject, /Open your feed to start Gully’s plays/);
   assert.match(m.html, /href="https:\/\/brew\.test\/gully-com\?go=feed"/); assert.match(m.html, /Open my feed/);
   assert.match(m.text, /They have waited 3 hours\./); assert.doesNotMatch(m.text, /#check/);
   assert.match(feedReminderMail({ name: 'Gully', slug: 'gully-com', i: 1, hours: 26 }).text, /last reminder[\s\S]*waited 1 day|waited 1 day[\s\S]*last reminder/);

@@ -131,12 +131,12 @@ const META = {
     const pages = await all(`${A}/promote_pages`, c.token, { fields: 'id,name,website', limit: 100 }, 5).catch(() => null);
     /* a failed ad list is said, never read as "no ads": the totals are then the whole account's, with a note */
     const ads = await allSmaller(`${A}/ads`, c.token, { fields: 'id,campaign_id,effective_status,creative{effective_object_story_id,object_story_spec{page_id}}' }).catch((e) => (notes.push(`${m.name}: the ad list couldn’t be read this time (${e.message.slice(0, 90)}), so live ads aren’t counted and the totals are the whole account’s. The next refresh tries again.`), null));
-    if (ads?.capped) notes.push(`${m.name} has more than ${ads.length} ads; Brew read the first ${ads.length}.`);
+    if (ads?.capped) notes.push(`${m.name} has more than ${ads.length} ads; we read the first ${ads.length}.`);
     const counts = countPages(ads), own = (pages && ownPage(pages, ctx)) || ownFromAds(counts, ctx);
     const others = own ? otherBrands(counts, own.id) : [];
     const shared = !!(own && ads && others.length);
     const mine = shared ? new Set(ads.filter((x) => adPage(x) === String(own.id)).map((x) => x.id)) : null;
-    if (shared) notes.push(`${m.name} also runs ads for other Pages. Brew counts only the ads for ${own.name}.`);
+    if (shared) notes.push(`${m.name} also runs ads for other Pages. We count only the ads for ${own.name}.`);
     /* ads for several brands' Pages and none of them known to be this brand's: the totals are the whole account's, and say so */
     const big = [...counts.entries()].filter(([, n]) => n >= Math.max(5, (ads?.length || 0) * OTHER_SHARE)).length;
     m.whole = !own && big > 1; m.shared = shared; m.ownName = own?.name || null; m.ownPageId = own ? String(own.id) : null;
@@ -273,7 +273,7 @@ const META = {
       has(m.live) && L('meta.ads.live', per.some((x) => x.adsCapped || x.adsFailed) ? 'Live Meta ads (at least: the ad list was cut short)' : 'Live Meta ads', n0(m.live), m.live, src), top && L('meta.frequency.max', per.every((x) => x.campFreq) ? 'Highest campaign frequency, 7 days' : 'Highest campaign frequency, 7 days (average of its ads’ frequency)', top.freq.toFixed(1), top.freq, src),
       /* every connected account named with its own spend and live ads (2.7: a count is the account's, never the whole Page's) */
       L('meta.accounts', many ? 'Meta ad accounts connected (spend 30 days, live ads)' : 'Meta ad account connected (spend 30 days, live ads)', accounts.filter((a) => a.ok).map((a) => `${a.name} (${!a.currency || a.currency === cur ? F.big(a.spend) : `${a.currency} ${Math.round(a.spend).toLocaleString('en-US')}`} spent${a.live != null ? `, ${n0(a.live)} live ads` : ''})`).join('; '), accounts.filter((a) => a.ok).length, src),
-      top && m.camp.length && L('meta.frequency.def', 'How Brew counts frequency', 'Per campaign over 7 days: impressions over the people reached (the highest is the fact above)', null, src),
+      top && m.camp.length && L('meta.frequency.def', 'How we count frequency', 'Per campaign over 7 days: impressions over the people reached (the highest is the fact above)', null, src),
       /* the campaigns the budget and fatigue cards quote, so every name, return and daily figure on them traces to the account */
       m.camp.length && L('meta.campaigns.7d', 'Meta campaigns that spent this week (return, spend a day, frequency)', m.camp.map((x) => `${x.name}: ${roasX(x.roas) || 'no purchases tracked'}, ${F.money(x.spendDay)} a day, frequency ${x.freq.toFixed(1)}`).join('; '), m.campAll.length, src),
       shiftRow && L('meta.shift.day', 'A fifth of the weaker campaign’s daily spend', F.money(shiftRow.perDay), shiftRow.perDay, src)].filter(Boolean);

@@ -4,6 +4,7 @@
 // URI and kept in brands/_brew/private/sloosh-client.json; the tokens live encrypted in the _brew vault (vault.js), so a
 // flush (tools/flush-live.sh keeps _brew) and a deploy keep the connection. Tokens never reach a brand or a log.
 import crypto from 'node:crypto';
+import { PRODUCT_NAME } from './product-name.js';
 
 export const SCOPES = 'spacelab:read spacelab:author spacelab:execute user:org:read offline_access';
 export const AUTH_URL = () => (process.env.SLOOSH_AUTH_URL || 'https://clerk.sloosh.ai').replace(/\/$/, '');
@@ -26,7 +27,7 @@ export const pkce = () => { const verifier = b64u(crypto.randomBytes(32)); retur
 
 /* one registered client per redirect URI (RFC 7591); the probe tool registers one with no redirect for the device flow */
 export async function register({ redirect, fetchImpl = fetch, grants = ['authorization_code', 'refresh_token'], base = null } = {}) {
-  const body = { client_name: 'Brew', client_uri: process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', redirect_uris: redirect ? [redirect] : [], grant_types: grants, response_types: ['code'], token_endpoint_auth_method: 'none', scope: SCOPES };
+  const body = { client_name: PRODUCT_NAME, client_uri: process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', redirect_uris: redirect ? [redirect] : [], grant_types: grants, response_types: ['code'], token_endpoint_auth_method: 'none', scope: SCOPES };
   const r = await fetchImpl(`${base || await authServer(fetchImpl)}/oauth/register`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20e3) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.client_id) throw new Error(`Sloosh client registration failed (${r.status}): ${JSON.stringify(j).slice(0, 300)}`);
@@ -76,14 +77,14 @@ export function createSlooshAuth({ packs, vault, auth, log = console, fetchImpl 
      token short-lived (or that all got a 401 at once) share the same in-flight refresh, so a refresh token is never spent twice. */
   let refreshing = null;
   async function tokenFor({ force = false } = {}) {
-    const c = await load(); if (!c?.token) throw Object.assign(new Error('Brew is not connected to Sloosh yet. Brew staff connect it from the ops page.'), { off: true });
+    const c = await load(); if (!c?.token) throw Object.assign(new Error('Sloosh isn’t connected yet. Our team connects it from the ops page.'), { off: true });
     if (!force && c.exp - Date.now() > 10 * 60e3) return c.token;
     if (refreshing) return refreshing;
     if (force && c.refreshedAt && Date.now() - c.refreshedAt < 5e3) return c.token; /* a refresh just landed: the 401 was on the old token */
-    if (!c.refresh) throw Object.assign(new Error('Sloosh needs Brew staff to reconnect: the sign-in ran out and there is no refresh token.'), { expired: true });
+    if (!c.refresh) throw Object.assign(new Error('Sloosh needs our team to reconnect: the sign-in ran out and there is no refresh token.'), { expired: true });
     refreshing = (async () => {
       try { const t = await tokenRequest({ grant_type: 'refresh_token', refresh_token: c.refresh, client_id: c.client_id, ...(c.client_secret ? { client_secret: c.client_secret } : {}) }, { fetchImpl, base: c.authServer || 'https://clerk.app.shopos.ai' }); await save({ ...c, ...t, refreshedAt: Date.now() }); /* a token refreshes where it was issued */ return memo.token; }
-      catch (e) { log.warn('[sloosh] refresh failed', e.message); throw Object.assign(new Error('Sloosh needs Brew staff to reconnect: the refresh was refused.'), { expired: true, cause: e }); }
+      catch (e) { log.warn('[sloosh] refresh failed', e.message); throw Object.assign(new Error('Sloosh needs our team to reconnect: the refresh was refused.'), { expired: true, cause: e }); }
       finally { refreshing = null; }
     })();
     return refreshing;

@@ -3,6 +3,7 @@
 // "Hand off" is a brief link (/brief/<token>) for an agency, a creator or the team, with the scripts and briefs on it. Both links
 // are signed, open to anyone who has them, never expire, and the brand can turn them off (revoke). Nothing here posts anywhere.
 import crypto from 'node:crypto';
+import { PRODUCT_NAME } from '../product-name.js';
 import { reflow } from '../public/jam2/scene.js';
 import { recipe, SIZES } from './catalogue.js';
 import { headOf } from './core.js';
@@ -58,7 +59,7 @@ export function createReady({ maker, zipBuffer, log = console }) {
       ${it.rows?.length ? `<table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px"><tr>${(it.cols?.length ? it.cols : ['What', 'Where', 'Change']).map((c) => `<th style="text-align:left;border-bottom:1px solid var(--line);padding:6px">${esc(c)}</th>`).join('')}</tr>${it.rows.map((r) => `<tr>${[r.a, r.b, r.c].map((c) => `<td style="border-bottom:1px solid var(--line);padding:6px">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>` : ''}
       ${it.blocks.length ? `<div class="doc">${it.blocks.map((b) => `<h3>${esc(b.title)}</h3><p>${esc(b.text).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
       ${it.shots.length && !it.files.length ? `<ol class="shots">${it.shots.map((s) => `<li><b>${esc(s.sec)} s</b> ${esc(s.see)}${s.vo ? `<br><i>VO: ${esc(s.vo)}</i>` : ''}${s.words ? `<br>On screen: ${esc(s.words)}` : ''}</li>`).join('')}</ol>` : ''}</section>`;
-    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(kind === 'brief' ? 'Brief' : 'Ready to post')}: ${esc(jam.title)}</title>
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta name="description" content="${esc(kind === 'brief' ? 'The brief to make this' : 'Everything ready to post from your own accounts')}${brand ? ` for ${esc(brand)}` : ''}."><title>${esc(kind === 'brief' ? 'Brief' : 'Ready to post')}: ${esc(jam.title)}</title>
 <style>:root{--bg:#f6f5f2;--ink:#14161a;--mute:#6b6f76;--card:#fff;--line:#e6e3dc;--acc:#111}@media (prefers-color-scheme:dark){:root{--bg:#0f1012;--ink:#ecebe8;--mute:#9a9ca1;--card:#17181b;--line:#2a2b2f;--acc:#fff}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,Inter,sans-serif}main{max-width:980px;margin:0 auto;padding:28px 16px 60px}
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:22px}h1{margin:0;font-size:24px}header p{margin:4px 0 0;color:var(--mute)}
@@ -70,7 +71,7 @@ figcaption{font-size:13px;color:var(--mute);margin-top:6px}figcaption a{color:in
 .doc h3{font-size:14px;margin:14px 0 4px}.doc p{margin:0}.shots{padding-left:18px}footer{color:var(--mute);font-size:13px;margin-top:24px}</style></head><body><main>
 <header><div><h1>${esc(jam.title)}</h1><p>${esc(brand)}${brand ? ' · ' : ''}${kind === 'brief' ? 'Brief to make this' : 'Everything ready to post from your own accounts'}</p></div>${kind === 'post' && items.some((i) => i.files.length) ? '<a class="all" href="?zip=1">Download all</a>' : ''}</header>
 ${items.length ? items.map(card).join('') : '<p>Nothing approved yet.</p>'}
-<footer>Made with Brew. ${kind === 'brief' ? 'Questions go back to the team that sent this.' : 'Brew doesn’t post anything: you post it.'}</footer></main>
+<footer>Made with ${esc(PRODUCT_NAME)}. ${kind === 'brief' ? 'Questions go back to the team that sent this.' : 'We don’t post anything: you post it.'}</footer></main>
 <script>document.addEventListener('click',async(e)=>{const st=e.target.closest('[data-status]');if(st){st.disabled=true;const r=await fetch(location.pathname+'/status',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({board:st.closest('[data-board]').dataset.board,status:st.dataset.status})});if(r.ok)location.reload();else st.disabled=false;return}const b=e.target.closest('[data-copy]');if(!b)return;try{await navigator.clipboard.writeText(b.dataset.copy);const t=b.textContent;b.textContent='Copied';setTimeout(()=>b.textContent=t,1400)}catch{}});</script></body></html>`; };
   return { packOf, zip, page };
 }

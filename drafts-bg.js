@@ -40,6 +40,7 @@ import { genFlush as genFlush0 } from './gen-store.js';
 import { cleanDraftClaims, packSource } from './claims.js'; // the store's own claims only, in drafts made with nobody watching
 import { collageEdges, plainest, LOOKS_V } from './draft-quality.js'; // every saved draft picture passes the look check once
 import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
+import { PRODUCT_NAME } from './product-name.js';
 
 const H = 3600e3, DAY = 24 * H;
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
@@ -226,7 +227,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     const cut0 = cleanDraftClaims(j, packSource(p, c)); if (cut0.length) log.info?.('[drafts-bg] dropped unbacked claims', c.id, cut0.map((f) => f.phrase).join(', ')); /* QA-25: a code, guarantee or timed result the store never made never reaches a first draft */
     /* a clip is 9:16 from its first frame (Veo takes 9:16 or 16:9); Stories too */
     const ratio = kind === 'stories' || kind === 'video' ? '9:16' : DRAFT_RATIOS.includes(j.ratio) && j.ratio !== '16:9' ? j.ratio : c.make?.format === 'reel' ? '9:16' : '4:5';
-    const d = { k: 2, qv: LOOKS_V /* made through the judged guard */, cardId: c.id, key: draftKey(c), kind, format: c.make?.format || null, cardTitle: c.title, as: kind === 'stories' ? 'carousel' : ['email', 'whatsapp', 'page', 'collection', 'catalog'].includes(kind) ? kind : as, title: cut(j.title || 'First draft', 70), copy: String(j.copy || '').trim(), note: cut(j.note || '', 160), ratio, at: now(), by: 'Brew', bg: true };
+    const d = { k: 2, qv: LOOKS_V /* made through the judged guard */, cardId: c.id, key: draftKey(c), kind, format: c.make?.format || null, cardTitle: c.title, as: kind === 'stories' ? 'carousel' : ['email', 'whatsapp', 'page', 'collection', 'catalog'].includes(kind) ? kind : as, title: cut(j.title || 'First draft', 70), copy: String(j.copy || '').trim(), note: cut(j.note || '', 160), ratio, at: now(), by: PRODUCT_NAME, bg: true };
     if (j.visual) d.visual = cut(j.visual, 400); /* the scene, so the next draft goes elsewhere (and a final reruns it) */
     if (j.headline && ['image', 'collection', 'video'].includes(kind)) { d.headline = cut(String(j.headline).replace(/[#*_>`"“”]/g, ''), 80); d.headSmall = smallOf(d.copy, d.headline); }
     if (take) d.take = { n: o.take + 1, look: take, day: today(now()) };
@@ -532,7 +533,7 @@ export function seedDrafts(w, c, firstDrafts = {}, { uid = () => 'dr' + Math.ran
   if (!w || !c || (w.drafts || []).length) return false;
   const d = draftFor(c, firstDrafts); if (!d) return false;
   const { cardId, key, k, kind, format, cardTitle, usd, bg, wants, motion, retried, failedAt, fails, ip, imgText, imgRetry, clipRetry, checkedAt, photoOnly, retryAt, prev, takes, takeDay, take, videoDay, clipStill, poster, clipHead, headSmall, labelApprox, ...rest } = d;
-  const asked = (x) => (['image', 'carousel', 'video', 'voice', 'text'].includes(x) ? x : 'auto'), seed = (x, o = {}) => ({ ...x, id: uid('dr'), asked: asked(x.as), state: 'ready', step: null, at, doneAt: at, by: 'Brew', seeded: true, ...o });
+  const asked = (x) => (['image', 'carousel', 'video', 'voice', 'text'].includes(x) ? x : 'auto'), seed = (x, o = {}) => ({ ...x, id: uid('dr'), asked: asked(x.as), state: 'ready', step: null, at, doneAt: at, by: PRODUCT_NAME, seeded: true, ...o });
   /* an image ad with its daily clip opens as two drafts: the static as made, and the clip (9:16, from its own first frame) */
   const clip = clipStill && rest.video ? seed({ ...rest, as: 'video', image: clipStill, render: undefined, ratio: '9:16' }) : null;
   const main = clip ? seed((({ video: _v, audio: _a, ...x }) => x)(rest)) : seed(rest);

@@ -35,8 +35,8 @@
   const beats = () => [
     { id: 'seat', kind: 'tap', q: 'Who’s this feed for?', p: 'Pick your seat. The feed ranks and words every card for it. You can switch any time.', tiles: seatTiles(), get: () => V().role, set: (v) => setViewer({ role: v, wants: V().wantsTouched ? V().wants : A().defaultWants(v) }) },
     { id: 'first', kind: 'tap', multi: 2, q: 'What should come first?', p: 'Pick up to two.', tiles: Object.entries(B().wants || {}).slice(0, 4).map(([k, w]) => ({ v: k, t: w.name, s: w.line })), get: () => V().wants || [], set: (v) => setViewer({ wants: v, wantsTouched: true }) },
-    { id: 'channels', kind: 'tap', multi: 6, optional: true, q: 'Which channels do you run?', p: 'Pick every one you run. Moves for the others sit lower.', tiles: [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['google', 'Google'], ['email', 'Email'], ['whatsapp', 'WhatsApp'], ['marketplace', 'Marketplaces']].map(([v, t]) => ({ v, t, chan: v })), get: () => V().channels || [], set: (v) => setViewer({ channels: v }) },
-    { id: 'lead', kind: 'brand', needs: 'catalog', q: 'Which of these should Brew lead with?', p: 'Tap the ones to push first. × if it isn’t a real product.' },
+    { id: 'channels', kind: 'tap', multi: 6, optional: true, q: 'Which channels do you run?', p: 'Pick every one you run. Plays for the others sit lower.', tiles: [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['google', 'Google'], ['email', 'Email'], ['whatsapp', 'WhatsApp'], ['marketplace', 'Marketplaces']].map(([v, t]) => ({ v, t, chan: v })), get: () => V().channels || [], set: (v) => setViewer({ channels: v }) },
+    { id: 'lead', kind: 'brand', needs: 'catalog', q: 'Which of these should we lead with?', p: 'Tap the ones to push first. × if it isn’t a real product.' },
     { id: 'rivals', kind: 'brand', needs: 'rivals', q: 'Who do you lose sales to?', p: 'Keep the brands you really compete with. × if it isn’t a rival.' }
   ].filter((b) => !(b.kind === 'brand' && st?.confirmed));
   const beatAt = (i) => beats()[i];
@@ -57,7 +57,7 @@
   /* ---------- a tap: v1's tiles, keys 1–4, Space confirms a multi-select ---------- */
   const CHAN = { instagram: 'instagram.svg', facebook: 'meta.svg', google: 'google.svg', whatsapp: 'whatsapp.svg', marketplace: 'amazon.svg' };
   const chanGlyph = (v) => `<span class="ob2-ic">${CHAN[v] ? `<img src="assets/logos/${CHAN[v]}" alt="">` : ic(v === 'email' ? 'send' : 'grid', 's18')}</span>`;
-  const tileHtml = (t, i, on) => `<button class="ob2-tile" data-v="${esc(t.v)}" aria-pressed="${on}">${t.face ? face(t.face) : t.chan ? chanGlyph(t.chan) : t.glyph ? `<span class="ob2-ic">${A().glyph(t.glyph, 34)}</span>` : ''}<b>${esc(t.t)}</b>${t.s ? `<span>${esc(t.s)}</span>` : ''}${t.star ? `<small class="v2-star">Brew’s pick</small>` : ''}<kbd class="v2-kbd">${i + 1}</kbd><i class="ob2-tick">${ic('check', 's14')}</i></button>`;
+  const tileHtml = (t, i, on) => `<button class="ob2-tile" data-v="${esc(t.v)}" aria-pressed="${on}">${t.face ? face(t.face) : t.chan ? chanGlyph(t.chan) : t.glyph ? `<span class="ob2-ic">${A().glyph(t.glyph, 34)}</span>` : ''}<b>${esc(t.t)}</b>${t.s ? `<span>${esc(t.s)}</span>` : ''}${t.star ? `<small class="v2-star">Our pick</small>` : ''}<kbd class="v2-kbd">${i + 1}</kbd><i class="ob2-tick">${ic('check', 's14')}</i></button>`;
   const nav = (label, back0 = true) => `<div class="ob2-nav">${back0 ? `<button class="btn btn-ghost lg" id="v2-back">${ic('left', 's18')} Back</button>` : '<span></span>'}<button class="btn btn-primary lg" id="v2-next">${label} ${ic('right', 's18')}</button></div>`;
   const tap = (b) => {
     let cur = b.multi ? [...(b.get() || [])] : b.get();

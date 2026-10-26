@@ -18,13 +18,13 @@ export function fitIndex(idx, moves = {}) {
   const box = (i, r) => (boxes[i][r] || '').padEnd(W);
   const diagram = [INDEX_GROUPS.map((g) => g[1].slice(0, W + 2).padEnd(W + 4)).join(' '), INDEX_GROUPS.map(() => '┌' + '─'.repeat(W + 2) + '┐').join('  '),
     ...[0, 1, 2, 3].map((r) => INDEX_GROUPS.map((_, i) => `│ ${box(i, r)} │`).join(r === 1 ? '─>' : '  ')), INDEX_GROUPS.map(() => '└' + '─'.repeat(W + 2) + '┘').join('  '),
-    INDEX_GROUPS.map(([g]) => `${by(g).length} moves`.padEnd(W + 4)).join(' ')].join('\n');
+    INDEX_GROUPS.map(([g]) => `${by(g).length} plays`.padEnd(W + 4)).join(' ')].join('\n');
   const sections = idx.sections.map((sec) => {
     const gi = INDEX_GROUPS.findIndex(([, h]) => h === sec?.h);
     if (gi < 0) return { ...sec, blocks: (sec.blocks || []).map((b) => (b?.t === 'diagram' && /[┌│└]/.test(b.text || '') ? { ...b, text: diagram } : b)) };
     const [g, , sub] = INDEX_GROUPS[gi], list = by(g);
     return { ...sec, blocks: (sec.blocks || []).map((b) => (b?.t === 'table' ? { ...b, rows: list.map((m) => [pad(m.n), m.title, m.gives || '', [m.stat, m.statLabel].filter(Boolean).join(' · ')]) }
-      : b?.t === 'p' && /\bMOVES?\*\*\s*$/.test(b.text || '') ? { ...b, text: `**${sub} · ${list.length} MOVE${list.length === 1 ? '' : 'S'}**` } : b)) };
+      : b?.t === 'p' && /\b(?:MOVES?|PLAYS?)\*\*\s*$/.test(b.text || '') ? { ...b, text: `**${sub} · ${list.length} PLAY${list.length === 1 ? '' : 'S'}**` } : b)) };
   });
-  return { ...idx, sections, stat: String(all.length), statLabel: 'MOVES IN THE PLAYBOOK', meta: { ...(idx.meta || {}), written: all.length, total: all.length, provisional: false } };
+  return { ...idx, sections, stat: String(all.length), statLabel: 'PLAYS IN THE PLAYBOOK', meta: { ...(idx.meta || {}), written: all.length, total: all.length, provisional: false } };
 }

@@ -6,6 +6,7 @@
 // SLACK_CLIENT_ID / SLACK_CLIENT_SECRET are set; SLACK_SIGNING_SECRET checks every request Slack sends us.
 import crypto from 'node:crypto';
 import { form } from './common.js';
+import { PRODUCT_NAME } from '../product-name.js';
 
 const app = () => ({ id: process.env.SLACK_CLIENT_ID || '', secret: process.env.SLACK_CLIENT_SECRET || '', signing: process.env.SLACK_SIGNING_SECRET || '' });
 export const SCOPES = 'chat:write,chat:write.public,incoming-webhook,channels:join,channels:read,groups:read,channels:history,groups:history,users:read,users:read.email,team:read';
@@ -28,8 +29,8 @@ export function verify(raw, headers, secret = app().signing, now = Date.now()) {
 }
 
 /* plain words for what Slack refused */
-const WHY = { not_in_channel: 'Brew isn’t in that channel. Invite @Brew to it, or pick a public channel.', channel_not_found: 'That channel is gone or private. Invite @Brew to it first.',
-  is_archived: 'That channel is archived.', invalid_auth: 'Slack signed Brew out. Connect Slack again.', token_revoked: 'Slack signed Brew out. Connect Slack again.', account_inactive: 'Slack signed Brew out. Connect Slack again.' };
+const WHY = { not_in_channel: `We aren’t in that channel. Invite @${PRODUCT_NAME} to it, or pick a public channel.`, channel_not_found: `That channel is gone or private. Invite @${PRODUCT_NAME} to it first.`,
+  is_archived: 'That channel is archived.', invalid_auth: 'Slack signed us out. Connect Slack again.', token_revoked: 'Slack signed us out. Connect Slack again.', account_inactive: 'Slack signed us out. Connect Slack again.' };
 export const why = (e) => WHY[e?.slack] || e?.message || 'Slack didn’t take that. Try again.';
 
 /* join a public channel (channels:join); for a private one the team types /invite @Brew in it */
@@ -41,7 +42,7 @@ export default {
   oauthOn: () => !!(app().id && app().secret),
   authorize({ state, redirect }) { return `https://slack.com/oauth/v2/authorize?${form({ client_id: app().id, scope: SCOPES, redirect_uri: redirect, state })}`; },
   async exchange({ query, redirect }) {
-    if (query.get('error')) throw Object.assign(new Error('Slack didn’t let Brew in. Try again and press Allow.'), { user: true });
+    if (query.get('error')) throw Object.assign(new Error('Slack didn’t let us in. Try again and press Allow.'), { user: true });
     const r = await fetch('https://slack.com/api/oauth.v2.access', { method: 'POST', signal: AbortSignal.timeout(20e3), headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: form({ client_id: app().id, client_secret: app().secret, code: query.get('code'), redirect_uri: redirect }) });
     const j = await r.json().catch(() => ({}));

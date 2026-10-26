@@ -106,6 +106,6 @@ export function conflicts(cards, { value = () => 0, live = (c) => /^live-/.test(
   for (let i = 0; i < named.length; i++) for (let j = i + 1; j < named.length; j++) { const [a, na] = named[i], [b, nb] = named[j];
     for (const n of na) { if (!nb.has(n)) continue; const sa = sideOf(a, n), sb = sideOf(b, n); if (!sa || !sb || sa === sb) continue;
       const win = live(a) !== live(b) ? (live(a) ? a : b) : value(a) >= value(b) ? a : b, lose = win === a ? b : a;
-      if (!out.has(lose.id)) out.set(lose.id, { by: win.id, why: `Another card says to ${sideOf(win, n) === 'grow' ? 'grow' : 'stop'} ${n}; Brew kept the one ${live(win) ? 'read from your account today' : 'with the stronger evidence'}.` }); break; } }
+      if (!out.has(lose.id)) out.set(lose.id, { by: win.id, why: `Another card says to ${sideOf(win, n) === 'grow' ? 'grow' : 'stop'} ${n}; we kept the one ${live(win) ? 'read from your account today' : 'with the stronger evidence'}.` }); break; } }
   return out;
 }

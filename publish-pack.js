@@ -151,7 +151,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
         put('product-schema.json', JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: it.name || brand.product || name, ...(it.img && /^https?:/.test(it.img) ? { image: it.img } : {}), brand: { '@type': 'Brand', name },
           ...(amt && cur ? { offers: { '@type': 'Offer', price: amt, priceCurrency: cur, availability: `https://schema.org/${it.out ? 'OutOfStock' : 'InStock'}`, ...(it.url ? { url: it.url } : {}) } } : {}),
           ...(es.length ? { additionalProperty: es.map((e) => ({ '@type': 'PropertyValue', name: e.q, value: e.a })) } : {}) }, null, 2) + '\n');
-        if (!(amt && cur)) todo.push('Add the price and currency to product-schema.json (offers): Brew couldn’t read them for this product.'); }
+        if (!(amt && cur)) todo.push('Add the price and currency to product-schema.json (offers): we couldn’t read them for this product.'); }
       if (key !== 'schema_fix') {
       put('faq.html', `<section class="brew-faq">\n${p.asOf ? `  <p class="as-of">As of ${esc(p.asOf)}</p>\n` : ''}${es.map((e) => `  <details>\n    <summary>${esc(e.q)}</summary>\n    ${wordsHtml(e.a, esc) || '<p></p>'}${e.source ? `\n    <p class="source">Source: ${esc(e.source)}</p>` : ''}\n  </details>`).join('\n')}\n</section>\n`);
       put('faq-jsonld.html', `<script type="application/ld+json">\n${JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: es.map((e) => ({ '@type': 'Question', name: e.q, acceptedAnswer: { '@type': 'Answer', text: e.a } })) }, null, 2)}\n</script>\n`);
@@ -189,7 +189,7 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
       break;
     case 'meta_ops':
       put('ads-manager-changes.csv', csv([['ad_set_or_ad', 'now', 'change_to', 'rule', 'checks'], ...(p.items || []).map((r) => [r.name, r.now, r.next, p.rule || '', p.checkAt || ''])]));
-      put('do-this-in-ads-manager.txt', lines(`${act}${p.summary ? `: ${p.summary}` : ''}`, '', 'Brew changes nothing in your ad account. Open Meta Ads Manager and make each change below by hand:', '', ...(p.items || []).map((r, i) => `${i + 1}. ${r.name}: ${r.now} → ${r.next}`), p.rule && `\nRule: ${p.rule}`, p.checkAt && `Checks: ${p.checkAt}`, p.spendChangeWeek ? `\nSpend change a week: ${p.spendChangeWeek}` : ''));
+      put('do-this-in-ads-manager.txt', lines(`${act}${p.summary ? `: ${p.summary}` : ''}`, '', 'We change nothing in your ad account. Open Meta Ads Manager and make each change below by hand:', '', ...(p.items || []).map((r, i) => `${i + 1}. ${r.name}: ${r.now} → ${r.next}`), p.rule && `\nRule: ${p.rule}`, p.checkAt && `Checks: ${p.checkAt}`, p.spendChangeWeek ? `\nSpend change a week: ${p.spendChangeWeek}` : ''));
       where.unshift('Meta Ads Manager: make each change in ads-manager-changes.csv by hand (do-this-in-ads-manager.txt says it step by step).');
       break;
     case 'print': {
@@ -225,9 +225,9 @@ export async function buildPack({ ch, pkg: p = {}, family, version = 1, brand = 
   }
   for (const a of assets) if (a.kind === 'link' && a.url && !links.includes(a.url)) links.push(a.url);
   if (links.length) put('links.txt', [...new Set(links)].join('\n') + '\n');
-  if (cut.length) todo.unshift(`Brew took these out of the copy here because your store doesn’t back them: ${cut.map((x) => `“${x}”`).join(', ')}. The jam still shows them: edit them there too.`); /* the zip's words differ from the jam's: say so */
+  if (cut.length) todo.unshift(`We took these out of the copy here because your store doesn’t back them: ${cut.map((x) => `“${x}”`).join(', ')}. The jam still shows them: edit them there too.`); /* the zip's words differ from the jam's: say so */
   const readme = lines(`${act} — ${name}, version ${version}`, '',
-    `Brew made this pack and changes nothing in your accounts. Nothing here is live until someone on your team puts it up.`, '',
+    `We made this pack and change nothing in your accounts. Nothing here is live until someone on your team puts it up.`, '',
     'WHERE EACH PART GOES', ...where.map((w) => `- ${w}`), '',
     todo.length && ['STILL TO DO', ...todo.map((x) => `- ${x}`), ''].join('\n'),
     ch.money ? `Spend: ${ch.costLabel || 'this spends money; confirm the budget before it runs'}` : 'Spend: none',

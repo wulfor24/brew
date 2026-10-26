@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from './product-name.js';
 // One look for every email Brew sends (invites, team changes, moves ready, jam emails, the ShopOS team).
 // Email clients are not browsers: tables for layout, inline styles only, no SVG, no web fonts, a PNG logo
 // served from the live site, a hidden preheader for the inbox preview, and a button that still works when
@@ -51,7 +52,7 @@ export function emailHtml({ title, eyebrow = '', preheader = '', body = '', cta 
   /* logo row */
   `<tr><td bgcolor="${C.band}" style="background:${C.band};border-radius:20px 20px 0 0;padding:16px 24px"><a href="${esc(base)}" style="text-decoration:none"><table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
   `<td valign="middle"><img src="${esc(base)}/icons/icon-192.png" width="26" height="26" alt="" style="display:block;border:0;border-radius:7px"></td>` +
-  `<td valign="middle" style="padding-left:9px;font:600 16px/1 ${FONT};color:#FAFAFA;letter-spacing:-.01em">Brew</td></tr></table></a></td></tr>` +
+  `<td valign="middle" style="padding-left:9px;font:600 16px/1 ${FONT};color:#FAFAFA;letter-spacing:-.01em">${esc(PRODUCT_NAME)}</td></tr></table></a></td></tr>` +
   /* card */
   `<tr><td bgcolor="${C.card}" style="background:${C.card};border:1px solid ${C.line};border-top:0;border-radius:0 0 20px 20px;padding:30px 32px 30px">` +
   (eyebrow ? `<div style="font:600 12px/1 ${FONT};letter-spacing:.06em;text-transform:uppercase;color:${C.muted};margin:0 0 12px">${esc(eyebrow)}</div>` : '') +
@@ -64,7 +65,7 @@ export function emailHtml({ title, eyebrow = '', preheader = '', body = '', cta 
   /* footer */
   `<tr><td style="padding:20px 8px 0;font:12px/1.6 ${FONT};color:${C.faint}">` +
   (footer ? `<div style="margin:0 0 8px">${footer}</div>` : '') +
-  `Sent by Brew · <a href="${esc(base)}" style="color:${C.faint};text-decoration:underline">${esc(host)}</a></td></tr>` +
+  `Sent by ${esc(PRODUCT_NAME)} · <a href="${esc(base)}" style="color:${C.faint};text-decoration:underline">${esc(host)}</a></td></tr>` +
   `</table></td></tr></table></body></html>`;
 }
 

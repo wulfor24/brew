@@ -36,7 +36,7 @@ test('Slack: the token exchange keeps the workspace and the channel picked, and 
     const d = await slack.sync(c); assert.deepEqual(d.ledger, []); assert.deepEqual(d.cards, []);
     assert.deepEqual(d.stats, [['Workspace', 'Cozy HQ'], ['Channel', '#growth']]);
   } finally { globalThis.fetch = f0; }
-  await assert.rejects(() => slack.exchange({ query: new URLSearchParams('error=access_denied'), redirect: 'x' }), /didn’t let Brew in/);
+  await assert.rejects(() => slack.exchange({ query: new URLSearchParams('error=access_denied'), redirect: 'x' }), /didn’t let us in/);
 });
 
 test('Slack: an error from the Web API is an error, never an empty answer', async () => {

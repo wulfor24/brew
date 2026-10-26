@@ -79,7 +79,7 @@ export const SCHEMA = { type: 'object', properties: { cards: { type: 'array', it
   sub: { type: 'string', description: 'Two short sentences, at most 32 words in all: what Brew saw (with its number), then what to do and what the brand gets.' },
   why: { type: 'array', items: { type: 'string' }, description: 'The same reasons as the original, each under 12 everyday words. Same count as the original, at most 3.' },
   how: { type: 'array', items: { type: 'string' }, description: 'The same steps as the original, each under 10 everyday words, starting with a verb. Same count as the original, at most 3.' },
-  because: { type: 'string', description: 'One or two sentences, under 40 words: why Brew suggests this, naming the evidence in plain words ("Brew suggests this because ...").' }
+  because: { type: 'string', description: 'One or two sentences, under 40 words: why we suggest this, naming the evidence in plain words ("We suggest this because ...").' }
 }, required: ['id', 'title', 'sub', 'why', 'how', 'because'] } } }, required: ['cards'] }; /* every field asked for: an optional one was often left out (19 Oct: 154 of 167 Arata cards came back with no body, steps or reason) */
 
 export const prompt = (brand, list) => `You rewrite cards in a marketing app for ${brand || 'a brand'}'s team so anyone gets each one in two seconds, with no decoding.
@@ -95,7 +95,7 @@ How to write:
 - Keep the ad platform's level words as written: a campaign, an ad set (Google: an ad group) and an ad are different things. Never call a campaign an ad set or an ad, or the other way round.
 - Never add a fact, claim or promise the original doesn't make. Same meaning, same advice, simpler words.
 - Never turn an idea into something Brew saw. "May", "might" and "can" stay. Say people are asking, complaining or worried, that visitors leave, bounce or abandon carts, that sales, orders or ad results are up or down, or that people search for something, only when the original says Brew saw it. Happy reviews are proof that it works, never doubt.
-- "because" names the evidence the original names (a review, a thread, a page Brew read, an account number). When the original gives a reason without evidence, say it as an idea: "Brew suggests this because buyers may worry ...".
+- "because" names the evidence the original names (a review, a thread, a page Brew read, an account number). When the original gives a reason without evidence, say it as an idea: "We suggest this because buyers may worry ...".
 - Write in the same language as the original.
 
 Cards (JSON):

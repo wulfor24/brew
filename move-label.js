@@ -12,7 +12,7 @@ export const moveLabel = (n) => (isWeekly(n) ? `Weekly play ${+n - WEEKLY_BASE}`
 const W = (all, at, w = 'Weekly') => (at === 0 || /[.!?:·(\n]\s*$/.test(all.slice(Math.max(0, at - 3), at)) ? w : w.toLowerCase()); /* a capital only where a sentence starts */
 const one = (n, all, at) => (isWeekly(n) ? `${W(all, at)} play ${+n - WEEKLY_BASE}` : isTimely(n) ? `${W(all, at, 'Timely')} play` : null);
 export const moveSay = (s) => (typeof s !== 'string' || !/\bMoves?\b[\d ,&and]*\b\d{3,4}\b/i.test(s) ? s : s
-  .replace(/\bMoves ((?:1\d{3})(?:(?:, | and | & )1\d{3})+)\b/gi, (m, list, at, all) => `${W(all, at)} moves ${list.replace(/1\d{3}/g, (x) => String(+x - WEEKLY_BASE))}`)
+  .replace(/\bMoves ((?:1\d{3})(?:(?:, | and | & )1\d{3})+)\b/gi, (m, list, at, all) => `${W(all, at)} plays ${list.replace(/1\d{3}/g, (x) => String(+x - WEEKLY_BASE))}`)
   .replace(/\bMoves (\d{1,4}(?:(?:, | and | & )\d{1,4})+)\b/gi, (m, list, at, all) => (!/\b\d{3,4}\b/.test(list) ? m : list.replace(/\d{1,4}/g, (x, i) => { const l = one(x, all, i ? 1 : at) || `${W(all, i ? 1 : at, 'Play')} ${String(x).padStart(2, '0')}`; return i ? l[0].toLowerCase() + l.slice(1) : l; }))) /* a mixed list: each move as it reads alone ("Move 05 and timely move") */
   .replace(/\bMove (\d{3,4})\b/gi, (m, n, at, all) => one(n, all, at) || m));
 /* a source line a person reads ("Move 08 · Ads", "Moves 3 and 4"): moves are called Plays (23 Oct QA 3.10). Only lines that name a

@@ -9,7 +9,7 @@
   const read = () => { try { return { model: 'auto', image: 'auto', memory: true, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { model: 'auto', image: 'auto', memory: true }; } };
   let P = read(); const save = () => { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch {} };
   const UI = { open: null, cat: null, mem: null, connOpen: null };
-  const THINK = [['auto', 'Auto', 'Brew picks for each step'], ['deep', 'Deep', 'Thinks longer · strategy and plans'], ['fast', 'Fast', 'Answers quickly · short edits']];
+  const THINK = [['auto', 'Auto', 'Picks for each step'], ['deep', 'Deep', 'Thinks longer · strategy and plans'], ['fast', 'Fast', 'Answers quickly · short edits']];
   const IMAGE = [['auto', 'Auto', 'The right one for the format'], ['gemini', 'Gemini 3 Pro Image', 'Keeps the product and its label exact'], ['gpt-image', 'GPT Image', 'Edits your product photo']];
   const LOGO = { shopify: 'S', meta: '∞', google: 'G', ga4: 'A', klaviyo: 'K', reviews: '★', slack: '#' }; /* one style: a letter or mark on a soft tile, never an emoji */
 
@@ -30,9 +30,9 @@
   const plusPop = () => pop('plus', `<button type="button" data-cmp-file>${ic('doc', 's16')}<span><b>A CSV or text file</b><small>Numbers, a list, notes. The AI reads it</small></span></button>
     ${inStudio() ? `<button type="button" data-cmp-shot>${ic('pic', 's16')}<span><b>A screenshot or image</b><small>Point at what to change. Or paste it with ⌘V</small></span></button><input type="file" data-cmp-shot-in hidden multiple accept="image/png,image/jpeg,image/webp,image/gif">` : ''}
     <button type="button" data-cmp-photo>${ic('pic', 's16')}<span><b>A photo of your product</b><small>Drafts use it as the product shot</small></span></button><input type="file" data-cmp-img hidden accept="image/png,image/jpeg,image/webp">
-    <button type="button" data-cmp-link>${ic('link', 's16')}<span><b>A link</b><small>Adds the address to your message (Brew doesn’t open it)</small></span></button>
+    <button type="button" data-cmp-link>${ic('link', 's16')}<span><b>A link</b><small>Adds the address to your message (we don’t open it)</small></span></button>
     <button type="button" data-jm-import>${ic('copy', 's16')}<span><b>Paste a chat</b><small>From WhatsApp or Slack</small></span></button>
-    ${inStudio() ? '' : `<button type="button" data-cmp-learn>${ic('sparkles', 's16')}<span><b>Brand learnings</b><small>Paste a call, notes or emails. Brew learns from them</small></span></button>`}
+    ${inStudio() ? '' : `<button type="button" data-cmp-learn>${ic('sparkles', 's16')}<span><b>Brand learnings</b><small>Paste a call, notes or emails. We learn from them</small></span></button>`}
     <input type="file" data-cmp-in hidden accept=".csv,.txt,.md,text/plain,text/csv">
     ${inStudio() ? '' : `<small class="cmp-k">Make a draft as</small><div class="cmp-as">${[['image', 'pic', 'Image'], ['carousel', 'grid', 'Carousel'], ['video', 'vid', 'Video'], ['voice', 'mic', 'Voice'], ['text', 'txt', 'Text']].map(([k, i, l]) => `<button type="button" data-jm-make="${k}">${ic(i, 's16')}<span>${l}</span></button>`).join('')}</div>`}`);
   const modelPop = () => pop('model', `<small class="cmp-k">Thinking</small>${THINK.map(([k, n, d]) => `<button class="${P.model === k ? 'is-on' : ''}" data-cmp-think="${k}"><span><b>${n}</b><small>${d}</small></span>${P.model === k ? ic('check', 's16') : ''}</button>`).join('')}
@@ -40,7 +40,7 @@
     <small class="cmp-k">Making video and voice</small><div class="cmp-fixed"><span><b>Veo 3.1 Fast</b> video · 6 s clips</span><span><b>Gemini TTS</b> voiceover</span></div>`);
   const memPop = () => { const m = UI.mem, ls = (m?.lessons || []).slice(0, 6), rs = (m?.rules || []).filter((r) => r.on !== false).slice(0, 4);
     /* a header with a switch, then what Brew learned as quiet rows; Forget shows on hover (always on touch) */
-    return pop('mem', `<label class="cmp-sw"><span><b>Memory</b><small>What Brew learned from your edits, choices and results</small></span><input type="checkbox" class="cmp-tg" role="switch" data-cmp-mem${P.memory ? ' checked' : ''} aria-label="Use memory in this jam"></label>
+    return pop('mem', `<label class="cmp-sw"><span><b>Memory</b><small>What we learned from your edits, choices and results</small></span><input type="checkbox" class="cmp-tg" role="switch" data-cmp-mem${P.memory ? ' checked' : ''} aria-label="Use memory in this jam"></label>
       ${!m ? '<div class="cmp-load"><brew-load class="spin"></brew-load></div>' : ls.length || rs.length ? `<ul class="cmp-mem${P.memory ? '' : ' is-off'}">${rs.map((r) => `<li><i class="cmp-mk is-rule" title="A rule your team set"></i><span>${esc(r.text)}</span></li>`).join('')}${ls.map((x) => `<li><i class="cmp-mk${x.results?.length ? ' is-res' : ''}" title="${x.results?.length ? 'Backed by a measured result' : 'Learned from your choices'}"></i><span>${esc(x.text)}</span><button class="cmp-forget" data-cmp-forget="${esc(x.id)}" title="Forget this" aria-label="Forget this">${ic('x', 's14')}</button></li>`).join('')}</ul>` : '<p class="cmp-none">Nothing learned yet. It builds as you jam, decide and see results.</p>'}`); };
   const connPop = () => { const c = UI.cat;
     if (!c) return pop('conn', '<div class="cmp-load"><brew-load class="spin"></brew-load>Reading your accounts…</div>');

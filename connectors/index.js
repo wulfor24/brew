@@ -69,7 +69,7 @@ export const simOnly = (id) => DEMO || !REAL[id];
 import { movedAway } from '../moved.js'; // staging: a moved brand's sign-ins are renewed, and its admins emailed, by production only
 import { PROTECTED, isProtected } from './protected.js'; // brands whose live connections are never dropped or replaced by accident
 export { PROTECTED, isProtected };
-const PROTECTED_WHY = 'This brand’s connections are protected while it is live with a client. Ask a Brew admin if it really has to change.';
+const PROTECTED_WHY = 'This brand’s connections are protected while it is live with a client. Ask our team if it really has to change.';
 export function createConnectors({ packs, auth, builder, treg = null, log = console, onLive = () => {} }) {
   const SIM = createSim({ packs, log }), vault = createVault(packs), deps = { treg };
   const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
@@ -153,14 +153,14 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     if (creds?.sa && !simOnly(id)) {
       const pre = await auth.claimInfo(slug, me); if (!pre.role && !pre.eligible) return { ok: false, state: 'needs_work_email', error: noGen(pre, pre.host) };
       if (await propertyElsewhere(slug, creds.property)) { log.warn('[connect] ga4 property on another brand', slug, creds.property, me.email);
-        return { ok: false, state: 'refused', error: 'That GA4 property is already connected to another brand in Brew. Paste your own property’s ID, or sign in with Google instead.' }; }
+        return { ok: false, state: 'refused', error: 'That GA4 property is already connected to another brand here. Paste your own property’s ID, or sign in with Google instead.' }; }
       const ctx = await ctxOf(slug); let proof;
       try { proof = await REAL[id].owns(creds, ctx); } catch (e) { proof = { ok: false, why: e.message.slice(0, 160) }; }
       const staff = !!auth.isAdmin?.(me);
       if (!proof.ok && !(override && staff)) { log.warn('[connect] ga4 property not the brand’s', slug, creds.property, me.email, proof.why);
         /* a check that didn't go through is said as such, never as a fact about the property (the staff override still stands) */
         const error = proof.error ? `The check on that GA4 property didn’t go through: ${proof.why || 'Google didn’t answer'}. Try again in a minute, or sign in with Google instead.`
-          : `Brew couldn’t match that GA4 property to ${ctx.host || 'this brand’s site'}: ${proof.why || 'its web stream points elsewhere'}. Check the property ID, or sign in with Google instead.`;
+          : `We couldn’t match that GA4 property to ${ctx.host || 'this brand’s site'}: ${proof.why || 'its web stream points elsewhere'}. Check the property ID, or sign in with Google instead.`;
         return { ok: false, state: 'refused', error, proof: { ok: false, error: !!proof.error, why: proof.why || null }, ...(staff ? { override: true } : {}) }; }
       if (!proof.ok) log.warn('[connect] ga4 staff override', slug, creds.property, me.email);
       sa = { proof };
@@ -487,8 +487,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     const name = REAL[id]?.name || NAME[id] || id, brand = (await ctxOf(slug).catch(() => ({})))?.profile?.name || slug, base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com';
     const day = new Date(s.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
     const subject = stage === 'expired' ? `${brand}: the ${name} sign-in ran out` : `${brand}: the ${name} sign-in runs out on ${day}`;
-    const line = stage === 'expired' ? `Brew can't read ${name} for ${brand} any more: the sign-in ran out on ${day}. Its last numbers are marked stale and no longer used. Connect it again to bring them back.`
-      : `The ${name} sign-in Brew uses for ${brand} runs out on ${day} (${left} day${left === 1 ? '' : 's'}). ${name} doesn't let Brew renew it on its own, so please connect it again before then. It takes a minute.`;
+    const line = stage === 'expired' ? `We can't read ${name} for ${brand} any more: the sign-in ran out on ${day}. Its last numbers are marked stale and no longer used. Connect it again to bring them back.`
+      : `The ${name} sign-in we use for ${brand} runs out on ${day} (${left} day${left === 1 ? '' : 's'}). ${name} doesn't let us renew it on our own, so please connect it again before then. It takes a minute.`;
     const href = `${base}/${slug}#connectors`;
     for (const e of to) await auth.mail?.(e, subject, emailHtml({ title: subject, eyebrow: brand, preheader: line.slice(0, 140), body: para(line), cta: { href, label: `Connect ${name} again` } }), `${subject}\n\n${line}\n\n${href}`).catch(() => false);
     await editC(slug, (c) => { if (c[id]) c[id] = { ...c[id], expiryWarned: key }; }); cache.delete(sk(slug));
@@ -565,9 +565,9 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     if (what === 'post' && req.method === 'POST') { const b = await body(req);
       const title = String(b.title || '').slice(0, 300), sub = String(b.sub || '').slice(0, 1200), note = String(b.note || '').slice(0, 600), link = /^https:\/\//.test(String(b.url || '')) ? String(b.url) : null;
       if (!title) return json(res, 400, { error: 'Nothing to post.' }), true;
-      const who = me.name || me.email, text = `${note ? `${note}\n` : ''}*${title}*${sub ? `\n${sub}` : ''}${link ? `\n<${link}|Open it in Brew>` : ''}`;
+      const who = me.name || me.email, text = `${note ? `${note}\n` : ''}*${title}*${sub ? `\n${sub}` : ''}${link ? `\n<${link}|Open it>` : ''}`;
       const blocks = [...(note ? [{ type: 'section', text: { type: 'mrkdwn', text: note } }] : []), { type: 'section', text: { type: 'mrkdwn', text: `*${title}*${sub ? `\n${sub}` : ''}` } },
-        { type: 'context', elements: [{ type: 'mrkdwn', text: `Shared from Brew by ${who}` }] }, ...(link ? [{ type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: link, action_id: 'open' }] }] : [])];
+        { type: 'context', elements: [{ type: 'mrkdwn', text: `Shared by ${who}` }] }, ...(link ? [{ type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'Open it' }, url: link, action_id: 'open' }] }] : [])];
       return json(res, 200, await slackPost(slug, { channel: b.channel, text, blocks })), true; }
     return false;
   }

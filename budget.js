@@ -72,7 +72,7 @@ export function createBudget({ env = process.env, store = null, shared = null, n
     const r = refusal(kind, slug, units), n = NOUN[kind] || kind;
     if (r === 'brand') { const have = Math.max(0, caps.brand[kind] - usedBrand(slugNow(slug), kind)); /* a final that costs more than what is left is not "used up" */
       return units > 1 && have > 0 ? `This costs ${Math.ceil(units)} ${n}s and ${name || 'this brand'} has ${Math.floor(have)} of ${caps.brand[kind]} left today. It resets at midnight UTC.` : `${name || 'This brand'}’s ${n} share for today is used up (${caps.brand[kind]} a day). It resets at midnight UTC.`; }
-    if (r === 'all') return `Brew’s ${n} budget for today is used up across all brands. It resets at midnight UTC.`;
+    if (r === 'all') return `Our ${n} budget for today is used up across all brands. It resets at midnight UTC.`;
     return null;
   }
   const api = { caps, load, spend, refund, touch: save, refusal, left, why, snapshot, get loaded() { return loaded; }, get state() { roll(); return s; }, flush: async () => { clearTimeout(t); if (store) await store.put(snapshot()); } };

@@ -86,16 +86,16 @@
     const n = esc(B().brand.name), back = signin(here(`#v=connectors&cx=${id}`));
     if (!L.me) return box({ id, title: `Connect ${esc(nm(id))}`, line: `Sign in first, so the numbers stay with ${poss()} team.`, body: unlocks(id), status: dummy ? DUMMY(id) : READONLY(id), ghost: ghostBtn('Not now'), go: goLink('Sign in with Google', back) });
     if (L.access && !L.access.gen) { const h = esc(L.access.host || host());
-      return box({ id, title: L.access.claimed ? `${poss()} team connects its accounts` : 'Use your work email', line: L.access.claimed ? `${n} is on Brew. Ask its team to invite you.` : `You’re signed in as ${esc(L.me.email)}. The first person from ${h} to connect an account becomes ${poss()} admin.`,
+      return box({ id, title: L.access.claimed ? `${poss()} team connects its accounts` : 'Use your work email', line: L.access.claimed ? `${n} is already set up here. Ask its team to invite you.` : `You’re signed in as ${esc(L.me.email)}. The first person from ${h} to connect an account becomes ${poss()} admin.`,
         ghost: L.access.claimed ? '' : ghostBtn('Not now'), go: L.access.claimed ? goBtn('Got it', 'data-close') : goLink('Switch email', `/auth/logout?next=${encodeURIComponent(back)}`) }); }
     if (!boss()) return askAdmin(id);
     return null;
   }
   /* the ownership check (advisory for every connector but GA4 by ID): a miss is said plainly, in the box, not hidden in a note */
-  const notMine = (why, err = false) => stat(err ? `The check didn’t go through: ${esc(why)}` : `This account doesn’t look like ${poss()}: ${esc(why)}. Brew reads it anyway; disconnect it if it’s the wrong one.`, 'bad', 'info');
-  const claimNote = () => (!L.access?.claimed && L.access?.eligible ? note(`You’re the first from ${esc(host())}. Connecting makes you ${poss()} admin on Brew.`) : '');
+  const notMine = (why, err = false) => stat(err ? `The check didn’t go through: ${esc(why)}` : `This account doesn’t look like ${poss()}: ${esc(why)}. We read it anyway; disconnect it if it’s the wrong one.`, 'bad', 'info');
+  const claimNote = () => (!L.access?.claimed && L.access?.eligible ? note(`You’re the first from ${esc(host())}. Connecting makes you ${poss()} admin.`) : '');
   // DUMMY: the status line on a simulated account
-  const DUMMY = (id) => stat(`<span class="dummy-tag">Dummy</span>A simulated ${esc(nm(id))} account, built from what Brew read. Nothing real is connected.`, '', 'info');
+  const DUMMY = (id) => stat(`<span class="dummy-tag">Dummy</span>A simulated ${esc(nm(id))} account, built from what we read. Nothing real is connected.`, '', 'info');
 
   const simId = (id) => !!(L.dummy || L.avail?.[id]?.dummy || (L.ready && !L.avail?.[id]));
   /* false only when the server said this connector isn't available here; while the live call hasn't answered yet the box
@@ -105,7 +105,7 @@
     /* still loading: open once it answers. The load failed: ask again now, and say so if Brew still can't be reached */
     const again = L.failed ? liveCall().then((r) => { Object.assign(L, r, { user: r.me || r.user || null }); L.me = L.me || L.user || null; L.ready = true; L.failed = false; }).catch(() => null) : window.LIVE_P;
     window.BrewLoad?.hold(document.activeElement?.closest?.('button,[role="button"]'), again); /* the tapped connector shows the loader meanwhile */
-    again.then(() => { if (L.ready) open(id, opts); else A()?.toast?.(`${ic('info', 's16')}Couldn’t reach Brew to connect ${esc(nm(id))}. Check your connection and try again.`); });
+    again.then(() => { if (L.ready) open(id, opts); else A()?.toast?.(`${ic('info', 's16')}Couldn’t reach us to connect ${esc(nm(id))}. Check your connection and try again.`); });
     return true; };
   // a real account: sign in with the platform, or paste a read-only key
   function openReal(id, opts = {}) {
@@ -118,11 +118,11 @@
       const status = x?.error ? stat(esc(x.error), 'bad', 'info') : READONLY(id), why = x?.why ? notMine(x.why) : '';
       const line = esc(opts.why || '') || solo?.p || `Puts ${poss()} real numbers on your cards.`;
       if (av.modes.includes('public')) html = box({ id, title: `Connect ${esc(nm(id))}`, line, body: unlocks(id) + why, status: av.ready ? READONLY(id) : stat('The marketplace read is off on this server right now.', 'bad', 'info'), ghost: ghostBtn('Not now'), go: av.ready ? goBtn('Read the listings now', 'data-pub') : '' });
-      else if (!oauth && !key) html = box({ id, title: `Connect ${esc(nm(id))}`, line, body: unlocks(id), status: stat(`Connecting ${esc(nm(id))} is being switched on. Brew’s team will send you a link.`, '', 'clock'), go: goBtn('Got it', 'data-close') });
+      else if (!oauth && !key) html = box({ id, title: `Connect ${esc(nm(id))}`, line, body: unlocks(id), status: stat(`Connecting ${esc(nm(id))} is being switched on. Our team will send you a link.`, '', 'clock'), go: goBtn('Got it', 'data-close') });
       else {
         const steps = g.steps.filter((s) => !s.oauth), alt = oauth && key && steps.length;
         const oauthPane = oauth ? box({ id, title: `Connect ${esc(nm(id))}`, line, body: claimNote() + unlocks(id) + why + (id === 'shopify' && !av.install ? `<div class="cxb-form">${field({ k: 'shop', label: 'Store address', hint: 'your-store.myshopify.com' }, 'data-shop')}</div>` : ''), status,
-          ghost: alt ? ghostBtn(esc(g.alt), 'data-swap="key"') : ghostBtn('Not now'), go: goBtn(`${id === 'shopify' && av.install ? 'Install Brew on' : 'Continue with'} ${short}${ic('right', 's16')}`, 'data-oauth') }) : ''; /* Shopify installs from Shopify itself: nobody types a store address (App Store requirement 2.3.1) */
+          ghost: alt ? ghostBtn(esc(g.alt), 'data-swap="key"') : ghostBtn('Not now'), go: goBtn(`${id === 'shopify' && av.install ? `Install ${globalThis.PRODUCT_NAME} on` : 'Continue with'} ${short}${ic('right', 's16')}`, 'data-oauth') }) : ''; /* Shopify installs from Shopify itself: nobody types a store address (App Store requirement 2.3.1) */
         const keyPane = key && steps.length ? box({ id, title: `Connect ${esc(nm(id))}`, line: esc(g.time), body: (oauth ? '' : claimNote() + why) + stepList(steps) + `<div class="cxb-form">${fieldsOf(id, av)}</div>`, status,
           ghost: alt ? ghostBtn('Back', 'data-swap="oauth"') : ghostBtn('Not now'), go: goBtn('Connect', 'data-key') }) : '';
         html = oauth ? pane('oauth', oauthPane, true) + (alt ? pane('key', keyPane, false) : '') : pane('key', keyPane, true);
@@ -143,20 +143,20 @@
   function guide(id, av, oauth) {
     const shop = L.shop || '', handle = shop.replace(/\.myshopify\.com$/, ''), n = B().brand.name;
     const last = (t, p) => ({ t, p, last: true });
-    if (id === 'meta') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Facebook', p: `Facebook asks which ad accounts Brew may read. Tick ${esc(n)}’s, then pick it here.`, last: true, oauth: true }] };
+    if (id === 'meta') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Facebook', p: `Facebook asks which ad accounts we may read. Tick ${esc(n)}’s, then pick it here.`, last: true, oauth: true }] };
     if (id === 'shopify') return oauth && !av.fields?.length ? { time: 'About 1 minute', steps: [{ t: 'Sign in with Shopify', last: true, oauth: true }] } : { time: 'Takes about 3 minutes', alt: 'Use your own app', steps: [
-      { t: 'Create an app called Brew', p: 'Sign in to the Dev Dashboard (the store’s owner, or an agency or collaborator login). Click <b>Create app</b>, paste this as the <b>App URL</b> and untick <b>Embed app in Shopify admin</b>.', go: ['Open the Dev Dashboard', 'https://dev.shopify.com/dashboard'], copy: location.origin },
-      { t: 'Let it come back to Brew', p: 'Paste this into <b>Allowed redirection URL(s)</b> and tick <b>Use legacy install flow</b>. If the app sits in another organization than the store, Brew opens the store’s approve screen once and comes back here.', copy: `${location.origin}/shopify/own/callback` },
+      { t: `Create an app called ${globalThis.PRODUCT_NAME}`, p: 'Sign in to the Dev Dashboard (the store’s owner, or an agency or collaborator login). Click <b>Create app</b>, paste this as the <b>App URL</b> and untick <b>Embed app in Shopify admin</b>.', go: ['Open the Dev Dashboard', 'https://dev.shopify.com/dashboard'], copy: location.origin },
+      { t: 'Let it come back here', p: 'Paste this into <b>Allowed redirection URL(s)</b> and tick <b>Use legacy install flow</b>. If the app sits in another organization than the store, we open the store’s approve screen once and come back here.', copy: `${location.origin}/shopify/own/callback` },
       { t: 'Give it read-only access', p: 'On the same page, under <b>API access</b>, paste these into <b>Scopes</b>. Then click <b>Create app</b>.', copy: SHOPIFY_SCOPES },
       { t: `Install it on ${shop ? esc(shop) : 'your store'}`, p: 'On the app’s home, click <b>Install app</b>.' },
       last('Paste the app’s keys', 'They’re in the app’s <b>Settings</b>.') ] };
-    if (id === 'slack') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Slack', p: 'Slack asks which channel Brew posts to. Pick the one your team plans in. Replies in Brew’s threads come back to the jam.', last: true, oauth: true }] };
+    if (id === 'slack') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Slack', p: 'Slack asks which channel we post to. Pick the one your team plans in. Replies in our threads come back to the jam.', last: true, oauth: true }] };
     if (id === 'google') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Google', p: `Pick ${esc(n)}’s Google Ads account. You can add Google Analytics in the same step.`, last: true, oauth: true }] };
     if (id === 'ga4') return { time: 'Takes about a minute', alt: 'Use a property ID', steps: [
-      ...(av.email ? [{ t: 'Add Brew to GA4 as a Viewer', p: '<b>Admin</b> → <b>Property access management</b> → <b>Add users</b>. Paste this email and pick <b>Viewer</b>.', copy: av.email, go: ['Open GA4 Admin', 'https://analytics.google.com/analytics/web/#/admin'] }] : []),
+      ...(av.email ? [{ t: 'Add us to GA4 as a Viewer', p: '<b>Admin</b> → <b>Property access management</b> → <b>Add users</b>. Paste this email and pick <b>Viewer</b>.', copy: av.email, go: ['Open GA4 Admin', 'https://analytics.google.com/analytics/web/#/admin'] }] : []),
       last('Paste the property ID', 'It’s under <b>Admin</b> → <b>Property details</b>.') ] };
     if (id === 'klaviyo') return { time: 'Takes about a minute', steps: [
-      { t: 'Create a read-only private key', p: 'Name it Brew and choose <b>Read-only key</b>.', go: ['Open Klaviyo', 'https://www.klaviyo.com/settings/account/api-keys'] },
+      { t: 'Create a read-only private key', p: `Name it ${globalThis.PRODUCT_NAME} and choose <b>Read-only key</b>.`, go: ['Open Klaviyo', 'https://www.klaviyo.com/settings/account/api-keys'] },
       last('Paste the key', 'Klaviyo shows it once. It starts with pk_.') ] };
     if (id === 'reviews') return { time: 'Takes about a minute', alt: 'Paste an API token', steps: [
       { t: 'Copy your Judge.me API token', p: '<b>Settings</b> → <b>Integrations</b> → <b>Developers</b> → <b>View API token</b>.', go: ['Open Judge.me', handle ? `https://admin.shopify.com/store/${encodeURIComponent(handle)}/apps/judgeme` : 'https://judge.me/login'] },
@@ -223,7 +223,7 @@
   const result = (id, r) => { const also = Object.entries(r.also || {}).some(([k, x]) => x?.ok && k !== id), dummy = simId(id) || r.dummy;
     const read = (r.stats || []).slice(0, 3).map(([k, v]) => `<b>${esc(v)}</b> <small>${esc(lc1(k))}</small>`), did = read.length ? [] : (r.changed || []).slice(0, 2).map(esc);
     const done = box({ id, title: `${esc(nm(id))}${also ? ' and Google Analytics are' : ' is'} connected`, line: dummy ? 'Your cards now use its simulated numbers.' : 'Your cards now use its numbers.',
-      body: (r.claimed ? note(`You’re ${poss()} owner on Brew now. Teammates with the same company email join on their own.`) : '') + (read.length ? kick('What Brew read') + ticks(read) : did.length ? kick('In your feed') + ticks(did) : '')
+      body: (r.claimed ? note(`You’re ${poss()} owner now. Teammates with the same company email join on their own.`) : '') + (read.length ? kick('What we read') + ticks(read) : did.length ? kick('In your feed') + ticks(did) : '')
         + (r.proof && !r.proof.ok ? notMine(r.proof.why || r.why || 'no match', !!r.proof.error) : r.why ? notMine(r.why) : '') + accountList(r) + (r.notes || []).slice(0, 2).map((t) => note(esc(t), 'info')).join(''),
       status: dummy ? stat('<span class="dummy-tag">Dummy</span>Connected. Nothing real was read or changed.', 'on', 'check') : stat(`Live. Refreshes every ${L.avail?.[id]?.every || 12} hours.`, 'on', 'check'),
       ghost: others(id).length && boss() ? ghostBtn('Connect another', 'data-swap="next"') : '', go: goBtn(setupView() ? 'Continue' : 'See it in the feed', 'data-see') });
@@ -283,7 +283,7 @@
   }
   /* disconnecting is for the whole team: the same box asks once, then reads nothing more */
   function unlinkBox(id) {
-    const what = id === 'slack' ? ['Brew stops posting to Slack', 'Replies in Brew’s threads stop coming back to the jams', 'You can connect it again any time']
+    const what = id === 'slack' ? ['We stop posting to Slack', 'Replies in our threads stop coming back to the jams', 'You can connect it again any time']
       : ['Cards stop using its live numbers', 'You can connect it again any time'];
     A().modal(shell(box({ id, title: `Disconnect ${esc(nm(id))}?`, line: `For everyone on ${poss()} team.`, body: kick('What happens') + ticks(what), ghost: ghostBtn('Keep it'), go: goBtn('Disconnect', 'data-unlink-go') })), (m) => {
       edges(m);
@@ -302,8 +302,8 @@
     /* one signal per state: reconnect, then stale, then the sign-in running out, then a failed refresh (rate limits retry on their own) */
     const left = x.daysLeft, warn = x.needsReconnect || (left != null && left < 0) ? '<span class="cn-st is-off" title="Connect it again to bring its numbers back">Sign-in expired: connect again</span>'
       : x.stale ? `<span class="cn-st is-off" title="${esc(`Its last numbers are not used until it reads again${x.staleWhy ? ` (${x.staleWhy})` : ''}`)}">Stale</span>`
-      : left != null && left <= 7 ? `<span class="cn-st is-off" title="Connect it again before then so Brew keeps reading it">Sign-in runs out in ${left} day${left === 1 ? '' : 's'}</span>`
-      : x.error ? `<span class="cn-st is-off" title="${esc(x.rateLimited ? 'The platform asked Brew to slow down; it tries again on its own' : 'The last refresh did not go through')}">${x.rateLimited ? 'Busy, retrying' : 'Last refresh failed'}</span>` : '';
+      : left != null && left <= 7 ? `<span class="cn-st is-off" title="Connect it again before then so we keep reading it">Sign-in runs out in ${left} day${left === 1 ? '' : 's'}</span>`
+      : x.error ? `<span class="cn-st is-off" title="${esc(x.rateLimited ? 'The platform asked us to slow down; we try again on our own' : 'The last refresh did not go through')}">${x.rateLimited ? 'Busy, retrying' : 'Last refresh failed'}</span>` : '';
     if (x.state === 'live') return x.dummy ? `<span class="cn-st is-on is-live"><i></i>Connected</span><span class="dummy-tag">Dummy</span>` : (warn || '<span class="cn-st is-on is-live"><i></i>Live</span>'); /* one pill: the warning replaces Live, never sits beside it */
     if (x.state === 'syncing') return `<span class="cn-st is-on"><i></i>Reading…</span>`;
     return `<span class="cn-st is-off"><i></i>Needs attention</span>`; };
@@ -312,17 +312,17 @@
     const full = (x.accounts || []).length > 1 ? x.accounts.map((a) => a.name || a.id).join(', ') : x.account || nm(id), accts = ` title="${esc(`${full}${x.lastSync ? ` · read ${ago(x.lastSync)}` : ''}`)}"`;
     return `<span class="cn-acct"${accts}>${ic('check', 's14')}<span class="cn-an">${esc(x.account || nm(id))}</span>${x.lastSync ? `<span class="cn-ago">· ${ago(x.lastSync)}</span>` : ''}</span>${member() || L.avail?.[id]?.modes?.includes('public') ? `<button class="cn-btn is-ghost" data-lsync="${id}">Sync now</button>` : ''}${member() && boss() ? `<button class="cn-btn is-ghost" data-lunlink="${id}">Disconnect</button>` : ''}`; };
   const intro = () => { if (!GENB || (!L.signin && !L.me)) return null; const n = B().brand.name;
-    if (!L.me) return L.dummy ? `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect accounts. Connected accounts are simulated in this demo (Dummy).` : `Every source Brew reads for ${n}. <a href="${signin()}">Sign in with Google</a> to connect ${n}’s real accounts, read-only (Slack posts to the channel you pick).`;
-    if (member() && !boss()) return `Every source Brew reads for ${n}. Only ${n}’s admins connect or disconnect accounts; you can sync the connected ones.`;
-    if (member()) return L.dummy ? `Every source Brew reads for ${n}. Connected accounts are simulated in this demo (Dummy), built from what Brew read, and only ${n}’s team sees them.` : `Every source Brew reads for ${n}. Connected accounts are read-only (Slack posts to the channel you pick), refresh every few hours, and only ${n}’s team sees them.`;
-    if (L.access?.claimed) return `Every source Brew reads for ${n}. Its team sees the live numbers; here you see the demo. Ask them to invite you.`;
-    if (L.access?.eligible) return `Every source Brew reads for ${n}. You’re the first from ${esc(host())}: connect an account and ${n} is yours. <button class="linkish" data-lclaim>Claim it with your email</button>`;
-    return `Every source Brew reads for ${n}. Here you see the demo: the first person to sign in with a work email at ${esc(host())} and connect an account becomes its admin.`; };
+    if (!L.me) return L.dummy ? `Every source we read for ${n}. <a href="${signin()}">Sign in with Google</a> to connect accounts. Connected accounts are simulated in this demo (Dummy).` : `Every source we read for ${n}. <a href="${signin()}">Sign in with Google</a> to connect ${n}’s real accounts, read-only (Slack posts to the channel you pick).`;
+    if (member() && !boss()) return `Every source we read for ${n}. Only ${n}’s admins connect or disconnect accounts; you can sync the connected ones.`;
+    if (member()) return L.dummy ? `Every source we read for ${n}. Connected accounts are simulated in this demo (Dummy), built from what we read, and only ${n}’s team sees them.` : `Every source we read for ${n}. Connected accounts are read-only (Slack posts to the channel you pick), refresh every few hours, and only ${n}’s team sees them.`;
+    if (L.access?.claimed) return `Every source we read for ${n}. Its team sees the live numbers; here you see the demo. Ask them to invite you.`;
+    if (L.access?.eligible) return `Every source we read for ${n}. You’re the first from ${esc(host())}: connect an account and ${n} is yours. <button class="linkish" data-lclaim>Claim it with your email</button>`;
+    return `Every source we read for ${n}. Here you see the demo: the first person to sign in with a work email at ${esc(host())} and connect an account becomes its admin.`; };
   function bindPage(root) {
     root.querySelectorAll('[data-lsync]').forEach((b) => b.onclick = async () => { b.disabled = true; b.textContent = 'Reading…'; const r = await post(`/api/brands/${slug}/connect/${b.dataset.lsync}`, { action: 'sync' });
       /* read a few minutes ago, or already reading: said plainly, nothing reloads; a platform asking Brew to slow down is said in plain words */
       if (r.ok && (r.recent || r.busy)) { b.disabled = false; b.textContent = 'Sync now'; A().toast(esc(r.note || 'Read a few minutes ago')); return; }
-      if (r.ok) location.reload(); else { b.disabled = false; b.textContent = 'Sync now'; A().toast(esc(r.rateLimited ? `${nm(b.dataset.lsync)} asked Brew to slow down. It reads again by itself${r.retryAt ? ` after ${new Date(r.retryAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ' shortly'}.` : r.error || 'Could not sync')); } });
+      if (r.ok) location.reload(); else { b.disabled = false; b.textContent = 'Sync now'; A().toast(esc(r.rateLimited ? `${nm(b.dataset.lsync)} asked us to slow down. We read it again on our own${r.retryAt ? ` after ${new Date(r.retryAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ' shortly'}.` : r.error || 'Could not sync')); } });
     root.querySelectorAll('[data-lunlink]').forEach((b) => b.onclick = () => unlinkBox(b.dataset.lunlink));
     root.querySelectorAll('[data-lclaim]').forEach((b) => b.onclick = claim);
   }
@@ -336,18 +336,18 @@
   const meMail = () => { const e = L.me?.email; return e && !L.me?.demo && !/@demo\.brew$/i.test(e) ? e : ''; }; /* a demo visitor has no real address */
   const brandTag = () => (GENB ? `${B()?.brand?.name || slug} (${slug})` : '');
   const helpRows = () => `<div class="lc-grp lc-help">
-      <a class="lc-it" href="mailto:${HELLO}?subject=${encodeURIComponent(`Brew help${GENB ? ` · ${brandTag()}` : ''}`)}">${ic('info', 's16')}<b>Help</b><span>Email us</span></a>
+      <a class="lc-it" href="mailto:${HELLO}?subject=${encodeURIComponent(`Help${GENB ? ` · ${brandTag()}` : ''}`)}">${ic('info', 's16')}<b>Help</b><span>Email us</span></a>
       <span class="lc-it lc-legal">${ic('shield', 's16')}<b><a href="/privacy" target="_blank" rel="noopener">Privacy</a> &amp; <a href="/terms" target="_blank" rel="noopener">terms</a></b></span>
       ${meMail() ? `<button class="lc-it" type="button" data-ldelete>${ic('minus', 's16')}<b>Delete my data</b></button>` : ''}</div>`;
   /* "Delete my data" is a real request, handled by hand (Param, 25 Oct): it drafts an email from the person's own mail app to
      the Brew team with the brand and their address; the team deletes and replies. The sheet says exactly that (DUMMY.md row 9) */
   function deleteSheet() {
     const em = meMail(), n = B()?.brand?.name || 'this brand';
-    const body = `Please delete my data from Brew.\n\nBrand: ${GENB ? brandTag() : 'none'}\nMy email: ${em}\n`;
+    const body = `Please delete my data.\n\nBrand: ${GENB ? brandTag() : 'none'}\nMy email: ${em}\n`;
     const href = `mailto:${HELLO}?subject=${encodeURIComponent(`Delete my data${GENB ? ` · ${slug}` : ''}`)}&body=${encodeURIComponent(body)}`;
     A()?.modal?.(`<div class="sheet del-sheet"><h3>Delete my data</h3>
-      <p>This sends a deletion request to the Brew team from your own email. We delete your data within 7 days and reply when it’s done.</p>
-      <ul class="del-what"><li>Your sign-in: the name, email and photo Google gave us</li><li>Your saved cards, feed settings and jam messages</li>${GENB ? `<li>If you’re ${esc(n)}’s admin and ask for it: the whole workspace (the read, moves, jams and connected keys)</li>` : ''}</ul>
+      <p>This sends a deletion request to our team from your own email. We delete your data within 7 days and reply when it’s done.</p>
+      <ul class="del-what"><li>Your sign-in: the name, email and photo Google gave us</li><li>Your saved cards, feed settings and jam messages</li>${GENB ? `<li>If you’re ${esc(n)}’s admin and ask for it: the whole workspace (the read, plays, jams and connected keys)</li>` : ''}</ul>
       <div class="cx-btns"><button class="btn btn-ghost" data-close>Cancel</button><a class="btn btn-primary" href="${esc(href)}" data-close>Email the request</a></div></div>`);
   }
   function menu(btn) {
@@ -355,7 +355,7 @@
     const pop = document.createElement('div'); pop.id = 'lc-pop'; pop.className = 'lc-pop';
     const r = btn.getBoundingClientRect(); pop.style.left = (r.right + 10) + 'px'; pop.style.bottom = Math.max(12, innerHeight - r.bottom) + 'px'; pop.style.position = 'fixed';
     const ac = L.access, n = B()?.brand?.name || 'this brand';
-    const role = ac?.role === 'owner' ? `Owner of ${n}` : ac?.role === 'admin' ? 'Brew team · full access' : ac?.role ? `On ${n}’s team` : L.full ? 'Brew team · full access' : GENB ? `Visitor · you see ${n}’s demo` : '';
+    const role = ac?.role === 'owner' ? `Owner of ${n}` : ac?.role === 'admin' ? 'Our team · full access' : ac?.role ? `On ${n}’s team` : L.full ? 'Our team · full access' : GENB ? `Visitor · you see ${n}’s demo` : '';
     pop.innerHTML = !L.me ? `<div class="lc-me"><b>Not signed in</b><small>Sign in to read a new brand, claim yours and connect real accounts.</small></div><a class="btn btn-primary sm" href="${signin()}">Sign in with Google</a><div class="lc-grp">${tuneRow()}</div>${window.BrewAcct?.rows?.() || ''}${helpRows()}`
       : `<div class="lc-me">${L.me.pic ? `<img src="${esc(L.me.pic)}" alt="" referrerpolicy="no-referrer">` : ''}<span><b>${esc(L.me.name || L.me.email)}</b><small>${esc(L.me.demo || /@demo\.brew$/i.test(L.me.email || '') ? 'Demo visitor, no email' : L.me.email)}</small>${role ? `<em>${esc(role)}</em>` : ''}</span></div>
         ${GENB && ac?.canClaim ? `<button class="btn btn-primary sm" data-lclaim>Claim ${esc(n)}</button>` : ''}
@@ -386,7 +386,7 @@
     const ac = L.access || {}, me = ac.me || L.me?.email, owners = (ac.members || []).filter((x) => x.role === 'owner'), iAmOwner = owners.some((o) => o.email === me);
     const av = (x) => x.pic ? `<img class="tm-av" src="${esc(x.pic)}" alt="" referrerpolicy="no-referrer">` : `<span class="tm-av" aria-hidden="true">${esc(initials(x))}</span>`;
     const who = (x, sub) => `${av(x)}<span class="tm-who"><b>${esc(x.name || x.email)}${x.email === me ? ' <i>(you)</i>' : ''}</b><small>${esc(sub ?? (x.name ? x.email : ''))}</small></span>`;
-    const person = (x) => { if (x.via === 'Brew' && x.role === 'admin') return `<li class="tm-p"><div class="tm-line">${who(x)}<span class="tm-role">Brew admin</span><span class="tm-mw"></span></div></li>`; /* Brew's own people: shown, never edited here */
+    const person = (x) => { if (x.via === 'Brew' && x.role === 'admin') return `<li class="tm-p"><div class="tm-line">${who(x)}<span class="tm-role">Our team</span><span class="tm-mw"></span></div></li>`; /* Brew's own people: shown, never edited here */
       const own = x.role === 'owner', none = Array.isArray(x.seats) && !x.seats.length, open = TS.open === x.email, edit = TS.edit === x.email && !own;
       /* the only admin: removing it would leave the brand with none, so the menu says so and offers the hand-over right here */
       const heirs = (ac.members || []).filter((y) => y.role !== 'owner' && !(y.via === 'Brew' && y.role === 'admin'));

@@ -2,6 +2,7 @@
 // actually found (profile.json) and, later, the cards the moves engine writes. Nothing here invents a number:
 // connector logs are number-free until a real account is connected, demo boards start empty.
 import { registrable } from './reader/util.js';
+import { PRODUCT_NAME } from './product-name.js'; // the product's public name, where copy has to name it
 const hexOk = (x) => /^#[0-9a-f]{6}$/i.test(String(x || ''));
 const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.max(0, Math.min(255, Math.round(v * f)))); return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join(''); };
 const lum = (hex) => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114) / 255; };
@@ -20,7 +21,7 @@ export const CTA = {
   'Add the search info': ['Adding', 'Search info added'], 'Publish the claims ledger': ['Publishing', 'The claims list and the page for AI tools are public'], 'Launch the ad group': ['Writing the brief', 'Search ads brief ready for your team'],
   'Turn on guest checkout': ['Turning it on', 'Guest checkout is on'], 'Agree with the call': ['Saving', 'Decision saved'], 'Set up the rules': ['Saving', 'The rules are in the team plan'], 'Open the scoreboard': ['Opening', 'Scoreboard is open'],
   'Draft the buyer deck': ['Drafting', 'Buyer deck drafted'], 'Make our version': ['Drafting', 'Our version is drafted'], 'Review draft': ['Opening', 'Draft is ready to review'],
-  'Push the titles': ['Pushing', 'New titles pushed'], 'Open the moves': ['Opening', 'Moves page open'], 'Queue the ads': ['Queueing', 'The kept ads are queued as one test'], 'Approve the offers': ['Saving', 'Offers saved as drafts'],
+  'Push the titles': ['Pushing', 'New titles pushed'], 'Open the moves': ['Opening', 'Plays page open'], 'Queue the ads': ['Queueing', 'The kept ads are queued as one test'], 'Approve the offers': ['Saving', 'Offers saved as drafts'],
   'Make the carousel ad': ['Making', 'The carousel is drafted'], 'Build the collection ad': ['Building', 'The collection ad is drafted'], 'Build the catalog ad': ['Building', 'The catalog ad is drafted'],
   'Draft the post': ['Drafting', 'The post is drafted'], 'Draft the carousel post': ['Drafting', 'The carousel post is drafted'], 'Draft the stories': ['Drafting', 'The stories are drafted'],
   'Draft the replies': ['Drafting', 'Replies drafted for your OK'], 'Add the photos': ['Adding', 'The photos are added']
@@ -73,7 +74,7 @@ function baseSeed({ slug, host, name, tagline, colors, logo, mark, face, typeNam
     },
     lanes: L, laneImg: laneImg || {},
     intro: [
-      { c: dark, img: art[0] || logo, h: 'Your moves, turned into cards.' },
+      { c: dark, img: art[0] || logo, h: 'Your plays, turned into cards.' },
       { c: dark, img: art[1] || art[0] || logo, h: 'Each one moves a number.' },
       { c: dark, img: art[2] || art[0] || logo, h: 'Heart it, jam on it, share the brief.' }
     ],
@@ -88,7 +89,7 @@ function baseSeed({ slug, host, name, tagline, colors, logo, mark, face, typeNam
       marketplaces: { name: mkName, color: '#FF9900', glyph: 'a', account: `${marketplaces.length || ''} seller accounts`.trim(), kind: 'Listings, ranks, stock and reviews', perms: ['Read listings, titles and images', 'Read ranks, stock and ratings'], log: ['Reading listings', 'Reading ranks and stock'], changed: ['Listing cards show live rank and stock'], health: {} },
       reviews: { name: /judge\.?me/i.test(rv) ? 'Judge.me' : /loox/i.test(rv) ? 'Loox' : /\.[a-z]{2,}$/i.test(rv) && !/^reviews on /i.test(rv) ? `Reviews on ${rv}` : rv, color: '#111111', glyph: rv[0] || 'R', account: `${host} · reviews`, kind: 'Reviews, photos and ratings', perms: ['Read reviews and ratings'], log: ['Reading reviews', 'Grouping by product and concern'], changed: ['Ad ideas from reviews are on the creative cards'], health: {} },
       klaviyo: { name: 'Klaviyo', color: '#232426', glyph: 'K', account: `${name} · Klaviyo`, kind: 'Email consent and flows', optional: true, perms: ['Read lists and flows', 'Read campaign results'], log: ['Reading profiles', 'Reading live flows'], changed: ['Email cards show live results'], health: {} },
-      slack: { name: 'Slack', color: '#4A154B', glyph: '#', account: `${name} workspace`, kind: 'Talk with your team, approve in a thread', perms: ['Post cards to channels you pick', 'Read replies in those threads'], log: ['Finding channels', 'Found #growth, #brand, #d2c-ops', 'Adding Brew to #growth'], changed: ['Share to Slack is on every card'], health: {} }
+      slack: { name: 'Slack', color: '#4A154B', glyph: '#', account: `${name} workspace`, kind: 'Talk with your team, approve in a thread', perms: ['Post cards to channels you pick', 'Read replies in those threads'], log: ['Finding channels', 'Found #growth, #brand, #d2c-ops', `Adding ${PRODUCT_NAME} to #growth`], changed: ['Share to Slack is on every card'], health: {} }
     },
     colleagues: [
       { id: 'growth', role: 'Growth lead', name: 'Growth lead', ini: 'GL', color: '#3fa9f0' },

@@ -1,4 +1,5 @@
 import { smallPage } from './small-page.js';
+import { PRODUCT_NAME } from './product-name.js';
 // Google sign-in, brand claiming and the team behind a brand.
 // Sign-in is the Google OAuth code flow with PKCE (lifted from SquareUp's google-auth.ts): a nonce + verifier ride
 // in a short httpOnly cookie, the code is traded server-to-server, and we trust only a Google-verified email.
@@ -122,7 +123,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   const seatWords = async (slug, seats) => { if (seats === 'all' || seats == null) return 'every view'; const N = await seatNames(slug).catch(() => ({})); return seats.length ? seats.map((k) => N[k] || k).join(', ') : 'no views yet'; };
   async function joinedMail(slug, u) {
     const m = await getM(slug), name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', link = `${base}/${slug}?go=feed#team`;
-    const subject = `${u.name || u.email} joined ${name} on Brew`;
+    const subject = `${u.name || u.email} joined ${name}`;
     for (const o of owners(m)) await mail(o, subject, emailHtml({ title: subject, eyebrow: name, preheader: 'They see every view. You can narrow that on Team.', body: para(`${esc(u.name || u.email)}${u.name ? ` (${esc(u.email)})` : ''} signed in with a company email, so they're on the team.`) + para('They see every view. If they should see less, pick their views on Team.'), cta: { href: link, label: 'Review their views' } }), `${subject}\n\nThey see every view. If they should see less, pick their views on Team: ${link}`);
   }
   const isMember = async (slug, u) => !!(await roleOf(slug, u));
@@ -163,7 +164,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     const m = await getM(slug);
     if (m.owner) return (await roleOf(slug, u)) ? { ok: true } : { error: 'This brand is already claimed. Ask its team to invite you.' };
     const mine = officialFor(u.email, host); /* only the brand's own domain */
-    if (!mine && isAdmin(u)) return { error: `You have full access as Brew team. Only someone with an email at ${host} can claim it.`, full: true };
+    if (!mine && isAdmin(u)) return { error: `You have full access as part of our team. Only someone with an email at ${host} can claim it.`, full: true };
     if (!mine) return { error: `Sign in with your work email at ${host} to claim it.`, needs: 'work_email' };
     await addMember(slug, u, 'owner', via || `Email at ${domainOf(u.email)}`);
     log.log?.(`[auth] ${slug} claimed by ${u.email} (${via || 'email domain'})`);
@@ -173,7 +174,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   /* ---------- asking for access: one-tap approve from the owner's inbox ---------- */
   async function mail(to, subject, html, text) {
     const key = process.env.RESEND_API_KEY; if (!key) return log.warn('[auth] no RESEND_API_KEY'), false;
-    const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Brew <hello@send.joinsquareup.com>', to: [to], subject, html, text }) });
+    const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || `${PRODUCT_NAME} <hello@send.joinsquareup.com>`, to: [to], subject, html, text }) });
     if (!r.ok) log.warn('[auth] resend', r.status, (await r.text()).slice(0, 200)); return r.ok;
   }
 
@@ -186,8 +187,8 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     await editM(slug, (mm) => { mm.invites = [...(mm.invites || []).filter((x) => x.email !== email), { email, seats, by: by.email, at: Date.now() }].slice(-50); mm.requests = mm.requests.filter((x) => x.email !== email); });
     if (quiet) { log.log?.(`[auth] ${slug}: ${by.email} invited ${email} from a jam`); return { ok: true, sent: null, link: inviteLink(base, slug, email) }; }
     const name = await brandName(slug), link = inviteLink(base, slug, email), who = by.name || by.email, views = await seatWords(slug, seats);
-    const subject = `${who} invited you to ${name} on Brew`;
-    const sent = await mail(email, subject, emailHtml({ title: `${who} invited you to ${name}`, eyebrow: name, preheader: `You'll see ${name}'s feed as ${views}.`, body: para(`You'll see ${esc(name)}'s feed as <b style="color:#111">${esc(views)}</b>: the moves, numbers and work for your part of the business.`), cta: { href: link, label: `Join ${name}` }, after: para(`Sign in with Google as <b style="color:#111">${esc(email)}</b>. The link works for ${INVITE_DAYS} days.`, { muted: true, small: true }) }), `${subject}\n\nViews: ${views}\nJoin: ${link}\n\nSign in with Google as ${email}. The link works for ${INVITE_DAYS} days.`).catch(() => false);
+    const subject = `${who} invited you to ${name}`;
+    const sent = await mail(email, subject, emailHtml({ title: `${who} invited you to ${name}`, eyebrow: name, preheader: `You'll see ${name}'s feed as ${views}.`, body: para(`You'll see ${esc(name)}'s feed as <b style="color:#111">${esc(views)}</b>: the plays, numbers and work for your part of the business.`), cta: { href: link, label: `Join ${name}` }, after: para(`Sign in with Google as <b style="color:#111">${esc(email)}</b>. The link works for ${INVITE_DAYS} days.`, { muted: true, small: true }) }), `${subject}\n\nViews: ${views}\nJoin: ${link}\n\nSign in with Google as ${email}. The link works for ${INVITE_DAYS} days.`).catch(() => false);
     log.log?.(`[auth] ${slug}: ${by.email} invited ${email} (${seats === 'all' ? 'all' : seats.join(',')})`);
     return { ok: true, sent, link };
   }
@@ -206,9 +207,9 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
       else if (act === 'revoke') m.invites = (m.invites || []).filter((y) => y.email !== email);
     });
     if (err) return { error: err };
-    if (act === 'transfer') { const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = `You're now the admin of ${name} on Brew`; mail(email, subject, emailHtml({ title: subject, eyebrow: name, body: para(`${esc(me.name || me.email)} handed it over to you.`) + para('You can invite people, pick their views and connect accounts.'), cta: { href: `${base}/${slug}?go=feed`, label: `Open ${name}` } }), subject).catch(() => {}); }
+    if (act === 'transfer') { const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = `You're now the admin of ${name}`; mail(email, subject, emailHtml({ title: subject, eyebrow: name, body: para(`${esc(me.name || me.email)} handed it over to you.`) + para('You can invite people, pick their views and connect accounts.'), cta: { href: `${base}/${slug}?go=feed`, label: `Open ${name}` } }), subject).catch(() => {}); }
     if (act === 'make_owner' || act === 'step_down') {
-      const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = act === 'make_owner' ? `You're now an admin of ${name} on Brew` : `You're no longer an admin of ${name} on Brew`;
+      const name = await brandName(slug), base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', subject = act === 'make_owner' ? `You're now an admin of ${name}` : `You're no longer an admin of ${name}`;
       if (email !== me.email) mail(email, subject, emailHtml({ title: subject, eyebrow: name, body: para(`${esc(me.name || me.email)} made the change.`) + para(act === 'make_owner' ? 'You can invite people, pick their views and connect accounts.' : `Your views: <b style="color:#111">${esc(await seatWords(slug, cleanSeats(b.seats ?? [])))}</b>.`), cta: { href: `${base}/${slug}?go=feed`, label: `Open ${name}` } }), subject).catch(() => {});
     }
     return { ok: true };
@@ -259,7 +260,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     if (p === '/auth/approve' && (req.method === 'GET' || req.method === 'POST')) {
       const t = verify(u.searchParams.get('t'), 'approve');
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'referrer-policy': 'no-referrer' });
-      return res.end(page('Access is by invite now', 'Brew no longer takes access requests. Invite them by email from Team and access on the brand page.', t?.slug || null)), true;
+      return res.end(page('Access is by invite now', 'We no longer take access requests. Invite them by email from Team and access on the brand page.', t?.slug || null)), true;
     }
     if (p === '/join' && req.method === 'GET') {
       const raw = u.searchParams.get('t') || '', t = verify(raw, 'invite'), html = (s) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'referrer-policy': 'no-referrer' }); res.end(s); return true; };

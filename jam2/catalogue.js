@@ -128,7 +128,7 @@ const PLANS = [
   [/buyer deck/, () => [B('act', 'Buyer deck', 'A deck for retail buyers: the brand, proof, best sellers, terms left as [YOUR TERMS].')]],
   [/box insert/, () => [B('insert')]],
   [/launch (a|the) .*ad group/, () => [B('changes', 'Search ads', 'The Google Ads Editor sheet: one row per ad (headline ≤ 30 characters, description ≤ 90, keyword).')]],
-  [/agree with the call|apply the plan|ship the five|plan the restock|read the reviews|work out/, () => [B('changes', 'Team plan', 'One row per step: step, who, when. Brew never runs it.')]],
+  [/agree with the call|apply the plan|ship the five|plan the restock|read the reviews|work out/, () => [B('changes', 'Team plan', 'One row per step: step, who, when. We never run it.')]],
   [/carousel post/, () => [B('ig-carousel')]], [/carousel/, () => [B('carousel-ad')]], [/stories/, () => [B('stories')]],
   [/make (the|our) (reel|video)|make the video/, () => [B('reel'), B('video-script', 'How to film it')]],
   [/draft the post|post it|use their words/, () => [B('ig-post'), B('stories', 'Story')]],

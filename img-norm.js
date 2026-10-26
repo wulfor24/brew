@@ -71,7 +71,7 @@ export function createImageNorm({ withBrowser = null, tmp = os.tmpdir(), log = c
     let b; try { b = fs.readFileSync(file); } catch { return file; }
     const kind = kindOf(b);
     if (RASTER.has(kind)) return kind === 'jpeg' ? file : flat(file, b);
-    if (kind === 'html' || kind === 'video' || !kind) throw Object.assign(new Error(`this product photo is not a picture Brew can use (${kind || 'unknown format'}); pick another photo`), { soft: true, badImage: true });
+    if (kind === 'html' || kind === 'video' || !kind) throw Object.assign(new Error(`this product photo is not a picture we can use (${kind || 'unknown format'}); pick another photo`), { soft: true, badImage: true });
     const key = sha(b);
     if (!inflight.has(key)) inflight.set(key, toPng(file, b, kind).finally(() => setTimeout(() => inflight.delete(key), 1000)));
     try { const out = await inflight.get(key); log.info?.(`[img-norm] ${kind} → png ${path.basename(file)}`); return flat(out, fs.readFileSync(out)); }

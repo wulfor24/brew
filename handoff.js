@@ -1,4 +1,5 @@
 import { B } from './brand-ctx.js';
+import { PRODUCT_NAME } from './product-name.js';
 // The handoff: everything about a jam, in one place, for whoever picks it up outside the product
 // (a WhatsApp group, a Slack channel, the ShopOS team shipping it). Card details, the options and what was
 // chosen, what the moves say, the brief, every version, the remix package with its assets, the jam chat,
@@ -39,7 +40,7 @@ export const parseShare = (tok) => { const p = String(tok || '').split('~');
 export const parseToken = (tok) => { const [tid, wid, sig] = String(tok || '').split('~'); return tid && wid && sig && signed(sig, tid, wid) ? { tid, wid } : null; };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const STAGE = { drafting: 'Drafting', team: 'With the team', brew: 'With the ShopOS team', needs_you: 'Needs your yes', ready: 'Ready to share', deploying: 'Brief shared', measuring: 'Brief shared', result: 'Brief shared' };
+const STAGE = { drafting: 'Drafting', team: 'With the team', brew: 'With our team', needs_you: 'Needs your yes', ready: 'Ready to share', deploying: 'Brief shared', measuring: 'Brief shared', result: 'Brief shared' };
 const KIND = { report: 'Report', idea: 'Idea', decision: 'Decision', competitor: 'Competitor watch' };
 // keep line breaks, cut at a line end near n characters
 const clipLines = (s, n) => { const out = []; let len = 0; for (const l of String(s || '').split('\n')) { if (!l.trim()) continue; if (len + l.length > n) { out.push('…'); break; } out.push(l); len += l.length + 1; } return out.join('\n'); };
@@ -56,16 +57,16 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
     const ch = w.changeId && t.changes?.[w.changeId]; const pkg = ch && RMX?.packageOf ? RMX.packageOf(t, ch) : null;
     if (pkg) pkg.assets = pkg.assets.map((a) => a.url ? { ...a, url: abs(a.url, b), ...(a.poster ? { poster: abs(a.poster, b) } : {}) } : a);
     const m = w.measure || c.measure || null;
-    const who = (x) => x.from === 'me' ? 'You' : x.from === 'ai' ? (x.who || AGENT[w.agent] || 'AI') : x.from === 'brew' ? (x.who ? `${x.who} (Brew)` : 'ShopOS team') : x.from === 'colleague' ? (x.who || 'Teammate') : 'Brew';
+    const who = (x) => x.from === 'me' ? 'You' : x.from === 'ai' ? (x.who || AGENT[w.agent] || 'AI') : x.from === 'brew' ? (x.who ? `${x.who} (our team)` : 'Our team') : x.from === 'colleague' ? (x.who || 'Teammate') : PRODUCT_NAME;
     return {
       id: w.id, title: w.title || c.title, ticket: w.ticket || null, stage: STAGE[w.stage] || w.stage, with: w.with?.name || null,
-      memo: { from: w.jamBrief?.sender?.name || w.jamBrief?.sender?.email || null, to: w.jamBrief?.to === 'team' ? 'Your team' : 'The ShopOS team, Brew’s build crew', /* one name for the team (FEED-QA-10) */ due: w.doc?.plan?.when || null,
+      memo: { from: w.jamBrief?.sender?.name || w.jamBrief?.sender?.email || null, to: w.jamBrief?.to === 'team' ? 'Your team' : 'Our team', /* one name for the team (FEED-QA-10) */ due: w.doc?.plan?.when || null,
         status: w.jamBrief?.status ? ({ sent: 'Sent', received: 'Received', in_progress: 'In progress', needs_info: 'Needs info', delivered: 'Delivered' })[w.jamBrief.status] || w.jamBrief.status : null },
       links: { jam: abs(jamPath(t, w, opts.changeId), b), page: abs(`${handoffPath(t, w)}?full=1`, b), studio: pkg ? abs(pkg.studio, b) : null },
       brand: SEED.brand?.name || 'the brand', mark: SEED.brand?.mark || null,
       /* a rival's ad card: its pictures are theirs, so the brief carries none of them (the Ad Library link is the source) and
          says what we make, our version, rather than the rival's card title */
-      card: { title: c.title, sub: c.sub, agent: AGENT[c.agent] || 'Brew', type: KIND[c.type] || c.type || '', rows: c.rows || [], src: c.src || '', link: c.link || null,
+      card: { title: c.title, sub: c.sub, agent: AGENT[c.agent] || PRODUCT_NAME, type: KIND[c.type] || c.type || '', rows: c.rows || [], src: c.src || '', link: c.link || null,
         theirs: isRivalCard(c), make: c.make?.what || null,
         images: isRivalCard(c) ? [] : (c.images || []).filter((u) => !/mito[23]/.test(u)).map((u) => abs(u, b)), how: c.detail?.how || [], why: c.detail?.why || [], watch: c.detail?.watch || '' },
       page: page ? { lead: page.lead, reason: page.reason, follows: page.follows || [], moves: page.moves || [],
@@ -92,14 +93,14 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
   // WhatsApp and Slack both read *bold* and _italic_. A full summary, then the link to everything.
   const text = (x, to = 'whatsapp') => {
     const L = [];
-    L.push(`*🎛️ Jam: ${x.title}*${x.ticket ? ` (${x.ticket})` : ''}`, `_${[x.brand, 'Brew', x.card.agent !== 'Brew' && x.card.agent, x.card.type, x.stage].filter(Boolean).join(' · ')}_`, '');
+    L.push(`*🎛️ Jam: ${x.title}*${x.ticket ? ` (${x.ticket})` : ''}`, `_${[x.brand, PRODUCT_NAME, x.card.agent !== PRODUCT_NAME && x.card.agent, x.card.type, x.stage].filter(Boolean).join(' · ')}_`, '');
     if (x.now) L.push(`*Where it is now: ${x.now.head}*`, ...[x.now.line, x.now.extra].filter(Boolean), '');
     L.push(`*The card*`, x.card.title, clip(x.card.sub, 220));
     if (x.card.rows.length) L.push(x.card.rows.slice(0, 5).map(([k, v]) => `• ${k}: ${v}`).join('\n'));
     if (x.page) {
       L.push('', x.decided ? `*We’re going with:* ${x.decided.name}` : '*The options*');
       if (x.decided) L.push(clip(x.decided.says, 200), `What changes: ${clip(x.decided.effect, 220)}`, ...(x.decided.measure ? [`How we’ll know: ${optMeasure(x.decided.measure)}`] : []));
-      else x.page.options.forEach((o, i) => L.push(`${i + 1}. ${o.name}${o.pick ? ' ⭐ Brew pick' : ''}: ${clip(o.effect || o.says, 140)}`));
+      else x.page.options.forEach((o, i) => L.push(`${i + 1}. ${o.name}${o.pick ? ' ⭐ Our pick' : ''}: ${clip(o.effect || o.says, 140)}`));
       if (x.page.reason) L.push(`_Why:_ ${clip(x.page.reason, 240)}`);
       if (x.page.moves.length) L.push(`_From ${x.page.moves.map((mv) => moveLabel(mv.n)).join(', ')}:_ ${clip(x.page.moves[0].says || x.page.moves[0].plain, 180)}`);
     }
@@ -121,7 +122,7 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
     /* teammates open the jam itself; the ShopOS team also gets the read-only page with every asset */
     L.push('', `🎛️ *Open the jam (latest version, chat and brief):* ${x.links.jam}`);
     L.push(`📎 *The full brief, read-only (card, assets, every message, the package):* ${x.links.page}`); // both shares carry the read-only page
-    L.push(to === 'brew' ? '' : to === 'slack-live' ? '' : `When we’re done here, paste this chat back into Brew and the brief updates.`); /* a real Slack thread comes back on its own */
+    L.push(to === 'brew' ? '' : to === 'slack-live' ? '' : `When we’re done here, paste this chat back into the jam and the brief updates.`); /* a real Slack thread comes back on its own */
     return L.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n').trim();
   };
 
@@ -132,7 +133,7 @@ export function createHandoff({ RMX, pageOf, fillCard, AGENT = {}, SEED = {}, ba
     const mdLines = (s) => String(s || '').split('\n').map((l) => { const e = esc(l).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); return /^#\s/.test(l) ? `<h3>${e.slice(2)}</h3>` : /^#{2,3}\s/.test(l) ? `<h4>${e.replace(/^#+\s/, '')}</h4>` : /^\s*[-*]\s/.test(l) ? `<li>${e.replace(/^\s*[-*]\s/, '')}</li>` : l.trim() ? `<p>${e}</p>` : ''; }).join('').replace(/(<li>.*?<\/li>)+/g, (m) => `<ul>${m}</ul>`);
     const msgs = (arr) => arr.map((m) => m.system ? `<div class="sys">${esc(m.text)}</div>` : `<div class="msg${m.who === 'You' ? ' me' : ''}"><small>${esc(m.who)}${m.at ? ` · ${new Date(m.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : ''}</small><p>${esc(m.text)}</p></div>`).join('');
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(x.title)} · Brief</title>
-<meta name="robots" content="noindex"><link rel="icon" href="/${x.mark || 'assets/brew-mark.svg'}">
+<meta name="description" content="${esc(x.brand)} brief: ${esc(x.title)}"><meta name="robots" content="noindex"><link rel="icon" href="/${x.mark || 'assets/brew-mark.svg'}">
 <style>
 :root{--bg:#0a0a0a;--paper:#f7f5ef;--card:#fffdf7;--fg:#141414;--fg2:#4a4a46;--fg3:#7a7a74;--line:#e2ded3;--info:#3b5bdb;--info-bg:rgba(59,91,219,.08);--ok:#1f7a3e;--ok-bg:rgba(31,122,62,.09);--warn:#a8590a}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "SF Pro Text","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -158,13 +159,13 @@ pre.code{background:#0f172a;color:#e2e8f0;word-break:break-word;margin:8px 0}pre
 .vers{display:flex;flex-direction:column;gap:8px}.ver{display:flex;gap:10px;align-items:flex-start}.ver img{width:64px;border-radius:8px}.ver.cur b::after{content:" · current";color:var(--ok);font-weight:500;font-size:12px}
 .miss{color:var(--warn);font-size:13.5px}.foot{font-size:12px;color:var(--fg3);text-align:center}
 </style></head><body><main>
-<header>${x.memo?.status ? `<span class="stamp">${esc(x.memo.status)}</span><br>` : ''}<small>${esc(x.brand)} × Brew · Brief${x.ticket ? ` · ${esc(x.ticket)}` : ''}${x.frozenAt ? ` · shared ${esc(new Date(x.frozenAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}, as it was then` : ''}</small><h1>${esc(x.title)}</h1>
-<dl class="memo"><div><dt>From</dt><dd>${esc(x.memo?.from ? `${x.memo.from}, ${x.brand}` : `${x.brand} team`)}</dd></div><div><dt>To</dt><dd>${esc(x.memo?.to || 'The ShopOS team, Brew’s build crew')}</dd></div><div><dt>Due</dt><dd>${esc(x.memo?.due || 'As agreed')}</dd></div><div><dt>Ref</dt><dd>${esc(x.ticket || '—')}</dd></div></dl>
-<div class="chips"><span class="chip">${esc(x.card.agent)}${x.card.type ? ' · ' + esc(x.card.type) : ''}</span><span class="chip">${esc(x.stage)}${x.with ? ' · ' + esc(x.with) : ''}</span><a class="chip" href="${esc(x.links.jam)}">Open the jam in Brew ↗</a>${x.links.studio ? `<a class="chip" href="${esc(x.links.studio)}">Open in the studio ↗</a>` : ''}</div></header>
+<header>${x.memo?.status ? `<span class="stamp">${esc(x.memo.status)}</span><br>` : ''}<small>${esc(x.brand)} × ${esc(PRODUCT_NAME)} · Brief${x.ticket ? ` · ${esc(x.ticket)}` : ''}${x.frozenAt ? ` · shared ${esc(new Date(x.frozenAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}, as it was then` : ''}</small><h1>${esc(x.title)}</h1>
+<dl class="memo"><div><dt>From</dt><dd>${esc(x.memo?.from ? `${x.memo.from}, ${x.brand}` : `${x.brand} team`)}</dd></div><div><dt>To</dt><dd>${esc(x.memo?.to || 'Our team')}</dd></div><div><dt>Due</dt><dd>${esc(x.memo?.due || 'As agreed')}</dd></div><div><dt>Ref</dt><dd>${esc(x.ticket || '—')}</dd></div></dl>
+<div class="chips"><span class="chip">${esc(x.card.agent)}${x.card.type ? ' · ' + esc(x.card.type) : ''}</span><span class="chip">${esc(x.stage)}${x.with ? ' · ' + esc(x.with) : ''}</span><a class="chip" href="${esc(x.links.jam)}">Open the jam ↗</a>${x.links.studio ? `<a class="chip" href="${esc(x.links.studio)}">Open in the studio ↗</a>` : ''}</div></header>
 ${x.now ? sec('Where it is now', `<p class="lead">${esc(x.now.head)}</p>${x.now.line ? `<p class="sub">${esc(x.now.line)}</p>` : ''}${x.now.extra ? `<p class="eff">${esc(x.now.extra)}</p>` : ''}`) : ''}
 ${sec('The card', `<p class="lead">${esc(x.card.title)}</p><p class="sub">${esc(x.card.sub)}</p>${x.card.rows.length ? `<div class="stats">${x.card.rows.map(([k, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('')}</div>` : ''}${x.card.images.length ? `<div class="imgs">${x.card.images.map((u) => `<figure><img src="${esc(u)}" alt=""><figcaption>Card image <a href="${esc(u)}" download target="_blank">Download</a></figcaption></figure>`).join('')}</div>` : ''}${x.card.src ? `<p class="sub" style="font-size:13px">From ${esc(x.card.src)}</p>` : ''}`)}
-${x.page ? sec(x.decided ? 'What we decided' : 'The options', `${x.page.lead ? `<p><b>${esc(x.page.lead)}</b></p>` : ''}${x.page.options.map((o) => `<div class="opt${o.chosen ? ' chosen' : o.pick && !x.decided ? ' pick' : ''}"><b>${esc(o.name)}</b>${o.chosen ? '<span class="tag">✓ Going with this</span>' : o.pick ? '<span class="tag">Brew pick</span>' : ''}<p>${esc(o.says)}</p><p class="eff">What changes: ${esc(o.effect)}</p>${o.measure ? `<p class="eff">How we’d know: ${esc(optMeasure(o.measure))}</p>` : ''}${o.moves?.length ? `<p class="eff">Backed by ${o.moves.map((n) => moveLabel(n)).join(', ')}</p>` : ''}</div>`).join('')}${x.page.reason ? `<h4>Why Brew picks it</h4><p>${esc(x.page.reason)}</p>` : ''}${x.page.follows.length ? `<p class="eff">What follows: ${x.page.follows.map(esc).join(' · ')}</p>` : ''}`) : ''}
-${x.page?.moves.length ? sec('What the moves say', x.page.moves.map((mv) => `<div class="mv"><div class="n">${moveNum(mv.n)}</div><div><b>${esc(mv.title)}</b><p class="eff">${esc(mv.plain)}</p>${mv.number ? `<p class="num">${esc(mv.number)}</p>` : ''}<p>${esc(mv.says)}</p>${mv.points.length ? `<ul>${mv.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}</div></div>`).join('')) : ''}
+${x.page ? sec(x.decided ? 'What we decided' : 'The options', `${x.page.lead ? `<p><b>${esc(x.page.lead)}</b></p>` : ''}${x.page.options.map((o) => `<div class="opt${o.chosen ? ' chosen' : o.pick && !x.decided ? ' pick' : ''}"><b>${esc(o.name)}</b>${o.chosen ? '<span class="tag">✓ Going with this</span>' : o.pick ? '<span class="tag">Our pick</span>' : ''}<p>${esc(o.says)}</p><p class="eff">What changes: ${esc(o.effect)}</p>${o.measure ? `<p class="eff">How we’d know: ${esc(optMeasure(o.measure))}</p>` : ''}${o.moves?.length ? `<p class="eff">Backed by ${o.moves.map((n) => moveLabel(n)).join(', ')}</p>` : ''}</div>`).join('')}${x.page.reason ? `<h4>Why we pick it</h4><p>${esc(x.page.reason)}</p>` : ''}${x.page.follows.length ? `<p class="eff">What follows: ${x.page.follows.map(esc).join(' · ')}</p>` : ''}`) : ''}
+${x.page?.moves.length ? sec('What the plays say', x.page.moves.map((mv) => `<div class="mv"><div class="n">${moveNum(mv.n)}</div><div><b>${esc(mv.title)}</b><p class="eff">${esc(mv.plain)}</p>${mv.number ? `<p class="num">${esc(mv.number)}</p>` : ''}<p>${esc(mv.says)}</p>${mv.points.length ? `<ul>${mv.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}</div></div>`).join('')) : ''}
 ${x.brief ? sec(`The brief${x.brief.kind ? ' · ' + esc(x.brief.kind) : ''}`, md(x.brief.md) + (x.brief.missing.length ? `<p class="miss">Still missing: ${esc(x.brief.missing.join(', ').toLowerCase())}</p>` : '')) : ''}
 ${x.pkg ? sec(`The package · ${esc(x.pkg.family)} · v${x.pkg.version} of ${x.pkg.versions}`, `<p><b>${esc(x.pkg.action)}</b> on ${esc(x.pkg.target)} · ${esc(x.pkg.money)} · ${esc(x.pkg.undo)}</p>
   ${x.pkg.assets.filter((a) => a.kind === 'image').length ? `<div class="imgs">${x.pkg.assets.filter((a) => a.kind === 'image').map((a) => `<figure><img src="${esc(a.url)}" alt=""><figcaption>${esc(a.label)} <a href="${esc(a.url)}" download target="_blank">Download</a></figcaption></figure>`).join('')}</div>` : ''}

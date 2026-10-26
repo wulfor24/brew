@@ -48,7 +48,7 @@ export function argsFor(tool, intent = {}, log = null) {
     if (hit) setPath(out, hit, v); else if (!schema.properties || schema.additionalProperties !== false) { setPath(out, names[0], v); unknown.push(k); } else unknown.push(k);
   }
   const missing = (schema.required || []).filter((r) => out[r] === undefined);
-  if (missing.length) throw Object.assign(new Error(`Sloosh ${tool.name} needs ${missing.join(', ')} and Brew has no value for it (schema keys: ${Object.keys(schema.properties || {}).join(', ')})`), { schema: true, missing });
+  if (missing.length) throw Object.assign(new Error(`Sloosh ${tool.name} needs ${missing.join(', ')} and we have no value for it (schema keys: ${Object.keys(schema.properties || {}).join(', ')})`), { schema: true, missing });
   if (unknown.length) log?.warn?.(`[sloosh] ${tool.name}: no schema key for ${unknown.join(', ')} (${schema.additionalProperties === false ? 'left out' : 'sent as given'})`);
   return out;
 }

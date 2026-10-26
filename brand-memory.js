@@ -38,7 +38,7 @@ export const SCOPES = ['brand', 'member', 'run'];
    the old, and every prompt block prints it first, with or without a query */
 export const VOICE_KEY = 'voice.pick';
 export const VOICE_LINE = {
-  site: 'Voice: like the site, as Brew read it',
+  site: 'Voice: like the site, as we read it',
   warmer: 'Voice: warmer than the site. Write like a friend who knows the product: close, kind, a little personal.',
   sharper: 'Voice: sharper than the site. Short sentences, a clear point of view, nothing softened.',
   plainer: 'Voice: plainer than the site. Everyday words, one idea per sentence, no flourishes.'
@@ -261,7 +261,7 @@ export function createBrandMemory({ ai = null, packs, embed = null, allow = () =
     const brand = facts.filter((f) => f.scope === 'brand');
     for (const [k, t] of Object.entries(TOPICS)) { const xs = brand.filter((f) => f.topic === k).sort(byW); files[t.file] = `# ${t.title}\n\n${xs.length ? xs.map(line).join('\n') : '_Nothing yet._'}\n`; }
     const members = [...new Set(facts.filter((f) => f.scope === 'member').map((f) => f.memberId))].filter((m) => all || m === memberId);
-    for (const m of members) files[`members/${m}.md`] = `# Personal preferences (${m})\n\nOnly this person sees these. They shape what Brew writes for them, never the brand.\n\n${facts.filter((f) => f.scope === 'member' && f.memberId === m).sort(byW).map(line).join('\n')}\n`;
+    for (const m of members) files[`members/${m}.md`] = `# Personal preferences (${m})\n\nOnly this person sees these. They shape what we write for them, never the brand.\n\n${facts.filter((f) => f.scope === 'member' && f.memberId === m).sort(byW).map(line).join('\n')}\n`;
     const runs = [...new Set(facts.filter((f) => f.scope === 'run').map((f) => f.runId))];
     for (const r of runs) files[`runs/${r}.md`] = `# Session ${r}\n\n${facts.filter((f) => f.scope === 'run' && f.runId === r).map(line).join('\n')}\n`;
     const top = (k) => brand.filter((f) => f.topic === k).sort(byW)[0];

@@ -84,7 +84,7 @@ test('a cadence move has the build-move shape, cites its evidence, and unbacked 
   assert.equal(shapeMove({ ...raw, found: [{ text: 'x', ev: ['e9'] }] }, { n: 54, family: 'listen', ev, ledger: LEDGER }), null, 'a move that cites nothing is not a move');
   const auto = shapeMove({ ...raw, area: 'auto', program: { name: 'Sweep', trigger: 'Every Monday', repeat: 'weekly', steps: [{ title: 'List', kind: 'check', day: 0, owner: 'brew', repeat: 'weekly' }] } }, { n: 55, family: 'auto', ev, ledger: LEDGER });
   assert.equal(auto.program, undefined, 'a routine is a plan, never a program Brew runs'); const rt = auto.sections.find((s) => s.h === 'The routine');
-  assert.ok(rt); assert.match(rt.blocks[0].text, /The team runs it from the shared brief; Brew does not run it\./);
+  assert.ok(rt); assert.match(rt.blocks[0].text, /The team runs it from the shared brief; we do not run it\./);
   const clean = shapeMove({ ...raw, stat: '240', why: 'Reviews say so.', example: null, found: [{ text: 'Reviews: 240 on Judge.me', ev: ['e1'] }] }, { n: 56, family: 'listen', ev, ledger: LEDGER });
   assert.equal(clean.meta.verified, true, 'verified when every number is in the evidence');
 });
@@ -137,7 +137,7 @@ test('the scheduler writes moves into the pack, turns them into family-tagged ca
   const moves = await P.getJSON('acme-com', 'moves.json'); assert.ok(nums.every((n) => moves[n]?.family)); assert.ok(moves[50], 'build moves untouched');
   assert.ok(fs.existsSync(path.join(ROOT, '.brands/acme-com/moves/1001.json')));
   const seed = await P.getJSON('acme-com', 'seed.json'); const c1001 = seed.posts.find((c) => c.id === 'm1001-1');
-  assert.equal(c1001.moveFamily, 'listen'); assert.match(c1001.src, /^Move 1001 · Listening · The plan$/); assert.deepEqual(c1001.badge, ['Listening move', 'info']); assert.equal(c1001.origin, 'cadence');
+  assert.equal(c1001.moveFamily, 'listen'); assert.match(c1001.src, /^Move 1001 · Listening · The plan$/); assert.deepEqual(c1001.badge, ['Listening play', 'info']); assert.equal(c1001.origin, 'cadence');
   assert.equal(added.length, 6);
   const st = await S.stateOf('acme-com'); assert.deepEqual(st.live.listen, [1001, 1002, 1003]); assert.equal(st.nextN, 1007); assert.ok(st.spend.usd > 0); assert.equal(st.runningAt, null, 'the run lock is released');
   assert.ok(await P.getJSON('acme-com', 'audit/scorecard.json'));
@@ -178,7 +178,7 @@ test('POST /moves/refresh: only those who may make new work (gen), and it answer
 
 test('tagCards keeps the move number first and names the family', () => {
   const [c] = tagCards([{ id: 'm70-1', src: 'Move 70 · The routine', title: 't' }], { n: 70, family: 'auto' });
-  assert.equal(c.src, 'Move 70 · Automation · The routine'); assert.deepEqual(c.badge, ['Automation move', 'info']); assert.equal(FAMILIES.auto.max, 4);
+  assert.equal(c.src, 'Move 70 · Automation · The routine'); assert.deepEqual(c.badge, ['Automation play', 'info']); assert.equal(FAMILIES.auto.max, 4);
 });
 
 /* ---------- first drafts in the background ---------- */

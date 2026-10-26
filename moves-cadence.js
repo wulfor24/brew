@@ -32,8 +32,8 @@ const dayOf = (ms) => new Date(ms).toISOString().slice(0, 10);
 const fmt = (n) => Number(n).toLocaleString('en-US');
 
 export const FAMILIES = {
-  listen: { label: 'Listening', kicker: 'LISTENING', min: 2, max: 4, badge: 'Listening move' },
-  auto: { label: 'Automation', kicker: 'AUTOMATION', min: 2, max: 4, badge: 'Automation move' },
+  listen: { label: 'Listening', kicker: 'LISTENING', min: 2, max: 4, badge: 'Listening play' },
+  auto: { label: 'Automation', kicker: 'AUTOMATION', min: 2, max: 4, badge: 'Automation play' },
   /* written when the team adds learnings in a jam (brand-learnings.js), never on the weekly clock */
   learn: { label: 'From what you told us', kicker: 'FROM YOUR TEAM', min: 1, max: 5, badge: 'From your team' }
 };
@@ -80,12 +80,12 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
     /* an enquiry-led brand: its Google reviews and the walk to its enquiry form, not a cart */
     if (enquiry) { const g = (p.reviews?.platforms || []).find((x) => /google/i.test(x.name));
       parts.push(g ? part('Google reviews', (Math.min(g.count || 0, 100) / 100) * 15 * Math.min(1, (g.rating || 0) / 4.5), 15, `${g.count} Google reviews${g.rating ? ` at ${g.rating.toFixed(1)}★` : ''} on ${g.label?.replace(/^Google reviews on /, '') || 'its places'}`, 'Google Maps', g.url) : part('Google reviews', 0, 0, 'Google reviews not read yet', 'Google Maps', ''));
-      if (co.kind === 'enquiry') parts.push(co.reached ? part('Path to an enquiry', co.clicks <= 1 ? 25 : 18, 25, `the enquiry form is ${co.clicks ? `${co.clicks} click${co.clicks === 1 ? '' : 's'}` : 'on the home page'} away and asks for ${(co.fields || []).join(', ') || 'a few details'}`, 'Brew enquiry walk', co.stoppedAt || site) : part('Path to an enquiry', 0, 0, `not checked: the walk stopped (${(co.walk || []).find((s) => !s.ok)?.err || 'form not reached'})`, 'Brew enquiry walk', site)); }
+      if (co.kind === 'enquiry') parts.push(co.reached ? part('Path to an enquiry', co.clicks <= 1 ? 25 : 18, 25, `the enquiry form is ${co.clicks ? `${co.clicks} click${co.clicks === 1 ? '' : 's'}` : 'on the home page'} away and asks for ${(co.fields || []).join(', ') || 'a few details'}`, 'Enquiry walk', co.stoppedAt || site) : part('Path to an enquiry', 0, 0, `not checked: the walk stopped (${(co.walk || []).find((s) => !s.ok)?.err || 'form not reached'})`, 'Enquiry walk', site)); }
     const walk = enquiry ? [] : co.walk || [];
-    if (co.closed) parts.push(part('Path to checkout', 0, 0, closedLine('the walk to checkout'), 'Brew checkout walk', site));
+    if (co.closed) parts.push(part('Path to checkout', 0, 0, closedLine('the walk to checkout'), 'Checkout walk', site));
     /* a walk that stopped is Brew's headless browser falling short as often as the store: not scored, said plainly */
-    if (walk.length && !walk.some((s) => s.step === 'Checkout entry' && s.ok)) parts.push(part('Path to checkout', 0, 0, `not checked: the walk stopped at ${(walk.find((s) => !s.ok) || {}).step || 'a step'} (${(walk.find((s) => !s.ok) || {}).err || 'checkout not reached'}); the next refresh walks it again`, 'Brew checkout walk', site));
-    else if (walk.length) { const ok = walk.filter((s) => s.ok).length; parts.push(part('Path to checkout', (ok / walk.length) * 25, 25, `${ok} of ${walk.length} steps of the walk to checkout worked (home, product, cart, checkout)${co.msToCheckout ? `, ${(co.msToCheckout / 1000).toFixed(1)} s to checkout` : ''}`, 'Brew checkout walk', walk[0]?.url || site)); }
+    if (walk.length && !walk.some((s) => s.step === 'Checkout entry' && s.ok)) parts.push(part('Path to checkout', 0, 0, `not checked: the walk stopped at ${(walk.find((s) => !s.ok) || {}).step || 'a step'} (${(walk.find((s) => !s.ok) || {}).err || 'checkout not reached'}); the next refresh walks it again`, 'Checkout walk', site));
+    else if (walk.length) { const ok = walk.filter((s) => s.ok).length; parts.push(part('Path to checkout', (ok / walk.length) * 25, 25, `${ok} of ${walk.length} steps of the walk to checkout worked (home, product, cart, checkout)${co.msToCheckout ? `, ${(co.msToCheckout / 1000).toFixed(1)} s to checkout` : ''}`, 'Checkout walk', walk[0]?.url || site)); }
     const want = enquiry ? [['faq|help', 'FAQ or help'], ['contact', 'contact']] : [['faq|help', 'FAQ or help'], ['return', 'returns'], ['shipping', 'shipping'], ['contact', 'contact']]; /* nothing ships for an enquiry */
     const have = want.filter(([re]) => keyPages.some((u) => new RegExp(re, 'i').test(u)));
     if (p.closed && !keyPages.length) parts.push(part('Help pages', 0, 0, closedLine('help pages'), `${host} key pages`, site));
@@ -103,7 +103,7 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
     if (p.closed || p.search?.closed) parts.push(part('Ranks for category searches', 0, 0, closedLine('Google rank'), 'Google results', ''));
     else if (serp.length) { const bare = String(host).replace(/^www\./, ''), hits = serp.filter((s) => (s.results || []).some((r) => String(r.domain || '').includes(bare)));
       const top = serp[0]?.results?.slice(0, 3).map((r) => r.domain).join(', ');
-      parts.push(part('Ranks for category searches', (hits.length / serp.length) * 50, 50, `${host} is in the results read for ${hits.length} of ${serp.length} category searches${top ? `; "${serp[0].q}" shows ${top} first` : ''}`, 'Google results read by Brew', `https://www.google.com/search?q=${encodeURIComponent(serp[0].q)}`)); }
+      parts.push(part('Ranks for category searches', (hits.length / serp.length) * 50, 50, `${host} is in the results read for ${hits.length} of ${serp.length} category searches${top ? `; "${serp[0].q}" shows ${top} first` : ''}`, 'Google results we read', `https://www.google.com/search?q=${encodeURIComponent(serp[0].q)}`)); }
     else if (terms.length) parts.push(part('Ranks for category searches', 0, 0, `category searches were not read (${terms.slice(0, 2).join(', ')})`, 'Google results', ''));
     area('seo', parts);
   }
@@ -112,9 +112,9 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
     const TL = { chatgpt: 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity', claude: 'Claude' }, tl = [...new Set(ans.map((a) => TL[a.tool] || a.tool))].join(', ');
     if (s?.of) {
       const bOf = s.of - (s.unbrandedOf || 0);
-      parts.push(part('Named when asked by name', (s.named - (s.unbrandedNamed || 0)) / Math.max(1, bOf) * 30, bOf > 0 ? 30 : 0,`named in ${s.named - (s.unbrandedNamed || 0)} of ${s.of - (s.unbrandedOf || 0)} answers that asked about ${p.name} by name`, tl ? `${tl} answers` : 'AI answers read by Brew', ''));
+      parts.push(part('Named when asked by name', (s.named - (s.unbrandedNamed || 0)) / Math.max(1, bOf) * 30, bOf > 0 ? 30 : 0,`named in ${s.named - (s.unbrandedNamed || 0)} of ${s.of - (s.unbrandedOf || 0)} answers that asked about ${p.name} by name`, tl ? `${tl} answers` : 'AI answers we read', ''));
       if (s.unbrandedOf) { const miss = ans.find((a) => !a.branded && !a.named && (a.rivalsNamed || []).length) || ans.find((a) => !a.branded && !a.named);
-        parts.push(part('Named in category questions', (s.unbrandedNamed / s.unbrandedOf) * 70, 70, `named in ${s.unbrandedNamed} of ${s.unbrandedOf} category questions that did not name the brand${miss ? `; e.g. ${miss.tool} on "${cut(miss.q, 90)}"${(miss.rivalsNamed || []).length ? ` named ${miss.rivalsNamed.slice(0, 3).join(', ')}` : ''}` : ''}`, 'AI answers read by Brew', '')); }
+        parts.push(part('Named in category questions', (s.unbrandedNamed / s.unbrandedOf) * 70, 70, `named in ${s.unbrandedNamed} of ${s.unbrandedOf} category questions that did not name the brand${miss ? `; e.g. ${miss.tool} on "${cut(miss.q, 90)}"${(miss.rivalsNamed || []).length ? ` named ${miss.rivalsNamed.slice(0, 3).join(', ')}` : ''}` : ''}`, 'AI answers we read', '')); }
     }
     if (!parts.length && p.ai?.closed) parts.push(part('AI answers', 0, 0, closedLine('AI answers'), 'AI answers', ''));
     area('ai', parts, s?.byTool ? { byTool: s.byTool } : {});
@@ -153,7 +153,7 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
       parts.push(part('Email tool', tech.klaviyo ? 40 : 0, 40, tech.klaviyo ? 'Klaviyo was detected on the site' : 'no email tool (Klaviyo) was detected on the pages read (to confirm: it may load later or run elsewhere)', `${host} home page`, site));
       parts.push(part('Chat or WhatsApp', tech.chat ? 25 : 0, 25, tech.chat ? `${tech.chat} chat on the site` : 'no chat or WhatsApp button was detected', `${host} home page`, site));
       parts.push(part('Subscriptions or loyalty', tech.subscriptionApp ? 15 : 0, 15, tech.subscriptionApp ? `subscription app: ${tech.subscriptionApp}` : 'no subscription or loyalty app was detected', `${host} home page`, site));
-      const pop = (p.site?.checkout?.popups || []).length; parts.push(part('Sign-up capture', pop ? 20 : 0, 20, pop ? `${pop} sign-up popup${pop === 1 ? '' : 's'} seen on the walk` : 'no email or WhatsApp sign-up popup appeared on the walk to checkout', 'Brew checkout walk', site));
+      const pop = (p.site?.checkout?.popups || []).length; parts.push(part('Sign-up capture', pop ? 20 : 0, 20, pop ? `${pop} sign-up popup${pop === 1 ? '' : 's'} seen on the walk` : 'no email or WhatsApp sign-up popup appeared on the walk to checkout', 'Checkout walk', site));
     }
     area('crm', parts);
   }
@@ -242,9 +242,9 @@ export function evidenceFor(family, { scorecard, listen, auto, profile = {}, led
   const ev = []; const add = (text, src, url = '', at = '') => { if (text) ev.push({ id: `e${ev.length + 1}`, text: cut(text, 400), src: cut(src, 120), url: url || '', at: at || '' }); };
   const host = profile.host ? `https://${profile.host}` : '';
   if (family === 'listen' && listen) {
-    add(`Brew heard ${listen.total} tagged public posts, comments and reviews${listen.sources.length ? ` (${listen.sources.join(', ')})` : ''}`, 'Brew listening', '', listen.at);
+    add(`We heard ${listen.total} tagged public posts, comments and reviews${listen.sources.length ? ` (${listen.sources.join(', ')})` : ''}`, 'Listening', '', listen.at);
     for (const t of listen.themes) {
-      add(`Theme "${t.name}": ${t.n} mentions (${t.pos} positive, ${t.neg} negative, ${t.neutral} neutral)${t.brand ? `, ${t.brand} about the brand` : ''}${t.week != null ? `; ${t.week} this week vs ${t.lastWeek} the week before` : ''}`, 'Brew listening, themes', '', listen.at);
+      add(`Theme "${t.name}": ${t.n} mentions (${t.pos} positive, ${t.neg} negative, ${t.neutral} neutral)${t.brand ? `, ${t.brand} about the brand` : ''}${t.week != null ? `; ${t.week} this week vs ${t.lastWeek} the week before` : ''}`, 'Listening, themes', '', listen.at);
       for (const q of t.quotes) add(`Quote on "${t.name}" (${q.where}): "${q.text}"`, q.where, q.url, listen.at);
     }
     for (const q of listen.questions) add(`Open question in ${q.where}: "${q.title}" (${q.replies} replies, last active ${q.lastActive})`, q.where, q.url, q.lastActive);
@@ -253,7 +253,7 @@ export function evidenceFor(family, { scorecard, listen, auto, profile = {}, led
   }
   if (family === 'auto' && auto) {
     add(`Tools seen on the site: ${auto.tools.join(', ') || 'none detected'}`, `${profile.host} home page`, host);
-    for (const r of auto.routines) add(`Routine candidate "${r.name}": ${r.why}. How it runs: ${r.runs}. Uses: ${r.tools.join(', ')}`, 'Brew routine ideas', '');
+    for (const r of auto.routines) add(`Routine candidate "${r.name}": ${r.why}. How it runs: ${r.runs}. Uses: ${r.tools.join(', ')}`, 'Routine ideas', '');
     for (const s of auto.skipped || []) add(`Not a routine to propose: ${s.why}`, 'Klaviyo (connected)', '');
     /* the team's run: every number its connected accounts read, as evidence the plans may quote */
     for (const e of Object.values(live || {}).slice(0, 30)) add(`${e.label || e.key}: ${e.v}`, `${e.src || String(e.key).split('.')[0]} (connected account)`, '', String(e.at || '').slice(0, 10));
@@ -262,7 +262,7 @@ export function evidenceFor(family, { scorecard, listen, auto, profile = {}, led
   }
   /* what the team told Brew: every learning is a line with its own source (who added what, when) */
   if (family === 'learn' && brief?.learned) for (const [k, name] of [['tried', 'Already tried'], ['essence', 'Essence'], ['goals', 'Goal'], ['beliefs', 'Belief'], ['facts', 'Fact']])
-    for (const x of (brief.learned[k] || []).slice(0, k === 'tried' ? 40 : 12)) add(`${name} (the team's words): ${x.text}${x.quote ? ` [said: "${cut(x.quote, 160)}"]` : ''}`, x.source || 'What the team told Brew', '', String(x.at || '').slice(0, 10));
+    for (const x of (brief.learned[k] || []).slice(0, k === 'tried' ? 40 : 12)) add(`${name} (the team's words): ${x.text}${x.quote ? ` [said: "${cut(x.quote, 160)}"]` : ''}`, x.source || 'What the team told us', '', String(x.at || '').slice(0, 10));
   // a few ledger lines (prices, review totals) so plans can quote real numbers
   const keep = /^(reviews|catalog|social)\./;
   for (const e of ledger.filter((e) => keep.test(e.key)).slice(0, 18)) add(`${e.label}: ${e.v}`, e.src || 'ledger', e.url, e.at);
@@ -314,7 +314,7 @@ export function shapeMove(raw, { n, family, ev = [], ledger = [], at = new Date(
     { h: `Why this matters for ${raw.brand || 'the brand'}`.replace(' for the brand', ''), kind: 'why', blocks: [blk({ text: String(raw.why || raw.gives || '').trim() })] },
     { h: 'What we found', kind: 'found', blocks: [blk({ t: 'list', ordered: true, items: found.map((f) => f.text) })] },
     { h: 'The plan', kind: 'plan', blocks: plan.flatMap((x) => [blk({ t: 'h3', text: x.step }), blk({ text: x.detail || '' })]) },
-    ...(prog ? [{ h: 'The routine', kind: 'plan', blocks: [blk({ text: `${prog.name}. Starts: ${prog.trigger}.${prog.repeat ? ` Repeats ${prog.repeat}.` : ''} The team runs it from the shared brief; Brew does not run it.` }),
+    ...(prog ? [{ h: 'The routine', kind: 'plan', blocks: [blk({ text: `${prog.name}. Starts: ${prog.trigger}.${prog.repeat ? ` Repeats ${prog.repeat}.` : ''} The team runs it from the shared brief; we do not run it.` }),
       blk({ t: 'table', head: ['DAY', 'STEP', 'KIND', 'WHO', 'REPEATS'], rows: prog.steps.map((s) => [String(s.day), s.title, s.kind, s.owner, s.repeat || '']) })] }] : []),
     ...(raw.example?.body ? [{ h: 'Worked example', kind: 'examples', blocks: [blk({ t: 'example', title: cut(raw.example.title || 'Example', 90), label: raw.example.label || '', body: raw.example.body })] }] : []),
     { h: 'How we measure', kind: 'measure', blocks: [blk({ t: 'table', head: ['METRIC', 'BASELINE', '90-DAY TARGET', 'DECISION RULE'], rows: measure.map((m) => [m.metric, m.baseline || 'To be instrumented', m.target || '', m.rule || '']) })] },
@@ -511,12 +511,12 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
       let booked = 0; /* spend already written into st.spend this run */
       const book = async () => { st.spend.usd = +((st.spend.usd || 0) + box.usd - booked).toFixed(4); booked = box.usd; await save(slug, st); };
       for (const family of families) {
-        if (stopping) { errors.push({ family, error: 'Brew is restarting; this family runs on the next instance' }); break; }
+        if (stopping) { errors.push({ family, error: 'Restarting; this family runs on the next instance' }); break; }
         if (box.usd >= cfg.weekCapUsd - spentThisWeek(st, t)) { errors.push({ family, error: 'weekly cap reached' }); break; }
         try {
           const have = await packs.getJSON(slug, 'moves.json', {});
           const r = await writeFamily(family, { ai: A, slug, pack: { ...pack, scorecard, moves: have }, memory, log, now: t, numbers: (k) => nextNumbers(have, st, k), hints: family === 'learn' ? hints : [] });
-          if (!r.moves.length) { errors.push({ family, error: r.skipped || 'no move survived the checks' }); continue; }
+          if (!r.moves.length) { errors.push({ family, error: r.skipped || 'no play survived the checks' }); continue; }
           /* a family's new run retires its last run; learned moves pile up instead (each paste opens its own), the oldest past LEARN_KEEP retire */
           const prev = st.live?.[family] || [], out = family === 'learn' ? prev.slice(0, Math.max(0, prev.length + r.moves.length - LEARN_KEEP)) : prev;
           await retire(slug, out, stamp, family === 'learn' ? [] : st.privLive?.[family] || []);
@@ -598,7 +598,7 @@ export function createMovesScheduler({ packs, ai, memory = null, cardsGen = null
         scorecard: await scorecardFor(slug, !!v.member), due: await dueOf(slug), running: busy.has(slug), cap: cfg.weekCapUsd }), true; }
     if (what !== 'refresh' || req.method !== 'POST') return send(res, 404, { error: 'not found' }), true;
     const v = await viewerOf(req, slug);
-    if (!v.gen) return send(res, 403, { error: `Demo mode: only ${v.host || 'the brand'}’s team makes new moves. Sign in with your work email, or ask them to invite you.`, demo: true, host: v.host || null }), true;
+    if (!v.gen) return send(res, 403, { error: `Demo mode: only ${v.host || 'the brand'}’s team makes new plays. Sign in with your work email, or ask them to invite you.`, demo: true, host: v.host || null }), true;
     const b = await readBody(req).catch(() => ({})); const only = Array.isArray(b?.families) ? b.families.filter((f) => FAMILIES[f]) : null;
     const d = await dueOf(slug, { manual: true, only });
     if (!d.families.length) return send(res, 200, { ok: false, started: false, why: d.why, left: d.left }), true;

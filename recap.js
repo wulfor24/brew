@@ -46,8 +46,8 @@ export function buildRecap(o) {
   /* briefs with the ShopOS team: a move the team made since (the brand sending it is not news to them) */
   const briefs = (o.work || []).filter(live).map((w) => { const moves = (w.jamBrief?.history || []).filter((h) => h.at > sinceReal && h.s !== 'sent');
     return moves.length ? { w, moves, at: moves[0].at } : null; }).filter(Boolean).sort((a, b) => b.at - a.at);
-  if (briefs.length) { tally.push(plural(briefs.length, 'brief') + ' moved with the ShopOS team');
-    slides.push({ type: 'recap', kind: 'briefs', chip: 'With the ShopOS team', h: briefs.length === 1 ? `${briefs[0].w.title}` : 'Where each one is now', ...big(briefs.length, 'Briefs moved'), at: briefs[0].at,
+  if (briefs.length) { tally.push(plural(briefs.length, 'brief') + ' moved with our team');
+    slides.push({ type: 'recap', kind: 'briefs', chip: 'With our team', h: briefs.length === 1 ? `${briefs[0].w.title}` : 'Where each one is now', ...big(briefs.length, 'Briefs moved'), at: briefs[0].at,
       p: briefs.length === 1 ? `${STATUS_LINE[briefs[0].w.jamBrief.status] || LABEL[briefs[0].w.jamBrief.status] || 'It moved'}.${briefs[0].moves[0].note ? ` “${String(briefs[0].moves[0].note).slice(0, 160)}”` : ''}` : null,
       rows: briefs.slice(0, 4).map(({ w, moves }) => ({ t: w.title, s: [...moves].reverse().map((h) => LABEL[h.s] || h.s).join(' → '), workId: w.id, warn: w.jamBrief.status === 'needs_info' })) }); }
   /* jams: new messages, new versions, or waiting on your OK since */
@@ -69,8 +69,8 @@ export function buildRecap(o) {
       rows: fresh.slice(0, 3).map((c) => ({ t: c.title, s: c.badge?.[0] === 'Updated' ? 'Updated' : null, cardId: c.id, img: c.images?.[0] && !String(c.images[0]).startsWith('data:') ? c.images[0] : null })) }); }
   /* moves rewritten since (new evidence, a retired fact) */
   const moved = Object.entries(o.moveDocs || {}).map(([n, m]) => ({ n: +n, m, at: Date.parse(m?.meta?.rewrittenAt || 0) || 0 })).filter((x) => x.at > sinceReal && x.n >= 1 && x.n < 1000).sort((a, b) => b.at - a.at);
-  if (moved.length) { tally.push(plural(moved.length, 'move') + ' rewritten');
-    slides.push({ type: 'recap', kind: 'moves', chip: 'Moves rewritten', h: moved.length === 1 ? pw(moved[0].m.title) : 'Each one with the latest evidence', ...big(moved.length, 'Moves rewritten'), at: moved[0].at,
+  if (moved.length) { tally.push(plural(moved.length, 'play') + ' rewritten');
+    slides.push({ type: 'recap', kind: 'moves', chip: 'Plays rewritten', h: moved.length === 1 ? pw(moved[0].m.title) : 'Each one with the latest evidence', ...big(moved.length, 'Plays rewritten'), at: moved[0].at,
       p: moved.length === 1 ? (moved[0].m.meta?.because ? `${pw(moved[0].m.meta.because)}.`.replace(/\.\.$/, '.') : 'Rewritten with the latest evidence.') : null,
       rows: moved.slice(0, 4).map((x) => ({ t: pw(x.m.title), s: x.m.meta?.because ? pw(x.m.meta.because) : null, move: x.n, cardId: o.moveCard?.(x.n) || null })) }); }
   /* connected accounts: a real number that moved since the last visit */

@@ -27,7 +27,7 @@
     const meta = [['Where', p.location], ['Due', p.deadline]].filter(([, v]) => v && !/^to confirm$/i.test(v));
     return `<div class="fb" data-fb>
       <div class="fb-top"><small>Storyboard · ${f.total} s · ${H.esc(f.format)} · ${f.shots.length} shots</small><h3>${ed('title', p.title, 'Working title')}</h3>
-        <p class="fb-cam">On camera: <b>${H.esc(f.talent)}</b>, filmed for real. Brew draws the frames; it never makes an AI ${f.founder ? 'founder' : 'person'}.</p></div>
+        <p class="fb-cam">On camera: <b>${H.esc(f.talent)}</b>, filmed for real. We draw the frames; we never make an AI ${f.founder ? 'founder' : 'person'}.</p></div>
       <div class="fb-strip">${f.shots.map((s, i) => frame(f, s, i)).join('')}<button class="fb-add" data-fb-add title="Add a shot">＋<small>Add a shot</small></button></div>
       ${f.readSec > f.total + 2 ? `<p class="fb-warn">The lines take about ${f.readSec} s to say, longer than this ${f.total} s film: trim a line, or ask in the chat for a ${Math.ceil(f.readSec / 5) * 5} s cut.</p>` : ''}
       <div class="fb-acts">${f.script ? `<button class="j2-pri" data-fb-tp>Read it on camera</button><span>${f.vo ? 'The voiceover' : 'The lines said to camera'} take about ${Math.max(1, f.readSec)} s to say</span>` : '<span>Add a line to a shot to get the script</span>'}</div>

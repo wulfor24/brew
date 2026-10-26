@@ -46,7 +46,7 @@ export function guardFetch(log = console) {
   const g = async (url, opts = {}) => {
     let host = ''; try { host = new URL(typeof url === 'string' ? url : url.url).hostname; } catch {}
     const method = String(opts.method || (typeof url === 'object' && url.method) || 'GET').toUpperCase();
-    if (SEND_HOSTS.test(host) || (WRITE_HOSTS.test(host) && method !== 'GET')) { log.warn(`[demo] blocked ${method} ${host}`); throw new Error('Demo mode: Brew never changes a real account or sends a real message here.'); }
+    if (SEND_HOSTS.test(host) || (WRITE_HOSTS.test(host) && method !== 'GET')) { log.warn(`[demo] blocked ${method} ${host}`); throw new Error('Demo mode: we never change a real account or send a real message here.'); }
     return real(url, opts);
   };
   g.__demoGuard = true; globalThis.fetch = g;

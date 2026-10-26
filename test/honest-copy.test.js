@@ -50,7 +50,7 @@ test('no placeholder email, and the demo offers none', () => {
 });
 
 test('the demo picker links to the team for real', () => {
-  assert.match(picker, /<a href="mailto:hello@joinsquareup\.com[^"]*"><b>Talk to the Brew team\.<\/b><\/a>/);
+  assert.match(picker, /<a href="mailto:hello@joinsquareup\.com[^"]*"><b>Talk to our team\.<\/b><\/a>/);
   assert.doesNotMatch(picker, /Infinite Possibilities|as it happens|Live demo/);
 });
 
@@ -58,7 +58,7 @@ test('a signed-out visitor at a brand gets the team sign-in, not "Reading… 0 s
   const i = app.indexOf('const setup = async () => {');
   assert.match(app.slice(i, i + 400), /if \(needSignin\(\) && signWall\('team'\)\) return;/);
   assert.match(app, /Sign in to open \$\{esc\(B\.brand\.name\)\}/);
-  assert.match(app, /feed and moves are for its team\. Sign in with your work email/);
+  assert.match(app, /feed and plays are for its team\. Sign in with your work email/);
 });
 
 test('a read waiting on the check shows "Waiting for you" in the feed and opens the check', () => {

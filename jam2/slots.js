@@ -10,7 +10,7 @@ const timeOf = (x) => { const v = x.at ?? x.ts ?? x.timestamp ?? x.taken_at ?? x
 export function bestSlots(rawPosts, country) {
   const [tz, tzName] = TZ[String(country || '').toUpperCase()] || ['UTC', 'UTC'];
   const posts = (rawPosts || []).map((x) => ({ ...timeOf(x), score: +(x.likes || x.likesCount || 0) + 3 * +(x.comments || x.commentsCount || 0) })).filter((x) => Number.isFinite(x.ms));
-  if (posts.length < 8) return { slots: [], basis: posts.length ? `Only ${posts.length} dated posts were read; Brew needs at least 8 to suggest a time.` : 'Brew has no dated posts from your Instagram yet, so it can’t suggest a time. Pick a day yourself.' };
+  if (posts.length < 8) return { slots: [], basis: posts.length ? `Only ${posts.length} dated posts were read; we need at least 8 to suggest a time.` : 'We have no dated posts from your Instagram yet, so we can’t suggest a time. Pick a day yourself.' };
   const timed = posts.filter((x) => x.timed), byHour = timed.length >= 8, use = byHour ? timed : posts;
   const day = (ms) => new Date(ms).toLocaleDateString('en-GB', { weekday: 'long', timeZone: byHour ? tz : 'UTC' });
   const key = (ms) => byHour ? `${day(ms)}|${Math.floor(+new Date(ms).toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: tz }) % 24 / 3) * 3}` : `${day(ms)}|`;

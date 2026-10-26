@@ -1,6 +1,7 @@
 // Brew prototype server: read → moves → feed → jam → share the brief.
 // Serves public/ and a few /api routes: live Claude text, live Gemini (Vertex) images,
 // dummy Slack. Keys come from an env file (ENV_FILE, default ../ugc-factory/.env) and are never sent to the page.
+import { PRODUCT_NAME, productNameScript } from './product-name.js';
 import { makePhotoFile } from './safe-path.js';
 import { createJamMail } from './jam-mail.js';
 import { configureGen, saveGen, genFile, genFlush, researchFile } from './gen-store.js';
@@ -374,7 +375,7 @@ const alerts = createAlerts({ treg, log: console, shared: COUNTERS, store: { get
     unclaim: OBJ ? (issue, day) => packs.update('_brew', 'alerts.json', (cur) => (cur?.day === day && cur.issues?.[issue] ? { ...cur, issues: Object.fromEntries(Object.entries(cur.issues).filter(([k]) => k !== issue)) } : undefined)).catch(() => {}) : null,
     claim: OBJ ? async (issue, day) => { let mine = false; await packs.update('_brew', 'alerts.json', (cur) => { const x = cur?.day === day ? cur : { day, issues: {} }; if (x.issues?.[issue]) return undefined; mine = true; return { ...x, issues: { ...(x.issues || {}), [issue]: new Date().toISOString() } }; }); return mine; } : null },
   sendMail: async ({ to, subject, html, text }) => { const key = process.env.RESEND_API_KEY; if (!key) throw new Error('no RESEND_API_KEY');
-    const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Brew <hello@send.joinsquareup.com>', to: [to], subject, html, text }) });
+    const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || `${PRODUCT_NAME} <hello@send.joinsquareup.com>`, to: [to], subject, html, text }) });
     if (!r.ok) throw new Error(`resend ${r.status}`); } });
 alerts.start();
 configureGen({ dir: GEN, researchDir: path.join(PUB, 'research'), bucket: BUCKET, gToken, log: console });
@@ -500,7 +501,7 @@ const EV = { busy: false, last: {} }, evOff = () => process.env.EVIDENCE_OFF ===
 const videoRead = createVideoRead({ packs, treg, ai, apify: createApify({ log: console }), log: console, gToken }), VIDEO_V = 2; /* apify: YouTube clips (video-read mediaUrl) */
 async function evidenceTick() {
   if (EV.busy || evOff()) return; EV.busy = true;
-  try { const brands = stayHere(await builder.list()).filter((b) => b.state === 'Ready' || /moves/.test(b.state || '')), day = new Date().toISOString().slice(0, 10); let n = 0;
+  try { const brands = stayHere(await builder.list()).filter((b) => b.state === 'Ready' || /moves|plays/.test(b.state || '')), day = new Date().toISOString().slice(0, 10); let n = 0;
     for (const b of brands) { if (n >= 2) break; const st = (await packs.getJSON(b.slug, 'pulse/state.json', null).catch(() => null)) || {};
       if (EV.last[b.slug] === day || String(st.at || '').slice(0, 10) === day) continue; EV.last[b.slug] = day; n++;
       try { const r = await createPulse({ slug: b.slug, packs, treg, ai, apify: apifyPulse, log: console }).run(); console.log('[pulse]', b.slug, r.lines?.length || 0, 'lines', `$${(r.usd || 0).toFixed(3)}`);
@@ -556,7 +557,7 @@ factsDesk.start();
 /* ---------- stories keep moving for brands in use: a brand opened in the last 3 days gets its research (story rings) running even
    when nobody has opened it since the last restart. Off with STORIES_BG=0, under AI_MOCK and on local servers ---------- */
 const storiesWarm = async () => { if (process.env.STORIES_BG === '0' || process.env.AI_MOCK === '1' || !process.env.K_SERVICE) return;
-  for (const b of stayHere(await builder.list().catch(() => []))) { if (!(b.state === 'Ready' || /moves/.test(b.state || '')) || INST.has(b.slug)) continue;
+  for (const b of stayHere(await builder.list().catch(() => []))) { if (!(b.state === 'Ready' || /moves|plays/.test(b.state || '')) || INST.has(b.slug)) continue;
     const lo = (await social.stateOf(b.slug).catch(() => null))?.lastOpen || 0; if (Date.now() - lo > 3 * 864e5) continue;
     try { attach(await packs.load(b.slug)); console.log('[stories] warm', b.slug); } catch (e) { console.warn('[stories] warm', b.slug, e.message); } } };
 setTimeout(() => leaderOnly(storiesWarm).catch(() => {}), 90e3).unref?.(); setInterval(() => leaderOnly(storiesWarm).catch(() => {}), 60 * 60e3).unref?.();
@@ -595,7 +596,7 @@ if (process.env.K_SERVICE && process.env.DEMO_MODE !== '1' && process.env.AI_MOC
 /* GET /api/ops/sloosh (staff): the connection, the workspace and what Sloosh says about today's limit and credits */
 const slooshStaff = (req) => auth.isAdmin(auth.user(req)) || (!auth.signinOn() && !process.env.K_SERVICE); /* staff, or a local server with sign-in off */
 const slooshOps = async (req) => {
-  if (!slooshStaff(req)) return { error: 'Brew staff only' };
+  if (!slooshStaff(req)) return { error: 'Our team only' };
   const fin = await finals.status({ fresh: true }).catch((e) => ({ ok: false, why: e.message }));
   const st = await slooshAuth.status(); if (!st.connected) return { ...st, connect: '/api/ops/sloosh/connect' };
   const [conn, acct] = await Promise.all([sloosh.getConnection().catch((e) => ({ error: e.message })), sloosh.getAccount().catch((e) => ({ error: e.message }))]);
@@ -626,7 +627,7 @@ const slooshHandle = async (req, res, u) => {
   if (!u.pathname.startsWith('/api/ops/sloosh/')) return false;
   const go = (to) => { res.writeHead(302, { location: to, 'cache-control': 'no-store' }); res.end(); return true; };
   const me = auth.user(req); if (!me && auth.signinOn()) return go(`/auth/google?next=${encodeURIComponent('/api/ops/sloosh/connect')}`);
-  if (!slooshStaff(req)) return send(res, 403, { error: 'Brew staff only' }), true;
+  if (!slooshStaff(req)) return send(res, 403, { error: 'Our team only' }), true;
   if (u.pathname === '/api/ops/sloosh/connect' && req.method === 'GET') { try { return go(await slooshAuth.connectUrl(req, res)); } catch (e) { return send(res, 200, { error: e.message }), true; } }
   if (u.pathname === '/api/ops/sloosh/callback' && req.method === 'GET') {
     try { await slooshAuth.callback(req, u); sloosh.reset(); finals.forget(); const ws = await sloosh.getConnection().then((c) => c?.workspace || null).catch(() => null); if (ws) await slooshAuth.setWorkspace(ws);
@@ -747,7 +748,7 @@ const teamGate = async (req, res, u) => {
   if (req.method !== 'GET') return false;
   const m = u.pathname.match(TEAM_READ), slug = m ? m[1] : u.pathname === '/api/research' ? req.headers['x-brand'] : null;
   if (!slug || await teamRead(req, String(slug))) return false;
-  const me = auth.user(req); send(res, me ? 403 : 401, { error: me ? 'This brand’s moves and read are for its team. Ask them to invite you.' : 'Sign in to see this brand.', team: true, signin: !me }); return true; };
+  const me = auth.user(req); send(res, me ? 403 : 401, { error: me ? 'This brand’s plays and read are for its team. Ask them to invite you.' : 'Sign in to see this brand.', team: true, signin: !me }); return true; };
 const brandRoutes = async (req, res, u) => {
   const ip = clientIp(req); /* the entry Google's front end appended, not one the client wrote (build.js clientIp) */
   if (req.method === 'POST' && u.pathname === '/api/brands') { const b = await readBody(req), me = auth.user(req);
@@ -758,7 +759,7 @@ const brandRoutes = async (req, res, u) => {
     /* a new brand is read only for its own people (Param, 23 Oct): a Gmail or another company's email would spend a read (~$6)
        on a brand it can never open, so it is pointed at the demo stores. A brand already read just opens (its page has the wall) */
     if (me && auth.signinOn() && !DEMO && !auth.isAdmin(me)) { const host = String(b.url || '').trim().replace(/^[a-z]+:\/\//i, '').replace(/[/?#].*$/, '').replace(/^www\./i, '').toLowerCase(), sl = slugOf(String(b.url || '').trim());
-      if (host && sl && !officialFor(me.email, host) && !(await packs.getJSON(sl, 'status.json', null).catch(() => null))) return send(res, 200, { error: `Brew reads a brand for its own team. Sign in with your work email at ${host} to read it.`, demoStores: true, host }), true; }
+      if (host && sl && !officialFor(me.email, host) && !(await packs.getJSON(sl, 'status.json', null).catch(() => null))) return send(res, 200, { error: `We read a brand for its own team. Sign in with your work email at ${host} to read it.`, demoStores: true, host }), true; }
     return send(res, 200, await builder.start(b.url, { ip, user: me, fresh: !!b.fresh && !!me && (await viewerOf(req, slugOf(b.url))).gen })), true; }
   if (req.method === 'GET' && u.pathname === '/api/brands') { const all = await builder.list(), me = auth.user(req); if (process.env.DEMO_MODE === '1' || !auth.signinOn() || auth.isAdmin(me)) return send(res, 200, { brands: all }), true;
     const mine = []; if (me) for (const b of all) if ((await viewerOf(req, b.slug).catch(() => ({}))).member) mine.push(b); return send(res, 200, { brands: mine }), true; } // the brands this person is on: never other clients or prospects mid-read
@@ -828,7 +829,7 @@ const brandRoutes = async (req, res, u) => {
     const [news, spend] = await Promise.all([watchCatalog(treg).catch((e) => ({ error: e.message })), slug ? packs.getJSON(slug, `spend/${month}.json`, null).catch(() => null) : null]);
     return send(res, 200, { news, spend, meter: { usd: treg.meter.usd, calls: treg.meter.calls, today: treg.meter.dayUsd } }), true; }
   /* one name for the team (FEED-QA-10): move docs written before say "the Brew deployment team"; they read the agreed phrase */
-  const crewName = (d) => { const j = d && JSON.stringify(d); return j && j.includes('Brew deployment team') ? JSON.parse(j.replace(/\bthe Brew deployment team\b/g, 'the ShopOS team, Brew’s build crew').replace(/\bBrew deployment team\b/g, 'The ShopOS team, Brew’s build crew')) : d; };
+  const crewName = (d) => { const j = d && JSON.stringify(d); return j && j.includes('Brew deployment team') ? JSON.parse(j.replace(/\bthe Brew deployment team\b/g, 'our team').replace(/\bBrew deployment team\b/g, 'Our team')) : d; };
   const mm = u.pathname.match(/^\/api\/brands\/([a-z0-9-]+)\/moves\/(\d+)$/);
   if (mm) { const p = await loadBrand(mm[1]), v = await viewerOf(req, mm[1]); const priv0 = v.member ? (await packs.getJSON(mm[1], 'private/moves.json', {}))[+mm[2]] : null, priv = priv0 && connectedOk(priv0.meta, await connectors.connectedIds(mm[1]), +mm[2]) ? priv0 : null; /* a move written from an account since disconnected waits hidden */
     return send(res, 200, crewName(priv ? { ...(p?.fitMove ? p.fitMove(priv) : markMoveClaims(priv, packSource(p))), private: true } : p?.moveDocs?.[+mm[2]] || { error: 'not written yet' })), true; } /* the team's own moves are marked like the shared ones (QA-25); one name for the team */
@@ -861,13 +862,13 @@ const brandRoutes = async (req, res, u) => {
   if (what === 'summary') return send(res, 200, await builder.summary(slug)), true;
   if (what === 'notify' && req.method === 'POST') { const b = await readBody(req), me = auth.user(req);
     /* "email me when the moves are in": a signed-in person adds their own address (the team may add a teammate), so nobody turns Brew into a mailer */
-    if (auth.signinOn() && !me) return send(res, 401, { error: 'Sign in to get an email when the moves are in.', signin: true }), true;
+    if (auth.signinOn() && !me) return send(res, 401, { error: 'Sign in to get an email when the plays are in.', signin: true }), true;
     /* the moves-ready box's Mute: a signed-in person turns Brew's emails for this brand off (or back on) for themselves only; the
        same switch the jam emails' footer sets (private/mail-prefs.json), read by the moves emails and the weekly digest */
     if (typeof b.mute === 'boolean') { if (!me) return send(res, 401, { error: 'Sign in first.', signin: true }), true;
       const x = await jamMail.setPref(slug, me.email, { mail: b.mute ? 'off' : 'all' }); return send(res, 200, { ok: true, muted: x.mail === 'off', email: me.email }), true; }
     /* the moves emails name the moves: only for the brand's own people, never someone it keeps out (Param, 23 Oct) */
-    if (me && !v.gen) return send(res, 403, { error: 'The moves emails are for the brand’s team. Ask them to invite you.', team: true }), true;
+    if (me && !v.gen) return send(res, 403, { error: 'The plays emails are for the brand’s team. Ask them to invite you.', team: true }), true;
     const want = String(b.email || '').trim().toLowerCase();
     if (me && want !== String(me.email).toLowerCase()) { /* a member may add a teammate or someone already invited; nobody adds a stranger */
       const tm = v.member ? await auth.getMembers(slug).catch(() => null) : null, team = new Set([...(tm?.members || []).map((x) => String(x.email).toLowerCase()), ...(tm?.invites || []).map((x) => String(x.email).toLowerCase())]);
@@ -881,7 +882,7 @@ const brandRoutes = async (req, res, u) => {
     if (!(await packs.getJSON(slug, 'private/created.json', null))) await packs.put(slug, 'private/created.json', { by: me.email, at: Date.now(), after: 'read' }).catch(() => {}); return null; };
   if (what === 'confirm' && req.method === 'POST') { const g = await signGate(); if (g) return send(res, 401, g), true; const b = await readBody(req); return send(res, 200, await builder.confirm(slug, b.edits || [], b.v2 || null)), true; }
   /* the first open of the feed after onboarding starts a new brand's moves (build.js feedOpened): the brand's own people only */
-  if (what === 'feed-open' && req.method === 'POST') { if (auth.signinOn() && process.env.BUILD_SIGNIN !== '0' && !(auth.user(req) && (v.member || v.eligible))) return send(res, auth.user(req) ? 403 : 401, { error: 'Only the brand’s team starts its moves.' }), true;
+  if (what === 'feed-open' && req.method === 'POST') { if (auth.signinOn() && process.env.BUILD_SIGNIN !== '0' && !(auth.user(req) && (v.member || v.eligible))) return send(res, auth.user(req) ? 403 : 401, { error: 'Only the brand’s team starts its plays.' }), true;
     return send(res, 200, await builder.feedOpened(slug)), true; }
   if (what === 'build') return send(res, 200, await builder.buildInfo(slug)), true;
   /* an "Out of date" reason that today's store contradicts (a read that took prices in cents: "$59 is now $5,700") is not shown
@@ -947,7 +948,7 @@ const bookPublic = async (req, res, u) => {
 <meta name="description" content="${name}'s brand book: voice, words, look, colours, type and its own best work. Free to use with any AI tool.">
 <link rel="icon" href="/assets/brew-mark.svg"><link rel="alternate" type="text/markdown" href="/${slug}/brand.md"><link rel="stylesheet" href="feed-system.css"><link rel="stylesheet" href="brand-book.css">
 <style>body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font)}</style></head><body><div id="bbk" class="bb"></div>
-<script src="loader.js"></script><script src="brand-book.js"></script><script>fetch('/${slug}/brand.json?page=1').then(function(r){return r.json()}).then(function(d){window.BrandBook.render(document.getElementById('bbk'),{slug:'${slug}',readOnly:true,print:/print=1/.test(location.search),data:d,toast:function(m){var t=document.createElement('div');t.className='bb-note';t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},2600)}})})</script></body></html>`).replace('<head>', '<head><base href="/">');
+<script src="loader.js"></script><script src="brand-book.js"></script><script>fetch('/${slug}/brand.json?page=1').then(function(r){return r.json()}).then(function(d){window.BrandBook.render(document.getElementById('bbk'),{slug:'${slug}',readOnly:true,print:/print=1/.test(location.search),data:d,toast:function(m){var t=document.createElement('div');t.className='bb-note';t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},2600)}})})</script></body></html>`).replace('<head>', `<head>${productNameScript()}<base href="/">`);
   send(res, 200, html, 'text/html; charset=utf-8'); return true;
 };
 const brandFiles = async (req, res, u) => {
@@ -972,7 +973,7 @@ const brandFiles = async (req, res, u) => {
     return serveFile(req, res, f), true; }
   if (/^refs\/[a-f0-9]{16}\.(png|jpg|webp|mp4)$/.test(what)) { const b = await packs.get(slug, what); if (!b) return send(res, 404, 'no', 'text/plain'), true; res.writeHead(200, { 'content-type': { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', mp4: 'video/mp4' }[what.split('.').pop()], 'cache-control': 'public, max-age=31536000, immutable' }); res.end(b); return true; } /* References (references.js): hash-named, so forever cacheable */
   /* a brand's PDFs (named or drawn on download) are for its team on live */
-  if (!(await teamRead(req, slug))) return send(res, auth.user(req) ? 403 : 401, 'These moves are for the brand’s team. Sign in or ask them to invite you.', 'text/plain'), true;
+  if (!(await teamRead(req, slug))) return send(res, auth.user(req) ? 403 : 401, 'These plays are for the brand’s team. Sign in or ask them to invite you.', 'text/plain'), true;
   /* /b/<slug>/pdf/move-<n>.pdf: the move's PDF, drawn on this first download and kept until the move changes */
   const mn = what.slice(4).match(/^move-(\d{1,4})\.pdf$/i);
   if (mn) { const v = await viewerOf(req, slug); let pp = v.member ? (await packs.getJSON(slug, 'private/pdfs.json', null))?.[+mn[1]] : null, pb = pp ? await packs.get(slug, 'private/pdf/' + pp) : null;
@@ -1014,9 +1015,9 @@ const pageFor = async (seg) => {
   else { if (blocked(slug)) return null; const st = await builder.status(slug); if (!st) return null; builder.seen(slug); scripts = `<script src="/b/${slug}/facts.js"></script>\n<script src="/b/${slug}/seed.js"></script>`; }
   if (DEMO) scripts += '\n<script>window.BREW_DEMO = 1;</script>'; // the demo site: demo controls, demo accounts
   const p = slug && await loadBrand(slug);
-  const name = p?.name || 'Brew', mark = p ? '/' + String(p.seed.brand.mark).replace(/^\//, '') : '/assets/brew-mark.svg';
-  return versioned(INDEX.replace('<base href="/">', '<base href="/">').replace(/<!--BRAND-SCRIPTS-->[\s\S]*?<!--\/BRAND-SCRIPTS-->/, scripts)
-    .replace(/<title>[^<]*<\/title>/, `<title>${name === 'Brew' ? 'Brew' : `${name.replace(/</g, '')} · Brew`}</title>`).replace(/rel="icon" href="[^"]*"/, `rel="icon" href="${mark}"`)
+  const name = p?.name || PRODUCT_NAME, mark = p ? '/' + String(p.seed.brand.mark).replace(/^\//, '') : '/assets/brew-mark.svg';
+  return versioned(INDEX.replace('<base href="/">', `<base href="/">${productNameScript()}`).replace(/<!--BRAND-SCRIPTS-->[\s\S]*?<!--\/BRAND-SCRIPTS-->/, scripts)
+    .replace(/<title>[^<]*<\/title>/, `<title>${name === PRODUCT_NAME ? PRODUCT_NAME : `${name.replace(/</g, '')} · ${PRODUCT_NAME}`}</title>`).replace(/rel="icon" href="[^"]*"/, `rel="icon" href="${mark}"`)
     .replace(/name="apple-mobile-web-app-title" content="[^"]*"/, `name="apple-mobile-web-app-title" content="${name.replace(/"/g, '')}"`));
 };
 
@@ -1111,7 +1112,7 @@ async function serve(req, res, u) {
   try {
     /* the startup probe: ready once the brands are built in memory (or after WARM_READY_MS, so a slow warm never blocks a deploy) */
     if (u.pathname === '/healthz/ready') { const ok = warmDone || Date.now() - warmStart > (+process.env.WARM_READY_MS || 90e3); res.writeHead(ok ? 200 : 503, { 'content-type': 'text/plain', 'cache-control': 'no-store' }); return res.end(ok ? 'ready' : 'warming'); }
-    if (crossSite(req, u)) { res.writeHead(403, { 'content-type': 'application/json', 'cache-control': 'no-store' }); return res.end(JSON.stringify({ error: 'This change has to come from Brew itself.' })); }
+    if (crossSite(req, u)) { res.writeHead(403, { 'content-type': 'application/json', 'cache-control': 'no-store' }); return res.end(JSON.stringify({ error: 'This change has to come from this site itself.' })); }
     if (demoRoutes && await demoRoutes(req, res, u)) return;
     if (shopifyApp) { await shopifyApp.attach(req, u); if (await shopifyApp.handle(req, res, u)) return; } // a request from inside the Shopify admin carries a session token, not a cookie
     if (await auth.handle(req, res, u)) return;

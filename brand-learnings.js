@@ -89,8 +89,8 @@ export function parseLearnCommand(text, { generic = false } = {}) {
 
 /* who may teach Brew about a brand: its team and the Brew team (auth roleOf: owner, member or admin); never the demo site → null or the polite no */
 export function learnGate({ member = false, demoSite = false, name = 'the brand' } = {}) {
-  if (demoSite) return 'This is a demo copy of the brand, so it can’t change what Brew knows about it. On your own brand, anyone on its team can paste a call, notes or emails here and Brew learns from them.';
-  if (!member) return `Only ${name}’s team or the Brew team can update what Brew knows about ${name}. Sign in with your work email, or ask the team to invite you. Nothing changed.`;
+  if (demoSite) return 'This is a demo copy of the brand, so it can’t change what we know about it. On your own brand, anyone on its team can paste a call, notes or emails here and we learn from them.';
+  if (!member) return `Only ${name}’s team or our team can update what we know about ${name}. Sign in with your work email, or ask the team to invite you. Nothing changed.`;
   return null;
 }
 
@@ -266,46 +266,46 @@ export function planLocal(items = [], moves = {}, { max = 50 } = {}) {
 /* ---------- the reply ---------- */
 const WHY_NOTE = { setup: '', transcript: 'This looks like a call transcript, so I read it as brand learnings (the same as /update-brand-learnings).', phrase: 'Reading this as brand learnings (the same as /update-brand-learnings).', long: 'This is a long paste, so I read it as brand learnings (the same as /update-brand-learnings). If you wanted something made from it, say what and I’ll make it.' };
 const capWhy = (why = []) => { const w = why.join(' · ');
-  return /weekly cap/.test(w) ? `this brand's weekly budget for new moves is used up (${(w.match(/\$\d+(\.\d+)?/) || ['the cap'])[0]} a week)` : /mock|AI is off/i.test(w) ? 'AI is off on this server' : /REFRESH_OFF/.test(w) ? 'new moves are switched off on this server' : /not built/.test(w) ? 'the brand’s moves are not written yet' : 'they can’t start right now'; };
+  return /weekly cap/.test(w) ? `this brand's weekly budget for new plays is used up (${(w.match(/\$\d+(\.\d+)?/) || ['the cap'])[0]} a week)` : /mock|AI is off/i.test(w) ? 'AI is off on this server' : /REFRESH_OFF/.test(w) ? 'new plays are switched off on this server' : /not built/.test(w) ? 'the brand’s plays are not written yet' : 'they can’t start right now'; };
 /* the draft the team checks before anything is saved: numbered lines by heading, conflicts, how to answer */
 export function draftText({ name, d, again = false }) {
-  if (d.replace && !again) return [`**Already saved on ${dateLabel(d.replace.at)}${d.replace.by ? ` by ${d.replace.by}` : ''}**`, 'Here is what Brew saved from it. Edit it and “save” to replace it, or “cancel” to keep it as it is.', ...draftText({ name, d: { ...d, replace: null }, again: true }).split('\n').slice(2)].join('\n');
-  const out = [...(!again && d.note ? [d.note, ''] : []), again ? '**Updated draft**' : `**Check before it becomes ${name}’s brand context**`, again ? 'Here is what Brew will save:' : `What Brew read from the ${String(d.kind || 'source').toLowerCase()}${d.again ? ` (${d.again} it already knew are left out)` : ''}. Nothing is saved yet.`];
+  if (d.replace && !again) return [`**Already saved on ${dateLabel(d.replace.at)}${d.replace.by ? ` by ${d.replace.by}` : ''}**`, 'Here is what we saved from it. Edit it and “save” to replace it, or “cancel” to keep it as it is.', ...draftText({ name, d: { ...d, replace: null }, again: true }).split('\n').slice(2)].join('\n');
+  const out = [...(!again && d.note ? [d.note, ''] : []), again ? '**Updated draft**' : `**Check before it becomes ${name}’s brand context**`, again ? 'Here is what we’ll save:' : `What we read from the ${String(d.kind || 'source').toLowerCase()}${d.again ? ` (${d.again} it already knew are left out)` : ''}. Nothing is saved yet.`];
   const HD = { essence: 'Essence', goal: 'Goals', belief: 'Beliefs', fact: 'Facts', tried: 'What they tried' };
   for (const k of KINDS) { const xs = d.items.map((x, i) => [x, i]).filter(([x]) => x.kind === k); if (!xs.length) continue; out.push('', `**${HD[k]}**`); xs.forEach(([x, i]) => out.push(`${i + 1}. ${x.text}`)); }
   if (d.conflicts?.length) { out.push('', '**Left out: the fact sheet wins on numbers**'); d.conflicts.slice(0, 4).forEach((c) => out.push(`- It says ${cut(c.conflictSays || c.text, 90)}; ${c.fact?.label || 'the fact sheet'} reads ${c.fact?.v ?? ''}${c.fact?.src ? ` from ${c.fact.src}` : ''}.`)); }
-  out.push('', '**What next**', '- “save” adds these to the brief and Brew’s memory, then refreshes the moves they change', '- “drop 3” removes a line', '- “change 2 to …” rewrites one', '- “add belief: …” adds one (essence, goal, belief or fact)', '- “cancel” saves nothing');
+  out.push('', '**What next**', '- “save” adds these to the brief and our memory, then refreshes the plays they change', '- “drop 3” removes a line', '- “change 2 to …” rewrites one', '- “add belief: …” adds one (essence, goal, belief or fact)', '- “cancel” saves nothing');
   return out.join('\n');
 }
 export function replyText(r) {
   const out = [];
   if (r.note) out.push(r.note, '');
-  if (r.dup) { out.push(`Brew already learned from this ${r.dup.kind.toLowerCase()} on ${dateLabel(r.dup.at)}${r.dup.by ? ` (added by ${r.dup.by})` : ''}: ${r.dup.n} learning${r.dup.n === 1 ? '' : 's'}. Nothing changed and nothing was spent.`); return out.join('\n'); }
+  if (r.dup) { out.push(`We already learned from this ${r.dup.kind.toLowerCase()} on ${dateLabel(r.dup.at)}${r.dup.by ? ` (added by ${r.dup.by})` : ''}: ${r.dup.n} learning${r.dup.n === 1 ? '' : 's'}. Nothing changed and nothing was spent.`); return out.join('\n'); }
   if (r.clipped) out.push(`It was long, so I read the first ${r.clipped.toLocaleString('en-US')} characters.`);
   const n = r.applied.length;
-  if (!n && !r.conflicts.length) { out.push(r.again ? `Nothing new in it: the ${r.again} thing${r.again === 1 ? '' : 's'} it says, Brew already knew. Nothing changed.` : `I couldn’t find anything in it that changes what Brew knows about ${r.name}: no essence, goals, beliefs or facts it states. Nothing changed.`); return out.join('\n'); }
-  out.push(`**Saved ${n} learning${n === 1 ? '' : 's'} to ${r.name}’s brand context**`, `From the ${r.kind.toLowerCase()} ${r.byShort ? `${r.byShort} added` : 'you added'}${r.again ? `; ${r.again} Brew already had` : ''}. They are in the brief and Brew’s memory, each with its source, and every jam, card and note reads them from now on.`);
+  if (!n && !r.conflicts.length) { out.push(r.again ? `Nothing new in it: the ${r.again} thing${r.again === 1 ? '' : 's'} it says, we already knew. Nothing changed.` : `I couldn’t find anything in it that changes what we know about ${r.name}: no essence, goals, beliefs or facts it states. Nothing changed.`); return out.join('\n'); }
+  out.push(`**Saved ${n} learning${n === 1 ? '' : 's'} to ${r.name}’s brand context**`, `From the ${r.kind.toLowerCase()} ${r.byShort ? `${r.byShort} added` : 'you added'}${r.again ? `; ${r.again} we already had` : ''}. They are in the brief and our memory, each with its source, and every jam, card and note reads them from now on.`);
   for (const k of KINDS) { const xs = r.applied.filter((x) => x.kind === k); if (!xs.length) continue;
     out.push('', `**${HEAD[BUCKET[k]]}**`, ...xs.slice(0, 4).map((x) => `- ${x.text}`), ...(xs.length > 4 ? [`- and ${xs.length - 4} more`] : [])); }
   if (r.conflicts.length) { out.push('', '**Not saved: the fact sheet wins on numbers**');
     for (const c of r.conflicts.slice(0, 4)) out.push(`- It says ${cut(c.conflictSays || c.text, 90)}; ${c.fact.label} reads ${c.fact.v} from ${c.fact.src}.${c.fact.connected ? ' Connected accounts are the source of truth for their numbers.' : ' If the new number is right, fix it on the fact sheet with a link.'}`); }
   const cl = cardsLine(r.cards || {}, r.name); if (cl) out.push('', '**Your feed, now**', cl);
-  if (n) out.push('', '**Moves**', movesLine(r.moves || {}, r.name));
+  if (n) out.push('', '**Plays**', movesLine(r.moves || {}, r.name));
   return out.join('\n');
 }
 function movesLine(m, name = 'the brand') {
   const ns = (xs) => listAnd(xs.map(moveLabel));
   const mins = (k) => (k <= 2 ? '10 to 15 minutes' : k <= 6 ? '15 to 20 minutes' : k <= 18 ? 'about 30 to 45 minutes' : 'about an hour'); /* six at a time */
   const out = [];
-  if (m.pending?.ns?.length) out.push(`- ${m.pending.ns.length} moves change in a way that matters (${ns(m.pending.ns)}). Rewriting all of them costs about $${m.pending.est}, over the $${m.pending.cap} an upload spends on its own.`, `- Reply “go ahead” to rewrite all ${m.pending.ns.length} (${mins(m.pending.ns.length)}), or “just the top ones” for the ${m.pending.top.length} that matter most, within $${m.pending.cap}.`);
+  if (m.pending?.ns?.length) out.push(`- ${m.pending.ns.length} plays change in a way that matters (${ns(m.pending.ns)}). Rewriting all of them costs about $${m.pending.est}, over the $${m.pending.cap} an upload spends on its own.`, `- Reply “go ahead” to rewrite all ${m.pending.ns.length} (${mins(m.pending.ns.length)}), or “just the top ones” for the ${m.pending.top.length} that matter most, within $${m.pending.cap}.`);
   else if (m.rewrite?.ns?.length) out.push(`- ${m.rewrite.queued ? 'First in line once the work running now finishes: rewriting' : 'Rewriting now'}: ${ns(m.rewrite.ns)} (${m.rewrite.ns.length}, ${mins(m.rewrite.ns.length)}, about $${m.rewrite.est}).`);
-  else if (m.rewrite?.error) out.push(`- The rewrite can’t start now: ${m.rewrite.error.replace(/\.$/, '')}. The moves are marked on the Moves tab.`);
-  else if (m.rewrite?.off) out.push('- AI is off on this server, so nothing was rewritten. The moves are marked on the Moves tab.');
+  else if (m.rewrite?.error) out.push(`- The rewrite can’t start now: ${m.rewrite.error.replace(/\.$/, '')}. The plays are marked on the Plays tab.`);
+  else if (m.rewrite?.off) out.push('- AI is off on this server, so nothing was rewritten. The plays are marked on the Plays tab.');
   const w = m.weekly || [], why = { low: 'a small change', recent: 'rewritten in the last day', cap: 'past this upload’s budget', pot: 'past this week’s rewrite budget' };
   if (w.length) out.push(`- In the weekly run: ${ns(w.map((x) => x.n))} (${[...new Set(w.map((x) => why[x.wait]))].join(', ')}). Each is marked with what the team said.`);
-  if (m.learn?.n) out.push(`- ${m.learn.n} new move${m.learn.n === 1 ? '' : 's'} from what you told us${m.learn.after ? ', once the rewrite is in' : ', about 5 minutes'}.`);
-  else if (m.learn?.why?.length) out.push(`- New moves from this wait: ${capWhy(m.learn.why)}.`);
-  return out.length ? out.join('\n') : 'Nothing in this changes the current moves.';
+  if (m.learn?.n) out.push(`- ${m.learn.n} new play${m.learn.n === 1 ? '' : 's'} from what you told us${m.learn.after ? ', once the rewrite is in' : ', about 5 minutes'}.`);
+  else if (m.learn?.why?.length) out.push(`- New plays from this wait: ${capWhy(m.learn.why)}.`);
+  return out.length ? out.join('\n') : 'Nothing in this changes the current plays.';
 }
 function cardsLine(c = {}, name = 'the brand') {
   const q = (x) => `“${cut(x.title, 70)}”`, out = [];
@@ -410,7 +410,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
       const t0 = now(), raw = String(text || '').trim();
       const p = await packs.load(slug, { fresh: true }).catch(() => null), name = p?.name || slug, host = p?.host || '';
       const note = WHY_NOTE[why] || '';
-      if (raw.length < 40) return { reply: `${note ? `${note}\n\n` : ''}Paste the transcript, notes or email after ${LEARN_CMD} and send it. Brew pulls out ${name}’s essence, goals, beliefs and facts, each with its source, then updates the brief, its memory and the moves.`, asked: true };
+      if (raw.length < 40) return { reply: `${note ? `${note}\n\n` : ''}Paste the transcript, notes or email after ${LEARN_CMD} and send it. We pull out ${name}’s essence, goals, beliefs and facts, each with its source, then updates the brief, its memory and the plays.`, asked: true };
       const hash = sourceHash(raw), L = { ...emptyLearned(), ...((await packs.getJSON(slug, 'learned.json', null)) || {}) };
       const seen = L.sources.find((s) => s.hash === hash);
       /* the same paste again: what was saved from it comes back as a draft to edit; save replaces it, cancel keeps it (no new read, nothing spent) */
@@ -420,7 +420,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
         L.draft = d; await packs.put(slug, 'learned.json', L); return { draft: true, dup: true, d, reply: draftText({ name, d }) }; }
       if (L.draft?.hash === hash) return { draft: true, d: L.draft, reply: draftText({ name, d: L.draft }) }; /* the same paste again while its draft waits: the draft, no new read */
       const reads = L.reads || L.sources.map((x) => x.at); /* every read counts toward the day, saved or not */
-      if (reads.filter((at) => dayOf(at) === dayOf(t0)).length >= DAY_MAX) return { capped: true, reply: `${note ? `${note}\n\n` : ''}${name} has added ${DAY_MAX} sources today, the daily limit. Paste it again tomorrow and Brew learns from it then. Nothing was spent.` };
+      if (reads.filter((at) => dayOf(at) === dayOf(t0)).length >= DAY_MAX) return { capped: true, reply: `${note ? `${note}\n\n` : ''}${name} has added ${DAY_MAX} sources today, the daily limit. Paste it again tomorrow and we’ll learn from it then. Nothing was spent.` };
       const clipped = raw.length > MAX_CHARS ? MAX_CHARS : 0, src = clipped ? raw.slice(0, MAX_CHARS) : raw;
       const kind = kind0 || sourceKind(src), names = files.map((x) => cut(x, 60)).filter(Boolean).slice(0, 6), label = `${kind}${names.length ? ` (${names.join(', ')}${files.length > names.length ? ` and ${files.length - names.length} more` : ''})` : ''}, added by ${by}, ${dayOf(t0)}`;
       const sheet = await factTruth(packs, slug, { member: true, pack: p }); /* the team's truth: live connected facts over the site's (facts-desk.js) */
@@ -518,7 +518,7 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     const nums = (x) => [...new Set((x.match(/\d+/g) || []).map(Number))].filter((n) => n >= 1 && n <= d.items.length);
     let m;
     if (/^(save|save it|save them|looks good|looks right|all good|yes|yep|confirm|ok(ay)?|approve|correct)\b/.test(lo)) return { ...(await serial(slug, () => apply(slug, { ...d, note: '' }, { L, p }))), saved: true }; /* the draft already said how it was read */
-    if (/^(cancel|discard|don'?t save|no\b|scrap)/.test(lo)) { delete L.draft; await packs.put(slug, 'learned.json', L); if (d.replace) return { cancelled: true, reply: 'Okay, kept as it was. Nothing changed.' }; return { cancelled: true, reply: 'Okay, nothing was saved. Paste it again with /update-brand-learnings whenever you want Brew to learn from it.' }; }
+    if (/^(cancel|discard|don'?t save|no\b|scrap)/.test(lo)) { delete L.draft; await packs.put(slug, 'learned.json', L); if (d.replace) return { cancelled: true, reply: 'Okay, kept as it was. Nothing changed.' }; return { cancelled: true, reply: 'Okay, nothing was saved. Paste it again with /update-brand-learnings whenever you want us to learn from it.' }; }
     if ((m = lo.match(/^(drop|remove|delete)\b(.*)$/))) { const ns = nums(m[2]); if (!ns.length) return { reply: `Which one? Say e.g. “drop 3” (1 to ${d.items.length}).` }; d.items = d.items.filter((_, i) => !ns.includes(i + 1)); }
     else if ((m = t.match(/^(?:change|edit|fix|reword)\s+(\d+)\s*(?:to|:|-|=)?\s*([\s\S]{4,})$/i))) { const i = +m[1] - 1; if (!d.items[i]) return { reply: `There is no line ${m[1]}. Pick 1 to ${d.items.length}.` }; d.items[i] = { ...d.items[i], text: cut(m[2].trim(), 400), quote: m[2].trim(), edited: true }; }
     else if ((m = t.match(/^add\s*(essence|goal|belief|fact|tried)?s?\s*[:-]?\s*([\s\S]{4,})$/i))) { const k = (m[1] || 'fact').toLowerCase(); d.items.push({ kind: k, text: cut(m[2].trim(), 400), quote: m[2].trim(), topic: null, typed: true }); }
@@ -542,12 +542,12 @@ export function createLearnings({ ai = null, packs, memory = null, builder = nul
     if (!all && !top && !no) return null;
     delete L.pendingFull; await packs.put(slug, 'learned.json', L);
     const fresh = pf.fresh || [], newMoves = () => { if (fresh.length && cadence) afterRewrite(slug, fresh); }; /* after the rewrite starts, so they wait for it */
-    if (no) { newMoves(); return { reply: 'Okay, no moves are rewritten. The learnings are still in the brief and Brew’s memory, so every new card and jam uses them.' }; }
+    if (no) { newMoves(); return { reply: 'Okay, no plays are rewritten. The learnings are still in the brief and our memory, so every new card and jam uses them.' }; }
     const ns = top ? pf.top : pf.ns, r = builder?.rewrite ? await builder.rewrite(slug, ns, { via: top ? 'learnings' : 'learnings-all' }).catch((e) => ({ error: e.message })) : { error: 'rewrites are switched off here' };
     newMoves();
-    if (r?.error) return { reply: `The refresh can’t start now: ${String(r.error).replace(/\.$/, '')}. The moves stay marked to rewrite on the Moves tab.` };
+    if (r?.error) return { reply: `The refresh can’t start now: ${String(r.error).replace(/\.$/, '')}. The plays stay marked to rewrite on the Plays tab.` };
     const k = ns.length, mins = k <= 2 ? '10 to 15 minutes' : k <= 6 ? '15 to 20 minutes' : k <= 18 ? 'about 30 to 45 minutes' : 'about an hour';
-    return { reply: `Refreshing ${k} move${k === 1 ? '' : 's'} with what the team told us, ${mins}. Cards refresh as they land.` };
+    return { reply: `Refreshing ${k} play${k === 1 ? '' : 's'} with what the team told us, ${mins}. Cards refresh as they land.` };
   }
   return { run, live, confirm, review, runPendingLearn };
 }

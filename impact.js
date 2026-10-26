@@ -36,8 +36,8 @@ export function rulesImpact(x) {
   let confidence = confWord(conf);
   if (!x.rows.length) confidence = capConf(confidence, 'medium'); if (!g) confidence = 'low';
   const basis = [], assumptions = [];
-  if (g) basis.push(`Brew graded this move ${g.impact} of 5 for impact (${['', 'hygiene', 'under 0.5% of revenue', '0.5–2% of revenue', '2–5% of revenue', 'over 5% of revenue'][g.impact] || ''}), with ${Math.round(conf * 100)}% of it resting on facts Brew read${g.why ? `: ${g.why}` : ''}.`);
-  else assumptions.push('This move has no grade yet, so the range is wide.');
+  if (g) basis.push(`We graded this play ${g.impact} of 5 for impact (${['', 'hygiene', 'under 0.5% of revenue', '0.5 to 2% of revenue', '2 to 5% of revenue', 'over 5% of revenue'][g.impact] || ''}), with ${Math.round(conf * 100)}% of it resting on facts we read${g.why ? `: ${g.why}` : ''}.`);
+  else assumptions.push('This play has no grade yet, so the range is wide.');
   for (const e of x.rows) basis.push(`${e.label || e.key}: ${e.v} (${e.src || 'your connected account'})`);
   if (x.baseline != null) basis.push(`${x.metric} today: ${x.baseline}${/^\s*of /.test(x.unit || '') ? x.unit : ''} (your measure plan).`);
   if (x.timing) basis.push(`How it’s judged: ${x.timing}`);
@@ -86,5 +86,5 @@ export async function projectImpact(x, { ai = null, unbacked = () => [], brand =
   if (ai) { try { out = cleanImpact(await ai(impactPrompt(x, brand), IMPACT_SCHEMA), x, unbacked); if (!out) aiError = 'the AI’s range came back unusable'; } catch (e) { aiError = String(e?.message || e).slice(0, 140); log.warn?.('[impact]', aiError); } }
   out ||= rulesImpact(x);
   return { ...out, estimate: true, label: PROJECTION, ...(x.gaps.length ? { gaps: x.gaps } : {}),
-    ...(aiError ? { aiError: `The AI estimate didn’t come through (${aiError}). This is Brew’s rule-based range from the move’s grade; ask again for the AI’s.` } : {}) };
+    ...(aiError ? { aiError: `The AI estimate didn’t come through (${aiError}). This is our rule-based range from the play’s grade; ask again for the AI’s.` } : {}) };
 }

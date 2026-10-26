@@ -140,7 +140,7 @@ test('the daily catalog check moves catalog.count with the ledger, and the check
   assert.ok(card, 'the brand is listed');
   assert.equal(card.look.ads, 1143, 'own live ads, never 1143 + the rivals’');
   assert.equal(card.look.products, 4);
-  assert.equal(card.moves, 64); assert.ok(card.checks.some((c) => c.t === '64 moves'));
+  assert.equal(card.moves, 64); assert.ok(card.checks.some((c) => c.t === '64 plays'));
   const picker = fs.readFileSync(path.join(REPO, 'public/demo-picker.html'), 'utf8');
   assert.doesNotMatch(picker, /theirs and rivals/, 'the picker never labels a sum');
 });

@@ -7,6 +7,7 @@ import { textCheckNote } from './text-check.js'; // a video final's on-screen wo
 import { isResearchImage } from './rival-ad.js'; // a rival's ad is never a photo a final stands on
 import { sceneOf, cardProduct } from './product-match.js';
 import { familyOf, matchSpaces } from './sloosh-spaces.js';
+import { PRODUCT_NAME } from './product-name.js';
 
 const firstLine = (md = '') => String(md).split('\n').map((l) => l.replace(/^[#>*\-\s]+/, '').replace(/\*\*/g, '').trim()).find((l) => l && !/^(headline|primary text|button|cta)[:\s]/i.test(l)) || '';
 const SPACES_TTL = 24 * 3600e3;
@@ -85,19 +86,19 @@ export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slu
     say(t, w, { from: 'system', body: `${by} asked for the final${q.credits ? ` (${q.credits} credits, ${q.space ? q.space.name || 'a Sloosh Space' : q.label || q.model})` : q.provider === 'gemini' ? ' (made with Gemini: Sloosh is not ready yet)' : ''}.`, noMirror: true });
     (async () => { try { const rec = await finals.run(slug, spec, { quote: q, by, target: { wid: w.id, draftId: d.id, revision: spec.revision }, land: { tid: t.id || null, fid: fd.id } });
         landIn(t, w, fd, rec, { label: q.label || q.model, space: q.space, fallbackWhy: q.fallbackWhy, poster: d.image });
-      } catch (e) { Object.assign(fd, { state: 'ready', err: e.message, step: null, failed: !e.open, open: !!e.open, runKey: e.rec?.runKey || fd.runKey || null }); log.warn('[finals] run', slug, e.message); say(t, w, { from: 'ai', who: 'Brew', body: e.open ? e.message : `The final didn’t come through: ${e.message}`, noMirror: true }); } /* e.open: Sloosh may still be making it; the record stays running and reconcileAll collects it after the next restart */
+      } catch (e) { Object.assign(fd, { state: 'ready', err: e.message, step: null, failed: !e.open, open: !!e.open, runKey: e.rec?.runKey || fd.runKey || null }); log.warn('[finals] run', slug, e.message); say(t, w, { from: 'ai', who: PRODUCT_NAME, body: e.open ? e.message : `The final didn’t come through: ${e.message}`, noMirror: true }); } /* e.open: Sloosh may still be making it; the record stays running and reconcileAll collects it after the next restart */
       w.updatedAt = now(t); save(t); })();
     return { work: true, draftId: fd.id }; });
 
   /* a run's record onto its final draft card: the image or clip, the credits, and a line in the thread */
   function landIn(t, w, fd, rec, { label = null, space = null, fallbackWhy = null, poster = null } = {}) {
-    if (rec.state === 'checkpoint') { Object.assign(fd, { state: 'checkpoint', step: 'The Space is waiting for a yes', runKey: rec.runKey, checkpoint: rec.checkpoint || null }); say(t, w, { from: 'ai', who: 'Brew', body: 'The Sloosh Space paused for a check. Open the final to approve or stop it.', noMirror: true }); return; }
-    if (rec.state !== 'done') { Object.assign(fd, { state: 'ready', err: rec.error || 'The final didn’t come through.', failed: true, step: null, runKey: rec.runKey }); say(t, w, { from: 'ai', who: 'Brew', body: `The final didn’t come through: ${rec.error || 'Sloosh gave nothing back'}`, noMirror: true }); return; }
+    if (rec.state === 'checkpoint') { Object.assign(fd, { state: 'checkpoint', step: 'The Space is waiting for a yes', runKey: rec.runKey, checkpoint: rec.checkpoint || null }); say(t, w, { from: 'ai', who: PRODUCT_NAME, body: 'The Sloosh Space paused for a check. Open the final to approve or stop it.', noMirror: true }); return; }
+    if (rec.state !== 'done') { Object.assign(fd, { state: 'ready', err: rec.error || 'The final didn’t come through.', failed: true, step: null, runKey: rec.runKey }); say(t, w, { from: 'ai', who: PRODUCT_NAME, body: `The final didn’t come through: ${rec.error || 'Sloosh gave nothing back'}`, noMirror: true }); return; }
     const vid = fd.as === 'video' || rec.kind === 'video';
     Object.assign(fd, { state: 'ready', step: null, err: null, failed: false, runKey: rec.runKey, [vid ? 'video' : 'image']: rec.file, link: rec.link || null, assetId: rec.assetId || null, credits: rec.charged ?? rec.credits, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', outputs: rec.outputs || null });
     if (vid && poster && !fd.image) fd.image = poster; /* the draft's still as the poster */
     const maker = space?.name || rec.space?.name || label || rec.model || 'Sloosh';
-    say(t, w, { from: 'ai', who: 'Brew', body: rec.dummy ? 'The final is here (simulated on this site).' : rec.provider === 'gemini' ? `The final is here, made with Gemini (Sloosh not ready: ${fallbackWhy || 'no credits yet'}).` : `The final is here: ${rec.charged ?? rec.credits} credits on ${maker}.`, noMirror: true }); onReady(t, w, fd); }
+    say(t, w, { from: 'ai', who: PRODUCT_NAME, body: rec.dummy ? 'The final is here (simulated on this site).' : rec.provider === 'gemini' ? `The final is here, made by us at no charge (Sloosh not ready: ${fallbackWhy || 'no credits yet'}).` : `The final is here: ${rec.charged ?? rec.credits} credits on ${maker}.`, noMirror: true }); onReady(t, w, fd); }
   /* after a restart (finals.reconcileAll → onDone): the run Sloosh finished while Brew was away lands on the card it was asked from */
   function landDone(t, rec) { const w = W(t, rec?.target?.wid); if (!w) return false; const fd = (w.drafts || []).find((x) => x.id === rec.land?.fid); if (!fd) return false; if (fd.runKey === rec.runKey && fd.state === 'ready' && !fd.failed) return true;
     const src = (w.drafts || []).find((x) => x.id === rec.target?.draftId); landIn(t, w, fd, rec, { poster: src?.image || null }); w.updatedAt = now(t); save(t); return true; }
@@ -105,7 +106,7 @@ export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slu
   on('POST', '/api/work/:wid/final/checkpoint', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const fd = (w.drafts || []).find((d) => d.id === b.draftId && d.state === 'checkpoint'); if (!fd?.runKey) return { error: 'Nothing is waiting here.' };
     const slug = slugOfT(t), by = nameOf(t); fd.state = 'making'; fd.step = b.ok ? 'Sloosh is carrying on' : 'Stopping'; save(t);
     (async () => { try { const rec = await finals.checkpoint(slug, fd.runKey, !!b.ok, String(b.note || '').slice(0, 300)); if (rec.error) throw new Error(rec.error);
-        if (rec.state === 'done') { Object.assign(fd, { state: 'ready', step: null, [fd.as === 'video' ? 'video' : 'image']: rec.file, link: rec.link || null, assetId: rec.assetId || null, credits: rec.charged ?? rec.credits }); say(t, w, { from: 'ai', who: 'Brew', body: `The final is here: ${rec.charged ?? rec.credits} credits.`, noMirror: true }); onReady(t, w, fd); }
+        if (rec.state === 'done') { Object.assign(fd, { state: 'ready', step: null, [fd.as === 'video' ? 'video' : 'image']: rec.file, link: rec.link || null, assetId: rec.assetId || null, credits: rec.charged ?? rec.credits }); say(t, w, { from: 'ai', who: PRODUCT_NAME, body: `The final is here: ${rec.charged ?? rec.credits} credits.`, noMirror: true }); onReady(t, w, fd); }
         else if (rec.state === 'checkpoint') { Object.assign(fd, { state: 'checkpoint', step: 'The Space is waiting for a yes', checkpoint: rec.checkpoint || null }); }
         else { Object.assign(fd, { state: 'ready', err: rec.error || 'stopped', failed: true, step: null }); say(t, w, { from: 'system', body: `${by} stopped the final at the Space’s check.`, noMirror: true }); }
       } catch (e) { Object.assign(fd, { state: 'ready', err: e.message, failed: true, step: null }); } w.updatedAt = now(t); save(t); })();
@@ -177,7 +178,7 @@ export function createStudioFinals({ blockOf = () => null, headOf = () => null, 
     /* the final belongs to the option it was made from: if the stage moved to another option meanwhile, it goes back there first */
     const fromV = (from || rec.land?.from) ? versionById(t, ch, from || rec.land.from) : null; if (fromV && !grewFrom(t, ch, headOf(t, ch), fromV.id)) useVersion(t, ch, fromV);
     const isVid = vid ?? (rec.kind || 'image') === 'video', sp = space || rec.space || null; land(ch, isVid, rec.file, !!rec.words);
-    const v = version(t, ch, rec.provider === 'gemini' ? 'gemini' : 'sloosh', `Final: ${rec.dummy ? 'simulated' : rec.provider === 'gemini' ? 'made by Brew' : `${rec.charged ?? rec.credits} credits on ${sp ? sp.name || 'a Sloosh Space' : label || model || rec.model}`}`, rec.dummy ? 'Final (Dummy)' : rec.provider === 'gemini' ? 'Final (Gemini)' : 'Final');
+    const v = version(t, ch, rec.provider === 'gemini' ? 'gemini' : 'sloosh', `Final: ${rec.dummy ? 'simulated' : rec.provider === 'gemini' ? 'made by us' : `${rec.charged ?? rec.credits} credits on ${sp ? sp.name || 'a Sloosh Space' : label || model || rec.model}`}`, rec.dummy ? 'Final (Dummy)' : rec.provider === 'gemini' ? 'Final (Gemini)' : 'Final');
     v.final = { credits: rec.charged ?? rec.credits, model: model || rec.model || null, label: label || null, space: sp, dummy: !!rec.dummy, fallback: !!rec.fallback, provider: rec.provider || 'sloosh', link: rec.link || null, assetId: rec.assetId || null, assetKind: rec.assetKind || null, revision: rec.revision || 0, runKey: rec.runKey, by: by || rec.by || null };
     ch.lastFinal = { versionId: v.id, ...v.final };
     try { onMedia(t, ch, { kind: isVid ? 'video' : 'image', images: isVid ? [] : [rec.file], video: isVid ? rec.file : null, n: v.n, label: v.label }); } catch {}

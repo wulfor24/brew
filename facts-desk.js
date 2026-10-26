@@ -335,7 +335,7 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
       await packs.put(slug, 'ledger.json', ledger); await packs.put(slug, 'profile.json', P);
       await builder.republish(slug);
       const priced = d.changes.filter((c) => c.kind !== 'new' || n.added <= 12); /* a big drop of launches is one line, not fifty */
-      await record(slug, [...priced.slice(0, 40).map(changeText), ...(n.added > 12 ? [`${n.added} new products`] : [])], { by: 'Brew daily check', retire: d.changes.filter((c) => c.kind !== 'new').map((c) => c.was) });
+      await record(slug, [...priced.slice(0, 40).map(changeText), ...(n.added > 12 ? [`${n.added} new products`] : [])], { by: 'Daily check', retire: d.changes.filter((c) => c.kind !== 'new').map((c) => c.was) });
       await flag(slug, d.changes.filter((c) => c.kind !== 'new').map((c) => ({ ...c, key: keyOf(c.key), ledgerKey: c.key })), 'daily');
       await reload(slug);
       if (d.changes.length) await builder.signal?.(slug, [...(n.changed ? [{ kind: 'price' }] : []), ...(n.removed ? [{ kind: 'removed' }] : []), ...(n.added ? [{ kind: 'new' }] : [])]).catch?.(() => {});

@@ -22,6 +22,7 @@ import { productFor, productTiles } from './ingredients.js';
 import { isRestock } from '../product-match.js';
 import { withBrowser } from '../pdf/render.js';
 import { answerGrounded } from '../jam-answer.js';
+import { PRODUCT_NAME } from '../product-name.js';
 
 export function mountJam2(d) {
   const { on, packs, slugOfT, brandOfT, meOf, reqOf, cardOf, sourceOf, refsOf, isMock, spend, log = console } = d;
@@ -90,7 +91,7 @@ export function mountJam2(d) {
   const priceAlerts = (t, jam) => { const cat = brandOfT(t)?.catalog || []; for (const b of jam.boards) { const m = headOf(b)?.made4; b.priceAlert = null; if (!m?.price) continue;
     const c = cat.find((x) => (m.handle && x.handle === m.handle) || (m.name && (x.t || x.title) === m.name)); if (c?.price != null && String(c.price) !== m.price) b.priceAlert = { name: m.name, was: m.price, now: String(c.price) }; } };
   const out = (jam, t = null) => { if (t) try { priceAlerts(t, jam); } catch {} const v = jamView(jam); /* a job a restart cut off: its mark (saved with the jam) shows as the board's state until it is resumed or tried again */
-    v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || (elsewhere(jam.running?.[b.id]) ? { op: jam.running[b.id].op, at: jam.running[b.id].at } : null) || (jam.running?.[b.id] ? (jam.running[b.id].resume && !jam.running[b.id].error ? { op: jam.running[b.id].op, at: jam.running[b.id].at, line: jam.running[b.id].slow || 'Still being made; it picks up where it was' } /* waiting to be polled again: still making, never an error */ : { op: jam.running[b.id].op, at: jam.running[b.id].at, error: jam.running[b.id].error || 'Brew restarted while this was being made. Press it again.' }) : null)])); delete v.running; delete v.cuts; return v; };
+    v.busy = Object.fromEntries(jam.boards.map((b) => [b.id, busy.get(`${jam.id}:${b.id}`) || (elsewhere(jam.running?.[b.id]) ? { op: jam.running[b.id].op, at: jam.running[b.id].at } : null) || (jam.running?.[b.id] ? (jam.running[b.id].resume && !jam.running[b.id].error ? { op: jam.running[b.id].op, at: jam.running[b.id].at, line: jam.running[b.id].slow || 'Still being made; it picks up where it was' } /* waiting to be polled again: still making, never an error */ : { op: jam.running[b.id].op, at: jam.running[b.id].at, error: jam.running[b.id].error || 'A restart stopped this while it was being made. Press it again.' }) : null)])); delete v.running; delete v.cuts; return v; };
   const load = async (t, jid) => { const j = await store.get(slugOfT(t), jid, whoOf(t)); if (!j) throw Object.assign(new Error('not found'), { status: 404 }); return j; };
   /* every jam call reads the brand's pack (catalog, config): right after a restart it may not be loaded yet, so it is loaded first
      (23 Oct: the first Studio make after a deploy refused the brand's own product as "not from your catalog") */
@@ -144,7 +145,7 @@ export function mountJam2(d) {
   const resumeCut = async (t, j) => { for (const bd of j.boards) { const m = j.running?.[bd.id]; if (!m || m.error || busy.get(`${j.id}:${bd.id}`) || elsewhere(m)) continue; /* being made on another instance */
     /* a set that kept slides since the last try is making progress: that restart doesn't count against it (deploys every few minutes) */
     const kept = Object.keys(bd.hfJobs || {}).filter((k) => /^set:/.test(k)).length; if (m.op === 'studio' && kept > (m.kept || 0)) m.tries = 0; m.kept = kept;
-    if (!m.resume || Date.now() - m.at > 3 * 3600e3 || (m.tries || 0) >= 3) { m.error = `Brew restarted while this was being made. Press it again${bd.inflight || kept ? ': what was already made is kept, free' : ''}.`;
+    if (!m.resume || Date.now() - m.at > 3 * 3600e3 || (m.tries || 0) >= 3) { m.error = `A restart stopped this while it was being made. Press it again${bd.inflight || kept ? ': what was already made is kept, free' : ''}.`;
       if (m.op === 'studio' && j.v1ch && !m.told) { m.told = true; try { d.onStudioState?.(t, j.v1ch, { state: 'failed', error: m.error, jid: j.id }); } catch {} } continue; } /* the v1 jam and Work say it stopped */
     const tries = (m.tries || 0) + 1, ctx = await ctxOf(t, j);
     if (m.op === 'render') runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: m.confirmUsd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: m.confirmUsd, tries });
@@ -153,7 +154,7 @@ export function mountJam2(d) {
     else if (m.op === 'studio' && m.spec) { const claim = await claimMake(makeKeys(slugOfT(t), j.id, bd.id, null)); if (!claim) continue; /* another instance is picking it up */
       if (!runBg(t, j, bd.id, 'studio', async () => { try { const take = m.spec.set ? await studio.makeSet(ctx, bd, m.spec, jobsOf(t, j, bd, m.press || null)) : await studio.make(ctx, bd, m.spec, m.i || 0, jobsOf(t, j, bd, m.press || null)); take.studio.spec = specOf(m.spec); if (m.spec.set) fillMerge(bd, take, m.spec); if (m.run) Object.assign(take, { run: m.run, runN: m.runN, runI: m.runI }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); } finally { claim.release(); } }, { ...m, tries })) claim.release(); }
     else if (m.op === 'all' && boardOf(j, bd.allOf)) runBg(t, j, bd.id, 'all', async () => maker.allProducts(ctx, bd, boardOf(j, bd.allOf)), { resume: true, tries });
-    else m.error = 'Brew restarted while this was being made. Press it again.'; } };
+    else m.error = 'A restart stopped this while it was being made. Press it again.'; } };
   /* a Studio jam opened from a v1 jam (its stage's composer) hands each finished take to that v1 jam as its next version, so the
      v1 stage, its History, the Work tab and the brief all have it, whoever is (or isn't) on the page when it lands */
   const toV1 = (t, j, tk) => { if (!j.v1ch || !d.onStudioTake) return; try { d.onStudioTake(t, j.v1ch, { ...tk, jid: j.id }); } catch (e) { log.warn?.('[jam2] to v1', e.message); } };
@@ -187,13 +188,13 @@ export function mountJam2(d) {
     const ph = d0.product?.name && pr.photos?.[d0.product.name]; if (ph) { d0.product = { ...d0.product, img: ph }; kept.product = true; }
     if (d0.product?.img && !tiles.some((x) => x.img === d0.product.img)) tiles.unshift(d0.product); /* the card's own product is always pickable */
     const cx = contextOf(ctx, d0), BN0 = ctx.bbv?.name || 'this brand';
-    for (const [k, slot] of [['quality', 'quality'], ['size', 'size'], ['cast', 'cast'], ['product', 'products']]) if (kept[k] && cx.slots[slot]) cx.slots[slot].why = `You asked Brew to always use this for ${BN0}.`;
+    for (const [k, slot] of [['quality', 'quality'], ['size', 'size'], ['cast', 'cast'], ['product', 'products']]) if (kept[k] && cx.slots[slot]) cx.slots[slot].why = `You asked us to always use this for ${BN0}.`;
     return { defaults: d0, products: tiles, context: cx, prefs: pr, kept }; })); /* each slot filled from what Brew knows, with why */
   /* "Always use this for <brand>": a composer pick saved to the Brand Book's Studio picks (the brand's team only) */
   /* a take made earlier in Studio (v2) for this card, landed in the v1 jam it now sits on: free, it is already paid for */
   on('POST', '/api/jam2/jams/:jid/studio/land', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, b.bid), tk = bd && (bd.takes || []).find((x) => x.id === b.takeId);
     if (!tk) return { error: 'That take is gone.' }; if (!j.v1ch) return { error: 'This jam isn’t linked to a v1 jam.' }; toV1(t, j, tk); return { ok: true }; })); /* landing the same take again is a no-op (landStudio) */
-  on('POST', '/api/jam2/studio/remember', wrap(async (b, t) => { const w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can change what Brew always uses.' };
+  on('POST', '/api/jam2/studio/remember', wrap(async (b, t) => { const w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can change what we always use.' };
     const k = String(b.slot || ''), v = b.value ?? null, patch = k === 'quality' ? { quality: v } : k === 'size' ? { size: { kind: b.kind === 'video' ? 'video' : 'image', key: v } } : k === 'cast' ? { cast: v } : k === 'product' ? { photo: { name: b.name, img: v } } : null;
     if (!patch) return { error: 'That can’t be remembered.' };
     if (k === 'cast' && /^no people$/i.test(String(v || ''))) await bb.update(slugOfT(t), { comfort: { people: 'none' } }, w.me); /* "no people" is the Brand Book's own people rule */
@@ -311,7 +312,7 @@ export function mountJam2(d) {
     if (b.op === 'first' || (!bd.takes.length && !free)) { runBg(t, j, bd.id, 'first', async () => maker.first(await ctxOf(t, j), bd, { ask: b.ask || '' })); return { jam: out(j) }; }
     /* Make the final runs on a partner's paid credits: only with the brand's yes on the price it was shown */
     if (b.op === 'final' && !isMock() && b.confirmUsd == null && b.confirmCredits == null) return { error: 'Confirm the price first.', jam: out(j) };
-    if (free && ((busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`).error) || elsewhere(j.running?.[bd.id]))) return { error: 'Brew is still working on this board. Your change can go in when it lands.', jam: out(j) };
+    if (free && ((busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`).error) || elsewhere(j.running?.[bd.id]))) return { error: 'We’re still working on this board. Your change can go in when it lands.', jam: out(j) };
     if (free) { const ctx = await ctxOf(t, j); try { await maker.edit(ctx, bd, b); } catch (e) { if (e.needsExtend) return { error: e.message, needsExtend: true, jam: out(j) }; throw e; } await store.put(slugOfT(t), j); return { jam: out(j) }; }
     /* another placement of a shot is made by extending the photo: priced, so only with the brand's yes */
     if (b.op === 'extend' && !isMock() && b.confirmUsd == null) return { error: 'Confirm the price first.', jam: out(j) };
@@ -321,7 +322,7 @@ export function mountJam2(d) {
       if (!own) return { error: 'Pick a product from your catalog or References.', jam: out(j) }; b.patch.product = { img: own.img, name: own.name || null, handle: own.handle || null }; }
     const started = runBg(t, j, bd.id, b.op || 'edit', async () => { const ctx = await ctxOf(t, j, { pick: b.patch?.product || null }); if (b.op === 'swap-product' && b.patch?.product) j.product = b.patch.product; await maker.edit(ctx, bd, b);
       if (b.why && ['redo', 'redo-words'].includes(b.op)) await bb.taste(slugOfT(t), { kind: 'dont', what: String(b.why).toLowerCase().slice(0, 60), text: b.why }).catch(() => {}); });
-    return started ? { jam: out(j) } : { error: 'Brew is still working on this board.', jam: out(j) }; }));
+    return started ? { jam: out(j) } : { error: 'We’re still working on this board.', jam: out(j) }; }));
   on('GET', '/api/jam2/jams/:jid/prices', wrap(async (b, t, p) => { const j = await load(t, p.jid); return { prices: await maker.prices(await ctxOf(t, j)), partners: engines.status() }; }));
   /* video: the quote, then Render only with the brand's yes on that price */
   on('POST', '/api/jam2/jams/:jid/boards/:bid/render', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const ctx = await ctxOf(t, j);
@@ -334,7 +335,7 @@ export function mountJam2(d) {
     const region = b.region && [b.region.x, b.region.y, b.region.w, b.region.h].every((v) => Number.isFinite(+v) && +v >= 0 && +v <= 1) ? { x: +b.region.x, y: +b.region.y, w: +b.region.w, h: +b.region.h } : null;
     if (b.confirmUsd == null && !isMock()) { const r = await maker.reshot(ctx, bd, { i, ask, region, confirmUsd: null }); return r.needsConfirm ? { needsConfirm: true, quote: r.quote } : { jam: out(j) }; }
     const started = runBg(t, j, bd.id, 'reshot', async () => { const r = await maker.reshot(await ctxOf(t, j), bd, { i, ask, region, confirmUsd: b.confirmUsd ?? 0 }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: b.confirmUsd ?? 0, i, ask, region, head: headOf(bd)?.id });
-    return started ? { jam: out(j) } : { error: 'Brew is still working on this board.', jam: out(j) }; }));
+    return started ? { jam: out(j) } : { error: 'We’re still working on this board.', jam: out(j) }; }));
   on('POST', '/api/jam2/jams/:jid/boards/:bid/approve', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid), h = headOf(bd); if (!h) return { error: 'Nothing to approve yet.' };
     if (h.gate && !h.gate.pass && !b.anyway) return { error: `Fix this first: ${h.gate.checks.filter((c) => !c.ok && !c.soft).map((c) => c.why).join(' ')}`, gate: h.gate };
     const w = whoOf(t); bd.approved = { takeId: h.id, by: w.email, at: Date.now() }; bd.status = 'approved'; note(j, `approved ${bd.label}`, w.email);
@@ -401,15 +402,15 @@ export function mountJam2(d) {
     const page = `${process.env.PUBLIC_URL || 'https://brew.joinsquareup.com'}/${slugOfT(t)}?v=2&go=feed#jam2=${j.id}`, pic = h.file && !/\.(mp4|wav)$/.test(h.file) ? `${process.env.PUBLIC_URL || 'https://brew.joinsquareup.com'}/${String(h.file).replace(/^\//, '')}` : null;
     const text = `*${bd.label}* · v${h.n} · ${j.title}\n${String(b.text || h.words?.headline || h.words?.subject || '').slice(0, 500)}`;
     const blocks = [{ type: 'section', text: { type: 'mrkdwn', text } }, ...(pic ? [{ type: 'image', image_url: pic, alt_text: bd.label }] : []),
-      { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${h.n}` }, action_id: 'approve', value: `${slugOfT(t)}|${j.id}|${h.n}` }, { type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: page, action_id: 'open' }] },
-      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Reply in this thread: replies land in the Brew jam.' }] }];
+      { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${h.n}` }, action_id: 'approve', value: `${slugOfT(t)}|${j.id}|${h.n}` }, { type: 'button', text: { type: 'plain_text', text: `Open in ${PRODUCT_NAME}` }, url: page, action_id: 'open' }] },
+      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Reply in this thread: replies land in the jam.' }] }];
     const r = await slack.slackPost(slugOfT(t), { text, blocks }); if (r?.error) return { error: r.connect ? 'Connect Slack first (Connectors).' : r.error };
     j.slack = { ts: r.ts, channel: r.channel, bid: bd.id, n: h.n, page, tid: t.id, at: Date.now() }; note(j, `posted ${bd.label} to Slack`, w.email); await store.put(slugOfT(t), j); return { jam: out(j), channel: r.channelName || null }; }));
 
   /* the jam's chat: the team's lines and Brew's replies, kept with the jam (Slack and @mentions arrive here too) */
   on('POST', '/api/jam2/jams/:jid/say', wrap(async (b, t, p) => { const j = await load(t, p.jid), w = whoOf(t), text = String(b.t || '').trim().slice(0, 1200); if (!text) return { error: 'Say something first.' };
     (j.chat ||= []).push({ id: uid('m'), from: b.from === 'brew' ? 'brew' : 'you', by: w.email, name: w.me?.name || null, t: text, sel: b.sel ? String(b.sel).slice(0, 60) : null, at: Date.now() }); if (j.chat.length > 300) j.chat.splice(0, j.chat.length - 300);
-    if (b.from !== 'brew' && j.slack?.ts && slack?.slackPost) slack.slackPost(slugOfT(t), { channel: j.slack.channel, thread_ts: j.slack.ts, text: `${w.me?.name || w.email || 'Someone'} in Brew: ${text.slice(0, 1500)}` }).catch(() => {});
+    if (b.from !== 'brew' && j.slack?.ts && slack?.slackPost) slack.slackPost(slugOfT(t), { channel: j.slack.channel, thread_ts: j.slack.ts, text: `${w.me?.name || w.email || 'Someone'} in the jam: ${text.slice(0, 1500)}` }).catch(() => {});
     await store.put(slugOfT(t), j); return { jam: out(j) }; }));
   /* a board as a brief for a team: who makes it, by when, section edits; send = the brief link goes out and the status starts */
   on('POST', '/api/jam2/jams/:jid/boards/:bid/brief', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const w = whoOf(t);
@@ -420,7 +421,7 @@ export function mountJam2(d) {
     let url = null;
     /* each board's brief has its own link: the team that gets one sees and moves only that brief */
     if (b.send) { if (!br.nonce) { br.nonce = uid('b').slice(2); br.revoked = false; } if (!br.status) br.status = 'sent'; br.sentAt = Date.now(); br.log.push({ status: 'sent', at: Date.now(), by: w.email });
-      note(j, `sent the ${bd.label} brief to ${br.owner}`, w.email); url = `/brief/${tokenFor('brief', slugOfT(t), j.id, br.nonce)}`; }
+      note(j, `sent the ${bd.label} brief to ${br.owner === OWNERS[0] ? 'our team' : br.owner}`, w.email); url = `/brief/${tokenFor('brief', slugOfT(t), j.id, br.nonce)}`; }
     await store.put(slugOfT(t), j); return { jam: out(j), url }; }));
 
   /* ---------- exits ---------- */
@@ -451,7 +452,7 @@ export function mountJam2(d) {
     const jp = publicView(j); /* a jam from a team-only card shows no account numbers to whoever holds the link */
     if (kind === 'post' && u.searchParams.get('zip') === '1') { const buf = await ready.zip(j); await store.put(tok.slug, j); res.writeHead(200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${jp.title.replace(/[^\w -]+/g, '').slice(0, 60) || 'brew'}.zip"`, 'cache-control': 'no-store' }); res.end(buf); return true; }
     let items = kind === 'post' ? await ready.packOf(j) : []; if (kind === 'post') await store.put(tok.slug, j);
-    if (kind === 'brief') { const sent = one ? [one] : j.boards.filter((bd) => bd.brief?.status); items = (sent.length ? sent : j.boards).map((bd) => { const h = bd.approved ? bd.takes.find((x) => x.id === bd.approved.takeId) : headOf(bd); return h ? { board: bd.id, label: bd.label, status: bd.brief?.status || null, files: h.file ? [{ label: 'Brew’s draft (reference)', file: h.file }] : [], caption: '', body: '', subject: '', alt: '', hashtags: [], blocks: jamView(jp).boards.find((x) => x.id === bd.id).briefView.map((x) => ({ title: x.h, text: x.t })), shots: [] } : null; }).filter(Boolean); }
+    if (kind === 'brief') { const sent = one ? [one] : j.boards.filter((bd) => bd.brief?.status); items = (sent.length ? sent : j.boards).map((bd) => { const h = bd.approved ? bd.takes.find((x) => x.id === bd.approved.takeId) : headOf(bd); return h ? { board: bd.id, label: bd.label, status: bd.brief?.status || null, files: h.file ? [{ label: 'Our draft (reference)', file: h.file }] : [], caption: '', body: '', subject: '', alt: '', hashtags: [], blocks: jamView(jp).boards.find((x) => x.id === bd.id).briefView.map((x) => ({ title: x.h, text: x.t })), shots: [] } : null; }).filter(Boolean); }
     const name = (await bb.load(tok.slug).catch(() => null))?.read?.name || '';
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(ready.page(jp, items, { kind, brand: name })); return true;
   }

@@ -161,7 +161,7 @@ export const caseSummary = (c = {}, plan) => {
   // the first reason that says something new: not a bare "Label: ₹123", not the card's own line again
   const why = (c.detail?.why || []).find((x) => x && !/^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) && sq(x) !== sq(c.sub) && sq(x) !== sq(c.title));
   return [cut(c.title, 140).replace(/[.!?]?$/, '.'), sub && sub !== c.title ? sub.replace(/[.!?…]?$/, (m) => m || '.') : '', why ? cut(why, 160).replace(/[.!?]?$/, '.') : '',
-    plan.n ? `Brew makes the ${one(plan.make.what)} for you to review; redo it if it isn’t right. Nothing ships until you say so.` : 'Nothing ships until you say so.', `Next: ${plan.cta}.`].filter(Boolean).join(' ');
+    plan.n ? `We make the ${one(plan.make.what)} for you to review; redo it if it isn’t right. Nothing ships until you say so.` : 'Nothing ships until you say so.', `Next: ${plan.cta}.`].filter(Boolean).join(' ');
 };
 
 /* the plan for a card. draft: the card's first draft (drafts-bg draftView), which becomes v0 on the jam's stage */

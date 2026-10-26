@@ -205,7 +205,7 @@ test('digest content from saved files: titles and reasons, never private numbers
   assert.deepEqual(c.images, ['https://brew.test/gen/abc.png', 'https://brew.test/b/g/statics/s1.jpg', 'https://brew.test/b/g/statics/s2.jpg']);
   assert.deepEqual(jamsFor(c.jams, 'raj@gully.com').map((j) => j.id), ['wk1', 'wk2']); assert.deepEqual(jamsFor(c.jams, 'ana@gully.com').map((j) => j.id), ['wk1']);
   const ana = r.mails.find((m) => m.to === 'ana@gully.com'), raj = r.mails.find((m) => m.to === 'raj@gully.com');
-  assert.equal(ana.subject, '1 new move and 3 updated moves for Gully this week');
+  assert.equal(ana.subject, '1 new play and 3 updated plays for Gully this week');
   assert.match(raj.text, /Waiting on you\n- “Gift box reel” needs your OK\n- “Raj’s carousel” is yours/);
   for (const m of r.mails) { assert.doesNotMatch(m.html + m.text, /₹|Private only|AOV/, 'no private number or title'); assert.match(m.html, /href="https:\/\/brew\.test\/g\?go=feed"/); }
   assert.match(r.slack, /This week in Brew for Gully/); assert.match(r.slack, /1 jam waiting for an OK/); assert.doesNotMatch(r.slack, /₹|Raj’s carousel/);

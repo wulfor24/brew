@@ -12,7 +12,7 @@ test('a claim about what customers say is proven by the review the card points a
   const e = refine(curls, ev([{ kind: 'row', label: 'Price', value: '₹601', src: 'What Brew counted' }], 'We saw CGM customers actively questioning if products ruin curls.'), { voice: [review] });
   assert.equal(e.items[0].kind, 'voice'); assert.match(e.items[0].value, /keeps the curls for long/); assert.equal(e.items[0].url, review.url);
   assert.ok(!e.items.some((x) => /price/i.test(x.label)), 'the price is not proof of what customers said');
-  assert.match(e.claim.note, /people doubt this, but what Brew found is praise/);
+  assert.match(e.claim.note, /people doubt this, but what we found is praise/);
 });
 test('a complaint claim shows the low-star review that complains, and then needs no warning', () => {
   const bad = { kind: 'review', text: 'The hardware started tarnishing after two weeks of wearing these sneakers', rating: 2, product: 'Megh White', src: 'Judge.me', url: 'https://x.test/r' };

@@ -18,6 +18,7 @@
 //   - app/uninstalled and the three compliance webhooks are HMAC-checked; Brew keeps no per-customer record, so the customer
 //     ones have nothing to send or erase, and shop/redact (and uninstall) drop the store's token and its numbers
 import crypto from 'node:crypto';
+import { PRODUCT_NAME, productNameScript } from './product-name.js';
 import { isFullAccess } from './auth.js'; // a Shopify sign-in never makes anyone staff
 import { slugOf } from './brand-pack.js';
 import { adminCatalog } from './reader/stages/admin.js';
@@ -155,7 +156,7 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
 
   /* the session the embedded home asks for: linked (open the brand), unread (offer the read) or authorize (legacy install) */
   async function session(req, t) {
-    const me = req.brewUser; if (!me) return { state: 'error', error: 'Shopify didn’t say who you are. Open Brew again from your Shopify admin.' };
+    const me = req.brewUser; if (!me) return { state: 'error', error: 'Shopify didn’t say who you are. Open the app again from your Shopify admin.' };
     let creds; try { creds = credsOf(await exchange(t, 'offline'), t.shop); }
     catch (e) { if (e.status === 400 || e.status === 401) return { state: 'authorize', url: authorizeUrl(req, t.shop) }; throw e; }
     const b = await brandOf(t, creds);
@@ -171,14 +172,14 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
   }
   /* the merchant starts the read of their store's domain (a paid run, so only on their tap), then the store links to it */
   async function startRead(req, t) {
-    const me = req.brewUser; if (!me) return { error: 'Open Brew again from your Shopify admin.' };
+    const me = req.brewUser; if (!me) return { error: 'Open the app again from your Shopify admin.' };
     const creds = credsOf(await exchange(t, 'offline'), t.shop), b = await brandOf(t, creds);
     if (b.slug) { await link(b.slug, t, me, creds).catch((e) => log.warn('[shopify-app] link', b.slug, e.message)); return { slug: b.slug }; } /* read meanwhile (another tab, a teammate) */
     /* a closed store: the read starts from its Admin API (free), with only active products, never drafts */
     let admin = null;
     if (b.sf.locked) {
       admin = await adminCatalog({ gql: (q, v) => gql(t.shop, creds.token, q, v), log }); admin.shop.host = b.host;
-      if (!admin.products.length) return { error: `Your store has no active products yet, and ${CLOSED_WHY}, so there is nothing for Brew to read. Add a product in Products, then tap Read my store again.`, locked: true };
+      if (!admin.products.length) return { error: `Your store has no active products yet, and ${CLOSED_WHY}, so there is nothing for us to read. Add a product in Products, then tap Read my store again.`, locked: true };
     }
     const r = await builder.start(b.host, { user: me, ip: null, ...(admin ? { admin } : {}), ...(b.retry ? { fresh: true } : {}) }); if (r.error || !r.slug) return { error: r.error || 'The read didn’t start. Try again in a minute.' };
     await link(r.slug, t, me, creds).catch((e) => log.warn('[shopify-app] link after read', r.slug, e.message));
@@ -237,14 +238,14 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
       if (shop && u.searchParams.get('hmac') && u.searchParams.get('embedded') !== '1' && !u.searchParams.get('id_token')) {
         if (!queryOk(u.searchParams)) return json(res, 400, { error: 'bad signature' }), true;
         res.writeHead(302, { location: adminApp(shop), 'cache-control': 'no-store' }); return res.end(), true; }
-      if (!shop) return html(res, 200, page('Brew for Shopify', `<p>Open Brew from your Shopify admin, under Apps.</p><p><a href="/">Go to Brew</a></p>`), null), true;
-      return html(res, 200, embedHtml(page('Brew', `<div id="sh">Opening Brew…</div>`, true), shop), shop), true;
+      if (!shop) return html(res, 200, page(`${PRODUCT_NAME} for Shopify`, `<p>Open ${esc(PRODUCT_NAME)} from your Shopify admin, under Apps.</p><p><a href="/">Go to ${esc(PRODUCT_NAME)}</a></p>`), null), true;
+      return html(res, 200, embedHtml(page(PRODUCT_NAME, `<div id="sh">Opening ${esc(PRODUCT_NAME)}…</div>`, true), shop), shop), true;
     }
     if (p === '/shopify/callback' && req.method === 'GET') { /* legacy install: Shopify's authorize, then back into the admin */
       const st = auth.verify(u.searchParams.get('state'), 'shopify-install');
-      if (!queryOk(u.searchParams) || !st || st.shop !== shop) return json(res, 400, { error: 'This install link expired. Install Brew again from Shopify.' }), true;
+      if (!queryOk(u.searchParams) || !st || st.shop !== shop) return json(res, 400, { error: 'This install link expired. Install the app again from Shopify.' }), true;
       try { await post(shop, '/admin/oauth/access_token', { client_id: app().id, client_secret: app().secret, code: u.searchParams.get('code'), expiring: '1' }); }
-      catch (e) { log.warn('[shopify-app] callback', shop, e.message); return json(res, 400, { error: 'Shopify didn’t accept the install. Install Brew again from Shopify.' }), true; }
+      catch (e) { log.warn('[shopify-app] callback', shop, e.message); return json(res, 400, { error: 'Shopify didn’t accept the install. Install the app again from Shopify.' }), true; }
       res.writeHead(302, { location: adminApp(shop), 'cache-control': 'no-store' }); return res.end(), true;
     }
     if (p === '/shopify/hop' && req.method === 'GET') { /* the new tab: a Brew session for the person the admin vouched for, then on */
@@ -255,12 +256,12 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
       res.writeHead(302, { location: safeNext(h.next), 'cache-control': 'no-store' }); return res.end(), true;
     }
     if (p.startsWith('/shopify/api/') && req.method === 'POST') {
-      const t = req.shopify || tokenOf(req, u); if (!t) return json(res, 401, { error: 'Open Brew again from your Shopify admin.', reauth: true }), true;
+      const t = req.shopify || tokenOf(req, u); if (!t) return json(res, 401, { error: 'Open the app again from your Shopify admin.', reauth: true }), true;
       if (!req.brewUser) await attach(req, u);
       try {
         if (p === '/shopify/api/session') return json(res, 200, await session(req, t)), true;
         if (p === '/shopify/api/read') return json(res, 200, await startRead(req, t)), true;
-        if (p === '/shopify/api/hop') { const b = JSON.parse((await raw(req)).toString() || '{}'); if (!req.brewUser) return json(res, 401, { error: 'Open Brew again from your Shopify admin.' }), true;
+        if (p === '/shopify/api/hop') { const b = JSON.parse((await raw(req)).toString() || '{}'); if (!req.brewUser) return json(res, 401, { error: 'Open the app again from your Shopify admin.' }), true;
           return json(res, 200, { url: hopUrl(req, req.brewUser, safeNext(b.next)) }), true; }
       } catch (e) { log.warn('[shopify-app]', p, t.shop, e.message); return json(res, 200, { state: 'error', error: 'Shopify didn’t answer. Try again in a minute.' }), true; }
     }
@@ -269,7 +270,7 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
 
   /* the embedded home: asks for the session, then opens the brand, offers the read, or authorizes (a legacy install) */
   function page(title, body, home = false) {
-    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>
+    return `<!doctype html><html lang="en"><head>${productNameScript()}<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><meta name="description" content="${esc(PRODUCT_NAME)} in your Shopify admin: your store’s plays, read from your own data.">
 <style>body{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;background:#f1f1f1;color:#303030}main{max-width:560px;margin:48px auto;padding:24px;background:#fff;border-radius:12px;box-shadow:0 1px 0 rgba(0,0,0,.07)}h1{font-size:18px;margin:0 0 12px}button.go{font:inherit;font-weight:600;background:#303030;color:#fff;border:0;border-radius:8px;padding:10px 16px;cursor:pointer}button.go[disabled]{opacity:.5}.err{color:#8e1f0b}a{color:#005bd3}</style></head>
 <body><main><h1>${esc(title)}</h1>${body}</main>${home ? '<script src="/shopify-home.js"></script>' : ''}</body></html>`;
   }
@@ -282,6 +283,6 @@ export function createShopifyApp({ auth, connectors, builder, packs, log = conso
   /* a store not open yet keeps its pages to its team (closed-gate.js), and a frame's own load can't say who is looking: inside
      the admin, a page with no person on it asks App Bridge for a fresh session token and loads again with it (once: fresh=1) */
   const renew = (req, u, res) => { if (!app().id || !embeddedReq(req, u) || req.brewUser || u.searchParams.get('fresh') === '1') return null;
-    const shop = shopQ(u); res.setHeader('content-security-policy', frameAncestors(shop)); res.setHeader('referrer-policy', 'no-referrer'); return embedHtml(page('Brew', '<div id="brew-renew">Opening Brew…</div>'), shop); };
+    const shop = shopQ(u); res.setHeader('content-security-policy', frameAncestors(shop)); res.setHeader('referrer-policy', 'no-referrer'); return embedHtml(page(PRODUCT_NAME, `<div id="brew-renew">Opening ${esc(PRODUCT_NAME)}…</div>`), shop); };
   return { handle, attach, embeddedReq, renew, embed: (req, u, res, body) => { if (!app().id || !embeddedReq(req, u)) return body; const shop = shopQ(u); res.setHeader('content-security-policy', frameAncestors(shop)); res.setHeader('referrer-policy', 'no-referrer'); return embedHtml(withToken(req, u, body), shop); } };
 }

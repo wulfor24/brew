@@ -12,7 +12,7 @@
   /* this script runs in <head>, before the page's body: the "Opening Brew…" box is looked for once the page is parsed */
   const renewNow = () => { const renew = document.getElementById('brew-renew'); if (!renew) return;
     shopify.idToken().then((t) => { const u = new URL(location.href); u.searchParams.set('id_token', t); u.searchParams.set('fresh', '1'); location.replace(u.pathname + u.search + u.hash); })
-      .catch(() => { renew.textContent = 'Brew couldn’t open. Reload the page to try again.'; }); };
+      .catch(() => { renew.textContent = 'That didn’t open. Reload the page to try again.'; }); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renewNow, { once: true }); else renewNow();
   /* the page has loaded as the person: the token leaves the address, so a reload (after it expires) asks again */
   try { const u = new URL(location.href); if (u.searchParams.has('id_token') || u.searchParams.has('fresh')) { u.searchParams.delete('id_token'); u.searchParams.delete('fresh'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } } catch (e) {}

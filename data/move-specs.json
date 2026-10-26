@@ -5,10 +5,10 @@
   "skill": null,
   "kicker": "THE PLAYBOOK · INDEX",
   "discipline": "Index",
-  "titleHint": "Fifty moves for Arata",
+  "titleHint": "Fifty plays for Arata",
   "statHint": {
    "stat": "50",
-   "statLabel": "MOVES, ONE BRAND"
+   "statLabel": "PLAYS, ONE BRAND"
   },
   "deps": [],
   "evidence": [],
@@ -1972,7 +1972,7 @@
   "group": "reach",
   "skill": "ads",
   "kicker": "WEATHER TRIGGERS",
-  "discipline": "Weather-Triggered Moves",
+  "discipline": "Weather-Triggered Plays",
   "titleHint": "When it turns cold in Delhi, the ads switch on",
   "statHint": {
    "stat": "3 triggers",
@@ -2007,7 +2007,7 @@
   "group": "reach",
   "skill": "competitors",
   "kicker": "SWITCH FROM RIVALS",
-  "discipline": "Rival Weakness Switch Moves",
+  "discipline": "Rival Weakness Switch Plays",
   "titleHint": "Winning the people who gave a rival two stars",
   "statHint": {
    "stat": "1–3★",
