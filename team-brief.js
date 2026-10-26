@@ -112,7 +112,11 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
     return { ai: false, ...fallback(w, x) }; };
 
   /* the brief for the version on the stage: written once per version (and per jam-brief edit), else the saved one */
-  const build = async (t, w, { fresh = false } = {}) => {
+  /* one writing at a time per brief: the open's read and the PDF's warm-up asked at once and each wrote its own brief (26 Oct, QV P1-16) */
+  const BUILDS = new Map();
+  const build = (t, w, opts = {}) => { const k = `${w?.id || ''}|${w?.changeId || ''}|${opts.fresh ? 1 : 0}`, run = BUILDS.get(k); if (run) return run;
+    const p = build0(t, w, opts).finally(() => { if (BUILDS.get(k) === p) BUILDS.delete(k); }); BUILDS.set(k, p); return p; };
+  const build0 = async (t, w, { fresh = false } = {}) => {
     const x = await handoff.build(t, w, { base: '' }); const key = keyOf(w, x), old = w.teamBrief;
     /* a brief written without the AI (offline, out of credit) is tried again at most every 15 minutes, never on every open: each open
        wrote it again and the audience flipped between two writings (26 Oct, QV P1-16) */

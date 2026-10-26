@@ -62,7 +62,9 @@ export function createDocSync({ packs, slug, name, fields, log = console }) {
         const mine = new Map(v.map((x) => [String(x?.id), x])), next = [], seen = new Set();
         for (const r of rows.filter((x) => x.part.startsWith(`${pre}a${SEP}`))) { const id = r.part.slice(pre.length + 2); seen.add(id);
           if (dirty(r.part)) { if (mine.has(id)) { const b = r.body.toString('utf8'); next.push(was.get(r.part) !== md5(b) && was.has(r.part) ? mergeItem(mine.get(id), JSON.parse(b), wasBody.has(r.part) ? JSON.parse(wasBody.get(r.part)) : null) : mine.get(id)); } continue; } /* changed or removed here: this instance's version stands, with what the other added (both changed it) */
-          next.push(JSON.parse(r.body.toString('utf8'))); if (local.get(r.part) !== md5(r.body.toString('utf8'))) took++; }
+          /* in place, like a map's items: a request holding this jam across an await (the team brief's AI write) writes into the live one,
+             never a copy the pull has let go (26 Oct, QV P1-16: the brief was written again on every open, its last writing lost) */
+          const body = r.body.toString('utf8'), it = JSON.parse(body); next.push(mine.has(id) ? inPlace(mine.get(id), it) : it); if (local.get(r.part) !== md5(body)) took++; }
         for (const x of v) { const id = String(x?.id), p = `${pre}a${SEP}${id}`; if (!seen.has(id) && (dirty(p) || !was.has(p))) next.push(x); else if (!seen.has(id)) took++; } /* new here: kept; gone there and unchanged here: gone */
         v.splice(0, v.length, ...next);
       } else if (v && typeof v === 'object') {
