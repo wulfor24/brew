@@ -1041,7 +1041,7 @@ export function createRemix(o) {
   // studio chips: the AI's next steps for this version, else the family's defaults minus what was already asked
   const suggestOf = (t, ch) => { const asked = new Set((ch.thread || []).filter((m) => m.from === 'you').map((m) => String(m.text).toLowerCase().trim()));
     ch.chips ||= chipsFor(ch.action, t.cards.get(ch.cardId) || {}, B()); /* older changes: worked out once from the action, then kept */
-    const pool = [...(ch.next || []), ...ch.chips, ...(ch.chips.length >= 3 ? [] : suggestFor(ch.family, B()))]; return pool.filter((x, i) => !asked.has(x.toLowerCase()) && pool.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i).slice(0, 4); };
+    const pool = [...(ch.next || []), ...ch.chips, ...(ch.chips.length >= 3 || /\.p_/.test(ch.action || '') ? [] : suggestFor(ch.family, B()))]; /* a planning deliverable's chips are its layout's, never its stand-in family's (a cover set was offered "Cut it to 15 seconds") */ return pool.filter((x, i) => !asked.has(x.toLowerCase()) && pool.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i).slice(0, 4); };
   /* a question about the package: one small grounded answer (the card, the package, the moves, the facts, the connected
      numbers), no package rewrite and no version. The answer is checked: a number or a performance claim the evidence
      doesn't hold is cut, and it says what isn't known */
@@ -1370,7 +1370,7 @@ export function createRemix(o) {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     const r = recipeFor(c); const cv = ensureCardVersion(t, c); const owner = c.agent === 'brew' && !r.conflict ? 'creative' : r.agent;
     const fits = new Set(r.actionKeys);
-    const mine = Object.values(changes(t)).filter((x) => x.cardId === c.id && !x.discarded && !x.batchKey && (fits.has(x.action) || x.added || ['running', 'live', 'deploy_team', 'result'].includes(x.state))).sort((a, b) => b.createdAt - a.createdAt).slice(0, 6).map((x) => pubChange(t, evaluate(t, x)));
+    const mine = Object.values(changes(t)).filter((x) => x.cardId === c.id && !x.discarded && !x.batchKey && (fits.has(x.action) || x.added || ['running', 'live', 'deploy_team', 'result'].includes(x.state))).sort((a, b) => b.createdAt - a.createdAt).slice(0, 24).map((x) => pubChange(t, evaluate(t, x))) /* every piece on the card is a tab (26 Oct: the 7th dropped off the row) */;
     const seen = new Set(), moveIntents = movePassages(c, '', 8).filter((x) => !seen.has(x.n + x.h) && seen.add(x.n + x.h)).slice(0, 2).map((x) => `Follow ${moveTag(x)}`);
     return { recipe: { key: r.key, agent: r.agent, type: r.type, intents: [...orderIntents(t, owner, r.intents), ...moveIntents], levers: !!r.levers, actions: r.actionKeys.map((k) => ({ key: k, label: actOf(k).label, money: actOf(k).money, jam: actOf(k).jam || null })) },
       cardVersion: { id: cv.id, n: versionsOf(t, c.id).length }, learned: summaryShort(t, owner), changes: mine, add: addable(r, mine) };

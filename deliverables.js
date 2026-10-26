@@ -32,7 +32,9 @@ const LAYOUT_CHIPS = { pic: ['Fewer words on it', 'Hinglish version', 'Another a
 export const planChips = () => Object.fromEntries(DELIVERABLES.filter((r) => r.key).map((r) => [r.key.split('.')[1], LAYOUT_CHIPS[r.layout]]));
 /* the draft a planning deliverable opens on when no AI writer is coming: its own catalogue words, never another family's sample
    (a WhatsApp Community plan opened as "Store and ad tracking … Before and after, the same number": 26 Oct) */
-const partsOf = (s) => String(s || '').split(/;\s*|:\s+|,\s+(?=[a-z])|\.\s+/).map((x) => x.trim().replace(/[.]$/, '')).filter((x) => x.length > 2).slice(0, 6);
+const partsOf = (s) => { const x = String(s || ''), m = /^[^:]{3,80}:\s+(.+)$/.exec(x); /* "Cover set in the brand kit: Reviews, How to use, Ingredients, Offers" is four parts */
+  if (m && m[1].split(/,\s+/).length >= 3) return m[1].split(/,\s+|\s+and\s+/).map((y) => y.trim().replace(/[.]$/, '')).filter((y) => y.length > 1).slice(0, 8);
+  return x.split(/;\s*|:\s+|,\s+(?=[a-z])|\.\s+/).map((y) => y.trim().replace(/[.]$/, '')).filter((y) => y.length > 2).slice(0, 6); };
 const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
 export const planMock = (r, family, pkg = {}, c = {}) => { const parts = partsOf(r.what), on = c.title ? ` for “${c.title}”` : '';
   if (family === 'setup') return { tool: r.platform === 'Other' ? r.who : r.platform, what: `${r.name}${on}: ${r.what}`, steps: parts.length ? parts.map(cap) : [r.what], verify: `${r.who} checks it against its rules before it goes live`, customerSees: '' }; /* the rules themselves go to the brief's Must-haves */

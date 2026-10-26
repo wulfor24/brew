@@ -40,7 +40,8 @@ export const setupLine = (ch = {}, product = null) => {
     case 'msg': return `One ${cut(p.channel || 'WhatsApp', 12)} message${who ? ` to **${lower(who)}**` : ''}${(p.buttons || []).length ? `, with ${p.buttons.length === 1 ? 'one button' : `${p.buttons.length} buttons`}` : ''}.`;
     case 'mail': return `${p.subject ? `An email, “${cut(p.subject, 60)}”` : 'An email'}${who ? `, to **${lower(who)}**` : ''}.`;
     case 'page': return `${p.heading ? `A page, “${cut(p.heading, 60)}”` : `The ${lower(ch.actionLabel || 'page')}`}${p.pages ? ` on ${cut(p.pages, 40)}` : ''}.`;
-    case 'post': return `A **${cut(p.platform || ch.target?.name || 'post', 30)}** ${/reply|answer/i.test(ch.actionLabel || '') ? 'reply' : 'post'}, ready to paste.`;
+    case 'post': { const net = cut(String(p.platform && !/^social post$/i.test(p.platform) ? p.platform : ch.target?.name || ch.actionLabel || 'post').replace(/\s+(?:post|reply|thread|answer)$/i, ''), 30), what = /reply|answer/i.test(ch.actionLabel || '') ? 'reply' : /thread/i.test(ch.actionLabel || '') ? 'thread' : 'post';
+      return `A **${net}** ${what}, ready to paste.`; }
     case 'acct': return `${cut(p.summary || p.rule || ch.after?.title || ch.actionLabel, 110)}${p.tool || ch.target?.name ? ` in **${cut(p.tool || ch.target.name, 30)}**` : ''}.`.replace(/\.\./, '.');
     default: { const n = (p.steps || p.changes || p.scenes || []).length; return `**${cut(p.what || p.title || p.decision || ch.actionLabel, 70)}**${n ? `: ${n} step${n > 1 ? 's' : ''}` : ''}${p.tool ? ` in ${cut(p.tool, 30)}` : ''}.`.replace(/\.\./, '.'); }
   }

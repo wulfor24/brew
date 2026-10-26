@@ -702,3 +702,50 @@
   .jp .jp-ship .ship-go,.jp .jp-ship .btn-ghost{overflow:hidden;text-overflow:ellipsis;padding:0 12px}
   .jp .jp-ship .ship-redo .btn-free,.jp .jp-ship .ship-redo small{display:none}
 }
+
+/* frames drawn from a piece's own package (jpFrame): the brand's own colours where the prototype used Arata's */
+.jp .jp-wash{background:radial-gradient(110% 80% at 50% 18%,color-mix(in srgb,var(--brand-1,#82b1ff) 35%,#fff) 0,var(--brand-1,#82b1ff) 50%,var(--brand-2,#3b82f6) 100%);color:#fff}
+.jp .jp-wash .jp-words h3,.jp .jp-wash .jp-words p{color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.18)}
+.jp .jp-mail-hero.jp-wash{display:grid;place-items:center}
+.jp .jp-mail-hero.jp-wash img{max-height:80%;max-width:60%;object-fit:contain}
+.jp .jp-tags{color:var(--brand-2,#3b82f6);font-size:13.5px}
+.jp .jp-media{display:flex;gap:6px;align-items:flex-start;font-size:13px;color:var(--fg-3)}
+.jp .jp-ops-l{margin:0;padding:12px 16px 12px 32px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.jp .jp-pvbar.jp-mailbar{position:static;transform:none;margin:0 auto}
+.jp .jp-stage-in .st-asset.jp-framed{width:100%;align-items:center}
+.jp .jp-stage-in .st-asset.jp-framed > *{max-width:100%}
+.jp .jp-chip-s.is-over,.jp .jp-cnt.is-over{color:#dc2626}
+.jp .jp-doc .jp-box{flex:none}
+.jp .jp-post-av img{width:100%;height:100%;border-radius:inherit;object-fit:cover}
+.jp .jp-framed .jp-wa{height:min(600px,calc(100dvh - 300px));width:min(380px,100%)}
+.jp .jp-framed .jp-pvbar{position:static;transform:none;margin:4px auto 0;flex-wrap:wrap;justify-content:center}
+.jp .jp-ptabs{scrollbar-width:none}
+.jp .jp-ptabs::-webkit-scrollbar{display:none}
+.std.has-jp > .jp > .jp-opening{position:relative;height:100%;display:grid;place-items:center;background:var(--stage)}
+.jp .jp-opening .jp-now{color:var(--fg)}
+.jp .jp-covers{display:flex;flex-wrap:wrap;justify-content:center;gap:22px;padding:28px 32px;border-radius:18px;background:var(--card);box-shadow:var(--sh-piece);max-width:640px}
+.jp .jp-covers figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px}
+.jp .jp-covers figure > span{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font-size:26px;font-weight:700;box-shadow:0 0 0 3px var(--card),0 0 0 4.5px var(--line)}
+.jp .jp-covers figcaption{font-size:12.5px;color:var(--fg)}
+.jp .jp-covers-n{margin:0;font-size:12.5px;color:var(--fg-3)}
+.jp .jp-framed .jp-post{flex:none;max-width:100%}
+.jp .jp-framed .jp-art{width:100%}
+.jp .jp-empty{color:var(--fg-3);font-style:italic}
+/* Change it yourself: the layout's choices as the prototype's fields and segmented controls */
+.jp .jp-panel-scroll .hs-tip{font-size:12.5px;color:var(--fg-3);margin:0}
+.jp .jp-panel-scroll .kn{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;border:0}
+.jp .jp-panel-scroll .kn > span{font-size:12px;color:var(--fg-3)}
+.jp .jp-panel-scroll .kn > div{display:flex;flex-wrap:wrap;gap:3px;padding:3px;border-radius:10px;background:var(--surface);width:max-content;max-width:100%}
+.jp .jp-panel-scroll .kn .chip{height:32px;padding:0 12px;border-radius:8px;border:0;background:none;box-shadow:none;font-size:14px;color:var(--fg-2)}
+.jp .jp-panel-scroll .kn .chip[aria-pressed="true"]{background:var(--card);color:var(--fg);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.08),0 0 0 1px var(--line)}
+.jp .jp-sec-h h2{margin:0;font-size:15px;font-weight:600}
+.jp .jp-field{display:flex;flex-direction:column;gap:6px}
+.jp .jp-lab{font-size:12px;color:var(--fg-3)}
+.jp .jp-prow{display:flex;align-items:center;gap:12px;padding:8px;border-radius:14px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
+.jp .jp-prow img{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--surface)}
+.jp .jp-prow b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14px;font-weight:500}
+.jp .jp-prow small{display:block;font-size:12px;color:var(--fg-3)}
+/* point, then ask: the picked part rides in the ask box as the prototype's dark pill */
+.jp .it-part{display:inline-flex;align-items:center;gap:4px;width:max-content;max-width:100%;margin:0 0 8px;padding:0 4px 0 12px;height:26px;border-radius:999px;background:var(--fg);color:var(--on-fg);font-size:12.5px}
+.jp .it-part b{font-weight:600}
+.jp .it-part .icon-btn{width:22px;height:22px;color:var(--on-fg);background:none}

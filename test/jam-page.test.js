@@ -34,3 +34,15 @@ test('the shell is the prototype\'s, scoped so the old styles never reach it, an
   for (const r of rules) { const sel = r.replace(/^}?\s*/, '').replace(/\{$/, ''); for (const one of sel.split(',')) { const x = one.trim(); if (!x || /^(from|to|\d+%)$/.test(x)) continue; assert.ok(/^(\.jp\b|\.jp-|:where\(\.jp\)|:root(:not\(\[data-theme="light"\]\))? \.jp|:root\[data-theme="dark"\] \.jp|\.std\.has-jp)/.test(x), `unscoped rule: ${x}`); } }
   assert.ok(html.indexOf('href="jam-page.css"') > html.indexOf('href="stage.css"'), 'loaded last');
 });
+
+test('every layout is drawn in the prototype\'s frame from the piece\'s own package, fitted, never blank', () => {
+  const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  const fr = app.slice(app.indexOf('const jpFrame = '), app.indexOf('/* ---------- the jam page\'s parts'));
+  for (const [L, mark] of [['msg', 'jp-wa'], ['mail', 'jp-inbox'], ['page', 'jp-web-bar'], ['post', 'jp-thread'], ['acct', 'jp-ops'], ['set', 'jp-set-view'], ['reel', 'jp-beats'], ['pic', 'jp-post jp-feed'], ['set', 'jp-covers']]) assert.ok(fr.includes(`L === '${L}'`) && fr.includes(mark), `${L}: ${mark}`);
+  assert.match(fr, /jp-checks/, 'check and brief: steps to tick');
+  assert.ok((fr.match(/jp-empty/g) || []).length >= 4, 'an empty piece says so, never a blank frame');
+  assert.match(fr, /if \(ch\.studio \|\| ch\.film \|\| media && \['pic', 'set', 'reel'\]\.includes\(L\)/, 'a made picture or video keeps its platform renderer');
+  assert.match(app, /fitAd\(\); jpFit\(\); bfMark\(\);/); assert.match(app, /post\.style\.transition = 'none'/, 'measured without the width animation');
+  assert.match(app, /\['\.jp-wa-msg, \.jp-sms p', 'Message'\]/, 'point, then ask works on the new frames');
+  assert.match(app, /'Shorter', 'Say the price', 'Warmer'/, 'chips follow a picked part');
+});
