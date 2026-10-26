@@ -1014,3 +1014,62 @@
 .jp .jp-fmts button small{color:var(--fg-3);margin-left:4px}
 .jp .jp-fmts button[aria-pressed="true"]{background:var(--fg);color:var(--on-fg);box-shadow:none}
 .jp .jp-fmts button[aria-pressed="true"] small{color:inherit;opacity:.7}
+
+/* ---------- QV round 2, 26 Oct (docs/qv/jam-r2.md): what still ran under the bar, out of the window or out of its box ---------- */
+/* N-P1-1: "+N more" opens its list over the stage, anchored to the bar (the bar is its containing block, so the line's own
+   overflow:hidden no longer clips it, on every layout); it stays inside the window and scrolls when the issues are long */
+.jp .jp-tx .jp-l:has(.ship-fixes){overflow:visible}
+.jp .jp-ship .ship-fixes{position:static;flex:none}
+.jp .jp-ship .ship-fixes summary{white-space:nowrap}
+.jp .jp-ship .ship-fixes ol{position:absolute;left:16px;right:auto;bottom:calc(100% + 8px);z-index:30;width:min(460px,calc(100% - 32px));max-height:min(320px,55vh);overflow:auto;box-sizing:border-box;font-weight:400;color:var(--fg);white-space:normal}
+/* N-P1-2: the older-version bar is the prototype's bar, never the top bar's 34px pill (brew.css .viewing had it 34px tall, so Back
+   to vN and Use vN hung under the window); its words sit in the steps' row, which it has none of */
+.jp .jp-ship.viewing{height:auto;gap:0;border-radius:0;box-shadow:none;padding:12px 16px 16px;background:color-mix(in oklab,var(--stage) 70%,transparent)}
+.jp .jp-ship:not(:has(> .jp-steps)) > .jp-tx,.jp .jp-ship:not(:has(> .jp-steps)) > .jp-btns{grid-row:1}
+.jp .jp-ship.viewing > .jp-tx{flex-direction:column;align-items:flex-start;gap:2px}
+.jp .jp-ship.viewing > .jp-tx b{color:var(--fg);font-weight:600}
+.jp .jp-ship.viewing > .jp-tx > span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-3)}
+/* N-P2-5: a narrow stage (1024 wide with the panel) puts the line on its own row over the buttons at every window height, not only
+   700px and up: beside Redo and a priced primary it had 90px, so the line was gone and "+N more" was cut ("+1 mc"). A short window
+   keeps it to one line; the whole of it is on hover and a tap away */
+@container jp-stage (max-width:860px){.jp .jp-ship{grid-template-columns:minmax(0,1fr)}
+.jp .jp-ship > .jp-tx{grid-column:1;grid-row:2}
+.jp .jp-ship > .jp-btns{grid-column:1;grid-row:3;justify-content:flex-end}
+.jp .jp-ship:not(:has(> .jp-steps)) > .jp-btns{grid-row:2}}
+@media (max-height:699px){@container jp-stage (max-width:860px){.jp .jp-ship .ship-one > span{-webkit-line-clamp:1}
+.jp .jp-steps li{font-size:0;gap:0}}} /* a short window pays for the line's row with the steps' words: their bars still say where it is */
+.jp .jp-ship .ship-one > span{flex:0 1 auto;min-width:3em}
+.jp .jp-ship .ship-one > .linkbtn,.jp .jp-ship .ship-one > .ship-fixes{flex:none;white-space:nowrap}
+/* N-P1-2: "You're looking at vN" takes the tag's corner (the tag is off while you look back), never the One | All corner */
+.jp .jp-oldv{left:16px;right:auto;top:16px}
+@media (max-width:640px){.jp .jp-stage-in > .jp-oldv{position:static;order:-1;align-self:flex-start;flex:none}}
+/* N-P1-4: a merge tag is a word in the line: "Hi [first name]," stays on one line */
+.jp .tok{display:inline-flex;align-items:center;white-space:nowrap;vertical-align:baseline;width:auto}
+.jp .jp-mail-txt{display:block;min-width:0}
+/* P1-1: a set too tall for a short window steps back once more (stageFrames adds stg-tighter): the card's header and copy go, the
+   picture, the headline, the button and the dots stay */
+.jp .st-asset[data-stg].stg-tighter .am-h,.jp .st-asset[data-stg].stg-tighter .as-meta .am-text{display:none!important}
+.jp .st-asset[data-stg].stg-tighter .ig-h,.jp .st-asset[data-stg].stg-tighter .ig-cap{display:none}
+/* P1-1: and when even the smallest set still runs under the bar (stg-stuck / jp-stuck, set by the fit), the dots stay in view: they
+   stick to the stage's foot over the slide's lower edge rather than scroll under the bar. Only then: sticky inside the stage's
+   padding, they were pulled up over a slide that fitted */
+.jp .st-asset[data-stg].stg-stuck .stg-nav,.jp .jp-framed.jp-stuck .jp-dots{position:sticky;bottom:0;z-index:4;align-self:center;width:max-content;padding:3px 6px;border-radius:999px;background:color-mix(in oklab,var(--stage) 82%,transparent)}
+/* P1-1: a framed piece keeps the stage's own padding only: the old studio box's 60px under it was room the piece never had */
+.jp .jp-stage-in > .st-asset.jp-framed{padding-bottom:0}
+/* N-P2-3: the ad's primary text clamps to whole lines of words: a blank line between paragraphs left one line, then a bare "…" */
+.jp .st-asset .as-meta.lg:not(.is-story) .am-text:not(:focus){white-space:normal}
+/* N-P2-1: a video in a short window (fitAd adds sv-tight): its beats on one row that scrolls sideways, the sizes off, the film link up
+   in the stage's corner */
+.jp .st-asset.sv-tight .sv-beats{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;max-width:min(420px,100%)}
+.jp .st-asset.sv-tight .sv-beats li{flex:none}
+.jp .st-asset.sv-tight .cs-sizes{display:none}
+.jp .st-asset.sv-tight > .fb-alt{position:absolute;top:16px;right:16px;z-index:3;margin:0;font-size:0} /* "Brief a film instead" alone, in the stage's free top corner */
+.jp .st-asset.sv-tight > .fb-alt .linkbtn{font-size:12.5px}
+/* P1-7: a beat's time reads "0–3 s", never "0–3 S" (canvas.css capitalised it) */
+.jp .sv-beats li small{text-transform:none}
+/* a phone's bar: a priced button is never cut by the window ("Make the full one $0" with Redo beside it at 390): the primary takes the
+   row's room, and drops under ⋯ and Redo, full width, only when its words and price don't fit beside them */
+@media (max-width:640px){.jp .jp-ship > .jp-btns{flex-wrap:wrap;gap:8px;max-width:100%}
+.jp .jp-ship > .jp-btns > *{min-width:auto}
+.jp .jp-ship .ship-go{flex:1 1 auto;overflow:visible}
+.jp .jp-ship .ship-redo,.jp .jp-ship .btn-ghost{flex:none;overflow:visible}}
