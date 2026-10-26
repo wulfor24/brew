@@ -167,7 +167,7 @@ test('Heard on a phone: the source line ellipsises in its card; a quote cut keep
   assert.match(read('listen-watch.js'), /q\.slice\(0, 260\)\.replace\(\/\\s\+\\S\*\$\/, ''\)/);
 });
 test('Work on a phone: the title has its own line above the buttons', () => {
-  assert.match(read('public/brew.css'), /@media \(max-width:700px\)\{\.wb-head\{padding:10px 16px;flex-wrap:wrap;row-gap:8px\}\.wb-head > span\{flex:1 0 100%\}/);
+  assert.match(read('public/brew.css'), /@media \(max-width:700px\)\{\.wb-head\{flex-wrap:wrap;row-gap:8px\}\.wb-head > span\{flex:1 0 100%\}/); /* phones: the Work title on its own line */
 });
 
 /* ---------- drawn: the real stylesheets in headless Chrome (skipped where Chrome can't start) ---------- */

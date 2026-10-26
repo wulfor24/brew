@@ -61,7 +61,7 @@ test('the route is a thin wrapper, reachable, and closed to outsiders on live li
   const s = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
   assert.match(s, /on\('POST', '\/api\/brands\/:slug\/voice', async \(b, t, p\) => \{/);
   assert.match(s, /saveVoicePick\(o\.memory, slug, b\.voice, \{ who: reqOf\(t\), demo: process\.env\.DEMO_MODE === '1' \}\)/);
-  assert.equal(s.split("brands\\/[a-z0-9-]+\\/(drop|references(\\/[^/]+(\\/remove)?)?|voice)$").length, 3, 'both path gates let it through');
+  assert.ok(/export const API_GATE = [^\n]*brands\\\/\[a-z0-9-\]\+\\\/\(drop\|references\(\\\/\[\^\/\]\+\(\\\/remove\)\?\)\?\|voice\)\$/.test(s) && (s.match(/API_GATE\.test\(u\.pathname\)/g) || []).length >= 2, 'both path gates let it through (one shared API_GATE)');
   assert.match(s, /brands\\\/\[\^\/\]\+\\\/\(drop\|voice\)\)\$\/\.test\(u\.pathname\)\) \{ send\(res, 403/, 'no writes from outside the team on live');
   const demo = /const DEMO_OK = (\/.*\/);/.exec(s)[1]; assert.ok(!demo.includes('voice'), 'not opened to demo-mode visitors');
 });

@@ -192,7 +192,7 @@ test('P2-3 and P2-4: days and counts said as people say them', () => {
 test('P2-12, 13, 15: the recap counts the feed\'s own new cards; one ring label; one How to per topic', () => {
   assert.match(fsvc, /const ids = new Set\(newIdsOf\(t, ranked\.map\(\(c\) => c\.id\)\)\); return ranked\.filter/);
   assert.match(fsvc, /ring\('brand', 'Today'/);
-  assert.match(fsvc, /\(ht\?\.items \|\| \[\]\)\.filter\(\(x, i, a\) => \{ const k = howTopic\(x\)/);
+  assert.match(fsvc, /ring\('howto', 'How to', oneTopic\(ht\?\.items \|\| \[\]\)/); /* one How to per topic (the merged helper) */
 });
 
 test('P2-19, 23, 24: the make line says the format once; a column heads with its first card\'s reason; an enquiry brand gets no store guide', () => {
