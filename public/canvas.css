@@ -968,3 +968,14 @@ body[data-view="remix"] .fab{display:none}
 .tbm-opt-i.tbm-gm{background:#fff;color:#ea4335;border:1px solid var(--line);font-family:Georgia,serif;font-size:19px}
 .tbm-opt.is-wait{opacity:.7;pointer-events:none}
 .tbm-send .sh-p{margin:0 0 14px}
+/* the composer's menus: rows never squash when the menu is short (a flex column with a max height shrinks its rows into
+   each other), each icon sits in a soft tile, the name and its line read as one quiet pair */
+.cmp-pop{gap:2px;padding:6px;min-width:280px}
+.cmp-pop>button,.cmp-pop>.cmp-as,.cmp-pop>.cmp-fixed,.cmp-pop>small{flex:none}
+.cmp-pop>button{gap:12px;padding:8px 12px 8px 8px;min-height:52px;font-size:14px;line-height:1.3;transition:background .12s}
+.cmp-pop>button>svg:first-child{flex:none;box-sizing:border-box;width:34px;height:34px;padding:8px;border-radius:10px;background:var(--surface);color:var(--fg-2)}
+.cmp-pop>button:hover>svg:first-child{background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
+.cmp-pop>button span{gap:1px}
+.cmp-pop>button b{font-weight:600;font-size:14px;line-height:1.3}
+.cmp-pop>button small{font-size:12.5px;line-height:1.35;color:var(--fg-3)}
+.cmp-pop>button:focus-visible{outline:2px solid var(--fg);outline-offset:-2px}

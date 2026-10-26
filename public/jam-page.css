@@ -832,3 +832,15 @@
 .jp .jp-art .jp-mark{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:34%;max-width:120px;border-radius:24%;opacity:.95;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 /* the primary text as the feed shows it: three lines, then "…See more" (Meta cuts it there too) */
 .jp .as-meta.lg:not(.is-story) .am-text{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+/* a short window: the ad steps back in stages, its headline and button always kept */
+.jp .as-meta.lg.is-tight .am-text{-webkit-line-clamp:2}
+.jp .as-meta.lg.is-tight .am-foot > div > span:not(.am-hl):not([data-hl-edit]){display:none}
+.jp .as-meta.lg.is-tight .am-foot{padding-top:8px;padding-bottom:8px}
+.jp .as-meta.lg.is-tighter .am-text{-webkit-line-clamp:1}
+.jp .as-meta.lg.is-tighter .am-h{padding-top:6px;padding-bottom:6px}
+.jp .as-meta.lg.is-tighter .am-h small,.jp .as-meta.lg.is-tighter .am-foot small{display:none}
+/* Piece | Brief, right after the title: one tap, never under ⋯ */
+.jp .jp-mode{flex:none;margin-left:4px}
+.jp .jp-mode button{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px}
+.jp .jp-mode button svg{opacity:.7}
+.jp .jp-mode button[aria-pressed="true"] svg{opacity:1}
