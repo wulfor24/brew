@@ -25,8 +25,50 @@ export const askOf = (w, email, more = []) => { const me = lc(email); if (!me) r
 
 /* does this jam wait on this person? A tag they have not answered, or an OK asked of them. An OK asked of someone else
    waits on them, not on whoever asked (they see it With teammate) */
-export const waitsOn = (w, email, more = []) => { if (askOf(w, email, more)) return true; if (w.stage !== 'needs_you') return false;
-  const to = lc(w.assignee?.email); return !to || !lc(email) || to === lc(email); };
+/* why it waits on them, in one line (26 Oct, the Work board by whose move it is): the same rule feeds the Needs you lane, the feed's
+   "N need you", the bell's Needs you group and the recap, so the counts never disagree. Beyond a tag or an OK: a make that failed since
+   they last looked, a plan question asked of them, our team asking the brief's sender for something, and a red check on a draft they are
+   in. `o.ch` is the jam's change (its checks); without it a red check can't be seen, never guessed */
+const seenOf = (w, me) => (me ? +w.reads?.[me] || 0 : null);
+const inJam = (w, me) => !me || !(w.people || []).length || (w.people || []).some((p) => lc(p.email) === me);
+const SHUT = ['shared', 'out', 'measuring', 'result'];
+export const whyWaits = (w, email, more = [], o = {}) => { if (!w || w.archived || w.discarded) return null; const me = lc(email);
+  const a = askOf(w, email, more); if (a) return { k: 'ask', line: `${a.who} asked you: ${String(a.body).replace(/\s+/g, ' ').slice(0, 120)}`, who: { name: a.who, email: a.email, pic: a.pic } };
+  if (w.stage === 'needs_you') { const to = lc(w.assignee?.email); if (!to || !me || to === me) return { k: 'ok', line: `v${w.current || 1} needs your yes` }; }
+  const cr = w.creative, seen = seenOf(w, me);
+  if (cr?.state === 'failed' && inJam(w, me) && (seen == null ? !!w.unread : (+cr.at || 0) > seen)) return { k: 'failed', line: `The make didn’t go through${cr.error ? `: ${String(cr.error).slice(0, 80).replace(/[.!\s]+$/, '')}` : ''}. Make it again` };
+  if (w.jamBrief?.status === 'needs_info' && (!lc(w.jamBrief.sender?.email) || !me || lc(w.jamBrief.sender.email) === me)) return { k: 'info', line: 'Our team needs something from you for the brief' };
+  const q = me && (w.plan?.questions || []).find((x) => !x.answer && lc(x.ownerEmail) === me); if (q) return { k: 'question', line: `Answer: ${String(q.q).slice(0, 120)}` };
+  if (o.ch && ['drafting', 'ready'].includes(w.stage) && !w.jamBrief?.sentAt && inJam(w, me)) { const red = (o.ch.checks || []).find((x) => x && !x.ok && !x.soft && !x.mine);
+    if (red) return /claim/i.test(red.k) ? { k: 'claim', line: 'A claim to approve or take out' } : { k: 'check', line: `Red check: ${String(red.k).replace(/\s*\(.*$/, '').slice(0, 90)}` }; }
+  return null; };
+export const waitsOn = (w, email, more = [], o = {}) => !!whyWaits(w, email, more, o);
+
+/* the Work board's lanes, by whose move it is (Param, 26 Oct: "this is missing: when AI is working, when AI has completed its work").
+   One lane per jam, first match wins: Needs you (whyWaits), Brew is on it (o.busy: a make, a rewrite, the first words or the brief in
+   flight), Ready for you (Brew finished since you last looked), With a teammate, Brief sent, else In progress. `who` is whose move it
+   is and `line` the one thing that comes next */
+export const LANES = ['you', 'brew', 'look', 'doing', 'with', 'sent'];
+export const laneOf = (w, email, more = [], o = {}) => { const me = lc(email), seen = seenOf(w, me), fresh = (at) => (seen == null ? !!w.unread : (+at || 0) > seen);
+  const why = whyWaits(w, email, more, o); if (why) return { k: 'you', who: why.who ? { kind: 'team', ...why.who } : { kind: 'you' }, line: why.line, why: why.k };
+  if (o.busy) return { k: 'brew', who: { kind: 'brew' }, line: o.busy.line, since: o.busy.since || null, eta: o.busy.eta || null, usd: o.busy.usd ?? null, why: o.busy.k };
+  const cr = w.creative, v = (w.versions || []).at(-1), mine = inJam(w, me);
+  if (mine && cr?.state === 'made' && fresh(cr.at)) return { k: 'look', who: { kind: 'you' }, line: `Made: ${String(cr.line || 'your creative').slice(0, 90)}`, since: cr.at, why: 'made' };
+  if (mine && o.final && fresh(o.final.at)) return { k: 'look', who: { kind: 'you' }, line: 'Your final is ready', since: o.final.at, why: 'final' };
+  if (mine && v && v.n > 1 && v.by === 'ai' && fresh(v.at) && !SHUT.includes(w.stage)) return { k: 'look', who: { kind: 'you' }, line: `Brew wrote v${v.n}: take a look`, since: v.at, why: 'version' };
+  const nm = (p) => p?.name || String(p?.email || '').replace(/@.*/, '') || 'a teammate';
+  if (w.stage === 'team') return { k: 'with', who: { kind: w.with?.kind === 'brew' ? 'brew' : 'team', name: w.with?.name || 'Your team', email: w.with?.email || null }, line: `With ${w.with?.name || 'your team'}${w.with?.channel ? ` in ${w.with.channel}` : ''}`, why: 'team' };
+  if (w.stage === 'needs_you') return { k: 'with', who: { kind: 'team', name: nm(w.assignee), email: w.assignee?.email || null, pic: w.assignee?.pic || null }, line: `Waiting on ${nm(w.assignee)}’s yes`, why: 'ok' };
+  if (!SHUT.includes(w.stage) && w.assignee?.email && lc(w.assignee.email) !== me) return { k: 'with', who: { kind: 'team', name: nm(w.assignee), email: w.assignee.email, pic: w.assignee.pic || null }, line: `${nm(w.assignee)} has it`, why: 'assigned' };
+  const q = (w.plan?.questions || []).find((x) => !x.answer && x.asked && lc(x.ownerEmail) && lc(x.ownerEmail) !== me);
+  if (q && !SHUT.includes(w.stage)) return { k: 'with', who: { kind: 'team', name: q.waiting || nm({ email: q.ownerEmail }), email: q.ownerEmail }, line: `Asked ${q.waiting || nm({ email: q.ownerEmail })}: ${String(q.q).slice(0, 90)}`, why: 'asked' };
+  const sent = (w.teamBrief?.sent || []).at(-1), ST = { sent: 'Sent to our team', received: 'Our team has it', in_progress: 'Our team is making it', delivered: 'Delivered' };
+  if (SHUT.includes(w.stage) || w.jamBrief?.sharedAt || sent) {
+    if (sent && !SHUT.includes(w.stage) && !w.jamBrief?.sharedAt && sent.version != null && w.teamBrief?.version != null && sent.version !== w.teamBrief.version) return { k: 'doing', who: { kind: 'you' }, line: 'Changed since you sent it: send the new version', why: 'resend' };
+    const line = w.jamBrief?.status ? ST[w.jamBrief.status] || 'Brief sent' : sent ? `Sent to ${sent.name || 'your team'}${sent.openedAt ? ' · opened' : ''}` : `Brief shared${w.ticket ? ` · ${w.ticket}` : ''}`;
+    return { k: 'sent', who: w.jamBrief?.to === 'shopos' || (w.jamBrief?.status && w.jamBrief.to !== 'team') ? { kind: 'brew', name: 'Our team' } : { kind: 'team', name: sent?.name || 'Your team' }, line, why: 'sent' }; }
+  if (w.stage === 'ready') return { k: 'doing', who: { kind: 'you' }, line: 'Approved: send the brief', why: 'approved' };
+  return { k: 'doing', who: { kind: mine ? 'you' : 'team', ...(mine ? {} : { name: nm((w.people || [])[0]), email: (w.people || [])[0]?.email || null, pic: (w.people || [])[0]?.pic || null }) }, line: (w.versions || []).length > 1 ? `Draft v${w.current} · shape it, then send the brief` : 'Draft · shape it, then send the brief', why: 'draft' }; };
 
 export function createJams({ packs, reqOf, bgMember, log = console, enabled = () => process.env.DEMO_MODE !== '1', everyMs = 4000 }) {
   const BR = new Map(); // slug → { work, changes, ready, last }

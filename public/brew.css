@@ -3191,3 +3191,33 @@ body.qf-on{overflow:hidden}
 .jm-ship.bs-staff{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}.jm-ship.bs-staff .ship-btns .btn{height:36px}
 /* a short row value never breaks word by word in a narrow lane ("Sold / out", "1 / left" on the Work board: QV P2-2, 26 Oct); the label gives way */
 .rows div:not(.is-long) b{white-space:nowrap;flex:0 0 auto}.rows div:not(.is-long) span{min-width:0}
+/* ---------- Work board by whose move it is (26 Oct): Needs you · Brew is on it · Ready for you · In progress · With a teammate · Brief sent.
+   Every tile's strip says who moves next (you, the Brew mark, a teammate's face) and one line; Brew's lane has a live clock and bar ---------- */
+.wb-fc:focus-visible{outline:2px solid var(--info);outline-offset:3px;border-radius:18px}
+.wb-fc > .card.wb-card{box-shadow:inset 0 0 0 1px var(--line-soft,var(--line))}
+.wb-mv{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding-right:8px;margin-right:2px;box-shadow:inset -1px 0 0 color-mix(in srgb,currentColor 18%,transparent)}
+.wb-mv .av,.wb-mv .av-img{flex:0 0 auto}
+.wb-mv em{font-style:normal;font-size:13px;font-weight:600;color:var(--fg-2)}
+.wb-strip b{display:flex;align-items:center;gap:7px}
+.wb-strip b brew-load{flex:0 0 auto;width:14px;height:14px}
+.wb-strip span[data-since]{font-variant-numeric:tabular-nums}
+.wb-strip.is-you{background:var(--warn-bg)}.wb-strip.is-you b,.wb-strip.is-you .wb-mv em{color:var(--warn)}
+.wb-strip.is-brew{background:var(--info-bg);box-shadow:none}.wb-strip.is-brew b{color:var(--info)}
+.wb-strip.is-look{background:var(--ok-bg)}.wb-strip.is-look b{color:var(--ok)}
+.wb-strip.is-with b{color:#7c3aed}
+.wb-strip.is-sent b{color:var(--ok)}
+.wb-look{flex:0 0 auto;display:inline-flex;align-items:center;gap:2px;font-size:13px;font-weight:600;color:var(--ok)!important}
+.wb-look .ic{color:var(--ok)}
+.wb-run{display:flex;flex-direction:column;gap:6px;padding:2px 14px 10px;background:var(--info-bg);box-shadow:inset 1px 0 0 var(--line-soft,var(--line)),inset -1px 0 0 var(--line-soft,var(--line))}
+.wb-run .wb-bg-bar i{background:var(--info)}
+.wb-run small{font-size:12.5px;line-height:17px;color:var(--fg-2)}
+.wb-col .col-body > .wb-sub{margin:0 0 12px;font-size:13.5px;line-height:19px;color:var(--fg-3)}
+.wb-none{margin:2px 0 0;font-size:13.5px;line-height:19px;color:var(--fg-3)}
+.wb-bg-h4{margin:18px 0 8px;font-size:12.5px;font-weight:600;letter-spacing:.02em;color:var(--fg-3)}
+.wb-col[data-bcol="brew"] .col-top .wb-n{color:var(--info);background:var(--info-bg)}
+.wb-col[data-bcol="look"] .col-top .wb-n{color:var(--ok);background:var(--ok-bg)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wb-strip.is-with b{color:#a78bfa}}
+:root[data-theme="dark"] .wb-strip.is-with b{color:#a78bfa}
+/* tablets and phones show a lane per tab: Needs you always has its tab, so its quiet line shows when empty */
+@media (max-width:1100px){.wb-col.is-empty[data-bcol="you"]{display:flex}}
+@media (max-width:700px){.wb-mv em{display:none}.wb-strip{gap:7px;padding:0 12px}}
