@@ -776,3 +776,9 @@
 /* a short video is the phone itself, its place and time a small line above it (no card behind the phone) */
 .jp .jp-stage-in .as.as-pm:has(.sv-phone){background:none;box-shadow:none;border:0;padding:0}
 .jp .as.as-pm:has(.sv-phone) > .pm-line{margin:0 0 8px;font-size:12px;color:var(--fg-3);text-align:center;background:none}
+/* a video's beats under the phone, as the prototype's pills: the time, then the line (the whole script is in the brief and Change it yourself) */
+.jp .sv-beats{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;list-style:none;margin:10px 0 0;padding:0;background:none;max-width:420px}
+.jp .sv-beats li{display:flex;align-items:center;gap:6px;height:30px;max-width:190px;margin:0;padding:0 12px;border-radius:999px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);font-size:12.5px;color:var(--fg)}
+.jp .sv-beats li > :not(small):not(b){display:none}
+.jp .sv-beats li small{flex:none;color:var(--fg-3);font-size:11.5px}
+.jp .sv-beats li b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
