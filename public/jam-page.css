@@ -784,3 +784,5 @@
 .jp .sv-beats li b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
 .jp .jp-stage-in .pm.pm-sv{background:none;box-shadow:none;padding:0}
 .jp .jp-for{text-align:left}
+/* the preview's style wash is for a still picture; a video's phone stands on the stage itself */
+.jp .cs-frame.is-preview:has(.sv-phone){background:none}
