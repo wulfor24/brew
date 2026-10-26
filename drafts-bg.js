@@ -282,7 +282,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       d.ip = ip; d.imgText = cut(text, 600);
       if (!fits(cfg.imageUsd)) return budgetWait(d, "The picture comes with tomorrow's budget.");
       try { const r = await makeStill(slug, c, { src, ip, ratio, text, catalog: p.catalog || null, brand: p.seed?.brand?.name || '', named, salt: take ? today(now()) : '', words: kind === 'image' && d.headline ? d.headline : null, kind: c.make?.format || kind });
-        if (kind === 'image' && d.headline && !r.failed) d.wordsIn = true; /* the headline is in the picture: nothing is laid over it */
+        if (kind === 'image' && d.headline && !r.failed && !r.buf?.guard?.wordsMissing) d.wordsIn = true; /* the headline is in the picture: nothing is laid over it */
         if (r.failed) { d.photoOnly = true; d.imgRetry = { n: 1, next: now() + retryWait(1), err: cut(r.error || '', 160) }; d.note = cut(`${d.note} For now this is the real product photo; the new picture is being made again.`, 220); log.warn?.('[drafts-bg] image fell back to the real photo', slug, c.id, r.error || ''); }
         else { box.usd += imageCost(r.buf, cfg); if (r.retried) d.retried = true; if (r.buf?.guard?.labelApprox) d.labelApprox = true; }
         stillBuf = r.buf; d.fromPhoto = true; return r.rel; }
@@ -430,7 +430,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
         if (r.buf?.guard?.labelApprox) d.labelApprox = true;
         if (d.as === 'text') d.as = d.kind === 'collection' ? 'collection' : 'image';
         if (d.kind === 'video' && !d.video) d.wants = 'video';
-        if (inPic) { d.wordsIn = true; delete d.render; } /* the headline is in the Sloosh picture */
+        if (inPic && !r.buf?.guard?.wordsMissing) { d.wordsIn = true; delete d.render; } /* the headline is in the Sloosh picture */
         else if (d.kind !== 'collection' && d.headline) { const h = await headOn(r.buf, d, d.ratio || '4:5', r.rel); if (h) { d.render = h; d.headV = HEAD_V; } else delete d.render; } /* never the old stand-in's render over the new picture */
         if (d.kind === 'collection' && launchBrowser) { const products = await gridOf(p, named); if (products.length >= 2) d.render = await render(collectionHtml({ brand, title: d.title || c.title, hero: await genUri(d.image), products }), '4:5', `${d.key}|${d.image}`).catch(() => d.render || null); }
         d.usd = +((d.usd || 0) + box.usd - t0).toFixed(4); made.push({ cardId: c.id, as: d.as, kind: d.kind, title: d.title, image: d.render || d.image, video: d.video || null, usd: +(box.usd - t0).toFixed(4), remade: true });

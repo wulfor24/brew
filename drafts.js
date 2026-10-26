@@ -106,7 +106,7 @@ export function createDrafts({ sourceOf = () => '', rivalAdOf = () => null, riva
     const buf = await geminiImage({ srcFile: src, prompt, ratio, named: cardNamed(t, c), text: [c?.make?.pieces, j.title, j.copy, j.headline, c?.title].filter(Boolean).join('. '), fallback: true, ...(words ? { words } : {}), kind: c?.make?.format || j.as });
     const failed = !!buf?.guard?.genFailed, name = keyOf(prompt + ratio + (words || '') + (failed ? '|photo' : '')) + (failed ? '.jpg' : '.png');
     saveGen(name, buf);
-    return { name, buf, failed, rival: !!pic || (!!words && !failed) }; /* rival: the words sit in the picture already (our version of a rival's ad) */
+    return { name, buf, failed, rival: !!pic || (!!words && !failed && !buf?.guard?.wordsMissing) }; /* rival: the words sit in the picture already (our version of a rival's ad) */
   };
 
   /* the media makers live in createMakers (below), shared with the background first drafts (drafts-bg.js) */
@@ -295,6 +295,7 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
     const out = []; let browser = null;
     try { for (let i = 0; i < slides.length; i++) { if (!raws[i]) continue; let buf = raws[i];
         if (buf.guard?.genFailed && launchBrowser) { browser ||= await launchBrowser(); buf = await setType(browser, raws[i], { text: clean(slides[i].onSlide), small: clean(slides[i].small || ''), n: i + 1, of: slides.length }, ratio); }
+        else if (buf.guard?.wordsMissing && launchBrowser) { browser ||= await launchBrowser(); buf = await setType(browser, raws[i], { text: clean(slides[i].onSlide), small: clean(slides[i].small || ''), n: i + 1, of: slides.length }, ratio); } /* the words didn't come out: set in exact type instead */
         const name = keyOf(id + i + slides[i].onSlide + (buf === raws[i] ? '|sloosh' : '')) + (buf === raws[i] ? '.png' : '.jpg'); save(name, buf); out.push({ text: clean(slides[i].onSlide), image: 'gen/' + name, buf, n: i + 1, wordsIn: buf === raws[i] }); } }
     finally { await browser?.close().catch(() => {}); }
     const r = { slides: out.map(({ text, image, wordsIn }) => ({ text, image, ...(wordsIn ? { wordsIn: true } : {}) })), image: out[0]?.image || null, made: raws.filter(Boolean).length, retried: raws.filter((b) => b?.guard?.retried).length };

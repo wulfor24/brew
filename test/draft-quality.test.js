@@ -76,12 +76,15 @@ test('guard: a collage is made again with the reason, and the clean one is kept'
   assert.ok(prompts[1].includes(FIX.collage), 'the retry says what was wrong'); assert.equal(judged[0], 'Protect damaged hair with your super shampoo', 'judged against the card\'s words');
 });
 
-test('guard: two failures are held back: the real photo for callers that take one, a plain error for the rest; never the bad picture', async () => {
+test('guard: two look failures keep the second Sloosh picture, marked (27 Oct: never a raw store photo); a fake expert is still held back', async () => {
   const a = guardWith(['BAD', 'CROP']); const r = await a.G({ srcFile: a.ref, prompt: 'p', text: 't', fallback: true });
-  assert.equal(r.toString(), 'REAL-PHOTO'); assert.equal(r.guard.genFailed, true); assert.equal(r.guard.held, 'collage'); assert.equal(r.guard.gens, 2);
-  const b = guardWith(['BAD', 'BAD']); await assert.rejects(b.G({ srcFile: b.ref, prompt: 'p', text: 't' }), (e) => e.held === 'collage' && e.soft === true);
-  const c = guardWith(['BAD'], { pixels: async () => ({ collage: true, why: 'two flat grounds' }), looks: null }); /* the free check alone holds it back too */
-  assert.equal((await c.G({ srcFile: c.ref, prompt: 'p', fallback: true })).guard.held, 'collage');
+  assert.equal(r.toString(), 'CROP'); assert.ok(!r.guard.genFailed); assert.equal(r.guard.looks, 'cropped'); assert.ok(r.guard.looksDoubt); assert.equal(r.guard.gens, 2);
+  const b = guardWith(['BAD', 'BAD']); assert.equal((await b.G({ srcFile: b.ref, prompt: 'p', text: 't' })).toString(), 'BAD');
+  const w = guardWith(['W', 'W'], { looks: async () => ({ ok: false, verdict: 'words', why: 'the headline is missing' }) }); const rw = await w.G({ srcFile: w.ref, prompt: 'p', words: 'Frizz? Not today.', fallback: true });
+  assert.equal(rw.guard.wordsMissing, true, 'the caller sets the words in exact type instead'); assert.match(w.prompts[1], /Set the headline exactly/);
+  const e = guardWith(['LAB', 'LAB'], { looks: async () => ({ ok: false, verdict: 'expert', why: 'a lab coat' }) }); const re = await e.G({ srcFile: e.ref, prompt: 'p', fallback: true });
+  assert.equal(re.toString(), 'REAL-PHOTO'); assert.equal(re.guard.held, 'expert');
+  const c = guardWith(['BAD'], { pixels: async () => ({ collage: true, why: 'two flat grounds' }), looks: null }); assert.equal((await c.G({ srcFile: c.ref, prompt: 'p', words: 'Hi', fallback: true })).toString(), 'BAD', 'a headline box is never read as a paste-up');
 });
 
 test('guard: a background-only scene, an edit and a cut-out are not judged as ads; an unanswered judge never costs a picture', async () => {

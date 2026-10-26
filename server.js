@@ -210,10 +210,10 @@ const sameProduct = async (refFile, buf, name) => {
 };
 /* every product picture is judged as an ad before anyone sees it (draft-quality.js, image-guard.js): GOOD keeps it; COLLAGE,
    CROPPED or OFFTOPIC (against the card's words) is made once more, then held back. No answer → null (never a failure) */
-const draftLooks = async (buf, words = '') => {
+const draftLooks = async (buf, words = '', set = null) => {
   if (!anthropic || process.env.AI_MOCK === '1' || process.env.IMAGE_CHECK === '0' || process.env.LOOKS_CHECK === '0') return null;
   const msg = await anthropic.messages.create({ model: process.env.IMAGE_CHECK_MODEL || 'claude-haiku-5-5', max_tokens: 300, thinking: { type: 'disabled' }, messages: [{ role: 'user', content: [
-    { type: 'image', source: { type: 'base64', media_type: IMG_MIME(buf), data: buf.toString('base64') } }, { type: 'text', text: lookPrompt(words) }] }] });
+    { type: 'image', source: { type: 'base64', media_type: IMG_MIME(buf), data: buf.toString('base64') } }, { type: 'text', text: lookPrompt(words, set) }] }] });
   return lookVerdict((msg.content || []).map((x) => x.text || '').join(' '));
 };
 /* every picture is made by Sloosh (sloosh-make.js, wired once finals exist below): the image guard's model. Nothing else makes

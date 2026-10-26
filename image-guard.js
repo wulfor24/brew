@@ -55,16 +55,21 @@ export function createImageGuard({ balance = null, gen, verify = null, fetchPhot
   /* looks(buf, words) → { ok, verdict, why } | null (server.js draftLooks); pixels(buf) → { collage, why } (free, first).
      Judged: every picture meant to show a product (not a background-only scene, an edit of a finished picture, a cut-out) */
   async function judge(buf, o) {
-    const px = await pixels(buf).catch(() => null); if (px?.collage) return { ok: false, verdict: 'collage', why: px.why };
-    if (!looks) return null; try { return await looks(buf, o.text || ''); } catch (e) { log.warn?.('[image-guard] looks check unavailable', e.message); return null; } }
+    /* a picture with words set in it on purpose (a headline box, a band) is not run through the flat-panel pixel test: its box is the design */
+    if (!o.words) { const px = await pixels(buf).catch(() => null); if (px?.collage) return { ok: false, verdict: 'collage', why: px.why }; }
+    if (!looks) return null; try { return await looks(buf, o.text || '', o.words || null); } catch (e) { log.warn?.('[image-guard] looks check unavailable', e.message); return null; } }
   async function gated(o) {
     const r = await guardedImage(o);
     if (o.product === false || o.edit || o.gate === false || !Buffer.isBuffer(r) || r.guard?.fallback) return r;
     const q = await judge(r, o); if (!q || q.ok) { if (q) r.guard.looks = q.verdict; return r; }
     log.warn?.('[image-guard] picture failed the look check, making it again', q.verdict, q.why);
-    let r2 = null; try { r2 = await guardedImage({ ...o, prompt: `${o.prompt}\n${FIX[q.verdict] || FIX.collage}` }); } catch (e) { log.warn?.('[image-guard] look retry failed', e.message.slice(0, 160)); }
+    let r2 = null; try { r2 = await guardedImage({ ...o, prompt: `${o.prompt}\n${FIX[q.verdict] || FIX.collage}${o.words && q.verdict !== 'words' ? ` Keep the headline "${[].concat(o.words).join(' / ')}" set in the picture exactly as asked.` : ''}` }); } catch (e) { log.warn?.('[image-guard] look retry failed', e.message.slice(0, 160)); }
     const gens = (r.guard?.gens || 1) + (r2?.guard?.gens || 0), pro = (r.guard?.pro || 0) + (r2?.guard?.pro || 0);
-    if (r2 && !r2.guard?.fallback) { const q2 = await judge(r2, o); if (!q2 || q2.ok) { r2.guard = { ...r2.guard, gens, pro, retried: true, looks: q2?.verdict || null, looksFixed: q.verdict }; return r2; } q.why = q2.why || q.why; }
+    let q2 = null; if (r2 && !r2.guard?.fallback) { q2 = await judge(r2, o); if (!q2 || q2.ok) { r2.guard = { ...r2.guard, gens, pro, retried: true, looks: q2?.verdict || null, looksFixed: q.verdict }; return r2; } q.why = q2.why || q.why; }
+    /* still not right twice: the second Sloosh picture is kept (never a raw store photo; 27 Oct), marked with what the judge saw, so the
+       caller can lay the headline on itself (wordsMissing) or offer a redo. Only a fake expert (a lab coat) is never shown */
+    const keep = r2 && !r2.guard?.fallback ? r2 : r;
+    if (q.verdict !== 'expert' && (q2?.verdict || q.verdict) !== 'expert') { keep.guard = { ...keep.guard, gens, pro, retried: !!r2, looks: q2?.verdict || q.verdict, looksDoubt: String(q.why).slice(0, 160), ...((q2?.verdict || q.verdict) === 'words' ? { wordsMissing: true } : {}) }; return keep; }
     /* held back: never shown. The real product photo stands in for callers that take one; the rest get a plain error */
     const ref = r[REF] || r2?.[REF];
     if (o.fallback && ref) return Object.assign(fs.readFileSync(ref), { guard: { ...r.guard, gens, pro, fallback: true, genFailed: true, held: q.verdict, error: `held back: ${String(q.why).slice(0, 160)}` }, [REF]: ref });

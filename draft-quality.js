@@ -88,7 +88,9 @@ export async function cutQuality(input) {
 }
 
 /* the vision judge's question (server.js draftLooks asks it with the picture). words: what the card says it shows */
-export const lookPrompt = (words = '') => `This is a first-draft ad picture for a card in a brand's feed.${String(words).trim() ? ` The card says: "${String(words).replace(/\s+/g, ' ').trim().slice(0, 500)}".` : ''}
+/* set: words the brand asked to be set in the picture (27 Oct: Sloosh sets the headline in the brand's type, often in a colour box or band):
+   those, spelled exactly, are part of the design, never a paste-up */
+export const lookPrompt = (words = '', set = null) => `This is a first-draft ad picture for a card in a brand's feed.${String(words).trim() ? ` The card says: "${String(words).replace(/\s+/g, ' ').trim().slice(0, 500)}".` : ''}${set ? ` These words were asked to be set in the picture as its headline: "${[].concat(set).join(' / ').replace(/\s+/g, ' ').trim().slice(0, 200)}". Set in a text box, band or block of brand colour, spelled exactly, they are designed type and GOOD. If they are missing or misspelled, answer WORDS.` : ''}
 Judge only the picture, like a creative director who wants it shippable. Reply with one word, then a short reason.
 GOOD: a coherent photograph (or a clean product shot) that shows what the card is about. A deliberate split-screen or before/after made of real photographs is GOOD. Small soft print on a pack is fine. When in doubt, GOOD.
 COLLAGE: an obvious paste-up: products cut out with hard or jagged edges and no real shadow, flat panels or blocks of colour behind or beside them, a picture framed inside the picture, a blank band, or big words or numbers the image model drew (garbled or doubled lettering).
@@ -97,11 +99,12 @@ OFFTOPIC: it shows something the card is not about (another kind of product, an 
 EXPERT: a person shown as a doctor, dermatologist, scientist or other expert (a lab coat, scrubs, a clinic or a laboratory): a fake endorsement.`;
 /* the judge's reply → { ok, verdict, why }; no clear word → null (the check didn't answer: never counted as a failure) */
 export function lookVerdict(text = '') {
-  const t = String(text || '').trim(), m = /^\W*(good|collage|cropped|offtopic|off-topic|expert)\b/i.exec(t); if (!m) return null;
+  const t = String(text || '').trim(), m = /^\W*(good|collage|cropped|offtopic|off-topic|expert|words)\b/i.exec(t); if (!m) return null;
   const v = m[1].toLowerCase().replace('-', ''); return { ok: v === 'good', verdict: v, why: t.slice(0, 200) };
 }
 /* the line added to the prompt when a picture is made again after failing */
 export const FIX = {
+  words: 'The last picture left out or misspelled the headline. Set the headline exactly as asked, once, in clean bold type where it reads first.',
   collage: 'The last picture looked like a collage. Make ONE real photograph: the product physically in the scene with true contact shadows, a single continuous background, no panels, blocks, borders, bands, swatches or cut-out edges, and nothing copied from a designed graphic.',
   cropped: 'The last picture cut the product off at the frame edge. Keep the whole product inside the frame with space around it.',
   offtopic: 'The last picture did not show what the card is about. Show exactly the product and the moment the card names.',
