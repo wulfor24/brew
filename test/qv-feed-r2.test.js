@@ -9,6 +9,7 @@ import { aiTextsOf, fromAi, dropAiQuotes } from '../quote-guard.js';
 import { ownAdsSay, oosSay, ownSayIn, outInRows } from '../own-say.js';
 import { stockSay } from '../stock-say.js';
 import { healNote, healDaysIn, eventsFor } from '../day-count.js';
+import { brandVocab, fitRising, fitTrends } from '../trend-fit.js';
 import { heardCards } from '../social-feed.js';
 import { isCdn, cdnExpiry, cdnDead, keepName, createCdnKeep, keepRes } from '../cdn-keep.js';
 
@@ -169,4 +170,15 @@ test('margin notes: a countdown is counted today in the brand’s zone; one nami
   /* in the US zone, a day earlier at the same instant */
   const us = { country: 'US', timezone: 'America/Los_Angeles' }, evUS = eventsFor(us, Date.parse('2026-10-27T03:00:00Z'), [{ name: 'Diwali', date: '2026-11-08' }]);
   assert.equal(healNote('diwali is 9 days away', evUS, Date.parse('2026-10-27T03:00:00Z'), us), 'diwali is 13 days away');
+});
+
+/* ---------- 8. plays page and trends ---------- */
+test('trends: a list that rose around a product keeps only that product’s searches, even ones the brand sells elsewhere; no stale-plays banner', () => {
+  const V = brandVocab({ name: 'Arata', config: { terms: ['hair serum'], category: 'Hair and body care', rivals: ['Pilgrim'] }, catalog: [{ t: 'ARATA Exfoliating Body Wash' }] });
+  assert.deepEqual(fitRising([{ q: 'body wash', v: 60 }, { q: 'hair serum for frizz' }, { q: 'pilgrim serum' }, { q: 'best laptop for work' }], V, 'arata hair serum').map((x) => x.q), ['hair serum for frizz', 'pilgrim serum']);
+  assert.deepEqual(fitRising([{ q: 'body wash' }, { q: 'arata shampoo' }, { q: 'best laptop for work' }], V, 'arata').map((x) => x.q), ['body wash', 'arata shampoo'], 'around the name alone: what the brand sells');
+  const saved = { rising: { 'hair serum': [{ q: 'body wash', v: '+60%' }, { q: 'hair serum for women' }] }, items: [{ kind: 'rising', h: 'Arata hair serum searches surge 100%', risingOf: 'hair serum', rising: [{ q: 'body wash' }, { q: 'hair serum for women' }] }] };
+  const healed = fitTrends(saved, V); assert.deepEqual(healed.items[0].rising.map((x) => x.q), ['hair serum for women']); assert.deepEqual(healed.rising['hair serum'].map((x) => x.q), ['hair serum for women']);
+  const PUMA = brandVocab({ name: 'PUMA India', config: { terms: ['running shoes'] } }); assert.deepEqual(fitRising([{ q: 'pharmacy online india' }, { q: 'running shoes for men' }], PUMA, 'running shoes').map((x) => x.q), ['running shoes for men']);
+  assert.ok(!/class="up-banner"/.test(read('public/app.js')), 'no "36 plays are out of date" banner, staff included');
 });

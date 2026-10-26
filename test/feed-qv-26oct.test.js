@@ -118,7 +118,7 @@ test('P1-11: "things people said" is one number on Watch, Learned and What we he
 
 test('P1-16: the plays\' "out of date" banner and counts are our team\'s (staff only)', () => {
   assert.match(app, /staleSay = window\.LIVE\?\.full \? nStale : 0/);
-  assert.match(app, /\$\{staleSay && MVT\.tab === 'moves' \? `<button class="up-banner"/);
+  assert.ok(!/class="up-banner"/.test(app), 'no out-of-date banner on the plays page at all (QV round 2)');
   assert.match(app, /mvStale = window\.LIVE\?\.full \?/);
 });
 
