@@ -2085,7 +2085,9 @@
   const shareTok = async (wid) => { if (SHARE && (!wid || SHARE.includes(`~${wid}~`))) return SHARE; const k = wid || '';
     if (!(k in SHARES)) SHARES[k] = (await tapi('GET', `/api/tenants/:t/share${wid ? `?wid=${encodeURIComponent(wid)}` : ''}`)).token || null; return SHARES[k]; };
   const hashOf = (p, w) => String(p.id).startsWith('work:') || (p._work && !String(p.id).startsWith('jam-') && workOfCard(p.id)?.id !== p._work.id) ? `#work=${encodeURIComponent(w?.id || p._work?.id)}` : String(p.id).startsWith('jam-') && w ? `#jam=${encodeURIComponent(w.id)}` : `#card=${encodeURIComponent(p.id)}`;
-  const linkFor = async (p, w) => { const t = await shareTok(w?.id || p?._work?.id || workOfCard(p?.id)?.id); return `${location.origin}/${hashOf(p, w)}${t ? `&s=${t}` : ''}`; };
+  /* every link carries the brand's own path (26 Oct, QV P0-3: `/#card=…` opened Brew's landing page for a teammate): the brand page routes the hash */
+  const brandPath = () => (LANDING ? '/' : `/${encodeURIComponent(BR)}`);
+  const linkFor = async (p, w) => { const t = await shareTok(w?.id || p?._work?.id || workOfCard(p?.id)?.id); return `${location.origin}${brandPath()}${hashOf(p, w)}${t ? `&s=${t}` : ''}`; };
   const copyLink = async (p, w) => { const u = await linkFor(p, w); try { await navigator.clipboard.writeText(u); } catch (er) {} toast(`${ic('copy', 's16')}Link copied. It opens this exactly as it is now.`); };
   const hashParams = () => Object.fromEntries(location.hash.replace(/^#/, '').split('&').filter(Boolean).map((kv) => { const i = kv.indexOf('='); return i < 0 ? [kv, ''] : [kv.slice(0, i), decodeURIComponent(kv.slice(i + 1))]; }));
   const closeDetail = (fromHistory) => { document.body.classList.remove('sheet-open'); $('#dp')?.remove(); $('#dp-scrim')?.remove(); DP = null; if (!fromHistory && /^#(card|work|jam)=/.test(location.hash)) history.replaceState({ a: 'view', v: view }, '', location.pathname); };
@@ -4196,7 +4198,10 @@
   const fitKnobs = (ks) => (ks || []).map((k) => ({ ...k, opts: (k.opts || []).filter(fitsBrand) })).filter((k) => k.opts.length > 1);
   const fitSuggest = (xs) => (xs || []).filter(fitsBrand);
   /* a version's short name (2-4 words). The server names it; an older server only sends the reason, so cut that to four words */
-  const vLabel = (v) => { if (v.label) return v.label; const r = String(v.reason || '').replace(/\s*\(AI offline\)/i, '').replace(/^Knob:\s*/i, ''); if (/^Remix/i.test(r) || !r || v.n === 1) return 'First draft'; const w = r.replace(/https?:\/\/\S+/g, '').replace(/[“”"]/g, '').split(/\s+/).filter(Boolean); return w.slice(0, 4).join(' ').replace(/[,.;:]+$/, '') + (w.length > 4 ? '…' : ''); };
+  const vLabel = (v) => { if (v.label) return v.label; const r = String(v.reason || '').replace(/\s*\(AI offline\)/i, '').replace(/^Knob:\s*/i, ''); if (/^Remix/i.test(r) || !r || v.n === 1) return 'First draft';
+    /* a fix names what it fixed, never the ask's first words ("Fix this before it": 26 Oct, QV P2-2) */
+    const fx = /^fix\b[^:]{0,60}?\bbefore it (?:goes|ships)\s*:\s*|^fix\s*:\s*/i.exec(r); if (fx) { const k = r.slice(fx[0].length).replace(/[“”"]/g, '').split(/[:.]\s/)[0].split(/\s+/).filter(Boolean); return `Fixed: ${k.slice(0, 3).join(' ').replace(/[,.;:]+$/, '')}${k.length > 3 ? '…' : ''}`; }
+    const w = r.replace(/https?:\/\/\S+/g, '').replace(/[“”"]/g, '').split(/\s+/).filter(Boolean); return w.slice(0, 4).join(' ').replace(/[,.;:]+$/, '') + (w.length > 4 ? '…' : ''); };
   /* in the chat, a version is one quiet line ("Made v2 · As a thread"); the strip above the stage is where versions live */
   const madeNote = (ch, vs) => vs.length ? `<p class="lg-made">${ic('check', 's14')}<span>Made ${vs.map((v) => { const on = (RX.viewing || ch.head) === v.id; return `<button class="linkbtn" data-v-view="${v.id}" aria-pressed="${on}" title="${esc(on ? 'Showing' : `Show v${v.n}`)}">v${v.n}</button>`; }).join(', ')}${vs.length === 1 ? ` · ${esc(vLabel(vs[0]))}` : ''}</span></p>` : '';
   /* first thing on the chat: the case in plain words (what we saw, why it matters) and what you do next, as steps */
@@ -4279,7 +4284,7 @@
       <form class="mc-add nt-add" id="nt-add"><textarea name="t" rows="2" placeholder="Add a note"></textarea><button class="btn btn-ghost sm">Add note</button></form>
     </section>`;
   const briefTop2 = (ch) => { const w = workOfCard(RX.p?.id), bp = w?.doc?.plan || {}, k = w?.contract, kn = RX.p ? cardOf(RX.p).know : null;
-    const rows = [['What changes', bp.change], ['Who it’s for', bp.audience], ['When', bp.when], ['Budget', bp.budget], ['Owner', bp.owner], ['Stop rule', bp.guard]].filter(([, v]) => v);
+    const rows = [['What changes', bp.change], [/^(?:https?:\/\/)?(?:www\.)?[\w-]+(?:\.[\w-]+)+(?:\/\S*)?$/i.test(String(bp.audience || '').trim()) ? 'Where it runs' : 'Who it’s for', bp.audience] /* a site is where it runs, never who it is for (the brief says the same: 26 Oct) */, ['When', bp.when], ['Budget', bp.budget], ['Owner', bp.owner], ['Stop rule', bp.guard]].filter(([, v]) => v);
     const know = k ? `${k.metric.name}, ${k.how.toLowerCase()}, grade ${k.plannedGrade}, read after ${k.window} days` : kn ? `${bp.metric || kn.metric}, ${String(kn.bestHow || '').replace(/^./, (x) => x.toLowerCase())}${kn.bestGrade ? `, grade ${kn.bestGrade} at best` : ''}` : '';
     return `<section class="bf-top"><small class="dt-k">The final version · v${curN(ch)}</small>${rows.length ? `<dl class="bf-rows">${rows.map(([kk, v]) => `<div><dt>${esc(kk)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : '<p class="dt-empty">Who it’s for, when and the budget fill in as you jam.</p>'}
       ${know ? `<p class="bf-know">${ic('trendup', 's14')}<b>How we’ll know:</b> ${esc(know)}</p>` : ''}${w?.doc?.missing?.length ? `<p class="bf-miss">Still missing: ${w.doc.missing.map((x) => `<button class="linkbtn" data-st-fill="${esc(x)}">${esc(String(x).toLowerCase())}</button>`).join(', ')}</p>` : ''}</section><h4 class="dt-h">The package</h4>`; };
@@ -4544,7 +4549,9 @@
     if (r.brief) tbWarm(); };
   /* the PDF and the files are made ready in the background while the brief is read, so Send opens the email at once (a share
      sheet only opens straight after the click) */
-  const tbWarm = async () => { if (TBS.warming) return; TBS.warming = true; try { const w = tbWork(); if (!w) return; const r = await tapi('POST', tbApi(w, '/pdf'), {}).catch(() => ({}));
+  const tbWarm = async () => { if (TBS.warming) return; TBS.warming = true; try { const w = tbWork(); if (!w) return;
+      if (TBS.brief?.pdf?.url) { TBS.pdf = TBS.brief.pdf; await tbFiles(TBS.pdf).catch(() => {}); return; } /* this state's PDF is made: no POST on every open (26 Oct, QV P1-16) */
+      const r = await tapi('POST', tbApi(w, '/pdf'), {}).catch(() => ({}));
       if (r.pdf && TBS.for === tbKey()) { TBS.pdf = r.pdf; if (r.brief) TBS.brief = r.brief; await tbFiles(r.pdf).catch(() => {}); } } finally { TBS.warming = false; } };
   const tbOpen = () => { if (!tbWork()) return toast('Open the jam first, then share its brief.'); RX.stage = 'brief'; RX.tbEdit = null; paintStudio(); $('.tbm-scroll')?.scrollTo?.(0, 0); if (!TBS.brief || TBS.for !== tbKey() || TBS.brief.stale) tbLoad(); };
   /* the brief starts writing the moment the jam opens (Param, 23 Oct), so Brief is ready when it's tapped; once the first draft is in */
@@ -4681,7 +4688,7 @@
      Stories, a WhatsApp message…): v2's board tabs, in v1. Each is its own jam with its own versions; the card's kinds come first */
   const dlRow = (ch) => { if (ch.batchKey || !ch.cardId) return ''; const d = RX.dl?.cid === ch.cardId ? RX.dl : null; if (!d) { loadDl(ch); return ''; }
     const items = (d.items.some((x) => x.id === ch.id) ? d.items : [...d.items, { id: ch.id, label: ch.actionLabel }]).map((x) => (x.id === ch.id ? { ...x, label: jpKind(ch) } : x)), guest = document.body.classList.contains('is-guest');
-    return `<nav class="jp-ptabs" aria-label="Pieces on this card">${items.map((x) => { const dot = x.id === ch.id ? jpDot(ch) : jpDotOf(x.dot); return `<button type="button" data-dl-open="${esc(x.id)}" aria-current="${x.id === ch.id}"><i class="jp-pd ${dot}" title="${dot === 'draft' ? 'Being written' : dot === 'red' ? 'Needs a fix' : dot === 'sent' ? 'Brief sent' : 'Ready'}"></i>${esc(x.label)}</button>`; }).join('')}${d.add.length && !guest ? `<button type="button" class="jp-padd" data-dl-menu aria-haspopup="dialog" aria-expanded="${!!RX.dlMenu}">+ Add</button>` : ''}</nav>`; };
+    return `<nav class="jp-ptabs" aria-label="Pieces on this card">${items.map((x) => { const dot = x.id === ch.id ? jpDot(ch) : jpDotOf(x.dot); return `<button type="button" data-dl-open="${esc(x.id)}" aria-current="${x.id === ch.id}"><i class="jp-pd ${dot}" title="${dot === 'draft' ? 'Being written' : dot === 'red' ? 'Needs a fix' : dot === 'sent' ? 'Brief sent' : dot === 'todo' ? 'Not made yet' : 'Ready'}"></i>${esc(x.label)}</button>`; }).join('')}${d.add.length && !guest ? `<button type="button" class="jp-padd" data-dl-menu aria-haspopup="dialog" aria-expanded="${!!RX.dlMenu}">+ Add</button>` : ''}</nav>`; };
   /* the add sheet sits on the page itself, above the app's columns (inside the jam it was clipped at the left: 26 Oct) */
   const jpPortal = (ch) => { const d = RX.dl?.cid === ch?.cardId ? RX.dl : null, want = !!(RX.dlMenu && d && !document.body.classList.contains('is-guest') && view === 'remix'), old = $('#jp-portal');
     if (!want) { old?.remove(); return; } if (old && $('#dl-q') && document.activeElement === $('#dl-q')) return; old?.remove(); document.body.insertAdjacentHTML('beforeend', `<div class="jp jp-portal" id="jp-portal">${dlMenuHtml(d.add)}</div>`); };
@@ -4696,7 +4703,12 @@
   addEventListener('input', (e) => { if (e.target.id === 'dl-q') dlFilter(e.target.value); });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && RX.dlMenu) { e.preventDefault(); RX.dlMenu = false; $('#jp-portal')?.remove(); paintStudio(); $('.jp-padd')?.focus(); } }); /* Esc closes the add sheet */
   /* each piece's tab says where it is: being written or made, needs a fix, or ready (the prototype's dots) */
-  const dlDot = (x) => x.copyPending || x.ctaPending || x.imagePending || x.videoPending || x.remakePending ? 'writing' : (x.checks || []).some((c) => !c.ok && !c.soft && !c.mine) ? 'fix' : 'ready';
+  /* the dot says what the bar says (26 Oct, QV P1-14: red "Needs a fix" dots over a bar that said "Nothing is made or paid until you
+     press Make it"): red only where the bar shows a red line (a fix, a block, a red check on a made piece); a Studio piece not made yet is grey */
+  const dlDot = (x) => { if (x.copyPending || x.ctaPending || x.imagePending || x.videoPending || x.remakePending) return 'writing'; const vs = x.versions || [], hv = vs.find((v) => v.id === x.head);
+    if (x.studio && !hv?.studio && !vs.some((v) => v.studio)) return 'todo';
+    if (x.verdict === 'fix' || blockOf(x)) return 'fix';
+    return hv?.studio && x.publish?.made && lookOf(x).some((c) => !c.soft) ? 'fix' : 'ready'; };
   const loadDl = async (ch) => { if (RX.dlLoading === ch.cardId) return; RX.dlLoading = ch.cardId; const g = await tapi('GET', `/api/cards/${ch.cardId}/remix`).catch(() => null); RX.dlLoading = null; if (!g || g.error) { RX.dl = { cid: ch.cardId, items: [], add: [] }; return; }
     RX.dl = { cid: ch.cardId, items: (g.changes || []).slice().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map((x) => ({ id: x.id, label: jpKind(x) || x.actionLabel || x.familyName || 'Draft', dot: dlDot(x) })) /* the tab is the piece, like the title */, add: g.add || [] }; if (view === 'remix' && RX.ch?.cardId === ch.cardId) paintStudio(); };
   const lookOf = (ch) => [...(ch?.publish?.parts || []).filter((x) => x && !x.ok).map((x) => ({ t: x.why?.[0] || `${x.label} needs a fix`, part: x.k })), /* a field over its limit counts on the bar and in Details alike (QV 25 Oct) */
@@ -4762,7 +4774,7 @@
     const plat = String(p.platform || '').replace(/\s+(?:comment reply|replies|reply|post|thread|answer|short video|video|pin)$/i, '').trim(); /* "YouTube comment reply" is on YouTube */
     const w = ch.family === 'social' ? 'Instagram' : ch.family === 'post' ? (a === 'comment_reply' && ch.target?.name ? ch.target.name : a === 'short_video' ? (ch.target?.conn === 'meta' ? 'Meta Ads' : plat) : plat || PM_NAME[a] || '') : ch.target?.conn && ch.target?.name ? ch.target.name : '';
     return w && !/\bon [A-Z]/.test(lab) && !/^comment reply$/i.test(w) ? w.replace(/^Your /, 'your ') /* "on your reviews app" */ : ''; };
-  const cutW = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s.,;:·…–—-]+$/, '') + '…' : x; }; /* never "work.…": the cut drops the stop before its "…" (26 Oct, QV P2-1) */
+  const cutW = (x, n) => { x = String(x || '').trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s.,;:!?…·–—-]+$/, '') + '…' : x; }; /* never "work.…" or "Jersey...…" (26 Oct, QV P2-1) */
   /* the stage (25 Oct, "the stage doesn't feel like a stage"): a set of slides (stories, carousels, carousel and catalog ads) shows
      one slide big at the stage's own height, with arrows and numbered dots, or all of them side by side (One | All). The slide
      picked here and in Set-up is the same one. Everything else on the stage keeps its frame, centred and lit */
@@ -4866,13 +4878,16 @@
     if (L === 'msg') return `${/sms/i.test(p.channel || '') ? 'SMS' : 'WhatsApp'} message`; if (L === 'mail') return ch.family === 'outreach' ? 'Outreach email' : 'Email';
     if (L === 'post') { const pl = String(p.platform || ''); return pl && !/^social post$/i.test(pl) ? pl.charAt(0).toUpperCase() + pl.slice(1) : lab.replace(/^(reply|post|answer) (?:on|in) (.+)$/i, (m, a, b) => `${b} ${a.toLowerCase()}`); }
     return { pic: 'Picture', set: 'Carousel', reel: 'Video', page: 'Page', acct: `${ch.target?.name || 'Account'} change`, check: 'Checklist' }[L] || lab; };
-  const stSub = (ch) => { const st = ch.studio ? window.CreativeStage?.state(ch.id) : null, pr = st?.productName || ch.product?.name; if (pr) return cutW(String(pr).split(/\s+[–—|]\s+/)[0], 44); const w = stWhere(ch) || (ch.dl ? ch.target?.name : ''); return w || (RX.p && cardOf(RX.p).title ? `For: ${cutW(cardOf(RX.p).title, 44)}` : ''); };
+  /* the jam's product is the server's (remix.js jamProduct: a pick, then a made picture's product, then the card), on the first paint
+     and after: Studio's own set-up only fills in while the server names none (26 Oct, QV P1-18: the header painted the shampoo, then flipped) */
+  const jpProduct = (ch, st) => [ch?.product?.name, st?.productName].map((x) => String(x || '').replace(/\s+/g, ' ').trim()).find((x) => /[\p{L}\p{N}]/u.test(x)) || '';
+  const stSub = (ch) => { const st = ch.studio ? window.CreativeStage?.state(ch.id) : null, pr = jpProduct(ch, st); if (pr) return cutW(String(pr).split(/\s+[–—|]\s+/)[0], 44); const w = stWhere(ch) || (ch.dl ? ch.target?.name : ''); return w || (RX.p && cardOf(RX.p).title ? `For: ${cutW(cardOf(RX.p).title, 44)}` : ''); };
   const bold = (x) => String(x || '').split(/\*\*(.+?)\*\*/g).map((t, i) => (i % 2 ? `<b>${esc(t)}</b>` : esc(t))).join(''); /* split first: esc() strips ** itself */
   const verSw = (ch) => { const vs = [...(ch.versions || [])].sort((a, b) => (a.n || 0) - (b.n || 0)), cur = RX.viewing || ch.head, i = Math.max(0, vs.findIndex((v) => v.id === cur)), n = vs[i]?.n || curN(ch);
     return `<span class="jp-ver" aria-label="Versions"><button type="button" data-vstep="-1" aria-label="Older version"${i > 0 ? '' : ' disabled'}>‹</button><button type="button" class="jp-vn" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Every version">v${n}</button><button type="button" data-vstep="1" aria-label="Newer version"${i < vs.length - 1 ? '' : ' disabled'}>›</button></span>`; };
   const vmenuHtml = (ch) => `<div class="jp-pop jp-vpop st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>`;
   const jpSwPop = (ch) => { const items = RX.dl?.cid === ch.cardId ? RX.dl.items : [{ id: ch.id, label: ch.actionLabel }];
-    return `<div class="jp-pop jp-swpop" role="menu"><p class="jp-sw-h">On this card</p>${items.map((x) => `<button type="button" role="menuitem" data-dl-open="${esc(x.id)}" aria-current="${x.id === ch.id}"><span class="jp-glyph"><i class="jp-pd ${x.id === ch.id ? jpDot(ch) : jpDotOf(x.dot)}"></i></span><span>${esc(x.label)}</span></button>`).join('')}${document.body.classList.contains('is-guest') ? '' : `<hr><button type="button" role="menuitem" data-dl-menu><span class="jp-glyph">${ic('plus', 's16')}</span><span>Add a deliverable<small>Any of ${RX.dl?.add?.length || 228}: search by channel or name</small></span></button>`}</div>`; };
+    return `<div class="jp-pop jp-swpop" role="menu"><p class="jp-sw-h">On this card</p>${items.map((x) => `<button type="button" role="menuitem" data-dl-open="${esc(x.id)}" aria-current="${x.id === ch.id}"><span class="jp-glyph"><i class="jp-pd ${x.id === ch.id ? jpDot(ch) : jpDotOf(x.dot)}"></i></span><span>${esc(x.label)}</span></button>`).join('')}${document.body.classList.contains('is-guest') ? '' : `<hr><button type="button" role="menuitem" data-dl-menu><span class="jp-glyph">${ic('plus', 's16')}</span><span>Add a deliverable<small>${RX.dl?.cid === ch.cardId && RX.dl.add?.length ? `Any of ${RX.dl.add.length}: search` : 'Search'} by channel or name</small></span></button>`}</div>`; };
   const jpMenuPop = (ch) => { const th = document.documentElement.dataset.theme || 'auto';
     return `<div class="jp-pop jp-menupop" role="menu"><button type="button" role="menuitem" data-vmenu><span class="jp-glyph">${ic('clock', 's16')}</span><span>History<small>Every version, newest first</small></span></button><button type="button" role="menuitem" data-jp-act="share"><span class="jp-glyph">${ic('link', 's16')}</span><span>Share<small>Copy a link for your team</small></span></button><hr>
       <div class="jp-theme"><span>Theme</span><div class="jp-seg">${[['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<button type="button" data-jp-theme="${k}" aria-pressed="${th === k}">${l}</button>`).join('')}</div></div><hr>
@@ -4881,7 +4896,7 @@
   /* the piece and its brief, one tap apart, in the header (never under ⋯) */
   const jpMode = () => tbWork() && !RX.viewing ? `<div class="jp-seg jp-mode" role="tablist" aria-label="Piece or brief">${[['creative', 'Piece', 'pic'], ['brief', 'Brief', 'doc']].map(([k, n, i]) => `<button type="button" role="tab" data-tb-stage="${k}" aria-selected="${(RX.stage === 'brief') === (k === 'brief')}" aria-pressed="${(RX.stage === 'brief') === (k === 'brief')}">${ic(i, 's14')}${n}</button>`).join('')}</div>` : '';
   const jpHead = (ch, viewing) => `<header class="jp-hd"><button type="button" class="jp-back" data-st-back>${ic('left', 's16')}<span>${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : 'Back'}</button>
-      <button type="button" class="jp-ttl" data-jp-sw aria-haspopup="menu" aria-expanded="${!!RX.jpSw}" title="${esc(RX.p ? cardOf(RX.p).title || '' : '')}"><span>${esc(jpKind(ch))}${stSub(ch) ? ` <em>· ${esc(stSub(ch))}</em>` : ''}</span>${ic('chev', 's14')}</button>
+      <button type="button" class="jp-ttl" data-jp-sw aria-haspopup="menu" aria-expanded="${!!RX.jpSw}" title="${esc(RX.p ? cardOf(RX.p).title || '' : '')}"><span>${esc(jpKind(ch))}${stSub(ch) ? ` <em><b class="jp-sep">· </b>${esc(stSub(ch))}</em>` : ''}</span>${ic('chev', 's14')}</button>
       ${jpMode()}${RX.stage === 'brief' ? '' : verSw(ch)}${jpSent(ch)}<div class="jp-grow"></div>${studioJamCtl()}<button type="button" class="jp-ib" data-jp-more aria-label="More" aria-haspopup="menu" aria-expanded="${!!RX.jpMenu}">${ic('more', 's16')}</button>
       ${RX.jpSw ? jpSwPop(ch) : ''}${RX.jpMenu ? jpMenuPop(ch) : ''}${RX.vmenu ? vmenuHtml(ch) : ''}</header>`;
   /* the tag on the stage: what the piece on it is right now */
@@ -4892,7 +4907,7 @@
      what just happened, Change it yourself, and where the piece came from (the card, folded under Why this) */
   const jpAi = (ch, brief = false) => { const st = ch.studio ? window.CreativeStage?.state(ch.id) : null, made = ch.studio ? studioMade(ch) : true, look = made && !brief ? lookOf(ch) : [];
     let line = ''; if (brief) line = `The brief for whoever makes and ships this ${esc(String(ch.actionLabel || 'piece').toLowerCase())}. Change any part, or ask me.`;
-    else if (st?.plan?.line) { const pn = String(st.productName || '').split(/\s+[–—|-]\s+/)[0], sz = (st.sizeOpts || []).find((o) => o.id === st.size), shape = sz ? `${SHAPE_NAME[sz.ratio] || sz.label} ${sz.ratio}`.trim() : '', n = st.frames || 1;
+    else if (st?.plan?.line) { const pn = jpProduct(ch, st).split(/\s+[–—|-]\s+/)[0].trim(), sz = (st.sizeOpts || []).find((o) => o.id === st.size), shape = sz ? `${SHAPE_NAME[sz.ratio] || sz.label} ${sz.ratio}`.trim() : '', n = st.frames || 1;
       line = bold(pn && (st.styleLabel || (st.frames || 0) > 1) ? `${st.kind === 'video' ? `A **${st.seconds ? `${st.seconds}-second` : 'short'}** ${String(st.styleLabel || '').toLowerCase()} video of`.replace(/\s+video/, ' video') : n > 1 ? `**${n} slides** of` : `${/^[aeiou]/i.test(st.styleLabel || '') ? 'An' : 'A'} **${String(st.styleLabel || 'studio').toLowerCase()}** picture of`} the **${pn}**${shape ? `, ${shape}` : ''}.` : `${st.plan.line}.`.replace(/\.\.$/, '.')); } /* "A blue studio picture of the MitoActive Combo, Feed 4:5." (the prototype) */
     else line = bold(ch.setupLine || `${ch.actionLabel || 'The piece'}, from the card.`);
     return `<section class="jp-sec jp-ai"><div class="jp-ai-l"><span class="jp-who">b</span><p>${line}</p></div>${brief ? '' : v1Chips(ch)}
@@ -4908,7 +4923,7 @@
         ${L ? (L.busy ? '<p class="jp-hint"><brew-load class="spin"></brew-load>Loading the catalog…</p>' : `<div class="jp-plist" role="listbox" aria-label="Products">${(L.items || []).map((x, i) => `<button type="button" role="option" class="jp-prow${x.out ? ' is-out' : ''}" data-jp-prod="${i}" aria-pressed="${x.name === pr?.name}">${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy">` : ''}<span><b>${esc(x.name)}</b><small>${esc([x.price != null ? (typeof x.price === 'number' ? moneyOf(x.price) : x.price) : '', x.out ? 'sold out' : ''].filter(Boolean).join(' · '))}</small></span></button>`).join('') || '<p class="jp-hint">No products read from the store yet.</p>'}</div>`) : ''}</div>
       ${fmts.length ? `<div class="jp-field"><span class="jp-lab">Size</span><div class="jp-fmts" role="radiogroup" aria-label="Size">${fmts.map(([r, n]) => `<button type="button" role="radio" data-jp-fmt="${r}" aria-pressed="${(ch.pkg?.format || '4:5') === r}"${edit ? '' : ' disabled'}>${n}<small>${r}</small></button>`).join('')}</div></div>` : ''}</section>`; };
   const jpBack = (label, title = '') => `<div class="jp-back-row"><button type="button" class="jp-lnk jp-pback" data-tab="iterate">${ic('left', 's14')}${esc(label)}</button>${title ? `<h2 class="jp-ptitle">${esc(title)}</h2>` : ''}<button type="button" class="jp-ib jp-wide" data-st-wide aria-pressed="${panelWide()}" aria-label="${panelWide() ? 'Make the panel narrower' : 'Make the panel wider'}">${panelWide() ? '⇥' : '⇤'}</button></div>`;
-  const jpDotOf = (d) => (d === 'fix' ? 'red' : d === 'writing' ? 'draft' : d === 'sent' ? 'sent' : 'ok');
+  const jpDotOf = (d) => (d === 'fix' ? 'red' : d === 'writing' ? 'draft' : d === 'sent' ? 'sent' : d === 'todo' ? 'todo' : 'ok');
   const jpDot = (ch) => (sentOf(ch) ? 'sent' : jpDotOf(dlDot(ch)));
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;
@@ -4991,8 +5006,10 @@
     try { return await Promise.race([navigator.clipboard.writeText(s).then(() => true), wait(1500).then(() => false)]); } catch (e) { return false; } };
   /* the jam's own link: this card, this change, the latest version and state, in this workspace (the token opens it for a teammate) */
   const jamLink = async (p, w) => { const t = await shareTok(w?.id).catch(() => null), chId = RX.p?.id === p.id && RX.ch?.id ? RX.ch.id : w?.changeId || '';
-    return `${location.origin}${location.pathname}#remix=${encodeURIComponent(p.id)}${chId ? `/${chId}` : ''}${t ? `&s=${t}` : ''}`; };
-  const copyJamLink = async (p) => { const u = await jamLink(p, workOfCard(p.id)); toast(await copyText(u) ? `${ic('link', 's16')}Link copied` : 'Couldn’t copy the link. Try again.'); };
+    return `${location.origin}${brandPath()}#remix=${encodeURIComponent(p.id)}${chId ? `/${chId}` : ''}${t ? `&s=${t}` : ''}`; }; /* the brand's path, never whatever page this is (26 Oct) */
+  /* the jam's link names its jam (a token with its wid): a jam nobody shared yet gets its work item first, as Jam with your team does (26 Oct, QV P0-3) */
+  const copyJamLink = async (p) => { const w = workOfCard(p.id) || await tapi('POST', '/api/work', { cardId: p.id }).then((r) => { if (r?.work) putWork(r.work); return r?.work || null; }).catch(() => null);
+    const u = await jamLink(p, w); toast(await copyText(u) ? `${ic('link', 's16')}Link copied. It opens this jam for your team.` : 'Couldn’t copy the link. Try again.'); };
   /* the one "WhatsApp isn't connected" sheet (FEED-ARV-03): Brew has no WhatsApp connection (sending was cut), so a WhatsApp
      button never opens wa.me unchecked. It says so, offers the route that works (primary), and keeps "Open WhatsApp and send
      it myself" named for what it is. Used by the share sheet here and by the jam's approval (jam-room.js move) */
@@ -5255,7 +5272,7 @@
     if (e.target.closest('[data-jp-sw]')) { RX.jpSw = !RX.jpSw; RX.jpMenu = false; RX.vmenu = false; return paintStudio(); }
     if (e.target.closest('[data-jp-more]')) { RX.jpMenu = !RX.jpMenu; RX.jpSw = false; RX.vmenu = false; return paintStudio(); }
     { const th = e.target.closest('[data-jp-theme]'); if (th) { const k = th.dataset.jpTheme; if (k === 'auto') { delete document.documentElement.dataset.theme; ls.set('feed-theme', ''); } else setTheme(k); return paintStudio(); } }
-    { const ja = e.target.closest('[data-jp-act]'); if (ja && RX.ch) { RX.jpMenu = false; const k = ja.dataset.jpAct; if (k === 'share') { paintStudio(); return copyLink(RX.p, tbWork()); } paintStudio(); return libAct[k]?.('remix', RX.ch.id); } }
+    { const ja = e.target.closest('[data-jp-act]'); if (ja && RX.ch) { RX.jpMenu = false; const k = ja.dataset.jpAct; if (k === 'share') { paintStudio(); return copyJamLink(RX.p); } /* this jam, this tab: #remix=<card>/<change> on the brand's page, never the card sheet (26 Oct) */ paintStudio(); return libAct[k]?.('remix', RX.ch.id); } }
     { const sl = e.target.closest('[data-jp-slide]'); if (sl && RX.ch && !sl.disabled) { RX.jpSlide = { ...(RX.jpSlide || {}), [RX.ch.id]: Math.max(0, +sl.dataset.jpSlide) }; RX.stgMode = 'one'; return paintStudio(); } }
     { const bt = e.target.closest('[data-jp-beat]'); if (bt && RX.ch) { RX.jpBeat = { ...(RX.jpBeat || {}), [RX.ch.id]: +bt.dataset.jpBeat }; return paintStudio(); } }
     { const tk = e.target.closest('[data-jp-tick]'); if (tk && RX.ch) { const k = `${RX.ch.id}:${tk.dataset.jpTick}`; RX.jpTick = { ...(RX.jpTick || {}), [k]: !RX.jpTick?.[k] }; return paintStudio(); } }
@@ -6183,13 +6200,21 @@
     get S() { return S; }, get WORK() { return WORK; }, get view() { return view; }, setChange: (ch) => { if (DP && ch) DP.ch = ch; }, currentDetail: () => DP && (DP.w ? { ...DP.p, _work: DP.w, _ch: DP.ch || null } : DP.p), slotHtml, ago, repaintDetail: () => repaintDetail(true), detailDirty: () => !!DP?.dirty, fitKnobs, fitSuggest,
     /* the reading screen's questions (questions.js), canvas.js */ isRival, GEN, LANDING, DEMO_LAND, api, ls, LSP, get TID() { return TID; }, signWall, needSignin, ensureTenant, scrCard, seatEntries, defaultWants, loadFeed, rank, openRemix, openPlan, teamStep, finishOnboarding, checkRead, waitMoves, whoFor, continueToFeed, hashParams };
   // #setup replays onboarding (it only plays once otherwise, because finishing it is saved in this browser)
+  /* where a shared link belongs: the jam's path from the server (/<brand>#remix=<card>/<change>&s=…); a #remix= hash the link
+     already carries is the exact tab, so it is kept. go: the link is on another path (the root, an old link) and moves there */
+  const sharePath = (path, here, hash) => { const [p0, h0] = String(path || '').split('#'), keep = /^#remix=/.test(hash) ? hash : '', h = keep || (h0 ? `#${h0}` : hash || '');
+    return { go: !!p0 && p0 !== here, path: p0 || here, hash: h }; };
   const adoptShare = async () => { const tok = hashParams().s; if (!tok) return;
     const own = tok.split('~')[0]; if (own === TID) return;
     const r = await fetch(`/api/share/${encodeURIComponent(tok)}`).then((x) => x.json()).catch(() => ({ error: 'offline' }));
+    /* the link opens on its brand's own page (26 Oct, QV P0-3: a link without /<brand> rewrote to /#jam=… and showed the landing
+       page): the server names the jam's path; a link on any other path moves there, its jam's own hash and token kept */
+    const at = sharePath(r.path, location.pathname, location.hash);
     /* a shared link needs a signed-in person: sign in, then land back on this exact jam */
-    if (r.signin) { location.href = `/auth/google?next=${encodeURIComponent(location.pathname + location.search + location.hash)}`; return new Promise(() => {}); }
-    /* a teammate: it is the team's jam already, so it opens in their own workspace */
-    if (r.member && r.jam) { history.replaceState(null, '', `${location.pathname}#jam=${encodeURIComponent(r.jam)}`); return; }
+    if (r.signin) { location.href = `/auth/google?next=${encodeURIComponent(at.go ? at.path + at.hash : location.pathname + location.search + location.hash)}`; return new Promise(() => {}); }
+    if (at.go) { location.replace(at.path + at.hash); return new Promise(() => {}); }
+    /* a teammate: it is the team's jam already, so it opens in their own workspace, on the jam itself (#remix=<card>/<change>) */
+    if (r.member && r.jam) { history.replaceState(null, '', `${location.pathname}${at.hash.replace(/&s=[^&]*/, '') || `#jam=${encodeURIComponent(r.jam)}`}`); return; }
     if (!r.tenant) { toast(esc(r.error || 'That link has expired.')); return; }
     if (TID) ls.set(`${LSP()}tenant-own`, TID);
     TID = r.tenant; ls.set(`${LSP()}tenant`, TID); SHARE = tok;
@@ -6215,7 +6240,8 @@
   if (/[?&]joined=1/.test(location.search)) { history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => toast(`${ic('check', 's14')}You’re on ${poss(B.brand.name)} team`), 600); }
   if (location.hash === '#team' && ['owner', 'admin'].includes(window.LIVE?.access?.role)) setTimeout(() => window.LiveConn?.teamSheet(), 700);
   const cxBack = /[#&]cx(err)?=/.test(location.hash) ? (() => { try { const k = `brew-cxback:${window.BRAND}`, v = sessionStorage.getItem(k); sessionStorage.removeItem(k); return v; } catch (e) { return null; } })() : null;
-  if (hashParams().s) adoptShare().then(() => { if (S.onboarded) feed(); else start(); });
+  /* a signed-in teammate on a jam link goes straight to the jam, never the setup steps (26 Oct) */
+  if (hashParams().s) adoptShare().then(() => { if (!S.onboarded && GEN && window.LIVE?.me && /^#(jam|card|work|remix)=/.test(location.hash)) { S.onboarded = true; save(); } if (S.onboarded) feed(); else start(); });
   else if (LANDING) start(); // the landing is only ever the paste-a-URL page
   else if (GEN && location.hash === '#check') ensureTenant(true).then(checkRead); // reopen "Is this right?"
   else if (GEN && location.hash === '#wait') ensureTenant(true).then(waitMoves);
@@ -6224,7 +6250,7 @@
   else if (GEN && cxBack === 'wait') ensureTenant(true).then(waitMoves);
   /* a link from a Brew email (?go=feed) or to a jam or card (#jam=, #card=, #work=, #v=): a signed-in person goes straight there,
      never through the read replay and the setup steps again (those stay at #setup) */
-  else if (GEN && location.hash !== '#setup' && (S.onboarded || window.LIVE?.me) && (GO_FEED || /^#(jam|card|work|v)=/.test(location.hash))) { if (!S.onboarded) { S.onboarded = true; save(); } ensureTenant().then(() => { fitSeat(); save(); feed(); }); }
+  else if (GEN && location.hash !== '#setup' && (S.onboarded || window.LIVE?.me) && (GO_FEED || /^#(jam|card|work|remix|v)=/.test(location.hash))) { if (!S.onboarded) { S.onboarded = true; save(); } ensureTenant().then(() => { fitSeat(); save(); feed(); }); }
   else if (S.onboarded && location.hash !== '#setup') feed(); else { const askedSetup = location.hash === '#setup'; if (askedSetup) history.replaceState(null, '', location.pathname); if (GEN && ls.get(`${LSP()}continue`)) { ls.del(`${LSP()}continue`); ensureTenant(true).then(afterRead); } else if (GEN && !askedSetup && OB_AT[S.obStep] && !S.onboarded) ensureTenant(true).then(resumeOb); /* a refresh mid-setup: the same step */ else if (GEN && !(window.BREW_DEMO && location.hash !== '#setup')) ensureTenant(true).then(setup); else start(); } /* the demo site's tour starts on the address screen */
   if (/[#&]cx(err)?=/.test(location.hash)) setTimeout(() => window.LiveConn?.resume(), 900); });
 })();

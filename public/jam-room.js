@@ -26,8 +26,9 @@
   const initials = (p) => (p?.name || p?.email || '?').replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
   const pAv = (p, n = 24) => p?.pic ? `<img class="av av-img" src="${esc(p.pic)}" alt="" referrerpolicy="no-referrer" style="width:${n}px;height:${n}px">` : `<span class="av" style="--ac:hsl(${hue(p?.email)} 38% 42%);width:${n}px;height:${n}px">${esc(initials(p))}</span>`;
   /* everyone this jam can tag: the team, people invited to it, and this jam's guests; never yourself */
-  const realPeople = (w = jamHere()) => { const me = myEmail(), seen = new Map(), inJam = new Set((w?.people || []).map((x) => String(x.email).toLowerCase())),
-      add = (x, sub) => { const e = String(x.email || '').toLowerCase(); if (!e || e === me || seen.has(e)) return; const here = inJam.has(e);
+  /* never yourself, also under another of your emails (26 Oct, QV P2-17: "Param Jain · Gets an email to join" for the person signed in) */
+  const realPeople = (w = jamHere()) => { const me = myEmail(), myName = String(ME()?.name || '').trim().toLowerCase(), seen = new Map(), inJam = new Set((w?.people || []).map((x) => String(x.email).toLowerCase())),
+      add = (x, sub) => { const e = String(x.email || '').toLowerCase(); if (!e || e === me || seen.has(e) || (myName && String(x.name || '').trim().toLowerCase() === myName)) return; const here = inJam.has(e);
         seen.set(e, { k: e, email: e, name: x.name || e.replace(/@.*/, ''), sub: here ? `In this jam${sub ? ` · ${sub}` : ''}` : `${sub ? `${sub} · ` : ''}Gets an email to join`, inJam: here, pic: x.pic || null, html: pAv({ ...x, email: e }, 20) }); };
     (window.LIVE?.access?.team || []).forEach((x) => add(x, x.role === 'owner' ? 'Admin' : ''));
     (w?.people || []).forEach((x) => add(x, x.guest || x.how === 'guest' ? 'Guest' : ''));

@@ -1206,15 +1206,17 @@ export function createRemix(o) {
     }
     if (p.video && p.video !== d?.video) out.push({ kind: 'video', label: `Video${isVideoPost(ch) ? ', 9:16' : ''}`, url: p.video, poster: p.poster || p.image || null });
     /* what Studio made goes to the team whole: every slide of a set, each A+ module, a listing's photo set, and the film's cover, captions, GIF and clean cut */
-    if (!d && (p.cardImages || []).length > 1) p.cardImages.forEach((u, i) => { if (i) out.push({ kind: 'image', label: `Slide ${i + 1}`, url: u }); });
+    /* every slide in its own order, slide 1 first and named so (26 Oct, QV P1-16: slide 1 came third as "Creative, 9:16") */
+    const slides = !d && (p.cardImages || []).length > 1 ? p.cardImages : []; slides.forEach((u, i) => out.push({ kind: 'image', label: `Slide ${i + 1}`, url: u }));
     (p.photoSet || []).forEach((x, i) => { if (x?.image && x.image !== p.image) out.push({ kind: 'image', label: `Listing image ${i + 1}`, url: x.image }); });
     (p.aplus || []).forEach((m, i) => { if (m?.image) out.push({ kind: 'image', label: `A+ module ${i + 1} · ${m.kind === 'header' ? '970×600' : m.kind === 'wide' ? '970×300' : '300×300'}${m.headline ? `: ${String(m.headline).slice(0, 60)}` : ''}`, url: m.image }); });
     if (p.video && p.film) { const f = p.film; if (f.cover) out.push({ kind: 'image', label: 'Cover frame', url: f.cover }); if (f.gif) out.push({ kind: 'image', label: 'GIF, loops', url: f.gif }); if (f.srt) out.push({ kind: 'link', label: 'Captions (.srt)', url: f.srt }); if (f.raw) out.push({ kind: 'video', label: 'The film without captions', url: f.raw, poster: f.cover || p.poster || null }); }
-    if (p.image && !(d && (d.images || []).includes(p.image))) out.push({ kind: 'image', label: `${d ? 'Photo the version was made from' : 'Creative'}, ${p.format || '4:5'}${p.grade && p.grade !== 'Original' ? `, ${p.grade} grade` : ''}`, url: p.image });
+    if (p.image && !(d && (d.images || []).includes(p.image)) && !slides.includes(p.image)) out.push({ kind: 'image', label: `${d ? 'Photo the version was made from' : 'Creative'}, ${p.format || '4:5'}${p.grade && p.grade !== 'Original' ? `, ${p.grade} grade` : ''}`, url: p.image });
     else if (!p.image && !d && (ch.family === 'meta_ad' || ch.family === 'social')) out.push({ kind: 'todo', label: `Creative still to be made (${p.format || '4:5'})`, text: p.imageBrief || 'See the image brief' });
     if (ch.family === 'meta_ad' && p.overlay) out.push({ kind: 'copy', label: p.wordsIn && p.wordsIn === p.image ? 'Words already set in the creative' : 'Text to set on the creative', text: p.overlay });
-    if (LANE_PHOTO[c.lane]) out.push({ kind: 'image', label: 'Product photo (reference, keep the label exact)', url: LANE_PHOTO[c.lane] });
-    (c.images || []).slice(0, 2).forEach((u, i) => out.push({ kind: 'image', label: isResearchImage(u) ? (isViralCard(c) ? 'The viral video this remakes (their format, not your product)' : 'The rival ad this remakes (their look, not your product)') : i ? 'More from the card' : 'The card this came from', url: u }));
+    /* the card's own pictures and the lane's photo are context, never the piece's files (card: true): the team brief leaves them out (26 Oct, QV P1-16: a serum's card picture went with a styling-stick brief) */
+    if (LANE_PHOTO[c.lane]) out.push({ kind: 'image', label: 'Product photo (reference, keep the label exact)', url: LANE_PHOTO[c.lane], card: true });
+    (c.images || []).slice(0, 2).forEach((u, i) => out.push({ kind: 'image', label: isResearchImage(u) ? (isViralCard(c) ? 'The viral video this remakes (their format, not your product)' : 'The rival ad this remakes (their look, not your product)') : i ? 'More from the card' : 'The card this came from', url: u, card: true }));
     /* the reference itself, for a team that makes it by hand (Param, 21 Oct: "share the brief along with reference posts/videos"):
        where to watch it, the saved clip, and Brew's read of how it is made. Theirs: for the format only, never reused */
     const rf = isReferenceCard(c) ? (() => { try { return o.refSummary?.(t, c) || null; } catch { return null; } })() : null;

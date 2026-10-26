@@ -143,7 +143,7 @@ export function viewOf(bb, { scope = 'member' } = {}) {
   const colors = (k.colors || []).map((c) => c.hex), accent = (k.colors || []).find((c) => c.role === 'accent' || c.role === 'primary')?.hex || k.accent || '#111111';
   const styleRefs = [...(team ? bb.pinned.styleRefs : []), ...(r.styleRefs || [])].filter((x) => !team || !bb.removed.styleRefs.includes(x.src)).slice(0, 6);
   const golden = [...(team ? bb.pinned.golden : []), ...(r.golden || [])].filter((x) => !team || !bb.removed.golden.includes(x.text)).slice(0, 6);
-  const v = { name: r.name, host: r.host, category: r.category, kit: { ...k, colors, accent, ink: lum(accent) > 0.55 ? '#111111' : '#ffffff', roles: k.colors || [] }, styleRefs, golden,
+  const v = { name: r.name, host: r.host, category: r.category, kit: { ...k, colors, accent, ink: lum(accent) > 0.55 ? '#111111' : '#ffffff', roles: k.colors || [], ...(team && bb.kitEdits?.colors ? { colorsBy: 'team' } : {}) /* the team set these: always the brand's own (jam2/context.js) */ }, styleRefs, golden,
     claims: oneClaimEach([...(team ? bb.claimsAllowed : []), ...(r.claims || [])]), /* saved reads heal: the view dedupes too */ never: [...new Set([...(r.never || []), ...(team ? bb.neverSay : [])])], neverRe: r.neverRe || null, neverSay: team ? bb.neverSay || [] : [],
     reviews: r.reviews || [], personas: r.personas || [], language: r.language || [], currency: r.currency, ...structuredClone(chapters(r.book)) }; /* a copy: edits never touch the cached read */
   v.src = {}; /* where each edited field came from: the page's source chips */
