@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { aiRingNow, aiFact, healAiText, healAiCard } from '../ai-count.js';
 import { healthFrom } from '../health.js';
+import { heardCards } from '../social-feed.js';
 import { isCdn, cdnExpiry, cdnDead, keepName, createCdnKeep, keepRes } from '../cdn-keep.js';
 
 const read = (f) => fs.readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
@@ -79,4 +80,18 @@ test('AI answers: cards quote the newest single check, the one Store health show
   const perQ = { id: 'lv-vis-q1', title: 'ChatGPT named Arata in 1 of 3 answers' }; assert.equal(healAiCard(perQ, f), perQ, 'a per-question card is its own, labelled check');
   const shop = { id: 'x', title: '3 of 5 products sold out' }; assert.equal(healAiCard(shop, f), shop);
   const fsrc = read('feed-service.js'); assert.match(fsrc, /healAiCard\(\{ id: c0\.id/); assert.match(fsrc, /healCount\(healAiCard\(bgFor\(x\), aiFactNow\(t\)\), t\)/);
+});
+
+/* ---------- 3. one count per thing ---------- */
+test('counts: a Heard card counts everything heard, as every page does; the widget counts the Work board; Rivals lists every rival', () => {
+  const items = Array.from({ length: 2952 }, (_, i) => ({ id: 'i' + i, platform: 'reddit', title: 'x', themes: i < 2720 ? ['frizz'] : [] }));
+  const L = { total: 2720, items, themes: [{ name: 'frizz control', n: 70, pos: 50, neg: 5, neutral: 15, brand: 9, quoteIds: ['i1'] }], threads: [], status: {} };
+  const c = heardCards(L, { brand: { name: 'Arata' }, lanes: { core: {} } }, { now: Date.parse('2026-10-26'), maxQ: 0, maxR: 0, maxC: 0 }).find((x) => /^heard-t-/.test(x.id));
+  assert.match(c.src, /70 mentions of 2,952 /); assert.ok(!/2720/.test(JSON.stringify(c)), 'never the tagged-only total');
+  const fsrc = read('feed-service.js'), app = read('public/app.js');
+  assert.match(fsrc, /if \(\/\^heard-t-\/\.test\(String\(c0\.id \|\| ''\)\)\) \{ const sp = /, 'a saved Heard card takes today’s line');
+  assert.match(fsrc, /for \(const r of read\.slice\(0, 6\)\) if \(r\?\.name/, 'every rival the read names is on the Rivals page');
+  assert.match(app, /jams\.length \? `\$\{jams\.length\} jam\$\{jams\.length === 1 \? '' : 's'\} on the Work board/, 'the widget counts the Work board');
+  assert.ok(!/thing\$\{n === 1 \? '' : 's'\} in progress/.test(app));
+  assert.match(app, /class="shf-ini"/, 'a rival with no logo shows its initials');
 });

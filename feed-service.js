@@ -812,6 +812,8 @@ export function createFeedService(o) {
        question counts the AI tools that answered it; a play's count is across all the questions asked */
       const perQ = /^lv-vis-/.test(String(c0.id || '')), aiLbl = (x) => (typeof x !== 'string' ? x : perQ ? x.replace(/\b(\d+) of (\d+) answers\b/g, '$1 of $2 AI tools on this question') : x.replace(/\b(\d+) of (\d+) (?:AI )?prompts\b/gi, '$1 of $2 questions asked across AI tools'));
       rest.title = aiLbl(rest.title); rest.sub = aiLbl(rest.sub); if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map(aiLbl) : r)); }
+    /* a saved theme card counts what was heard as the pages do today: its line and rows come from the brand's current heard cards (QV round 2: "of 2720" vs 2,952) */
+    if (/^heard-t-/.test(String(c0.id || ''))) { const sp = ((t ? brandOfT(t) : B())?.seed?.posts || []).find((p) => p?.id === c0.id); if (sp) { if (sp.src) rest.src = sp.src; if (Array.isArray(sp.rows)) rest.rows = sp.rows; if (sp.detail) rest.detail = sp.detail; } }
     /* a card quoting an older AI-answers check ("0 of 10", "zero of ten", "1 of 18" beside Store health's 0 of 15) reads the newest one (ai-count.js) */
     { const af = aiFactNow(t); if (af) Object.assign(rest, healAiCard({ id: c0.id, family: rest.family, title: rest.title, sub: rest.sub, rows: rest.rows, detail: rest.detail }, af)); }
     { const yours = (x) => (typeof x === 'string' ? x.replace(/\b(O|o)ur (?=[₹$£€]\s?\d)/g, (m, o) => (o === 'O' ? 'Your ' : 'your ')) : x); rest.title = yours(rest.title); rest.sub = yours(rest.sub); } /* a card talks to the team: "your ₹449 shampoo", never "our" beside it (1.14); drafts for shoppers keep "our" */ if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map((x, i) => (i === 0 && /^to confirm$/i.test(String(x)) ? 'Still to check' : tc(x))) : r)); } /* the moves' planning marker "(to confirm)" never shows on a card face (QA 20 Oct) */ { const sc = sectorOf(c0); if (sc && sc !== rest.sector) rest.sector = sc; } /* the column it changes (1.13) */ rest.src = rest.src === 'Brew deployment team' ? 'Our team' : playSrc(rest.src); /* Plays, not moves (3.10) */ /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ /* a row that only says how the store is set up ("Store currency INR", "Platform shopify") tells nobody anything (QV P2-23) */
@@ -1920,10 +1922,15 @@ export function createFeedService(o) {
      how often AI answers name it. A rival whose ads couldn't be read says so (brew-external-data rule 1) */
   on('GET', '/api/tenants/:id/rivals', async (b, t) => {
     const R = research?.get() || {}, ads = resAll(R.ads).filter((a) => a && a.brand), prof = brandOfT(t)?.seed?.brand || {}, p0 = B()?.profile || null;
+    const read = (p0?.rivals || brandOfT(t)?.rivals || []), sq = (n) => String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    /* every rival the read names, whether or not its Ad Library page was matched (QV round 2, 26 Oct: What we watch said "5 rivals", this
+       page 4 and 3): one without ads says so, never leaves the list */
     const rivals = [...new Set([...(R.ads?.brands || []).map((x) => x.name), ...ads.map((a) => a.brand)])].filter((n) => n && n !== BN());
-    const read = (p0?.rivals || brandOfT(t)?.rivals || []), aiNamed = (n) => { try { const st = B()?.aiStanding?.rivals || []; const x = st.find((y) => y.name === n); return x ? x.share ?? x.n ?? null : null; } catch { return null; } };
+    for (const r of read.slice(0, 6)) if (r?.name && sq(r.name) !== sq(BN()) && !rivals.some((n) => sq(n) === sq(r.name))) rivals.push(r.name);
+    const adsRead = (n) => (p0?.ads?.rivals || []).find((x) => sq(x?.name) === sq(n)) || {}, aiNamed = (n) => { try { const st = B()?.aiStanding?.rivals || []; const x = st.find((y) => y.name === n); return x ? x.share ?? x.n ?? null : null; } catch { return null; } };
     return { rivals: rivals.map((n) => { const meta = (R.ads?.brands || []).find((x) => x.name === n) || {}, r = read.find((x) => x.name === n) || {};
-      return { name: n, live: meta.live ?? null, page: meta.page || null, error: meta.error || r.error || null, avatar: meta.avatar && !picDead(meta.avatar) ? meta.avatar : null, /* an expired CDN logo is no picture, never a broken one (26 Oct) */ host: r.host || null, prices: (r.prices || []).slice(0, 6), ai: aiNamed(n),
+      const pa = meta.name ? {} : adsRead(n);
+      return { name: n, live: meta.live ?? pa.live ?? null, page: meta.page || pa.page || null, error: meta.error || pa.error || r.error || null, avatar: meta.avatar && !picDead(meta.avatar) ? meta.avatar : null, /* an expired CDN logo is no picture, never a broken one (26 Oct) */ host: r.host || null, prices: (r.prices || []).slice(0, 6), ai: aiNamed(n),
         ads: ads.filter((a) => a.brand === n).slice(0, 24).map((a) => ({ id: a.id, poster: a.poster, video: a.video, format: a.format, title: a.title, hook: a.hook, angle: a.angle, why: a.why, days: a.days, versions: a.versions, url: a.url })) }; }),
       at: R.ads?.fetchedAt || null, brand: prof.name || BN() };
   });
