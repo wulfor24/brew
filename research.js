@@ -590,7 +590,9 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     } finally { healingLogos = false; } }
   const start = async () => {
     await (loaded = load());
-    const tick = () => { if (!isLeader() || movedAway(brand.slug)) return; const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); healClips().catch(() => {}); healLogos().catch(() => {}); };
+    /* rival logos are copied first and for every brand: a free picture fetch, so a brand moved to production (staging's MOVED_TO_PROD lists
+       all five partners) still keeps its logos; that early return is why saved fbcdn logos were never copied (26 Oct QV round 2) */
+    const tick = () => { if (!isLeader()) return; healLogos().catch(() => {}); if (movedAway(brand.slug)) return; const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); healClips().catch(() => {}); };
     stopped = false; clearTimeout(timers.t); clearInterval(timers.i);
     timers.t = setTimeout(() => { if (!stopped) tick(); }, 5000); timers.i = setInterval(() => { if (!stopped) tick(); }, 30 * 60e3); timers.i.unref?.();
   };
