@@ -42,7 +42,7 @@ test('every layout is drawn in the prototype\'s frame from the piece\'s own pack
   assert.match(fr, /jp-checks/, 'check and brief: steps to tick');
   assert.ok((fr.match(/jp-empty/g) || []).length >= 4, 'an empty piece says so, never a blank frame');
   assert.match(fr, /if \(ch\.studio \|\| ch\.film \|\| media && \['pic', 'set', 'reel'\]\.includes\(L\)/, 'a made picture or video keeps its platform renderer');
-  assert.match(app, /fitAd\(\); jpFit\(\); bfMark\(\);/); assert.match(app, /post\.style\.transition = 'none'/, 'measured without the width animation');
+  assert.match(app, /fitAd\(\); jpFit\(\); jpPortal\(ch\); bfMark\(\);/); assert.match(app, /post\.style\.transition = 'none'/, 'measured without the width animation');
   assert.match(app, /\['\.jp-wa-msg, \.jp-sms p', 'Message'\]/, 'point, then ask works on the new frames');
   assert.match(app, /'Shorter', ch\.product\?\.price \? 'Say the price' : 'Plainer words', 'Warmer'/, 'chips follow a picked part, the price only where there is one');
 });
