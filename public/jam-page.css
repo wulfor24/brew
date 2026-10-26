@@ -749,3 +749,17 @@
 .jp .it-part{display:inline-flex;align-items:center;gap:4px;width:max-content;max-width:100%;margin:0 0 8px;padding:0 4px 0 12px;height:26px;border-radius:999px;background:var(--fg);color:var(--on-fg);font-size:12.5px}
 .jp .it-part b{font-weight:600}
 .jp .it-part .icon-btn{width:22px;height:22px;color:var(--on-fg);background:none}
+/* Instagram highlight covers, drawn on the profile they live on */
+.jp .jp-prof{width:min(380px,100%);display:flex;flex-direction:column;gap:18px;padding:20px 18px 18px;border-radius:22px;background:var(--card);box-shadow:var(--sh-piece)}
+.jp .jp-prof-h{display:flex;align-items:center;gap:12px}
+.jp .jp-prof-h .jp-post-av{width:56px;height:56px;font-size:20px}
+.jp .jp-prof-h b{display:block;font-size:15px;font-weight:600}
+.jp .jp-prof-h small{display:block;font-size:12.5px;color:var(--fg-3)}
+.jp .jp-hl-row{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;padding:2px}
+.jp .jp-hl-row figure{margin:0;flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;width:68px;cursor:pointer}
+.jp .jp-hl{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:var(--brand-3,#344766);color:#fff;box-shadow:0 0 0 2px var(--card),0 0 0 3px var(--line)}
+.jp .jp-hl .ic{width:24px;height:24px;stroke-width:1.6}
+.jp .jp-hl-row figcaption{font-size:12px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.jp .jp-prof-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;opacity:.5}
+.jp .jp-prof-grid i{aspect-ratio:1;background:var(--surface-2);border-radius:3px}
+.jp .jp-wash{background:linear-gradient(160deg,var(--brand-1,#82b1ff),var(--brand-2,#3b82f6))}

@@ -806,7 +806,8 @@ export function createRemix(o) {
     if (!ch.plan || ch.plan.action !== ch.action) { try { ch.plan = planOfAction(c, { action: ch.action }); } catch { ch.plan = null; } }
     ch.fromCard = false; };
   /* the jam page's header, line and frame (26 Oct redesign): the product the piece is about, its layout, Brew's one line */
-  const jamShape = (t, ch, c) => { let pr = null; try { const x = jamProduct(t, ch, c || {}); if (x?.t) pr = { name: x.t, price: x.priceLabel || (x.price != null ? String(x.price) : null), img: x.img || null, out: !!x.out }; } catch {}
+  const jamShape = (t, ch, c) => { let pr = null; const row = ch.dl ? dlOf(ch.dl) : null, about = !row || row.action || /\bproducts?\b|\bpack ?shots?\b|\bpacks?\b|bottle|\bsku|\bprices?\b|\bcombo|listing|unbox|\bdemo\b|try-?on|\bsamples?\b/i.test(`${row.name} ${row.what}`); /* a planning piece shows a product only when it is about one (highlight covers named a 15 ml styling stick: 26 Oct) */
+    if (about) try { const x = jamProduct(t, ch, c || {}); if (x?.t) pr = { name: x.t, price: x.priceLabel || (x.price != null ? String(x.price) : null), img: x.img || null, out: !!x.out }; } catch {}
     let line = ''; try { line = setupLine(ch, pr); } catch { line = ''; } return { product: pr, layout: layoutOf(ch), setupLine: line || `${ch.actionLabel || 'The piece'}, from the card.` }; };
   const pubChange = (t, ch) => {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
