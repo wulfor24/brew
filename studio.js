@@ -1,5 +1,6 @@
 import { B, BN, BH, CTRY } from './brand-ctx.js';
 import { matchProduct, sceneOf } from './product-match.js';
+import { planFamilies, planSpecs, planChips, planMock, dlOfKey } from './deliverables.js';
 // Remix studio: what each kind of change is, as a commission-ready package.
 // Every action belongs to a family. A family says which fields the channel needs (FIELDS), which knobs you can turn
 // on it (KNOBS), how it renders as a card-sized "after" (afterFromPkg), and what counts as complete (missing).
@@ -17,6 +18,7 @@ export const FAMILY_OF = {
   listing_titles: 'listing', listing_content: 'listing', takedown: 'listing',
   search_ad: 'search', tracking_fix: 'setup', store_setting: 'setup', print_insert: 'print', blog_post: 'store', buyer_deck: 'brief', outreach_email: 'outreach'
 };
+Object.assign(FAMILY_OF, planFamilies()); /* every planning deliverable (deliverables.js) is written as a family the jam already draws */
 export const familyOf = (action) => FAMILY_OF[String(action).split('.').pop()] || 'store';
 export const FAMILY_NAME = { search: 'Google Search ad', setup: 'Setup change', print: 'Printed insert', listing: 'Marketplace listing', meta_ad: 'Meta ad', social: 'Instagram post', post: 'Social post', meta_ops: 'Ad account change', store: 'Store change', vis: 'AI answer', crm: 'Customer message', brief: 'Production brief', decision: 'Decision', outreach: 'Outreach email' };
 
@@ -358,6 +360,7 @@ export const ACTION_CHIPS = {
   plan: ['Owners and dates', 'First step only', 'What would we lose?', 'Smallest step first'],
   resolution: ['Find a middle ground', 'Go with our pick', 'What would we lose?', 'Smallest step first']
 };
+Object.assign(ACTION_CHIPS, planChips()); /* a planning deliverable's chips, by its layout (deliverables.js) */
 // the case on the card fills the chips ({n}, {product}); a chip whose blank can't be filled is dropped
 export const chipsFor = (action, c = {}, b) => { const act = String(action).split('.').pop(), rows = (c.rows || []).filter((r) => r?.[0]);
   const n = rows.length > 1 ? String(rows.length) : (String(c.title || '').match(/^(\d+)\s/) || [])[1] || '', product = rows[0] ? String(rows[0][0]).replace(/\s*[|(].*$/, '').slice(0, 28) : '';
@@ -489,6 +492,10 @@ export const PRODUCT = (lane) => {
   return (LP && (LP[lane] || Object.values(LP)[0])) || { name: 'the product', short: 'the product', price: '', claim: '', hook: '', page: BH(), photo: 'The product on a clean surface, soft daylight.' };
 };
 export const mockPkg = (family, action, c, i = 0, angle = '', F = {}) => {
+  const plan = dlOfKey(action); if (plan) return planMock(plan, family, mockPkg0(family, action, c, i, angle, F), c); /* a planning deliverable starts from its own catalogue words */
+  return mockPkg0(family, action, c, i, angle, F);
+};
+const mockPkg0 = (family, action, c, i = 0, angle = '', F = {}) => {
   const act = String(action).split('.').pop();
   if (family === 'social') return c.post ? ideaPkg(c.post, act) : socialPkg(act, c, i, F);
   if (family === 'post') return ideaPkg(c.post || {}, act, c);
@@ -648,6 +655,7 @@ export const ACTION_SPEC = {
   plan: 'The plan the team saves: the decision in one line, why, who owns it, and what changes next (each step with an owner and a date).',
   resolution: 'The decision that settles the disagreement, why, who decides, and what changes.'
 };
+Object.assign(ACTION_SPEC, planSpecs()); /* a planning deliverable is what the catalogue says it is, with its rules, maker and hand-off */
 const MONEY_SYM = '(?:₹|rs\\.?\\s?|\\$|us\\$|€|£|¥|aed\\s?|sar\\s?|r\\$)'; /* any market's money, not only rupees */
 const OFFER = new RegExp(`(?:\\b(?:save ${MONEY_SYM}?\\d|off\\b|discount|combo|bundle|add the [a-z]+\\b(?!.*review)|instead of ${MONEY_SYM}|free (?:shipping|delivery)|pack of \\d)|% off|(?:^|[\\s(])${MONEY_SYM}\\s?\\d|\\d+(?:[.,]\\d{1,2})?\\s?(?:€|£))`, 'i');
 export const ACTION_GUARD = {

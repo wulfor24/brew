@@ -186,7 +186,7 @@ test('v1 has v2’s "+": a card’s deliverables as pills over the stage, and an
   assert.match(app, /const dlRow = \(ch\) =>/); assert.match(app, /\$\{dlRow\(ch\)\}\$\{refBtnHtml\(ch\)\}/);
   assert.match(app, /tapi\('POST', `\/api\/cards\/\$\{RX\.p\.id\}\/remix`, \{ action: key, fast: true \}\)/);
   const rmx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
-  assert.match(rmx, /changes: mine, add: addable\(r, mine\) \}/); assert.match(rmx, /pickA = b\.action && canAdd\(r00, String\(b\.action\)\)/);
+  assert.match(rmx, /changes: mine, add: addable\(r, mine\) \}/); assert.match(rmx, /pickA = row \? dlAction\(row\) : b\.action && canAdd\(r00, String\(b\.action\)\)/); /* 26 Oct: a catalogue row (dl:<id>) opens as its own action */
   assert.match(rmx, /x\.added \|\| \['running'/, 'an added deliverable stays listed with the card');
   assert.match(css, /\.dl-pill\.on\{/);
 });

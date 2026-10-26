@@ -40,6 +40,7 @@ import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
 import { fitsRatio } from './vertex-media.js'; // a reused first frame must already be the clip's shape
 import { addV, versionsOf, versionById, signal, answered, autoCheck, outcome, ruleChecks, promptBlock, orderIntents, pickScore, takeNew, trustOf, summary, L, DETECTORS } from './learn.js';
 import { PRODUCT_NAME } from './product-name.js'; // the product's public name, where copy has to name it
+import { planActions, dlOf, dlAction, dlMenu, dlSpec } from './deliverables.js'; // every deliverable a card can be made as, under "+"
 import { moveLabel } from './move-label.js'; // "Weekly move 11", never "Move 1011"
 
 /* ---------- what each agent can change, live ---------- */
@@ -119,6 +120,7 @@ export const ACTIONS = {
     resolution: { label: 'Settle it', target: { conn: null, object: 'Decision' }, money: false, jam: 'People disagree, so a person decides', rollback: 'Nothing ships until it is decided', scope: [[1, 'One decision']], preview: 'checklist' }
   }
 };
+for (const [a, acts] of Object.entries(planActions())) Object.assign(ACTIONS[a], acts); /* the planning deliverables (deliverables.js): written, checked and briefed here, made and shipped by a person */
 // what the card's own button asks for, as a remix action
 const CTA_ACTION = {
   'Push 5 titles': 'storefront.listing_titles', 'Draft the listing': 'storefront.listing_content', 'Request takedown': 'storefront.takedown', 'Generate the sets': 'storefront.listing_content', 'Apply 34 edits': 'storefront.listing_titles',
@@ -477,6 +479,7 @@ export function createRemix(o) {
     const P = productFor(c, FACTS, extra); return `THE PRODUCT: every public field is about ${P.name} (page ${P.page}${P.price ? `, ${P.price}` : ''}${P.claim ? `; claim: ${P.claim}` : ''}). Stay on this product unless the person asks for another one.`; };
   const pkgWords = (ch) => (ch?.pkg ? [ch.after?.title, ...publicText(ch.family, ch.action, ch.pkg)].filter(Boolean).join('. ') : '');
   const specOf = (key) => ACTION_SPEC[String(key).split('.').pop()] || '';
+  const chSpec = (ch) => (ch?.dl && dlOf(ch.dl) ? dlSpec(dlOf(ch.dl)) : specOf(ch?.action)); /* a deliverable picked under "+" stays that deliverable on every redo */
   const { SEED, AGENT, claudeJSON, cardBrief, seatLine, qaCheck, mechanicalFix, clean, BANNED, isMock, spend, uid, now, clone, inr, on: on0, newWork, addVersion, say, move, notify, later, setState, weekKey, curV, log = console } = o;
   const colName = (id) => SEED.colleagues.find((c) => c.id === id)?.name || 'A colleague';
   /* anything done to a change moves its jam's clock, so every teammate's open jam and studio (jamPoll) picks it up in seconds */
@@ -1070,7 +1073,7 @@ export function createRemix(o) {
         think(ch, quiet ? 'Fixing what the check flagged' : `Reading your note, the current version and the fact sheet, then writing v${versionsOf(t, ch.id).length + 1}`);
         const schema = { type: 'object', required: ['reply', 'pkg', 'newImage', 'next'], properties: { plan: { type: 'array', items: { type: 'string' }, description: 'Only when the person asks to change the plan itself (its steps): the whole updated list of steps, 3 to 6, each under 14 words, ending with the step that makes it ready to deploy or hand to the team; never a step called decided. Otherwise an empty list.' }, reply: { type: 'string', description: 'Under 30 words: what you changed, plainly' }, label: { type: 'string', description: 'A name for this new version in a version list: 2 to 4 words, sentence case, what is different about it (e.g. "As a thread", "Shorter hook", "Price up front"). Not the request repeated.' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 follow-up requests the person might tap next, each 2 to 6 words, in their voice (e.g. "Shorter, for WhatsApp"). Each one a way to cut THIS change (the card’s own action, named in the prompt), using its words: never a generic writing tip that would fit any widget. Specific to this updated package and this conversation; never repeat something already asked or already true of the package.' }, pkg: kvSchema(allKeys([ch.family])), newImage: { type: 'boolean', description: 'True only if the photo itself should change (scene, mood, subject, ratio)' } } };
         const rvI = await rivalRead(t, c).catch(() => null); /* our version of a rival's ad keeps that ad as the reference through every edit */
-        out = await claudeTool(withPics(`${cardBrief(c, seatLine(t.viewer), t)}${rvI ? `\n\n${rivalBlock(rvI.ad, rvI.style, BN())}\nKeep following that ad's angle, hook pattern and style unless the team asks to move away from it.` : viralOf(t, c) ? `\n${viralLine(t, c)}Keep following that video's format and beats unless the team asks to move away from it.` : ''}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${specOf(ch.action)}\n${productLine(c, jamProduct(t, ch, c)?.t || pkgWords(ch))}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${ch.agent === 'brew' ? promptBlock(t, ch.agent) : '' /* the agent's rules are already above; only the brew agent has a second set */}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, att), schema, 3000, 'studio_iterate');
+        out = await claudeTool(withPics(`${cardBrief(c, seatLine(t.viewer), t)}${rvI ? `\n\n${rivalBlock(rvI.ad, rvI.style, BN())}\nKeep following that ad's angle, hook pattern and style unless the team asks to move away from it.` : viralOf(t, c) ? `\n${viralLine(t, c)}Keep following that video's format and beats unless the team asks to move away from it.` : ''}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${chSpec(ch)}\n${productLine(c, jamProduct(t, ch, c)?.t || pkgWords(ch))}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${ch.agent === 'brew' ? promptBlock(t, ch.agent) : '' /* the agent's rules are already above; only the brew agent has a second set */}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, att), schema, 3000, 'studio_iterate');
       } catch (e) { log.warn('[studio iterate]', e.message); }
     }
     if (cancel?.stop) return ch; /* the person was told it stopped: a late answer changes nothing */
@@ -1233,6 +1236,7 @@ export function createRemix(o) {
     const fields = fieldsFor(ch.family, ch.action).filter((f) => ch.pkg[f.k] != null && ch.pkg[f.k] !== '' && !(Array.isArray(ch.pkg[f.k]) && !ch.pkg[f.k].length)).map((f) => { const v = ch.pkg[f.k];
       return { label: f.label, pub: !!f.pub, value: f.type === 'rows' ? v.map((r) => f.cols.map((c) => r[c]).filter(Boolean).join(' · ')).join('\n') : Array.isArray(v) ? v.map((x) => typeof x === 'object' ? Object.values(x).filter(Boolean).join(' · ') : x).join('\n') : typeof v === 'object' ? Object.entries(v).map(([k, x]) => `${k}: ${x}`).join(', ') : f.type === 'number' && /₹/.test(f.label) ? inr(v) : String(v) }; });
     return { id: ch.id, family: FAMILY_NAME[ch.family], action: actName(ch.actionLabel), target: `${ch.target.name}${ch.target.object ? ' · ' + actName(ch.target.object) : ''}`, version: head?.n || 1, versions: versionsOf(t, ch.id).length,
+      deliverable: (() => { const r = ch.dl && dlOf(ch.dl); return r ? { name: r.name, platform: r.platform, what: r.what, rules: r.checks, who: r.who, files: r.handoff, planned: !r.action } : null; })(), /* a catalogue deliverable: its rules, maker and hand-off go into the brief */
       money: ch.money ? (ch.amount > 0 ? `About ${inr(ch.amount)} a week` : ch.costLabel || 'Costs money') : 'No spend', undo: ch.irreversible ? `Can’t be undone: ${ch.irreversible}` : `Rollback: ${ch.rollback}`, angle: ch.angle || '',
       fields, assets: assetsFor(t, ch), thread: (ch.thread || []).map((m) => ({ who: m.from === 'you' ? m.by?.name || m.by?.email || 'You' : `${AGENT[ch.agent] || 'AI'} (studio)`, text: m.text, at: m.at, v: m.v || null })),
       notes: (ch.notes || []).map((n) => n.text), checks: [...(ch.myChecks || []).map((m) => ({ text: m.text, done: !!m.done })), ...(ch.checks || []).filter((x) => !x.ok && !x.soft && !x.mine).map((x) => ({ text: `Our check: ${x.k}`, done: false, brew: true }))] /* what Brew's own checks still flag travels with the brief: the team never ships it unseen */, studio: `#remix=${ch.cardId}/${ch.id}` }; };
@@ -1343,7 +1347,11 @@ export function createRemix(o) {
   const DL_NAME = { 'creative.short_video': 'Short video', 'creative.film_brief': 'Film brief', 'crm.paid_broadcast': 'WhatsApp message', 'crm.outreach_email': 'Email', 'creative.linkedin_post': 'LinkedIn post', 'creative.x_post': 'X post', 'visibility.blog_post': 'Blog post', 'crm.flow_copy': 'Message flow', 'creative.creative_brief': 'Creative brief', 'creative.add_variants': 'Static ad', 'creative.pinterest_pin': 'Pinterest pin' };
   const dlName = (key) => DL_NAME[key] || actOf(key)?.label || key;
   const canAdd = (r, key) => !!actOf(key) && (r.actionKeys.includes(key) || ADD_STAPLES.includes(key));
-  const addable = (r, have = []) => { const got = new Set(have.map((x) => x.action)); return [...new Set([...r.actionKeys, ...ADD_STAPLES])].filter((k) => canAdd(r, k) && !got.has(k) && !k.startsWith('brew.')).slice(0, 12).map((k) => ({ key: k, label: dlName(k) })); };
+  /* "+": the card's own kinds it doesn't have open yet, then every deliverable in the catalogue (deliverables.js), each opening as
+     a jam on this card: its own action where Brew makes it, else written and briefed here and made by a person (26 Oct: all 228) */
+  const addable = (r, have = []) => { const got = new Set(have.map((x) => x.action)), dls = have.map((x) => x.dl).filter(Boolean);
+    const own = r.actionKeys.filter((k) => canAdd(r, k) && !got.has(k) && !k.startsWith('brew.')).map((k) => ({ key: k, label: dlName(k), group: 'For this card' }));
+    return [...own, ...dlMenu(dls).map((x) => ({ ...x, key: `dl:${x.id}` }))]; };
   on('GET', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     const r = recipeFor(c); const cv = ensureCardVersion(t, c); const owner = c.agent === 'brew' && !r.conflict ? 'creative' : r.agent;
@@ -1579,11 +1587,14 @@ export function createRemix(o) {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     if (/^build-/.test(String(c.id || ''))) return { changes: [], navOnly: true }; /* "Read all 57 plans" goes to the moves, never a page-copy jam (QA J-14) */
     if (b.queue) return v2Remix(b, t, c); /* Another take: answers at once, the picture in the background (the block above) */
-    const r00 = recipeFor(c), pickA = b.action && canAdd(r00, String(b.action)) ? String(b.action) : null; /* "+": this card as another deliverable */
+    const dlKey = /^dl:/.test(String(b.action || '')) ? String(b.action).slice(3) : b.dl, row = dlKey ? dlOf(dlKey) : null; /* a catalogue deliverable (deliverables.js) */
+    if (dlKey && (!row || !actOf(dlAction(row)))) return { error: 'That deliverable isn’t in Brew’s list.' };
+    const r00 = recipeFor(c), pickA = row ? dlAction(row) : b.action && canAdd(r00, String(b.action)) ? String(b.action) : null; /* "+": this card as another deliverable */
     if (b.action && !pickA) return { error: `${dlName(String(b.action))} can't be added to this card yet.` }; /* never a second copy of the card's default piece in its place (26 Oct) */
     const r0 = pickA ? { ...r00, actionKeys: [pickA], primary: pickA, conflict: false, alwaysJam: false } : r00, r = b.as === 'film' && !r0.conflict && !r0.alwaysJam ? { ...r0, actionKeys: ['creative.film_brief'], primary: 'creative.film_brief', intents: ['Founder on camera', 'Cut it to 15 seconds', 'Fewer shots'] } : r0; /* "Brief a film instead": the same card, filmed for real by the founder */
     const cv = ensureCardVersion(t, c);
     const intent = String(b.intent || '').slice(0, 60), prompt = String(b.prompt || '').slice(0, 300);
+    const wPrompt = row ? [`Make this card as: ${dlSpec(row)}`, prompt].filter(Boolean).join(' ') : prompt; /* the writer is told what the picked deliverable is; History keeps the person's own words */
     /* fast (opening a jam): the package is built at once from the card itself and the AI writes the lead option in the
        background (copyPending; the studio polls and shows "Writing the first draft…"), so a jam opens in well under a second */
     const fast = !!b.fast && !isMock();
@@ -1596,8 +1607,8 @@ export function createRemix(o) {
       opts ||= [{ action: r.primary, angle: 'As written', why: String(c.post.why || '').slice(0, 160), from: null, pkg, fromCard: true }]; line ||= c.post.copy ? 'The post, ready to go, and where it goes.' : 'A reply to start from, and the thread it goes in.'; }
     /* the writer may use only the lead package's own action, so what it writes always fits the package the jam opened on (it
        was offered every action, and a draft for another one was thrown away without a word) */
-    if (!opts && fast && spend('text')) writeLater = async () => (await liveOptions(t, c, { ...r, actionKeys: [r.actionKeys[0]] }, intent, prompt, 1)).opts[0] || null;
-    else if (!opts && !isMock() && spend('text')) { try { const x = await liveOptions(t, c, r, intent, prompt); if (x.opts.length) { opts = x.opts; line = x.line; live = true; } } catch (e) { log.warn('[remix]', e.message); } }
+    if (!opts && fast && spend('text')) writeLater = async () => (await liveOptions(t, c, { ...r, actionKeys: [r.actionKeys[0]] }, intent, wPrompt, 1)).opts[0] || null;
+    else if (!opts && !isMock() && spend('text')) { try { const x = await liveOptions(t, c, r, intent, wPrompt); if (x.opts.length) { opts = x.opts; line = x.line; live = true; } } catch (e) { log.warn('[remix]', e.message); } }
     if (!opts) { opts = mockOptions(t, c, r, intent, 1); /* opening a jam builds the one package it opens on, never two orphans beside it */ line = r.conflict ? 'A way to settle it. A person decides, so it opens a jam.' : 'The change from this card: where it goes and who ships it.';
       /* no AI writer is coming (it failed, is paused, or today's text budget is spent): the draft says it is a starting point
          from the brand's own facts, never passed off as written work */
@@ -1607,7 +1618,7 @@ export function createRemix(o) {
     if (intent) signal(t, 'pick', { agent: made[0]?.agent, intent }, now(t));
     t.acted.add(c.id);
     if (made[0] && !pickA) seedV0(t, c, made[0]); /* the jam's package opens on the card's own first draft (an added deliverable starts from its own words) */
-    if (pickA) made.forEach((x) => { x.added = true; });
+    if (pickA) made.forEach((x) => { x.added = true; if (row) { x.dl = row.id; x.actionLabel = row.name; } }); /* named as the deliverable picked ("Welcome flow", "Trial reel"), never its family's action */
     /* "Make our version" of a rival's ad: the person asked for our ad, so its first picture (in the rival's style, our product)
        is made once the words are written; nothing else opens a paid picture by itself */
     const firstPic = isRivalCard(c) && made[0] && !studioOf(t, made[0], null, c) && !/^gen\//.test(made[0].pkg?.image || '') ? () => (isVideoPost(made[0]) ? genVideo(t, made[0], 'our version of the rival video') : genImage(t, made[0], 'our version of the rival ad')) : null;
