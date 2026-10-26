@@ -175,7 +175,8 @@ export function createFetcher({ slug, saveRaw, loadRaw, fresh = false, signal, l
 }
 
 // run a promise with a deadline; rejects with a clear timeout error
-export const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, no) => { const t = setTimeout(() => no(new Error(`${what} timed out after ${Math.round(ms / 1e3)}s`)), ms); t.unref?.(); })]);
+// held, then cleared once p settles: an unref'd timer racing a promise that never settles let a job or test exit mid-run
+export const withTimeout = (p, ms, what) => { let t; return Promise.race([p, new Promise((_, no) => { t = setTimeout(() => no(new Error(`${what} timed out after ${Math.round(ms / 1e3)}s`)), ms); })]).finally(() => clearTimeout(t)); };
 // map with a concurrency limit
 export const pool = async (xs, n, fn) => { const q = xs.map((x, i) => [x, i]); const out = new Array(xs.length); await Promise.all(Array.from({ length: Math.min(n, xs.length) }, async () => { while (q.length) { const [x, i] = q.shift(); try { out[i] = await fn(x, i); } catch (e) { out[i] = { error: e }; } } })); return out; };
 

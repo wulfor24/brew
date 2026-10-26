@@ -14,8 +14,8 @@ jobs:
       AI_MOCK: '1'        # every AI call is mocked: no keys, no spend
       TZ: UTC
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22  # Dockerfile: node:22-bookworm-slim
           cache: npm

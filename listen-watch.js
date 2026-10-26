@@ -76,7 +76,9 @@ const YT_OUT = { day: null };
 const get = async (url, as = 'json', ms = 20e3) => { const r = await fetch(url, { headers: { 'user-agent': UA, accept: as === 'json' ? 'application/json' : '*/*' }, signal: AbortSignal.timeout(ms) }); if (!r.ok) throw Object.assign(new Error(`${r.status} ${url.split('?')[0]}`), { status: r.status }); return as === 'json' ? r.json() : r.text(); };
 // Reddit and PullPush answer 429 to bursts: wait once, then try again (a second 429 is thrown with its status)
 const getRetry = async (url, as, ms, wait = 3e3) => { try { return await get(url, as, ms); } catch (e) { if (e.status !== 429) throw e; await sleep(wait); return get(url, as, ms); } };
-const timed = (p, ms, what) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(`${what} timed out after ${ms / 1e3}s`)), ms).unref?.())]);
+// the timer is held (not unref'd) and cleared once the source settles: an unref'd timer racing a source that never settles
+// let a process with nothing else on its loop (a job, a test) exit mid-run instead of timing the source out
+const timed = (p, ms, what) => { let t; return Promise.race([p, new Promise((_, no) => { t = setTimeout(() => no(new Error(`${what} timed out after ${ms / 1e3}s`)), ms); })]).finally(() => clearTimeout(t)); };
 // what a post says once its links are gone (a bare product link is not a voice)
 const words = (t) => String(t || '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/https?:\/\/\S+/g, ' ').split(/\s+/).filter((w) => /[a-z]/i.test(w)).length;
 const enough = (x) => words(`${x.title || ''} ${x.text || ''}`) >= (x.kind === 'review' ? 2 : 4);
