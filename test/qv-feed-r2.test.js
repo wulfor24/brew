@@ -6,6 +6,8 @@ import { aiRingNow, aiFact, healAiText, healAiCard } from '../ai-count.js';
 import { healthFrom } from '../health.js';
 import { draftFits, draftName, draftView, notHeadline, noPlanNo } from '../drafts-bg.js';
 import { aiTextsOf, fromAi, dropAiQuotes } from '../quote-guard.js';
+import { ownAdsSay, oosSay, ownSayIn, outInRows } from '../own-say.js';
+import { stockSay } from '../stock-say.js';
 import { heardCards } from '../social-feed.js';
 import { isCdn, cdnExpiry, cdnDead, keepName, createCdnKeep, keepRes } from '../cdn-keep.js';
 
@@ -81,7 +83,7 @@ test('AI answers: cards quote the newest single check, the one Store health show
   assert.deepEqual(c.rows, [['Baseline mentions', '0 of 15'], ['Products', '3 of 5']]);
   const perQ = { id: 'lv-vis-q1', title: 'ChatGPT named Arata in 1 of 3 answers' }; assert.equal(healAiCard(perQ, f), perQ, 'a per-question card is its own, labelled check');
   const shop = { id: 'x', title: '3 of 5 products sold out' }; assert.equal(healAiCard(shop, f), shop);
-  const fsrc = read('feed-service.js'); assert.match(fsrc, /healAiCard\(\{ id: c0\.id/); assert.match(fsrc, /healCount\(healAiCard\(bgFor\(x\), aiFactNow\(t\)\), t\)/);
+  const fsrc = read('feed-service.js'); assert.match(fsrc, /healAiCard\(\{ id: c0\.id/); assert.match(fsrc, /healCount\(healAiCard\(x\.type === 'ad' \? bgFor\(x\) : ownSayIn\(bgFor\(x\), ownNow\(t\)\), aiFactNow\(t\)\), t\)/);
 });
 
 /* ---------- 3. one count per thing ---------- */
@@ -132,4 +134,22 @@ test('quotes: a draft line that repeats an AI answer leaves it; a real review st
   assert.equal(dropAiQuotes({ headline: 'Homes near your office' }, T).headline, 'Homes near your office');
   assert.match(read('drafts-bg.js'), /const ask = \[ASK\[kind\] \|\| '', QUOTE_RULE,/, 'the writer is told'); assert.match(read('drafts-bg.js'), /dropAiQuotes\(j, aiTextsOf\(\{ profile: p\.profile \}\)\)/);
   assert.match(read('feed-service.js'), /rest\.draft = dropAiQuotes\(rest\.draft, aiTextsNow\(t\)\)/, 'saved drafts heal on serve');
+});
+
+/* ---------- 6. no contradictions with the brand's own counts ---------- */
+test('contradictions: own ads, out of stock and a counted "3 other items" are said from the counts', () => {
+  assert.equal(ownAdsSay('Rivals are running up to 278 ads while we have none', 10), 'Rivals are running up to 278 ads while you run 10');
+  assert.equal(ownAdsSay('We have no live ads in IN, so start one', 10), 'You run 10 in IN, so start one');
+  assert.equal(ownAdsSay('Rivals are running up to 278 ads while we have none', 0), 'Rivals are running up to 278 ads while we have none', 'a true none stays');
+  assert.equal(ownAdsSay('Rivals are running up to 278 ads while we have none', null), 'Rivals are running up to 278 ads while we have none', 'no count: untouched');
+  assert.equal(oosSay('Since we have zero out-of-stock catalog items, push the hero', 2), 'Since we have 2 out-of-stock catalog items, push the hero');
+  assert.equal(oosSay('zero out-of-stock catalog items', 0), 'zero out-of-stock catalog items');
+  assert.equal(outInRows([['Hero SKUs', '4'], ['Out of Stock', '2 products']]), 2);
+  const c = ownSayIn({ h: 'Protect your hero inventory', p: 'We have zero out-of-stock catalog items, so…', steps: ['Check no products are out of stock'] }, { ads: 10, out: 2 });
+  assert.match(c.p, /2 out-of-stock/); assert.equal(c.steps[0], 'Check 2 products are out of stock');
+  const rows = [['Anti-Grey Hair Serum Pack of 2', 'Sold out'], ['Anti-Hair Fall Intensive Shampoo - 15ml', 'Sold out'], ['Conditioner 15ml', 'Sold out'], ['Oil 50ml', 'Sold out'], ['Gel', '3 left']];
+  assert.equal(stockSay('Anti-Grey Hair Serum Pack of 2, Anti-Hair Fall Intensive Shampoo - 15ml and 3 other items are low on stock.', rows),
+    'Anti-Grey Hair Serum Pack of 2, Anti-Hair Fall Intensive Shampoo - 15ml and 2 more are sold out; 1 other item is low on stock.');
+  assert.ok(!/items is\b/.test(stockSay('Anti-Grey Hair Serum Pack of 2 and 3 other items are low on stock.', [['Anti-Grey Hair Serum Pack of 2', 'Sold out']])), 'never "items is"');
+  assert.match(read('feed-service.js'), /Object\.assign\(rest, ownSayIn\(\{ title: rest\.title/);
 });

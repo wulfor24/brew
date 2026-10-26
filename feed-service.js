@@ -27,7 +27,8 @@ import { liveTruth, replacedKeys } from './facts-desk.js'; // one truth per view
 import { allowedFrom, unbacked, numbersIn } from './fact-gate.js';
 import { createRemix } from './remix.js';
 import { aiRingNow, aiFact, healAiCard } from './ai-count.js';
-import { aiTextsOf, dropAiQuotes } from './quote-guard.js'; // a draft never quotes an AI answer as a customer (QV round 2, 26 Oct) // one AI-answers count per brand, the newest single check, recounted into saved cards (QV round 2, 26 Oct)
+import { aiTextsOf, dropAiQuotes } from './quote-guard.js';
+import { ownSayIn, outInRows } from './own-say.js'; // "while we have none" beside 10 live ads, "zero out-of-stock" beside an out-of-stock row: said again from the counts (QV round 2) // a draft never quotes an AI answer as a customer (QV round 2, 26 Oct) // one AI-answers count per brand, the newest single check, recounted into saved cards (QV round 2, 26 Oct)
 import { eventsFor, healDaysIn } from './day-count.js'; /* a saved "Diwali is 14 days away" reads today's count, in the brand's zone (26 Oct) */
 import { numeralsCard } from './num-words.js'; /* "ten fifteen am", "November eighth", "forty-one reviews" read in numerals (26 Oct) */
 import { oneVoice } from './card-voice.js';
@@ -316,6 +317,12 @@ export function createFeedService(o) {
   const AIT = new Map();
   const aiTextsNow = (t) => { try { const b = t ? brandOfT(t) : B(), sl = b?.slug || ''; const hit = AIT.get(sl); if (hit && Date.now() - hit.at < 60e3) return hit.v;
     const v = aiTextsOf({ profile: b?.profile, runs: sl === B()?.slug ? live?.get?.()?.visibility?.runs || [] : [] }); AIT.set(sl, { at: Date.now(), v }); return v; } catch { return []; } };
+  /* the brand's own counts the words must agree with: live ads (the one count, pack-numbers ownAds) and products out of stock (the catalog
+     watch, or the most a card's rows state); once a minute per workspace */
+  const OWNC = new Map();
+  const ownNow = (t) => { try { const k = t?.id || B()?.slug || ''; const hit = OWNC.get(k); if (hit && Date.now() - hit.at < 60e3) return hit.v; const b = t ? brandOfT(t) : B();
+    const its = (b?.slug === B()?.slug ? live?.get?.()?.catalog?.items : null) || [], cards = t ? [...t.cards.values()] : [];
+    const v = { ads: b?.numbers?.ownAds?.n ?? null, out: Math.max(its.filter((i) => i?.inStock === false).length, ...cards.map((c) => outInRows(c?.rows)), 0) }; OWNC.set(k, { at: Date.now(), v }); return v; } catch { return { ads: null, out: 0 }; } };
   const healCount = (x, t) => { try { const d = daysOf(t); return healDaysIn(x, d.evs, d.at, d.zone); } catch (e) { log.warn?.('[days]', e.message); return x; } };
   const brandTenants = (b) => [...tenants.values()].filter((t) => (t.brandId || DEFAULT_BRAND) === b.slug);
   /* a move card (id mNN-i) remembers the version of the move it was made from (mv), so a workspace that was not open when its move
@@ -830,6 +837,8 @@ export function createFeedService(o) {
     if (rest.detail && typeof rest.detail === 'object') rest.detail = { ...rest.detail, ...(Array.isArray(rest.detail.why) ? { why: rest.detail.why.map(noPlanNo) } : {}), ...(Array.isArray(rest.detail.how) ? { how: rest.detail.how.map(noPlanNo) } : {}) };
     if (rest.make && typeof rest.make === 'object') rest.make = { ...rest.make, pieces: noPlanNo(rest.make.pieces) };
     if (rest.post && typeof rest.post.copy === 'string') rest.post = { ...rest.post, copy: noPlanNo(rest.post.copy), ...(typeof rest.post.hook === 'string' ? { hook: noPlanNo(rest.post.hook) } : {}) };
+    /* a card never says the brand runs no ads while the one count says it does, nor "zero out-of-stock" while products are out (own-say.js) */
+    if (!c0.post && !['ad', 'viral'].includes(c0.research?.kind) && !/^(?:r-ad-|heard-)/.test(String(c0.id || ''))) Object.assign(rest, ownSayIn({ title: rest.title, sub: rest.sub, rows: rest.rows, detail: rest.detail }, ownNow(t)));
     /* a stock sentence says what its own rows say: a sold-out row is "sold out", never "nearly gone" (stock-say.js, QV P1-8) */
     if (Array.isArray(rest.rows)) { rest.title = stockSay(rest.title, rest.rows); rest.sub = stockSay(rest.sub, rest.rows); }
     /* a rows card with no rows and no picture (a watcher's idea, a trend card: QV P0-1, 26 Oct) shows the photo of the product its words
@@ -1403,7 +1412,7 @@ export function createFeedService(o) {
       : r0[k]?.lastError
       ? [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. We try again within the hour.', from: PRODUCT_NAME, at: r0[k].lastError.at }]
       : slides); /* a ring that is only waiting for its next read has nothing to show: it is hidden, not a "Finding new stories" slide (QA FEED-QA-28) */
-    const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map((x) => healCount(healAiCard(bgFor(x), aiFactNow(t)), t)) /* a story's "14 days away" is counted today (day-count.js) */, ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
+    const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map((x) => healCount(healAiCard(x.type === 'ad' ? bgFor(x) : ownSayIn(bgFor(x), ownNow(t)), aiFactNow(t)), t)) /* a story's "14 days away" is counted today (day-count.js) */, ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
     /* notes posted to a ring: each once, and never an own-ads note in Trends (saved ones from before 26 Oct heal here: "No live PUMA
        India ads found in the Meta Ad Library" twice in Trends, while the one count said 10 live) */
     const ADS_NOTE = /\bAd Library\b|\blive (?:\S+ ){0,3}ads?\b/i;

@@ -67,7 +67,7 @@ test('P1-10: a countdown baked into saved words reads today\'s count, from the c
   const us = eventsFor({ country: 'US', timezone: 'America/New_York' }, Date.parse('2026-11-01T15:00:00Z'));
   assert.equal(healDays('Black Friday is 30 days away', us, Date.parse('2026-11-01T15:00:00Z'), { timezone: 'America/New_York' }), 'Black Friday is 26 days away');
   assert.match(fsvc, /return healCount\([^\n]*numeralsCard\(out, \{ locale: [^\n]*\), t\); \};/, 'every served card');
-  assert.match(fsvc, /slides: slides\.map\(\(x\) => healCount\(healAiCard\(bgFor\(x\), aiFactNow\(t\)\), t\)\)/, 'every story slide (and its AI count, QV round 2)');
+  assert.match(fsvc, /slides: slides\.map\(\(x\) => healCount\(healAiCard\(x\.type === 'ad' \? bgFor\(x\) : ownSayIn\(bgFor\(x\), ownNow\(t\)\), aiFactNow\(t\)\), t\)\)/, 'every story slide (and its AI count, QV round 2)');
   assert.match(read('server.js'), /calendarOf: async \(slug\) =>[^\n]*calendar\/\$\{x\}\.json/, 'the saved calendar, no new AI call');
 });
 
