@@ -84,7 +84,7 @@ export function mountJam2(d) {
     Promise.resolve().then(fn).then(() => { busy.delete(k); if (jam.running) delete jam.running[bid]; }).catch((e) => { log.warn?.('[jam2]', op, e.message);
       /* still being made at the engine (paid, not lost): keep the run's mark so it is polled again (resumeCut: on the next open, the composer's poll or in a minute), never an error */
       const m0 = jam.running?.[bid]; if (e.open && m0 && (m0.spec || ['render', 'reshot'].includes(op)) && (m0.tries || 0) < 6) { busy.delete(k); jam.running[bid] = { ...m0, resume: true, at: Date.now(), slow: plainErr(e) }; setTimeout(() => resumeCut(t, jam).catch(() => {}), 60e3).unref?.(); return; }
-      if (op === 'studio' && jam.v1ch) try { d.onStudioState?.(t, jam.v1ch, { state: 'failed', error: plainErr(e).slice(0, 240), jid: jam.id }); } catch {}
+      if (op === 'studio' && jam.v1ch) try { const paid = +(e.made || []).reduce((a, m) => a + (m.usd || 0), 0).toFixed(3); d.onStudioState?.(t, jam.v1ch, { state: 'failed', error: plainErr(e).slice(0, 320), jid: jam.id, ...(Array.isArray(e.invented) && e.invented.length ? { claims: e.invented.slice(0, 6) } : {}), ...(paid ? { paid } : {}) }); } catch {} /* the claims it printed, to approve here; what the tries cost, said truthfully */
       /* what a failed run already spent is kept on the board (a check that failed twice still paid for two pictures) */
       const spent = (e.made || []).filter((m) => m.usd); const bd0 = jam.boards.find((x) => x.id === bid); if (spent.length && bd0) bd0.spent = [...(bd0.spent || []), { at: Date.now(), op, usd: +spent.reduce((a, m) => a + m.usd, 0).toFixed(3), made: spent.slice(0, 8), error: String(e.message).slice(0, 160) }].slice(-20); const error = e.budget ? e.message : e.open ? plainErr(e) : plainErr(e); busy.set(k, { op, at: Date.now(), error }); if (jam.running?.[bid]) jam.running[bid] = { op, at: Date.now(), error }; /* the error outlives a restart */ })
       .finally(() => { jam.updatedAt = Date.now(); return store.put(slugOfT(t), jam); }).catch((e) => log.warn?.('[jam2] save after', op, e.message)); return true; };
@@ -489,5 +489,12 @@ export function mountJam2(d) {
     await store.put(slugOfT(t), j); toV1(t, j, nt);
     return { ok: true, changed, drawn, takeId: nt.id };
   };
-  return { slackIn, publicHandle, store, flush: () => store.flush(), engines, brandbook: bb, reletter };
+  /* claims the team approves from a jam (a make that printed them, a red check): the Brand Book's own approved claims, so every check,
+     every make and every brief accepts them from now on (26 Oct, Param: "I should be able to approve such cases here itself") */
+  const approveClaims = async (t, claims) => { const w = whoOf(t); if (!w.member && !w.staff) return { error: 'Only the brand’s team can approve claims.' };
+    const xs = [...new Set((claims || []).map((c) => String(c || '').replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰*†‡]+/g, '').replace(/\s+/g, ' ').trim()).filter((c) => c.length > 2))].slice(0, 8); if (!xs.length) return { error: 'Nothing to approve.' };
+    const have = new Set(((await bb.load(slugOfT(t)))?.claimsAllowed || []).map((c) => String(c.text || '').toLowerCase()));
+    for (const c of xs) if (!have.has(c.toLowerCase())) await bb.update(slugOfT(t), { claim: c }, w.me);
+    return { ok: true, approved: xs }; };
+  return { slackIn, publicHandle, store, flush: () => store.flush(), engines, brandbook: bb, reletter, approveClaims };
 }

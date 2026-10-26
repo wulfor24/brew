@@ -121,7 +121,7 @@ export function createCreative({ engines, ai = null, claudeTool, isMock, spend =
   const MADE_SCHEMA = { type: 'object', additionalProperties: false, required: ['same', 'words', 'invented'], properties: {
     same: { type: 'boolean', description: 'The product in image 2 is the same as in image 1 (shape, colours, label, count); true when there is no image 1' },
     words: { type: 'array', items: { type: 'string' }, description: 'Every piece of text printed on image 2' },
-    invented: { type: 'array', items: { type: 'string' }, description: 'Each printed text that states a fact, number, size, claim, result or review NOT backed by the facts given; also any line shown as a customer review or with stars that is not one of the real reviews given word for word' } } };
+    invented: { type: 'array', items: { type: 'string' }, description: 'Each printed text that states a fact, number, size, claim, result or review NOT backed by the facts given; also any line shown as a customer review or with stars that is not one of the real reviews given word for word. Text printed on the product itself (its own label or pack, as on the reference photo) is never invented: leave it out' } } };
   async function checkMade(ctx, file, facts = {}) {
     if (isMock() || !ai) return { same: true, invented: [], words: [] };
     const fs = await import('node:fs'), f = await fileOf(file).catch(() => null); if (!f) return { same: false, invented: [], words: [], why: 'file missing' };

@@ -31,7 +31,7 @@ test('the fix path takes the claim off the picture first, lands it free, and nev
   assert.match(rm, /is still on the picture\./, 'the chat says it is still there');
   assert.match(rm, /Same photo, nothing charged/);
   assert.match(rm, /!take\.relettered && v\.studio\.file/, 'a re-lettered take whose first slide kept its file still lands');
-  assert.match(rt, /return \{ slackIn, publicHandle, store, flush: \(\) => store\.flush\(\), engines, brandbook: bb, reletter \}/);
+  assert.match(rt, /return \{ slackIn, publicHandle, store, flush: \(\) => store\.flush\(\), engines, brandbook: bb, reletter, approveClaims \}/);
 });
 
 import { readyOf } from '../publish-ready.js';

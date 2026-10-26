@@ -556,7 +556,7 @@ export function createRemix(o) {
     const capsBtn = new Set((ch.pkg?.buttons || []).filter((x) => typeof x === 'string' && x === x.toUpperCase())); /* a saved button in capitals is a button, never shouting copy */
     const shopperText = [ch.after.title, ch.after.sub, ...pubT.filter((x) => !capsBtn.has(x)), ...lines(ch.pkg?.script, 'line'), ...lines(ch.pkg?.draft?.script, 'line'), ...lines(ch.pkg?.draft?.slides, 'text'), ...lines(ch.pkg?.slides, 'text'), ...lines([ch.pkg?.draft?.text, ch.pkg?.draft?.copy])].filter(Boolean).join('\n');
     const src = brandSource(t, card), cf = claimFlags(shopperText, src, { allowNewCode: /discount_offer$/.test(ch.action || '') });
-    checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote) });
+    checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote), phrases: cf.map((f) => f.phrase).filter(Boolean) }); /* phrases: approvable as they are (26 Oct) */
     /* a customer's words in quotes are a real review of the brand's, never one the writer made up (QV P1-21, 26 Oct). A community reply quotes the thread, so it is left out */
     if (ch.family !== 'post' && ch.family !== 'outreach') { const qf = quoteFlags(shopperText, src); if (qf.length) checks.push({ k: `A review none of your customers wrote: “${qf[0]}”. Quote a real review, or take it out`, ok: false, fix: true, quote: true }); }
     const lf = copyFlags(shopperText, { source: src, names: [BN(), o.SEED?.brand?.name, ...(catalogOf(t) || []).map((x) => x?.t)] }); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
@@ -1900,6 +1900,14 @@ export function createRemix(o) {
   /* the products a set-up can pick from (the brand's catalog, in-stock first): the non-Studio "What to make" list */
   on('GET', '/api/changes/:chid/products', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' };
     const cat = (catalogOf(t) || []).filter((x) => x?.t); return { products: [...cat.filter((x) => !x.out), ...cat.filter((x) => x.out)].slice(0, 80).map((x) => ({ name: x.t, img: x.img || null, price: x.price ?? null, out: !!x.out })) }; });
+  /* approve claims from the jam (a make that printed them, a red check): saved as the Brand Book's approved claims, so every check, make
+     and brief accepts them; the chat says so, and a red claim check clears on the next read (26 Oct, Param) */
+  on('POST', '/api/changes/:chid/approve-claims', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' };
+    if (!o.approveClaims) return { error: 'Claims can’t be approved here yet.' };
+    const r = await Promise.resolve(o.approveClaims(t, Array.isArray(b.claims) ? b.claims : [])).catch((e) => ({ error: e.message })); if (r?.error) return { error: r.error };
+    ch.thread ||= []; for (const m of ch.thread) if (Array.isArray(m.claims) && m.claims.some((c) => r.approved.some((a) => String(c).includes(a) || a.includes(String(c).replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰*†‡]+/g, '').trim())))) m.claimsDone = true;
+    ch.thread.push({ from: 'ai', text: `Approved: ${r.approved.map((c) => `“${c}”`).join(', ')}. They’re in your Brand Book → Claims, and every check and make accepts them now.${studioOf(t, ch) && ch.studioState?.state === 'failed' ? ' Make it again when you’re ready (the price is on the button).' : ''}`, at: now(t), approved: true });
+    evaluate(t, ch); o.save?.(t); return { change: pubChange(t, ch), approved: r.approved, again: !!(studioOf(t, ch) && ch.studioState?.state === 'failed') }; });
   on('POST', '/api/changes/:chid/notes', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ch.notes ||= [];
     if (b.id && b.remove) ch.notes = ch.notes.filter((x) => x.id !== b.id);
@@ -2397,7 +2405,7 @@ export function createRemix(o) {
       ch.thread ||= []; if (take.relettered) { const rl = take.relettered, cut = `“${(rl.cut || []).join('”, “')}”`; ch.thread.push({ from: 'ai', text: `Took ${cut} off ${rl.slides?.length && slides.length > 1 ? `slide ${rl.slides.join(' and ')}` : 'the picture'}: v${v.n} is on the stage. Same photo, nothing charged.`, at: now(t), v: v.n }); } else ch.thread.push({ from: 'ai', text: `Made ${n}${q === 'preview' ? ' as a quick preview (low resolution)' : ''}: v${v.n} is on the stage.${q === 'preview' ? ' Check it, then make the full one before you post it.' : ' Check it, then send the brief.'}${Array.isArray(take.missing) && take.missing.length ? ` ${take.missing.length} couldn’t be made.` : ''}`, at: now(t), v: v.n }); }
     studioState(t, chId, { state: 'made', line: Array.isArray(take.missing) && take.missing.length ? `${label} · ${take.missing.length} couldn’t be made: open it to add ${take.missing.length > 1 ? 'them' : 'it'}` : label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
-  const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; if (st.state === 'failed' && st.error && ch.studioState?.state !== 'failed') { ch.thread ||= []; ch.thread.push({ from: 'ai', text: `The make didn’t go through: ${st.error} Nothing was charged for what wasn’t made.`, at: now(t) }); }
+  const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; if (st.state === 'failed' && st.error && ch.studioState?.state !== 'failed') { ch.thread ||= []; ch.thread.push({ from: 'ai', text: `The make didn’t go through: ${st.error}${st.paid ? ` The tries cost about $${st.paid}; nothing more is charged.` : ' Nothing was charged.'}`, at: now(t), ...(Array.isArray(st.claims) && st.claims.length ? { claims: st.claims.slice(0, 6) } : {}) }); } /* the words it printed, approvable in the chat (26 Oct); the cost said as it was, never "nothing" when two tries were paid */
     ch.studioState = { ...st, at: now(t) }; const w = jamOf(t, ch); if (w) { w.creative = ch.studioState; if (st.state !== 'making') w.unread = true; } bump(t, ch); o.save?.(t); };
   /* the product a jam's copy is about (the card's, or the one its words name now), with its catalog photo: Studio shows the same one */
   /* the product Studio sets up: the one the jam's words name, else the one the card names, else the one its first draft's pictures

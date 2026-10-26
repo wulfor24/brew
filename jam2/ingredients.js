@@ -23,4 +23,4 @@ export function productFor({ card = null, catalog = [], refs = [], pick = null, 
 }
 /* the brand's products as Library tiles (the photo picker): real catalog photos only */
 /* sold-out products come last and say so (the picker greys them), free samples after the products a shopper can buy */
-export const productTiles = (catalog = [], max = 60) => (catalog || []).filter((p) => imgOf(p)).map((p, i) => [p, i]).sort(([a, i], [b, k]) => (!!a.out - !!b.out) || (!!a.free - !!b.free) || i - k).slice(0, max).map(([p]) => ({ img: imgOf(p), name: p.t || p.title || null, handle: p.handle || null, ...(p.out ? { out: true } : {}) }));
+export const productTiles = (catalog = [], max = 60) => (catalog || []).filter((p) => imgOf(p)).map((p, i) => [p, i]).sort(([a, i], [b, k]) => (!!a.out - !!b.out) || (!!a.free - !!b.free) || i - k).slice(0, max).map(([p]) => ({ img: imgOf(p), name: p.t || p.title || null, handle: p.handle || null, ...(p.price != null && p.price !== '' ? { price: p.price } : {}), ...(p.out ? { out: true } : {}) })); /* the price tells a 100 ml from a pack of 2 in the picker (26 Oct) */

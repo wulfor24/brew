@@ -320,7 +320,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
         if ((check.same || !showsProduct) && !check.invented.length && !check.unchecked) file = f;
         else if (t === 0 && !spend('image', ctx.slug)) break; }
       if (!file) { const why = [photos.length && check?.same === false ? 'changed the product' : '', check?.invented?.length ? `added words we can’t back up (${check.invented.join(', ')})` : '', check?.unchecked ? 'couldn’t be read back to check it' : ''].filter(Boolean).join(' and ') || 'didn’t pass its check';
-        const err = new Error(`The ${st.label} picture ${why}, twice, so it isn’t shown. Try another style.`); err.made = made; throw err; }
+        const err = new Error(`The ${st.label} picture ${why}, twice, so it isn’t shown.${check?.invented?.length ? ' Approve them if they’re true, or try another style.' : ' Try another style.'}`); err.made = made; if (check?.invented?.length) err.invented = check.invented.slice(0, 6); throw err; } /* the words it printed go back with the error, so the team can approve them in one tap (26 Oct, Param) */
       /* the drawn piece set on the placement's exact frame: a model frame that differs (A5 print, a 3:1 banner) is fitted whole on its
          own edge colour, never cropped (its words are in the picture) */
       const scene = { w: size.w, h: size.h, bg: { src: file, ...(await fitOf(file, size)) }, layers: [] };
@@ -393,7 +393,15 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     const v1w = v1Words(ctx, spec); /* the free look shows the words the paid make will set: the jam's own */
     const words = v1w || await maker.write(ctx, { recipe: video ? 'reel' : 'image-ad' }, { ask: spec.ask || '' }).catch(() => ({}));
     const size = sizeOf(spec.sizes?.[0] || (video ? 'story' : 'ig-portrait')), img = ctx.product?.img || null;
-    const scene = maker.composeScene({ size, bgFile: null, cut: img ? { file: img } : null, words, kit: ctx.bbv?.kit || {} });
+    /* the look follows the set-up (26 Oct, Param: "the first look doesn't adhere to whatever options we selected"): the style's layout
+       (a photo style puts its words low over the scene, a flat lay or natural set beside it, a colour pop on the brand's own colour, a
+       plain studio shot carries no words, a designed template leads with the headline), and only the brand's real colours, never the
+       web framework's blue a site read brought in (kit-colours.js) */
+    const own = kitColours(ctx.bbv || {}), kit0 = ctx.bbv?.kit || {}, kit = { ...kit0, colors: own.length ? own : ['#111111', '#f3efe8'], accent: own[0] || kit0.accent || '#111111' };
+    const id = st?.id || '', preset = st?.preset || st?.designed || st?.type === 'drawn' ? 'top' : /^(flat-lay|natural|gift)$/.test(id) ? 'side-card' : /^(closeup|hands|full-body|editorial|ugc-still|in-use|on-model|meme)$/.test(id) ? 'bottom-bar' : 'top';
+    const light = (hex) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return true; const n = parseInt(m[1], 16); return ((n >> 16 & 255) * 299 + (n >> 8 & 255) * 587 + (n & 255) * 114) / 1000 > 150; };
+    const bgC = id === 'studio-white' ? '#ffffff' : id === 'color-pop' ? kit.accent : preset === 'bottom-bar' ? '#2b2724' : kit.colors[1] || kit.colors[0];
+    const scene = maker.composeScene({ size, bgFile: null, cut: img ? { file: img } : null, words: id === 'studio-white' || st?.type === 'none' ? {} : words, kit: { ...kit, colors: [kit.accent, bgC], ink: light(bgC) ? '#111111' : '#ffffff' }, preset });
     const file = await maker.render(scene).catch((e) => { log.warn?.('[studio] sketch render', e.message); return null; });
     const flags = claimFlags([words.headline, words.sub, ...(words.shots || []).map((x) => `${x.vo || ''} ${x.words || ''}`)].join(' '), ctx.source || '').map((f) => f.phrase).filter(Boolean);
     return { file, headline: words.headline || '', sub: words.sub || '', shots: video ? (words.shots || []).slice(0, 8).map((x) => ({ sec: +x.sec || 4, see: tidy(x.see, 200), vo: tidy(x.vo, 200) })) : [], flags, usd: 0 };
