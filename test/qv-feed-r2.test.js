@@ -2,6 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { aiRingNow, aiFact, healAiText, healAiCard } from '../ai-count.js';
+import { healthFrom } from '../health.js';
 import { isCdn, cdnExpiry, cdnDead, keepName, createCdnKeep, keepRes } from '../cdn-keep.js';
 
 const read = (f) => fs.readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
@@ -57,4 +59,24 @@ test('CDN links: every server answer goes through keepRes, and the research tick
   assert.deepEqual(JSON.parse(out[0]), { a: null, b: 'ok' }); assert.equal(out[1], 'data: {"img":null}\n\n');
   const srv = read('server.js'); assert.match(srv, /zipRes\(req, res\);\n\s*keepRes\(res, CDN\);/); assert.match(srv, /CDN\.scan\(x\.research\.get\(\)\)/);
   assert.match(read('research.js'), /if \(!isLeader\(\)\) return; healLogos\(\)\.catch\(\(\) => \{\}\); if \(movedAway\(brand\.slug\)\) return;/);
+});
+
+/* ---------- 2. one AI-answers count ---------- */
+test('AI answers: cards quote the newest single check, the one Store health shows; other counts are left alone', () => {
+  const p = { name: 'Arata', ai: { score: { named: 0, of: 15, unbrandedNamed: 0, unbrandedOf: 15 }, answers: [{ tool: 'chatgpt', at: '2026-10-20' }] } };
+  const read1 = healthFrom(p).rings.find((r) => r.k === 'AI answers');
+  assert.deepEqual(aiFact(read1), { n: 0, of: 15, unbranded: true, at: '2026-10-20' });
+  const old = { ...read1 }; delete old.count; assert.equal(aiFact(old).of, 15, 'a ring saved before it carried its count');
+  const weekly = { k: 'AI answers', read: true, at: '2026-10-25T00:00:00.000Z', count: { n: 1, of: 14, unbranded: true }, parts: [] };
+  assert.equal(aiRingNow(read1, weekly), weekly, 'the weekly run when newer'); assert.equal(aiRingNow(read1, { ...weekly, at: '2026-10-01' }), read1); assert.equal(aiRingNow(read1, null), read1);
+  const f = { n: 0, of: 15 };
+  assert.equal(healAiText('Nutrova is named in just 1 of 18 generative answers', f), 'Nutrova is named in just 0 of 15 generative answers');
+  assert.equal(healAiText('Brew saw Nutrova in 3 of 3 AI answers', f), 'Brew saw Nutrova in 0 of 15 AI answers');
+  assert.equal(healAiText('zero of ten unbranded AI answers', f), '0 of 15 unbranded AI answers');
+  assert.equal(healAiText('4 of 5 products are sold out; 3 of 10 reviews unanswered', f), '4 of 5 products are sold out; 3 of 10 reviews unanswered');
+  const c = healAiCard({ id: 'm18-1-p', title: 'Get Arata named in AI answers', rows: [['Baseline mentions', '0 of 10'], ['Products', '3 of 5']] }, f);
+  assert.deepEqual(c.rows, [['Baseline mentions', '0 of 15'], ['Products', '3 of 5']]);
+  const perQ = { id: 'lv-vis-q1', title: 'ChatGPT named Arata in 1 of 3 answers' }; assert.equal(healAiCard(perQ, f), perQ, 'a per-question card is its own, labelled check');
+  const shop = { id: 'x', title: '3 of 5 products sold out' }; assert.equal(healAiCard(shop, f), shop);
+  const fsrc = read('feed-service.js'); assert.match(fsrc, /healAiCard\(\{ id: c0\.id/); assert.match(fsrc, /healCount\(healAiCard\(bgFor\(x\), aiFactNow\(t\)\), t\)/);
 });

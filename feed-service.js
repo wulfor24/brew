@@ -26,6 +26,7 @@ import { moneyParse, safeLocale, viewerPack } from './brand-pack.js';
 import { liveTruth, replacedKeys } from './facts-desk.js'; // one truth per viewer: the public sheet, or a member's with their live connected facts over
 import { allowedFrom, unbacked, numbersIn } from './fact-gate.js';
 import { createRemix } from './remix.js';
+import { aiRingNow, aiFact, healAiCard } from './ai-count.js'; // one AI-answers count per brand, the newest single check, recounted into saved cards (QV round 2, 26 Oct)
 import { eventsFor, healDaysIn } from './day-count.js'; /* a saved "Diwali is 14 days away" reads today's count, in the brand's zone (26 Oct) */
 import { numeralsCard } from './num-words.js'; /* "ten fifteen am", "November eighth", "forty-one reviews" read in numerals (26 Oct) */
 import { oneVoice } from './card-voice.js';
@@ -306,6 +307,10 @@ export function createFeedService(o) {
     if (o.calendarOf && sl && (!hit || Date.now() - hit.at > 3600e3)) { hit = { at: Date.now(), evs: hit?.evs || [] }; CALS.set(sl, hit); Promise.resolve(o.calendarOf(sl)).then((evs) => { if (Array.isArray(evs)) CALS.set(sl, { at: Date.now(), evs }); }).catch(() => {}); }
     const at = now(t), k = `${sl}|${Math.floor(at / 36e5)}|${hit?.at || 0}`; let e = EVS.get(sl); if (e?.k !== k) { e = { k, evs: eventsFor(cfg, at, hit?.evs || []) }; EVS.set(sl, e); }
     return { evs: e.evs, at, zone: cfg }; };
+  /* the AI-answers count Store health shows (the newest of the read's ring and the weekly run), once a minute per brand */
+  const AIF = new Map();
+  const aiFactNow = (t) => { try { const b = t ? brandOfT(t) : B(), sl = b?.slug || ''; const hit = AIF.get(sl); if (hit && Date.now() - hit.at < 60e3) return hit.f;
+    const f = aiFact(aiRingNow((b?.seed?.health?.rings || []).find((r) => r?.k === 'AI answers'), sl === B()?.slug ? aiRingWeekly() : null)); AIF.set(sl, { at: Date.now(), f }); return f; } catch { return null; } };
   const healCount = (x, t) => { try { const d = daysOf(t); return healDaysIn(x, d.evs, d.at, d.zone); } catch (e) { log.warn?.('[days]', e.message); return x; } };
   const brandTenants = (b) => [...tenants.values()].filter((t) => (t.brandId || DEFAULT_BRAND) === b.slug);
   /* a move card (id mNN-i) remembers the version of the move it was made from (mv), so a workspace that was not open when its move
@@ -807,6 +812,8 @@ export function createFeedService(o) {
        question counts the AI tools that answered it; a play's count is across all the questions asked */
       const perQ = /^lv-vis-/.test(String(c0.id || '')), aiLbl = (x) => (typeof x !== 'string' ? x : perQ ? x.replace(/\b(\d+) of (\d+) answers\b/g, '$1 of $2 AI tools on this question') : x.replace(/\b(\d+) of (\d+) (?:AI )?prompts\b/gi, '$1 of $2 questions asked across AI tools'));
       rest.title = aiLbl(rest.title); rest.sub = aiLbl(rest.sub); if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map(aiLbl) : r)); }
+    /* a card quoting an older AI-answers check ("0 of 10", "zero of ten", "1 of 18" beside Store health's 0 of 15) reads the newest one (ai-count.js) */
+    { const af = aiFactNow(t); if (af) Object.assign(rest, healAiCard({ id: c0.id, family: rest.family, title: rest.title, sub: rest.sub, rows: rest.rows, detail: rest.detail }, af)); }
     { const yours = (x) => (typeof x === 'string' ? x.replace(/\b(O|o)ur (?=[₹$£€]\s?\d)/g, (m, o) => (o === 'O' ? 'Your ' : 'your ')) : x); rest.title = yours(rest.title); rest.sub = yours(rest.sub); } /* a card talks to the team: "your ₹449 shampoo", never "our" beside it (1.14); drafts for shoppers keep "our" */ if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map((x, i) => (i === 0 && /^to confirm$/i.test(String(x)) ? 'Still to check' : tc(x))) : r)); } /* the moves' planning marker "(to confirm)" never shows on a card face (QA 20 Oct) */ { const sc = sectorOf(c0); if (sc && sc !== rest.sector) rest.sector = sc; } /* the column it changes (1.13) */ rest.src = rest.src === 'Brew deployment team' ? 'Our team' : playSrc(rest.src); /* Plays, not moves (3.10) */ /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ /* a row that only says how the store is set up ("Store currency INR", "Platform shopify") tells nobody anything (QV P2-23) */
     if (Array.isArray(rest.rows) && rest.rows.length > 1) { const kept = rest.rows.filter((r) => !Array.isArray(r) || !/^(?:store )?(?:currency|platform)$/i.test(String(r[0]).trim())); if (kept.length) rest.rows = kept; }
     /* "Brew saw we have 52 live ads": in what Brew saw, the brand is "you" (card-voice.js, QV P2-17); a rival's ad and a post are quoted */
@@ -1384,7 +1391,7 @@ export function createFeedService(o) {
       : r0[k]?.lastError
       ? [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. We try again within the hour.', from: PRODUCT_NAME, at: r0[k].lastError.at }]
       : slides); /* a ring that is only waiting for its next read has nothing to show: it is hidden, not a "Finding new stories" slide (QA FEED-QA-28) */
-    const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map((x) => healCount(bgFor(x), t)) /* a story's "14 days away" is counted today (day-count.js) */, ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
+    const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map((x) => healCount(healAiCard(bgFor(x), aiFactNow(t)), t)) /* a story's "14 days away" is counted today (day-count.js) */, ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
     /* notes posted to a ring: each once, and never an own-ads note in Trends (saved ones from before 26 Oct heal here: "No live PUMA
        India ads found in the Meta Ad Library" twice in Trends, while the one count said 10 live) */
     const ADS_NOTE = /\bAd Library\b|\blive (?:\S+ ){0,3}ads?\b/i;

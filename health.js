@@ -126,7 +126,8 @@ function aiRingOf({ name, s = {}, tools = [], at = null, from = 'read', stand = 
   const fixT = uOf && uN / uOf < 0.5 ? `AI tools named ${name || 'you'} in ${uN} of ${uOf} answers where the shopper didn’t ask for it by name. Publish pages that answer what shoppers ask.`
     : !uOf && v < 50 ? `AI tools named ${name || 'you'} in ${named} of ${of} answers. Publish pages that answer what shoppers ask.` : null;
   return { k: 'AI answers', v, read: true, what: uOf ? `Named in ${uN} of ${uOf} answers when not asked by name${bOf ? `, ${bN} of ${bOf} when asked` : ''}` : `Named in ${named} of ${of} real AI answers`,
-    parts, src, at, from, stand /* who else the same answers name, and for which questions (ai-standing.js) */, fixT };
+    parts, src, at, from, stand /* who else the same answers name, and for which questions (ai-standing.js) */, fixT,
+    count: uOf ? { n: uN, of: uOf, unbranded: true } : { n: named, of, unbranded: false } /* the one count every card quotes (ai-count.js, 26 Oct) */ };
 }
 
 function aiAnswers(p, fix) {
