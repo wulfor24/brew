@@ -98,7 +98,7 @@ test('QV r2: "+N more" opens a list you can see on every layout, and the line ne
   assert.match(css, /\.jp \.jp-tx \.jp-l:has\(\.ship-fixes\)\{overflow:visible\}/, 'N-P1-1: the line no longer clips its list');
   assert.match(css, /\.jp \.jp-ship \.ship-fixes\{position:static/, 'N-P1-1: the list is placed on the bar, outside the clipped line');
   assert.match(css, /\.jp \.jp-ship \.ship-fixes ol\{position:absolute;left:16px;[^}]*bottom:calc\(100% \+ 8px\);[^}]*max-height:[^}]*overflow:auto/, 'N-P1-1: over the stage, inside the window');
-  assert.match(css, /@container jp-stage \(max-width:860px\)\{\.jp \.jp-ship\{grid-template-columns:minmax\(0,1fr\)\}/, 'N-P2-5: a narrow stage gives the line its own row at every height');
+  assert.match(css, /@container jp-stage \(max-width:700px\)\{\.jp \.jp-ship\{flex-wrap:wrap\}/, 'N-P2-5, 26 Oct: only a stage under ~700px lets the buttons take a row of their own');
   assert.match(css, /\.jp \.jp-ship \.ship-one > \.linkbtn,\.jp \.jp-ship \.ship-one > \.ship-fixes\{flex:none;white-space:nowrap\}/, 'N-P2-5: "+N more" is never cut');
 });
 
@@ -126,7 +126,7 @@ test('QV r2: slide dots, a video and a framed set end above the bar at every siz
   assert.match(sf, /const over = \(\) => Math\.max\(room\.scrollHeight - room\.clientHeight, jpUnderBar\(\[card, box\.querySelector\('\.stg-nav'\)\]\)\)/, 'a phone\'s floating bar counts');
   assert.match(sf, /box\.classList\.add\('stg-tighter'\)/, 'a story too tall at 130px steps back once more');
   assert.match(fnOf(app, 'jpUnderBar'), /position !== 'fixed'\) return 0/, 'only a floating bar: an in-flow bar is the stage\'s own overflow');
-  assert.match(app, /addEventListener\('resize', \(\) => \{ if \(view === 'remix'\) \{ stageFrames\(\); jpFit\(\); \} \}\)/, 'a set is fitted again at a new window size');
+  assert.match(app, /addEventListener\('resize', \(\) => \{ if \(view === 'remix'\) \{ stageFrames\(\); jpFit\(\); jpFoldApply\(\); \} \}\)/, 'a set is fitted again at a new window size, and a text cut at it gets its more');
   assert.match(fnOf(app, 'jpFit'), /under = \(\) => Math\.max\(room\.scrollHeight - room\.clientHeight, jpUnderBar\(/, 'a framed set is measured, its frame\'s padding included');
   assert.match(fnOf(app, 'jpFit'), /getComputedStyle\(bar\)\.position === 'fixed'/, 'a phone\'s framed piece ends above its bar');
   assert.match(fnOf(app, 'fitAd'), /const ph = ad\.querySelector\('\.sv-phone'\); if \(ph\)/, 'N-P2-1: the video phone narrows until its beats and sizes clear the bar');
@@ -144,4 +144,89 @@ test('QV r2: the ad text, the beat chips and a phone\'s priced buttons read whol
   assert.match(css, /\.jp \.st-asset \.as-meta\.lg:not\(\.is-story\) \.am-text:not\(:focus\)\{white-space:normal\}/, 'N-P2-3: never one line and a bare "…"');
   assert.match(css, /\.jp \.sv-beats li small\{text-transform:none\}/, 'P1-7: "0–3 s", never "0–3 S"');
   assert.match(css, /@media \(max-width:640px\)\{\.jp \.jp-ship > \.jp-btns\{flex-wrap:wrap;/, 'a phone\'s primary drops to its own row rather than lose its price');
+});
+
+// Param, 26 Oct: "the bottom section takes up too much vertical space". The bar is one row: the steps a small indicator beside the line.
+const lastRule = (css, sel) => { const all = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(new RegExp(`(?:^|})\\s*${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\{([^}]*)\\}`, 'g'))]; return all.length ? all[all.length - 1][1] : ''; };
+test('the bar is one compact row, its freed height goes to the stage, and every state keeps its hooks', () => {
+  const css = CSS(), app = APP(), last = (sel) => lastRule(css, sel), bar = last('.jp .jp-ship');
+  assert.match(bar, /display:flex;flex-direction:row;flex-wrap:nowrap/, 'one row: steps, line, buttons'); assert.match(bar, /min-height:64px/); assert.match(bar, /padding:9px 16px 10px/, '64px with a 44px button');
+  assert.ok(!/flex-direction:column/.test(bar), 'never the two stacked rows');
+  assert.match(css, /\.jp \.jp-ship > \.jp-steps\{flex:none;display:flex;align-items:center;[^}]*border-right/, 'the steps sit inline, left of the line');
+  assert.match(last('.jp .jp-ship > .jp-steps li'), /flex-direction:row/, 'a short segment beside each step\'s name');
+  assert.match(css, /\.jp \.jp-ship > \.jp-tx\{flex:1 1 0;min-width:0\}/); assert.match(css, /\.jp \.jp-ship > \.jp-btns\{flex:none;margin-left:auto/, 'the buttons on the right');
+  assert.match(last('.jp .jp-tx .jp-l:not(:has(.ship-one))'), /-webkit-line-clamp:2/, 'the line wraps to two lines at most, never a row of its own');
+  assert.ok(!/@container jp-stage \(max-width:860px\)\{\.jp \.jp-ship\{grid-template-columns/.test(css), 'no second full row at 700–860px');
+  assert.match(css, /@container jp-stage \(max-width:860px\)\{\.jp \.jp-ship > \.jp-steps li:not\(\.is-on\)\{font-size:0/, 'a narrow stage names only the step it is at');
+  assert.match(css, /@media \(max-width:640px\)\{\.jp \.jp-ship \.jp-btns > details > summary\{min-width:44px;min-height:44px/, 'phones keep 44px targets, ⋯ included');
+  assert.match(css, /\.jp-stage\{grid-column:1;display:grid;grid-template-rows:minmax\(0,1fr\) auto/, 'the stage takes whatever height the bar leaves');
+  for (const hook of ['ship-fixes', 'data-fix-one', 'data-cs-full', 'data-cs-make', 'data-v-back', 'data-v-use', 'The team makes it', 'ship-redo', 'btn-free']) assert.ok(app.includes(hook), hook);
+  assert.match(css, /\.jp \.jp-ship \.ship-fixes ol\{position:absolute;left:16px;[^}]*bottom:calc\(100% \+ 8px\)/, '"+N more" still opens over the stage');
+  assert.match(app, /fitAd\(\); jpFit\(\);/, 'the pieces are fitted to the taller stage on every paint');
+});
+
+// Param, 26 Oct: a Meta ad's primary text was cut ("Science-First Oil Control Formulated with active...") and could never be read whole.
+const jpMoreFn = (app) => { const lines = app.split('\n'), cw = lines.find((l) => l.includes('const cutW = ')).trim(), i = lines.findIndex((l) => l.includes('const jpMore = '));
+  return new Function('esc', `${cw}\n${lines.slice(i, i + 2).join('\n')}\nreturn jpMore;`)((x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')); };
+test('"… more": a cut text keeps every word in the DOM, opens with a button, and text that fits has none', () => {
+  const jpMore = jpMoreFn(APP()), long = 'Science-First Oil Control Formulated with active botanicals that calm the skin and keep the shine away all day';
+  assert.equal(jpMore('copy', 'Short and whole', 220), 'Short and whole', 'not cut: no more');
+  const h = jpMore('copy', long, 60);
+  assert.ok(h.includes(`<span class="jp-fold-f">${long}</span>`), 'the whole words are in the DOM'); assert.match(h, /<span class="jp-fold-c">Science-First Oil Control Formulated with active<\/span>/, 'the cut half, at a word, its … on the button');
+  assert.match(h, /<button type="button" class="jp-fold-b" data-jp-fold="copy" data-more="more" aria-expanded="false">… more<\/button>/, 'a keyboard button that says it is folded');
+  assert.match(jpMore('x', long, 40, undefined, 'See more'), />… See more</, 'Meta says See more');
+  assert.match(jpMore('x', '<b>' + long, 40), /&lt;b>/, 'escaped');
+});
+
+test('"… more" on every layout: no frame cuts the brand\'s words without one', () => {
+  const app = APP(), fr = app.slice(app.indexOf('const jpFrame = '), app.indexOf('/* the prototype\'s fit()'));
+  for (const k of ["jpMore('copy', p.copy, 220)", "jpMore('words', words, 40)", 'jpMore(`cap:${i}`, cap, 120)', 'jpMore(`slide:${k}`, s[0], 40)', "jpMore('h1', h1, 90)", "jpMore('lede', lede, 240)", "jpMore('sum', p.summary || p.what || '', 70)", "jpMore('rule', w0.rule, 60)", "jpMore('media', p.media, 140)", "jpMore('section', p.section, 40)"]) assert.ok(fr.includes(k), k);
+  for (const gone of ['esc(jpCut(p.copy', 'esc(jpCut(cap', 'esc(jpCut(h1', 'esc(jpCut(p.summary', 'esc(jpCut(p.media', 'esc(jpCut(p.section', 'jpCut(ch.docLede']) assert.ok(!fr.includes(gone), `still cut: ${gone}`);
+  assert.match(fr, /<figcaption title="\$\{esc\(x\)\}" aria-label="\$\{esc\(x\)\}">/, 'a highlight cover\'s whole name, cut the way Instagram cuts it');
+  assert.match(fr, /<b title="\$\{esc\(s\[0\]\)\}">/, 'a small slide in All keeps its whole line on hover');
+  assert.match(app, /const FOLD_CLAMP = \[\['\.am-text', 'See more'\], \['\.ig-cap', 'more'\]\]/, 'the renderer\'s clamped words: Meta\'s primary text and Instagram\'s caption');
+  assert.match(fnOf(app, 'jpFoldApply'), /el\.scrollHeight > el\.clientHeight \+ 1/, 'a clamp gets its more only when it really cuts');
+  assert.match(fnOf(app, 'jpFoldApply'), /aria-expanded="\$\{on\}">\$\{on \? 'See less' : `… \$\{lbl\}`\}/);
+});
+
+test('"… more" opens in place, the bar never moves, and the open state lives as long as the piece and version', () => {
+  const app = APP(), css = CSS();
+  for (const f of ['fitAd', 'jpFit']) { const b = fnOf(app, f); assert.match(b, /const refold = jpUnfold\(\); try \{/, `${f} measures folded`); assert.match(b, /\} finally \{ refold\(\); \} \};/, `${f} opens them again`); }
+  { const sf = app.slice(app.indexOf('const stageFrames = '), app.indexOf('const stagePick = ')); assert.match(sf, /^const stageFrames = \(\) => \{ const refold = jpUnfold\(\); try \{/, 'a set is fitted folded'); assert.match(sf, /\} finally \{ refold\(\); \} \};/); }
+  assert.match(app, /const foldAt = `\$\{ch\.id\}\|\$\{viewing\?\.id \|\| ch\.head\}`[^\n]*if \(RX\.more\?\.at !== foldAt\) RX\.more = \{ at: foldAt, open: \{\} \};/, 'a new tab or version starts folded; a repaint keeps it open');
+  assert.match(app, /fitAd\(\); jpFit\(\); jpPortal\(ch\); bfMark\(\); jpFoldApply\(\); if \(foldTop\)/, 'applied after the fits, the stage kept where it was read');
+  assert.match(app, /const fo = e\.target\.closest\('\[data-jp-fold\]'\); if \(fo && RX\.ch && RX\.more\) \{[^\n]*stageFrames\(\); fitAd\(\); jpFit\(\); jpFoldApply\(\);[^\n]*focus\([^\n]*return; \} \}/, 'toggled without a repaint, fitted again, focus kept');
+  assert.match(app, /button:not\(\.jp-wa-btn\)'\)\) return null;/, 'the button is never a picked part'); assert.match(app, /text: foldTxt\(x\)\.trim\(\)\.slice\(0, 300\)/, 'a picked part is the whole words');
+  assert.match(css, /\.jp \.jp-fold:not\(\.is-open\) > \.jp-fold-f,\.jp \.jp-fold\.is-open > \.jp-fold-c\{display:none\}/);
+  assert.match(css, /\.jp \.jp-fold-b:focus-visible\{outline:2px solid/, 'keyboard focus shows');
+  assert.match(css, /\.jp \.as \.is-cut > \.jp-fold-b\{position:absolute;right:var\(--fold-r,12px\);bottom:0;/, 'on the clamped line\'s end, as Meta draws it');
+  assert.match(css, /\.jp \.st-asset\[data-stg\]:not\(\.stg-tighter\) \.as-ig:not\(\.is-story\) \.ig-cap\{display:-webkit-box;[^}]*-webkit-line-clamp:1/, 'a carousel keeps its caption\'s first line on the slide stage');
+});
+
+test('"Before it goes" shows every part whole', () => {
+  const app = APP(), css = CSS(), pp = fnOf(app, 'publishPanel');
+  assert.match(pp, /<dd data-pp-edit="\$\{esc\(x\.k\)\}" title="Click to change" tabindex="0">\$\{esc\(x\.value \|\| ''\)/, 'the value as written, never cut');
+  assert.ok(!/jpCut|cutW|line-clamp/.test(pp)); assert.ok(!/\.pp-r dd\{[^}]*(line-clamp|text-overflow|max-height)/.test(css));
+  assert.match(css, /\.jp \.pp-r dd\{white-space:pre-line\}/, 'bullets read a line each');
+});
+
+// Param, 26 Oct: the stage's tag sat on "View references", and the two reference cards floated at their own widths.
+test('the stage\'s top strip is one row: the tag, then the references; a narrow stage folds them into one pill', () => {
+  const app = APP(), css = CSS();
+  assert.match(app, /\$\{RX\.stage === 'brief' \? '' : `\$\{optTabs\(ch, viewing\)\}\$\{jpStrip\(ch, viewing\)\}`\}\$\{stageH\}/, 'one strip before the piece');
+  assert.ok(!/\$\{refBtnHtml\(ch\)\}\$\{rivalReadHtml\(ch\)\}\$\{optTabs/.test(app), 'never the loose cards');
+  const st = fnOf(app, 'jpStrip');
+  assert.match(st, /<div class="jp-strip">\$\{viewing \? jpOldv\(viewing\) : jpTag\(ch, viewing\)\}/, 'the tag, or the older version\'s pill, first');
+  assert.match(st, /<button type="button" class="jp-refs-t" data-jp-refs aria-expanded="\$\{on\}">/, 'one References pill, a button');
+  assert.match(st, /<div class="jp-refs-in">\$\{refs\}<\/div>/);
+  assert.match(app, /<\/summary><div class="rv-pop">/, 'what we read opens as a popover');
+  assert.match(css, /\.jp \.jp-strip\{position:absolute;top:12px;left:16px;right:16px;[^}]*display:flex;[^}]*height:32px/);
+  assert.match(css, /\.jp \.jp-stage-in\.st-canvas:has\(> \.jp-strip\)\{padding-top:56px\}/, 'the strip\'s height comes out of the piece\'s room, so every fit counts it');
+  assert.match(css, /\.jp \.jp-stage-in:has\(> \.jp-strip\) > \.st-asset\.cs-stage\{padding-top:0!important\}/, 'never the studio\'s 30px on top of it');
+  assert.match(css, /\.jp \.jp-strip \.ref-btn,\.jp \.jp-strip \.rv-read\{[^}]*border-radius:999px/, 'pills of one height');
+  assert.match(css, /@container jp-stage \(max-width:860px\)\{\.jp \.jp-refs-t\{display:inline-flex;/, 'a narrow stage: one References pill');
+  assert.match(css, /\.jp \.jp-refs\.is-open \.jp-refs-in\{position:absolute;top:calc\(100% \+ 8px\);left:0;/, 'its popover');
+  assert.match(css, /@media \(max-width:640px\)\{\.jp \.jp-strip\{position:static;/, 'a phone: in the flow'); assert.match(css, /\.jp \.jp-refs-t\{min-height:44px\}/);
+  assert.match(css, /\.jp \.jp-stage-in:has\(> \.st-asset > \.stg-mode\) > \.jp-strip,[^{]*\{right:180px\}/, 'One | All keeps its corner');
+  assert.match(app, /if \(e\.target\.closest\('\[data-jp-refs\]'\) && RX\.ch\)/); assert.match(app, /if \(RX\.refsOpen && !e\.target\.closest\('\.jp-refs/, 'a tap elsewhere folds it');
 });

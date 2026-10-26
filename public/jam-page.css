@@ -895,9 +895,6 @@
 /* P1-2: the bar's line keeps room to be read; a narrow stage (1024 wide with the panel) puts it on its own row over the buttons
    when the window has the height for it, and it may take two lines before it is cut, the whole of it on hover */
 .jp .jp-stage{container:jp-stage/inline-size}
-@media (min-height:700px){@container jp-stage (max-width:860px){.jp .jp-ship{grid-template-columns:minmax(0,1fr)}
-.jp .jp-ship > .jp-tx{grid-column:1;grid-row:2}
-.jp .jp-ship > .jp-btns{grid-column:1;grid-row:3;justify-content:flex-end}}}
 .jp .jp-tx .jp-l{white-space:normal}
 .jp .jp-ship .ship-one{flex:1 1 auto;width:100%}
 .jp .jp-ship .ship-one > span{min-width:8em;white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:1.35}
@@ -1024,20 +1021,11 @@
 .jp .jp-ship .ship-fixes ol{position:absolute;left:16px;right:auto;bottom:calc(100% + 8px);z-index:30;width:min(460px,calc(100% - 32px));max-height:min(320px,55vh);overflow:auto;box-sizing:border-box;font-weight:400;color:var(--fg);white-space:normal}
 /* N-P1-2: the older-version bar is the prototype's bar, never the top bar's 34px pill (brew.css .viewing had it 34px tall, so Back
    to vN and Use vN hung under the window); its words sit in the steps' row, which it has none of */
-.jp .jp-ship.viewing{height:auto;gap:0;border-radius:0;box-shadow:none;padding:12px 16px 16px;background:color-mix(in oklab,var(--stage) 70%,transparent)}
+.jp .jp-ship.viewing{height:auto;gap:0;border-radius:0;box-shadow:none;padding:9px 16px 10px;background:color-mix(in oklab,var(--stage) 70%,transparent)}
 .jp .jp-ship:not(:has(> .jp-steps)) > .jp-tx,.jp .jp-ship:not(:has(> .jp-steps)) > .jp-btns{grid-row:1}
 .jp .jp-ship.viewing > .jp-tx{flex-direction:column;align-items:flex-start;gap:2px}
 .jp .jp-ship.viewing > .jp-tx b{color:var(--fg);font-weight:600}
 .jp .jp-ship.viewing > .jp-tx > span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-3)}
-/* N-P2-5: a narrow stage (1024 wide with the panel) puts the line on its own row over the buttons at every window height, not only
-   700px and up: beside Redo and a priced primary it had 90px, so the line was gone and "+N more" was cut ("+1 mc"). A short window
-   keeps it to one line; the whole of it is on hover and a tap away */
-@container jp-stage (max-width:860px){.jp .jp-ship{grid-template-columns:minmax(0,1fr)}
-.jp .jp-ship > .jp-tx{grid-column:1;grid-row:2}
-.jp .jp-ship > .jp-btns{grid-column:1;grid-row:3;justify-content:flex-end}
-.jp .jp-ship:not(:has(> .jp-steps)) > .jp-btns{grid-row:2}}
-@media (max-height:699px){@container jp-stage (max-width:860px){.jp .jp-ship .ship-one > span{-webkit-line-clamp:1}
-.jp .jp-steps li{font-size:0;gap:0}}} /* a short window pays for the line's row with the steps' words: their bars still say where it is */
 .jp .jp-ship .ship-one > span{flex:0 1 auto;min-width:3em}
 .jp .jp-ship .ship-one > .linkbtn,.jp .jp-ship .ship-one > .ship-fixes{flex:none;white-space:nowrap}
 /* N-P1-2: "You're looking at vN" takes the tag's corner (the tag is off while you look back), never the One | All corner */
@@ -1073,3 +1061,82 @@
 .jp .jp-ship > .jp-btns > *{min-width:auto}
 .jp .jp-ship .ship-go{flex:1 1 auto;overflow:visible}
 .jp .jp-ship .ship-redo,.jp .jp-ship .btn-ghost{flex:none;overflow:visible}}
+
+/* ---------- the bar as one row (Param, 26 Oct: "the bottom section takes up too much vertical space"). Draft · Make · Send is a small
+   inline indicator beside the line, the buttons on the right: 64px where it was two rows and 105px, and the stage gets the rest
+   (fitAd and jpFit measure the stage's own room, so every piece grows with it). Every state keeps its classes: Fix it and "+N more",
+   prices, Making…, Back/Use, guest, red/amber/green ---------- */
+.jp .jp-ship{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;column-gap:14px;row-gap:8px;min-height:64px;padding:9px 16px 10px;box-sizing:border-box}
+.jp .jp-ship > .jp-steps{flex:none;display:flex;align-items:center;gap:10px;padding-right:14px;border-right:1px solid var(--line);height:24px}
+.jp .jp-ship > .jp-steps li{flex:none;flex-direction:row;align-items:center;gap:5px;font-size:12px;line-height:1;white-space:nowrap}
+.jp .jp-ship > .jp-steps li::before{width:12px;height:3px;flex:none}
+.jp .jp-ship > .jp-tx{flex:1 1 0;min-width:0}
+.jp .jp-ship > .jp-btns{flex:none;margin-left:auto;justify-content:flex-end}
+/* the line takes two lines at most beside the buttons; the whole of it is on hover and behind the (i) */
+.jp .jp-tx .jp-l:not(:has(.ship-one)){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;line-height:1.35}
+/* a narrow stage names only the step it is at (the others are their bars); under ~700px the buttons drop to their own row, and only
+   when the line would have under 200px beside them (1024x620 keeps one row for a single button) */
+@container jp-stage (max-width:860px){.jp .jp-ship > .jp-steps li:not(.is-on){font-size:0;gap:0}
+.jp .jp-ship > .jp-steps{gap:6px;padding-right:12px}}
+@container jp-stage (max-width:700px){.jp .jp-ship{flex-wrap:wrap}
+.jp .jp-ship > .jp-tx{flex:1 1 200px}}
+@media (max-width:640px){.jp .jp-ship > .jp-btns{flex:1 1 100%;margin-left:0}} /* a phone's buttons take their whole row, 44px tall */
+@media (max-width:640px){.jp .jp-ship .jp-btns > details > summary{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}} /* ⋯ is a 44px target too */
+
+/* ---------- "… more", the platform's own (Param, 26 Oct: a Meta ad's caption could never be read whole). A cut text keeps both halves in
+   the DOM (jpMore) or is the renderer's line-clamp (jpFoldApply marks it is-cut); the button opens it in place, See less folds it. The fits
+   measure folded, so an open text scrolls the stage and never moves the bar ---------- */
+.jp .jp-fold:not(.is-open) > .jp-fold-f,.jp .jp-fold.is-open > .jp-fold-c{display:none}
+.jp .jp-fold-b{display:inline;width:auto;min-width:0;height:auto;min-height:0;margin:0;padding:0;border:0;border-radius:3px;background:none;box-shadow:none;font:inherit;font-weight:600;color:var(--fg-3);text-shadow:inherit;cursor:pointer;white-space:nowrap;vertical-align:baseline}
+.jp .jp-fold-b:hover{color:var(--fg);text-decoration:underline;text-underline-offset:2px}
+.jp .jp-fold-b:focus-visible{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
+.jp .jp-fold.is-open > .jp-fold-b,.jp .is-unfolded > .jp-fold-b{margin-left:.35em}
+.jp .jp-cap .jp-fold-b{color:inherit;opacity:.85}
+.jp .jp-cap:has(.jp-fold.is-open){max-height:78%;overflow:auto}
+/* a clamped line: the more sits on its last line's end, over a fade of the card's own colour, as Meta and Instagram draw it */
+.jp .as:not(.is-story) .is-cut{position:relative}
+.jp .as .is-cut > .jp-fold-b{position:absolute;right:var(--fold-r,12px);bottom:0;padding-left:2em;background:linear-gradient(90deg,transparent,var(--card) 1.8em);line-height:inherit}
+.jp .as .ig-cap.is-cut{--fold-r:0px}
+.jp .as-meta.is-story .am-text.is-cut > .jp-fold-b{right:0;color:#fff;background:linear-gradient(90deg,transparent,rgba(0,0,0,.6) 1.8em)}
+/* a carousel on the slide stage keeps its caption's first line (it was hidden, so the brand's caption was never on the stage) */
+.jp .st-asset[data-stg]:not(.stg-tighter) .as-ig:not(.is-story) .ig-cap{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;margin:8px 12px 0;font-size:13.5px;line-height:19px}
+
+/* ---------- the stage's top strip, one row (Param, 26 Oct: the tag sat on "View references" and the two reference cards floated at their
+   own widths): the tag or the older version's pill, then the references as pills. The stage keeps the strip's 32px over the piece
+   (padding-top), so fitAd, jpFit and stageFrames already leave it out of the piece's room; a narrow stage folds the references into one
+   References pill with a popover, and a phone puts the strip in the flow ---------- */
+.jp .jp-strip{position:absolute;top:12px;left:16px;right:16px;z-index:4;display:flex;align-items:center;gap:8px;min-width:0;height:32px;pointer-events:none}
+.jp .jp-strip > *{pointer-events:auto}
+.jp .jp-strip > .jp-tag,.jp .jp-strip > .jp-oldv{position:static;flex:none;margin:0}
+.jp .jp-stage-in.st-canvas:has(> .jp-strip){padding-top:56px}
+.jp .jp-stage-in:has(> .jp-strip) > .st-asset.cs-stage{padding-top:0!important} /* the strip is the corner the studio frame used to leave 30px for */
+.jp .jp-stage-in:has(> .st-asset > .stg-mode) > .jp-strip,.jp .jp-stage-in:has(> .st-asset.sv-tight > .fb-alt) > .jp-strip{right:180px} /* One | All and the film link keep the top-right corner */
+.jp .jp-refs{position:relative;display:flex;min-width:0}
+.jp .jp-refs-t{display:none}
+.jp .jp-refs-in{display:flex;align-items:center;gap:8px;min-width:0}
+.jp .jp-strip .ref-btn,.jp .jp-strip .rv-read{flex:0 1 auto;min-width:0;width:auto;max-width:300px;margin:0;border:0;border-radius:999px;background:var(--card);box-shadow:var(--sh-float);color:var(--fg)}
+.jp .jp-strip .ref-btn{height:32px;padding:0 10px 0 4px;gap:8px;font-size:12.5px}
+.jp .jp-strip .ref-btn img,.jp .jp-strip .ref-btn .ref-ic,.jp .jp-strip .rv-read summary img{width:24px;height:24px;border-radius:50%}
+.jp .jp-strip .ref-btn > span:not(.ref-ic),.jp .jp-strip .rv-read summary span{flex-direction:row;align-items:baseline;gap:6px;white-space:nowrap;min-width:0;overflow:hidden}
+.jp .jp-strip .ref-btn b,.jp .jp-strip .rv-read summary b{flex:none;font-size:12.5px;line-height:1;font-weight:600}
+.jp .jp-strip .ref-btn small,.jp .jp-strip .rv-read summary small{font-size:12px;line-height:1;min-width:0}
+.jp .jp-strip .rv-read{position:static} /* its read opens from the strip's start, never past the stage's edge */
+.jp .jp-strip .rv-read summary{height:32px;padding:0 12px 0 4px;gap:8px}
+.jp .jp-strip .rv-read:not(:has(summary img)) summary{padding-left:12px}
+.jp .jp-strip .rv-read > .rv-pop{position:absolute;top:calc(100% + 8px);left:0;z-index:6;width:min(440px,calc(100cqw - 32px));max-height:min(60vh,440px);overflow:auto;padding:12px 0 2px;border-radius:14px;background:var(--card);box-shadow:var(--sh-float),inset 0 0 0 1px var(--line)}
+/* a narrow stage (1024 with the panel): one References pill, the two cards in its popover */
+@container jp-stage (max-width:860px){.jp .jp-refs-t{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:0;border-radius:999px;background:var(--card);box-shadow:var(--sh-float);font:500 12.5px/1 var(--font);color:var(--fg);cursor:pointer}
+.jp .jp-refs-t svg:last-child{transition:transform .15s}
+.jp .jp-refs.is-open .jp-refs-t svg:last-child{transform:rotate(180deg)}
+.jp .jp-refs{position:static} /* the popover hangs from the strip's start, inside the stage */
+.jp .jp-refs-in{display:none}
+.jp .jp-refs.is-open .jp-refs-in{position:absolute;top:calc(100% + 8px);left:0;z-index:6;display:flex;flex-direction:column;align-items:stretch;gap:8px;width:min(380px,calc(100cqw - 32px));max-height:min(60vh,420px);overflow:auto;padding:8px;border-radius:14px;background:var(--card);box-shadow:var(--sh-float),inset 0 0 0 1px var(--line)}
+.jp .jp-refs-in .ref-btn,.jp .jp-refs-in .rv-read{max-width:none;width:100%;border-radius:10px;box-shadow:none;background:var(--surface)}
+.jp .jp-refs-in .ref-btn{height:auto;min-height:44px;padding:6px 10px 6px 6px}
+.jp .jp-refs-in .rv-read summary{height:auto;min-height:44px;padding:6px 10px 6px 6px}
+.jp .jp-refs-in .rv-read > .rv-pop{position:static;width:auto;max-height:none;box-shadow:none;background:none;padding:4px 0 2px}}
+/* a phone: the strip is the stage's first row, in the flow, and its pills are 44px targets */
+@media (max-width:640px){.jp .jp-strip{position:static;align-self:stretch;flex:none;height:auto;min-height:32px}
+.jp .jp-stage-in.st-canvas:has(> .jp-strip){padding-top:16px}
+.jp .jp-refs-t{min-height:44px}}
+.jp .pp-r dd{white-space:pre-line} /* a list part (bullets) reads a line each, every word of it (26 Oct) */
