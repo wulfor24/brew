@@ -5280,7 +5280,7 @@
     if (act === 'fix-one') { const L0 = lookOf(ch), x = L0[+(btn?.dataset?.fixOne || 0)]; if (!x) return; RX.tab = 'iterate'; const part = x.part ? (ch.publish?.parts || []).find((p) => p.k === x.part) : null;
       const what = part ? `the ${String(part.label).toLowerCase()}` : 'this'; RX.fixing = true;
       /* words about another product (the check's own ask): the server rewrites them for the jam's product, text only (26 Oct, QV P0-1) */
-      await stSay(`Fix: ${x.t}`, 'iterate', { message: x.ask || `Fix ${what} before it goes: ${x.t}.${part?.value ? ` It reads now: “${String(part.value).slice(0, 300)}”.` : ''} Change only ${what}; keep every other word and setting as it is.`, fix: true, show: `Fix: ${x.t}`, ...(x.k ? { check: x.k } : {}) }); RX.fixing = false; return; }
+      await stSay(`Fix: ${x.t}`, 'iterate', { message: x.ask || `Fix ${what} before it goes: ${x.t}.${part?.value ? ` It reads now: “${String(part.value).slice(0, 300)}”.` : ''} Change only ${what}; keep every other word and setting as it is.`, fix: true, show: `Fix: ${x.t}`, ...(x.k ? { check: x.k } : {}), ...(x.part ? { part: x.part } : {}) }); RX.fixing = false; return; } /* the part travels: the server re-counts it after the rewrite (27 Oct) */
     if (act === 'fix') {
       const m = `Fix before it ships: ${(ch.fixes || []).join('; ')}`; RX.fixing = true; RX.tab = 'iterate';
       await stSay(m, 'iterate', { message: `${m}. Keep it about the same product and the same kind of change. Change nothing else.`, fix: true, show: m }); RX.fixing = false;

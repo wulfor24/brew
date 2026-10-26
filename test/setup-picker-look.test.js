@@ -27,3 +27,9 @@ test('claims are approvable where they are flagged, and a failed make carries th
   assert.match(rt, /const approveClaims = async \(t, claims\)/); assert.match(sd, /err\.invented = check\.invented/);
   assert.doesNotMatch(rm, /Nothing was charged for what wasn’t made/, 'the cost of the tries is said as it was');
 });
+
+test('Fix it on a part over its length re-counts it and asks again with the exact number; one that still does not fit is said', () => {
+  const app = read('public/app.js'), rm = read('remix.js');
+  assert.match(app, /\.\.\.\(x\.part \? \{ part: x\.part \} : \{\}\) \}\); RX\.fixing = false; return; \}/);
+  assert.match(rm, /for \(let i = 0; b\.fix && i < 3 && over\(partNow\(\)\)/); assert.match(rm, /characters now: it fits\./); assert.match(rm, /is still \$\{pp\.n\} characters \(the limit is \$\{lim\}\)/);
+});

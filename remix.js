@@ -1980,6 +1980,13 @@ export function createRemix(o) {
       // fixing: re-check, and if anything is still wrong, try again with the exact problems (twice at most)
       for (let i = 0; b.fix && i < 2 && ch.fixes?.length && !isMock() && !tok.stop; i++) await iterate(t, ch, `Still not fixed: ${ch.fixes.join('; ')}. Fix exactly these and change nothing else.`, { quiet: true, cancel: tok });
       if (b.fix && ch.fixes?.length) ch.thread.push({ from: 'ai', text: `I couldn’t fix everything: ${ch.fixes.join('; ')}. Edit it in Details, or tell me how you want it.`, at: now(t) });
+      /* a part over its length (Meta's 125 before "…more", a 40-character headline): the rewrite is counted, and asked again with the
+         exact number until it fits; one that still doesn't is said plainly, never left looking fixed (27 Oct, Param: "even when I click
+         fix it - this doesn't go away") */
+      const partNow = () => (b.part ? (publishFor(t, ch)?.parts || []).find((x) => x.k === b.part) : null), over = (pp) => !!pp && (!pp.ok || (pp.warn || []).length > 0) && !!(pp.max || pp.soft);
+      for (let i = 0; b.fix && i < 3 && over(partNow()) && !isMock() && !tok.stop; i++) { const pp = partNow(), lim = pp.max && pp.n > pp.max ? pp.max : pp.soft || pp.max;
+        await iterate(t, ch, `The ${String(pp.label).toLowerCase()} is ${pp.n} characters. Rewrite it to ${Math.max(20, lim - 10)}–${lim} characters (count every character, spaces included): keep the hook, the product and the offer, drop the rest. Change nothing else.`, { quiet: true, cancel: tok }); }
+      { const pp = partNow(); if (b.fix && b.part && pp && (pp.max || pp.soft)) { const fits = !over(pp), lim = pp.max && pp.n > pp.max ? pp.max : pp.soft || pp.max; ch.thread.push({ from: 'ai', text: fits ? `The ${String(pp.label).toLowerCase()} is ${pp.n} characters now: it fits.` : `The ${String(pp.label).toLowerCase()} is still ${pp.n} characters (the limit is ${lim}). Edit it in Before it goes, or tell me what to drop.`, at: now(t) }); } }
       const left = b.fix && /claim|price/i.test(`${msg} ${show || ''}`) ? claimsLeft() : null;
       if (left) { const ph = left.phrases?.length ? left.phrases : phrases;
         const q = ph.length ? `“${[...new Set(ph)].slice(0, 2).join('”, “')}”` : 'The claim', where = pic?.drawn?.length ? ` It’s drawn into the picture${pic.drawn.length > 1 || (headOf(t, ch)?.studio?.slides || []).length > 1 ? ` of slide ${pic.drawn.join(' and ')}` : ''} itself, so changing the words can’t take it off.` : ' It’s in the picture itself, so changing the words can’t take it off.';
