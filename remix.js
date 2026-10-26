@@ -32,7 +32,7 @@ import { moveNo } from './value.js';
 import { budgetMatch } from './budget-match.js'; // a budget draft against its card and the account
 import { healOps, opsCheck } from './ops-rows.js'; // an ad account change names the account's real campaigns
 import { safeFetch, stripTags, UA as READ_UA } from './reader/util.js'; // the product page as it reads today, before copy is written
-import { claimFlags, claimCheck, copyFlags, sourceText, CLAIMS_RULE, COPY_RULE, checkCopyIn, writerSlips } from './claims.js'; // invented codes, guarantees, timed results and copy that reads wrong are flagged before shipping
+import { claimFlags, claimCheck, copyFlags, quoteFlags, sourceText, CLAIMS_RULE, COPY_RULE, checkCopyIn, writerSlips } from './claims.js'; // invented codes, guarantees, timed results and copy that reads wrong are flagged before shipping
 import { dejargon } from './plain.js'; // jam names in plain words, like the cards
 import { budgetWhy } from './budget.js'; // v2 words/takes: a refused spend is said with its real reason, never a silent fallback
 import { createFamilies } from './measure-families.js';
@@ -41,7 +41,8 @@ import { fitsRatio } from './vertex-media.js'; // a reused first frame must alre
 import { addV, versionsOf, versionById, signal, answered, autoCheck, outcome, ruleChecks, promptBlock, orderIntents, pickScore, takeNew, trustOf, summary, L, DETECTORS } from './learn.js';
 import { PRODUCT_NAME } from './product-name.js'; // the product's public name, where copy has to name it
 import { planActions, dlOf, dlAction, dlMenu, dlSpec } from './deliverables.js';
-import { layoutOf, setupLine } from './jam-shape.js'; // the jam page's layout and Brew's one line, for every piece // every deliverable a card can be made as, under "+"
+import { healWords, symOf, datesAhead, docTitle, docLede } from './jam-words.js'; // the piece's words as the shopper reads them (26 Oct)
+import { layoutOf, setupLine, kindOf } from './jam-shape.js'; // the jam page's layout and Brew's one line, for every piece // every deliverable a card can be made as, under "+"
 import { moveLabel } from './move-label.js'; // "Weekly move 11", never "Move 1011"
 
 /* ---------- what each agent can change, live ---------- */
@@ -525,8 +526,9 @@ export function createRemix(o) {
   /* the card's amounts (₹/$ in its title, body and rows) against the draft's: a budget move whose draft moves another amount,
      or between campaigns the card doesn't name, fails until the draft says what the card says */
   /* budgetMatch (budget-match.js): a budget draft moves what its card says, between real campaigns */
+  const PLAIN_CK = { 'Claims keep “up to” and the window': 'A result says “up to” and how long it takes', 'Every ₹ and % is in the fact sheet': 'Every price and % is one your store states', 'No internal design notes': 'No notes meant for the team', 'Title prices match the text': 'Prices in the title match the text' };
   const evaluate = (t, ch) => {
-    const card = t.cards.get(ch.cardId) || {}; const act = actOf(ch.action); const r = recipeFor(card);
+    healText(ch); const card = t.cards.get(ch.cardId) || {}; const act = actOf(ch.action); const r = recipeFor(card);
     if (healOps(t, ch, card)) sync(t, ch); /* rows that name a product or a made-up ad set become the account's own campaigns, on every read */
     const pubT = ch.pkg ? publicText(ch.family, ch.action, ch.pkg) : [];
     const copy = { ...card, type: ch.family === 'post' ? 'post' : 'idea', research: null, title: ch.after.title, sub: ch.after.sub, rows: [], detail: { why: [...(ch.after.bullets || []), ...((ch.after.chat || []).map((x) => x[1])), ch.after.a || '', ...pubT].filter(Boolean) } };
@@ -540,7 +542,7 @@ export function createRemix(o) {
     const qaN = qa.map((x) => { if (x.k !== 'No banned words' || x.ok) return x; const ws = bannedIn([copy.title, copy.sub, ...(copy.detail?.why || [])].join(' '));
       return { ...x, k: ws.length ? `Uses ${ws.map((w) => `“${w}”`).join(', ')}, ${ws.length > 1 ? 'claims' : 'a claim'} ads in this category can’t make (say what it does instead)` : 'Uses a claim ads in this category can’t make' }; });
     /* "Names a number" is a feed-card rule: a reply, a decision or a message needs none, so the jam doesn't list it (QA J-17) */
-    const checks = qaN.filter((x) => x.k !== 'Names a number').map((x) => ({ ...x, fix: true }));
+    const checks = qaN.filter((x) => x.k !== 'Names a number').map((x) => ({ ...x, k: PLAIN_CK[x.k] || x.k, fix: true })); /* the checks in plain words where the team reads them (QV P2-10, 26 Oct) */
     const trust = trustOf(t, act.agent);
     if (ch.pkg) {
       const miss = missing(ch.family, ch.action, ch.pkg).map((l) => (isAdClip(ch) ? ({ Post: 'Ad text', Title: 'Headline' }[l] || l) : l)); checks.unshift({ k: miss.length ? `Missing: ${miss.join(', ')}` : `${isAdClip(ch) ? 'Meta video ad' : FAMILY_NAME[ch.family]} package complete`, ok: !miss.length, pkg: true, fix: true });
@@ -555,6 +557,8 @@ export function createRemix(o) {
     const shopperText = [ch.after.title, ch.after.sub, ...pubT.filter((x) => !capsBtn.has(x)), ...lines(ch.pkg?.script, 'line'), ...lines(ch.pkg?.draft?.script, 'line'), ...lines(ch.pkg?.draft?.slides, 'text'), ...lines(ch.pkg?.slides, 'text'), ...lines([ch.pkg?.draft?.text, ch.pkg?.draft?.copy])].filter(Boolean).join('\n');
     const src = brandSource(t, card), cf = claimFlags(shopperText, src, { allowNewCode: /discount_offer$/.test(ch.action || '') });
     checks.push({ k: claimCheck(cf), ok: !cf.length, fix: true, claims: cf.map((f) => f.quote) });
+    /* a customer's words in quotes are a real review of the brand's, never one the writer made up (QV P1-21, 26 Oct). A community reply quotes the thread, so it is left out */
+    if (ch.family !== 'post' && ch.family !== 'outreach') { const qf = quoteFlags(shopperText, src); if (qf.length) checks.push({ k: `A review none of your customers wrote: “${qf[0]}”. Quote a real review, or take it out`, ok: false, fix: true, quote: true }); }
     const lf = copyFlags(shopperText, { source: src, names: [BN(), o.SEED?.brand?.name, ...(catalogOf(t) || []).map((x) => x?.t)] }); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
     /* the product it sells is in stock today (1.11): an ad or message for a sold-out product waits, unless the card is about the restock */
     { const cat = catalogOf(t) || []; let pr = null; try { pr = jamProduct(t, ch, card); } catch {} /* the product the jam actually makes (its in-stock twin when the card's sold out), the one Studio uses */
@@ -807,10 +811,30 @@ export function createRemix(o) {
     ch.fromCard = false; };
   /* the jam page's header, line and frame (26 Oct redesign): the product the piece is about, its layout, Brew's one line */
   const jamShape = (t, ch, c) => { let pr = null; const row = ch.dl ? dlOf(ch.dl) : null, about = !row || row.action || /\bproducts?\b|\bpack ?shots?\b|\bpacks?\b|bottle|\bsku|\bprices?\b|\bcombo|listing|unbox|\bdemo\b|try-?on|\bsamples?\b/i.test(`${row.name} ${row.what}`); /* a planning piece shows a product only when it is about one (highlight covers named a 15 ml styling stick: 26 Oct) */
-    if (about) try { const x = jamProduct(t, ch, c || {}); if (x?.t) pr = { name: x.t, price: x.priceLabel || (x.price != null ? String(x.price) : null), img: x.img || null, out: !!x.out }; } catch {}
-    let line = ''; try { line = setupLine(ch, pr); } catch { line = ''; } return { product: pr, layout: layoutOf(ch), setupLine: line || `${ch.actionLabel || 'The piece'}, from the card.` }; };
+    const L = layoutOf(ch), p = ch.pkg || {};
+    if (about && L !== 'acct') try { const x = jamProduct(t, ch, c || {}); if (x?.t) pr = { name: x.t, price: x.priceLabel || (x.price != null ? String(x.price) : null), img: x.img || null, out: !!x.out }; } catch {}
+    /* an account change is about the products its rows name, never the card's lead product or its in-stock twin (26 Oct: the header
+       said "Neo Cat Sneakers" over a table pausing "Voltra Sneakers") */
+    if (L === 'acct') { const cat = catalogOf(t) || [], hits = (p.items || []).map((r) => { try { return matchProduct(String(r?.name || ''), cat, { brand: BN(), byNameOnly: true }); } catch { return null; } }).filter(Boolean), one = [...new Map(hits.map((x) => [x.t, x])).values()];
+      if (one.length) pr = { name: one.length > 1 ? `${one[0].t} and ${one.length - 1} more` : one[0].t, price: one.length > 1 ? null : one[0].priceLabel || null, img: one[0].img || null, out: !!one[0].out }; }
+    /* a checklist shows a product only when its own words name it (26 Oct: a UTM naming plan sat under "Nutrova Creatine Monohydrate") */
+    if (L === 'check' && pr && !ch.dl) { const txt = JSON.stringify([p.what, p.title, p.decision, p.why, p.steps, p.changes, p.verify]).toLowerCase(), bn = String(BN()).toLowerCase(), k0 = String(pr.name).split(/\s+[–—|-]\s+/)[0].toLowerCase(), key = k0.startsWith(`${bn} `) ? k0.slice(bn.length + 1) : k0;
+      if (!txt.includes(key) && !key.split(/\s+/).filter((w) => w.length > 3).every((w) => txt.includes(w))) pr = null; }
+    let line = ''; try { line = setupLine(ch, pr); } catch { line = ''; }
+    /* a checklist written as markdown: its heading is the title and the next paragraph the lede, never the whole text twice (26 Oct) */
+    const doc = L === 'check' && p.what && !p.title ? { docTitle: docTitle(p.what), docLede: docLede(p.what) } : {};
+    let kind = ''; try { kind = kindOf({ ...ch, layout: L }); } catch { kind = ''; } /* the piece's name for the page and its tabs (QV P1-4) */
+    return { product: pr, layout: L, setupLine: line || `${ch.actionLabel || 'The piece'}, from the card.`, ...(kind ? { kind } : {}), ...doc }; };
+  /* the piece's words healed on every read (jam-words.js): a lost ₹ sign, paise, a "None" beat, a bullet split at its semicolon,
+     one invented order value in a flow. Saved jams heal here; the writer's new words pass the same rules in clean() (26 Oct) */
+  const healText = (ch) => { if (!ch?.pkg) return ch; const hw = healWords(ch.family, ch.action, ch.pkg, { sym: symOf(B()?.currency || B()?.config?.currency) }); if (hw !== ch.pkg) ch.pkg = hw; return ch; };
+  /* dates as they read: a step "by 2026-10-24" opened on the 26th moves ahead and reads "Wed 28 Oct". Only what is shown: the
+     saved plan keeps its own dates, so it moves ahead the same way on every later read (26 Oct) */
+  const DATED = ['steps', 'changes', 'what', 'verify', 'deadline', 'decision', 'checkAt', 'why'];
+  const datedPkg = (ch) => { const p = ch.pkg; if (!p || !/\b20\d\d-\d\d-\d\d\b/.test(JSON.stringify(DATED.map((k) => p[k])))) return p; const o2 = { now: Date.now(), from: ch.createdAt || null }, out = { ...p };
+    for (const k of DATED) out[k] = Array.isArray(p[k]) ? p[k].map((x) => (typeof x === 'string' ? datesAhead(x, o2) : x)) : typeof p[k] === 'string' ? datesAhead(p[k], o2) : p[k]; return out; };
   const pubChange = (t, ch) => {
-    ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
+    ensurePkg(t, ch); healText(ch); const tr = trustOf(t, ch.agent);
     healAdded(t, ch);
     if (ch.v0 !== 'draft' && !ch.batchKey && !ch.added && !ch.dl && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch); /* 'none' tries again while the jam is untouched: the card's draft may land after the jam opened */ /* never on a deliverable added under "+": it is its own piece */
     if (ch.plan && o.planOf && !ch.added && !ch.dl) { const fresh = o.planOf(t, t.cards.get(ch.cardId) || {}); if (fresh && ch.plan.v !== fresh.v) ch.plan = fresh; } /* plans saved before one-always rebuild */
@@ -824,14 +848,14 @@ export function createRemix(o) {
     /* replies to reviews are review replies in the reviews app: never a YouTube frame or "Reply in the comments on YouTube comment reply" (25 Oct) */
     if (ch.target?.object === 'Review reply') { if (ch.actionLabel !== 'Reply to reviews') ch.actionLabel = 'Reply to reviews'; if (ch.pkg && !/review/i.test(ch.pkg.platform || '')) ch.pkg = { ...ch.pkg, platform: 'Review reply' };
       if (Array.isArray(ch.pkg?.where) && ch.pkg.where.some((w) => /youtube|tiktok|instagram comments?/i.test(w?.name || ''))) ch.pkg = { ...ch.pkg, where: ch.pkg.where.map((w) => (/youtube|tiktok|instagram comments?/i.test(w?.name || '') ? { ...w, name: ch.target.name, url: null } : w)) }; }
-    const { impact: _imp, packMeta: _pk, ...pub } = ch; /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
+    const { impact: _imp, packMeta: _pk, ...pub } = ch; if (pub.pkg) pub.pkg = datedPkg(ch); /* projections can hold the brand's private account rows: they go out only through /impact, per caller */
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
     /* the jam's own name in plain words ("syncing our Shopify products.json stock levels", final QA pass 19 Oct); the package itself is untouched */
     if (pub.after?.title && dejargon(pub.after.title) !== pub.after.title) pub.after = { ...pub.after, title: dejargon(pub.after.title) };
     return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), ...(isReferenceCard(card0) && o.refSummary ? { ref: o.refSummary(t, card0) } : {}), /* View references: the ad or video it remakes */ thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, studio: studioOf(t, ch), /* made by Brew Studio on the stage */ filmOk: (() => { const sid = studioOf(t, ch); if (!sid || !card0 || isFilm(ch)) return false; try { return j2Recipe(sid)?.kind === 'video' && sid !== 'gif'; } catch { return false; } })(), /* a video jam offers "Brief a film instead" */ film: isFilm(ch) ? (() => { const b = boardOf(ch, { card: card0 || {} }); return b && { ...b, img: cardPhoto(t, card0 || {}) }; })() : null, /* the founder storyboard */ catalogPics: catalogPics(t, ch), publish: publishFor(t, ch), /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || (ch.added || ch.dl ? null : o.planOf?.(t, t.cards.get(ch.cardId))) || null, ...jamShape(t, ch, card0), copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
       familyName: ch.action === 'creative.short_video' && ch.target?.conn === 'meta' ? 'Meta video ad' : FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).filter((f) => !isAdClip(ch) || !['postAt', 'hashtags', 'where'].includes(f.k)).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label: isAdClip(ch) ? ({ copy: 'Ad text', title: 'Headline', platform: 'Placement' }[k] || label) : label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
-      options: opts /* the cuts as tabs: pick one (Param, 19 Oct) */, head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
+      options: opts /* the cuts as tabs: pick one (Param, 19 Oct) */, head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label && !(/^fix\b/i.test(v.label) && /before it (?:goes|ships)/i.test(v.reason || '')) ? v.label : versionLabel(v.reason, { first: v.n === 1 }) /* a Fix it version saved as "Fix this before it" reads "Fixed a check" (26 Oct) */, at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
         ...(v.drawing ? { drawing: true } : {}), ...(v.drawError ? { drawError: v.drawError } : {}), ...(v.passed ? { passed: true } : {}), ...(v.asset ? { asset: v.asset } : {}), ...(v.studio ? { studio: v.studio } : {}) /* v2 takes: a picture still being made, why it wasn't, a version passed over, the asset that landed */ })), live: ch.liveVersionId || null };
   };
 
@@ -1833,7 +1857,7 @@ export function createRemix(o) {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); ch.myChecks ||= [];
     if (b.id) { const m = ch.myChecks.find((x) => x.id === b.id); if (!m) return { error: 'no check' }; if (b.remove) ch.myChecks = ch.myChecks.filter((x) => x !== m); else { m.done = !!b.done; m.doneAt = now(t); } }
     else { const text = clean(String(b.text || '')).slice(0, 160); if (!text) return { error: 'empty' }; ch.myChecks.push({ id: uid('mc'), text, done: false, always: !!b.always, at: now(t) });
-      if (b.always) { const l = L(t); l.myChecks ||= {}; const list = (l.myChecks[ch.family] ||= []); if (!list.some((x) => x.text === text)) list.push({ text, at: now(t) }); l.newRules.push({ id: uid('mc'), text: `Your check on every ${FAMILY_NAME[ch.family].toLowerCase()}: ${text}`, at: now(t) }); } }
+      if (b.always) { const l = L(t); l.myChecks ||= {}; const list = (l.myChecks[ch.family] ||= []); if (!list.some((x) => x.text === text)) list.push({ text, at: now(t) }); l.newRules.push({ id: uid('mc'), text: `Your check on every ${/^(?:Instagram|Meta|WhatsApp|LinkedIn|Google|Amazon|Reddit|Pinterest|YouTube|TikTok|Facebook|Shopify|SMS)\b/.test(FAMILY_NAME[ch.family]) ? FAMILY_NAME[ch.family] : FAMILY_NAME[ch.family].toLowerCase()}: ${text}`, at: now(t) }); } }
     sync(t, ch); return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
   /* the jam's set-up, one place for every part of the page: a product or a size picked in the set-up, on the stage or said in the

@@ -1,6 +1,7 @@
 import { B, BN, BH, CTRY } from './brand-ctx.js';
 import { matchProduct, sceneOf } from './product-match.js';
 import { planFamilies, planSpecs, planChips, planMock, dlOfKey } from './deliverables.js';
+import { splitList, joinList, noneCell } from './jam-words.js'; // lists, cells and money as the shopper reads them (26 Oct)
 // Remix studio: what each kind of change is, as a commission-ready package.
 // Every action belongs to a family. A family says which fields the channel needs (FIELDS), which knobs you can turn
 // on it (KNOBS), how it renders as a card-sized "after" (afterFromPkg), and what counts as complete (missing).
@@ -136,7 +137,7 @@ export const FIELDS = {
     { k: 'segment', label: 'Who gets it', type: 'text', req: true },
     { k: 'exclusions', label: 'Left out', type: 'text' },
     { k: 'subject', label: 'Subject line', type: 'text', pub: true },
-    { k: 'message', label: 'Message', type: 'long', pub: true, req: true, chat: true, hint: 'The message as sent, with {first_name} style variables' },
+    { k: 'message', label: 'Message', type: 'long', pub: true, req: true, chat: true, hint: 'The message as sent, with {first_name} style variables. It goes to everyone the trigger catches: never one customer\'s name, order value or cart total written in (say "your order", or a variable like {cart_total})' },
     { k: 'buttons', label: 'Buttons', type: 'list', pub: true },
     { k: 'code', label: 'Code', type: 'text', only: ['discount_offer'] },
     { k: 'expiry', label: 'Expires', type: 'text', only: ['discount_offer'] }
@@ -396,8 +397,8 @@ export const fromKV = (family, action, kv = []) => {
   const fs = fieldsFor(family, action); const out = {};
   (Array.isArray(kv) ? kv : []).forEach(({ k, v }) => {
     const f = fs.find((x) => x.k === k); if (!f || v == null) return; const val = String(v).trim(); if (!val) return;
-    if (f.type === 'list') out[k] = val.split(/\n|\s*;\s*/).map((x) => x.replace(LIST_MARK, '').trim()).filter(Boolean);
-    else if (f.type === 'rows') out[k] = val.split('\n').map((line) => { const parts = line.split('|').map((x) => x.trim()); return Object.fromEntries(f.cols.map((c, i) => [c, i === f.cols.length - 1 ? parts.slice(i).join(' | ') : parts[i] || ''])); }).filter((r) => Object.values(r).some(Boolean));
+    if (f.type === 'list') out[k] = splitList(val).map((x) => x.replace(LIST_MARK, '').trim()).filter(Boolean); /* a semicolon inside a bullet keeps it one bullet (26 Oct: "…regular use" / "use consistently…") */
+    else if (f.type === 'rows') out[k] = val.split('\n').map((line) => { const parts = line.split('|').map((x) => noneCell(x.trim())); /* a model's "None" is an empty cell, never a beat's words (26 Oct) */ return Object.fromEntries(f.cols.map((c, i) => [c, i === f.cols.length - 1 ? parts.slice(i).join(' | ') : parts[i] || ''])); }).filter((r) => Object.values(r).some(Boolean));
     else if (f.type === 'number') { const n = +val.replace(/[^\d.-]/g, ''); if (!Number.isNaN(n)) out[k] = n; }
     else out[k] = val;
   });
@@ -420,8 +421,8 @@ export const cleanPkg = (family, action, pkg = {}, clean = (s) => s) => {
   const out = {}, btnCase = (x) => (/[A-Z]{3}/.test(x) && x === x.toUpperCase() ? x[0] + x.slice(1).toLowerCase() : x) /* a button in capitals ("SHOP NOW") reads as "Shop now" */, wordCut = (s, n) => (s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '').replace(/[\s,;:–-]+$/, '') + '…' : s);
   fieldsFor(family, action).forEach((f) => {
     const v = pkg[f.k]; if (v == null || v === '') return;
-    if (f.type === 'list') out[f.k] = (Array.isArray(v) ? v : String(v).split('\n')).map((x) => clean(str(x)).trim()).filter(Boolean).map((x) => (f.k === 'buttons' ? btnCase(x) : x)).slice(0, 8);
-    else if (f.type === 'rows') out[f.k] = (Array.isArray(v) ? v : []).slice(0, 10).map((r) => Object.fromEntries(f.cols.map((c) => [c, clean(str(r?.[c])).slice(0, 400)])));
+    if (f.type === 'list') out[f.k] = (f.k === 'bullets' ? joinList : (x) => x)((Array.isArray(v) ? v : String(v).split('\n')).map((x) => clean(str(x)).trim()).filter(Boolean)).map((x) => (f.k === 'buttons' ? btnCase(x) : x)).slice(0, 8); /* a bullet split at its own semicolon is one again (26 Oct) */
+    else if (f.type === 'rows') out[f.k] = (Array.isArray(v) ? v : []).slice(0, 10).map((r) => Object.fromEntries(f.cols.map((c) => [c, noneCell(clean(str(r?.[c]))).slice(0, 400)])));
     else if (f.type === 'number') { const n = +String(v).replace(/[^\d.-]/g, ''); if (!Number.isNaN(n)) out[f.k] = Math.round(n); }
     else if (f.type === 'select') out[f.k] = pickOpt(f.opts, v); /* "email" is Email, "9:16 vertical" is 9:16, never silently the first option */
     else out[f.k] = (f.k === 'button' ? btnCase : (x) => x)(wordCut(clean(str(v)), f.max || (f.type === 'long' ? 900 : 240))); /* at a whole word: a rule ended "pause the ad set that d" (25 Oct) */

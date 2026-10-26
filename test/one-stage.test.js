@@ -25,7 +25,7 @@ test('the stage holds only the piece: the Studio set-up is the panel’s Set-up 
   assert.match(st, /st\.frames/, 'the preview has as many frames as the set-up makes');
   /* 26 Oct redesign: no tabs in the panel; Brew's line, then Change it yourself (the set-up) and the checks, each with a way back */
   const ai = fn('jpAi');
-  assert.match(ai, /data-tab="adjust">Change it yourself/); assert.match(app, /jpBack\('Let Brew set it up'\)/); assert.match(ai, /data-tab="details"/);
+  assert.match(ai, /data-tab="adjust">Change it yourself/); assert.match(app, /jpBack\('Chat', 'Set-up'\)/); /* the Set-up's back link goes to the chat (QV P2-13, 26 Oct) */ assert.match(ai, /data-tab="details"/);
   assert.match(ai, /brief \? `<button type="button" class="jp-lnk" data-tab="details">Brief details/, 'Brief mode: no maker set-up in the panel');
   assert.match(app, /tab = RX\.tab && RX\.tab !== 'history' \? RX\.tab : 'iterate'/, 'a jam opens on the chat: Brew sets it up');
   assert.ok(!/ch\.studio && !studioMade\(ch\) && edit \? 'adjust' : 'iterate'/.test(app), 'the 26 Oct redesign (AI first): a Studio piece opens on Brew\'s one line and the chat; its set-up is behind Change it yourself');

@@ -13,7 +13,7 @@ import { saveGen, genFile } from './gen-store.js';
 import { withBrowser } from './pdf/render.js';
 import { checkCopyIn } from './claims.js'; // the brief's words carry no claim the materials don't back
 import { handoffPath } from './handoff.js'; // the brief's own link, which counts opens
-import { sentenceCase } from './text-fit.js'; // a brief title reads like a sentence, names kept
+import { sentenceCase, namesIn, keepNames } from './text-fit.js'; // a brief title reads like a sentence, names kept
 
 export const TB_V = 4; // bump when the brief starts being written differently: every saved one is written again
 /* who a brief goes to (Param, 26 Oct: "think any and every type of brief that could go to any relevant stakeholder"): the person picks
@@ -109,7 +109,7 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
     if (d.rules) d.rules = d.rules.split('\n').filter((l) => { const q = l.toLowerCase().replace(/\s+/g, ' '); return !/^\W*(use the exact|.{0,40}\bmust (be|read)\s*:)/i.test(l) && !fv.some((v) => q.includes(v.slice(0, 40))); }).join('\n').trim() || d.rules;
     const auto = { ...Object.fromEntries(AI_KEYS.map((k) => [k, d[k]])), words: wordsOf(x) || 'To confirm.', measure: m || 'To confirm.', open: (d.open || []).length ? d.open.map((s) => `- ${s}`).join('\n') : 'Nothing open.' };
     const edits = old?.edits || {};
-    w.teamBrief = { v: TB_V, key, over: old?.over || {}, recipient: old?.recipient || null, sent: old?.sent || [], ai: d.ai, at: now(t), title: sentenceCase(d.title || x.title, [x.brand, ...(x.pkg?.fields || []).filter((f) => f.pub).map((f) => f.value)]), auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
+    w.teamBrief = { v: TB_V, key, over: old?.over || {}, recipient: old?.recipient || null, sent: old?.sent || [], ai: d.ai, at: now(t), title: keepNames(sentenceCase(d.title || x.title, [x.brand, ...(x.pkg?.fields || []).filter((f) => f.pub).map((f) => f.value)]), namesIn(x.card?.sub, x.card?.why, x.card?.rows)), names: namesIn(x.card?.sub, x.card?.why, x.card?.rows).slice(0, 12), /* a name the card writes in capitals stays so (QV P2-3) */ auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
       brand: x.brand, mark: x.mark || null, memo: { from: x.memo?.from || null, to: RECIPIENTS[old?.recipient?.kind] || 'Your team' } }; /* a brief to hand over: their own team or agency (Send to the ShopOS team stays its own button) */
     return { tb: w.teamBrief, x }; };
   /* who the brief went to and whether they opened its link (the prototype's "Sent to Priya · opened"): the newest send, and whether
@@ -121,7 +121,7 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
     e.opens = (e.opens || 0) + 1; e.openedAt ||= now(t); e.lastAt = now(t); w.updatedAt = now(t); return true; };
   const view = (w, x) => { const tb = w.teamBrief; if (!tb) return null;
     const ov = tb.over || {};
-    return { rev: tb.rev || tb.at || 0, docRev: w.doc?.rev || 0, title: ov.title || sentenceCase(tb.title, [tb.brand]), at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
+    return { rev: tb.rev || tb.at || 0, docRev: w.doc?.rev || 0, title: ov.title || keepNames(sentenceCase(tb.title, [tb.brand]), [...(tb.names || []), ...(x ? namesIn(x.card?.sub, x.card?.why, x.card?.rows) : [])]), at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
       recipient: tb.recipient || null, sent: sentOf(tb), memo: { from: ov.from || tb.memo?.from || null, to: ov.to || tb.recipient?.name || RECIPIENTS[tb.recipient?.kind] || tb.memo?.to || 'Your team', due: String(ov.due || '').replace(/^(?:due|deadline)\s*:\s*/i, '') || w.doc?.plan?.when || null, ref: w.ticket || null },
       sections: SECTIONS.map(([k, h]) => ({ k, h, t: tb.edits[k] ?? tb.auto[k] ?? '', edited: tb.edits[k] != null, locked: k === 'words' })), evidence: tb.evidence, creatives: tb.creatives, pdf: tb.pdf }; };
 

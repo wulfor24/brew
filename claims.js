@@ -85,7 +85,7 @@ export function claimFlags(text, source = '', { allowNewCode = false } = {}) {
 export const claimCheck = (flags) => flags.length ? `Claims to check before shipping: ${flags.slice(0, 3).map((f) => f.why).join('; ')}${flags.length > 3 ? ` (+${flags.length - 3} more)` : ''}` : 'No invented codes, guarantees, health claims or timed results';
 
 /* the rule every writer prompt carries */
-export const CLAIMS_RULE = 'Never invent a discount code, coupon, guarantee, refund promise, or a result tied to a time ("in 7 days", "overnight"), and never write "clinically proven", "dermatologist approved" (or "dermat-approved", "derma tested"), "doctor recommended", "cures", "treats", "heals", "permanent" or "100%" unless they are in the Brand Book’s claims we may make, or the facts name the study, trial or test right beside those exact words: being on the product page is not enough, the checks hold it back. The same goes for "scientifically proven", "lab tested" and "proven to". A measured result ("95% saw growth", "60% less hair fall", "3x thicker", "reduces hair fall by 7.4x") only when the facts say where it was measured (a study, a trial, a test) or it is in the Brand Book’s claims we may make. Offers and codes come only from the facts.';
+export const CLAIMS_RULE = 'Never invent a discount code, coupon, guarantee, refund promise, or a result tied to a time ("in 7 days", "overnight"), and never write "clinically proven", "dermatologist approved" (or "dermat-approved", "derma tested"), "doctor recommended", "cures", "treats", "heals", "permanent" or "100%" unless they are in the Brand Book’s claims we may make, or the facts name the study, trial or test right beside those exact words: being on the product page is not enough, the checks hold it back. The same goes for "scientifically proven", "lab tested" and "proven to". A measured result ("95% saw growth", "60% less hair fall", "3x thicker", "reduces hair fall by 7.4x") only when the facts say where it was measured (a study, a trial, a test) or it is in the Brand Book’s claims we may make. Offers and codes come only from the facts. A customer is quoted only in the words of one of the brand’s real reviews given here, never a testimonial you write (26 Oct).';
 
 /* a card that can't be rewritten by a person (the feed's own cards): drop just the sentences that carry an unbacked code or
    guarantee, keep the rest; titles keep their words (a flagged title fails QA and is rewritten instead). kinds: which flags
@@ -168,7 +168,7 @@ export function copyFlags(text, opts = {}) {
   /* a quoted span is someone else's words (a shopper's question, a thread title): never flagged as ours (QA J-05) */
   /* a call to action in capitals standing on its own ("SHOP NOW" as the last line, "… on arata.in. SHOP NOW.") is the convention for a
      button or an end line; inside a sentence ("BUY NOW before it ends") it is still shouting */
-  const s = String(text || '').replace(/“[^”]{0,240}”|"[^"\n]{0,240}"/g, ' ').replace(/(^|[\n.!?]\s*)(?:SHOP|BUY|ORDER|GET|TRY|BOOK|CLAIM|GRAB)\s+(?:NOW|IT NOW|TODAY|YOURS)[.!]?(?=\s*(?:\n|$))/g, '$1 '), out = [], src = wordsOf(srcNorm(o.source || ''));
+  const s = String(text || '').replace(/“[^”]{0,240}”|"[^"\n]{0,240}"/g, ' ').replace(/(^|[\n.!?]\s*)(?:SHOP|BUY|ORDER|GET|TRY|BOOK|CLAIM|GRAB)\s+(?:NOW|IT NOW|TODAY|YOURS)[.!]?(?=\s*(?:\n|$))/g, '$1 ').replace(/(^|\n)\s*(?:[-•*]\s*)?[A-Z0-9][A-Z0-9 &'’+/-]{2,40}:(?=\s)/g, '$1 ') /* a bullet's capital label ("REALISTIC EXPECTATIONS: …") is a marketplace listing's convention, not shouting (QV 26 Oct) */, out = [], src = wordsOf(srcNorm(o.source || ''));
   const rawSrc = String(o.source || ''), theirs = (w) => /^[A-Z0-9]+$/.test(w) && new RegExp(`(^|[^A-Za-z])${w}([^A-Za-z]|$)`).test(rawSrc); /* an acronym the store itself writes in capitals ("DHT"), never a common word it writes in lower case ("not") */
   const names = (o.names || []).filter((x) => typeof x === 'string' && x.trim()).map(words), nameWords = new Set(names.flatMap((n) => n.split(' ')));
   const shortName = new Set(names.filter((n) => n.split(' ').length <= 2).flatMap((n) => n.split(' ')));
@@ -184,7 +184,7 @@ export function copyFlags(text, opts = {}) {
   /* a word written twice in a row ("Oil Oil"), or a capitalised name word twice within a few words ("Onion Oil Onion Hair Oil"),
      unless that stretch is a real product name, or each one starts a product's name (a list of the store's products). Plain
      repeats for rhythm ("stronger hair, healthier hair") read fine */
-  const dbl = s.match(/\b([A-Za-z]{2,})\s+\1\b/i); if (dbl && !inName(dbl[0])) out.push(`a repeated word (“${dbl[1].toLowerCase()}”) in one phrase`);
+  const dbl = s.match(/\b([A-Za-z]{2,})[ \t]+\1\b/i); /* the same word ending one line and starting the next is two lines, not a repeat (26 Oct) */ if (dbl && !inName(dbl[0])) out.push(`a repeated word (“${dbl[1].toLowerCase()}”) in one phrase`);
   const startsName = (line, at) => nameStarts.has(words(line.slice(at)).split(' ').slice(0, 2).join(' '));
   for (const line of s.split(/\n|(?<=[.!?])\s+/)) { const ws = [...line.matchAll(/[A-Z][a-z]{3,}/g)];
     const lw = line.match(/\b[A-Za-z]{3,}\b/g) || []; if (lw.length >= 4 && ws.length / lw.length >= 0.6) continue; /* a Title Case headline repeats its words by style */
@@ -193,6 +193,15 @@ export function copyFlags(text, opts = {}) {
       out.push(`a repeated word (“${w}”) in one phrase`); break outer; } }
   return [...new Set(out)];
 }
+/* a quote in the copy stands for a customer's words: it ships only when it is one of the brand's real reviews (the pack's review
+   quotes, the card's evidence), close enough to be theirs. An invented testimonial ("Saw an incredible reduction in hair fall in
+   just over 3 weeks") is never put in a shopper's mouth (QV P1-21, 26 Oct). A short quoted name or phrase is not a testimonial */
+const SAYS = /\b(?:i|i'm|i've|my|me|mine)\b|\b(?:love[ds]?|saw|seen|works?|worked|results?|recommend(?:ed)?|bought|tried|using|used|amazing|phenomenal|noticed|difference|reduction|changed|game ?changer|holy grail|stars?)\b/i;
+export function quoteFlags(text, source = '') { const s = String(text || ''), out = []; if (!/[“"]/.test(s)) return out; const src = ` ${words(srcNorm(source || ''))} `;
+  for (const m of s.matchAll(/“([^”]{12,320})”|"([^"\n]{12,320})"/g)) { const q = (m[1] || m[2]).trim(), ws = words(q).split(' ').filter(Boolean); if (ws.length < 5 || !SAYS.test(q)) continue;
+    if (src.includes(` ${ws.join(' ')} `)) continue; const sh = []; for (let i = 0; i + 4 <= ws.length; i++) sh.push(ws.slice(i, i + 4).join(' ')); /* a quote trimmed or lightly tidied is still theirs */
+    if (sh.length && sh.filter((x) => src.includes(` ${x} `)).length / sh.length >= 0.6) continue; out.push(q.length > 70 ? `${q.slice(0, 69).replace(/\s+\S*$/, '')}…` : q); }
+  return [...new Set(out)]; }
 export const COPY_RULE = 'Write natural, idiomatic English a good copywriter would sign off: no forced slang, no shouting caps, never the same product word twice in one name, line breaks as real line breaks. Never the "it\'s not X, it\'s Y" or "X isn\'t A; it\'s B" turn, and prices as the store shows them (₹2,182, never ₹2,182.15).';
 
 /* what a writer slipped on that a person would have to fix: an unbacked claim, the "isn't A; it's B" turn, paise on a price the store

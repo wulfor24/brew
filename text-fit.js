@@ -45,6 +45,15 @@ export function sentenceCase(s, keep = [], { force = false } = {}) { // force: t
   }).join('');
 }
 
+/* names written in capitals inside running text ("Arata's Baal Ki Baat series"): a run of two or more capitalised words, never
+   one that only starts a sentence. A title made sentence case keeps them, and one saved before gets them back (QV P2-3, 26 Oct:
+   "Launch baal ki baat hair education on Instagram") */
+export const namesIn = (...texts) => { const out = new Set();
+  for (const t of texts.flat(3)) { const s = String(t ?? ''); for (const m of s.matchAll(/(?:^|[^\p{L}\p{N}])((?:\p{Lu}[\p{Ll}’']*\s+){1,4}\p{Lu}[\p{Ll}’']*)/gu)) { let run = m[1].trim(); const at = m.index + m[0].indexOf(m[1]);
+    if (at === 0 || /[.!?:]\s*$/.test(s.slice(0, at))) run = run.split(/\s+/).slice(1).join(' '); if (run.split(/\s+/).length >= 2) out.add(run); } }
+  return [...out]; };
+export const keepNames = (s, names = []) => { let x = String(s ?? ''); for (const n of names) { const re = new RegExp(`(^|[^\\p{L}])(${String(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?=$|[^\\p{L}])`, 'giu'); x = x.replace(re, (m, a) => `${a}${n}`); } return x; };
+
 /* ---------- who ships it, in plain words ---------- */
 export const shipLine = ({ team, target }) => {
   const on = target && target !== 'Brew' ? ` on ${target}` : '';
@@ -59,6 +68,7 @@ const cap = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
    chat message ("can we post 2, 3, 4,5, an…"). The AI names the version when it makes it; this is the rule-based
    name for every other version (knobs, variations, undo, offline, and versions made before labels existed). */
 const VL_RULES = [
+  [/^fix\b[^:]{0,60}\bbefore it (?:goes|ships)\b|^fix:/i, 'Fixed a check'], /* the bar's Fix it, never the ask's first words ("Fix this before it": QV 26 Oct) */
   [/\b(thread|replies|reply chain|as a series|split (it )?into)\b/i, 'As a thread'],
   [/\bcarousel\b/i, 'As a carousel'],
   [/\b(shorter|shorten|trim|tighter|cut it down|less words|fewer words|too long)\b/i, 'Shorter'],
