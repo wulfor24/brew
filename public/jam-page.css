@@ -853,3 +853,7 @@
 .jp .std .st-asset .as-meta.lg.is-tighter:not(.is-story) .am-text{-webkit-line-clamp:1}
 /* the stage's tag keeps its corner: the piece starts under it */
 .jp .jp-stage-in > .st-asset.cs-stage{padding-top:30px!important}
+/* whole lines only, whatever display the older rules force: the box is exactly N lines tall, its space below is margin */
+.jp .std .st-asset .as-meta.lg:not(.is-story) .am-text{padding-bottom:0!important;margin-bottom:10px!important;max-height:3lh!important}
+.jp .std .st-asset .as-meta.lg.is-tight:not(.is-story) .am-text{max-height:2lh!important}
+.jp .std .st-asset .as-meta.lg.is-tighter:not(.is-story) .am-text{max-height:1lh!important}
