@@ -4440,11 +4440,15 @@
     if (ad.matches('.as-meta.lg') && m.matches('.am-media')) { const ar = (im?.naturalWidth && im.naturalWidth / im.naturalHeight) || parseFloat(getComputedStyle(ad).getPropertyValue('--ar')) || .8;
       ad.style.width = Math.round(Math.min(roomW, 470)) + 'px'; const r2 = Math.min(1.91, Math.max(0.8, ar)); m.style.aspectRatio = String(r2);
       /* the whole ad fits above the bar, its headline and button included (at 1000×620 they ran under it): the picture shrinks, the words stay */
-      const avail = roomH - ($('.cs-sizes')?.offsetHeight || 0) - 16; ad.classList.remove('is-tight', 'is-tighter');
+      ad.classList.remove('is-tight', 'is-tighter'); m.style.height = ''; /* the room the ad really has: what the stage overflows by, so the tag, the sizes and every gap are counted */
+      const over = () => room.scrollHeight - room.clientHeight, avail = ad.offsetHeight - Math.max(0, over()) - 2;
       const shrink = (min) => { for (let i = 0; i < 3 && ad.offsetHeight > avail; i++) { const rest = ad.offsetHeight - m.offsetHeight; ad.style.width = Math.round(Math.max(min, Math.min(roomW, 470, (avail - rest) * r2))) + 'px'; } };
       /* a short window: first the picture shrinks; then the words step back (two lines of text, no description under the
          headline); then one line and a slimmer header. The headline and the button always stay */
-      shrink(220); if (ad.offsetHeight > avail) { ad.classList.add('is-tight'); shrink(200); } if (ad.offsetHeight > avail) { ad.classList.add('is-tighter'); shrink(170); }
+      /* a card narrower than 260 wraps its headline into a tower, so past that the picture is cropped shorter instead (cover), and
+         the words step back: two lines, then one */
+      shrink(260); const crop = () => { if (ad.offsetHeight <= avail) return; const rest = ad.offsetHeight - m.offsetHeight; m.style.aspectRatio = 'auto'; m.style.height = Math.round(Math.max(110, avail - rest)) + 'px'; };
+      if (ad.offsetHeight > avail) { ad.classList.add('is-tight'); crop(); } if (ad.offsetHeight > avail) { ad.classList.add('is-tighter'); crop(); }
       return; }
     for (let i = 0; i < 2 && ad.offsetHeight > roomH && m.offsetHeight > 0; i++) { const rest = ad.offsetHeight - m.offsetHeight, k = (roomH - rest) / m.offsetHeight; if (k >= 1 || k <= 0) break;
       ad.style.width = Math.round(Math.max(320, Math.min(roomW, ad.offsetWidth * k))) + 'px'; } };

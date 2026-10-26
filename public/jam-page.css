@@ -844,3 +844,5 @@
 .jp .jp-mode button{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px}
 .jp .jp-mode button svg{opacity:.7}
 .jp .jp-mode button[aria-pressed="true"] svg{opacity:1}
+/* the stage-in already pads the piece; the old studio padding under it (24 top, 60 bottom) only cost a short window its ad */
+.jp .jp-stage-in > .st-asset.cs-stage{padding-top:0!important;padding-bottom:0!important}
