@@ -19,6 +19,7 @@ import { adCall } from './reader/adlib.js';
 import { providerNow, GEMINI, GEMINI_PRICE } from './gemini-client.js';
 import { createViralFinder } from './viral.js';
 import { viralStems } from './viral-gate.js';
+import { brandVocab, fitRising, fitTrends } from './trend-fit.js'; // rising searches kept only when they belong to the brand
 import { movedAway } from './moved.js'; // staging: a brand moved to production is not refreshed here in the background
 
 const D = 24 * 3600e3, H = 3600e3;
@@ -63,6 +64,27 @@ export const noPaise = (s) => String(s ?? '').replace(/((?:₹|\bRs\.?|\bINR)\s?
 const BUCKET = process.env.RESEARCH_BUCKET || 'brew-prototype';
 // One research instance per brand (server.js makes it when the brand pack loads). Its snapshot lives at
 // brands/<slug>/research.json; downloaded media is shared by hash at research-media/<file> (served as /research/<file>).
+/* the words of a how-to slide (26 Oct QA: `Pilgrim's ad ""24 HOURS ONLY"" has run 1 days in 1 versions`, "Hirawats's", a title cut
+   to "…ingredient ang" by slice(0, 48)): a hook keeps one pair of quotes, counts agree with their nouns, a name ending in s takes an
+   apostrophe only, and a title too long for its line drops words, never letters */
+export const unquote = (s) => String(s ?? '').trim().replace(/^(["“”'‘’«»]+)([\s\S]*?)(["“”'‘’«»]+)$/, (m, a, x, b) => (x.trim() ? x.trim() : m));
+export const plural = (n, one, many = one + 's') => `${n} ${+n === 1 ? one : many}`;
+export const poss = (name) => { const n = String(name || '').trim(); return /[sS]$/.test(n) ? `${n}’` : `${n}’s`; };
+export const wordCut = (s, n) => { s = String(s || '').trim(); if (s.length <= n) return s; return s.slice(0, n + 1).replace(/\s+\S*$/, '').replace(/[\s,;:’'-]+$/, ''); };
+export const howtoTitle = (brand, angle, max = 48) => [...(angle ? [`How to test ${poss(brand)} ${angle} angle`] : []), `How to test ${poss(brand)} angle`, `How to test ${poss(brand)} ad`].find((t) => t.length <= max) || wordCut(`How to test ${poss(brand)} ad`, max);
+/* the same words on a slide saved before the fix: heals on load, so every brand's ring reads right without a new read */
+export const tidyWords = (t) => typeof t !== 'string' ? t : t.replace(/(["“”])\1+([^"“”]*?)(["“”])\3+/g, '“$2”').replace(/(["“])\s*["“]([^"”]+)["”]\s*(["”])/g, '“$2”')
+  .replace(/\b1 (day|version|week|month|ad|time|review|product)s\b/gi, '1 $1').replace(/\b([A-Z][\w.&-]*s)['’]s\b/g, '$1’');
+export function healHowto(x, ads = []) {
+  if (!x || typeof x !== 'object') return x;
+  const out = { ...x, ...Object.fromEntries(['h', 'p', 'card'].filter((k) => typeof x[k] === 'string').map((k) => [k, tidyWords(x[k])])), ...(Array.isArray(x.steps) ? { steps: x.steps.map(tidyWords) } : {}) };
+  const m = /^How to test (.+?)['’]s?\s/.exec(out.h || '');
+  if (m && x.by === 'data' && out.h.length >= 44 && !/\b(angle|ad)$/i.test(out.h)) { /* only the data-made title the old slice(0, 48) cut; an AI title is its own */ const a = ads.find((y) => y && y.id === x.adId); out.h = howtoTitle(a?.brand || m[1], a?.angle || null); }
+  return out;
+}
+/* a Facebook CDN picture link dies at its oe= time (hex seconds): rival logos read from the Ad Library stopped loading ~29 Oct (26 Oct QA) */
+export const fbExpiry = (u) => { const m = /[?&]oe=([0-9a-f]{6,10})\b/i.exec(String(u || '')); return m && /fbcdn|facebook|fbsbx/i.test(String(u)) ? parseInt(m[1], 16) * 1000 : null; };
+export const picDead = (u, now = Date.now()) => { const e = fbExpiry(u); return e != null && e <= now; };
 export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, geminiImage, gToken, clean, factBrief = () => '', brand, photoFile = (rel) => path.join(PUB, rel), tregClient = null, videoRead = null, objects = null, log = console }) {
   const B = () => brand, BN = () => brand.name, BH = () => brand.host, CTRY = () => brand.config.countryName || 'your market', FESTN = () => brand.config.festival?.name || 'the next sale', FESTD = () => brand.config.festival?.label || 'soon';
   const cfg = brand.config, GEO = cfg.country || 'IN', LOC = cfg.locationCode || 2356;
@@ -150,6 +172,9 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     try { s = JSON.parse((await gcs('GET', SNAP)).toString()); } catch (e) { log.warn('[research] no gcs snapshot:', e.message); }
     if (!s) try { s = JSON.parse(fs.readFileSync(path.join(LOCAL, 'snapshot.json'), 'utf8')); } catch {}
     if (s) snap = { ...snap, ...s };
+    if (snap.trends) snap.trends = fitTrends(snap.trends, brandVocab(brand)); /* rising searches off the brand's category leave saved reads too (26 Oct) */
+    /* how-to slides saved before 26 Oct heal here: quotes, plurals, possessives, titles cut mid-word (ids stay, so cards keep pointing at them) */
+    if (snap.howto) { const ads = [...(snap.ads?.items || []), ...(snap.ads?.archive || [])]; snap.howto = { ...snap.howto, items: (snap.howto.items || []).map((x) => healHowto(x, ads)), archive: (snap.howto.archive || []).map((x) => healHowto(x, ads)) }; }
     log.log(`[research] ${brand.slug} loaded: ${Object.entries(snap).map(([k, v]) => `${k} ${v?.fetchedAt ? new Date(v.fetchedAt).toISOString().slice(0, 16) : 'none'}`).join(', ')}`);
   };
 
@@ -228,7 +253,10 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
       const mine = (j) => (j?.results || []).filter((a) => (id ? String(a.page_id) === String(id) : pageOk(name, a.page_name || a.snapshot?.page_name)));
       const t = mine(top), rc = mine(recent); if (!t.length && !rc.length) return; matched++;
       const first = t[0] || rc[0];
-      brands.push({ name, live: (t.length === (top?.results || []).length && top?.searchResultsCount) || t.length || rc.length, page: first.page_name, pageId: first.page_id, avatar: first.snapshot?.page_profile_picture_url || null, at: now }); /* at: the day of this count, so pack-numbers.js picks the freshest read per rival */
+      const logo = first.snapshot?.page_profile_picture_url || null; let avatar = null; /* kept in our storage as it is read: the CDN link expires within days (26 Oct) */
+      const kept = (snap.ads?.brands || []).find((b) => b?.pageId && String(b.pageId) === String(first.page_id) && /^research\//.test(b.avatar || ''))?.avatar; if (kept) avatar = kept; /* already in our storage */
+      else if (logo) try { const b = await fetchBuf(logo, 2e6); avatar = await saveMedia(b, imgExt(b)); } catch (e) { log.warn('[research] rival logo', name, e.message); avatar = picDead(logo) ? null : logo; }
+      brands.push({ name, live: (t.length === (top?.results || []).length && top?.searchResultsCount) || t.length || rc.length, page: first.page_name, pageId: first.page_id, avatar, at: now }); /* at: the day of this count, so pack-numbers.js picks the freshest read per rival */
       take(name, t, 0); take(name, rc, 0);
       /* this rival's unseen ideas are running low: read its next page of ads (at most 3 pages deep a day) */
       const unseenOf = () => [...groups.values()].filter((x) => x.brand === name && isNew(x)).length;
@@ -352,6 +380,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
       } catch (e) { log.warn('[research] rising', e.message); }
     }));
     if (!Object.keys(series).length) throw new Error('no trend data came back');
+    { const V = brandVocab(brand); for (const q of Object.keys(rising)) rising[q] = fitRising(rising[q], V, q); } /* only searches that share a word with what the brand sells: Google's list carries "best laptop for work" under a hair serum (26 Oct) */
     for (const q of Object.keys(rising)) if (!rising[q]?.length) delete rising[q]; /* an empty answer is no rising list: never a story */
     const days = DIWALI ? Math.ceil((DIWALI - now) / D) : null;
     /* a term searched almost never is noise: "0 to 7" is a 700% jump nobody should act on, so only terms with a real base become stories */
@@ -381,6 +410,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     snap.trends = { fetchedAt: now, ...pool(snap.trends, items.filter((x) => x.h), 'trends', now), series: { ...(snap.trends?.series || {}), ...series }, rising, source: `Google Trends · ${CTRY()} · last 90 days` };
     /* stories kept from earlier reads meet the same bar: one quoting a number today's data does not have leaves the ring */
     snap.trends.items = snap.trends.items.filter((x) => items.some((y) => y.h === x.h) || (honest([x.h, x.p, x.card], src) && !NOISE.test(`${x.h} ${x.p}`))).map((x) => ({ ...x, h: pct(x.h), p: pct(x.p), card: pct(x.card) }));
+    snap.trends = fitTrends(snap.trends, brandVocab(brand)); /* an AI story quoting an off-topic search, and older lists kept in the pool, meet the same bar */
   }
 
   function trendsFromData(series, rising, days, solid) {
@@ -438,7 +468,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   /* ---------- How to ---------- */
   async function refreshHowTo() {
     const now = Date.now();
-    const ads = (snap.ads?.items || []).map((a) => `- ${a.brand}, live ${a.days} days, ${a.versions} versions: ${a.title}. Why: ${a.why}`).join('\n');
+    const ads = (snap.ads?.items || []).map((a) => `- ${a.brand}, live ${plural(a.days, 'day')}, ${plural(a.versions, 'version')}: ${a.title}. Why: ${a.why}`).join('\n');
     const tr = (snap.trends?.items || []).map((t) => `- ${t.h}: ${t.p}`).join('\n');
     const LANES = Object.keys(brand.seed?.lanes || {}), lane0 = LANES[0] || 'core';
     let out = { items: [] };
@@ -448,7 +478,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     out.items = (out.items || []).filter((x) => x.h && honest([x.h, x.p, x.card, ...(x.steps || [])], src) && !NOISE.test(`${x.h} ${x.p}`));
     if (out.items.length < 3) out.items.push(...howtoFromData().filter((d) => !out.items.some((x) => near(x, d))).slice(0, 3 - out.items.length));
     if (!out.items.length) throw new Error('no ads or trends to write how-tos from yet');
-    const items = out.items.slice(0, 3).map((x) => ({ id: 'ht-' + crypto.createHash('sha1').update(String(x.h).toLowerCase()).digest('hex').slice(0, 10), /* from what it says: a numbered id was reused by the next read the same day */ h: clean(x.h), p: clean(x.p), steps: (x.steps || []).map(clean).slice(0, 4), card: clean(x.card || x.h), lane: LANES.includes(x.lane) ? x.lane : lane0, scene: x.scene, img: null, ...(x.by ? { by: x.by } : {}) }));
+    const items = out.items.slice(0, 3).map((x) => healHowto(x, snap.ads?.items || [])).map((x) => ({ id: 'ht-' + crypto.createHash('sha1').update(String(x.h).toLowerCase()).digest('hex').slice(0, 10), /* from what it says: a numbered id was reused by the next read the same day */ h: clean(x.h), p: clean(x.p), steps: (x.steps || []).map(clean).slice(0, 4), card: clean(x.card || x.h), lane: LANES.includes(x.lane) ? x.lane : lane0, scene: x.scene, img: null, ...(x.by ? { by: x.by } : {}) }));
     await Promise.all(items.map(async (x) => {
       const ref = refPhoto(x.lane); if (!ref || !photoFile(ref)) return;
       try {
@@ -463,8 +493,8 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   function howtoFromData() {
     const ads = (snap.ads?.items || []).slice().sort((a, b) => (a.rank || 99) - (b.rank || 99)), tr = (snap.trends?.items || []).filter((t) => t.h);
     const out = [];
-    for (const a of ads.slice(0, 2)) if (a.hook) out.push({ adId: a.id, /* the rival ad it builds on: "Start this" remakes from it (rival-ad.js) */ h: `How to test ${a.brand}'s ${a.angle || 'top'} angle`.slice(0, 48), p: `${a.brand}'s ad "${a.hook}" has run ${a.days} days in ${a.versions} versions.`,
-      steps: [`Write one ${BN()} hook on the same idea, in your words`, 'Make it a 9:16 static and a 4:5 static', 'Run both against your current best ad for 5 days', 'Keep the one with the lower cost per order'], card: `${a.brand}'s ad has run ${a.days} days: test the idea for ${BN()}` });
+    for (const a of ads.slice(0, 2)) if (a.hook) out.push({ adId: a.id, /* the rival ad it builds on: "Start this" remakes from it (rival-ad.js) */ h: howtoTitle(a.brand, a.angle || 'top'), p: `${poss(a.brand)} ad “${unquote(a.hook)}” has run ${plural(a.days, 'day')} in ${plural(a.versions, 'version')}.`, /* whole words, one pair of quotes, right plurals (26 Oct) */
+      steps: [`Write one ${BN()} hook on the same idea, in your words`, 'Make it a 9:16 static and a 4:5 static', 'Run both against your current best ad for 5 days', 'Keep the one with the lower cost per order'], card: `${poss(a.brand)} ad has run ${plural(a.days, 'day')}: test the idea for ${BN()}` });
     const t = tr[0];
     if (t) out.push({ h: 'How to meet this week\'s search trend', p: t.h,
       steps: [`Add the phrase from "${t.h}" to one ad headline`, 'Put the same phrase on your top product page', 'Check searches and clicks again next week'], card: t.card || t.h });
@@ -499,7 +529,7 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
     if (long.length) ev.push({ id: `own-long-${day}`, kind: 'long', items: long.slice(0, 5), n: long.length, at: now });
     if (fresh.length) ev.push({ id: `own-new-${day}`, kind: 'new', items: fresh.slice(0, 5), n: fresh.length, at: now });
     if (prev && Math.abs(live - prev.live) >= Math.max(3, prev.live * 0.2)) ev.push({ id: `own-count-${day}`, kind: 'count', was: prev.live, now: live, at: now });
-    if (!items.length) ev.push({ id: `own-none-${day}`, kind: 'none', at: now });
+    if (!items.length && pageId) ev.push({ id: `own-none-${day}`, kind: 'none', at: now }); /* none only when the brand's own page was read and runs nothing; a name search that found no page is a page not found, never "no ads" (26 Oct) */
     snap.own = { fetchedAt: now, page: rows[0]?.page_name || readOwn?.page || null, ...(pageId ? { pageId } : {}), live, items: items.slice(0, 40), formats: { video: items.filter((x) => x.video).length, image: items.filter((x) => !x.video).length },
       history: [...(prev?.history || []), { day, live }].slice(-60), events: [...ev, ...(prev?.events || [])].slice(0, 40), source: `Meta Ad Library · ${CTRY()} · your live ads` };
   }
@@ -547,9 +577,20 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
         catch (e) { it.videoError = e.message.slice(0, 120); log.warn('[research] viral clip heal', it.id, e.message); } }
       if (todo.length) { persist(); log.log(`[research] ${brand.slug} viral clips healed ${n} of ${todo.length}`); }
     } finally { healing = false; } }
+  /* rival logos saved as CDN links before 26 Oct: copied into our storage while the link still loads, dropped once it can't
+     (the Rivals page then shows the name alone, never a broken picture). Background leader only; each link tried once a day */
+  let healingLogos = false;
+  async function healLogos() {
+    if (healingLogos || running.has('ads') || process.env.RESEARCH_OFF) return; healingLogos = true;
+    try { const now = Date.now(), todo = (snap.ads?.brands || []).filter((b) => b?.avatar && /^https?:/i.test(b.avatar) && !(now - (b.logoTried || 0) < D)); let n = 0;
+      for (const b of todo) { b.logoTried = now;
+        try { const buf = await fetchBuf(b.avatar, 2e6); b.avatar = await saveMedia(buf, imgExt(buf)); delete b.logoTried; n++; }
+        catch (e) { if (picDead(b.avatar, now) || /fetch (403|404|410)/.test(e.message)) b.avatar = null; log.warn('[research] rival logo heal', b.name, e.message); } }
+      if (todo.length) { persist(); log.log(`[research] ${brand.slug} rival logos kept ${n} of ${todo.length}`); }
+    } finally { healingLogos = false; } }
   const start = async () => {
     await (loaded = load());
-    const tick = () => { if (!isLeader() || movedAway(brand.slug)) return; const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); healClips().catch(() => {}); };
+    const tick = () => { if (!isLeader() || movedAway(brand.slug)) return; const d = due().filter((k) => k !== 'own' || brand.kind === 'generated'); if (d.length && !process.env.RESEARCH_OFF) refresh(d.includes('howto') ? [...d.filter((k) => k !== 'howto'), 'howto'] : d); healClips().catch(() => {}); healLogos().catch(() => {}); };
     stopped = false; clearTimeout(timers.t); clearInterval(timers.i);
     timers.t = setTimeout(() => { if (!stopped) tick(); }, 5000); timers.i = setInterval(() => { if (!stopped) tick(); }, 30 * 60e3); timers.i.unref?.();
   };
@@ -563,5 +604,5 @@ export function createResearch({ ROOT, PUB, anthropic, claudeParams, textOf, gem
   let stopped = false; const timers = {};
   const stop = () => { stopped = true; clearTimeout(timers.t); clearInterval(timers.i); unwatch?.(); };
 
-  return { start, ready: () => loaded, need, failures: () => Object.fromEntries(Object.entries(failed).map(([k, at]) => [k, { at }])), stop, refresh, rollup, mediaFile, due, get: () => snap, onRefresh: (f) => listeners.push(f), running: () => [...running], spent: () => ({ ...spent }) };
+  return { start, healLogos, ready: () => loaded, need, failures: () => Object.fromEntries(Object.entries(failed).map(([k, at]) => [k, { at }])), stop, refresh, rollup, mediaFile, due, get: () => snap, onRefresh: (f) => listeners.push(f), running: () => [...running], spent: () => ({ ...spent }) };
 }
