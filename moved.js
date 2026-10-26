@@ -8,7 +8,7 @@ const prodSite = () => process.env.ENV === 'production';
 export const movedList = () => String((prodSite() ? process.env.STAGING_HOME : process.env.MOVED_TO_PROD) || '').toLowerCase().split(/[,\s]+/).filter(Boolean);
 export const movedAway = (slug) => !!slug && movedList().includes(String(slug).toLowerCase());
 /* the brand's home: production from staging, staging from production */
-export const prodUrl = () => String((prodSite() ? process.env.STAGING_URL || 'https://brew.joinsquareup.com' : process.env.PROD_URL) || 'https://feed.joinsquareup.com').replace(/\/+$/, '');
+export const prodUrl = () => String((prodSite() ? process.env.STAGING_URL || 'https://feed.joinsquareup.com' : process.env.PROD_URL) || 'https://brew.joinsquareup.com').replace(/\/+$/, '');
 /* background loops: the brands they may still work on here */
 export const stayHere = (list) => (movedList().length ? list.filter((b) => !movedAway(b?.slug ?? b)) : list);
 

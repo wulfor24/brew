@@ -22,11 +22,11 @@ test('the moved list: staging reads it, production never does', () => {
   withEnv({ ENV: 'production', MOVED_TO_PROD: 'scrubroom-in', STAGING_HOME: 'arata-in,nutrova-com', STAGING_URL: null }, () => {
     assert.deepEqual(movedList(), ['arata-in', 'nutrova-com']); assert.ok(movedAway('arata-in')); assert.ok(!movedAway('scrubroom-in'));
     assert.deepEqual(stayHere([{ slug: 'arata-in' }, { slug: 'scrubroom-in' }]).map((b) => b.slug), ['scrubroom-in']);
-    assert.equal(prodUrl(), 'https://brew.joinsquareup.com');
+    assert.equal(prodUrl(), 'https://feed.joinsquareup.com'); /* staging's address since the 27 Oct swap */
   });
   withEnv({ ENV: null, MOVED_TO_PROD: 'scrubroom-in', STAGING_HOME: 'arata-in' }, () => { assert.ok(!movedAway('arata-in')); assert.ok(movedAway('scrubroom-in')); });
   withEnv({ MOVED_TO_PROD: null }, () => { const xs = [{ slug: 'a' }]; assert.equal(stayHere(xs), xs); });
-  withEnv({ PROD_URL: 'https://feed.joinsquareup.com/' }, () => assert.equal(prodUrl(), 'https://feed.joinsquareup.com'));
+  withEnv({ PROD_URL: 'https://brew.joinsquareup.com/' }, () => assert.equal(prodUrl(), 'https://brew.joinsquareup.com'));
 });
 
 test('staging sends a moved brand\'s own people to production (page, files, Brand Book, API) before anything answers; staff stay', () => {

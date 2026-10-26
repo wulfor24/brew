@@ -1,12 +1,12 @@
-# Production configuration for Brew (feed.joinsquareup.com), sourced by tools/promote.sh. One place, so web and worker
+# Production configuration for Brew (brew.joinsquareup.com since the 27 Oct go-live swap), sourced by tools/promote.sh. One place, so web and worker
 # always run with the same settings. Production is clean: never DEMO_MODE, AI_MOCK, OPEN_SITE or DEV_LOGIN (prod-clean.mjs
 # checks the live services for these too).
 P=squareup-492617; REGION=asia-south1
 # production's own identity: staging, the demo and the ops jobs run as brew-runtime and cannot read production's secrets or data
 PSA=brew-prod-runtime@squareup-492617.iam.gserviceaccount.com
-PROD_URL=https://feed.joinsquareup.com
+PROD_URL=https://brew.joinsquareup.com
 # staging's address (production sends a partner whose home is staging there; Slack events it doesn't serve are relayed there)
-STAGING_URL=https://brew.joinsquareup.com
+STAGING_URL=https://feed.joinsquareup.com
 # models for clients (26 Oct, go-live): moves, briefs, ideas and builds on Gemini 3.1 Pro (GEMINI_DEEP_MODEL, background work only);
 # the jam chat, cards and readers stay on 3.5 Flash so they answer fast. Claude (AI_PROVIDER=anthropic) once its credit is topped up
 # shared by both services; ROLE is added per service
