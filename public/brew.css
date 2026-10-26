@@ -2852,7 +2852,9 @@ body.rx-boot #view{visibility:hidden}
 .wb-col.is-empty .wb-empty{padding:18px 12px;border:0;font-size:13.5px;line-height:19px;color:var(--fg-3);text-align:left;align-items:flex-start}
 .wb-col.is-ai:not(.is-empty){flex:0 0 330px;width:330px}
 .wb-col.is-ai .col-top h2{font-size:16px}
-@media (max-width:700px){.wb-head{padding:10px 16px;flex-wrap:wrap;row-gap:8px}.wb-head > span{flex:1 0 100%}.wb-head b{flex:none} /* the title on its own line, the buttons under it: "Work" sat on the jam button (26 Oct) */.wb-head small,.wb-head .side-act span{display:none}.wb-col.is-empty,.wb-col.is-ai:not(.is-empty){flex:0 0 100vw;width:100vw}}
+/* phones: the title on its own line, the two buttons under it (QV P1-13, 26 Oct: "Work" sat on the jam button's icon) */
+@media (max-width:700px){.wb-head{flex-wrap:wrap;row-gap:8px}.wb-head > span{flex:1 0 100%}.wb-head .side-act{flex:1 1 0;min-width:0;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+@media (max-width:700px){.wb-head{padding:10px 16px}.wb-head small,.wb-head .side-act span{display:none}.wb-col.is-empty,.wb-col.is-ai:not(.is-empty){flex:0 0 100vw;width:100vw}}
 .wb-col.is-empty .col-top{min-width:0;gap:8px}
 .wb-col.is-empty .col-top h2{min-width:0;font-size:15px;line-height:20px;white-space:normal;color:var(--fg-2)}
 .wb-col.is-empty .col-top .col-fill{display:none}
@@ -2869,6 +2871,8 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 /* the top bar is 39px at every width and in every view (Param 2026-10-16); Feed | Deck drops its drop shadow so it reads
    the same size as the pills beside it (same edge, no halo) */
 .topbar .seg,.topbar .seg.glass-chrome{box-sizing:border-box;height:39px;padding:3px;align-items:center;box-shadow:inset 0 0 0 1px var(--line)}
+/* the floating Feed · Deck pill over the scrolling feed: near-solid, so a card header passing under it never reads through (QV P2-26, 26 Oct) */
+@media (min-width:701px){body:not(:has(.std)) .topbar .seg.glass-chrome{background:color-mix(in srgb,var(--card,var(--bg)) 94%,transparent)}}
 .topbar .seg button{height:33px}
 .topbar-r .j1-pill,.topbar-r .viewing,.topbar-r .icon-btn,.topbar .icon-btn{box-sizing:border-box;height:39px}
 .topbar-r .icon-btn,.topbar .icon-btn{width:39px}
@@ -2899,6 +2903,9 @@ html body.deck-on .topbar{border-bottom:0;box-shadow:none}
 .wb-ai-sub{margin:0;font-size:13.5px;line-height:19px;color:var(--fg-3)}
 .wb-zero-deck .wb-zero-main{flex:1 1 auto;min-width:min(100%,420px);min-height:0;scroll-snap-align:start}
 @media (max-width:1100px){.wb-col.is-empty{display:none}}
+/* tablets: the tabs name each lane, so a lane head with its title hidden is no empty band, and the lanes that have work share the
+   width instead of one 440px lane beside blank space (QV P2-1, 26 Oct, 1024px) */
+@media (min-width:701px) and (max-width:1100px){.wb-col .col-head:not(:has(.wb-sub)){display:none}#wb-deck .wb-col:not(.is-empty){flex:1 1 var(--col-w,440px);width:auto;min-width:min(400px,100%);max-width:none}}
 @media (max-width:700px){.wb-zero-deck .wb-zero-main{flex:0 0 100vw;width:100vw;min-width:0}}
 
 /* "Make our version": what Brew read from the rival's ad (studio) */
@@ -3182,3 +3189,5 @@ body.qf-on{overflow:hidden}
 /* briefs sent to our team: the staff controls (brief-staff.js) */
 .bs-staff .ship-tx{min-width:0}.bs-note{display:block;width:100%;box-sizing:border-box;margin-top:8px;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:10px;font:inherit;resize:vertical}
 .jm-ship.bs-staff{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}.jm-ship.bs-staff .ship-btns .btn{height:36px}
+/* a short row value never breaks word by word in a narrow lane ("Sold / out", "1 / left" on the Work board: QV P2-2, 26 Oct); the label gives way */
+.rows div:not(.is-long) b{white-space:nowrap;flex:0 0 auto}.rows div:not(.is-long) span{min-width:0}

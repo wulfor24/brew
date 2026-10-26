@@ -26,6 +26,10 @@ import { moneyParse, safeLocale, viewerPack } from './brand-pack.js';
 import { liveTruth, replacedKeys } from './facts-desk.js'; // one truth per viewer: the public sheet, or a member's with their live connected facts over
 import { allowedFrom, unbacked, numbersIn } from './fact-gate.js';
 import { createRemix } from './remix.js';
+import { eventsFor, healDaysIn } from './day-count.js'; /* a saved "Diwali is 14 days away" reads today's count, in the brand's zone (26 Oct) */
+import { numeralsCard } from './num-words.js'; /* "ten fifteen am", "November eighth", "forty-one reviews" read in numerals (26 Oct) */
+import { oneVoice } from './card-voice.js';
+import { stockSay } from './stock-say.js'; /* a sold-out row is never "nearly gone" in the card's words (26 Oct) */
 import { saveGen } from './gen-store.js';
 import { createJamBrief } from './jam-brief.js';
 import { createTeamBrief } from './team-brief.js';
@@ -51,7 +55,7 @@ import { cardProduct, cardScene, matchProduct, pricedProduct } from './product-m
 import { LOOKS_V } from './draft-quality.js'; // watcher pictures saved before the look check are swapped for the real product photo (housekeep)
 import { gapFix } from './ai-gap.js';
 import { newsForUs, newsCta, adForUs } from './for-us.js'; // every rival and news story ends on one line for the brand (QA FEED-ARV-10) // the AI-answers gap card's own fix (QA FEED-ARV-09)
-import { seedDrafts, draftFor, draftView } from './drafts-bg.js';
+import { seedDrafts, draftFor, draftView, draftFits } from './drafts-bg.js';
 import { planFor, planPrompt, PLAN_V, isBatchCard } from './card-plan.js';
 import { createMoves } from './moves.js';
 import { rulesFor, addLesson, stepOnce, lessonsFor, promptBlock, outcome, memoryBlock } from './learn.js';
@@ -117,6 +121,9 @@ export const MEASURE = liveView((b) => measureFor(b));
 /* ---------- move cards follow their moves (pure; the feed service and tests use it) ---------- */
 /* the move a card belongs to, for the team's private copies (m04-1, m1004-1, m1004-1-p → 4, 1004); -1 for any other card */
 /* a public static ad card (statics.js): it steps aside for a member whose team has its own set */
+/* the paths this service answers; every on('…', '/api/…') route must fall inside it. /api/jobs (the Work board's in-flight list,
+   remix.js) sat outside and answered 404 on every Learned/Work visit (26 Oct): test/api-gate.test.js checks every route */
+export const API_GATE = /^\/api\/(tenants|cards|jams|jam2|work|changes|jobs$|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh|ask))?$)/;
 export const isStaticCard = (id) => /^(static-|statics-batch$)/.test(String(id || ''));
 export const moveOfId = (id) => +((/^m(\d+)-/.exec(id) || [])[1] ?? -1);
 export const moveNoOf = (id) => { const m = /^m(\d+)-\d+$/.exec(String(id || '')); return m && +m[1] > 0 ? +m[1] : null; };
@@ -291,6 +298,15 @@ export function createFeedService(o) {
   const photoFile = o.photoFile || ((rel) => { const f = path.resolve(PUB, String(rel || '')); return /\.\./.test(String(rel || '')) || !f.startsWith(PUB + path.sep) ? null : f; });
   // research rings and live watchers run per brand (server.js attaches them to each pack)
   const research = liveView((b) => b.research), live = liveView((b) => b.live);
+  /* countdowns in saved words are counted again on every serve, from the same dates as the Learned page's "Coming up" (the brand's
+     calendar, o.calendarOf, read in the background once an hour; the curated dates until it lands) and on the brand's own day (QV 26 Oct:
+     Diwali read 12, 14 and 15 days on one evening, baked into stories and cards the day they were written) */
+  const CALS = new Map(), EVS = new Map();
+  const daysOf = (t) => { const b = t ? brandOfT(t) : B(), cfg = b?.config || {}, sl = b?.slug || ''; let hit = CALS.get(sl);
+    if (o.calendarOf && sl && (!hit || Date.now() - hit.at > 3600e3)) { hit = { at: Date.now(), evs: hit?.evs || [] }; CALS.set(sl, hit); Promise.resolve(o.calendarOf(sl)).then((evs) => { if (Array.isArray(evs)) CALS.set(sl, { at: Date.now(), evs }); }).catch(() => {}); }
+    const at = now(t), k = `${sl}|${Math.floor(at / 36e5)}|${hit?.at || 0}`; let e = EVS.get(sl); if (e?.k !== k) { e = { k, evs: eventsFor(cfg, at, hit?.evs || []) }; EVS.set(sl, e); }
+    return { evs: e.evs, at, zone: cfg }; };
+  const healCount = (x, t) => { try { const d = daysOf(t); return healDaysIn(x, d.evs, d.at, d.zone); } catch (e) { log.warn?.('[days]', e.message); return x; } };
   const brandTenants = (b) => [...tenants.values()].filter((t) => (t.brandId || DEFAULT_BRAND) === b.slug);
   /* a move card (id mNN-i) remembers the version of the move it was made from (mv), so a workspace that was not open when its move
      was rewritten (build.js rewriteNow) or retired (moves-cadence.js) catches up when it loads; open ones get addCards / dropCards */
@@ -787,11 +803,21 @@ export function createFeedService(o) {
        go before the feed shows it, as on every other card (QV 25 Oct: "entirely dermat-approved" showed in a founder post's preview);
        a rival's ad and a shopper's thread stay quoted as they are, and the post's evidence keeps its source wording */
     if (c0.post && !['ad', 'viral'].includes(c0.research?.kind) && !/^(?:r-|r-ad-|heard-)/.test(String(c0.id || ''))) try { const src = packSource(packFor(t)), post = JSON.parse(JSON.stringify(rest.post || c0.post));
-      checkCopyIn(post, src, { skip: /^(id|url|src|img|image|images|key|handle|at|by|from|kind|state|status|evidence|moves|refs|sources?|quote|author|platform|where)$/i }); rest.post = post; } catch {} const dv = draftView(draftFor(c, B()?.firstDrafts), c); if (dv) { const said = { headline: dv.headline, copy: dv.copy }; try { cleanDraftClaims(said, packSource(packFor(t))); } catch {} rest.draft = { ...dv, headline: said.headline, copy: said.copy, ...(dv.title ? { title: dejargon(dv.title) } : {}) }; if (!said.headline) delete rest.draft.headline; } /* a draft saved before the claims check shows no unbacked claim under the card (QA-25) */ /* the draft's own name in plain words ("Saaya Blue PDP Comfort FAQ Section") */ /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldSeen(t) && toldCard(c)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ { const fr = cardFrom(c0, (t ? brandOfT(t) : B())?.moveDocs); if (fr) rest.from = fr; else delete rest.from; } /* where the card came from, in plain words (card-from.js), worked out on every serve so saved cards heal */ { const tc = (x) => (typeof x === 'string' ? x.replace(/\bRs\.?\s?(?=\d)/g, '₹').replace(/([₹$£€])(\d{1,3}(?:,\d{2,3})+|\d{3,})\.(\d{2})\b/g, (m, c, n, p) => `${c}${Math.round(+String(n).replace(/,/g, '') + +p / 100).toLocaleString(c === '₹' ? 'en-IN' : 'en-US')}`) /* ₹927.96 reads ₹928, Rs 285 reads ₹285 */.replace(/\s*\((?:exact (?:figures?|numbers?|dates?) )?(?:still )?to (?:be )?confirm(?:ed)?\)/gi, '').replace(/,?\s*(?:still )?to confirm\b\.?$/i, ' (not checked yet)').replace(/^to confirm$/i, 'Not checked yet') : x); rest.title = tc(rest.title); rest.sub = tc(rest.sub); if (typeof rest.sub === 'string') rest.sub = rest.sub.replace(/\b(your|from|in) Move (\d{1,2})\b/g, '$1 Play $2'); /* saved cards that named their play "Move 21" (3.10) */ { /* two AI-answer counts that read alike measure different things (1.3: "0 of 15 answers" beside "0 of 10 prompts"): a card about one
+      checkCopyIn(post, src, { skip: /^(id|url|src|img|image|images|key|handle|at|by|from|kind|state|status|evidence|moves|refs|sources?|quote|author|platform|where)$/i }); rest.post = post; } catch {} const dv0 = draftView(draftFor(c, B()?.firstDrafts), c), dv = dv0 && draftFits(dv0, c, { catalog: (t ? brandOfT(t) : B())?.catalog || [], brand: BN() }) ? dv0 : null; /* a draft about another product than the card's is not shown under it (drafts-bg draftFits, QV P1-17) */ if (dv) { const said = { headline: dv.headline, copy: dv.copy }; try { cleanDraftClaims(said, packSource(packFor(t))); } catch {} rest.draft = { ...dv, headline: said.headline, copy: said.copy, ...(dv.title ? { title: dejargon(dv.title) } : {}) }; if (!said.headline) delete rest.draft.headline; } /* a draft saved before the claims check shows no unbacked claim under the card (QA-25) */ /* the draft's own name in plain words ("Saaya Blue PDP Comfort FAQ Section") */ /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldSeen(t) && toldCard(c)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ { const fr = cardFrom(c0, (t ? brandOfT(t) : B())?.moveDocs); if (fr) rest.from = fr; else delete rest.from; } /* where the card came from, in plain words (card-from.js), worked out on every serve so saved cards heal */ { const tc = (x) => (typeof x === 'string' ? x.replace(/\bRs\.?\s?(?=\d)/g, '₹').replace(/([₹$£€])(\d{1,3}(?:,\d{2,3})+|\d{3,})\.(\d{2})\b/g, (m, c, n, p) => `${c}${Math.round(+String(n).replace(/,/g, '') + +p / 100).toLocaleString(c === '₹' ? 'en-IN' : 'en-US')}`) /* ₹927.96 reads ₹928, Rs 285 reads ₹285 */.replace(/\s*\((?:exact (?:figures?|numbers?|dates?) )?(?:still )?to (?:be )?confirm(?:ed)?\)/gi, '').replace(/,?\s*(?:still )?to confirm\b\.?$/i, ' (not checked yet)').replace(/^to confirm$/i, 'Not checked yet') : x); rest.title = tc(rest.title); rest.sub = tc(rest.sub); if (typeof rest.sub === 'string') rest.sub = rest.sub.replace(/\b(your|from|in) Move (\d{1,2})\b/g, '$1 Play $2'); /* saved cards that named their play "Move 21" (3.10) */ { /* two AI-answer counts that read alike measure different things (1.3: "0 of 15 answers" beside "0 of 10 prompts"): a card about one
        question counts the AI tools that answered it; a play's count is across all the questions asked */
       const perQ = /^lv-vis-/.test(String(c0.id || '')), aiLbl = (x) => (typeof x !== 'string' ? x : perQ ? x.replace(/\b(\d+) of (\d+) answers\b/g, '$1 of $2 AI tools on this question') : x.replace(/\b(\d+) of (\d+) (?:AI )?prompts\b/gi, '$1 of $2 questions asked across AI tools'));
       rest.title = aiLbl(rest.title); rest.sub = aiLbl(rest.sub); if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map(aiLbl) : r)); }
-    { const yours = (x) => (typeof x === 'string' ? x.replace(/\b(O|o)ur (?=[₹$£€]\s?\d)/g, (m, o) => (o === 'O' ? 'Your ' : 'your ')) : x); rest.title = yours(rest.title); rest.sub = yours(rest.sub); } /* a card talks to the team: "your ₹449 shampoo", never "our" beside it (1.14); drafts for shoppers keep "our" */ if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map((x, i) => (i === 0 && /^to confirm$/i.test(String(x)) ? 'Still to check' : tc(x))) : r)); } /* the moves' planning marker "(to confirm)" never shows on a card face (QA 20 Oct) */ { const sc = sectorOf(c0); if (sc && sc !== rest.sector) rest.sector = sc; } /* the column it changes (1.13) */ rest.src = rest.src === 'Brew deployment team' ? 'Our team' : playSrc(rest.src); /* Plays, not moves (3.10) */ /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
+    { const yours = (x) => (typeof x === 'string' ? x.replace(/\b(O|o)ur (?=[₹$£€]\s?\d)/g, (m, o) => (o === 'O' ? 'Your ' : 'your ')) : x); rest.title = yours(rest.title); rest.sub = yours(rest.sub); } /* a card talks to the team: "your ₹449 shampoo", never "our" beside it (1.14); drafts for shoppers keep "our" */ if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map((x, i) => (i === 0 && /^to confirm$/i.test(String(x)) ? 'Still to check' : tc(x))) : r)); } /* the moves' planning marker "(to confirm)" never shows on a card face (QA 20 Oct) */ { const sc = sectorOf(c0); if (sc && sc !== rest.sector) rest.sector = sc; } /* the column it changes (1.13) */ rest.src = rest.src === 'Brew deployment team' ? 'Our team' : playSrc(rest.src); /* Plays, not moves (3.10) */ /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ /* a row that only says how the store is set up ("Store currency INR", "Platform shopify") tells nobody anything (QV P2-23) */
+    if (Array.isArray(rest.rows) && rest.rows.length > 1) { const kept = rest.rows.filter((r) => !Array.isArray(r) || !/^(?:store )?(?:currency|platform)$/i.test(String(r[0]).trim())); if (kept.length) rest.rows = kept; }
+    /* "Brew saw we have 52 live ads": in what Brew saw, the brand is "you" (card-voice.js, QV P2-17); a rival's ad and a post are quoted */
+    if (!c0.post && !['ad', 'viral'].includes(c0.research?.kind)) { rest.title = oneVoice(rest.title); rest.sub = oneVoice(rest.sub); }
+    /* a stock sentence says what its own rows say: a sold-out row is "sold out", never "nearly gone" (stock-say.js, QV P1-8) */
+    if (Array.isArray(rest.rows)) { rest.title = stockSay(rest.title, rest.rows); rest.sub = stockSay(rest.sub, rest.rows); }
+    /* a rows card with no rows and no picture (a watcher's idea, a trend card: QV P0-1, 26 Oct) shows the photo of the product its words
+       name outright, as a media card; naming none, it has no slot at all (app.js slotHtml), never an empty grey bar or another product's photo */
+    if (rest.kind === 'rows' && !(rest.rows || []).some((r) => Array.isArray(r) && r[1] != null && String(r[1]).trim()) && !rest.images?.length && !isRivalCard(c0) && !['ad', 'viral'].includes(c0.research?.kind)) try { const cat = (t ? brandOfT(t) : B())?.catalog || [], named = cat.length ? cardProduct(rest, cat, { brand: BN(), byNameOnly: true }) : null;
+      if (named?.img) Object.assign(rest, { kind: 'media', images: [named.img], product: rest.product || named.t }); } catch {}
+    const out = { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; return healCount(['ad', 'viral'].includes(c0.research?.kind) || /^(?:r-ad-|heard-)/.test(String(c0.id || '')) ? out : numeralsCard(out, { locale: safeLocale((t ? brandOfT(t) : B())?.config?.locale || 'en-IN') }), t); }; /* times, dates and counts of 11+ in numerals (num-words.js, QV P2-16); a rival's ad and a shopper's words are quoted as they are */ /* its countdowns are today's (day-count.js) */
   /* the cards the page needs, not every card the workspace ever held: the feed's order, pinned ones, cards with a jam, saved and
      hearted ones (the Library and the jams open them by id). With no order yet, every card, as before */
   const lastOrder = new WeakMap();
@@ -893,9 +919,13 @@ export function createFeedService(o) {
     const raw = builder?.peek?.(B().slug) || {}, st = o.viewStatus?.(B().slug, raw) || raw, out = []; /* the demo's replayed build reads the same as its status route (QA FEED-QA-09) */
     const done = st.movesDone || 0, N = +st.total || 50; /* the playbook (not the index, not weekly moves); PDFs are made on download */
     out.push({ id: 'b-moves', t: `Your plays`, s: done >= N ? `All ${N} written` : `${done} of ${N} written`, pct: Math.round(100 * Math.min(done, N) / N), st: done >= N ? 'Done' : 'Running', tone: done >= N ? 'ok' : 'info', agent: 'brew', team: true, real: true });
-    if (st.statics) out.push({ id: 'b-statics', t: 'Static ads from Play 21', s: st.statics.state === 'done' ? `${st.statics.n} ads ready for your review` : st.statics.state === 'failed' ? 'Could not be made: ' + (st.statics.err || 'image model error') : 'Making the images from your product photos', pct: st.statics.state === 'done' ? 100 : 40, st: st.statics.state === 'done' ? 'Needs you' : st.statics.state === 'failed' ? 'Stopped' : 'Running', tone: st.statics.state === 'done' ? 'warn' : 'info', agent: 'creative', real: true });
-    for (const w of t.work.filter((x) => !x.archived && !x.discarded).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6))
-      out.push({ id: 'b-' + w.id, t: cutWords(w.title || 'Work', 48), s: `${STAGE_TXT[w.stage] || w.stage}${w.with?.name ? ' · ' + w.with.name : ''}${w.ticket ? ' · ' + w.ticket : ''}`, pct: STAGE_PCT[w.stage] || 30, st: w.stage === 'needs_you' ? 'Needs you' : w.stage === 'result' ? 'Done' : 'Running', tone: w.stage === 'needs_you' ? 'warn' : w.stage === 'result' ? 'ok' : 'info', agent: w.agent, team: w.with?.kind === 'brew', workId: w.id, real: true });
+    /* "Needs you" is one rule, the Work board's own (jams.js waitsOn, per viewer): only a jam waiting on this person says it. The statics
+       batch is finished work already in the feed, never "needs you" (QV P0-2, 26 Oct: "1 needs you · 8 ads ready for your review" on every
+       brand while the board's Needs you lane and the notifications were empty) */
+    if (st.statics) out.push({ id: 'b-statics', t: 'Static ads from Play 21', s: st.statics.state === 'done' ? `${st.statics.n} ${+st.statics.n === 1 ? 'ad' : 'ads'} made · in your feed` : st.statics.state === 'failed' ? 'Could not be made: ' + (st.statics.err || 'image model error') : 'Making the images from your product photos', pct: st.statics.state === 'done' ? 100 : 40, st: st.statics.state === 'done' ? 'Done' : st.statics.state === 'failed' ? 'Stopped' : 'Running', tone: st.statics.state === 'done' ? 'ok' : 'info', agent: 'creative', real: true });
+    const me = meOf(t)?.email, sees = guestSees(t); /* the jams the board shows this viewer */
+    for (const w of t.work.filter((x) => !x.archived && !x.discarded && sees(x)).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6)) { const mine = waitsOn(w, me, studioOf(t, w));
+      out.push({ id: 'b-' + w.id, t: cutWords(dejargon(w.title || 'Work'), 48), s: `${w.stage === 'needs_you' && !mine ? `Waiting on ${w.assignee?.name || w.assignee?.email?.replace(/@.*/, '') || 'a teammate'}` : STAGE_TXT[w.stage] || w.stage}${w.with?.name ? ' · ' + w.with.name : ''}${w.ticket ? ' · ' + w.ticket : ''}`, pct: STAGE_PCT[w.stage] || 30, st: mine ? 'Needs you' : w.stage === 'result' ? 'Done' : 'Running', tone: mine ? 'warn' : w.stage === 'result' ? 'ok' : 'info', agent: w.agent, team: w.with?.kind === 'brew', workId: w.id, real: true }); }
     return out;
   };
   const syncBatches = (t) => { if (B().kind !== 'generated') return; if (!builder?.peek?.(B().slug)) builder?.status?.(B().slug).catch(() => {}); t.batches = realBatches(t); };
@@ -1323,6 +1353,8 @@ export function createFeedService(o) {
     const today = scored.filter((x) => x.age < STORY_LIFE);
     if (today.length) return today.slice(0, Math.min(max, 5)).map(strip);
     return scored.sort((a, b) => b.firstSeen - a.firstSeen).slice(0, Math.min(max, 5)).map((x) => ({ ...strip(x), older: true })); };
+  /* the search or topic a How to slide is about: the first quoted phrase in its words, else its title, lower case */
+  const howTopic = (x) => { const q = /["“']([^"”']{6,80})["”']/.exec(`${x?.h || ''} ${x?.p || ''}`); return (q ? q[1] : String(x?.h || '')).toLowerCase().replace(/\s+/g, ' ').trim() || null; };
   const stories = (t) => {
     const r0 = research?.get() || {};
     const withArchive = (o) => [...(o.items || []), ...(o.archive || [])]; /* expired stories stay in reach for the older fallback */
@@ -1352,7 +1384,7 @@ export function createFeedService(o) {
       : r0[k]?.lastError
       ? [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. We try again within the hour.', from: PRODUCT_NAME, at: r0[k].lastError.at }]
       : slides); /* a ring that is only waiting for its next read has nothing to show: it is hidden, not a "Finding new stories" slide (QA FEED-QA-28) */
-    const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map(bgFor), ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
+    const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map((x) => healCount(bgFor(x), t)) /* a story's "14 days away" is counted today (day-count.js) */, ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
     /* notes posted to a ring: each once, and never an own-ads note in Trends (saved ones from before 26 Oct heal here: "No live PUMA
        India ads found in the Meta Ad Library" twice in Trends, while the one count said 10 live) */
     const ADS_NOTE = /\bAd Library\b|\blive (?:\S+ ){0,3}ads?\b/i;
@@ -1377,18 +1409,18 @@ export function createFeedService(o) {
     const ranked = (process.env.PLAIN_OFF === '1' ? ranked0 : ranked0.map((c) => PLAIN.apply(slugOfT(t), c))).map((c) => freshCounts(c, countsFor(packFor(t)), { live: !!t.member })); /* the stories say each card in the same plain words as the feed */
     /* the brand today leads with what is new since the last visit, when there is any; else the top of the feed */
     const open0 = ranked.filter((c) => !c.done && !c.loading && !String(c.id).startsWith('r-')), sinceV = t.visit?.prev, news = sinceV ? open0.filter((c) => c.createdAt > sinceV) : [];
-    const topCards = (news.length ? news : open0).slice(0, 2).map((c, i) => ({ type: 'brand', chip: news.length ? (i ? 'Also new' : 'New since your last visit') : i ? 'Next up' : 'Biggest play today', h: c.title, p: c.sub, img: (c.images || [])[0], agent: c.agent, cardId: c.id, cta: c.cta?.label, at: c.createdAt }));
-    const waiting = t.work.filter((w) => w.stage === 'needs_you').sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 2).map((w) => { const v = w.versions.find((x) => x.n === w.current) || w.versions[w.versions.length - 1];
+    const topCards = (news.length ? news : open0).slice(0, 2).map((c0, i) => { const c = { ...c0, ...pub(t.cards.get(c0.id) || c0, t) }; /* the slide says the card in the feed's own served words: one fact, one number on both (QV P1-7, 26 Oct: "one version" on the card, "3 versions" on the story) */ return { type: 'brand', chip: news.length ? (i ? 'Also new' : 'New since your last visit') : i ? 'Next up' : 'Biggest play today', h: c.title, p: c.sub, img: (c.images || [])[0], agent: c.agent, cardId: c.id, cta: c.cta?.label, at: c0.createdAt }; });
+    const waiting = t.work.filter((w) => !w.archived && !w.discarded && guestSees(t)(w) && waitsOn(w, meOf(t)?.email, studioOf(t, w))).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 2).map((w) => { const v = w.versions.find((x) => x.n === w.current) || w.versions[w.versions.length - 1];
       return { type: 'brand', chip: 'Waiting on you', h: v?.title || w.title, p: v?.sub || `${w.with?.name || 'Your team'} sent it back for your OK.`, img: w.img, agent: w.agent, workId: w.id, at: w.updatedAt }; });
     const shipped = extra('news').map((x) => ({ ...x, type: 'brand', chip: x.from || 'Your team' }));
     const brandSlides = [...topCards, ...waiting, ...shipped, ...t.batches.slice(0, 3).map((b, i) => ({ type: 'brand', chip: 'Your agents, this week', h: b.t, p: `${b.s}.`, agent: b.team ? 'brew' : b.agent, pct: b.pct, st: b.st, at: batches[i]?.at }))].slice(0, 8);
     /* Recap: what happened since this person was last here (recap.js). No last visit, or nothing since: no ring */
-    const v = t.visit, recapSlides = v?.prev ? buildRecap({ since: v.prev, sinceReal: v.prevReal, when: sinceLabel(v.prev, now(t), B()?.tzMs ?? 5.5 * H), work: t.work, notes: t.notes,
-      cards: ranked.filter((c) => !c.done && !c.loading && !String(c.id).startsWith('r-')), moveDocs: brandOfT(t)?.moveDocs, plain: dejargon, ledger: t.member ? t.liveLedger : null, base: v.base,
+    const v = t.visit, recapSlides = v?.prev ? buildRecap({ waits: (w) => waitsOn(w, meOf(t)?.email, studioOf(t, w)), since: v.prev, sinceReal: v.prevReal, when: sinceLabel(v.prev, now(t), B()?.tzMs ?? 5.5 * H), work: t.work, notes: t.notes,
+      cards: (() => { const ids = new Set(newIdsOf(t, ranked.map((c) => c.id))); return ranked.filter((c) => ids.has(c.id) && !c.loading); })() /* the feed's own "N new since your last visit" set: one count on both (QV P2-12, 26 Oct: Recap 37, feed 30) */, moveDocs: brandOfT(t)?.moveDocs, plain: dejargon, ledger: t.member ? t.liveLedger : null, base: v.base,
       moveCard: (n) => ranked.find((c) => moveNo(c.id) === n)?.id || null }) : [];
-    const recapRing = recapSlides.length ? [{ k: 'recap', title: 'Recap', slides: recapSlides, updatedAt: Math.max(...recapSlides.map((x) => x.at || 0)) || null, source: 'Since your last visit', seen: (t.storySeen.recap || 0) >= (v.atReal || v.at || 0) }] : [];
+    const recapRing = recapSlides.length ? [{ k: 'recap', title: 'Recap', slides: recapSlides.map((x) => healCount(x, t)), updatedAt: Math.max(...recapSlides.map((x) => x.at || 0)) || null, source: 'Since your last visit', seen: (t.storySeen.recap || 0) >= (v.atReal || v.at || 0) }] : [];
     return [
-      ring('brand', SEED.brand.name.length <= 8 ? `${SEED.brand.name} today` : 'Today', brandSlides, { updatedAt: Math.max(0, ...brandSlides.map((x) => x.at || 0)) || null, cover: topCards.find((x) => x.img)?.img, source: 'Your feed, work and results' }),
+      ring('brand', 'Today' /* one label for every brand: a short name read "Arata today", a long one "Today" (QV P2-13, 26 Oct) */, brandSlides, { updatedAt: Math.max(0, ...brandSlides.map((x) => x.at || 0)) || null, cover: topCards.find((x) => x.img)?.img, source: 'Your feed, work and results' }),
       ...recapRing,
       ring('trends', 'Trends', [...trSlides, ...extra('trends')], { updatedAt: lastAt(tr), source: tr?.source, spark: spark(tr?.items?.[0]?.terms?.[0]), loading: !tr && !fails.trends }),
       ring('ads', 'Popular ads', [...adSlides, ...extra('ads')], { updatedAt: lastAt(ads), source: ads?.source, cover: adSlides[0]?.poster, loading: !ads && !fails.ads }),
@@ -2513,7 +2545,7 @@ export function createFeedService(o) {
   const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|find-more|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
-    if (!/^\/(h\/|p\/|brief\/|api\/(share|tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh|ask))?$))/.test(u.pathname)) return false;
+    if (!/^\/(h\/|p\/|brief\/|api\/share)/.test(u.pathname) && !API_GATE.test(u.pathname)) return false; /* the routes' own gate (API_GATE): one list, so a new route is never answered 404 here first (/api/jobs, 26 Oct) */
     let tid = null;
     /* Jam v2's ready-to-post and brief links are signed: the link is the key, so they run before any sign-in, demo or team check (a team that got a brief marks its status without an account) */
     if (/^\/(p|brief)\//.test(u.pathname)) { if (JAM2 && await JAM2.publicHandle(req, res, u)) return true; send(res, 404, { error: 'not found' }); return true; }
@@ -2599,7 +2631,7 @@ export function createFeedService(o) {
       if (email && w && !viewer?.member && jamPrivate(t, w)) { send(res, 403, { error: TEAM_ONLY, teamOnly: true }); return true; }
       if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
       send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, path, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
-    if (!/^\/api\/(tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh|ask))?$)/.test(u.pathname)) return false;
+    if (!API_GATE.test(u.pathname)) return false;
     for (const r of ROUTES) {
       if (r.method !== req.method) continue; const m = u.pathname.match(r.re); if (!m) continue;
       const params = m.groups || {};

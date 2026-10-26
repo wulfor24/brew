@@ -25,7 +25,8 @@ export const FROM_SKILL = {
   analytics: 'Measuring what works', attribution: 'Measuring what works',
   'marketing-plan': 'Your marketing plan', 'marketing-council': 'Your marketing plan', 'marketing-psychology': 'Why people buy',
   'marketing-ideas': 'New idea for you',
-  'cold-email': 'Selling to businesses', prospecting: 'Selling to businesses', 'sales-enablement': 'Selling to businesses', revops: 'Selling to businesses'
+  /* outreach skills find buyers of every kind: a home buyer's WhatsApp card read "Selling to businesses" (QV P2-18, 26 Oct, Mana) */
+  'cold-email': 'Finding new buyers', prospecting: 'Finding new buyers', 'sales-enablement': 'Finding new buyers', revops: 'Finding new buyers'
 };
 /* a move family that says more than its skill: the team's own words, listening, routines, the weather */
 const FROM_GROUP = { learn: 'From your team', listen: 'Heard online', auto: 'Saves you time' };

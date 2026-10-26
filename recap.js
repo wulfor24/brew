@@ -52,7 +52,7 @@ export function buildRecap(o) {
       rows: briefs.slice(0, 4).map(({ w, moves }) => ({ t: w.title, s: [...moves].reverse().map((h) => LABEL[h.s] || h.s).join(' → '), workId: w.id, warn: w.jamBrief.status === 'needs_info' })) }); }
   /* jams: new messages, new versions, or waiting on your OK since */
   const jams = (o.work || []).filter(live).map((w) => {
-    const msgs = (o.notes || []).filter((n, i, a) => n.itemId === w.id && n.at > since && !a.slice(0, i).some((m) => m.itemId === w.id && m.text === n.text)), /* the same update twice says it once */ vers = (w.versions || []).filter((v) => v.n > 1 && v.at > since), ok = w.stage === 'needs_you' && (w.updatedAt || 0) > since;
+    const msgs = (o.notes || []).filter((n, i, a) => n.itemId === w.id && n.at > since && !a.slice(0, i).some((m) => m.itemId === w.id && m.text === n.text)), /* the same update twice says it once */ vers = (w.versions || []).filter((v) => v.n > 1 && v.at > since), ok = (o.waits ? !!o.waits(w) : w.stage === 'needs_you') && (w.updatedAt || 0) > since; /* o.waits: the Work board's own rule (jams.js waitsOn), so the recap never says "needs your OK" of a jam the board shows waiting on someone else (P0-2, 26 Oct) */
     if (!msgs.length && !vers.length && !ok) return null;
     const bits = [msgs.length && plural(msgs.length, 'update'), vers.length && (vers.length === 1 ? `New version (v${vers[0].n})` : `${vers.length} new versions`), ok && 'Needs your OK'].filter(Boolean);
     return { w, s: bits.join(' · '), last: msgs[0]?.text || null, ok, at: Math.max(0, ...msgs.map((n) => n.at), ...vers.map((v) => v.at), ok ? w.updatedAt : 0) };

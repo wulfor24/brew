@@ -19,14 +19,16 @@ const pname = (k) => PLATFORMS[k]?.label || SOURCES[k]?.name?.replace(/ (comment
 
 /* What people say: the count split into about you and about your category, the topics as stamps, quotes as notes */
 function peopleOf({ items = [], themes = [], status = {}, name, now }) {
-  const recent = items.filter((x) => !x.postedAt || now - x.postedAt < 120 * DAY);
-  const you = recent.filter((x) => x.about === 'brand' || x.reach === 'direct'), cat = recent.filter((x) => !you.includes(x));
-  const bySrc = Object.entries(recent.reduce((m, x) => ((m[x.platform] = (m[x.platform] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]);
+  /* the count is everything heard, the same number as Learned and What we heard (social-feed heardView total: QV P1-11, 26 Oct, 1,621
+     here against 2,952 there); the notes on the wall stay the last 120 days */
+  const recent = items.filter((x) => !x.postedAt || now - x.postedAt < 120 * DAY), aboutYou = (x) => x.about === 'brand' || x.reach === 'direct';
+  const youAll = items.filter(aboutYou), you = recent.filter(aboutYou), cat = recent.filter((x) => !aboutYou(x));
+  const bySrc = Object.entries(items.reduce((m, x) => ((m[x.platform] = (m[x.platform] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]);
   const note = (x) => ({ text: clip([x.title, x.text].filter(Boolean).join('. '), 160), who: x.author || null, where: x.sub || pname(x.platform), platform: x.platform, url: x.link || null, at: day(x.postedAt), rating: x.rating || null, mood: x.sentiment || null, image: x.image || null });
   const good = (x) => String(x.text || '').length >= 30 && x.link;
   const pickNotes = (xs) => [...xs].filter(good).sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 6).map(note);
   const wk = (t) => { const d = t.weekDelta ?? t.delta ?? null; return d == null ? null : d; };
-  return { total: recent.length, you: you.length, category: cat.length, at: status?.at ? day(status.at) : null,
+  return { total: items.length, you: youAll.length, category: items.length - youAll.length, at: status?.at ? day(status.at) : null,
     places: bySrc.map(([k, n]) => ({ id: k, name: pname(k), n, logo: hostLogo(PLACE[k]) })),
     topics: themes.filter((t) => !TALK.test(t.name || '')).slice(0, 8).map((t) => ({ name: t.name, n: t.n, neg: t.neg || 0, pos: t.pos || 0, week: wk(t) })),
     notes: { you: pickNotes(you), category: pickNotes(cat) },

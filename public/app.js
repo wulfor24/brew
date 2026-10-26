@@ -71,10 +71,13 @@
   /* a rival's ad card, or one built on a rival's ad (rival-ad.js isRivalCard): its poster is only ever shown as theirs */
   const isRival = (p) => p?.research?.kind === 'ad' || !!p?.research?.ad || p?.make?.from === 'rival';
   /* the brand's own date and hour (its zone from the pack; else its offset; else this browser's clock) */
-  const brandClock = () => { const z = window.BREW_MONEY || {}, now = new Date(); const pad = (n) => String(n).padStart(2, '0');
+  const brandClock = (at = Date.now()) => { const z = window.BREW_MONEY || {}, now = new Date(at); const pad = (n) => String(n).padStart(2, '0');
     try { if (z.tz) { const P = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: z.tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit' }).formatToParts(now).map((x) => [x.type, x.value])); return { day: `${P.year}-${P.month}-${P.day}`, hour: +P.hour }; } } catch (e) { /* an unknown zone: the offset below */ }
     if (Number.isFinite(+z.tzOffsetH) && z.tzOffsetH !== null) { const d = new Date(now.getTime() + +z.tzOffsetH * 36e5); return { day: d.toISOString().slice(0, 10), hour: d.getUTCHours() }; }
     return { day: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`, hour: now.getHours() }; };
+  /* whole days from the brand's today to a date ("2026-11-08", or with a time), counted on calendar days: a UTC midnight against the
+     time now, rounded, read Karva Chauth "in 1 day" two days out (QV 26 Oct); the server counts cards and stories the same way (day-count.js) */
+  const daysTo = (date, at = SRV.clock || Date.now()) => { const a = /^(\d{4}-\d\d-\d\d)/.exec(String(date || ''))?.[1]; return a ? Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${brandClock(at).day}T00:00:00Z`)) / 864e5) : null; };
   const api = async (p, body) => { try { const r = await fetch(p, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}); const j = await r.json(); if (refused(j)) demoSheet(j.host); return j; } catch (e) { return { error: String(e), fallback: true }; } };
   /* demo mode: new work (moves, drafts, images, jams) is made for the brand's team and SquareUp. Anyone else who tries gets this
      one sheet instead of an error: their work email, or the demo stores */
@@ -960,6 +963,8 @@
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>${p.proof?.seen ? `<button class="pf-seen" data-act="proof" aria-label="Seen in ${esc(p.proof.seen)}: open the proof">${ic('search', 's14')}<span>Seen in ${esc(p.proof.seen)}</span></button>` : ''}`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
   const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 plays are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="${n ? `${n} ${n === 1 ? 'proof' : 'proofs'} behind this card` : 'Why this card, and the proof'}" title="Why we suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n} ${n === 1 ? 'proof' : 'proofs'}</span>` : ''}</button>`; }; /* a number on a card always says what it counts (1.14) */
+  /* an ISO date in words a person reads ("2026-10-19" → "19 Oct", with the year when it is not this year), wherever it sits in a line */
+  const isoDay = (s) => String(s ?? '').replace(/\b(\d{4})-(\d\d)-(\d\d)(?:T[\d:.]+Z?)?\b/g, (m, y, mo, d) => { const t = Date.UTC(+y, +mo - 1, +d); return isNaN(t) ? m : new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', ...(+y !== new Date().getFullYear() ? { year: 'numeric' } : {}), timeZone: 'UTC' }); });
   const pfDay = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
   /* the sheet says only what a brand needs: the one reason, the few numbers behind it (each with where it came from) and the plan it
      belongs to. Kind labels, move source lists and repeats stay out; the full plan is one tap away */
@@ -970,6 +975,7 @@
      A page Brew read that says its number in its label ("MitoActive price: ₹1,499") shows that number like any other */
   const pfRow = (x) => { let v = String(x.value || ''), l = String(x.label || '');
     if (!v && x.kind === 'source') { const m = l.match(/^(.{3,}?):\s*(.+)$/), t = m && m[2].replace(/\s*\([^)]*\)?\s*…?$/, '').replace(/…$/, '').trim(); if (t && /\d/.test(t) && t.length <= 24) { l = m[1]; v = t; } }
+    v = isoDay(v); l = isoDay(l); /* "2026-09-10 · Live since" reads "10 Sept 2026" (QV P2-3) */
     const label = `${esc(l)}${x.extra ? ` · ${esc(x.extra)}` : ''}`;
     if (v && v.length <= 9) return `<li class="pf-r"><b class="pf-v">${esc(v)}</b><span class="pf-l">${label}</span>${pfSrc(x)}</li>`;
     const quote = /^(quote|voice|ad|idea|read|team)$/.test(x.kind) && v.length > 24; if (quote) v = v.replace(/^[“"]\s*|\s*[”"]$/g, '');
@@ -1082,6 +1088,9 @@
       return `<div class="inset cf-slot">${c.options.map((o) => `<div class="cf-opt${o.id === (dec || c.pick) ? ' on' : ''}"><span class="cf-dot">${o.id === dec ? ic('check', 's14') : ''}</span><span class="lg-tx"><b>${esc(o.name)}</b><span>Moves ${esc(o.moves)}</span></span>${o.id === c.pick && !dec ? '<span class="badge info">Our pick</span>' : ''}</div>`).join('')}${c.needs ? `<p class="cf-needs">${ic('person', 's14')}Needs ${esc(c.needs)} before anything ships</p>` : ''}</div>`; }
     if (c.kind === 'answer') return `<div class="inset ans-slot"><div class="ans-q">${ic('chat', 's14')}${esc(c.q)}</div><p>${esc(c.a)}</p><span class="badge bad">${B.brand.name} not named</span></div>`;
     if (c.kind === 'variants') return `${c.images?.length ? mediaSlot(c.images.slice(0, 1), { filter: c.gradeF }) : ''}<div class="inset var-slot">${c.loading ? '<div class="sk" style="height:58px"></div><div class="sk" style="height:58px"></div><div class="sk" style="height:58px"></div>' : (c.variants || []).map((v) => `<div class="var"><span class="chip">${esc(v.angle || 'Version')}</span><b>${esc(v.title)}</b><span>${esc(v.sub)}</span></div>`).join('')}</div>`;
+    /* a card with no rows and no picture (a watcher's idea whose product the store doesn't sell, a trend card) lays out with no slot:
+       never an empty grey bar where the media goes (QV P0-1, 26 Oct) */
+    if (!nonZero(c.rows || []).length) return ''; /* the server serves a named product's photo as a media card (feed-service pub) */
     /* a long value stacks under its label (left, full width) so the label never wraps word by word beside it */
     return `<div class="inset"><div class="rows">${nonZero(c.rows || []).map(([k, v]) => { v = toldRowV(c, k, v); return `<div${String(v).length > 28 ? ' class="is-long"' : ''}><span>${esc(k)}</span><b>${esc(v)}</b></div>`; }).join('')}</div></div>`;
   };
@@ -1106,13 +1115,13 @@
   /* the pieces never repeat the format beside it: "Page section on /: JSON-LD …" reads "Homepage: JSON-LD …", "Email · 1 email:
      day-3 note" reads "Email · Day-3 note"; a count above one stays (19 Oct) */
   const mkPieces = (c) => { const f = c.make.format.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), p = mkWhole(c.make.pieces), m = p.match(new RegExp(`^(?:(?:1|one|a)\\s+)?${f}s?(?:\\s+on\\s+(\\/\\S*?))?\\s*:\\s*`, 'i'));
-    if (!m) return p; const rest = p.slice(m[0].length); if (!rest) return '';
+    if (!m) { const one = /^(?:1|one|a)\s+(?:static|still|image|picture|post|ad|creative)s?\s*:\s*(?=\S)/i.exec(p); /* "Single image ad · 1 static: Face Wash" says the format twice (QV P2-19) */ return one && /image|post|static|ad$/i.test(c.make.format) ? p.slice(one[0].length).replace(/^\w/, (x) => x.toUpperCase()) : p; } const rest = p.slice(m[0].length); if (!rest) return '';
     return m[1] ? `${m[1] === '/' ? 'Homepage' : m[1]}: ${rest}` : rest[0].toUpperCase() + rest.slice(1); };
   /* "Page section" is the builder's word: say which page (QA FEED-ARV-06) */
   const pageName = (c) => /\/products?\/|product pages?|\bPDPs?\b/i.test(`${c.make?.pieces || ''} ${c.title || ''}`) ? 'Product page' : 'Store page';
   const mkName = (f, c) => (/^page sections?$/i.test(f) && c ? pageName(c) : f[0].toUpperCase() + f.slice(1)).replace(/\bwhatsapp\b/i, 'WhatsApp').replace(/\binstagram\b/i, 'Instagram');
   const makeChip = (c) => { if (!c.make?.format) return ''; const f = mkName(c.make.format, c), pc = mkPieces(c);
-    return `<p class="mk-chip" title="${esc([f, pc].filter(Boolean).join(' · '))}">${ic(MAKE_IC[c.make.format] || 'sparkles', 's14')}<b>${esc(f)}</b>${pc ? `<span>${esc(pc)}</span>` : ''}</p>`; };
+    return `<p class="mk-chip" title="${esc([f, pc].filter(Boolean).join(' · '))}">${ic(MAKE_IC[c.make.format] || 'sparkles', 's14')}<b>${esc(f)}</b>${pc ? ` <span>${esc(pc)}</span>` : ''}</p>`; }; /* a space between them: read aloud or copied, never "ad1 static" */
   /* the first draft Brew made for this card (drafts-bg.js, served as card.draft): the asset itself in place of the lane photo.
      A clip plays muted and looped only while it is on screen (armDraftVideos); slides use the feed's own carousel */
   const DRAFT_IC = { video: 'vid', carousel: 'grid', collection: 'grid', catalog: 'grid', email: 'send', whatsapp: 'chat', page: 'doc', image: 'pic' };
@@ -1795,33 +1804,26 @@
 
   /* ---------- margin notes ---------- */
   const ARROW = '<svg viewBox="0 0 48 24" aria-hidden="true"><path d="M46 14 C 34 4, 18 4, 4 10 M4 10 l7 -5 M4 10 l8 3"/></svg>';
-  /* a note after every 2 or 3 cards, as long as the brand has notes. The gaps are random but fixed for this visit (a seed
-     kept for the session), so a repaint never moves them. A card with its own note gets it, arrow and all; between cards
-     without one, the next note from the feed's pool, never the same one twice in a row */
-  const NOTE_SEED = (() => { try { const k = 'brew-note-seed', v = +sessionStorage.getItem(k); if (v) return v; const n = 1 + Math.floor(Math.random() * 1e9); sessionStorage.setItem(k, String(n)); return n; } catch { return 1 + Math.floor(Math.random() * 1e9); } })();
-  const noteGap = (k) => { let x = (NOTE_SEED ^ Math.imul(k + 1, 0x9e3779b1)) >>> 0; x = Math.imul(x ^ (x >>> 15), 0x85ebca6b) >>> 0; x = (x ^ (x >>> 13)) >>> 0; return 2 + (x % 2); }; // 2 or 3
+  /* a card with its own margin note gets it, arrow and all, beside that card only and once per feed (QV P1-21) */
   const placeNotes = () => {
     const layer = $('#notes'); if (!layer) return; layer.innerHTML = ''; $$('.mnote.is-inline').forEach((n) => n.remove());
     if (view !== 'feed' && view !== 'saved') return;
     const wide = innerWidth >= 1060, st = $('#stage').getBoundingClientRect(), cards = $$('#col .card[data-post]');
-    const seen = new Set(), pool = cards.map((c) => cardOf(FEED[+c.dataset.post] || {}).note).filter((n) => n?.h && !seen.has(n.h) && seen.add(n.h));
-    if (!pool.length) return;
-    let lastBottom = -1e9, since = 0, slot = 0, gap = noteGap(0), last = '', ptr = NOTE_SEED % pool.length; /* notes never land on the one above them */
-    const near = (i) => new Set(cards.slice(i + 1, i + 4).map((c) => cardOf(FEED[+c.dataset.post] || {}).note?.h).filter(Boolean)); /* a note its own card is about to show */
-    const fromPool = (avoid) => { for (const ok of [(n) => n.h !== last && !avoid.has(n.h), (n) => n.h !== last || pool.length === 1]) for (let k = 0; k < pool.length; k++) { const n = pool[(ptr + k) % pool.length]; if (ok(n)) { ptr = (ptr + k + 1) % pool.length; return n; } } return null; };
-    cards.forEach((card, i) => {
-      if (since < gap) { since++; return; } /* the note goes before this card, once gap cards have passed since the last */
-      const p = cardOf(FEED[+card.dataset.post] || {}), own = p?.note?.h && p.note.h !== last ? p.note : null, note = own || fromPool(near(i)); if (!note) { since++; return; }
+    /* a note sits only beside its own card, and once: the pool of loose notes laid one card's note beside others ("MOVE 01 · post at
+       ten fifteen am" three times, before cards it had nothing to do with: QV P1-21, 26 Oct) */
+    const used = new Set(); let lastBottom = -1e9, since = 2;
+    cards.forEach((card) => {
+      const p = cardOf(FEED[+card.dataset.post] || {}), own = p?.note?.h && !used.has(p.note.h) ? p.note : null, note = own; if (!note || since < 2) { since++; return; } /* two cards at least between notes */
       const eyebrow = own && p.liveFrom ? `live from ${B.connectors[p.liveFrom].name.toLowerCase()}` : note.k;
       const html = `<span class="k">${esc(eyebrow)}</span><span class="h">${esc(note.h)}</span>`;
       if (!wide) { const n = document.createElement('div'); n.className = 'mnote is-inline'; n.innerHTML = html; card.before(n); }
       else {
         const r = card.getBoundingClientRect(), anchor = card.querySelector('.media, .inset') || card, a = anchor.getBoundingClientRect();
-        const top = a.top - st.top + Math.min(90, a.height * .3); if (top < lastBottom + 24) { since++; return; } lastBottom = top + 110; /* no room: the next card takes it */
-        const n = document.createElement('div'); n.className = `mnote${own ? '' : ' is-loose'}`; n.innerHTML = (own ? ARROW : '') + html; /* only a card's own note points at it */
+        const top = a.top - st.top + Math.min(90, a.height * .3); if (top < lastBottom + 24) { since++; return; } lastBottom = top + 110; /* no room beside it: left out */
+        const n = document.createElement('div'); n.className = 'mnote'; n.innerHTML = ARROW + html; /* its own card's note points at it */
         n.style.left = (r.right - st.left + 44) + 'px'; n.style.top = top + 'px'; layer.appendChild(n);
       }
-      last = note.h; since = 1; gap = noteGap(++slot);
+      used.add(note.h); since = 1;
     });
     const io = new IntersectionObserver((es) => es.forEach((en) => en.isIntersecting && en.target.classList.add('on')), { threshold: .4 });
     $$('#notes .mnote').forEach((n) => io.observe(n));
@@ -3388,7 +3390,7 @@
   const sigFake = () => !!window.BREW_DEMO && sigLive() && !window.LiveConn?.isLive?.('shopify'); /* DUMMY: demo site only, and never next to a connected Shopify */
   /* the Signals column always shows when the brand has a store connector: with nothing connected it says what to connect
      and why (18 Oct testing notes: an empty or hidden column read as broken) */
-  const sigEmpty = () => !window.BREW_DEMO && !byCol('signals').length && !B.connectors?.shopify;
+  const sigEmpty = () => !window.BREW_DEMO && !byCol('signals').length && (!B.connectors?.shopify || B.storeKind === 'enquiry'); /* a brand that sells by enquiry has no orders or checkouts to read: no "connect your store" guide (QV P2-24) */
   /* V1 hides the Storefront column (testing notes 18 Oct: not ready, it overwhelms the customer); ?storefront=1 shows it to us */
   const STOREFRONT_COL = SF_ON;
   const deckCols = () => COL_ORDER.filter((k) => !(k === 'signals' && sigEmpty()) && (k !== 'storefront' || STOREFRONT_COL));
@@ -3427,13 +3429,13 @@
       : `<i class="pulse"></i>We keep reading ${esc(andList(sigSources().filter(conn).map((id) => B.connectors[id].name)))}. ${n ? 'Each card below is a group of people to reach.' : 'Nothing to act on yet; new people land here as we find them.'}`}${!bad.length && more.length ? ` Connect ${esc(andList(more.map((id) => B.connectors[id].name)))} to find more.` : ''}</p>
       <div class="sig-pills">${sigSources().map((id) => { const c = B.connectors[id], st = sigState(id); return st?.[0] === 'ok' ? `<span class="sig-pill is-on">${glyph(id, 16)}${esc(c.name)}${ic('check', 's14')}</span>` : window.LiveConn?.boss?.() === false ? '' : `<button class="sig-pill" data-cx="${id}">${glyph(id, 16)}${esc(c.name)}${st ? '<small>connect again</small>' : SIG_WHY[id]?.need === 'Optional' ? '<small>optional</small>' : ''}</button>`; }).join('')}</div></div>`; };
   const sigBody = () => {
-    if (!sigSources().length) return '';
+    if (!sigSources().length || (B.storeKind === 'enquiry' && !sigLive())) return ''; /* by enquiry: its cards stand alone, never an orders-and-checkouts guide */
     if (!sigLive() || sigState('shopify')?.[0] === 'bad') return sigGuide();
     /* a real Shopify shows only what it really found (those arrive as live cards in this column), never the sample signal */
     return sigStrip() + (sigFake() ? SIGS.map(sigCard).join('') : '');
   };
   /* why a column sits where it does (3.11): its most urgent card's reason and when to act, never only how many cards it holds */
-  const colWhy = (k) => { const top = byCol(k).map(([p]) => [p, SCORES[p.id]]).filter(([, sc]) => sc?.rankWhy).sort((a, b) => (+b[1].urgency || 0) - (+a[1].urgency || 0))[0]; if (!top) return '';
+  const colWhy = (k) => { const top = byCol(k).slice(0, 1).map(([p]) => [p, SCORES[p.id]]).filter(([, sc]) => sc?.rankWhy)[0]; if (!top) return ''; /* the reason of the card that sits first, never another one's: "Do first: Sold out or nearly" headed a column led by a rival's price card (QV P2-23, 26 Oct) */
     const u = +top[1].urgency || 0, when = u >= 4 ? 'Do first' : u >= 3 ? 'Today' : 'This week';
     return `<span class="col-why" title="${esc(top[0].title || '')}"><b>${when}</b> ${esc(top[1].rankWhy)}</span>`; };
   const colHTML = (k) => {
@@ -5420,7 +5422,7 @@
   const renderMoves = async () => {
     const stop = view !== 'moves' ? holdView('Opening your plays') : () => {}; view = 'moves'; counts(); $('#stk').innerHTML = ''; $('#notes').innerHTML = ''; /* header title and rail match the section on a direct link too */ clearTimeout(MV.t); const slug = mvSlug();
     const [r, bd, up, hs] = await Promise.all([api(`/api/brands/${slug}/moves`), GEN ? api(`/api/brands/${slug}/build`) : null, GEN ? api(`/api/brands/${slug}/updates`) : null, null /* the weekly history route is not in Brew yet (feed/ work never ported): no 404 on every visit (QA UI) */]); stop(); if (view !== 'moves') return;
-    const U = up && !up.error ? up : null, nStale = U?.stale?.length || 0;
+    const U = up && !up.error ? up : null, nStale = U?.stale?.length || 0, staleSay = window.LIVE?.full ? nStale : 0; /* "36 plays are out of date" is our team's queue (rewrites are paid, run by us): the banner and the tab count show to Brew staff only; the Updates tab keeps the list (QV P1-16, 26 Oct) */
     const ms = r?.moves || [], by = Object.fromEntries(ms.map((m) => [m.n, m])), pdfs = r?.pdfs || {}, st = r?.status || {}, b = bd && !bd.error ? bd : null;
     const done = ms.filter((m) => m.n >= 1 && m.n < 1000 && !m.cadence).length, extra = ms.length - done, building = !!b && !st.done; // the playbook (status.total): not the index, not weekly moves (1001+)
     const live = new Map((b?.inflight || []).map((x) => [x.n, x])), failed = new Map((b?.failed || []).map((x) => [x.n, x]));
@@ -5487,8 +5489,8 @@
       <header class="mv2-head"><button class="rd-back" data-nav="learned">${ic('right', 's16')}<span>What we learned</span></button><h2>The plays</h2><p>${(() => { const core = ms.filter((m) => m.n >= 1 && m.n < 1000).length, wk = fam.length; /* one count everywhere: the playbook (status.total), never the index (00) or weekly moves (1001+), which count apart */
           return building ? `${core} of ${+st.total || 50} plays written for ${esc(B.brand.name)} so far.` : `${+st.total || core} plays for ${esc(B.brand.name)}${wk ? `, plus ${wk} new this week` : ''}. Every card in your feed comes from one of them.`; })()}</p>
         <div class="mv2-meta">${by[0] ? '<button class="linkbtn" data-mv="0">Read the index</button>' : ''}<button class="linkbtn" data-nav="facts">Fact sheet</button>${!showBuild && b ? '<button class="linkbtn" data-mvt="build">Build log</button>' : ''}</div></header>
-      <div class="mv2-seg" role="tablist"><button role="tab" data-mvt="moves" aria-selected="${MVT.tab === 'moves'}">Plays</button>${GEN ? `<button role="tab" data-mvt="updates" aria-selected="${MVT.tab === 'updates'}">Updates${nStale ? `<span class="cnt">${nStale}</span>` : U?.checking || U?.rewriting ? '<span class="dot"></span>' : ''}</button>` : ''}${showBuild ? `<button role="tab" data-mvt="build" aria-selected="${MVT.tab === 'build'}">Build${building ? '<span class="dot"></span>' : ''}</button>` : ''}</div>
-      ${nStale && MVT.tab === 'moves' ? `<button class="up-banner" data-mvt="updates"><b>${nStale} play${nStale === 1 ? ' is' : 's are'} out of date</b><i>Review ${ic('right', 's14')}</i></button>` : ''}
+      <div class="mv2-seg" role="tablist"><button role="tab" data-mvt="moves" aria-selected="${MVT.tab === 'moves'}">Plays</button>${GEN ? `<button role="tab" data-mvt="updates" aria-selected="${MVT.tab === 'updates'}">Updates${staleSay ? `<span class="cnt">${staleSay}</span>` : U?.checking || U?.rewriting ? '<span class="dot"></span>' : ''}</button>` : ''}${showBuild ? `<button role="tab" data-mvt="build" aria-selected="${MVT.tab === 'build'}">Build${building ? '<span class="dot"></span>' : ''}</button>` : ''}</div>
+      ${staleSay && MVT.tab === 'moves' ? `<button class="up-banner" data-mvt="updates"><b>${nStale} play${nStale === 1 ? ' is' : 's are'} out of date</b><i>Review ${ic('right', 's14')}</i></button>` : ''}
       ${MVT.tab === 'moves' ? `<nav class="mv2-nav">${famHtml ? '<a href="#mvg-fam" data-mvjump="fam">This week</a>' : ''}${MV_GROUPS.map(([k, name, a, z]) => { const w = Array.from({ length: z - a + 1 }, (_, i) => a + i).filter((n) => by[n]).length; return `<a href="#mvg-${k}" data-mvjump="${k}">${esc(name)}${w < z - a + 1 ? `<em>${w}/${z - a + 1}</em>` : ''}</a>`; }).join('')}</nav>${famHtml ? `<div id="mvg-fam">${famHtml}</div>` : ''}${groupsHtml}${histHtml}` : MVT.tab === 'updates' ? upHtml : `<div class="bd">${buildHtml}</div>`}
     </div>`;
     $$('[data-mv]').forEach((x) => x.onclick = (e) => { if (e.target.closest('[data-stop]')) return; openMove(+x.dataset.mv); });
@@ -5787,20 +5789,20 @@
       ls.forEach((l) => { const k = /own meta ad/i.test(l) ? 'Meta ad' : /instagram/i.test(l) ? 'Instagram post' : /measured result/i.test(l) ? 'measured result' : /lesson/i.test(l) ? 'shipped work' : null; if (k) cnt[k] = (cnt[k] || 0) + 1; else other.push(l.replace(/,?\s*read \d{4}-\d\d-\d\d.*$/i, '').replace(/\s*\(.*?\)\s*/g, ' ').trim()); });
       const more = +((ls.join(' ').match(/\+(\d+)/) || [])[1] || 0);
       const parts = [...Object.entries(cnt).map(([k, n]) => (k === 'measured result' || k === 'shipped work' ? k : `${n + (k === 'Meta ad' || k === 'Instagram post' ? more : 0)} ${k}${n + more > 1 ? 's' : ''}`)), ...other.slice(0, 1)];
-      const at = f.updatedAt || f.source?.at; return [parts[0] ? parts.join(', ') : '', at ? fmtDay(at) : ''].filter(Boolean).join(' · '); };
+      const at = f.updatedAt || f.source?.at; return isoDay([parts[0] ? parts.join(', ') : '', at ? fmtDay(at) : ''].filter(Boolean).join(' · ')); }; /* "added by Param Jain, 2026-10-19" reads a day (QV P2-3) */
     const memGroups = MEM_T.map(([k, name]) => [name, memLines.filter((f) => f.topic === k).slice(0, 3)]).filter(([, xs]) => xs.length);
     const memHtml = memGroups.length ? `<details class="q-more"><summary>What we know about ${esc(B.brand.name)}</summary>
       ${memGroups.map(([name, xs]) => `<div class="mem-g"><h4>${esc(name)}</h4>${xs.map((f) => `<div class="mem-l"><p>${esc(f.text)}</p><small>${esc(memSrc(f))}</small></div>`).join('')}</div>`).join('')}</details>` : '';
     // the brand's own upcoming moments (its markets only), each with when Brew starts planning it
-    const evs = (CAL?.events || []).slice(0, 4), dd = (t) => Math.round((new Date(t) - (SRV.clock || Date.now())) / 864e5);
+    const evs = (CAL?.events || []).slice(0, 4), dd = (t) => daysTo(t) ?? 0;
     const calHtml = evs.length ? `<section class="lx-sec">${lxHead('lx-cal', 'Coming up', '', '')}
-      <ul class="hd-cal">${evs.map((e) => { const d = dd(e.date), p = e.planAt ? dd(e.planAt) : null; return `<li><span class="hd-cal-d"><b>${new Date(e.date).toLocaleDateString([], { day: 'numeric' })}</b><small>${new Date(e.date).toLocaleDateString([], { month: 'short' })}</small></span><div><b>${esc(e.name)}</b><small>${d > 0 ? `in ${d} day${d === 1 ? '' : 's'}` : e.end && e.end !== e.date ? `on now, until ${new Date(e.end).toLocaleDateString([], { day: 'numeric', month: 'short' })}` : 'today'}${d > 0 && p != null ? ` · ${p <= 0 ? (e.move ? 'play ready' : 'planning now') : `planning in ${p} day${p === 1 ? '' : 's'}`}` : ''}</small></div>${e.move?.n != null ? `<button class="linkbtn" data-goto-move="${e.move.n}">Open play</button>` : ''}</li>`; }).join('')}</ul></section>` : '';
+      <ul class="hd-cal">${evs.map((e) => { const d = dd(e.date), p = e.planAt ? dd(e.planAt) : null; return `<li><span class="hd-cal-d"><b>${new Date(e.date).toLocaleDateString([], { day: 'numeric', timeZone: 'UTC' })}</b><small>${new Date(e.date).toLocaleDateString([], { month: 'short', timeZone: 'UTC' })}</small></span><div><b>${esc(e.name)}</b><small>${d > 0 ? `in ${d} day${d === 1 ? '' : 's'}` : e.end && e.end !== e.date ? `on now, until ${new Date(e.end).toLocaleDateString([], { day: 'numeric', month: 'short', timeZone: 'UTC' })}` : 'today'}${d > 0 && p != null ? ` · ${p <= 0 ? (e.move ? 'play ready' : 'planning now') : `planning in ${p} day${p === 1 ? '' : 's'}`}` : ''}</small></div>${e.move?.n != null ? `<button class="linkbtn" data-goto-move="${e.move.n}">Open play</button>` : ''}</li>`; }).join('')}</ul></section>` : '';
     /* trust: one line while every agent sits at the same level; the list only once they differ */
     const tl = agents.map((a) => L.trust[a]), same = tl.length && tl.every((t) => t.level === tl[0].level && !t.clean);
     const trustHtml = !agents.length ? '' : same ? `<p class="q-note">${tl[0].level < tl[0].max ? `Every agent is at ${esc(tl[0].name)}: ${L.cleanToLevelUp} clean launches move one up, an undo moves it down.` : `Every agent is at the top level.`}</p>`
       : `<section class="lx-sec">${lxHead('lx-trust', 'How much it does alone', '', `${L.cleanToLevelUp} clean launches move an agent up.`)}<div class="lx-trust">${agents.map((a) => { const t = L.trust[a]; return `<div class="lx-tr">${face(a)}<div><div class="lx-tr-top"><b>${esc(AGENT[a])}</b><span>${esc(t.name)}</span></div>${lxMeter(t.level + 1, L.levels.length)}</div></div>`; }).join('')}</div></section>`;
     /* the moves: every plan Brew wrote for the brand, one quiet row into the full page */
-    const mvAll = MVS?.moves || [], mvCore = mvAll.filter((m) => m.n >= 1 && m.n < 1000).length, mvWk = mvAll.filter((m) => m.n >= 1000).length, mvStale = UPS?.stale?.length || 0;
+    const mvAll = MVS?.moves || [], mvCore = mvAll.filter((m) => m.n >= 1 && m.n < 1000).length, mvWk = mvAll.filter((m) => m.n >= 1000).length, mvStale = window.LIVE?.full ? UPS?.stale?.length || 0 : 0; /* staleness is our team's to act on (staff only, like the plays banner: QV P1-16) */
     /* while the moves are still being written, the row says how far along (one line and a thin bar), from the build status */
     const mvSt = GEN ? MVS?.status : null, mvBuilding = !!mvSt && !mvSt.done && !mvSt.error && !mvSt.cancelled;
     const movesHtml = mvAll.length || mvBuilding ? `<section class="lx-sec">${lxHead('lx-moves', 'The plays', '', '')}<button class="lx-heard-row" data-nav="moves"><span class="lg-ic">${ic('doc', 's16')}</span><span><b>${mvCore} play${mvCore === 1 ? '' : 's'} for ${esc(B.brand.name)}${mvWk ? `, plus ${mvWk} new this week` : ''}</b>${mvBuilding ? lxBuild(mvSt) : `<small>${mvStale ? `${mvStale} out of date · ` : ''}Every card in your feed comes from one of them</small>`}</span>${ic('right', 's16')}</button>${mvBuilding && mvSt.capped ? `<div class="lx-pro"><button class="btn btn-primary sm" data-mvpro>${PAYWALL ? 'Continue with Pro' : 'Write the rest'}</button></div>` : ''}</section>` : '';
