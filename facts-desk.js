@@ -385,9 +385,24 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
 /* the Brand Book's numbers chapter: the stats every maker quotes, read from the viewer's truth (truthOf) each time the book
    opens, so the book, the fact sheet and the cards always say the same number with the same source and day. Prices stay on the
    fact sheet (one per product); counts, rates, accounts, reviews and ads are here, connected ones first */
-export function bookNumbers(truth = {}, { max = 40 } = {}) {
+/* where a number was read, as a person says it (26 Oct QA: "12.1 shttps://nutrova.com/products/… · 2026-10-22"): "from your product
+   page", "from Shopify", "from the Meta Ad Library", never a raw URL, a file name or an engineer's note */
+const OWN_PATH = [[/sitemap/i, 'your sitemap'], [/\/products?\/[^/]+/i, 'your product page'], [/\.json$|\/collections?\b/i, 'your store’s product list'], [/\/(cart|checkout)\b/i, 'your checkout'], [/\/(pages\/)?(policies|shipping|refund|returns?)/i, 'your policy pages']];
+export const srcLine = (src, host = '') => { const s = String(src || '').trim(); if (!s) return '';
+  if (/\(connected\)/i.test(s)) return `from ${s.replace(/\s*\(connected\)/i, '').trim()}`;
+  const url = /^https?:\/\//i.test(s) ? s : /^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(s) ? 'https://' + s : null;
+  if (url) { let u; try { u = new URL(url); } catch { return ''; } const h = u.hostname.replace(/^www\./, ''), own = host && (h === hostOf(host) || h.endsWith('.' + hostOf(host)));
+    if (!own) return `from ${h}`; return `from ${(OWN_PATH.find(([re]) => re.test(u.pathname)) || [0, 'your site'])[1]}`; }
+  const x = String(dejargon(s)).replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim(); if (!x) return '';
+  return /^from\b/i.test(x) ? x : `from ${/^(meta ad library|ad library)/i.test(x) ? 'the ' : ''}${x}`; };
+/* the day a number was read: "22 Oct", with the year only when it isn't this one */
+export const dayLine = (at, now = Date.now()) => { const t = typeof at === 'number' ? at : Date.parse(at || ''); if (!(t > 0)) return ''; const d = new Date(t);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(d.getUTCFullYear() !== new Date(now).getUTCFullYear() ? { year: 'numeric' } : {}), timeZone: 'UTC' }); };
+/* a label with a test note in brackets ("Time from product page to cart (headless, one run)") reads without it */
+const plainLabel = (l) => String(dejargon(l) || '').replace(/\s*\((?=[^)]*\b(?:headless|one run|runs?|render\w*|crawl\w*|api|json|scrap\w*|sandbox|pixel|regex|ledger|sample)\b)[^)]*\)/gi, '').trim();
+export function bookNumbers(truth = {}, { max = 40, host = '', now = Date.now() } = {}) {
   const rows = Object.entries(truth || {}).filter(([, f]) => SHOWN(f) && f.v != null && String(f.v).length <= 160 && !/^(price|mrp)\./.test(f.key || '') && /\d/.test(String(f.v)))
-    .map(([k, f]) => ({ key: f.key || k, group: groupOf(k, f), label: f.label, v: String(f.v), src: f.src || null, at: f.at || null, ...(f.connected ? { connected: f.connected } : {}), ...(f.stale ? { stale: true } : {}) }));
+    .map(([k, f]) => ({ key: f.key || k, group: groupOf(k, f), label: plainLabel(f.label), v: String(f.v).trim().replace(/[,;·\s]+$/, ''), src: f.src || null, at: f.at || null, from: srcLine(f.src, host), day: dayLine(f.at, now), ...(f.connected ? { connected: f.connected } : {}), ...(f.stale ? { stale: true } : {}) }));
   const order = new Map(GROUPS.map(([g], i) => [g, g === 'accounts' ? -1 : i]));
   return rows.sort((a, b) => (order.get(a.group) ?? 9) - (order.get(b.group) ?? 9)).slice(0, max);
 }

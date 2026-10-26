@@ -266,6 +266,9 @@
 .bb-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 24px; margin: 0; }
 .bb-facts dt { color: var(--fg-3); font-size: 13px; margin: 0 0 4px; }
 .bb-facts dd { margin: 0; }
+/* the number on its own line, its source quiet under it: inline they ran into each other ("1nutrova.com/meta.json", 26 Oct) */
+.bb-nums dd b { display: block; font-size: 22px; line-height: 1.2; overflow-wrap: anywhere; }
+.bb-nums dd small { display: block; margin-top: 2px; color: var(--fg-3); font-size: 12.5px; }
 .bb-facts select { width: 100%; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; }
 
 /* editing affordances */
@@ -327,6 +330,9 @@
 /* the Brand Book's door on What Brew learned */
 
 /* ---------- the composer: tell Brew anything, docked under the book ---------- */
+/* the dock's fade is window-wide and centred on the dock, which sits right of the window's centre beside the rail: it pushed the page
+   37px wider than the window at 1440 (26 Oct). The book clips sideways (clip, not hidden: the dock stays sticky) */
+.bb { overflow-x: clip; }
 .bb-dock { position: sticky; bottom: 14px; z-index: 30; max-width: 760px; margin: 28px auto 0; display: grid; gap: 10px; }
 /* a soft fade under the dock so the book never shows through right behind the bar */
 .bb-dock::before { content: ""; position: absolute; left: 50%; bottom: -14px; width: 100vw; height: 120px; transform: translateX(-50%); background: linear-gradient(to bottom, transparent, var(--bg) 78%); pointer-events: none; z-index: -1; }
