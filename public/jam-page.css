@@ -771,3 +771,8 @@
 .jp .cs-frame.is-preview .am-media::after{display:none}
 /* the email's hero is light, the product on the page's own surface */
 .jp .jp-mail-hero.jp-wash{background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+/* a Studio piece is made from the bar (Make it, priced): the old free-draft row under the phone doesn't show there */
+.jp .cs-stage .sv-make,.jp .cs-stage .st-atools{display:none}
+/* a short video is the phone itself, its place and time a small line above it (no card behind the phone) */
+.jp .jp-stage-in .as.as-pm:has(.sv-phone){background:none;box-shadow:none;border:0;padding:0}
+.jp .as.as-pm:has(.sv-phone) > .pm-line{margin:0 0 8px;font-size:12px;color:var(--fg-3);text-align:center;background:none}

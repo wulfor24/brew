@@ -40,7 +40,7 @@ export const setupLine = (ch = {}, product = null) => {
     case 'reel': { const s = +p.seconds || +p.length || null; return `A ${s ? `**${s}-second**` : '**short**'} video${prod ? ` of ${prod}` : ''}. The script is free.`; }
     case 'msg': return `One ${cut(p.channel || 'WhatsApp', 12)} message${who ? ` to **${lower(who)}**` : ''}${(p.buttons || []).length ? `, with ${p.buttons.length === 1 ? 'one button' : `${p.buttons.length} buttons`}` : ''}.`;
     case 'mail': return `${p.subject ? `An email, “${cut(p.subject, 60)}”` : 'An email'}${who ? `, to **${lower(who)}**` : ''}.`;
-    case 'page': return `${p.heading ? `A page, “${cut(p.heading, 60)}”` : `The ${lower(ch.actionLabel || 'page')}`}${p.pages ? ` on ${cut(p.pages, 40)}` : ''}.`;
+    case 'page': return `${p.heading ? `A page, “${cut(p.heading, 60)}”` : `The ${lower(ch.actionLabel || 'page')}`}${p.pages ? ` on ${cut(String(p.pages).split(/\s+[–—|-]\s+/)[0], 40)}` : ''}.`;
     case 'post': { const net = cut(String(p.platform && !/^social post$/i.test(p.platform) ? p.platform : ch.target?.name || ch.actionLabel || 'post').replace(/\s+(?:post|reply|thread|answer)$/i, ''), 30), what = /reply|answer/i.test(ch.actionLabel || '') ? 'reply' : /thread/i.test(ch.actionLabel || '') ? 'thread' : 'post';
       const place = String((p.where || [])[0]?.name || '').split(/:\s+/)[0], says = /\b(?:i|we) work at\b|disclosure/i.test(String(p.copy || ''));
       return place && /^r\/|group|community|forum/i.test(place) ? `A ${what} in **${cut(place, 40)}**${says ? ` that says you work at ${(() => { try { return BN() || 'the brand'; } catch { return 'the brand'; } })()}` : ''}.` : `A **${net}** ${what}, ready to paste.`; }
