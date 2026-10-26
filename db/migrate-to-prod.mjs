@@ -38,7 +38,7 @@ try {
     const base = `presync/${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}/`;
     try { await store.put(BACKUP_BUCKET, `${base}run.json`, JSON.stringify({ at: new Date().toISOString(), slugs, jams: JAMS, workspaces: WORKSPACES, global: flag('--global') }));
       console.log(`[partner] pre-sync export to gs://${BACKUP_BUCKET}/${base}`); }
-    catch (e) { stopped = true; console.log(`[partner] STOP: the pre-sync export to gs://${BACKUP_BUCKET}/${base} was refused (${e.message}); nothing written. brew-partner-copy@ needs roles/storage.objectCreator on gs://${BACKUP_BUCKET}`); }
+    catch (e) { stopped = true; console.log(`[partner] STOP: the pre-sync export to gs://${BACKUP_BUCKET}/${base} could not be written (${e.message}); nothing written${/403/.test(e.message) ? `. brew-partner-copy@ needs roles/storage.objectCreator on gs://${BACKUP_BUCKET}` : ''}`); }
     exportRows = async (name, text) => { await store.put(BACKUP_BUCKET, base + name, text, 'application/x-ndjson'); console.log(`[partner] exported production's rows to gs://${BACKUP_BUCKET}/${base}${name} (${text.split('\n').length - 1} lines)`); };
   }
   if (!stopped) {
