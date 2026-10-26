@@ -2574,12 +2574,14 @@ export function createFeedService(o) {
       /* anyone with the link can look. Signed in, a person who isn't on the team becomes a guest of that one jam */
       let guest = false; const email = viewer?.email ? String(viewer.email).toLowerCase() : null, w = tok.wid ? (W(t, tok.wid) || teamJam(t, tok.wid)) : null;
       /* a shared jam needs a signed-in person (the team's jams are never open to an anonymous link) */
-      if (!email && tok.wid) { send(res, 200, { signin: true, jam: tok.wid }); return true; }
+      /* the page the link belongs on: the brand's own path and the jam itself (26 Oct, QV P0-3: a link made on / opened the landing page) */
+      const path = w ? jamPath(t, w) : `/${t.brandId && t.brandId !== 'brew-sample' ? t.brandId : ''}`;
+      if (!email && tok.wid) { send(res, 200, { signin: true, jam: tok.wid, path }); return true; }
       /* a teammate opens it in their own workspace: it is the team's jam already */
-      if (viewer?.member && w) { if (!JAMS.isIn(w, email)) JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'joined'); send(res, 200, { member: true, jam: w.id }); return true; }
+      if (viewer?.member && w) { if (!JAMS.isIn(w, email)) JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'joined'); send(res, 200, { member: true, jam: w.id, path }); return true; }
       if (email && w && !viewer?.member && jamPrivate(t, w)) { send(res, 403, { error: TEAM_ONLY, teamOnly: true }); return true; }
       if (email && w && !viewer?.member && !viewer?.gen) { JAMS.join(w, { email, name: viewer.name, pic: viewer.pic }, 'guest'); guest = true; }
-      send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
+      send(res, 200, { guest, signedIn: !!email, jam: tok.wid || null, path, tenant: t.id, viewer: t.viewer, conn: t.conn, pro: t.plan === 'pro', decided: t.decided || {} }); return true; }
     if (!/^\/api\/(tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh|ask))?$)/.test(u.pathname)) return false;
     for (const r of ROUTES) {
       if (r.method !== req.method) continue; const m = u.pathname.match(r.re); if (!m) continue;

@@ -6,9 +6,13 @@
 import { styleOf, blockOf, angleOf, carriesAngle, cardText } from './studio.js';
 import { SIZES } from './catalogue.js';
 import { refsFor } from './brandbook.js';
+import { kitColours, colourName } from './kit-colours.js'; // the kit's own colours, named (26 Oct)
+export { UI_DEFAULTS, colourName, kitColours } from './kit-colours.js';
 
 const tidy = (s, n = 160) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const VIDEO_KINDS = new Set(['video']);
+/* "…in use.; The product…" and "wash.”.": each part ends once, with its own stop */
+const stop = (s) => { s = String(s || '').trim().replace(/[\s;,:]+$/, ''); return !s ? '' : /[.!?…][”’"')]*$/.test(s) ? s : `${s}.`; };
 const PEOPLE = { none: 'No people on camera', hands: 'Hands only', 'ai-cast': 'An AI person who fits your buyer', consented: 'Your own people (with consent)' };
 
 /* the platform a size is for, in the words the card used */
@@ -41,8 +45,9 @@ export function contextOf(ctx = {}, d0 = {}) {
   const reference = rk ? { value: { img: rf?.poster || (card.images || [])[0] || null, video: rf?.video || null, beats: (rf?.beats || []).length, kind: rk === 'viral' ? 'video' : 'ad', label: rk === 'viral' ? `${tidy(card.creatorName || 'A creator', 40)}’s post` : `${tidy(card.rivalName || 'A rival', 40)}’s ad` }, why: rk === 'viral' ? 'The viral post this card is about: we copy what made it work, with your product.' : 'The rival ad this card is about: we keep its idea and make it yours.' }
     : own[0] ? { value: { img: own[0].src, kind: 'look', label: own[0].label || 'Your look' }, why: own[0].proof ? `Your own ad that worked (${tidy(own[0].proof, 60)}), so the new one keeps its look.` : 'A look from your Brand Book.' } : { value: null, why: 'No reference: we follow your Brand Book’s look.' };
   /* the brand kit */
-  const kit = bbv.kit || {}, brand = { value: { logo: kit.logo || null, colors: (kit.colors || []).slice(0, 5), fonts: kit.fonts || {}, tone: tidy(bbv.tone?.summary || bbv.tone?.line || (typeof bbv.tone === 'string' ? bbv.tone : ''), 80) || null }, why: 'Your Brand Book: logo, colours, type and tone.' };
+  const kit = bbv.kit || {}, kc = kitColours(bbv), brand = { value: { logo: kit.logo || null, colors: kc.slice(0, 5), fonts: kit.fonts || {}, tone: tidy(bbv.tone?.summary || bbv.tone?.line || (typeof bbv.tone === 'string' ? bbv.tone : ''), 80) || null }, why: 'Your Brand Book: logo, colours, type and tone.' };
   if (!kit.logo) missing.push({ text: 'No logo in your Brand Book, so the ad goes out without one.', fix: 'Add your logo', go: 'brand' });
+  if (!kc.length) missing.push({ text: 'No brand colours in your Brand Book yet, so the colours follow the product photo.', fix: 'Add your colours', go: 'brand' });
   /* the words on it: the card's own claim and today's price, a real review only */
   const pn = String(ctx.product?.name || '').toLowerCase(), rp = (r) => String(r?.product || '').toLowerCase(); /* only this product's review, or one about the whole brand */
   const review = (bbv.reviews || []).find((r) => pn && rp(r) && (pn.includes(rp(r)) || rp(r).includes(pn))) || (bbv.reviews || []).find((r) => !rp(r)) || null;
@@ -52,8 +57,9 @@ export function contextOf(ctx = {}, d0 = {}) {
   const line0 = v1.primaryText || v1.caption || v1.copy || v1.description || v1.body || '';
   const words = { value: { headline: tidy(head0, 90), line: first(line0) || null, review: review ? tidy(review.text || review.quote || review, 160) : null }, why: review ? 'The card’s claim, and a real review from your Brand Book.' : 'The card’s claim. No review is quoted: none are in your Brand Book yet.' };
   /* the direction: one paragraph a person can read and change */
-  const look = (set ? set.map((x) => x.look || x.label).join('; ') : st?.look || st?.label || '').replace(/[.\s]+$/, '');
-  const direction = { value: tidy([p?.name ? `${p.name}, exactly as in its photos.` : '', look ? `${look}.` : '', words.value.headline ? `Built around: “${words.value.headline}”.` : '', cast.shown && people !== 'none' ? `${cast.label}.` : people === 'none' ? 'No people.' : '', kit.colors?.length ? `In the brand colours ${kit.colors.slice(0, 3).join(', ')}.` : '', (bbv.never || []).length ? `Never: ${(bbv.never || []).slice(0, 3).join('; ')}.` : ''].filter(Boolean).join(' '), 600), why: 'Written by us from everything above. Change anything; it is what the maker reads.' };
+  const look = (set ? set.map((x) => stop(x.look || x.label)).join(' ') : stop(st?.look || st?.label || ''));
+  const names = [...new Set(kc.slice(0, 3).map(colourName).filter(Boolean))], hl = String(words.value.headline || '').replace(/[\s.!?…]+$/, '');
+  const direction = { value: tidy([p?.name ? `${p.name}, exactly as in its photos.` : '', look, hl ? `Built around: “${hl}”.` : '', cast.shown && people !== 'none' ? stop(cast.label) : people === 'none' ? 'No people.' : '', names.length ? `In the brand’s ${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]}.` : 'No brand colours in the Brand Book yet: the colours follow the product photo.', (bbv.never || []).length ? stop(`Never: ${(bbv.never || []).slice(0, 3).map((x) => String(x).replace(/[.;\s]+$/, '')).join('; ')}`) : ''].filter(Boolean).join(' '), 600), why: 'Written by us from everything above. Change anything; it is what the maker reads.' };
   const size = { value: d0.sizes?.[0] || null, why: sizeWhy(card, d0.sizes?.[0]) };
   const length = kind === 'video' ? { value: d0.seconds, why: `${d0.seconds} s: ${st?.group === 'UGC' || /ugc/.test(st?.id || '') ? 'long enough for a hook, the product and a reason to buy' : d0.seconds <= 5 ? 'one moment that loops well in a feed' : 'the length this format holds attention for'}.` } : null;
   const count = { value: d0.count || 1, why: (d0.count || 1) > 1 ? `The card asks for ${d0.count}.` : 'One. Not right? Redo it.' };

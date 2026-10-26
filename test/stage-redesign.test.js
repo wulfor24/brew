@@ -38,7 +38,7 @@ test('header: the piece, a version switcher, the rest in the More menu; panel: n
   assert.match(app, /\[data-vstep\]/); assert.match(app, /RX\.viewing = to\.id === ch\.head \? null : to\.id/, 'look only; Use this on the bar makes it the newest');
   assert.match(fn('jpMenuPop'), /data-vmenu[^\n]*History/); assert.match(fn('jpMenuPop'), /data-jp-theme/);
   assert.match(app, /<aside class="jp-panel st-panel"><div class="jp-panel-scroll st-panel-b/); assert.ok(!/<div class="st-tabs" role="tablist">\$\{\(RX\.stage === 'brief'/.test(app), 'no tab bar');
-  assert.match(fn('dlDot'), /'writing'[^\n]*'fix'[^\n]*'ready'/); assert.match(fn('dlRow'), /<i class="jp-pd \$\{dot\}"/);
+  assert.match(fn('dlDot'), /'writing'[\s\S]*'todo'[\s\S]*'fix'[\s\S]*'ready'/, 'the dot follows the bar (26 Oct)'); assert.match(fn('dlRow'), /<i class="jp-pd \$\{dot\}"/);
   assert.match(html, /<link rel="stylesheet" href="stage\.css">/); assert.ok(html.indexOf('href="stage.css"') > html.indexOf('href="jam-fit.css"'), 'loaded last');
 });
 

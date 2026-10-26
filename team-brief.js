@@ -15,7 +15,7 @@ import { checkCopyIn } from './claims.js'; // the brief's words carry no claim t
 import { handoffPath } from './handoff.js'; // the brief's own link, which counts opens
 import { sentenceCase } from './text-fit.js'; // a brief title reads like a sentence, names kept
 
-export const TB_V = 4; // bump when the brief starts being written differently: every saved one is written again
+export const TB_V = 5; // bump when the brief starts being written differently: every saved one is written again
 /* who a brief goes to (Param, 26 Oct: "think any and every type of brief that could go to any relevant stakeholder"): the person picks
    it in Send to…, the To line says it, and the next writing of the brief speaks to them */
 export const RECIPIENTS = { team: 'Your team', agency: 'Your agency', designer: 'A designer', media: 'A media buyer', creator: 'A creator', editor: 'A video editor', shopos: 'Our team' };
@@ -23,6 +23,15 @@ const AUDIENCE = { team: 'the brand’s own team', agency: 'the brand’s agency
 export const SECTIONS = [['what', 'What to make'], ['why', 'Why we’re doing it'], ['who', 'Who it’s for'], ['words', 'The words · final'], ['creative', 'The creative'],
   ['specs', 'Specs'], ['rules', 'Must-haves and don’ts'], ['when', 'Budget, timing and owner'], ['measure', 'How we measure it'], ['done', 'Done when'], ['open', 'Still to confirm']];
 const AI_KEYS = ['what', 'why', 'who', 'creative', 'specs', 'rules', 'when', 'done'];
+const RETRY_MS = 15 * 60e3;
+/* the jam plan's audience, unless it is only a place ("arata.in" is where it runs, not who it is for) */
+export const realAudience = (s) => { s = String(s || '').trim(); return s && !/^to confirm/i.test(s) && !/^(?:https?:\/\/)?(?:www\.)?[\w-]+(?:\.[\w-]+)+(?:\/\S*)?$/i.test(s) ? s : ''; };
+/* the owner said once, from the jam's plan: whatever else the writer put on an owner line goes (it named the sender as owner while
+   Before you post said the owner was still missing: 26 Oct, QV P1-16) */
+export const ownerIn = (s, owner) => { const rest = String(s || '').split(/\n|(?<=[.;])\s+|\s+·\s+/).map((x) => x.trim().replace(/^[-•]\s*/, '')).filter((x) => x && !/\bown(?:er|ed by|s it)\b/i.test(x) && !/^to confirm\.?$/i.test(x));
+  return [...(rest.length ? rest : ['Budget and timing: to confirm.']), `Owner: ${owner ? String(owner).replace(/\s+/g, ' ').trim().slice(0, 80).replace(/\.$/, '') : 'to confirm'}.`].join('\n'); };
+/* the words that are names in the brand's own materials (not a sentence's first word), so a title keeps them capitalised */
+export const namesIn = (xs) => [...new Set(xs.flatMap((s) => String(s || '').split(/(?<=[.!?:\n])\s+|\n+/).flatMap((sn) => sn.trim().split(/\s+/).slice(1))).map((x) => x.replace(/[^\p{L}\p{N}'’-]/gu, '')).filter((x) => /^\p{Lu}\p{Ll}/u.test(x)))].slice(0, 120);
 const PDF_FONT = pathToFileURL(path.join(path.dirname(new URL(import.meta.url).pathname), 'pdf', 'fonts', 'Inter-Variable.ttf')).href;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -38,11 +47,14 @@ const fmtM = (m) => { if (!m?.metric) return '';
 export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true, spend = () => false, clean = (x) => x, now = () => Date.now(), handoff, proofOf = () => null, bookOf = () => '', log = console }) {
   /* the files that go with it: the package's own pictures and videos (a rival's are never ours: handoff leaves them out) */
   const creativesOf = (x) => { const seen = new Set();
-    return (x.pkg?.assets || []).filter((a) => (a.kind === 'image' || a.kind === 'video') && ownPath(a.url)).filter((a) => { const n = ownPath(a.url); if (seen.has(n)) return false; seen.add(n); return true; })
+    /* the piece's own files only: never the card's pictures or a reference (card / ref), which can show another product (26 Oct, QV P1-16) */
+    return (x.pkg?.assets || []).filter((a) => (a.kind === 'image' || a.kind === 'video') && !a.card && !a.ref && ownPath(a.url)).filter((a) => { const n = ownPath(a.url); if (seen.has(n)) return false; seen.add(n); return true; })
       .map((a, i, all) => ({ kind: a.kind, label: a.label || (a.kind === 'video' ? 'Video' : 'Picture'), url: ownPath(a.url), poster: ownPath(a.poster),
         /* the file name the receiving team sees: the brand and what it is, never Brew's own label ("The card this came from") */
         name: `${`${x.brand || 'Brand'} ${a.kind === 'video' ? 'video' : 'creative'}${all.length > 1 ? ` ${i + 1}` : ''}`.replace(/[\/\\:*?"<>|]+/g, ' ').trim()}.${ownPath(a.url).split('.').pop().replace('jpeg', 'jpg')}` })); };
   const wordsOf = (x) => (x.pkg?.fields || []).filter((f) => f.pub).map((f) => `${f.label}: ${f.value}`).join('\n') || (x.pkg?.fields || []).slice(0, 6).map((f) => `${f.label}: ${f.value}`).join('\n');
+  const plan1 = (w) => { const bp = w.doc?.plan || {}, owner = String(bp.owner || '').trim(); return { who: realAudience(bp.audience), owner: owner && !/^to confirm/i.test(owner) ? owner : '' }; };
+  const namesOf = (x, d = {}) => namesIn([x.card?.sub, ...(x.card?.rows || []).map((r) => r?.[1]), ...(x.pkg?.fields || []).map((f) => f.value), x.brief?.md, ...(d.evidence || []).map((e) => e.say), sentenceCase(x.card?.title || '') === (x.card?.title || '') ? x.card?.title : '']);
   const keyOf = (w, x) => `${TB_V}|${x.pkg?.id || ''}|${x.pkg?.version || 0}|${w.doc?.rev || 0}`;
 
   /* everything the writer may use, each piece named so the evidence can say where it came from */
@@ -81,8 +93,8 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
 
   const fallback = (w, x) => { const bp = w.doc?.plan || {};
     return { title: x.pkg ? `${x.pkg.action}: ${x.card.title}` : x.title, what: x.pkg ? `${x.pkg.action}${x.pkg.target && !/^a person$/i.test(x.pkg.target) ? ` on ${x.pkg.target}` : ''}.` : x.card.title, /* plain words, never an internal family name */ why: one(x.page?.reason || x.card.sub, 500),
-      who: bp.audience || 'To confirm.', creative: creativesOf(x).length ? `Use the attached ${creativesOf(x).length === 1 ? (creativesOf(x)[0].kind === 'video' ? 'video' : 'picture') : 'files'} as the final. Keep the real product exactly as it is.` : 'To confirm.',
-      specs: x.pkg?.deliverable ? `${x.pkg.deliverable.what}.\nHand over: ${x.pkg.deliverable.files}.` : 'As the placement needs; to confirm.', rules: `${x.pkg?.deliverable ? `${x.pkg.deliverable.rules}.\n` : ''}Use the real product photo, never a redrawn one.\nOnly claims the store and its reviews already make.`, when: [bp.when, bp.budget, bp.owner].filter(Boolean).join(' · ') || 'To confirm.',
+      who: realAudience(bp.audience) || 'To confirm.', creative: creativesOf(x).length ? `Use the attached ${creativesOf(x).length === 1 ? (creativesOf(x)[0].kind === 'video' ? 'video' : 'picture') : 'files'} as the final. Keep the real product exactly as it is.` : 'To confirm.',
+      specs: x.pkg?.deliverable ? `${x.pkg.deliverable.what}.\nHand over: ${x.pkg.deliverable.files}.` : 'As the placement needs; to confirm.', rules: `${x.pkg?.deliverable ? `${x.pkg.deliverable.rules}.\n` : ''}Use the real product photo, never a redrawn one.\nOnly claims the store and its reviews already make.`, when: [bp.when, bp.budget].filter(Boolean).join(' · ') || 'To confirm.' /* the owner line is added once, in build */,
       done: 'The final files are back in the jam and approved.', open: [...(x.brief?.missing || []), ...x.questions.filter((q) => !q.a).map((q) => q.q)].slice(0, 6),
       evidence: x.card.rows.slice(0, 5).map(([k, v]) => ({ say: `${k}: ${v}`, src: 'The card' })) }; };
 
@@ -102,14 +114,19 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
   /* the brief for the version on the stage: written once per version (and per jam-brief edit), else the saved one */
   const build = async (t, w, { fresh = false } = {}) => {
     const x = await handoff.build(t, w, { base: '' }); const key = keyOf(w, x), old = w.teamBrief;
-    if (old && old.key === key && !fresh && old.ai) return { tb: old, x };
+    /* a brief written without the AI (offline, out of credit) is tried again at most every 15 minutes, never on every open: each open
+       wrote it again and the audience flipped between two writings (26 Oct, QV P1-16) */
+    if (old && old.key === key && !fresh && (old.ai || now(t) - (old.tried || old.at || 0) < RETRY_MS)) return { tb: old, x };
     const d = await write(t, w, x, old?.recipient?.kind || null), m = fmtM(x.measure || w.doc?.measure || null);
+    if (!d.ai && old?.auto) { if (old.key === key && !fresh) { old.tried = now(t); return { tb: old, x }; } /* the AI is still away: this brief stays as it was */
+      if (old.ai) { for (const k of AI_KEYS) d[k] = old.auto[k] ?? d[k]; d.title = old.title || d.title; d.evidence = old.evidence || d.evidence; } } /* a new version while the AI is away keeps the written sections; files and words follow the version */
+    { const one0 = plan1(w); d.who = one0.who || d.who; d.when = ownerIn(d.when, one0.owner); if (!one0.owner && !(d.open || []).some((o) => /\bown(?:er|s)\b/i.test(o))) d.open = [...(d.open || []), 'Who owns it']; } /* one owner and one audience: the jam's own plan, the same ones Before you post shows (26 Oct, QV P1-16) */
     /* the rules are rules: a line that restates the final words ("Use the exact headline: …") is dropped, the words have their own section */
     const fv = (x.pkg?.fields || []).map((f) => String(f.value || '').toLowerCase().replace(/\s+/g, ' ').trim()).filter((v) => v.length >= 12);
     if (d.rules) d.rules = d.rules.split('\n').filter((l) => { const q = l.toLowerCase().replace(/\s+/g, ' '); return !/^\W*(use the exact|.{0,40}\bmust (be|read)\s*:)/i.test(l) && !fv.some((v) => q.includes(v.slice(0, 40))); }).join('\n').trim() || d.rules;
     const auto = { ...Object.fromEntries(AI_KEYS.map((k) => [k, d[k]])), words: wordsOf(x) || 'To confirm.', measure: m || 'To confirm.', open: (d.open || []).length ? d.open.map((s) => `- ${s}`).join('\n') : 'Nothing open.' };
     const edits = old?.edits || {};
-    w.teamBrief = { v: TB_V, key, over: old?.over || {}, recipient: old?.recipient || null, sent: old?.sent || [], ai: d.ai, at: now(t), title: sentenceCase(d.title || x.title, [x.brand, ...(x.pkg?.fields || []).filter((f) => f.pub).map((f) => f.value)]), auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
+    w.teamBrief = { v: TB_V, key, over: old?.over || {}, recipient: old?.recipient || null, sent: old?.sent || [], ai: d.ai, at: now(t), names: namesOf(x, d), title: sentenceCase(d.title || x.title, [x.brand, ...(x.pkg?.fields || []).filter((f) => f.pub).map((f) => f.value), ...namesOf(x, d)]), auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
       brand: x.brand, mark: x.mark || null, memo: { from: x.memo?.from || null, to: RECIPIENTS[old?.recipient?.kind] || 'Your team' } }; /* a brief to hand over: their own team or agency (Send to the ShopOS team stays its own button) */
     return { tb: w.teamBrief, x }; };
   /* who the brief went to and whether they opened its link (the prototype's "Sent to Priya · opened"): the newest send, and whether
@@ -121,7 +138,7 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
     e.opens = (e.opens || 0) + 1; e.openedAt ||= now(t); e.lastAt = now(t); w.updatedAt = now(t); return true; };
   const view = (w, x) => { const tb = w.teamBrief; if (!tb) return null;
     const ov = tb.over || {};
-    return { rev: tb.rev || tb.at || 0, docRev: w.doc?.rev || 0, title: ov.title || sentenceCase(tb.title, [tb.brand]), at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
+    return { rev: tb.rev || tb.at || 0, docRev: w.doc?.rev || 0, title: ov.title || sentenceCase(tb.title, [tb.brand, ...(tb.names || [])]) /* names kept ("Baal Ki Baat": 26 Oct, QV P2-3) */, at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
       recipient: tb.recipient || null, sent: sentOf(tb), memo: { from: ov.from || tb.memo?.from || null, to: ov.to || tb.recipient?.name || RECIPIENTS[tb.recipient?.kind] || tb.memo?.to || 'Your team', due: String(ov.due || '').replace(/^(?:due|deadline)\s*:\s*/i, '') || w.doc?.plan?.when || null, ref: w.ticket || null },
       sections: SECTIONS.map(([k, h]) => ({ k, h, t: tb.edits[k] ?? tb.auto[k] ?? '', edited: tb.edits[k] != null, locked: k === 'words' })), evidence: tb.evidence, creatives: tb.creatives, pdf: tb.pdf }; };
 

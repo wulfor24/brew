@@ -702,6 +702,20 @@
   .jp .jp-ship .ship-go,.jp .jp-ship .btn-ghost{overflow:hidden;text-overflow:ellipsis;padding:0 12px}
   .jp .jp-ship .ship-redo .btn-free,.jp .jp-ship .ship-redo small{display:none}
 }
+/* a phone's header keeps the piece, its product and its version (26 Oct, QV P2-16: "Instagra…", no product, no versions): the title
+   takes the room and puts the product under it; the header grows a row rather than cut the name */
+@media (max-width:640px){
+  .jp .jp-hd{height:auto;min-height:52px;flex-wrap:wrap;row-gap:2px;padding-block:6px}
+  .jp .jp-hd .jp-grow{display:none}
+  .jp .jp-ttl{order:1;flex:1 1 calc(100% - 96px);max-width:none;height:auto;min-height:36px;padding:2px 6px}
+  .jp .jp-hd > [data-jp-more]{order:2}
+  .jp .jp-hd > .jp-mode,.jp .jp-hd > .jp-ver{order:3}
+  .jp .jp-ttl > span{display:flex;flex-direction:column;align-items:flex-start;min-width:0;line-height:1.25;white-space:nowrap}
+  .jp .jp-ttl > span > em{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+  .jp .jp-hd .jp-ver{display:inline-flex}
+  .jp .jp-ttl .jp-sep{display:none}
+}
+.jp .jp-ttl .jp-sep{font-weight:inherit}
 
 /* frames drawn from a piece's own package (jpFrame): the brand's own colours where the prototype used Arata's */
 .jp .jp-wash{background:radial-gradient(110% 80% at 50% 18%,color-mix(in srgb,var(--brand-1,#82b1ff) 35%,#fff) 0,var(--brand-1,#82b1ff) 50%,var(--brand-2,#3b82f6) 100%);color:#fff}
