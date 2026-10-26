@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import { aiRingNow, aiFact, healAiText, healAiCard } from '../ai-count.js';
 import { healthFrom } from '../health.js';
 import { draftFits, draftName, draftView, notHeadline, noPlanNo } from '../drafts-bg.js';
+import { aiTextsOf, fromAi, dropAiQuotes } from '../quote-guard.js';
 import { heardCards } from '../social-feed.js';
 import { isCdn, cdnExpiry, cdnDead, keepName, createCdnKeep, keepRes } from '../cdn-keep.js';
 
@@ -114,4 +115,21 @@ test('drafts: one with no saved product is matched by the name in its title; a h
   assert.equal(noPlanNo('Edit this post 21 template and use it in your ads.'), 'Edit this template and use it in your ads.');
   assert.equal(noPlanNo('Run this Play 21 static next week'), 'Run this static next week');
   assert.match(read('feed-service.js'), /rest\.title = noPlanNo\(rest\.title\); rest\.sub = noPlanNo\(rest\.sub\)/);
+});
+
+/* ---------- 5. only real customers are quoted ---------- */
+test('quotes: a draft line that repeats an AI answer leaves it; a real review stays', () => {
+  const profile = { ai: { answers: [{ tool: 'chatgpt', text: 'Mana Projects offers a range of residential options in Bangalore, worth exploring based on location, budget and amenities.' }] } };
+  const runs = [{ answers: [{ engine: 'gemini', text: 'For villas in Sarjapur, buyers often compare Mana Projects with Godrej Properties and Prestige on price and handover.' }] }];
+  const T = aiTextsOf({ profile, runs }); assert.equal(T.length, 2);
+  assert.ok(fromAi('“Mana Projects offers a range of r…”', T), 'a cut quote of an AI answer');
+  assert.ok(fromAi('buyers often compare Mana Projects with Godrej Properties', T));
+  assert.ok(!fromAi('“The handover was on time and the team answered every call.”', T), 'a real review');
+  assert.ok(!fromAi('Mana Projects offers', T), 'too short to tell');
+  const d = { headline: '“Mana Projects offers a range of r…”', headSmall: 'x', copy: 'Homes near your office.\n“Mana Projects offers a range of residential options in Bangalore”\nBook a visit.', title: 'Single image ad' };
+  const out = dropAiQuotes(d, T);
+  assert.equal(out.headline, undefined); assert.equal(out.copy, 'Homes near your office.\nBook a visit.');
+  assert.equal(dropAiQuotes({ headline: 'Homes near your office' }, T).headline, 'Homes near your office');
+  assert.match(read('drafts-bg.js'), /const ask = \[ASK\[kind\] \|\| '', QUOTE_RULE,/, 'the writer is told'); assert.match(read('drafts-bg.js'), /dropAiQuotes\(j, aiTextsOf\(\{ profile: p\.profile \}\)\)/);
+  assert.match(read('feed-service.js'), /rest\.draft = dropAiQuotes\(rest\.draft, aiTextsNow\(t\)\)/, 'saved drafts heal on serve');
 });

@@ -30,6 +30,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { matchProduct, cardProduct, sceneOf } from './product-match.js';
+import { aiTextsOf, dropAiQuotes, QUOTE_RULE } from './quote-guard.js'; // only real customers are quoted, never an AI answer (QV round 2, 26 Oct)
 import { draftPrompt, imagePrompt, hookBlock, smallOf, DRAFT_SCHEMA, DRAFT_RATIOS, createMakers, HEAD_V } from './drafts.js';
 import { cardValue } from './value.js'; // what a card is worth doing: the order drafts are made in
 import { emailHtml, whatsappHtml, pageHtml, collectionHtml } from './draft-mocks.js';
@@ -249,10 +250,11 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     let mem = ''; try { mem = memory ? await memory.promptBlock(slug, { query: `${c.title} ${c.sub || ''}`, agent: 'creative', name: p.name }) : ''; } catch {}
     const hooks = hookBlock(p), scenes = o.cache ? scenesOf(o.cache, c.id) : [], take = o.take ? TAKES[(o.take + (+moveOf(c) || 0)) % TAKES.length] : '';
     const card = `${p.factBrief || ''}\n\nCard (by the ${c.agent} agent, from ${c.src || 'the move documents'}):\nTitle: ${c.title}\nBody: ${c.sub || ''}\n${(c.rows || []).map((r) => `- ${r[0]}: ${r[1]}`).join('\n')}\nThe person reading is the founder.${hooks ? `\n\n${hooks}` : ''}${scenes.length ? `\n\nSCENES ALREADY IN THIS FEED (use another setting, person and angle):\n${scenes.map((v) => `- ${v}`).join('\n')}` : ''}`;
-    const ask = [ASK[kind] || '', take ? `This is today's new take on a draft the team has seen: build the visual as ${take}, with a new headline.` : ''].filter(Boolean).join(' ');
+    const ask = [ASK[kind] || '', QUOTE_RULE, take ? `This is today's new take on a draft the team has seen: build the visual as ${take}, with a new headline.` : ''].filter(Boolean).join(' ');
     const prompt = draftPrompt({ card, role: c.agent === 'brew' ? 'creative' : c.agent || 'creative', brief: cardBriefText(c, { moveDocs: p.moveDocs }), mem, as, ask });
     const r = await ai.call({ model: 'sonnet', prompt, schema: DRAFT_SCHEMA, max: 4500, tag: 'draft-bg', ...(p.bookWords ? { system: `You write for ${p.name || 'the brand'}. Follow its Brand Book in every word:\n${p.bookWords}` } : {}) }); box.usd += r.usd || 0; /* 3000 was hit once: a plan cut off mid-JSON */
     const j = r.json || {}; j.as = as;
+    { const kept = dropAiQuotes(j, aiTextsOf({ profile: p.profile })); if (kept !== j) { log.info?.('[drafts-bg] dropped an AI answer quoted as a customer', c.id); Object.assign(j, kept); if (!kept.headline) delete j.headline; } }
     const cut0 = cleanDraftClaims(j, packSource(p, c)); if (cut0.length) log.info?.('[drafts-bg] dropped unbacked claims', c.id, cut0.map((f) => f.phrase).join(', ')); /* QA-25: a code, guarantee or timed result the store never made never reaches a first draft */
     /* a clip is 9:16 from its first frame (Veo takes 9:16 or 16:9); Stories too */
     const ratio = kind === 'stories' || kind === 'video' ? '9:16' : DRAFT_RATIOS.includes(j.ratio) && j.ratio !== '16:9' ? j.ratio : c.make?.format === 'reel' ? '9:16' : '4:5';
