@@ -848,14 +848,14 @@
 .jp .jp-stage-in > .st-asset.cs-stage{padding-top:0!important;padding-bottom:0!important}
 /* the ad's words clamp to whole lines (the older "never cut" rule set display:block, so the clamp alone did nothing and a
    sliver of the next line showed); a short window gets two, then one */
-.jp .std .st-asset .as-meta.lg:not(.is-story) .am-text{display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden!important;max-height:none;padding-bottom:0;margin-bottom:10px;-webkit-mask-image:none;mask-image:none}
-.jp .std .st-asset .as-meta.lg.is-tight:not(.is-story) .am-text{-webkit-line-clamp:2}
-.jp .std .st-asset .as-meta.lg.is-tighter:not(.is-story) .am-text{-webkit-line-clamp:1}
+.jp .st-asset .as-meta.lg:not(.is-story) .am-text{display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden!important;max-height:none;padding-bottom:0;margin-bottom:10px;-webkit-mask-image:none;mask-image:none}
+.jp .st-asset .as-meta.lg.is-tight:not(.is-story) .am-text{-webkit-line-clamp:2}
+.jp .st-asset .as-meta.lg.is-tighter:not(.is-story) .am-text{-webkit-line-clamp:1}
 /* the stage's tag keeps its corner: the piece starts under it */
 .jp .jp-stage-in > .st-asset.cs-stage{padding-top:30px!important}
 /* whole lines only, whatever display the older rules force: the box is exactly N lines tall, its space below is margin */
-.jp .std .st-asset .as-meta.lg:not(.is-story) .am-text{padding-bottom:0!important;margin-bottom:10px!important;max-height:3lh!important}
-.jp .std .st-asset .as-meta.lg.is-tight:not(.is-story) .am-text{max-height:2lh!important}
-.jp .std .st-asset .as-meta.lg.is-tighter:not(.is-story) .am-text{max-height:1lh!important}
+.jp .st-asset .as-meta.lg:not(.is-story) .am-text{padding-bottom:0!important;margin-bottom:10px!important;max-height:3lh!important}
+.jp .st-asset .as-meta.lg.is-tight:not(.is-story) .am-text{max-height:2lh!important}
+.jp .st-asset .as-meta.lg.is-tighter:not(.is-story) .am-text{max-height:1lh!important}
 /* the frame no longer guesses a width from the window height (it pinned a short window's ad at 240px): fitAd sizes the ad */
 .jp .jp-stage-in .cs-stage .cs-frame.is-preview{width:100%!important}
