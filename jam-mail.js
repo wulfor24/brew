@@ -1,4 +1,5 @@
 import { smallPage } from './small-page.js';
+import { PRODUCT_NAME } from './product-name.js';
 // Brew's emails about jams, to the brand's own team (never to its customers).
 // Right away: you were tagged (@you), asked a question, assigned the jam, or asked for your OK.
 // Batched: new messages in a jam you're part of, at most one email per jam per person every 15 minutes.
@@ -26,7 +27,7 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
 
   const link = (slug, wid) => (String(wid).startsWith('j2_') ? `${base()}/${slug}?v=2&go=feed#jam2=${encodeURIComponent(wid)}` : `${base()}/${slug}?go=feed#jam=${encodeURIComponent(wid)}`); /* a Jam v2 jam opens in v2 */ /* ?go=feed: straight into the jam, never the read replay */
   const prefLink = (slug, email, set, wid) => `${base()}/mail/pref?t=${encodeURIComponent(sign({ slug, email: lc(email), set, wid: wid || null }, 180 * 86400, 'mailpref'))}`;
-  const footer = (slug, email, wid) => `You’re getting this because you’re in this jam.<br>${footLink(prefLink(slug, email, 'mute', wid), 'Mute this jam')} · ${footLink(prefLink(slug, email, 'tags'), 'Only when I’m tagged')} · ${footLink(prefLink(slug, email, 'off'), 'No emails from Brew')}`;
+  const footer = (slug, email, wid) => `You’re getting this because you’re in this jam.<br>${footLink(prefLink(slug, email, 'mute', wid), 'Mute this jam')} · ${footLink(prefLink(slug, email, 'tags'), 'Only when I’m tagged')} · ${footLink(prefLink(slug, email, 'off'), 'No emails from us')}`;
   const quote = (who, text) => mquote(who, cut(text, 280));
 
   const send = async (to, subject, html, text) => { try { const ok = await mail(to, subject, html, text); if (ok) return true; } catch (e) { log.warn?.('[jam-mail] send', e.message); }
@@ -88,23 +89,23 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
     if (u.pathname !== '/mail/pref' || req.method !== 'GET') return false;
     const t = verify(u.searchParams.get('t') || '', 'mailpref');
     const page = (h, p) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'referrer-policy': 'no-referrer' }); res.end(smallPage(h, p, { link: t?.slug ? { href: `/${t.slug}?go=feed`, label: `Open ${brandName(t.slug)}` } : null })); return true; };
-    if (!t?.slug || !t.email) return page('This link has expired', 'Open Brew to change your email settings.');
+    if (!t?.slug || !t.email) return page('This link has expired', 'Open the feed to change your email settings.');
     if (t.set === 'mute' && t.wid) { await setPref(t.slug, t.email, { mute: t.wid }); return page('Muted', 'You won’t get emails about this jam unless someone tags you.'); }
     if (t.set === 'tags') { await setPref(t.slug, t.email, { mail: 'tags' }); return page('Only when you’re tagged', 'You’ll get an email when someone tags you, asks you something or gives you a jam.'); }
     /* off also stops the weekly digest and the "moves ready / updated" emails (digest.js teamRecipients reads mail: 'off') */
-    if (t.set === 'off') { await setPref(t.slug, t.email, { mail: 'off' }); return page('No emails from Brew', `No emails from Brew for ${brandName(t.slug)}. Turn them back on any time.`); }
+    if (t.set === 'off') { await setPref(t.slug, t.email, { mail: 'off' }); return page('No emails from us', `No emails from us for ${brandName(t.slug)}. Turn them back on any time.`); }
     if (t.set === 'all') { await setPref(t.slug, t.email, { mail: 'all' }); return page('Jam emails are on', 'You’ll hear about the jams you’re in.'); }
-    return page('Nothing changed', 'Open Brew to change your email settings.');
+    return page('Nothing changed', 'Open the feed to change your email settings.');
   };
 
   /* the ShopOS team was tagged (in the chat, by Share with the ShopOS team, or by asking it a question): one email to the
      team's shared inbox (SHOPOS_EMAIL), at most once per jam an hour. Their shopos.ai Google accounts open the jam from the link */
   const shoposSent = new Map();
-  const shopos = async (slug, w, { by, text = '', why = 'tagged the ShopOS team', ticket = null, jamUrl, briefUrl }) => {
+  const shopos = async (slug, w, { by, text = '', why = 'tagged our team', ticket = null, jamUrl, briefUrl }) => {
     const to = process.env.SHOPOS_EMAIL || 'hello@joinsquareup.com', k = `${slug}|${w.id}`;
     if (clock() - (shoposSent.get(k) || 0) < 60 * 60e3) return false; shoposSent.set(k, clock());
     const brand = brandName(slug), subject = `${brand}: ${first(by)} ${why} on “${cut(w.title, 60)}”${ticket ? ` (${ticket})` : ''}`;
-    const html = emailHtml({ title: `${first(by)} ${why} on “${cut(w.title, 60)}”`, eyebrow: `${brand}${ticket ? ` · ${ticket}` : ''}`, preheader: text ? cut(text, 140) : subject, body: (text ? quote(by?.name || by?.email || 'Someone', text) : '') + para(`From ${esc(by?.name || '')}${by?.name && by?.email ? ' · ' : ''}${esc(by?.email || '')}`, { muted: true, small: true }), cta: { href: jamUrl || link(slug, w.id), label: 'Join the jam' }, secondary: briefUrl ? { href: briefUrl, label: 'Read the brief (read-only)' } : null, after: para('Sign in with your ShopOS Google account to take part.', { muted: true, small: true }), base: base() });
+    const html = emailHtml({ title: `${first(by)} ${why} on “${cut(w.title, 60)}”`, eyebrow: `${brand}${ticket ? ` · ${ticket}` : ''}`, preheader: text ? cut(text, 140) : subject, body: (text ? quote(by?.name || by?.email || 'Someone', text) : '') + para(`From ${esc(by?.name || '')}${by?.name && by?.email ? ' · ' : ''}${esc(by?.email || '')}`, { muted: true, small: true }), cta: { href: jamUrl || link(slug, w.id), label: 'Join the jam' }, secondary: briefUrl ? { href: briefUrl, label: 'Read the brief (read-only)' } : null, after: para('Sign in with your team Google account to take part.', { muted: true, small: true }), base: base() });
     const ok = await send(to, subject, html, `${subject}\n\n${text ? `${by?.name || by?.email}: ${cut(text, 400)}\n\n` : ''}Join the jam: ${jamUrl || link(slug, w.id)}${briefUrl ? `\nThe brief (read-only): ${briefUrl}` : ''}`);
     if (!ok) shoposSent.delete(k); return ok;
   };
@@ -140,9 +141,9 @@ export function createJamMail({ mail, packs, sign, verify, base = () => process.
     const sender = lc(to), mover = lc(by?.email), wide = status === 'delivered' || status === 'needs_info';
     const list = [...new Set([sender, ...(wide ? (w.people || []).map((x) => lc(x.email)) : [])])].filter((e) => e && EM.test(e) && e !== mover);
     if (!list.length) return false;
-    const brand = brandName(slug), title = status === 'needs_info' ? `The ShopOS team needs something for “${cut(w.title, 60)}”` : `${wide ? 'The' : 'Your'} brief “${cut(w.title, 60)}” is ${String(label).toLowerCase()}`;
-    const html = emailHtml({ title, eyebrow: `${brand}${ticket ? ` · ${ticket}` : ''}`, preheader: note ? cut(note, 140) : title, body: note ? quote(by?.name || 'ShopOS team', note) : para(`${esc(label)}.`), cta: { href: jamUrl || link(slug, w.id), label: status === 'needs_info' ? 'Answer in the jam' : 'Open the jam' }, base: base() });
-    const txt = `${title}\n\n${note ? `${by?.name || 'ShopOS team'}: ${note}\n\n` : ''}Open the jam: ${jamUrl || link(slug, w.id)}`;
+    const brand = brandName(slug), title = status === 'needs_info' ? `Our team needs something for “${cut(w.title, 60)}”` : `${wide ? 'The' : 'Your'} brief “${cut(w.title, 60)}” is ${String(label).toLowerCase()}`;
+    const html = emailHtml({ title, eyebrow: `${brand}${ticket ? ` · ${ticket}` : ''}`, preheader: note ? cut(note, 140) : title, body: note ? quote(by?.name || 'Our team', note) : para(`${esc(label)}.`), cta: { href: jamUrl || link(slug, w.id), label: status === 'needs_info' ? 'Answer in the jam' : 'Open the jam' }, base: base() });
+    const txt = `${title}\n\n${note ? `${by?.name || 'Our team'}: ${note}\n\n` : ''}Open the jam: ${jamUrl || link(slug, w.id)}`;
     let n = 0;
     for (const e of list) { if (e !== sender && !(await wants(slug, e, w.id, status === 'needs_info' ? 'asked' : 'reply'))) continue; if (await send(e, `${ticket ? `${ticket} · ` : ''}${title}`, html, txt)) n++; }
     return n > 0;

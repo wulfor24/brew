@@ -98,10 +98,10 @@ test('a take left drawing by a server that stopped resolves to a drawError on th
   const v = versionsOf(t, r.changeId).find((x) => x.id === r.versionId); v.drawing = true; v.drawError = null; delete v.asset; t.cards.get('c1').take.drawing = true;
   const fresh = studio({ geminiImage: fakeImage, mediaFake: true });
   assert.equal(fresh.RMX.v2.healTakes(t), 1, 'the pulse’s heal resolves it');
-  assert.equal(v.drawing, false); assert.match(v.drawError, /restarted/); assert.equal(t.cards.get('c1').take.drawing, false); assert.match(t.cards.get('c1').take.drawError, /restarted/);
+  assert.equal(v.drawing, false); assert.match(v.drawError, /restart/); assert.equal(t.cards.get('c1').take.drawing, false); assert.match(t.cards.get('c1').take.drawError, /restart/);
   assert.equal(fresh.RMX.v2.healTakes(t), 0, 'once');
   v.drawing = true; const g = await fresh.call('GET /api/changes/:chid', {}, t, { chid: r.changeId });
-  assert.equal(g.change.versions.find((x) => x.id === r.versionId).drawing, undefined, 'loading the change resolves it too'); assert.match(v.drawError, /restarted/);
+  assert.equal(g.change.versions.find((x) => x.id === r.versionId).drawing, undefined, 'loading the change resolves it too'); assert.match(v.drawError, /restart/);
 });
 
 test('the existing remix bodies are untouched: no flags builds the studio’s packages as before', async () => {

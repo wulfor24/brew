@@ -37,7 +37,7 @@ test('the ledger carries listening, trend, pulse, video and calendar lines in le
   assert.match(by('listen.trend.sizing').v, /2026-09-30: 21 · 2026-10-07: 28 · 2026-10-14: 37/);
   assert.equal(by('listen.rival.durability').n, 1); assert.ok(by('listen.rival.durability.q1').url);
   assert.match(by('listen.asked.q1').v, /2 replies, threshold 2 \(met\)/); assert.ok(by('listen.asked.q1.q1'));
-  assert.equal(by('pulse.weather.delhi.min').v, '11 °C'); assert.equal(by('pulse.weather.delhi.min').src, 'Brew market pulse', 'vendor names never reach the prompt');
+  assert.equal(by('pulse.weather.delhi.min').v, '11 °C'); assert.equal(by('pulse.weather.delhi.min').src, 'Market pulse', 'vendor names never reach the prompt');
   assert.match(by('video.v9').v, /Hook: "Stop buying white sneakers.*3 scenes · 21s · 480000 views/);
   assert.match(by('cal.diwali.2026').v, /Diwali on 2026-11-08, 25 days away; plan points: creative ready by 2026-10-15/);
   assert.ok(!L.some((e) => e.key.startsWith('cal.thanksgiving')), 'a US event stays out of an Indian brand');
@@ -59,7 +59,7 @@ test('the prompt sends the signal lines with the ledger, the timing and the real
   assert.match(p, /listen\.theme\.sizing \| 37 mentions/); assert.match(p, /listen\.theme\.sizing\.q1 \| Do these run small.*\| https:\/\/www\.reddit\.com/);
   assert.match(p, /price\.hero \| ₹2,999/); assert.match(p, /Write Move 51 of 58 /); assert.match(p, /Check timings: Checks every week/);
   assert.match(p, /Guardrails: the beliefs under "What the team told Brew"/); assert.match(p, /never carry a guarantee, refund promise, timed result or claim from it/); /* a learnings rewrite of an offers move kept the exemplar's guarantee */
-  assert.match(p, /Kicker \(fixed\): ANSWERS FROM LISTENING · MOVE 51\n/); assert.doesNotMatch(p.split("# Depth and format exemplar")[0] + p.split("</exemplar>")[1], /OF 50\b/);
+  assert.match(p, /Kicker \(fixed\): ANSWERS FROM LISTENING · PLAY 51\n/); assert.doesNotMatch(p.split("# Depth and format exemplar")[0] + p.split("</exemplar>")[1], /OF 50\b/);
 });
 
 test('new specs write under AI_MOCK with "How we measure" carrying the check timings', async () => {
@@ -71,9 +71,9 @@ test('new specs write under AI_MOCK with "How we measure" carrying the check tim
   for (const n of news) { const m = saved[n]; assert.ok(m, `move ${n} written`);
     const meas = m.sections.find((s) => s.kind === 'measure'), txt = meas.blocks.map((b) => b.text).join(' ');
     assert.ok(txt.includes(`Check timings:`) && txt.includes(timingLine(SPECS[n].timing).slice(0, 30)), `move ${n} timings: ${txt.slice(0, 160)}`);
-    assert.match(txt, /What to watch:/); assert.match(m.kicker, new RegExp(`MOVE ${n}$`)); assert.doesNotMatch(m.kicker, / OF 50$/); }
+    assert.match(txt, /What to watch:/); assert.match(m.kicker, new RegExp(`PLAY ${n}$`)); assert.doesNotMatch(m.kicker, / OF 50$/); }
   assert.match(saved[53].sections.find((s) => s.kind === 'measure').blocks[1].text, /Checks on day 1 and 3; decides on day 7/);
-  assert.equal(saved[0].title, 'The moves for Comet', 'no count in the index title: the playbook keeps growing');
+  assert.equal(saved[0].title, 'The plays for Comet', 'no count in the index title: the playbook keeps growing');
   assert.equal(saved[0].stat, String(saved[0].meta.written), 'the index stat is the moves actually written');
 });
 

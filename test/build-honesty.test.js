@@ -65,7 +65,7 @@ test('moves still missing after the second pass leave the brand unfinished with 
   await b.resume(slug);
   let s = await b.status(slug);
   assert.equal(calls.runAll, 2, 'one more pass for the missing moves');
-  assert.notEqual(s.done, true, 'never "Ready" with moves missing'); assert.equal(s.retryMoves, 2); assert.match(s.state, /^2 moves still to write; Brew retries within the hour/);
+  assert.notEqual(s.done, true, 'never "Ready" with moves missing'); assert.equal(s.retryMoves, 2); assert.match(s.state, /^2 plays still to write; we retry within the hour/);
   assert.equal(s.error, null, 'a new run clears the last error');
   save = true; await b.resume(slug); s = await b.status(slug);
   assert.equal(s.done, true); assert.equal(s.retryMoves, null); assert.equal(s.state, 'Ready');

@@ -5,11 +5,11 @@ const RE = /SHOPOS\.AI|SHOPOS|ShopOS|Shopos|shopOS|shopos(?!-feed)/g;
 const TO = { 'SHOPOS.AI': 'BREW', SHOPOS: 'BREW', ShopOS: 'Brew', Shopos: 'Brew', shopOS: 'brew', shopos: 'brew' };
 const OLD_COPY = [['Heart it, remix it, jam on it, ship it.', 'Heart it, jam on it, share the brief.'], ['Heart it, jam on it, do it.', 'Heart it, jam on it, share the brief.'],
   // moves written before 2026-10-15 promised a watching loop that was cut: they read honestly without a paid rewrite
-  ['What Brew will watch:', 'What to watch:'], ['Fifty-one moves, turned into cards.', 'Your moves, turned into cards.'], ['BREW SHIPS', 'BREW DRAFTS'], ['between checks Brew re-reads', 'between checks, also look at']]; // saved packs heal on read // remix folded into the jam
+  ['What Brew will watch:', 'What to watch:'], ['Fifty-one moves, turned into cards.', 'Your plays, turned into cards.'], ['BREW SHIPS', 'BREW DRAFTS'], ['between checks Brew re-reads', 'between checks, also look at']]; // saved packs heal on read // remix folded into the jam
 // move kickers said "MOVE 24 OF 64" with a total that changed as the playbook grew ("MOVE 65 OF 64"): now just the number
 const OLD_RX = [[/( · MOVE \d{2,4}) OF \d{2,3}\b/g, '$1'],
   // the index once baked a count into its title ("Sixty-four moves for Arata"), which drifted as moves were added
-  [/\b(?:Fifty|Sixty|Seventy|Eighty)(?:-(?:one|two|three|four|five|six|seven|eight|nine))? moves for\b/g, 'The moves for'],
+  [/\b(?:Fifty|Sixty|Seventy|Eighty)(?:-(?:one|two|three|four|five|six|seven|eight|nine))? moves for\b/g, 'The plays for'],
   // moves written before 2026-10-15 said Brew watches, re-reads, pauses or reverts: the team runs those checks
   [/\b(B|b)etween checks,? Brew re-reads\b/g, '$1etween checks, look at'], [/\bat each check,? Brew re-reads\b/gi, 'at each check, look at'],
   [/\bBrew re-reads\b/g, 'the team looks at'], [/\bBrew watches\b/g, 'The team watches'], [/(^|[.!?]\s+)Brew ships it\b/g, '$1The team ships it'], [/\bBrew ships it\b/g, 'the team ships it'],
@@ -22,7 +22,9 @@ const OLD_RX = [[/( · MOVE \d{2,4}) OF \d{2,3}\b/g, '$1'],
       if (/team$/.test(r) && str[off + m.length] === '"') return m; /* a card's source line that is only the team's name stays */
       const who = /^(?:deployment|development) team$/.test(r) ? 'team' : r; const out = `your ${who}${pl && who !== 'team' ? 's' : ''}`;
       const cap = pre !== undefined && pre !== '' ? true : /^[A-Z]/.test(art || '') ; return `${pre || ''}${cap ? out[0].toUpperCase() + out.slice(1) : out}`; }],
-  [/\bBrew will (monitor|build|run|ship|review|own|handle|track|manage)\b/g, 'your team will $1'], [/(^|[.!?]\s+)your team will/g, '$1Your team will']];
+  [/\bBrew will (monitor|build|run|ship|review|own|handle|track|manage)\b/g, 'your team will $1'], [/(^|[.!?]\s+)your team will/g, '$1Your team will'],
+  /* saved copy that names our team ("send the brief to the ShopOS team", read as "the Brew team") says "our team" (copy rules, 26 Oct) */
+  [/\b([Tt])he Brew team\b/g, (m, t) => (t === 'T' ? 'Our team' : 'our team')]];
 /* an address is a name, not copy: sai@shopos.ai, https://shopos.ai/x and shopos.ai stay as written (the rename once turned
    invited emails into @brew.ai, so invites and members on that domain could never match their Google sign-in) */
 const inAddress = (s, i, m) => { let a = i, b = i + m.length; while (a > 0 && !/[\s"'<>(),;]/.test(s[a - 1])) a--; while (b < s.length && !/[\s"'<>(),;]/.test(s[b])) b++;

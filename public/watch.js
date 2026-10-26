@@ -48,7 +48,7 @@
         ${d.rivals ? rivals(d.rivals) : ''}
         ${d.show && !d.show.error ? show(d.show, d.name) : d.show?.error ? `<div class="wx-torn"><b>AI answers</b> ${esc(d.show.error)}</div>` : ''}
         ${cant(d.cant || [])}
-        <p class="wx-foot">Brew reads all of this again on its own: what people say every day, shelves and marketplaces every week, web traffic every month.</p>
+        <p class="wx-foot">We read all of this again on our own: what people say every day, shelves and marketplaces every week, web traffic every month.</p>
       </div>`;
       el.querySelector('[data-wx-back]')?.addEventListener('click', () => ctx.back?.go?.());
       el.querySelectorAll('[data-wx-tab]').forEach((b) => b.addEventListener('click', () => { S.tab = b.dataset.wxTab; paint(); el.querySelector('.wx-say')?.scrollIntoView({ block: 'nearest' }); }));
@@ -62,7 +62,7 @@
       return `<section class="wx-cover"><div class="wx-cover-in">
         ${S.logo ? `<img class="bb-cover-logo" src="${esc(S.logo)}" alt="">` : ''}
         <span class="bb-cover-k">Watched for you, every day</span>
-        <h1>What Brew watches for ${esc(d.name)}</h1>
+        <h1>What we watch for ${esc(d.name)}</h1>
         ${parts.length ? `<p class="wx-count">${parts.join('<i>·</i>')}</p>` : ''}</div>
         <div class="wx-stickers" aria-hidden="true">${(h.logos || []).map((l, i) => `<span class="wx-sticker" style="--t:${tilt(i) * 2}deg;--i:${i}" title="${esc(l.name)}">${logo(l.logo, l.name, 'wx-st-img')}<small>${esc(l.name)}</small></span>`).join('')}</div></section>`;
     }
@@ -87,7 +87,7 @@
       const pack = (x, i) => `<div class="wx-pack${x.inStock === false ? ' is-out' : ''}" style="--i:${i}">${ext(x.url, `${x.image ? `<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : `<b class="wx-pack-n">${esc(String(x.name || '').slice(0, 30))}</b>`}`)}${tag(x)}<small>${esc(String(x.name || '').slice(0, 46))}${x.unit ? ` · ${esc(x.unit)}` : ''}</small>${x.inStock === false ? '<span class="wx-oos">Out of stock</span>' : ''}${x.eta ? `<span class="wx-eta">${x.eta} min</span>` : ''}</div>`;
       const shelf = (x) => {
         const head = `<header class="wx-shelf-h">${logo(x.logo, x.label)}<b>${esc(x.label)}</b>${x.city ? `<span class="wx-passport">${esc(x.city)}</span>` : ''}<small>${x.error ? `Couldn’t read this time${x.at ? `, showing ${day(x.at)}` : ''}` : `${day(x.at)}`}</small></header>`;
-        const own = x.own?.length ? `<div class="wx-shelf-row">${x.own.slice(0, 5).map(pack).join('')}</div>` : x.listed === 0 ? `<p class="wx-none">${x.onSite ? `Your site links to ${esc(x.label)}, but Brew didn’t find your listing in its search${x.city ? ` in ${esc(x.city)}` : ''}` : `${esc(S.d.name)} isn’t listed on ${esc(x.label)}${x.city ? ` in ${esc(x.city)}` : ''}`}${x.rivals.length ? `${x.onSite ? '. ' : ', but '}${x.rivals.length} rival${x.rivals.length === 1 ? ' is' : 's are'}${x.onSite ? ' there' : ''}` : ''}.</p>` : '';
+        const own = x.own?.length ? `<div class="wx-shelf-row">${x.own.slice(0, 5).map(pack).join('')}</div>` : x.listed === 0 ? `<p class="wx-none">${x.onSite ? `Your site links to ${esc(x.label)}, but we didn’t find your listing in our search${x.city ? ` in ${esc(x.city)}` : ''}` : `${esc(S.d.name)} isn’t listed on ${esc(x.label)}${x.city ? ` in ${esc(x.city)}` : ''}`}${x.rivals.length ? `${x.onSite ? '. ' : ', but '}${x.rivals.length} rival${x.rivals.length === 1 ? ' is' : 's are'}${x.onSite ? ' there' : ''}` : ''}.</p>` : '';
         const rv = x.rivals?.length ? `<ul class="wx-rv">${x.rivals.slice(0, 5).map((r) => `<li><b>${esc(r.name)}</b><span>${r.n} listed${r.minPrice ? ` · from ${money(r.minPrice, S.cur)}` : ''}${r.rating ? ` · ★ ${r.rating}` : ''}${r.out ? ` · <em>${r.out} out of stock</em>` : ''}</span></li>`).join('')}</ul>` : '';
         const ch = x.changes?.length ? `<div class="wx-changes">${x.changes.slice(0, 3).map((c, i) => `<span class="wx-change" style="--t:${tilt(i) * 2}deg">${c.kind === 'stock' ? `${esc(c.who)}: ${esc(String(c.name).slice(0, 40))} went out of stock` : `${esc(c.who)}: ${esc(String(c.name).slice(0, 34))} ${money(c.from, S.cur)} → ${money(c.to, S.cur)}`}</span>`).join('')}</div>` : '';
         const rvw = x.reviews?.length ? `<div class="wx-mini-notes">${x.reviews.slice(0, 2).map((r, i) => `<figure class="wx-note is-small" style="--t:${tilt(i + 1)}deg">${ext(r.url, `<blockquote>“${esc(r.text)}”</blockquote>`)}<figcaption>${stars(r.rating)}<span>${esc(r.who || '')}${r.verified ? ' · verified buyer' : ''}</span></figcaption></figure>`).join('')}</div>` : '';
@@ -110,7 +110,7 @@
           <dl>${r.visits != null ? `<div><dt>Visits a month</dt><dd>${short(r.visits)}</dd></div>` : ''}${r.liveAds != null ? `<div><dt>Live Meta ads</dt><dd>${fmt(r.liveAds)}</dd></div>` : r.adsError ? `<div><dt>Live Meta ads</dt><dd class="wx-q">couldn’t read</dd></div>` : ''}${r.followers != null ? `<div><dt>Instagram</dt><dd>${short(r.followers)}</dd></div>` : ''}</dl>
           ${r.longest ? `<span class="wx-badge" style="--t:${tilt(i + 3) * 2}deg">Longest ad: ${r.longest.days} days</span>` : ''}
           <small class="wx-turn">${r.week.length ? 'This week ↻' : 'Tap to turn ↻'}</small></div>
-        <div class="wx-back">${r.week.length ? r.week.map((w) => `<p><b>${esc(w.text)}</b>${(w.items || []).map((x) => `<span>${esc(x)}</span>`).join('')}</p>`).join('') : '<p><b>Quiet this week</b><span>No launches or price moves seen on its store.</span></p>'}
+        <div class="wx-back">${r.week.length ? r.week.map((w) => `<p><b>${esc(w.text)}</b>${(w.items || []).map((x) => `<span>${esc(x)}</span>`).join('')}</p>`).join('') : '<p><b>Quiet this week</b><span>No launches or price changes seen on its store.</span></p>'}
           ${r.longest?.hook ? `<p><b>Its longest-running ad</b><span>“${esc(r.longest.hook)}”${r.longest.since ? ` · since ${day(r.longest.since)}` : ''}</span></p>` : ''}${r.sources?.Search != null ? `<p><b>Where its visits come from</b><span>${Object.entries(r.sources).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k.replace(/([a-z])([A-Z])/g, '$1 $2')} ${v}%`).join(' · ')}</span></p>` : ''}</div></button></article>`;
       return `<section class="wx-sp is-ink"><div class="wx-sp-h"><span class="wx-k">What rivals do</span><h2>${rs.length} rivals, one card each</h2><p class="wx-sub">Tap a card to turn it over</p></div>
         <div class="wx-cards">${rs.slice(0, 6).map(card).join('')}</div></section>`;
@@ -128,7 +128,7 @@
     /* what couldn't be read: one torn note, never a zero */
     function cant(xs) {
       if (!xs.length) return '';
-      return `<div class="wx-torn" role="note"><b>Couldn’t read ${esc(xs.map((x) => x.name).join(', '))} this time.</b> What they showed before still counts, and Brew tries again on the next read.</div>`;
+      return `<div class="wx-torn" role="note"><b>Couldn’t read ${esc(xs.map((x) => x.name).join(', '))} this time.</b> What they showed before still counts, and we try again on the next read.</div>`;
     }
   }
   window.BrandWatch = { render };

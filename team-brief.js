@@ -17,8 +17,8 @@ import { sentenceCase } from './text-fit.js'; // a brief title reads like a sent
 export const TB_V = 4; // bump when the brief starts being written differently: every saved one is written again
 /* who a brief goes to (Param, 26 Oct: "think any and every type of brief that could go to any relevant stakeholder"): the person picks
    it in Send to…, the To line says it, and the next writing of the brief speaks to them */
-export const RECIPIENTS = { team: 'Your team', agency: 'Your agency', designer: 'A designer', media: 'A media buyer', creator: 'A creator', editor: 'A video editor', shopos: 'The ShopOS team' };
-const AUDIENCE = { team: 'the brand’s own team', agency: 'the brand’s agency', designer: 'a designer', media: 'a media buyer who runs the ads', creator: 'a creator or influencer who will make and post it in their own voice', editor: 'a video editor', shopos: 'the ShopOS team, who make and run it for the brand' };
+export const RECIPIENTS = { team: 'Your team', agency: 'Your agency', designer: 'A designer', media: 'A media buyer', creator: 'A creator', editor: 'A video editor', shopos: 'Our team' };
+const AUDIENCE = { team: 'the brand’s own team', agency: 'the brand’s agency', designer: 'a designer', media: 'a media buyer who runs the ads', creator: 'a creator or influencer who will make and post it in their own voice', editor: 'a video editor', shopos: 'the studio team that makes and runs it for the brand' };
 export const SECTIONS = [['what', 'What to make'], ['why', 'Why we’re doing it'], ['who', 'Who it’s for'], ['words', 'The words · final'], ['creative', 'The creative'],
   ['specs', 'Specs'], ['rules', 'Must-haves and don’ts'], ['when', 'Budget, timing and owner'], ['measure', 'How we measure it'], ['done', 'Done when'], ['open', 'Still to confirm']];
 const AI_KEYS = ['what', 'why', 'who', 'creative', 'specs', 'rules', 'when', 'done'];
@@ -52,7 +52,7 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
     const pr = proofOf(t, w); if (pr) L.push('The card’s proof (where its numbers come from):', one(pr, 1400));
     if (x.page?.reason) L.push(`The reasoning: ${one(x.page.reason, 500)}`);
     if (x.decided) L.push(`Decided: ${x.decided.name}. ${one(x.decided.says, 240)} What changes: ${one(x.decided.effect, 240)}`);
-    if (x.page?.moves?.length) L.push('From the brand’s plan (moves):', ...x.page.moves.slice(0, 3).map((m) => `- Move ${m.n}: ${one(m.says || m.plain || m.title, 260)}`));
+    if (x.page?.moves?.length) L.push('From the brand’s plan (plays):', ...x.page.moves.slice(0, 3).map((m) => `- Play ${m.n}: ${one(m.says || m.plain || m.title, 260)}`));
     if (x.pkg) L.push(`The package: ${x.pkg.action} on ${x.pkg.target} (v${x.pkg.version}) · ${x.pkg.money} · ${x.pkg.undo}`, 'Its fields:', ...x.pkg.fields.map((f) => `- ${f.label}${f.pub ? ' (customers see this)' : ''}: ${one(f.value, 400)}`));
     const cr = creativesOf(x); if (cr.length) L.push(`Files attached: ${cr.map((c) => c.label).join(', ')}`);
     if (x.pkg?.notes?.length) L.push('The team’s notes:', ...x.pkg.notes.map((n) => `- ${one(n, 200)}`));
@@ -75,7 +75,7 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
     when: { type: 'string', description: 'Budget, timing and owner, only as the materials say; "To confirm" for any part they don’t' },
     done: { type: 'string', description: 'Done when: what the team hands back (files, sizes, links) and who approves it; not how results are measured' },
     open: { type: 'array', items: { type: 'string' }, description: 'What is still to confirm before it runs, each under 16 words; empty if nothing' },
-    evidence: { type: 'array', items: { type: 'object', required: ['say', 'src'], properties: { say: { type: 'string', description: 'One fact that backs this brief, with its number when there is one, under 30 words' }, src: { type: 'string', description: 'Where it comes from, named plainly: the card’s proof, Move 12, Meta Ads account, store reviews, a rival’s live ads…' } } }, description: '3 to 7 facts, the strongest first; only facts in the materials' } } };
+    evidence: { type: 'array', items: { type: 'object', required: ['say', 'src'], properties: { say: { type: 'string', description: 'One fact that backs this brief, with its number when there is one, under 30 words' }, src: { type: 'string', description: 'Where it comes from, named plainly: the card’s proof, Play 12, Meta Ads account, store reviews, a rival’s live ads…' } } }, description: '3 to 7 facts, the strongest first; only facts in the materials' } } };
 
   const fallback = (w, x) => { const bp = w.doc?.plan || {};
     return { title: x.pkg ? `${x.pkg.action}: ${x.card.title}` : x.title, what: x.pkg ? `${x.pkg.action}${x.pkg.target && !/^a person$/i.test(x.pkg.target) ? ` on ${x.pkg.target}` : ''}.` : x.card.title, /* plain words, never an internal family name */ why: one(x.page?.reason || x.card.sub, 500),
@@ -145,7 +145,7 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
       ${pics.length ? `<div class="pics">${pics.map((p) => `<figure><img src="${p.src}"><figcaption>${esc(p.label)}${p.video ? ' · video attached' : ' · attached'}</figcaption></figure>`).join('')}</div>` : ''}
       ${v.sections.map((s) => (s.k === 'words' ? `<section><h2>${esc(s.h)}</h2><div class="words">${esc(s.t)}</div></section>` : `<section><h2>${esc(s.h)}</h2>${md(s.t)}</section>`)
         + (s.k === 'why' && v.evidence.length ? `<section><h2>The evidence</h2><ul class="ev">${v.evidence.map((e) => `<li>${esc(e.say)}${e.src ? `<span class="src">${esc(e.src)}</span>` : ''}</li>`).join('')}</ul></section>` : '')).join('')}
-      <footer>${esc(v.brand)} · written with Brew from the brand’s own store, accounts and plan. The attached files are the final creatives.</footer>
+      <footer>${esc(v.brand)} · written from the brand’s own store, accounts and plan. The attached files are the final creatives.</footer>
     </body></html>`; };
   const pdfOf = async (v) => { const html = await pdfHtml(v);
     const tmp = path.join(os.tmpdir(), `brew-tb-${process.pid}-${crypto.randomBytes(4).toString('hex')}.html`); fs.writeFileSync(tmp, html);

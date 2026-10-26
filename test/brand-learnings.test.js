@@ -94,7 +94,7 @@ test('the command: typed explicitly anywhere, read implicitly only in a fresh (g
 
 test('access: the brand’s team and the Brew team only; the demo site says no politely', () => {
   assert.equal(learnGate({ member: true, name: 'Glow' }), null);
-  assert.match(learnGate({ member: false, name: 'Glow' }), /Only Glow’s team or the Brew team/);
+  assert.match(learnGate({ member: false, name: 'Glow' }), /Only Glow’s team or our team/);
   assert.match(learnGate({ member: true, demoSite: true }), /demo copy/);
 });
 
@@ -156,9 +156,9 @@ test('a pasted call updates the brief, memory and system prompt, reports the con
   assert.match(r.draft.reply, /^This looks like a call transcript, so I read it as brand learnings/); assert.match(r.draft.reply, /\*\*Check before it becomes Glow’s brand context\*\*[\s\S]*1\. A skincare brand[\s\S]*“save”/);
   assert.match(r.reply, /\*\*Saved 4 learnings to Glow’s brand context\*\*\nFrom the call transcript Priya added\./);
   for (const h of ['\n**Essence**\n', '\n**Goals**\n', '\n**Beliefs**\n', '\n**Facts**\n']) assert.ok(r.reply.includes(h), h);
-  assert.match(r.reply, /They are in the brief and Brew’s memory/);
+  assert.match(r.reply, /They are in the brief and our memory/);
   assert.match(r.reply, /\*\*Not saved: the fact sheet wins on numbers\*\*\n- It says 12 products; Products in the catalog reads 11 from Shopify \(connected\)\. Connected accounts are the source of truth/);
-  assert.match(r.reply, /\*\*Moves\*\*\n- Rewriting now: Play 03 and Play 09 \(2, 10 to 15 minutes, about \$1\.2\)\.\n- 1 new move from what you told us, once the rewrite is in\./);
+  assert.match(r.reply, /\*\*Plays\*\*\n- Rewriting now: Play 03 and Play 09 \(2, 10 to 15 minutes, about \$1\.2\)\.\n- 1 new play from what you told us, once the rewrite is in\./);
   // the same paste again: nothing learned twice, nothing spent
   const n0 = calls.length, again = await L.run(slug, { text: `${CALL}\n`, by: 'Sam' });
   assert.ok(again.dup && again.draft); assert.equal(calls.length, n0, 'no new read'); assert.match(again.reply, /\*\*Already saved on .* by Priya\*\*[\s\S]*1\. A skincare brand[\s\S]*“save”/);
@@ -173,8 +173,8 @@ test('caps: a busy or capped rewrite and a used-up moves budget are said in the 
   const B = { flagStale: builder.flagStale, rewrite: async () => ({ error: 'Today’s budget is used up. Try again tomorrow.' }), busy: () => false };
   const cadence = { due: async () => ({ families: [], why: ['learn: weekly cap $3 (spent $3.00)'] }), runOne: async () => assert.fail('must not run') };
   const r = await saved(createLearnings({ ai: scripted(), packs: P, builder: B, cadence, log: quiet, env: {} }), slug, { text: CALL, by: 'p@glow.in', byShort: 'p@glow.in' });
-  assert.match(r.reply, /- The rewrite can’t start now: Today’s budget is used up\. Try again tomorrow\. The moves are marked on the Moves tab\./);
-  assert.match(r.reply, /New moves from this wait: this brand's weekly budget for new moves is used up \(\$3 a week\)\./);
+  assert.match(r.reply, /- The rewrite can’t start now: Today’s budget is used up\. Try again tomorrow\. The plays are marked on the Plays tab\./);
+  assert.match(r.reply, /New plays from this wait: this brand's weekly budget for new plays is used up \(\$3 a week\)\./);
   // AI off (mock): the words are read without AI, moves the words point at are flagged, nothing is rewritten or spent
   const ROOT2 = fs.mkdtempSync(path.join(os.tmpdir(), 'learn-')), b2 = await brand(ROOT2); let rewrote = false;
   const LO = createLearnings({ ai: { live: false, call: async () => { throw Object.assign(new Error('AI is off (mock)'), { mock: true }); } }, packs: b2.P, builder: { flagStale: b2.builder.flagStale, rewrite: async () => { rewrote = true; return {}; } }, log: quiet, env: {} })
@@ -198,8 +198,8 @@ test('local plan: moves that share the words of a learning, core moves only', ()
 });
 
 test('reply: nothing found, and the long-paste note', () => {
-  assert.match(replyText({ name: 'Glow', applied: [], conflicts: [], again: 0, note: '' }), /couldn’t find anything in it that changes what Brew knows about Glow/);
-  assert.match(replyText({ name: 'Glow', kind: 'Notes', label: 'Notes, added by a, 2026-10-14', applied: [{ kind: 'fact', text: 'They ship only in India.' }], conflicts: [], again: 0, clipped: 120000, moves: {} }), /It was long, so I read the first 120,000 characters\.[\s\S]*Nothing in this changes the current moves\./);
+  assert.match(replyText({ name: 'Glow', applied: [], conflicts: [], again: 0, note: '' }), /couldn’t find anything in it that changes what we know about Glow/);
+  assert.match(replyText({ name: 'Glow', kind: 'Notes', label: 'Notes, added by a, 2026-10-14', applied: [{ kind: 'fact', text: 'They ship only in India.' }], conflicts: [], again: 0, clipped: 120000, moves: {} }), /It was long, so I read the first 120,000 characters\.[\s\S]*Nothing in this changes the current plays\./);
 });
 
 /* ---------- the moves: the learn family ---------- */
@@ -249,10 +249,10 @@ test('first learnings: past the upload’s dollar cap they wait for a yes, with 
   const L = createLearnings({ ai: scripted(), packs: P, builder: B, log: quiet, env: { LEARN_CAP_USD: '0.6', LEARN_MOVE_EST_USD: '0.6' } }); /* a cap of one move, so the call's 2 moves go over it */
   const r = await saved(L, slug, { text: CALL, by: 'p@glow.in', byShort: 'p@glow.in' });
   assert.equal(asked.length, 0, 'nothing starts before the yes');
-  assert.match(r.reply, /- 2 moves change in a way that matters \(Play 03 and Play 09\)\. Rewriting all of them costs about \$1\.2, over the \$0\.6 an upload spends on its own\./);
+  assert.match(r.reply, /- 2 plays change in a way that matters \(Play 03 and Play 09\)\. Rewriting all of them costs about \$1\.2, over the \$0\.6 an upload spends on its own\./);
   assert.match(r.reply, /Reply “go ahead” to rewrite all 2 \(10 to 15 minutes\), or “just the top ones” for the 1 that matter most, within \$0\.6\./);
   assert.equal(await L.confirm(slug, 'what about the ads?'), null, 'anything else is a normal chat');
-  const c = await L.confirm(slug, 'just the top ones please'); assert.deepEqual(asked, [[3]]); assert.match(c.reply, /Refreshing 1 move/);
+  const c = await L.confirm(slug, 'just the top ones please'); assert.deepEqual(asked, [[3]]); assert.match(c.reply, /Refreshing 1 play/);
   assert.equal(await L.confirm(slug, 'go ahead'), null, 'answered once');
   // a second, different paste: not the first any more, so up to the limit rewrites straight away
   const r2 = await saved(L, slug, { text: CALL.replace('12 Oct', '19 Oct') + '\nPriya (founder): We also never discount below 20 percent.', by: 'p@glow.in', byShort: 'p@glow.in' });

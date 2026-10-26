@@ -2,9 +2,9 @@
   "_metadata": { "major_version": 2, "minor_version": 1 },
   "display_information": {
     "name": "Brew",
-    "description": "Your team's next marketing moves, posted to Slack. Reply in the thread or approve, and the jam in Brew updates.",
+    "description": "Your team's next marketing plays, posted to Slack. Reply in the thread or approve, and the jam updates.",
     "background_color": "#1d1a17",
-    "long_description": "Brew by SquareUp reads a brand's own store, ads and email data and shows its team the marketing moves to make next. Connect Slack to share a card or a jam to a channel. Replies in the thread land back in the jam and its brief, and anyone in the channel can approve the plan with one button. Brew only posts where you send it and only reads replies in its own threads."
+    "long_description": "We read a brand's own store, ads and email data and show its team the marketing plays to make next. Connect Slack to share a card or a jam to a channel. Replies in the thread land back in the jam and its brief, and anyone in the channel can approve the plan with one button. The app only posts where you send it and only reads replies in its own threads."
   },
   "features": {
     "bot_user": { "display_name": "Brew", "always_online": true }

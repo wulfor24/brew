@@ -31,7 +31,7 @@ test('a PNG passes as it is, an SVG becomes a PNG, a web page is refused in plai
   const svg = put('pack.svg', '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="300" height="200"/></svg>');
   const out = await n.normalize(svg); assert.notEqual(out, svg); assert.equal(kindOf(fs.readFileSync(out)), 'png');
   const html = put('photo.jpg', '<!doctype html><html><body>Not found</body></html>');
-  await assert.rejects(n.normalize(html), /not a picture Brew can use/);
+  await assert.rejects(n.normalize(html), /not a picture we can use/);
   const gif = put('g.gif', 'GIF89a' + '\0'.repeat(20));
   const viaFfmpeg = createImageNorm({ tmp: dir, run: async (args) => fs.writeFileSync(args[args.length - 1], PNG), log: { info() {}, warn() {} } });
   assert.equal(kindOf(fs.readFileSync(await viaFfmpeg.normalize(gif))), 'png');

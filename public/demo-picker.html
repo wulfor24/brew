@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Brew · Demo</title>
-<meta name="description" content="See Brew run a real brand: every move, connected accounts, and a feed that acts on the brand's own stack.">
+<title>{{PRODUCT_NAME}} · Demo</title>
+<meta name="description" content="See a real brand’s marketing feed: every play, connected accounts, and work that runs on the brand’s own stack.">
 <link rel="icon" href="/assets/brew-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -119,18 +119,18 @@ h1 em{font-style:normal;color:var(--fg-3)}
 <div class="aura" aria-hidden="true"></div>
 <div class="wrap">
   <header class="top">
-    <a class="logo" href="/"><img src="/assets/brew-mark.svg" alt="">Brew</a>
+    <a class="logo" href="/"><img src="/assets/brew-mark.svg" alt="">{{PRODUCT_NAME}}</a>
     <span class="live"><i></i>Demo</span>
   </header>
 
   <section class="hero">
     <h1 class="rise">Know what to do next.<br><em>Hand it over in one brief.</em></h1>
-    <p class="lede rise" style="animation-delay:.06s">A feed of growth moves made for your brand: one memory across your team, your rivals’ ads and pages as Brew reads them, and a jam where you and your team shape the strategy together. Pick a brand below and try it.</p>
+    <p class="lede rise" style="animation-delay:.06s">A feed of growth plays made for your brand: one memory across your team, your rivals’ ads and pages as we read them, and a jam where you and your team shape the strategy together. Pick a brand below and try it.</p>
     <ul class="gets rise" style="animation-delay:.12s">
-      <li><b>Moves with sources</b><span>for your store, ads and customers</span></li>
+      <li><b>Plays with sources</b><span>for your store, ads and customers</span></li>
       <li><b>First drafts</b><span>ads, emails and page changes to shape</span></li>
-      <li><b>One brief</b><span>shared with the ShopOS team or your own</span></li>
-      <li><b>Your memory</b><span>what your team taught Brew, in every move</span></li>
+      <li><b>One brief</b><span>shared with our team or your own</span></li>
+      <li><b>Your memory</b><span>what your team taught us, in every play</span></li>
     </ul>
   </section>
   <h2 class="pick rise" style="animation-delay:.16s">Pick a brand</h2>
@@ -138,7 +138,7 @@ h1 em{font-style:normal;color:var(--fg-3)}
   <div id="adm"></div>
 
   <footer class="foot">
-    <span>Want this for your brand? <a href="mailto:hello@joinsquareup.com?subject=Brew%20for%20my%20brand"><b>Talk to the Brew team.</b></a></span>
+    <span>Want this for your brand? <a href="mailto:hello@joinsquareup.com?subject=A%20feed%20for%20my%20brand"><b>Talk to our team.</b></a></span>
     <span>Preview · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
   </footer>
 </div>
@@ -183,7 +183,7 @@ function card(b, i, admin) {
         <button class="btn pri" data-go="${esc(b.slug)}" data-from="onboarding">Start the tour ${arrow}</button>
         <button class="btn sec" data-go="${esc(b.slug)}" data-from="feed">Jump to the feed</button>
       </div>
-      <p class="hint">From the first screen: Brew reads the store live, you check what it found, the moves are ready. About 4 minutes.</p>
+      <p class="hint">From the first screen: we read the store live, you check what we found, the plays are ready. About 4 minutes.</p>
       ${admin ? `<div class="chk">${b.checks.map((c) => `<i class="${c.ok ? 'ok' : ''}">${c.ok ? '✓ ' : ''}${esc(c.t)}</i>`).join('')}${b.prep?.running ? '<i>Preparing…</i>' : ''}<button class="btn sec" style="height:28px;padding:0 10px;font-size:12px" data-prep="${esc(b.slug)}">Prepare</button></div>` : ''}
     </div>
   </article>`;

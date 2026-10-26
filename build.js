@@ -50,6 +50,7 @@ import { COMPANY_V } from './reader/stages/company.js'; // a read from before th
 import { SOCIAL_SEARCH_V } from './reader/stages/socials.js';
 import { ASSORT_V, assortmentLine, stillMaker } from './assortment.js'; // whose products a store sells: saved reads work it out once // a site with no social links: its accounts by search, once
 import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
+import { PRODUCT_NAME } from './product-name.js';
 
 const buildCtx = new AsyncLocalStorage(); // which brand's build a paid call belongs to
 // addresses that must never be read or built (wrong links, removals): BUILD_BLOCK=slug;slug (deploy.sh needs ; since its env list is comma-separated)
@@ -216,7 +217,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const prev = await status(slug);
     /* another instance is starting this brand right now: join its run, never start (or resume) a second one */
     if (await otherStart(slug)) return { slug, existing: true, status: prev || (await packs.getFreshJSON(slug, 'status.json', null).catch(() => null)) || { slug, host: slug, state: 'Reading the site' } };
-    if (prev?.cancelled && !fresh) return { error: 'This address was stopped. Ask Brew to restart it.' };
+    if (prev?.cancelled && !fresh) return { error: 'This address was stopped. Ask us to restart it.' };
     if (prev && !fresh) { if (!st(slug).running && !prev.done) resume(slug).catch((e) => log.error('[build] resume', slug, e.message)); return { slug, existing: true, status: prev }; }
     if (prev && fresh && (st(slug).running || st(slug).checking)) return { error: 'This brand is being written right now. Restart it once this run stops.' };
     const PER_USER = +process.env.BUILD_PER_USER_DAY || 3, mine = (byUser.get(user?.email) || []).filter((t) => Date.now() - t < 864e5);
@@ -294,7 +295,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function budgetPause(slug, n) {
     if (blocked(slug) || !capHit(slug) || st(slug).cancelled) return false;
     const own = spentFor(slug) >= capOf(slug);
-    await setStatus(slug, own ? { state: `Paused at the spend cap ($${capOf(slug)}). ${n} of ${totalOf(await status(slug))} moves written.`, capped: true } : { state: `Paused: today’s reading budget is used up. ${n} of ${totalOf(await status(slug))} moves written; it carries on tomorrow.`, capped: null, pausedDay: dayKey() });
+    await setStatus(slug, own ? { state: `Paused at the spend cap ($${capOf(slug)}). ${n} of ${totalOf(await status(slug))} plays written.`, capped: true } : { state: `Paused: today’s reading budget is used up. ${n} of ${totalOf(await status(slug))} plays written; it carries on tomorrow.`, capped: null, pausedDay: dayKey() });
     return true;
   }
   /* ---------- the pipeline (idempotent: every stage skips what is already in the pack) ---------- */
@@ -317,7 +318,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         const out = await reader.read(s.url, { fresh: !!s.freshRead, onEvent: (e) => emit(slug, { type: 'reader', ev: e }), admin: await adminFor(slug, s, null), slug, config: await packs.getJSON(slug, 'config.json', null).catch(() => null) });
         /* the store did not open: nothing to write a brief or moves from, so stop here without spending more */
         if (!storeOpened(out)) { await packs.put(slug, 'findings.json', out.findings || null).catch(() => {}); await stage(slug, 'read', 'failed');
-          await setStatus(slug, { state: out.closed ? `${s.host || 'The store'} is behind Shopify’s password page, so its site can’t be read. Open Brew from your Shopify admin to read it from there.` : `We could not open ${s.host || 'the store'}. Check the address and try again.`, error: 'store did not open', unreadable: true, ...(out.closed ? { closed: true } : {}) }); return; }
+          await setStatus(slug, { state: out.closed ? `${s.host || 'The store'} is behind Shopify’s password page, so its site can’t be read. Open ${PRODUCT_NAME} from your Shopify admin to read it from there.` : `We could not open ${s.host || 'the store'}. Check the address and try again.`, error: 'store did not open', unreadable: true, ...(out.closed ? { closed: true } : {}) }); return; }
         ({ profile, ledger, findings } = out);
         normalizeProfile(profile);
         await packs.put(slug, 'profile.json', profile); await packs.put(slug, 'ledger.json', ledger); await packs.put(slug, 'findings.json', findings);
@@ -373,7 +374,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const pack = () => packs.load(slug);
       const briefMd = (await packs.get(slug, 'brief.md'))?.toString('utf8') || '';
       const cache = await packs.getJSON(slug, 'moves.json', {});
-      await stage(slug, 'moves', 'running'); await setStatus(slug, { state: 'Writing the moves' });
+      await stage(slug, 'moves', 'running'); await setStatus(slug, { state: 'Writing the plays' });
       const saved = new Set(Object.entries(await packs.getJSON(slug, 'moves.json', {})).filter(([k, mv]) => isPlay(k, mv)).map(([k]) => +k)); /* the playbook only: not the index, not cadence moves */
       let total = totalOf(await status(slug));
       let pdfQueue = Promise.resolve(), staticsJob = Promise.resolve(), firstSent = false;
@@ -391,7 +392,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
         await progressCard(slug, saved.size, move, total);
         const done = saved.size, waveA = WAVE_A.every((k) => saved.has(k));
         const s1 = await status(slug); /* the pace this run really keeps: the last 12 saves (pack-numbers.js movesEta) */
-        await setStatus(slug, { movesDone: done, paceAt: [...(s1?.paceAt || []), Date.now()].slice(-12), ready: waveA || s1?.ready, state: done >= total ? `All ${total} moves written` : `Writing the moves: ${done} of ${total}` });
+        await setStatus(slug, { movesDone: done, paceAt: [...(s1?.paceAt || []), Date.now()].slice(-12), ready: waveA || s1?.ready, state: done >= total ? `All ${total} plays written` : `Writing the plays: ${done} of ${total}` });
         if (waveA && !firstSent) { firstSent = true; notify(slug, 'first').catch((e) => log.warn('[notify]', e.message)); }
         await unmarkPdf(slug, n); /* PDFs are made when someone opens one (pdfOn), never in the build */
         packs.drop(slug); await onPack(slug); saveSpend(slug);
@@ -409,8 +410,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (!stopping && !capHit(slug) && (res.applicable || []).some((n) => !cache[n])) { await lock; log.warn('[build] second pass for', slug); res = await eng.runAll(ctx, { concurrency: 4, waveA: WAVE_A }); }
       await lock; await staticsJob;
       if (res.errors?.length) log.warn('[build] moves with errors', slug, res.errors.map((e) => e.n + ': ' + e.error).join('; '));
-      if (await cancelled(slug)) { await setStatus(slug, { state: `Stopped. ${saved.size} of ${total} moves written.`, cancelled: true, error: 'cancelled' }); return; }
-      if (stopping && (res.applicable || []).some((n) => !cache[n])) { await setStatus(slug, { state: `Brew is restarting; the rest of the moves carry on in a moment. ${saved.size} of ${total} written.` }); log.warn(`[build] ${slug}: stopping with ${saved.size} of ${total}, the next instance resumes`); return; } /* not done, not capped: resumeAll picks it up */
+      if (await cancelled(slug)) { await setStatus(slug, { state: `Stopped. ${saved.size} of ${total} plays written.`, cancelled: true, error: 'cancelled' }); return; }
+      if (stopping && (res.applicable || []).some((n) => !cache[n])) { await setStatus(slug, { state: `Restarting; the rest of the plays carry on in a moment. ${saved.size} of ${total} written.` }); log.warn(`[build] ${slug}: stopping with ${saved.size} of ${total}, the next instance resumes`); return; } /* not done, not capped: resumeAll picks it up */
       /* a build stopped at its own spend cap stops for good (until Pro or a raised cap): the team hears what was written */
       if (await budgetPause(slug, saved.size)) { if ((await status(slug))?.capped && saved.size) await notify(slug, 'all', { capped: true }).catch((e) => log.warn('[notify]', e.message)); return; }
       /* moves that failed twice (a cut-off reply, a busy model, the AI paused for credit) are not "Ready": the brand stays
@@ -421,8 +422,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const tries = (+(await status(slug))?.retryN || 0) + (aiPaused() ? 0 : 1);
       if (missing.length && tries > RETRY_MAX) { log.warn(`[build] ${slug}: ${missing.length} moves still missing after ${RETRY_MAX} retries; marking Ready`); await setStatus(slug, { missingMoves: missing, retryN: null }); }
       else if (missing.length) {
-        const why = aiPaused() ? 'AI is paused (credit); Brew carries on when it is back' : 'Brew retries within the hour';
-        await setStatus(slug, { state: `${missing.length} move${missing.length === 1 ? '' : 's'} still to write; ${why}. ${saved.size} of ${total} written.`, retryMoves: missing.length, retryN: tries, retryAt: Date.now(), error: null, ...(aiPaused() ? { aiPausedAt: Date.now() } : {}) });
+        const why = aiPaused() ? 'AI is paused (credit); we carry on when it is back' : 'we retry within the hour';
+        await setStatus(slug, { state: `${missing.length} play${missing.length === 1 ? '' : 's'} still to write; ${why}. ${saved.size} of ${total} written.`, retryMoves: missing.length, retryN: tries, retryAt: Date.now(), error: null, ...(aiPaused() ? { aiPausedAt: Date.now() } : {}) });
         log.warn(`[build] ${slug}: ${missing.length} moves still to write after two passes`); return;
       }
       await stage(slug, 'moves', 'done');
@@ -432,7 +433,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     } catch (e) { if (e.cancelled) return;
       /* the AI paused for credit (the brief, or anything before the moves): a pause, not a stop. No error (that hides the brand
          and resumeAll skips it); the hourly tick carries on once the pause lifts */
-      if (e.billing) { log.warn('[build] AI paused', slug, e.message); await setStatus(slug, { state: 'Paused: the AI is paused (credit). Brew carries on when it is back.', aiPausedAt: Date.now(), retryAt: Date.now() }); return; }
+      if (e.billing) { log.warn('[build] AI paused', slug, e.message); await setStatus(slug, { state: 'Paused: the AI is paused (credit). We carry on when it is back.', aiPausedAt: Date.now(), retryAt: Date.now() }); return; }
       log.error('[build] failed', slug, e); await setStatus(slug, { state: 'Stopped: ' + e.message, error: e.message }); }
     finally { x.running = false; await packs.put(slug, 'cost.json', { usd: +spentFor(slug).toFixed(3) }).catch(() => {}); setTimeout(() => drain(slug).catch((e) => log.warn('[rewrite] drain', e.message)), 0); /* learnings that arrived mid-build */
       upd(slug).then((u) => { if (u.connectRun) armConnect(slug, u.connectRun.due || 0); }).catch(() => {}); /* an account connected while the moves were being written */ }
@@ -555,7 +556,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
           const card = { id: 'statics-batch', agent: 'creative', sector: 'creatives', type: 'idea', lane: Object.keys(seed.lanes || { core: 1 })[0], roles: ['brand', 'growth', 'founder'], src: 'Move 21 · static ads', time: '5 min', kind: 'media', origin: 'build',
             images: ids.map((id) => `b/${slug}/statics/${id}.jpg`), campaign: 'From your ad plan',
             title: `${ids.length} ads from your ad plan, ready to review`, sub: `Each one puts a real ${profile.name} product photo in a new scene, with a headline from Move 21. Keep the ones you like, jam on any of them, and download the batch for your team to run.`,
-            detail: { why: ['Concepts come from the ad-creative move.', 'Every number on them is in your fact sheet.'], how: ['Open the batch and keep or drop each ad.', 'Edit any of them in the studio.', 'Download the kept ones for your team to run.'] }, cta: { label: 'Open the batch' } }; /* Brew runs nothing: the batch opens in a jam and downloads for the team */
+            detail: { why: ['Concepts come from the ad-creative play.', 'Every number on them is in your fact sheet.'], how: ['Open the batch and keep or drop each ad.', 'Edit any of them in the studio.', 'Download the kept ones for your team to run.'] }, cta: { label: 'Open the batch' } }; /* Brew runs nothing: the batch opens in a jam and downloads for the team */
           seed.posts = [card, ...(seed.posts || []).filter((x) => x.id !== card.id)];
           await packs.put(slug, 'seed.json', seed); packs.drop(slug); await onPack(slug); onCards(slug, [card], { replace: true });
         });
@@ -609,11 +610,11 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function progressCard(slug, done, last, total) {
     total ||= totalOf(await status(slug));
     const seed = await packs.getJSON(slug, 'seed.json', {});
-    const c = { id: 'build-moves', agent: 'brew', sector: 'signals', type: 'report', lane: Object.keys(seed.lanes || { core: 1 })[0], roles: ['founder', 'growth', 'brand', 'ecom', 'crm'], src: 'The ShopOS team, Brew’s build crew', time: '1 min', kind: 'rows', origin: 'build', boostFor: { founder: 6, growth: 3, brand: 3, ecom: 3, crm: 3 },
+    const c = { id: 'build-moves', agent: 'brew', sector: 'signals', type: 'report', lane: Object.keys(seed.lanes || { core: 1 })[0], roles: ['founder', 'growth', 'brand', 'ecom', 'crm'], src: 'Our team', time: '1 min', kind: 'rows', origin: 'build', boostFor: { founder: 6, growth: 3, brand: 3, ecom: 3, crm: 3 },
       badge: [done >= total ? 'All written' : `${done} of ${total} written`, done >= total ? 'ok' : 'info'],
-      title: done >= total ? `All ${total} moves for ${seed.brand?.name} are written` : `Writing your ${total} moves: ${done} done`,
-      sub: `Each move is a full plan with sources, a 30-day rollout and what to watch. ${last?.title ? `The latest: ${last.title}.` : ''} Open the Moves page to read them; any move downloads as a PDF.`.slice(0, 240),
-      rows: [['Written', `${done} of ${total}`], ['Latest', String(last?.title || '').slice(0, 44)]], detail: { why: ['Every card in this feed comes from one of these plans.'], how: ['Open the Moves page.', 'Read any move, or download its PDF.'] }, cta: { label: 'Open the moves' } };
+      title: done >= total ? `All ${total} plays for ${seed.brand?.name} are written` : `Writing your ${total} plays: ${done} done`,
+      sub: `Each play is a full plan with sources, a 30-day rollout and what to watch. ${last?.title ? `The latest: ${last.title}.` : ''} Open the Plays page to read them; any play downloads as a PDF.`.slice(0, 240),
+      rows: [['Written', `${done} of ${total}`], ['Latest', String(last?.title || '').slice(0, 44)]], detail: { why: ['Every card in this feed comes from one of these plans.'], how: ['Open the Plays page.', 'Read any play, or download its PDF.'] }, cta: { label: 'Open the moves' } };
     seed.posts = [c, ...(seed.posts || []).filter((x) => x.id !== c.id)];
     await packs.put(slug, 'seed.json', seed); onCards(slug, [c], { replace: true });
   }
@@ -719,7 +720,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       else if (key === 'country') p.country = val.toUpperCase().slice(0, 2); else if (key === 'currency') p.currency = val.toUpperCase().slice(0, 3);
       else if (key === 'rivals') p.rivals = val.split(/\s*,\s*/).filter(Boolean).map((name) => (p.rivals || []).find((r) => r.name.toLowerCase() === name.toLowerCase()) || { name, why: 'named by the brand' });
       else if (key === 'founded') (p.company ||= {}).founded = val; else if (key === 'founders') (p.company ||= {}).founders = val.split(/\s*,\s*/).filter(Boolean);
-      L.push({ key: key.startsWith('product.') ? `brand.confirmed.${key}` : ['country', 'currency', 'category'].includes(key) ? `market.${key}.confirmed` : `brand.${key}.confirmed`, label: `${key} (confirmed by the brand)`, v: val, layer: 'observed', src: 'Confirmed by the brand in Brew', at, method: 'brand-confirmed' });
+      L.push({ key: key.startsWith('product.') ? `brand.confirmed.${key}` : ['country', 'currency', 'category'].includes(key) ? `market.${key}.confirmed` : `brand.${key}.confirmed`, label: `${key} (confirmed by the brand)`, v: val, layer: 'observed', src: 'Confirmed by the brand', at, method: 'brand-confirmed' });
     }
     await packs.put(slug, 'profile.json', p); await packs.put(slug, 'ledger.json', L);
     if (edits.some((x) => x.key === 'country')) await marketCheck(slug).catch((e) => log.warn?.('[market] check', slug, e.message));
@@ -742,7 +743,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       const m = await load(); await restoreSpend(slug);
       const profile = normalizeProfile(await packs.getJSON(slug, 'profile.json')), ledger = await packs.getJSON(slug, 'ledger.json', []); if (!profile) { await setStatus(slug, { recheck: null }); return false; }
       await publishBase(slug, profile, ledger, await packs.getJSON(slug, 'findings.json'));
-      const words = andList((rc.what || []).map((k) => FIELD_WORDS[k] || k)) || 'what Brew read';
+      const words = andList((rc.what || []).map((k) => FIELD_WORDS[k] || k)) || 'what we read';
       /* the brief: only if it was written from the read before this correction (a brief started after it already has it) */
       const from = +s0.briefFromAt || +s0.stages?.brief?.at || 0, briefDone = s0.stages?.brief?.state === 'done' || !!(await packs.getJSON(slug, 'brief.json'));
       const rebrief = briefDone && from < rc.at && !!m.brief;
@@ -754,7 +755,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       /* the first wave written before the correction: flagged with the reason (it becomes each move's "because") and queued */
       const moves = await packs.getJSON(slug, 'moves.json', {}), at = (mv) => Math.max(Date.parse(mv?.meta?.rewrittenAt || 0) || 0, Date.parse(mv?.meta?.at || 0) || 0);
       const ns = WAVE_A.filter((n) => moves[n] && !moves[n]?.meta?.cadence && at(moves[n]) < rc.at);
-      if (ns.length) { await flagStale(slug, ns.map((n) => ({ n, priority: 'high', via: 'learnings', impact: 'high', why: `You corrected ${words} on the check page, so Brew rewrote this plan with it.`, changes: [] })));
+      if (ns.length) { await flagStale(slug, ns.map((n) => ({ n, priority: 'high', via: 'learnings', impact: 'high', why: `You corrected ${words} on the check page, so we rewrote this plan with it.`, changes: [] })));
         await enqueue(slug, ns, { via: 'learnings' }); }
       await setStatus(slug, { recheck: null, recheckDone: { at: Date.now(), what: rc.what || [], moves: ns.length } });
       emit(slug, { type: 'recheck', what: rc.what || [], moves: ns.length });
@@ -928,7 +929,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const raw = String(url || '').trim(), host = /^[^\s]+$/.test(raw) ? hostOf(raw) : null;
     if (!host || !/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(host)) throw new Error(`“${raw.slice(0, 40)}” isn’t a website. Paste the rival’s site, like rival.com.`);
     if (p?.host && host.replace(/^www\./, '') === String(p.host).replace(/^www\./, '')) throw new Error('That’s your own site. Paste a rival’s site instead.');
-    let r; try { r = await safeFetch(`https://${host}/`, { headers: UA, signal: AbortSignal.timeout(25e3) }); } catch (e) { throw new Error(`Brew couldn’t open ${host}. Check the address, or try again in a minute.`); }
+    let r; try { r = await safeFetch(`https://${host}/`, { headers: UA, signal: AbortSignal.timeout(25e3) }); } catch (e) { throw new Error(`We couldn’t open ${host}. Check the address, or try again in a minute.`); }
     if (!r.ok) throw new Error(r.status === 403 || r.status === 429 ? `${host} blocked our read just now. Try again in a minute.` : `${host} didn’t open (it answered ${r.status}). Check the address.`);
     const h = await r.text();
     const name = ((h.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)/i) || [])[1] || (h.match(/<title>([^<|–-]+)/i) || [])[1] || host).trim().slice(0, 40);
@@ -946,7 +947,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const p = await packs.getJSON(slug, 'profile.json'), L = await packs.getJSON(slug, 'ledger.json', []); if (!p) return { error: 'not read yet' };
     const before = structuredClone(p);
     const at = new Date().toISOString().slice(0, 10), notes = [];
-    const conf = (key, label, v, url) => L.push({ key, label, v: String(v), layer: 'observed', src: url ? hostOf(url) : 'Confirmed by the brand in Brew', url: url || null, at, method: 'brand-confirmed' });
+    const conf = (key, label, v, url) => L.push({ key, label, v: String(v), layer: 'observed', src: url ? hostOf(url) : 'Confirmed by the brand', url: url || null, at, method: 'brand-confirmed' });
     for (const [k, v] of Object.entries(b.who || {})) { const val = String(v || '').trim().slice(0, 200); if (!val) continue;
       if (k === 'name') p.name = val; if (k === 'descriptor') { p.descriptor = val; p.descriptorBy = 'brand'; } if (k === 'category') p.category = val; if (k === 'country') p.country = val.toUpperCase().slice(0, 2); if (k === 'currency') p.currency = val.toUpperCase().slice(0, 3);
       conf(['country', 'currency', 'category'].includes(k) ? `market.${k}.confirmed` : `brand.${k}.confirmed`, `${k} (confirmed by the brand)`, val); }
@@ -1010,24 +1011,24 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const todo = to.filter((e) => !n.sent[`${sentKey}:${e}`] && (!extra.only || e === String(extra.only).toLowerCase())); if (!todo.length) return;
     const href = `${base}/${slug}?go=feed`, movesHref = `${base}/${slug}?go=feed#v=moves`;
     const subject = kind === 'update' ? `${extra.moves.length} of ${name}’s plays were updated` : kind === 'all' ? (partial ? `${done} of ${total} plays for ${name} are ready` : `All of ${name}’s plays are ready`) : `Your first plays for ${name} are ready`;
-    const lead = extra.lead || `Something changed for ${name}, so Brew rewrote the plans it affects`;
+    const lead = extra.lead || `Something changed for ${name}, so we rewrote the plans it affects`;
     const first = kind === 'first' ? WAVE_A.filter((k) => moves[k]?.title).sort((a, b) => a - b).map((k) => `${moveLabel(k)} · ${moves[k].title}`) : [];
     const left = Math.max(0, total - done);
-    const allLine = partial ? `Brew has written ${done} of ${total} plays for ${name}: every plan with its sources, a 30-day rollout and what to watch.` : `Brew has finished all ${total} plays for ${name}: every plan with its sources, a 30-day rollout and what to watch.`;
-    const whyPart = capped ? `The other ${left} are paused at this brand’s spending cap; open Brew to carry on.` : missing ? `${missing} could not be written this time; the Moves page names them.` : '';
-    const firstLine = `Brew has written the first ${first.length || 10} plays for ${name}: positioning, customers, rivals, pricing, offers and measurement.`;
+    const allLine = partial ? `We have written ${done} of ${total} plays for ${name}: every plan with its sources, a 30-day rollout and what to watch.` : `We have finished all ${total} plays for ${name}: every plan with its sources, a 30-day rollout and what to watch.`;
+    const whyPart = capped ? `The other ${left} are paused at this brand’s spending cap; open your feed to carry on.` : missing ? `${missing} could not be written this time; the Plays page names them.` : '';
+    const firstLine = `We have written the first ${first.length || 10} plays for ${name}: positioning, customers, rivals, pricing, offers and measurement.`;
     const firstNext = `Their ideas are in your feed now, and the other ${left} land one by one; we’ll email again when they’re all in.`;
     const line = kind === 'update' ? `${lead}: ${extra.moves.map((x) => `${moveLabel(x.n)} (${x.title})`).join(', ')}. ${extra.because || ''}`.trim() : kind === 'all' ? `${allLine} ${whyPart} Each one downloads as a PDF, and your feed is built from them.`.replace(/\s+/g, ' ') : `${firstLine} ${firstNext}`;
     /* the "all" email shows a few of the brand's static ads (public files) */
     const statics = kind === 'all' ? (((await packs.getJSON(slug, 'config.json', {})) || {}).statics || []).slice(0, 3).map((id) => `${base}/b/${slug}/statics/${encodeURIComponent(id)}.jpg`) : [];
     const body = kind === 'update'
       ? mailP(`${mailEsc(lead)}:`) + mailList(extra.moves.slice(0, 12).map((x) => `${moveLabel(x.n)} · ${x.title}`)) + (extra.because ? mailP(mailEsc(extra.because)) : '')
-      : kind === 'all' ? mailP(mailEsc(allLine)) + (whyPart ? mailP(mailEsc(whyPart)) : '') + mailP('Each one downloads as a PDF, and your feed is built from them.') + (statics.length ? mailP(mailEsc(`${statics.length === 1 ? 'An ad' : `${statics.length} of the ads`} Brew made from your ad plan:`)) + mailImages(statics, { href, alt: `${name} ad` }) : '')
+      : kind === 'all' ? mailP(mailEsc(allLine)) + (whyPart ? mailP(mailEsc(whyPart)) : '') + mailP('Each one downloads as a PDF, and your feed is built from them.') + (statics.length ? mailP(mailEsc(`${statics.length === 1 ? 'An ad' : `${statics.length} of the ads`} we made from your ad plan:`)) + mailImages(statics, { href, alt: `${name} ad` }) : '')
       : mailP(mailEsc(firstLine)) + (first.length ? mailList(first) : '') + mailP(mailEsc(firstNext));
     const html = emailHtml({ title: subject, eyebrow: name, preheader: line.slice(0, 140), body, cta: { href, label: 'Open the feed' }, secondary: { href: movesHref, label: 'Read the plays' }, after: mailP('Every number in them has a source. Anything we could not confirm is marked “to confirm”.', { muted: true, small: true }), base });
     const text = `${subject}\n\n${line}${first.length ? `\n\n${first.join('\n')}` : ''}\n\nOpen the feed: ${href}\nRead the plays: ${movesHref}`;
     for (const e of todo) {
-      const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Brew <hello@send.joinsquareup.com>', to: [e], subject, html, text }) }).catch((err) => ({ ok: false, status: 0, text: async () => err.message }));
+      const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: process.env.NOTIFY_FROM || `${PRODUCT_NAME} <hello@send.joinsquareup.com>`, to: [e], subject, html, text }) }).catch((err) => ({ ok: false, status: 0, text: async () => err.message }));
       if (r.ok) n.sent[`${sentKey}:${e}`] = Date.now(); else log.warn('[notify] resend', r.status, (await r.text()).slice(0, 200));
     }
     const cur = (await packs.getJSON(slug, 'notify.json', null)) || {}; await packs.put(slug, 'notify.json', { emails: [], ...cur, sent: { ...(cur?.sent || {}), ...n.sent } }); /* emails added meanwhile are kept */
@@ -1056,12 +1057,12 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function goPro(slug, { by = null } = {}) {
     if (blocked(slug)) return { error: 'This brand is stopped.' };
     const s0 = (await status(slug)) || {}; if (st(slug).cancelled || s0.cancelled) return { error: 'This build was stopped.' };
-    await setStatus(slug, { pro: true, proAt: s0.proAt || Date.now(), proBy: s0.proBy || by, ...(s0.capped ? { capped: false, state: 'Pro: writing the rest of the moves.' } : {}) });
+    await setStatus(slug, { pro: true, proAt: s0.proAt || Date.now(), proBy: s0.proBy || by, ...(s0.capped ? { capped: false, state: 'Pro: writing the rest of the plays.' } : {}) });
     log.log?.(`[build] ${slug}: Pro by ${by || '?'}, cap $${PRO_CAP}${s0.capped ? ', resuming' : ''}`);
     if (s0.capped && !st(slug).running) resume(slug).catch((e) => log.error('[build] pro', e.message));
     return { ok: true, pro: true, cap: PRO_CAP, resumed: !!s0.capped };
   }
-  async function retry(slug) { const x = st(slug); if (x.running) return { ok: true, note: 'Failed moves get another try once the rest are written.' }; x.failed.clear(); resume(slug).catch((e) => log.error('[build] retry', e.message)); return { ok: true }; }
+  async function retry(slug) { const x = st(slug); if (x.running) return { ok: true, note: 'Failed plays get another try once the rest are written.' }; x.failed.clear(); resume(slug).catch((e) => log.error('[build] retry', e.message)); return { ok: true }; }
 
   /* ---------- keep the moves current: check for updates, flag the moves a change affects, rewrite them ---------- */
   // updates.json: { auto, checking, lastCheck: { at, changes, summary, flagged, usd }, stale: { n: { why, priority, changes } }, history }
@@ -1096,9 +1097,9 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function checkUpdates(slug, { auto = false, why = 'You asked for the latest', max = null, via = null } = {}) {
     if (blocked(slug)) return { error: 'This brand is stopped.' };
     const x = st(slug), s0 = await status(slug); if (!s0) return { error: 'unknown brand' };
-    if (!(await packs.getJSON(slug, 'brief.json'))) return { error: 'Updates start once the moves are written.' };
+    if (!(await packs.getJSON(slug, 'brief.json'))) return { error: 'Updates start once the plays are written.' };
     if (x.checking) return { ok: true, already: true };
-    if (x.running) return { error: x.rewriting ? 'A rewrite is running. Check again once it is in.' : 'The moves are still being written. Updates open once they are in.' };
+    if (x.running) return { error: x.rewriting ? 'A rewrite is running. Check again once it is in.' : 'The plays are still being written. Updates open once they are in.' };
     await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s budget is used up. Try again tomorrow.' };
     x.checking = true; await editUpd(slug, (u) => { u.checking = { at: Date.now(), why }; });
     emit(slug, { type: 'update-start', why });
@@ -1111,7 +1112,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const old = await packs.getJSON(slug, 'ledger.json', []), oldP = await packs.getJSON(slug, 'profile.json');
     const out = await makeReader(m).read(s0.url, { fresh: true, prev: oldP, admin: await adminFor(slug, s0, oldP), slug, config: await packs.getJSON(slug, 'config.json', null).catch(() => null), onEvent: (e) => { if (e.type === 'step' && e.done) emit(slug, { type: 'update-step', k: e.k, text: e.done }); } });
     /* the store did not open today: nothing is compared or overwritten (the error is kept and the next try waits a day) */
-    if (!storeOpened(out)) throw new Error('The store did not open, so nothing was compared. Brew tries again tomorrow.');
+    if (!storeOpened(out)) throw new Error('The store did not open, so nothing was compared. We try again tomorrow.');
     const gone = removedKeys(oldP?.catalog?.removed);
     // rivals stay the brand's list: a rival the read newly spotted is reported, not slipped into the plans
     const known = new Set((oldP?.rivals || []).map((r) => 'rival.' + String(r.host).replace(/\./g, '-')));
@@ -1126,7 +1127,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     await packs.put(slug, `refresh/${new Date().toISOString().slice(0, 10)}/ledger-before.json`, old);
     await packs.put(slug, 'ledger.json', ledger); await packs.put(slug, 'profile.json', profile);
     const moves = await packs.getJSON(slug, 'moves.json', {}), specs = m.moves?.SPECS || [];
-    const tri = changes.length ? await triage(ai, { name: profile.name, changes, cand: candidates(changes, moves, specs), moves, specs }) : { summary: 'Nothing changed that affects a move.', moves: [] };
+    const tri = changes.length ? await triage(ai, { name: profile.name, changes, cand: candidates(changes, moves, specs), moves, specs }) : { summary: 'Nothing changed that affects a play.', moves: [] };
     const at = Date.now();
     const u = await editUpd(slug, (u) => {
       for (const t of tri.moves) { const e = { n: t.n, priority: t.priority, why: t.why, changes: (t.changes || []).map((i) => changes[i]).filter(Boolean).slice(0, 6).map(changeLine), at, ...(via === 'event' ? { src: 'event' } : {}) }, o = u.stale[t.n];
@@ -1186,10 +1187,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const x = st(slug), s0 = await status(slug); if (!s0) return { error: 'unknown brand' };
     const have = await packs.getJSON(slug, 'moves.json', {}), ok = await rewritable(have);
     ns = [...new Set((ns || []).map(Number))].filter(ok);
-    if (!ns.length) return { error: 'Pick a written move.' };
+    if (!ns.length) return { error: 'Pick a written play.' };
     const est1 = await estMove(slug), est = +(ns.length * est1).toFixed(2);
     if (x.running || x.checking) { if (o.via) { await enqueue(slug, ns, { via: o.via }); return { ok: true, queued: true, n: ns.length, est }; }
-      return { error: x.rewriting ? 'A rewrite is already running.' : 'The moves are still being written. Rewrites open once they are in.' }; }
+      return { error: x.rewriting ? 'A rewrite is already running.' : 'The plays are still being written. Rewrites open once they are in.' }; }
     await loadDay(); if (dayUsd() >= DAY_CAP) return { error: 'Today’s budget is used up. Try again tomorrow.' };
     buildCtx.run(slug, () => rewriteNow(slug, ns, o)).catch((e) => log.error('[rewrite]', slug, e.message));
     return { ok: true, n: ns.length, est };
@@ -1230,7 +1231,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       /* kept in updates.json while it runs: a restart or deploy mid-rewrite carries on with the moves not yet written (resumeAll) */
       const carried = carry?.written || [], usdCarried = +carry?.usd || 0;
       await editUpd(slug, (u) => { u.rewriting = { ns: carry?.ns || ns, auto, via, tries, at: carry?.at || Date.now(), prev: u.rewriting?.prev || prevState, written: carried, usd: usdCarried, ...(noIndex ? { indexDone: true } : {}) }; });
-      await setStatus(slug, { state: `Rewriting ${ns.length} move${ns.length === 1 ? '' : 's'} with the latest` });
+      await setStatus(slug, { state: `Rewriting ${ns.length} play${ns.length === 1 ? '' : 's'} with the latest` });
       emit(slug, { type: 'rewrite-start', ns, auto });
       const eng = m.moves.createMovesEngine({ ai, treg, log });
       let lock = Promise.resolve(), pdfQ = Promise.resolve(), staticsJob = Promise.resolve();
@@ -1316,7 +1317,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     if (!left.length) { await editUpd(slug, (v) => { delete v.rewriting; }); return; }
     log.log(`[rewrite] ${slug}: carrying on after a restart with ${left.join(', ')}`);
     /* what it wrote before the restart stays in the record: from the saved run (r.written), else read off the moves themselves */
-    const titleOf = (n) => priv?.[n]?.title || pub[n]?.title || `Move ${n}`, wrote = (r.ns || []).filter((n) => !left.includes(n) && doneAt(n) >= (r.at || 0));
+    const titleOf = (n) => priv?.[n]?.title || pub[n]?.title || moveLabel(n), wrote = (r.ns || []).filter((n) => !left.includes(n) && doneAt(n) >= (r.at || 0));
     const carry = { ns: r.ns, at: r.at, usd: r.usd || 0, written: r.written?.length ? r.written : wrote.map((n) => ({ n, title: titleOf(n) })) };
     buildCtx.run(slug, () => rewriteNow(slug, left, { auto: !!r.auto, via: r.via || null, tries: r.tries || 0, noIndex: !!r.indexDone, carry })).catch((e) => log.error('[rewrite] resume', slug, e.message));
   }
@@ -1539,7 +1540,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     log.log(`[connect] ${slug}: the connected run is in, ${ns.length} moves rewritten`);
     emit(slug, { type: 'connect-done', n: ns.length });
     /* the run's own start time keys the email, so a second settle never sends it twice */
-    notify(slug, 'update', { at: c.at, moves: ns.map((n) => ({ n, title: title(n) })), members: true, lead: `${names} ${(c.ids || []).length > 1 ? 'are' : 'is'} connected, so Brew rewrote ${ns.length} of ${(await status(slug))?.name || slug}’s moves with your real numbers`, because: 'Only your team sees these versions.' }).catch((e) => log.warn('[notify]', e.message));
+    notify(slug, 'update', { at: c.at, moves: ns.map((n) => ({ n, title: title(n) })), members: true, lead: `${names} ${(c.ids || []).length > 1 ? 'are' : 'is'} connected, so we rewrote ${ns.length} of ${(await status(slug))?.name || slug}’s plays with your real numbers`, because: 'Only your team sees these versions.' }).catch((e) => log.warn('[notify]', e.message));
   }
   /* the weekly rewrite of what connected accounts flagged: once every LIVE_DAYS, the moves their re-reads flagged (real accounts
      only, never the first-connect run's own flags), best kind first, as far as the week's pot goes. A move the pot stopped keeps its flag for

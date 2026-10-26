@@ -32,7 +32,7 @@ test('the index lists the moves as they are now: no "Being written" rows, today�
   const idx = { n: 0, stat: '54', statLabel: 'MOVES WRITTEN BY 16 OCT', sections: [{ h: 'The end to end', blocks: [{ t: 'diagram', text: '┌─┐\n│ KNOW THE BRAN │\n└─┘' }] },
     { h: 'KNOW THE BRAND', blocks: [{ t: 'p', text: '**FOUNDATION · 9 MOVES**' }, { t: 'table', head: [], rows: [['01', 'Old title', 'g', ''], ['51', 'Customer research (in progress)', 'Being written.', '']] }] }] };
   const f = fitIndex(idx, moves);
-  assert.equal(f.stat, '2'); assert.equal(f.sections[1].blocks[0].text, '**FOUNDATION · 1 MOVE**');
+  assert.equal(f.stat, '2'); assert.equal(f.sections[1].blocks[0].text, '**FOUNDATION · 1 PLAY**');
   assert.deepEqual(f.sections[1].blocks[1].rows, [['01', 'New title one', 'g', '5 · X']]);
   assert.match(f.sections[0].blocks[0].text, /CUSTOMER RESEARCH/); assert.match(f.sections[0].blocks[0].text, /SITE ARCHITECTURE/);
   const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'); assert.match(app, /const written = allW\.filter\(\(x\) => x\.n < 1000\)/);

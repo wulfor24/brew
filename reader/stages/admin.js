@@ -107,7 +107,7 @@ export async function openAdmin(ctx) {
 }
 
 /* what a stage that needs the public site saves and says for a closed store (index.js runs these in its place) */
-const said = (what) => `${what} didn’t run: ${CLOSED_WHY}. Brew runs it once the store opens.`;
+const said = (what) => `${what} didn’t run: ${CLOSED_WHY}. We run it once the store opens.`;
 export const CLOSED_STAGE = {
   async site(ctx) {
     const { profile } = ctx, at = today();
@@ -117,7 +117,7 @@ export const CLOSED_STAGE = {
   },
   async answers(ctx) {
     ctx.profile.ai = { questions: [], answers: [], score: null, closed: true };
-    ctx.finding('answers', { kind: 'answer', t: 'Asked ChatGPT', src: 'not asked', q: '', a: `AI tools weren’t asked: ${CLOSED_WHY}, so they can’t see the store yet. Brew asks them once the store opens.`, cap: '' });
+    ctx.finding('answers', { kind: 'answer', t: 'Asked ChatGPT', src: 'not asked', q: '', a: `AI tools weren’t asked: ${CLOSED_WHY}, so they can’t see the store yet. We ask them once the store opens.`, cap: '' });
     ctx.done('answers', `not asked: ${CLOSED_WHY}`, 'empty');
   }
 };

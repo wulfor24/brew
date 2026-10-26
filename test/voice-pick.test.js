@@ -13,7 +13,7 @@ const member = { member: true, email: 'ana@acme.com' };
 
 test('the voice lines: one per voice, the site one says it follows the site as Brew read it', () => {
   assert.deepEqual(VOICES, ['site', 'warmer', 'sharper', 'plainer']);
-  assert.equal(VOICE_LINE.site, 'Voice: like the site, as Brew read it');
+  assert.equal(VOICE_LINE.site, 'Voice: like the site, as we read it');
   for (const v of ['warmer', 'sharper', 'plainer']) assert.match(VOICE_LINE[v], new RegExp(`^Voice: ${v} than the site\\. \\S`), v);
 });
 

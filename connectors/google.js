@@ -71,14 +71,14 @@ const base = {
   /* a dead Google token (refresh token revoked, the account's password changed, a 401 on the read): only a new sign-in fixes it */
   expired: (e) => e?.status === 401 || /invalid_grant|invalid_rapt|invalid_token/i.test(String(e?.message || '')),
   keyFields: [{ k: 'property', label: 'GA4 property ID', hint: 'GA4 → Admin → Property details, a number like 123456789' }],
-  help: () => (saMail ? `In GA4 → Admin → Property access management, add ${saMail} as a Viewer, then paste the property ID. Brew only reads.` : null),
+  help: () => (saMail ? `In GA4 → Admin → Property access management, add ${saMail} as a Viewer, then paste the property ID. We only read.` : null),
   helpEmail: () => saMail,
   async fromKey({ property }) {
     const p = propOf(property); if (!p) throw userErr('Paste the GA4 property ID: the number in GA4 → Admin → Property details.');
     if (!saOn()) throw userErr('GA4 by property ID is not set up on this server yet.');
     const t = await saToken(), c = { sa: true, property: p, ...t, accountName: `GA4 ${p.split('/')[1]}` };
     try { const j = await getJSON(`${ADMIN}/${p}`, { headers: auth(c) }, 'ga4 property'); c.accountName = `GA4 · ${j.displayName || p.split('/')[1]}`; }
-    catch (e) { if (e.status === 403 || e.status === 404) throw userErr(`Brew can't see property ${p.split('/')[1]} yet. Add ${saMail || 'Brew’s service account'} as a Viewer in GA4 → Admin → Property access management, then try again.`); throw e; }
+    catch (e) { if (e.status === 403 || e.status === 404) throw userErr(`We can't see property ${p.split('/')[1]} yet. Add ${saMail || 'our service account'} as a Viewer in GA4 → Admin → Property access management, then try again.`); throw e; }
     return c;
   },
   async exchange({ query, redirect }) {

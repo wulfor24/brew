@@ -82,12 +82,13 @@ import { toolOf, channelFit, paceFit, paceOf, cleanViewer } from './channel-fit.
 import { moveLabel, moveNum, moveSay, playSrc } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
 import { claimFlags, cleanDraftClaims, packSource, checkCopy, checkCopyIn } from './claims.js'; // drafts and finals carry only the store's own claims (QA-25)
 import { isCommunityCard } from './social-feed.js'; // a reply or post in a community, from what listening heard: it keeps a first-screen seat
+import { PRODUCT_NAME } from './product-name.js'; // the product's public name, where copy has to name it
 import { movedAway } from './moved.js'; // staging: no paid rival pre-read for a brand moved to production
 // cut on a word boundary with an ellipsis, never mid-word or with a dangling space
 const cutWords = (x, n) => { x = String(x).trim(); return x.length > n ? x.slice(0, n - 1).replace(/\s+\S*$/, '').replace(/[\s,;:·-]+$/, '') + '…' : x; };
 
 const H = 3600e3, D = 24 * H;
-const AGENT = { creative: 'Creative director', performance: 'Performance marketer', storefront: 'Storefront manager', visibility: 'AI visibility', crm: 'CRM specialist', brew: 'Brew' };
+const AGENT = { creative: 'Creative director', performance: 'Performance marketer', storefront: 'Storefront manager', visibility: 'AI visibility', crm: 'CRM specialist', brew: PRODUCT_NAME };
 /* with Storefront hidden (V1, unless ?storefront=1) the storefront agent only owns catalog cards, so it signs as the Catalog manager (final QA pass 19 Oct, FEED-ARV-05) */
 Object.defineProperty(AGENT, 'storefront', { get: () => (storefrontOn() ? 'Storefront manager' : 'Catalog manager'), enumerable: true });
 const sfWho = (th) => (storefrontOn() || !Array.isArray(th) ? th : th.map((m) => (m?.who === 'Storefront manager' ? { ...m, who: AGENT.storefront } : m))); /* replies saved before say it too */
@@ -190,9 +191,9 @@ const watchersFor = (b) => (b._watchers ||= [
   b.kind === 'generated'
     ? { id: 'ads', data: 'live', name: 'Your ads', agent: 'performance', cadence: 'Daily', demoEvery: D, firstAt: 50e3, watches: `Your own live ads in the Meta Ad Library (${b.config.countryName || 'your market'}): how many run, how long each has run, versions, formats, new launches`, produces: 'Refresh cards for ads that have run for months unchanged; launch and count changes. Spend, cost per order and frequency need your Meta account' }
     : { id: 'ads', data: 'sample', name: 'Ads', agent: 'performance', cadence: 'Hourly with Meta connected', demoEvery: 2 * 60e3, firstAt: 25e3, needs: 'meta', watches: 'Frequency, cost per result, fatigue', produces: 'Rotate creative and Shift budget cards' },
-  { id: 'visibility', name: 'AI visibility', agent: 'visibility', cadence: 'Weekly', demoEvery: D, firstAt: 40e3, data: 'live', watches: `${(b.config.questions || []).length || 8} shopper questions asked from ${b.config.countryName || 'your market'} to the real AI tools Brew can reach (ChatGPT, Gemini, Perplexity; Claude when Brew runs on Claude)`, produces: 'Score changes, publish-a-page cards, the health ring' },
+  { id: 'visibility', name: 'AI visibility', agent: 'visibility', cadence: 'Weekly', demoEvery: D, firstAt: 40e3, data: 'live', watches: `${(b.config.questions || []).length || 8} shopper questions asked from ${b.config.countryName || 'your market'} to the real AI tools we can reach (ChatGPT, Gemini, Perplexity; Claude when we run on Claude)`, produces: 'Score changes, publish-a-page cards, the health ring' },
   b.kind === 'generated'
-    ? { id: 'batches', data: 'live', name: 'Work in progress', agent: 'brew', cadence: 'On every change', demoEvery: 30e3, firstAt: 10e3, watches: 'Your moves, the static ads, every jam and Work board item and where it is', produces: 'The Your team is working card and the brand ring, straight from real work' }
+    ? { id: 'batches', data: 'live', name: 'Work in progress', agent: 'brew', cadence: 'On every change', demoEvery: 30e3, firstAt: 10e3, watches: 'Your plays, the static ads, every jam and Work board item and where it is', produces: 'The Your team is working card and the brand ring, straight from real work' }
     : { id: 'batches', data: 'sample', name: 'Batches', agent: 'brew', cadence: 'On event', demoEvery: 40e3, firstAt: 20e3, watches: 'Deployment team batches and jams', produces: 'What is new ring; Your team is working card' },
   { id: 'creative', data: 'live', name: 'Creative', agent: 'creative', cadence: 'Fills the daily budget', demoEvery: 3 * 60e3, firstAt: 60e3, watches: 'Brand memory, hearted cards, the calendar', produces: 'Idea cards with generated images (cheap model first)' }
 ]);
@@ -790,7 +791,7 @@ export function createFeedService(o) {
        question counts the AI tools that answered it; a play's count is across all the questions asked */
       const perQ = /^lv-vis-/.test(String(c0.id || '')), aiLbl = (x) => (typeof x !== 'string' ? x : perQ ? x.replace(/\b(\d+) of (\d+) answers\b/g, '$1 of $2 AI tools on this question') : x.replace(/\b(\d+) of (\d+) (?:AI )?prompts\b/gi, '$1 of $2 questions asked across AI tools'));
       rest.title = aiLbl(rest.title); rest.sub = aiLbl(rest.sub); if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map(aiLbl) : r)); }
-    { const yours = (x) => (typeof x === 'string' ? x.replace(/\b(O|o)ur (?=[₹$£€]\s?\d)/g, (m, o) => (o === 'O' ? 'Your ' : 'your ')) : x); rest.title = yours(rest.title); rest.sub = yours(rest.sub); } /* a card talks to the team: "your ₹449 shampoo", never "our" beside it (1.14); drafts for shoppers keep "our" */ if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map((x, i) => (i === 0 && /^to confirm$/i.test(String(x)) ? 'Still to check' : tc(x))) : r)); } /* the moves' planning marker "(to confirm)" never shows on a card face (QA 20 Oct) */ { const sc = sectorOf(c0); if (sc && sc !== rest.sector) rest.sector = sc; } /* the column it changes (1.13) */ rest.src = rest.src === 'Brew deployment team' ? 'The ShopOS team, Brew’s build crew' : playSrc(rest.src); /* Plays, not moves (3.10) */ /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
+    { const yours = (x) => (typeof x === 'string' ? x.replace(/\b(O|o)ur (?=[₹$£€]\s?\d)/g, (m, o) => (o === 'O' ? 'Your ' : 'your ')) : x); rest.title = yours(rest.title); rest.sub = yours(rest.sub); } /* a card talks to the team: "your ₹449 shampoo", never "our" beside it (1.14); drafts for shoppers keep "our" */ if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map((x, i) => (i === 0 && /^to confirm$/i.test(String(x)) ? 'Still to check' : tc(x))) : r)); } /* the moves' planning marker "(to confirm)" never shows on a card face (QA 20 Oct) */ { const sc = sectorOf(c0); if (sc && sc !== rest.sector) rest.sector = sc; } /* the column it changes (1.13) */ rest.src = rest.src === 'Brew deployment team' ? 'Our team' : playSrc(rest.src); /* Plays, not moves (3.10) */ /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ return { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; };
   /* the cards the page needs, not every card the workspace ever held: the feed's order, pinned ones, cards with a jam, saved and
      hearted ones (the Library and the jams open them by id). With no order yet, every card, as before */
   const lastOrder = new WeakMap();
@@ -884,11 +885,11 @@ export function createFeedService(o) {
   };
   /* ---------- real work in progress (generated brands): no simulated progress, only what is happening ---------- */
   const STAGE_PCT = { drafting: 20, team: 45, brew: 55, needs_you: 70, ready: 85, deploying: 90, measuring: 95, result: 100 };
-  const STAGE_TXT = { drafting: 'Drafting', team: 'With your team', brew: 'With the ShopOS team', needs_you: 'Needs your OK', ready: 'Ready to share', deploying: 'Brief shared', out: 'Brief shared', measuring: 'Brief shared', result: 'Brief shared' }; // Brew never ships or measures: old stages read as shared
+  const STAGE_TXT = { drafting: 'Drafting', team: 'With your team', brew: 'With our team', needs_you: 'Needs your OK', ready: 'Ready to share', deploying: 'Brief shared', out: 'Brief shared', measuring: 'Brief shared', result: 'Brief shared' }; // Brew never ships or measures: old stages read as shared
   const realBatches = (t) => {
     const raw = builder?.peek?.(B().slug) || {}, st = o.viewStatus?.(B().slug, raw) || raw, out = []; /* the demo's replayed build reads the same as its status route (QA FEED-QA-09) */
     const done = st.movesDone || 0, N = +st.total || 50; /* the playbook (not the index, not weekly moves); PDFs are made on download */
-    out.push({ id: 'b-moves', t: `Your moves`, s: done >= N ? `All ${N} written` : `${done} of ${N} written`, pct: Math.round(100 * Math.min(done, N) / N), st: done >= N ? 'Done' : 'Running', tone: done >= N ? 'ok' : 'info', agent: 'brew', team: true, real: true });
+    out.push({ id: 'b-moves', t: `Your plays`, s: done >= N ? `All ${N} written` : `${done} of ${N} written`, pct: Math.round(100 * Math.min(done, N) / N), st: done >= N ? 'Done' : 'Running', tone: done >= N ? 'ok' : 'info', agent: 'brew', team: true, real: true });
     if (st.statics) out.push({ id: 'b-statics', t: 'Static ads from Play 21', s: st.statics.state === 'done' ? `${st.statics.n} ads ready for your review` : st.statics.state === 'failed' ? 'Could not be made: ' + (st.statics.err || 'image model error') : 'Making the images from your product photos', pct: st.statics.state === 'done' ? 100 : 40, st: st.statics.state === 'done' ? 'Needs you' : st.statics.state === 'failed' ? 'Stopped' : 'Running', tone: st.statics.state === 'done' ? 'warn' : 'info', agent: 'creative', real: true });
     for (const w of t.work.filter((x) => !x.archived && !x.discarded).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6))
       out.push({ id: 'b-' + w.id, t: cutWords(w.title || 'Work', 48), s: `${STAGE_TXT[w.stage] || w.stage}${w.with?.name ? ' · ' + w.with.name : ''}${w.ticket ? ' · ' + w.ticket : ''}`, pct: STAGE_PCT[w.stage] || 30, st: w.stage === 'needs_you' ? 'Needs you' : w.stage === 'result' ? 'Done' : 'Running', tone: w.stage === 'needs_you' ? 'warn' : w.stage === 'result' ? 'ok' : 'info', agent: w.agent, team: w.with?.kind === 'brew', workId: w.id, real: true });
@@ -912,7 +913,7 @@ export function createFeedService(o) {
         rows: e.items.slice(0, 4).map((x) => [String(x.hook || 'Untitled ad').slice(0, 38), x.video ? 'Video' : 'Image']), detail: { why: ['Read from the public Meta Ad Library today.'], how: ['Connect Meta to see what each one costs and returns.'] }, cta: { label: 'Make the ad' } });
       if (e.kind === 'count') out.push({ ...base, type: 'report', family: 'result', kind: 'rows', badge: ['Live ads', e.now > e.was ? 'ok' : 'warn'], liveNums: nums,
         title: `Live ads went from ${e.was} to ${e.now}`, sub: `The count of ${BN()} ads running in the Meta Ad Library changed since the last read. A big drop can mean a paused account or a budget cut.`, rows: [['Before', String(e.was)], ['Now', String(e.now)]], detail: { why: ['Counted in the public Meta Ad Library.'], how: ['Check the account if the drop was not planned.'] }, cta: { label: 'Open report' } });
-      if (e.kind === 'none') out.push({ ...base, type: 'decision', kind: 'rows', badge: ['No live ads', 'warn'], liveNums: [], title: `No live ${BN()} ads found in the Meta Ad Library`, sub: `We searched the Ad Library for ${CTRY()} and found no ads running for ${BN()} today. Your feed's ad cards start from your moves instead.`, rows: [['Live ads', 'None found']], detail: { why: ['Searched by brand name in the public Ad Library.'], how: ['If you run ads under another page name, tell us and we will track that page.'] }, cta: { label: 'Make the ad' } /* no rival ad behind it: our first ad, never "our version" of something */ });
+      if (e.kind === 'none') out.push({ ...base, type: 'decision', kind: 'rows', badge: ['No live ads', 'warn'], liveNums: [], title: `No live ${BN()} ads found in the Meta Ad Library`, sub: `We searched the Ad Library for ${CTRY()} and found no ads running for ${BN()} today. Your feed's ad cards start from your plays instead.`, rows: [['Live ads', 'None found']], detail: { why: ['Searched by brand name in the public Ad Library.'], how: ['If you run ads under another page name, tell us and we will track that page.'] }, cta: { label: 'Make the ad' } /* no rival ad behind it: our first ad, never "our version" of something */ });
     }
     return out;
   };
@@ -975,7 +976,7 @@ export function createFeedService(o) {
   const adCard = (a, at) => ({ id: 'r-ad-' + a.id, agent: 'performance', sector: 'ads', type: 'competitor', family: 'learning', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'media', images: [a.poster],
     campaign: 'Popular ads', title: `${a.brand}: live ${a.days} day${+a.days === 1 ? '' : 's'} in ${a.versions} version${a.versions > 1 ? 's' : ''}`, sub: a.why || a.hook,
     rows: [['Hook', a.hook], ['Angle', a.angle], ['Live since', a.since], ['Format', a.format]],
-    detail: { why: [a.why, `Hook: ${a.hook}`, `${a.brand} runs it as ${a.versions} version${a.versions > 1 ? 's' : ''}, ranked ${a.rank} by Meta for reach.`].filter(Boolean), how: [a.take, `Brew reads how ${a.brand}'s ad is made, then drafts yours on the same angle and style, with your product and your words.`, 'Brew drafts one; make the final (or redo it) and share the brief; your team runs it.'].filter(Boolean) },
+    detail: { why: [a.why, `Hook: ${a.hook}`, `${a.brand} runs it as ${a.versions} version${a.versions > 1 ? 's' : ''}, ranked ${a.rank} by Meta for reach.`].filter(Boolean), how: [a.take, `We read how ${a.brand}'s ad is made, then draft yours on the same angle and style, with your product and your words.`, 'We draft one; make the final (or redo it) and share the brief; your team runs it.'].filter(Boolean) },
     make: { format: a.format === 'video' ? 'reel' : 'single image ad', what: `Our version of ${a.brand}'s ${a.format === 'video' ? 'video' : 'image'} ad`, from: 'rival' }, /* the studio opens on the same kind of creative */
     cta: { label: 'Make our version' }, link: { label: 'See it in the Ad Library', url: a.url }, src: `Meta Ad Library · ${CTRY()} · ${dateIN(at)}`, research: { kind: 'ad', id: a.id }, rivalName: a.brand /* whose ad it is: "Seen on <rival>" (FEED-NOT-02) */ });
   /* a viral video in the brand's category (research.js refreshViral, viral-gate.js): make our version of the format, as a script to
@@ -988,7 +989,7 @@ export function createFeedService(o) {
       campaign: 'Viral videos', title: x.title || `A ${pl} format to make our own`, sub: x.why || x.hook,
       rows: [['Views', bigN(x.views)], ...(sc ? [['Their usual', `${bigN(x.usual)} · this got ${sc}`]] : []), ...(x.interest ? [['Your buyers also watch', x.interest]] : []) /* found by an audience interest, outside the category */, ['Their hook', x.hook], ['Posted', `${x.days} day${x.days === 1 ? '' : 's'} ago on ${pl}`]].filter((r) => r[1]),
       detail: { why: [x.why, sc && `${bigN(x.views)} views where ${x.author} usually gets ${bigN(x.usual)}: ${sc} their normal reach.`, x.read?.pacing && `Pacing: ${x.read.pacing}`].filter(Boolean),
-        how: [x.take, `Brew reads how the video is made, then writes our script on the same format: hook, beats, shot list and how to film it, with ${BN()}'s product and words.`, 'Lock the script, then send the brief to your team or make it with AI.'].filter(Boolean) },
+        how: [x.take, `We read how the video is made, then write our script on the same format: hook, beats, shot list and how to film it, with ${BN()}'s product and words.`, 'Lock the script, then send the brief to your team or make it with AI.'].filter(Boolean) },
       make: { format: 'reel', what: `Our version of this ${pl} video`, from: 'viral', pieces: [x.product, x.take].filter(Boolean).join('. ').slice(0, 200) }, /* the product that fits the video: the writer and the first frame use it (cardProduct reads pieces) */
       cta: { label: 'Make our version' }, link: { label: `Watch it on ${pl}`, url: x.url }, src: `${pl}${sc ? ` · ${sc} usual views` : ''} · ${dateIN(at)}`, research: { kind: 'viral', id: x.id, platform: x.platform }, creatorName: x.author }; };
   /* a trend story built on nothing ("0 terms", an empty rising list) is no finding: never a card (QA 20 Oct; quiet rule, no zero tiles) */
@@ -996,13 +997,13 @@ export function createFeedService(o) {
   const trendCard = (x, at) => ({ id: 'r-' + x.id, agent: 'brew', sector: 'creatives', type: 'competitor', family: 'learning', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'rows',
     campaign: 'Trends', title: x.card, sub: x.p,
     rows: x.rising ? x.rising.slice(0, 4).map((r) => [r.q.length > 38 ? r.q.slice(0, 36) + '…' : r.q, riseLabel(r.v)]) : x.terms.map((term) => { const s = research.get().trends.series[term]; return [term, s.change == null ? `index ${s.last}` : `${s.change > 0 ? '+' : ''}${s.change}% in 30 days`]; }),
-    detail: { why: [x.p, x.h], how: ['Brew turns it into an ad idea or a page change.', 'You approve it before anything goes live.'] },
+    detail: { why: [x.p, x.h], how: ['We turn it into an ad idea or a page change.', 'You approve it before anything goes live.'] },
     cta: { label: 'Turn into an idea' }, src: `Google Trends · ${CTRY()} · ${dateIN(at)}`, research: { kind: 'trend', id: x.id } });
   /* a news story's card: what it means for the brand, as one idea to plan (the story slide's one button, QA FEED-ARV-10) */
   const newsId = (x) => 'nw-' + crypto.createHash('sha1').update(String(x?.url || x?.h || '')).digest('hex').slice(0, 10);
   const newsCard = (x, at) => ({ id: 'r-' + newsId(x), agent: 'brew', sector: 'signals', type: 'idea', family: 'idea', lane: firstLane(), roles: ['founder', 'growth', 'brand'], kind: 'rows',
     campaign: 'Industry news', title: `What “${short(String(x.h || ''), 60)}” means for ${BN()}`, sub: x.take || newsForUs(x, BN()),
-    rows: [['The story', short(String(x.h || ''), 60)], ['Source', x.source || x.domain || 'the web']], detail: { why: [x.p].filter(Boolean), how: ['Brew drafts one idea for an ad or a page.', 'You decide if it goes out.'] },
+    rows: [['The story', short(String(x.h || ''), 60)], ['Source', x.source || x.domain || 'the web']], detail: { why: [x.p].filter(Boolean), how: ['We draft one idea for an ad or a page.', 'You decide if it goes out.'] },
     cta: { label: newsCta(x) }, link: x.url ? { label: 'Read the story', url: x.url } : undefined, src: `${x.source || x.domain || 'Web search'} · ${dateIN(at)}`, research: { kind: 'news', id: newsId(x) } });
   const howtoCard = (x, at) => ({ id: 'r-' + x.id, agent: 'creative', sector: 'creatives', type: 'idea', lane: x.lane, roles: ['founder', 'growth', 'brand'], kind: x.img ? 'media' : 'rows', images: x.img ? [x.img] : undefined,
     campaign: 'How to', title: x.card, sub: x.p, rows: x.steps.map((st, i) => [`Step ${i + 1}`, st]),
@@ -1119,17 +1120,17 @@ export function createFeedService(o) {
       if (e.kind === 'oos') return { ...base, type: 'decision', family: 'exception', badge: ['Out of stock', 'warn'],
         title: n === 1 ? `${t0} is sold out: pause the ads that point to it` : `${plural(n, 'product is', 'products are')} sold out: pause the ads that point to them`,
         sub: `${nq ? (n === 1 ? 'Our ads point to it. ' : `${nq} of them ${nq === 1 ? 'is a product' : 'are products'} our ads point to. `) : ''}Shoppers who land there can’t buy until it’s back.`,
-        rows: rows((i) => `Sold out · ${isQ(i) ? 'pause our ads' : 'pause links'}`), detail: { why: [`Checked on the live ${BH()} catalog.`, 'Shoppers who land there can’t buy.', order], how: ['Brew lists every ad and message that points there.', 'Your team pauses them or swaps in an in-stock product.', 'Brew posts a card when it is back in stock.'] }, cta: { label: 'Pause the ads for these' } };
+        rows: rows((i) => `Sold out · ${isQ(i) ? 'pause our ads' : 'pause links'}`), detail: { why: [`Checked on the live ${BH()} catalog.`, 'Shoppers who land there can’t buy.', order], how: ['We list every ad and message that points there.', 'Your team pauses them or swaps in an in-stock product.', 'We post a card when it is back in stock.'] }, cta: { label: 'Pause the ads for these' } };
       if (e.kind === 'back') return { ...base, type: 'report', family: 'result', badge: ['Back in stock', 'ok'], title: n === 1 ? `${t0} is back in stock: restart its ads` : `${plural(n, 'product is', 'products are')} back in stock: restart their ads`, sub: `${n === 1 ? 'It' : 'They'} can be bought again. Anything paused for ${n === 1 ? 'it' : 'them'} can restart.`, rows: rows(() => 'In stock · restart ads'), detail: { why: [`Checked on the live ${BH()} catalog.`, order], how: ['Your team restarts anything it paused for it.'] }, cta: { label: 'Restart what was paused' } };
       if (e.kind === 'price' || e.kind === 'drift') { const it = x.map((i) => ({ t: i.title, was: i.was != null ? (typeof i.was === 'number' ? inrN(i.was) : i.was) : '', now: i.now || inrN(i.price) })).filter((i) => i.was !== i.now); // saved events from before the paise fix: "₹1,850 → ₹1,850" is no change
         if (!it.length) return null;
         return { ...base, type: 'decision', family: 'exception', badge: ['Price changed', 'warn'], liveNums: it.flatMap((i) => [i.was, i.now]),
           title: it.length === 1 ? `${short(it[0].t, 32)} is now ${it[0].now}: update its ads` : e.kind === 'drift' ? `${plural(it.length, 'price our cards quote has', 'prices our cards quote have')} changed: update those ads` : `${plural(it.length, 'price', 'prices')} changed on ${BH()}: update the ads that quote them`,
           sub: `${short(it[0].t, 60)} is now ${it[0].now}${it[0].was ? `, was ${it[0].was}` : ''}${it.length > 1 ? `, plus ${plural(it.length - 1, 'more', 'more')}` : ''}. ${e.kind === 'drift' ? 'Cards and ads that quote the old price are now wrong.' : 'Ads and messages quoting the old price need the new one.'}`,
-          rows: it.slice(0, 4).map((i) => [short(i.t, 34), `${i.was ? `${i.was} → ${i.now}` : i.now} · update ads`]), detail: { why: [`Read from the live ${BH()} catalog.`, 'A wrong price in an ad is a broken promise at checkout.', order], how: ['The fact sheet takes the new price on its daily check.', 'Brew lists the cards and moves that quote the old one.', 'Your team updates the ads and messages.'] }, cta: { label: 'Update the prices' } }; }
-      if (e.kind === 'removed' || e.kind === 'gone') return { ...base, type: 'decision', family: 'exception', badge: ['Removed', 'warn'], title: n === 1 ? `${t0} was removed: redirect its link` : `${plural(n, 'product was', 'products were')} removed: redirect their links`, sub: `${n === 1 ? 'It is' : 'They are'} gone from the live store. Links and ads that point there now land on an error page.`, rows: rows(() => 'Removed · redirect link'), detail: { why: [`Checked on the live ${BH()} catalog.`, 'A dead link wastes every click.', order], how: ['Brew lists what points there.', 'Your team redirects it or pauses it.'] }, cta: { label: 'Fix the links' } };
+          rows: it.slice(0, 4).map((i) => [short(i.t, 34), `${i.was ? `${i.was} → ${i.now}` : i.now} · update ads`]), detail: { why: [`Read from the live ${BH()} catalog.`, 'A wrong price in an ad is a broken promise at checkout.', order], how: ['The fact sheet takes the new price on its daily check.', 'We list the cards and plays that quote the old one.', 'Your team updates the ads and messages.'] }, cta: { label: 'Update the prices' } }; }
+      if (e.kind === 'removed' || e.kind === 'gone') return { ...base, type: 'decision', family: 'exception', badge: ['Removed', 'warn'], title: n === 1 ? `${t0} was removed: redirect its link` : `${plural(n, 'product was', 'products were')} removed: redirect their links`, sub: `${n === 1 ? 'It is' : 'They are'} gone from the live store. Links and ads that point there now land on an error page.`, rows: rows(() => 'Removed · redirect link'), detail: { why: [`Checked on the live ${BH()} catalog.`, 'A dead link wastes every click.', order], how: ['We list what points there.', 'Your team redirects it or pauses it.'] }, cta: { label: 'Fix the links' } };
       if (e.kind === 'new') return { ...base, type: 'idea', family: 'idea', badge: ['New on the store', 'info'], liveNums: x.map((i) => inrN(i.price)), title: n === 1 ? `${t0} is new on ${BH()}: plan its launch` : `${plural(n, 'new product is', 'new products are')} live: plan their launch`, sub: `${n === 1 ? 'It went' : 'They went'} live recently. None has launch content in the feed yet.`, rows: rows((i) => `New, ${inrN(i.price)} · plan launch`), detail: { why: [`Found on the live ${BH()} catalog.`, 'A launch with no ads or messages sells to nobody.', order], how: ['The Creative director drafts launch ideas.', 'The CRM specialist drafts a message to past buyers.', 'You pick what goes out.'] }, cta: { label: 'Plan the launch' } };
-      if (e.kind === 'thin') return { ...base, type: 'decision', family: 'exception', badge: [plural(n, 'listing', 'listings'), 'warn'], title: n === 1 ? `${t0} has ${plural(x[0].images || 0, 'photo', 'photos').replace(/^0 photos$/, 'no photo')}: add more angles` : `${plural(n, 'listing has', 'listings have')} one photo or none: add more angles`, sub: 'Shoppers and catalog ads need more than one angle to trust a product.', rows: rows((i) => `${i.images ? plural(i.images, 'photo', 'photos') : 'No photo'} · add angles`), detail: { why: [`Counted on the live ${BH()} catalog.`, 'Listings with one image convert worse and look thin in catalog ads.', order], how: ['Brew drafts packshots from the single-product photos.', 'Keep each one or redo it.', 'Your team adds them to the listings.'] }, cta: { label: 'Add photos' } };
+      if (e.kind === 'thin') return { ...base, type: 'decision', family: 'exception', badge: [plural(n, 'listing', 'listings'), 'warn'], title: n === 1 ? `${t0} has ${plural(x[0].images || 0, 'photo', 'photos').replace(/^0 photos$/, 'no photo')}: add more angles` : `${plural(n, 'listing has', 'listings have')} one photo or none: add more angles`, sub: 'Shoppers and catalog ads need more than one angle to trust a product.', rows: rows((i) => `${i.images ? plural(i.images, 'photo', 'photos') : 'No photo'} · add angles`), detail: { why: [`Counted on the live ${BH()} catalog.`, 'Listings with one image convert worse and look thin in catalog ads.', order], how: ['We draft packshots from the single-product photos.', 'Keep each one or redo it.', 'Your team adds them to the listings.'] }, cta: { label: 'Add photos' } };
       return null;
     }
     /* the AI tools that really answered in this event's run, never the full list: a tool that failed or wasn't asked isn't named */
@@ -1139,17 +1140,17 @@ export function createFeedService(o) {
     if (e.kind === 'score') { const d = e.was ? e.named - e.was.named : null;
       return { ...base, type: 'report', family: 'result', kind: 'rows', badge: [d == null ? 'This week' : d > 0 ? `+${d}` : d < 0 ? `${d}` : 'No change', d > 0 ? 'ok' : d < 0 ? 'warn' : 'info'], health: d ? { 'AI answers': d } : undefined,
         title: `${BN()} is named in ${e.named} of ${e.total} AI answers this week`, sub: `We asked ${nq ? plural(nq, 'shopper question', 'shopper questions') : 'shopper questions'} to ${tools}, from ${CTRY()}.${e.was ? ` Last time it was ${e.was.named} of ${e.was.total}.` : ' This is the first reading; next week shows the change.'}`,
-        rows: e.byEngine.filter((b) => b.total).map((b) => [ENG[b.engine], `${b.named} of ${b.total}`]), detail: { why: ['Real answers from the consumer apps, with web search on.', 'Shoppers ask these before they buy.'], how: ['Brew asks the same questions every week.', 'Each gap becomes a card with a page or a claims fix to draft.'] }, cta: { label: 'Open report' } }; }
+        rows: e.byEngine.filter((b) => b.total).map((b) => [ENG[b.engine], `${b.named} of ${b.total}`]), detail: { why: ['Real answers from the consumer apps, with web search on.', 'Shoppers ask these before they buy.'], how: ['We ask the same questions every week.', 'Each gap becomes a card with a page or a claims fix to draft.'] }, cta: { label: 'Open report' } }; }
     if (e.kind === 'gap') { /* one specific fix per gap (QA FEED-ARV-09): the question, the rival named instead, the brand's page that fits it */
       const g = gapFix({ q: e.q, rivals: e.rivals || [], product: matchProduct(e.q, B()?.catalog || [], { brand: BN() }), brand: BN(), host: BH() });
       return { ...base, visV: VIS_V, type: 'decision', family: 'exception', kind: 'answer', q: e.q, a: `${andList(e.rivals)} ${e.rivals.length === 1 ? 'is' : 'are'} named. ${BN()} is in none of the ${e.of} answers.`,
         title: g.title, sub: `${tools} name ${andList(e.rivals.slice(0, 2))} instead${e.domains?.length ? ` and cite ${andList(e.domains.slice(0, 2))}` : ''}. The fix: ${g.fix}.`,
         rows: [['Named instead', short(e.rivals.join(', '), 40)], ['Page that fits', g.page], [`${BN()} named`, `0 of ${e.of}`]], ...(g.url ? { link: { label: `Open the page on ${BH()}`, url: g.url } } : {}),
-        detail: { why: [`Real answers from the consumer apps, asked from ${CTRY()}.`, 'Answers lean on the sites they cite.'], how: [`Brew drafts ${g.fix}.`, `Your team puts it on ${BH()}.`, 'Brew asks again next week.'] }, cta: { label: 'Draft the page' } }; }
+        detail: { why: [`Real answers from the consumer apps, asked from ${CTRY()}.`, 'Answers lean on the sites they cite.'], how: [`We draft ${g.fix}.`, `Your team puts it on ${BH()}.`, 'We ask again next week.'] }, cta: { label: 'Draft the page' } }; }
     if (e.kind === 'win') return { ...base, type: 'report', family: 'result', kind: 'answer', q: e.q, a: e.said || `${andList(e.engines.map((x) => ENG[x]))} now names ${BN()}.`, badge: ['Named', 'ok'], health: { 'AI answers': e.engines.length },
       title: short(`${andList(e.engines.map((x) => ENG[x]))} now names ${BN()} for “${e.q.replace(/\?$/, '')}”`, 76), sub: `${BN()} is now in ${e.yes.length} of ${e.of} answers to this question, up from ${e.yes.length - e.engines.length} last time.`, rows: [['Named in', `${e.yes.length} of ${e.of}`]], detail: { why: ['Real answers, compared with last week.'], how: ['We keep asking weekly.'] }, cta: { label: 'Open report' } };
     if (e.kind === 'loss') return { ...base, type: 'decision', family: 'exception', kind: 'rows', badge: ['Dropped', 'warn'], health: { 'AI answers': -e.engines.length },
-      title: short(`${andList(e.engines.map((x) => ENG[x]))} stopped naming ${BN()} for “${e.q.replace(/\?$/, '')}”`, 76), sub: `${BN()} is in ${e.yes.length} of ${e.of} answers now${e.rivals?.length ? `; ${andList(e.rivals.slice(0, 3))} still show up` : ''}.`, rows: [['Named in', `${e.yes.length} of ${e.of}`], ['Lost', andList(e.engines.map((x) => ENG[x]))]], detail: { why: ['Real answers, compared with last week.'], how: ['Brew checks which page it used to cite.', 'Your team refreshes that page.'] }, cta: { label: 'See what changed' } };
+      title: short(`${andList(e.engines.map((x) => ENG[x]))} stopped naming ${BN()} for “${e.q.replace(/\?$/, '')}”`, 76), sub: `${BN()} is in ${e.yes.length} of ${e.of} answers now${e.rivals?.length ? `; ${andList(e.rivals.slice(0, 3))} still show up` : ''}.`, rows: [['Named in', `${e.yes.length} of ${e.of}`], ['Lost', andList(e.engines.map((x) => ENG[x]))]], detail: { why: ['Real answers, compared with last week.'], how: ['We check which page it used to cite.', 'Your team refreshes that page.'] }, cta: { label: 'See what changed' } };
     return null;
   };
   const fromLive = (t, wid, n) => {
@@ -1271,7 +1272,7 @@ export function createFeedService(o) {
       { k: 'Approvals this week', v: String(approvals), target: '5 or more', ok: approvals >= 5 },
       { k: 'Team jams', v: String(t.work.filter((w) => w.ticket).length + t.jams.filter((j) => j.route === 'team').length), target: 'Tracked as deployment leads', ok: true, note: `${leadsAllTenants} across all tenants` },
       { k: 'Free to Pro', v: t.plan === 'pro' ? 'On Pro' : 'Free', target: 'Measured, no target yet', ok: true },
-      { k: 'Card feedback', v: String((t.cardNotes || []).length + t.feedback.filter((f) => f.kind === 'not_interested').length), target: 'Read by the Brew team weekly', ok: true, note: t.cardNotes?.[0] ? `Latest on “${t.cardNotes[0].title.slice(0, 40)}”: ${t.cardNotes[0].text.slice(0, 120)}` : 'No notes yet' }
+      { k: 'Card feedback', v: String((t.cardNotes || []).length + t.feedback.filter((f) => f.kind === 'not_interested').length), target: 'Read by our team weekly', ok: true, note: t.cardNotes?.[0] ? `Latest on “${t.cardNotes[0].title.slice(0, 40)}”: ${t.cardNotes[0].text.slice(0, 120)}` : 'No notes yet' }
     ];
   };
   const engine = (t) => {
@@ -1343,9 +1344,9 @@ export function createFeedService(o) {
     /* a ring whose last read failed and has nothing left today says so, never just vanishes as if there was nothing (brew-external-data rule 1) */
     const fails = research?.failures?.() || {};
     const failedNote = (k, title, slides) => (slides.length || k === 'brand' ? slides : !r0[k] && fails[k]
-      ? [{ type: 'note', c: SEED.brand.wash[2], h: `No ${title.toLowerCase()} yet`, p: 'The first read found nothing to show. Brew tries again within the hour.', from: 'Brew', at: fails[k].at }]
+      ? [{ type: 'note', c: SEED.brand.wash[2], h: `No ${title.toLowerCase()} yet`, p: 'The first read found nothing to show. We try again within the hour.', from: PRODUCT_NAME, at: fails[k].at }]
       : r0[k]?.lastError
-      ? [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. Brew tries again within the hour.', from: 'Brew', at: r0[k].lastError.at }]
+      ? [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. We try again within the hour.', from: PRODUCT_NAME, at: r0[k].lastError.at }]
       : slides); /* a ring that is only waiting for its next read has nothing to show: it is hidden, not a "Finding new stories" slide (QA FEED-QA-28) */
     const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map(bgFor), ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
     const extra = (k) => t.storyExtra[k].slice().reverse().map((x) => ({ ...x, type: 'note' }));
@@ -1364,7 +1365,7 @@ export function createFeedService(o) {
     const ranked = (process.env.PLAIN_OFF === '1' ? ranked0 : ranked0.map((c) => PLAIN.apply(slugOfT(t), c))).map((c) => freshCounts(c, countsFor(packFor(t)), { live: !!t.member })); /* the stories say each card in the same plain words as the feed */
     /* the brand today leads with what is new since the last visit, when there is any; else the top of the feed */
     const open0 = ranked.filter((c) => !c.done && !c.loading && !String(c.id).startsWith('r-')), sinceV = t.visit?.prev, news = sinceV ? open0.filter((c) => c.createdAt > sinceV) : [];
-    const topCards = (news.length ? news : open0).slice(0, 2).map((c, i) => ({ type: 'brand', chip: news.length ? (i ? 'Also new' : 'New since your last visit') : i ? 'Next up' : 'Biggest move today', h: c.title, p: c.sub, img: (c.images || [])[0], agent: c.agent, cardId: c.id, cta: c.cta?.label, at: c.createdAt }));
+    const topCards = (news.length ? news : open0).slice(0, 2).map((c, i) => ({ type: 'brand', chip: news.length ? (i ? 'Also new' : 'New since your last visit') : i ? 'Next up' : 'Biggest play today', h: c.title, p: c.sub, img: (c.images || [])[0], agent: c.agent, cardId: c.id, cta: c.cta?.label, at: c.createdAt }));
     const waiting = t.work.filter((w) => w.stage === 'needs_you').sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 2).map((w) => { const v = w.versions.find((x) => x.n === w.current) || w.versions[w.versions.length - 1];
       return { type: 'brand', chip: 'Waiting on you', h: v?.title || w.title, p: v?.sub || `${w.with?.name || 'Your team'} sent it back for your OK.`, img: w.img, agent: w.agent, workId: w.id, at: w.updatedAt }; });
     const shipped = extra('news').map((x) => ({ ...x, type: 'brand', chip: x.from || 'Your team' }));
@@ -1445,7 +1446,7 @@ export function createFeedService(o) {
      drafting (you + AI, as many iterations as you like) → with your team / with Brew → needs you
      → ready to deploy → deploying → deployed. Every change from someone else is a notification. */
   /* where a card's action runs: NEEDS / NO_TOOL / IF_WORDS / toolInWords and the pure toolOf live in channel-fit.js */
-  const deployTarget = (label, card) => { let k = toolOf(label, card); if (k === 'loox' && !SEED.connectors.loox) k = SEED.connectors.reviews ? 'reviews' : null; return k && SEED.connectors[k] ? { conn: k, name: SEED.connectors[k].name } : { conn: null, name: 'Brew' }; };
+  const deployTarget = (label, card) => { let k = toolOf(label, card); if (k === 'loox' && !SEED.connectors.loox) k = SEED.connectors.reviews ? 'reviews' : null; return k && SEED.connectors[k] ? { conn: k, name: SEED.connectors[k].name } : { conn: null, name: PRODUCT_NAME }; };
   const colleagueFor = (c) => SEED.colleagues.find((x) => x.id === (c?.sector === 'creatives' || c?.sector === 'visibility' ? 'brandm' : c?.sector === 'ads' ? 'perf' : c?.sector === 'storefront' || c?.sector === 'catalog' ? 'ops' : 'growth'));
   // what a teammate pushes back with, per sector (plain, brand-neutral ones unless the brand's config has its own)
   const GENERIC_PUSHBACK = {
@@ -1486,12 +1487,12 @@ export function createFeedService(o) {
   /* Slack (connectors/slack.js): a jam taken to Slack is one post in the brand's channel; what the team writes in the jam goes
      to that thread, and the thread's replies and its Approve button come back here (slackIn, from server.js /slack/events) */
   const slugOfT = (t) => t.brandId || DEFAULT_BRAND;
-  const slackMirror = (t, w, msg) => { const who = msg.from === 'ai' ? null : msg.by?.name || msg.by?.email || 'Someone in Brew';
-    o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text: who ? `*${who}* in Brew: ${String(msg.body || '').slice(0, 3000)}` : `${String(msg.body || '').slice(0, 3000)}${msg.edited?.length ? `\n_Updated in the brief: ${msg.edited.join(', ')}_` : ''}` }).then((r) => { if (r?.error) log.warn('[slack] mirror', r.error); }).catch(() => {}); };
+  const slackMirror = (t, w, msg) => { const who = msg.from === 'ai' ? null : msg.by?.name || msg.by?.email || 'Someone on the team';
+    o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text: who ? `*${who}* in ${PRODUCT_NAME}: ${String(msg.body || '').slice(0, 3000)}` : `${String(msg.body || '').slice(0, 3000)}${msg.edited?.length ? `\n_Updated in the brief: ${msg.edited.join(', ')}_` : ''}` }).then((r) => { if (r?.error) log.warn('[slack] mirror', r.error); }).catch(() => {}); };
   const slackBlocks = (t, w, text, page) => [{ type: 'section', text: { type: 'mrkdwn', text: String(text).slice(0, 2900) } },
     { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${w.current}` }, action_id: 'approve', value: `${slugOfT(t)}|${w.id}|${w.current}` },
-      ...(page ? [{ type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: page, action_id: 'open' }] : [])] },
-    { type: 'context', elements: [{ type: 'mrkdwn', text: 'Reply in this thread: replies land in the Brew jam and its brief.' }] }];
+      ...(page ? [{ type: 'button', text: { type: 'plain_text', text: `Open in ${PRODUCT_NAME}` }, url: page, action_id: 'open' }] : [])] },
+    { type: 'context', elements: [{ type: 'mrkdwn', text: 'Reply in this thread: replies land in the jam and its brief.' }] }];
   /* every new asset in a jam that has a Slack thread goes to that thread for review: the picture inline, a video, voice or the
      slides as a link, and Approve for the jam's current version */
   const pubUrl = (x) => { const s = String(x || ''); if (!s) return null; if (/^https:\/\//.test(s)) return s; const base = (process.env.PUBLIC_URL || 'https://brew.joinsquareup.com').replace(/\/$/, '');
@@ -1507,7 +1508,7 @@ export function createFeedService(o) {
       ...imgs.map((u, i) => ({ type: 'image', image_url: u, alt_text: `${String(a.title || w.title).slice(0, 180)}${imgs.length > 1 ? ` ${i + 1}` : ''}` })),
       { type: 'actions', elements: [{ type: 'button', style: 'primary', text: { type: 'plain_text', text: `Approve v${w.current}` }, action_id: 'approve', value: `${slugOfT(t)}|${w.id}|${w.current}` },
         ...links.map(([l, u], i) => ({ type: 'button', text: { type: 'plain_text', text: l }, url: u, action_id: `open_${i}` })),
-        ...(w.slack.page ? [{ type: 'button', text: { type: 'plain_text', text: 'Open in Brew' }, url: w.slack.page, action_id: 'open' }] : [])] }];
+        ...(w.slack.page ? [{ type: 'button', text: { type: 'plain_text', text: `Open in ${PRODUCT_NAME}` }, url: w.slack.page, action_id: 'open' }] : [])] }];
     o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text, blocks }).then((r) => { if (r?.error) log.warn('[slack] asset', r.error); }).catch(() => {});
   };
   /* the studio (remix.js) made a new asset or version: it goes to the Slack thread of the jam built on that change */
@@ -1537,7 +1538,7 @@ export function createFeedService(o) {
         { type: 'button', text: { type: 'plain_text', text: 'Not now' }, action_id: 'dismiss', value: `${slugOfT(t)}|${w.id}|${p.id}` }] }];
   const propose = async (t, w, p) => {
     w.pending = { id: uid('pd'), at: now(t), ...p };
-    say(t, w, { from: 'ai', who: 'Brew', body: pendText(w.pending), pending: w.pending.id, noMirror: true });
+    say(t, w, { from: 'ai', who: PRODUCT_NAME, body: pendText(w.pending), pending: w.pending.id, noMirror: true });
     if (w.slack?.ts && o.slack) { const r = await o.slack.slackPost(slugOfT(t), { channel: w.slack.channel, thread_ts: w.slack.ts, text: pendText(w.pending), blocks: pendBlocks(t, w, w.pending) }).catch(() => null); if (r?.ts && w.pending) w.pending.slackTs = r.ts; }
     w.updatedAt = now(t); return w.pending;
   };
@@ -1551,14 +1552,14 @@ export function createFeedService(o) {
     let r = null;
     if (p.kind === 'change') {
       if (w.changeId && RMX) r = await RMX.iterateFromJam(t, w, p.text);
-      if (!r) { const e = await JB.edit(t, w, p.text, { who: name, mode: 'ask' }); say(t, w, { from: 'ai', who: AGENT[w.agent] || 'Brew', body: e.reply || (e.changed.length ? 'Done.' : 'Nothing to change there.'), edited: e.changed }); r = { ok: true }; }
-      else if (!r.error) say(t, w, { from: 'ai', who: AGENT[w.agent] || 'Brew', body: `Done: v${w.current} is ready.` });
+      if (!r) { const e = await JB.edit(t, w, p.text, { who: name, mode: 'ask' }); say(t, w, { from: 'ai', who: AGENT[w.agent] || PRODUCT_NAME, body: e.reply || (e.changed.length ? 'Done.' : 'Nothing to change there.'), edited: e.changed }); r = { ok: true }; }
+      else if (!r.error) say(t, w, { from: 'ai', who: AGENT[w.agent] || PRODUCT_NAME, body: `Done: v${w.current} is ready.` });
     } else {
       if (w.changeId && RMX) r = p.as === 'image' ? RMX.photoFromJam(t, w, p.text) : await RMX.remakeFromJam(t, w, p.as);
       if (!r && DR) { DR.start(t, w, p.as, String(p.text || '').slice(0, 300)); r = { started: true }; }
-      if (r && !r.error) say(t, w, { from: 'ai', who: 'Brew', body: `Making ${p.as === 'video' ? 'the video (about two minutes)' : p.as === 'carousel' ? 'the carousel' : 'the image'}. It lands here and in the thread for review.` });
+      if (r && !r.error) say(t, w, { from: 'ai', who: PRODUCT_NAME, body: `Making ${p.as === 'video' ? 'the video (about two minutes)' : p.as === 'carousel' ? 'the carousel' : 'the image'}. It lands here and in the thread for review.` });
     }
-    if (r?.error) say(t, w, { from: 'ai', who: 'Brew', body: r.error });
+    if (r?.error) say(t, w, { from: 'ai', who: PRODUCT_NAME, body: r.error });
     w.updatedAt = now(t); return { ok: !r?.error, error: r?.error || null };
   };
   /* one person's message in the thread: sorted, then folded, answered or proposed */
@@ -1576,7 +1577,7 @@ export function createFeedService(o) {
     }
     const kind = k?.kind || (mention && makeAsk(text) ? 'make' : 'chat');
     if ((kind === 'yes' || kind === 'no') && w.pending) return applyPending(t, w, w.pending.id, user.name, kind === 'yes');
-    if (kind === 'question') { say(t, w, { from: 'ai', who: 'Brew', body: await answerOnly(t, w, text) }); return; }
+    if (kind === 'question') { say(t, w, { from: 'ai', who: PRODUCT_NAME, body: await answerOnly(t, w, text) }); return; }
     if (kind === 'change') { const p = { kind: 'change', text, summary: k?.summary || '', by: user.name || null };
       if (mention) { w.pending = { id: uid('pd'), ...p }; return applyPending(t, w, w.pending.id, user.name, true); }
       return propose(t, w, p); }
@@ -1628,9 +1629,9 @@ export function createFeedService(o) {
     /* grounded and checked (jam-answer.js): numbers and performance claims only where the card and the facts hold them */
     if (EVIDENCE_ASK.test(body)) { const pa = proofSay(t, w.cardId); if (pa) return pa; } /* "what's the evidence?": the card's own proof */
     if (!isMock() && spend('text')) { try { const acct = acctRows(t).filter((e) => e.label && e.v != null).slice(0, 24); // DUMMY: simulated accounts are never quoted
-      const j = await answerGrounded({ ai: (pr, sc, mx, tag) => claudeTool(pr, sc, mx, tag), question: body, who: AGENT[w.agent] || 'Brew',
+      const j = await answerGrounded({ ai: (pr, sc, mx, tag) => claudeTool(pr, sc, mx, tag), question: body, who: AGENT[w.agent] || PRODUCT_NAME,
         evidence: `${cardBrief({ ...(t.cards.get(w.cardId) || {}), ...curV(w), agent: w.agent }, seatLine(t.viewer), t)}${acct.length ? `\n\nConnected accounts:\n${acct.map((e) => `- ${e.label}: ${e.v}`).join('\n')}` : '\n\nConnected accounts: none with results for this yet.'}` });
-      if (j.answer) return clean(j.answer); } catch (e) { log.warn('[answer]', e.message); if (e.billing) return 'I can’t answer right now: Brew’s writing is paused for a while. Your question stays here in the jam; ask again later, or tag a teammate.'; } }
+      if (j.answer) return clean(j.answer); } catch (e) { log.warn('[answer]', e.message); if (e.billing) return 'I can’t answer right now: our writing is paused for a while. Your question stays here in the jam; ask again later, or tag a teammate.'; } }
     return 'I couldn’t answer that just now. Your question stays here in the jam; try again in a minute, or tag a teammate.'; /* never a canned yes (DUMMY.md: no canned answers) */
   };
   const hashN = (str) => [...String(str)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7);
@@ -1676,7 +1677,7 @@ export function createFeedService(o) {
     if (!out) { // offline: only what the step itself proves
       const cut = (x, n) => { x = String(x || ''); return x.length <= n ? x : x.slice(0, n).replace(/\s+\S*$/, '') + '…'; };
       out = [];
-      if (stage === 'decided' && chosen && pick) out.push(chosen.id === pick.id ? { kind: 'you', text: `You usually go with Brew’s pick on ${AGENT[ag]} calls`, why: `Chose “${chosen.name}”` } : { kind: 'you', text: `You often take your own path on ${AGENT[ag]} calls`, why: `Chose “${chosen.name}” over “${pick.name}”` });
+      if (stage === 'decided' && chosen && pick) out.push(chosen.id === pick.id ? { kind: 'you', text: `You usually go with our pick on ${AGENT[ag]} calls`, why: `Chose “${chosen.name}”` } : { kind: 'you', text: `You often take your own path on ${AGENT[ag]} calls`, why: `Chose “${chosen.name}” over “${pick.name}”` });
       if (stage === 'needs_you') { const m = w.thread.slice(-1)[0]; out.push({ kind: 'brand', text: `${m.who} checks this before a yes: ${String(m.body).replace(/^[^.?!]*[.!]\s*/, '').slice(0, 110)}`, why: `Pushback on “${cut(c.title, 40)}”` }); }
       if (stage === 'feedback') out.push({ kind: 'you', text: `On ${AGENT[ag]} cards: ${String(w.thread[0]?.body || '').slice(0, 100)}`, why: `Feedback on “${cut(c.title, 40)}”` });
       if (stage === 'dismissed') out.push({ kind: 'you', text: `You’d rather skip cards like “${cut(c.title, 50)}”`, why: 'Tapped Not for me' });
@@ -1737,7 +1738,7 @@ export function createFeedService(o) {
      for the brand's team it runs through brand-learnings.js (the brief every move and doc is written from, brand memory,
      the moves it changes, then the cards); for anyone else it stays in this feed's memory, which its agents read */
   on('POST', '/api/tenants/:id/focus', async (b, t) => {
-    const full = String(b.text || '').replace(/\r/g, '').trim().slice(0, 20000), text = clean(full).slice(0, 600).trim(); if (!text) return { error: 'Tell Brew what works for you, what doesn’t, or what comes first.' };
+    const full = String(b.text || '').replace(/\r/g, '').trim().slice(0, 20000), text = clean(full).slice(0, 600).trim(); if (!text) return { error: 'Tell us what works for you, what doesn’t, or what comes first.' };
     const W = Object.entries(SEED.wants || {}), L = Object.entries(SEED.lanes || {});
     let j = null;
     if (!isMock() && spend('text')) { try { j = await claudeJSON(`A ${SEED.roles[t.viewer.role]?.title || 'founder'} at ${BN()} told Brew about the brand: what works, what doesn't, what they've learned, what should come first:\n"${text}"\n\nMap it. Card types (pick up to 2 that fit what they want first, or none): ${W.map(([k, w]) => `${k} = ${w.name}: ${w.line}`).join('; ')}.\nProducts (pick one only if they name or clearly mean it, else null): ${L.map(([k, l]) => `${k} = ${l.name}`).join('; ')}.\nTerms: up to 8 short lowercase words or phrases a matching card would contain (products, channels, metrics, rivals, topics they named). Note: what they told Brew in one plain sentence, max 25 words, their words where possible.\nJSON: {"wants":[],"lane":null,"terms":[],"note":""}`, 400); } catch {} }
@@ -1746,7 +1747,7 @@ export function createFeedService(o) {
     const wants = (Array.isArray(j?.wants) ? j.wants : []).filter((k) => SEED.wants?.[k]).slice(0, 2);
     const lane = (j?.lane && SEED.lanes?.[j.lane] ? j.lane : null) || L.find(([, l]) => l.name && text.toLowerCase().includes(String(l.name).toLowerCase()))?.[0] || null; /* naming a product picks it, AI or not */
     t.viewer = { ...t.viewer, focusNote: full.slice(0, 4000), focusTerms: terms, ...(wants.length ? { wants } : {}), ...(lane ? { lane } : {}) };
-    t.memory = (t.memory || []).filter((m) => m.kind !== 'focus'); t.memory.unshift({ id: uid('m'), type: 'preference', kind: 'focus', fact: `${SEED.roles[t.viewer.role]?.title || 'The founder'} told Brew: ${cutWords(clean(full), 500)}`, source: 'Said in setup', at: now(t) });
+    t.memory = (t.memory || []).filter((m) => m.kind !== 'focus'); t.memory.unshift({ id: uid('m'), type: 'preference', kind: 'focus', fact: `${SEED.roles[t.viewer.role]?.title || 'The founder'} told us: ${cutWords(clean(full), 500)}`, source: 'Said in setup', at: now(t) });
     /* the brand's team: brand learnings, in the background (reading, the brief, memory and move rewrites take minutes) */
     const r = reqOf(t); let learning = false;
     if (o.learnings && r?.member && process.env.DEMO_MODE !== '1' && full.length >= 40) {
@@ -1814,9 +1815,9 @@ export function createFeedService(o) {
     const who = me0?.name || me0?.email || 'your team', qn = { id: `t${Date.now().toString(36)}`, q: text, branded: new RegExp(`\\b${BN().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text), why: { kind: 'team', label: `Added by ${who}: a question your customers ask`, at: new Date().toISOString() } };
     await GP.put(slug, 'config.json', { ...c, questions: [...qs, qn] });
     if (B()?.config) B().config.questions = [...(B().config.questions || []), qn]; /* the pack in memory too, so the card and the next run see it */
-    if (typeof live?.askOne !== 'function' || isMock()) return { ok: true, asked: false, note: 'Brew asks it in the next weekly check.' };
+    if (typeof live?.askOne !== 'function' || isMock()) return { ok: true, asked: false, note: 'We ask it in the next weekly check.' };
     live.askOne(qn).then((x) => log.log?.(`[ai-questions] ${slug} asked "${text}" on ${x.asked} tools`)).catch((e) => log.warn('[ai-questions] ask', slug, e.message));
-    return { ok: true, asked: true, note: 'Brew is asking ChatGPT, Gemini and Perplexity now. The answers land here in a minute or two.' };
+    return { ok: true, asked: true, note: 'We’re asking ChatGPT, Gemini and Perplexity now. The answers land here in a minute or two.' };
   });
   const newIdsOf = (t, order) => { const v = t.visit; if (!v?.prev) return []; const began = v.at || now(t);
     return order.filter((id) => { const c = t.cards.get(id); return c && !c.parentCardId && c.origin !== 'user' && c.state !== 'done' && c.createdAt > v.prev && !(t.shown[id] || []).some((x) => x < began); }); };
@@ -1920,7 +1921,7 @@ export function createFeedService(o) {
     const key = paid ? crypto.createHash('sha256').update(String(b.data || '')).digest('hex').slice(0, 24) : null, cacheF = key ? `private/drop-reads/${key}.json` : null;
     const hit = cacheF ? await Promise.resolve().then(() => GP.getJSON(slug, cacheF, null)).catch(() => null) : null; /* GP: the brand-file store; a cache that can't be read is just a miss */
     if (hit?.text && !(forBrand && dropKind(b.name, b.type) === 'image')) return { ok: true, kind: hit.kind, text: hit.text, chars: hit.chars, cut: !!hit.cut, usd: 0, ref: null, cached: true };
-    const f = await readDrop(b, { ai }).catch((e) => { log.warn?.('[drop] read', slug, e.message); return { error: `Brew couldn’t read ${String(b.name || 'that file').slice(0, 80)}. Try again, or drop it as a PDF.` }; });
+    const f = await readDrop(b, { ai }).catch((e) => { log.warn?.('[drop] read', slug, e.message); return { error: `We couldn’t read ${String(b.name || 'that file').slice(0, 80)}. Try again, or drop it as a PDF.` }; });
     if (f.error) return f;
     if (cacheF && f.text && f.chars > 200) await Promise.resolve().then(() => GP.put(slug, cacheF, { kind: f.kind, text: f.text, chars: f.chars, cut: f.cut, name: String(b.name || '').slice(0, 120), at: Date.now() })).catch((e) => log.warn?.('[drop] cache', e.message));
     let ref = null;
@@ -1971,14 +1972,14 @@ export function createFeedService(o) {
     if (dest === 'memory') {
       if (!(r?.member || process.env.DEMO_MODE === '1')) return { status: r?.email ? 403 : 401, error: 'Only this brand’s team can add to its memory.', team: true };
       if (!o.memory) return { error: 'Brand memory is off here.', off: true };
-      const by = mk ? `team member ${mk}` : 'a teammate', source = { kind: 'drop', label: `dropped into Brew by ${by}`, ...(rel ? { ref: `/${rel}` } : {}) };
+      const by = mk ? `team member ${mk}` : 'a teammate', source = { kind: 'drop', label: `dropped in by ${by}`, ...(rel ? { ref: `/${rel}` } : {}) };
       const x = f.kind === 'image' ? await o.memory.add(slug, `Reference photo from the team${f.name ? `, “${f.name}”` : ''}${f.caption ? `: ${f.caption}` : ''}. File: /${rel}`, { scope: 'brand', topic: 'creative-style', infer: false, source, by })
         : await o.memory.add(slug, f.text, { scope: 'brand', memberId: mk, source, by });
       return { ok: true, dest, added: x.added, updated: x.updated, confirmed: x.same?.length || 0, cut: !!f.cut, file: rel };
     }
     if (dest === 'prefs') {
       let sides = null; if (f.kind === 'text' && !isMock() && spend('text')) sides = await claudeTool(prefPrompt(f.text), PREF_SCHEMA, 600, 'pref-sides').catch((e) => { log.warn?.('[drop] prefs', e.message); return null; });
-      const tu = await TUNE.addNote(slug, tuneKey(t), label, { source: 'Dropped into Brew', sides });
+      const tu = await TUNE.addNote(slug, tuneKey(t), label, { source: 'Dropped in', sides });
       if (o.memory && mk && f.kind === 'text') await o.memory.add(slug, f.text, { scope: 'member', memberId: mk, source: { kind: 'drop', label: `my preferences, dropped by team member ${mk}` }, by: `team member ${mk}` }).catch((e) => log.warn?.('[drop] prefs memory', e.message));
       return { ok: true, dest, note: tu.notes[0], cut: !!f.cut, file: rel };
     }
@@ -2186,12 +2187,12 @@ export function createFeedService(o) {
     if (makeAsk(body)) { say(t, w, { from: 'me', body }); const pd = await propose(t, w, { kind: 'make', as: asOf(body), text: body, summary: '', by: nameOf(meOf(t)) }); return { work: w, pending: pd }; } /* a paid image or video waits for a yes */
     if (w.changeId && RMX) { const r = await RMX.iterateFromJam(t, w, body); if (r?.error) return r; if (r) { if (w.stage !== 'drafting' && ['team', 'brew', 'needs_you'].includes(w.stage) === false) move(t, w, 'drafting', null); return { work: w, change: r.change }; } }
     say(t, w, { from: 'me', body });
-    if (EVIDENCE_ASK.test(body)) { const pa = proofSay(t, w.cardId); if (pa) { say(t, w, { from: 'ai', who: AGENT[w.agent] || 'Brew', body: pa, answer: true }); return { decision: { intent: 'answer', route: 'agent' }, work: w }; } } /* "show me the proof" / "evidence for the price": the card's proof, never a new version or the team (FEED-ARV-01) */
+    if (EVIDENCE_ASK.test(body)) { const pa = proofSay(t, w.cardId); if (pa) { say(t, w, { from: 'ai', who: AGENT[w.agent] || PRODUCT_NAME, body: pa, answer: true }); return { decision: { intent: 'answer', route: 'agent' }, work: w }; } } /* "show me the proof" / "evidence for the price": the card's proof, never a new version or the team (FEED-ARV-01) */
     const decision = await routeJam(t, body, false);
     t.router.unshift({ id: uid('r'), body: body.slice(0, 140), card: w.title, ...decision, at: now(t) });
     if (decision.route === 'team') {
       /* a person is needed: Brew says so; the brief goes to the team by Share the brief (copied), nothing is sent from here */
-      say(t, w, { from: 'system', body: `This needs ${decision.label}. Finish the jam, then share the brief with your team or the ShopOS team, Brew’s build crew.` });
+      say(t, w, { from: 'system', body: `This needs ${decision.label}. Finish the jam, then share the brief with your team or ours.` });
       return { decision, work: w };
     }
     if (w.stage !== 'drafting') move(t, w, 'drafting', null);
@@ -2215,7 +2216,7 @@ export function createFeedService(o) {
      to the brand's Slack and brings the replies back. See DUMMY.md */
   on('POST', '/api/work/:wid/send', async (b, t, p) => {
     const w = W(t, p.wid); if (!w) return { error: 'not found' }; const note = String(b.note || '').trim();
-    if (b.to !== 'team') return { error: 'Share the brief to send it to the ShopOS team.' };
+    if (b.to !== 'team') return { error: 'Share the brief to send it to our team.' };
     if (process.env.DEMO_MODE !== '1') return { error: 'Tag a teammate with @ in the chat.' }; /* the simulated teammate lives on the demo site only */
     const c = SEED.colleagues.find((x) => x.id === b.colleague) || colleagueFor({ sector: w.sector });
     w.with = { kind: 'team', id: c.id, name: b.name || b.names?.[c.id] || c.name, channel: b.channel || '#growth', dummy: true };
@@ -2234,7 +2235,7 @@ export function createFeedService(o) {
     for (const x of tags) JAMS.join(w, x, 'tagged');
     say(t, w, { from: 'me', body, ...(tags.length ? { to: tags.map((x) => x.email) } : {}) });
     if (tags.length) mailEv(t, w, { kind: 'tagged', to: tags.map((x) => x.email), by: me0, text: body, id: w.thread[w.thread.length - 1].id });
-    if (b.shopos) shoposMail(t, w, { why: 'tagged the ShopOS team', text: body });
+    if (b.shopos) shoposMail(t, w, { why: 'tagged our team', text: body });
     if (w.with?.kind === 'team' && process.env.DEMO_MODE === '1') { move(t, w, 'team', null); colleagueReply(t, w); }
     return { work: jamOut(t, w), tagged: tags.map((x) => x.email), invited };
   });
@@ -2387,7 +2388,7 @@ export function createFeedService(o) {
     ls.forEach((x) => out.push({ k: x.results?.length ? 'result' : x.kind === 'you' ? 'you' : 'brand', text: cap(x.text), n: x.n, ...(x.results?.length ? { value: `${x.results[0].before} → ${x.results[0].after}`, win: x.results[0].win } : {}) }));
     rulesFor(t, ag).slice(0, 2).forEach((r) => out.push({ k: 'brand', text: cap(r.text) }));
     const calls = Object.entries(t.decided || {}).filter(([id]) => id !== c.id).map(([id, o]) => { const x = t.cards.get(id); const pg = x && pageNow(t, fillCard(x, t)); const pk = pg?.options?.find((y) => y.pick); return pk ? { mine: o !== pk.id } : null; }).filter(Boolean);
-    if (calls.length >= 2 && !ls.some((x) => x.kind === 'you')) { const own = calls.filter((x) => x.mine).length; out.push({ k: 'you', text: own ? `Went your own way on ${own} of your last ${calls.length} calls` : `Went with Brew’s pick on your last ${calls.length} calls` }); }
+    if (calls.length >= 2 && !ls.some((x) => x.kind === 'you')) { const own = calls.filter((x) => x.mine).length; out.push({ k: 'you', text: own ? `Went your own way on ${own} of your last ${calls.length} calls` : `Went with our pick on your last ${calls.length} calls` }); }
     const hearts = (t.feedback || []).filter((f) => f.userId === 'viewer' && f.kind === 'heart' && t.cards.get(f.cardId)?.agent === ag).length;
     if (hearts) out.push({ k: 'you', text: `Liked ${hearts} ${name} card${hearts > 1 ? 's' : ''}` });
     if (t.fewer?.[ag]) out.push({ k: 'you', text: `Asked for fewer ${name} cards` });

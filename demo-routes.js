@@ -3,6 +3,7 @@
 // A session that starts "from onboarding" sees the real read replayed, "Check what we read", and the moves being
 // written, without touching the brand's pack: confirming only marks the session, and the moves already exist.
 import { demoSid } from './demo-mode.js';
+import { PRODUCT_NAME, productNameScript } from './product-name.js';
 import { SIM_IDS as ALL_SIM_IDS } from './connectors/sim.js';
 // Marketplaces is Coming soon (connectors/index.js OFF): the demo doesn't connect it either
 const SIM_IDS = ALL_SIM_IDS.filter((id) => id !== 'marketplaces');
@@ -44,7 +45,7 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
     const [seed, profile] = await Promise.all([packs.getJSON(slug, 'seed.json', null), packs.getJSON(slug, 'profile.json', null)]);
     const num = await numbersFor(packs.getJSON, slug, { 'status.json': st, 'profile.json': profile, 'research.json': research });
     const N = num.moves.total; /* the playbook (status.total). PDFs are made on download, so they are not something to prepare */
-    const checks = [['Read', st.stages?.read?.state === 'done'], [`${N} moves`, num.moves.written >= N], ['Demo accounts', !!demo?.accounts], ['First drafts', nDrafts >= 6], ['Stories', !!research], ['Listening and ideas', !!(ideas?.items?.length || listen)]];
+    const checks = [['Read', st.stages?.read?.state === 'done'], [`${N} plays`, num.moves.written >= N], ['Demo accounts', !!demo?.accounts], ['First drafts', nDrafts >= 6], ['Stories', !!research], ['Listening and ideas', !!(ideas?.items?.length || listen)]];
     const prep = PREP.get(slug) || null;
     /* what the card shows: the brand's own colours, three real product photos, and its real size */
     const br = seed?.brand || {}, prods = (profile?.catalog?.products || []).filter((x) => x.images?.[0] && x.inStock !== false);
@@ -84,7 +85,7 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
     if (req.method === 'GET' && tm) { const slug = tm[1], r = await readiness(slug).catch(() => null);
       if (!r?.loaded) return res.writeHead(302, { location: '/' }), res.end(), true;
       await setSession(slug, { flow: 'onboarding', startedAt: Date.now() });
-      return send(res, 200, `<!doctype html><meta charset="utf-8"><title>Opening ${r.name.replace(/[<&"]/g, '')}…</title><script>try{Object.keys(localStorage).filter(function(k){return k.indexOf(${JSON.stringify(slug + '-')})===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}location.replace(${JSON.stringify('/' + slug)})</script>`, 'text/html; charset=utf-8'), true; }
+      return send(res, 200, `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Opening ${r.name.replace(/[<&"]/g, '')}…</title><meta name="description" content="Opening the ${r.name.replace(/[<&"]/g, '')} demo."><script>try{Object.keys(localStorage).filter(function(k){return k.indexOf(${JSON.stringify(slug + '-')})===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}location.replace(${JSON.stringify('/' + slug)})</script></head></html>`, 'text/html; charset=utf-8'), true; }
     if (req.method === 'GET' && p === '/api/demo/brands') {
       const all = await builder.list().catch(() => []), out = [];
       /* every visitor sees the brands that are fully generated (all their moves); admins also see the rest, to prepare them */
@@ -103,13 +104,13 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
       if (what === 'connect' && req.method === 'POST') { const b = await readBody(req), ids = b.ids === 'all' || !b.ids ? SIM_IDS : [].concat(b.ids).filter((x) => SIM_IDS.includes(x)), me = auth.user(req), out = {};
         await Promise.all(ids.map(async (id) => { out[id] = b.on === false ? await connectors.disconnect(slug, id).then(() => 'off', (e) => e.message) : await connectors.finish(slug, id, connectors.sim.creds(id), me, base(req)).then((r) => (r.ok ? 'on' : r.error), (e) => e.message); }));
         return send(res, 200, { ok: true, out }), true; }
-      if (what === 'prepare') { if (req.method === 'POST') { if (!isAdmin(req)) return send(res, 403, { error: 'Only Brew admins prepare brands.' }), true; await prepare(slug); }
+      if (what === 'prepare') { if (req.method === 'POST') { if (!isAdmin(req)) return send(res, 403, { error: 'Only our team prepares brands.' }), true; await prepare(slug); }
         return send(res, 200, await readiness(slug)), true; }
     }
     /* a new brand on the demo site: Brew admins only (a full build is about $80); everyone else picks a prepared one */
     if (req.method === 'POST' && p === '/api/brands' && !isAdmin(req)) { const b = await readBody(req), slug = slugOf(String(b.url || ''));
       if (slug && await packs.getJSON(slug, 'status.json', null)) return send(res, 200, { slug, existing: true, status: await builder.status(slug) }), true;
-      return send(res, 200, { error: 'Pick a brand from the list. New brands are prepared by the Brew team before a demo.' }), true; }
+      return send(res, 200, { error: 'Pick a brand from the list. New brands are prepared by our team before a demo.' }), true; }
     /* the session's own build: replayed status, and confirming only marks the session (the brand's moves already exist) */
     const bm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/(status|confirm|check|updates|retry|feed-open)$/);
     if (bm) { const [, slug, what] = bm;
@@ -117,11 +118,11 @@ export function createDemoRoutes({ packs, builder, auth, connectors, readBody, s
       if (what === 'confirm' && req.method === 'POST') { await readBody(req); const s = await session(slug); if (s.flow === 'onboarding' && !s.confirmedAt) await setSession(slug, { ...s, confirmedAt: Date.now() }); return send(res, 200, { ok: true }), true; }
       if (what === 'feed-open' && req.method === 'POST') { await readBody(req); const s = await session(slug), woke = s.flow === 'onboarding' && !s.feedOpenAt; if (woke) await setSession(slug, { ...s, feedOpenAt: Date.now() }); return send(res, 200, { ok: true, started: true, ...(woke ? { woke: true } : {}) }), true; }
       if (what === 'check' && req.method === 'POST') { await readBody(req); return send(res, 200, { ok: true, notes: ['In the demo, what you change here shows on the page but the read stays as it is.'] }), true; }
-      if ((what === 'updates' || what === 'retry') && req.method === 'POST' && !isAdmin(req)) { await readBody(req); return send(res, 200, { error: 'Rewriting moves is off in the demo. Connected accounts already flag the moves that would change.' }), true; }
+      if ((what === 'updates' || what === 'retry') && req.method === 'POST' && !isAdmin(req)) { await readBody(req); return send(res, 200, { error: 'Rewriting plays is off in the demo. Connected accounts already flag the plays that would change.' }), true; }
     }
     return false;
   };
 }
 
 /* the demo site's front page (public/demo-picker.html), read once */
-const PICKER = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'public', 'demo-picker.html'), 'utf8');
+const PICKER = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'public', 'demo-picker.html'), 'utf8').replace(/<head>/i, (m) => m + productNameScript()).replaceAll('{{PRODUCT_NAME}}', PRODUCT_NAME);

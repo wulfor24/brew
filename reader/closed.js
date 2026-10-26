@@ -7,4 +7,4 @@ export const isPasswordPage = (r) => {
   return /<form[^>]+action=["'][^"']*\/password["']|template-password/i.test(String(r?.text || '').slice(0, 200000));
 };
 /* the line a ring or a scorecard row says for a part a closed store can't have yet */
-export const closedLine = (what) => `${what}: not checked, ${CLOSED_WHY}. Brew checks once the store opens`;
+export const closedLine = (what) => `${what}: not checked, ${CLOSED_WHY}. We check once the store opens`;

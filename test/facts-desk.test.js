@@ -86,7 +86,7 @@ test('daily check end to end: facts.json rebuilt, the gone price no longer passe
   assert.ok(!prof.catalog.products.some((x) => x.handle === 'cove'), 'the gone product leaves the catalog the cards use'); assert.equal(prof.catalog.products.find((x) => x.handle === 'bolt').inStock, false);
   const u = await P.getJSON(slug, 'updates.json');
   assert.ok(u.stale[3] && /Aero Runner/.test(u.stale[3].why), 'the move quoting the old price is out of date'); assert.ok(u.stale[7] && /no longer on the store/.test(u.stale[7].why)); assert.ok(!u.stale[12]);
-  const E = await P.getJSON(slug, 'facts-edits.json'); assert.equal(E.edits[0].by, 'Brew daily check'); assert.ok(E.retired.includes(canon('₹1,499')));
+  const E = await P.getJSON(slug, 'facts-edits.json'); assert.equal(E.edits[0].by, 'Daily check'); assert.ok(E.retired.includes(canon('₹1,499')));
   assert.equal(signals.length, 1, 'the same-day re-read is asked for');
   /* a move written before still quotes the gone price: it leaves the move before the move backs a card */
   const moved = scrubRetired((await P.getJSON(slug, 'moves.json'))[7], retiredSet(E.retired, ok)); assert.ok(!backedNumbers(moved).has(canon('₹1,499')));

@@ -54,7 +54,7 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
     run: async (s, qx) => { const q = qx?.q || (await finals.quote(s.slug, slSpec(s, kind))); if (q.error) throw new Error(q.error); const rec = await finals.run(s.slug, slSpec(s, kind), { quote: q, by: s.by || null, target: { jam2: s.jamId, board: s.boardId } });
       if (rec.state !== 'done') throw new Error(rec.error || rec.note || 'Sloosh has not finished it yet'); return { file: rec.file, model: rec.model || q.model || 'sloosh', credits: rec.charged ?? q.credits ?? 0, provider: rec.provider || 'sloosh' }; }
   });
-  const sloosh = { id: 'sloosh', label: 'Sloosh (ShopOS studio)', live: () => !!finals,
+  const sloosh = { id: 'sloosh', label: 'Sloosh', live: () => !!finals,
     caps: { 'still.full': slooshCap('image'), 'still.scene': slooshCap('image'), 'still.tryon': { ...slooshCap('image') }, 'video.shot': slooshCap('video'), 'video.ugc': slooshCap('video') } };
 
   /* ---------- higgsfield (api.higgsfield.ai; live once HF_API_KEY_ID and HF_API_KEY_SECRET are set) ---------- */
@@ -70,7 +70,7 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
       if (/fail|error|nsfw|cancel/.test(st)) throw new Error(`Higgsfield ${model}: ${s.error || st}`);
       if (/complete|succeed|done/.test(st)) { const out = s.images?.[0]?.url || s.video?.url || s.output?.url || s.outputs?.[0]?.url || s.result?.url || s.url; if (!out) throw new Error(`Higgsfield ${model} finished with no output link`);
         const b = await fetchImpl(out, { signal: AbortSignal.timeout(180e3) }); if (!b.ok) throw new Error(`Higgsfield output could not be fetched (${b.status})`); return { buf: Buffer.from(await b.arrayBuffer()), type: b.headers.get('content-type') || '', id }; } }
-    throw Object.assign(new Error('Higgsfield is still working on it; Brew will check again'), { open: true, id });
+    throw Object.assign(new Error('It’s still being made, so nothing is paid twice; we’ll check again'), { open: true, id });
   };
   /* the routed offerings (jam2/higgsfield.js + data/higgsfield-routes.json): each job's best workflow, its input fitted to the
      workflow's schema and priced by Higgsfield's own estimate before anything runs */
@@ -112,7 +112,7 @@ export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMus
     w.on('error', dead); w.on('exit', () => dead(new Error('the cut-out stopped'))); return w; };
   const cutInWorker = (buf) => (lane = lane.catch(() => {}).then(async () => { worker ||= await spawnWorker(); const w = worker, id = ++wseq;
     return new Promise((ok, no) => { const t = setTimeout(() => { wait.delete(id); no(new Error('the cut-out took too long')); if (worker === w) { worker = null; w.terminate().catch(() => {}); } }, 90e3); wait.set(id, { ok, no, t }); w.postMessage({ id, buf }); }); }));
-  const local = { id: 'local', label: 'Brew (on our server, free)', live: () => true,
+  const local = { id: 'local', label: 'Our own maker (free)', live: () => true,
     caps: { cutout: { available: async () => !!(await loadImgly()), quote: () => ({ usd: 0 }), run: async (s) => { if (!(await loadImgly())) throw Object.assign(new Error('the local cut-out is not installed'), { skip: true });
       const buf = await cutInWorker(fs.readFileSync(s.srcFile)); return { file: keep(buf, 'png'), model: 'imgly-isnet', usd: 0, alpha: true }; } } } };
 

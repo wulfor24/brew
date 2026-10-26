@@ -111,7 +111,7 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
       if (!f) { const d = ns.flatMap((k) => M[k]?.derived || []).find((x) => x?.v != null && allNums(x.v).includes(n)); /* the move's own sum, shown with its working */
         if (d) { add({ kind: 'math', label: `Worked out: ${cut(d.expr, 160)}`, value: String(d.v), src: 'Brew’s maths from the prices and counts above', url: null, num: n }); backed.add(n); } continue; }
       backed.add(n);
-      add({ kind: f.pulse ? (f.own ? 'fact' : 'web') : f.kind === 'current' ? 'count' : ownOf(f) ? 'fact' : 'web', label: plainLabel(f.label) || f.key, value: String(f.v), src: f.pulse ? [f.src, f.subject].filter(Boolean).join(' · ') : f.src || hostOf(f.url) || 'Brew’s read of your store', url: okUrl(f.url), at: f.at ? String(f.at).slice(0, 10) : null, num: n, ...(f.kind === 'proposed' ? { note: 'Proposed, not measured yet' } : {}) });
+      add({ kind: f.pulse ? (f.own ? 'fact' : 'web') : f.kind === 'current' ? 'count' : ownOf(f) ? 'fact' : 'web', label: plainLabel(f.label) || f.key, value: String(f.v), src: f.pulse ? [f.src, f.subject].filter(Boolean).join(' · ') : f.src || hostOf(f.url) || 'Our read of your store', url: okUrl(f.url), at: f.at ? String(f.at).slice(0, 10) : null, num: n, ...(f.kind === 'proposed' ? { note: 'Proposed, not measured yet' } : {}) });
     }
     /* 2. what the card was built on */
     const ad = c.research?.kind === 'ad' ? adOf(c.research.id) : null;
@@ -120,12 +120,12 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
     const h = c.heard;
     if (h?.kind === 'thread') add({ kind: 'quote', label: h.where ? `People talking on ${h.where}` : 'What people are saying', value: cut(h.quote, 220), src: hostOf(h.url) || h.where || '', url: okUrl(h.url), extra: h.replies != null ? `${h.replies} replies` : '' });
     for (const q of h?.quotes || []) add({ kind: 'quote', label: h.name ? `What people say about “${cut(h.name, 50)}”` : 'What people say', value: cut(q.text, 220), src: q.where || hostOf(q.url), url: okUrl(q.url) });
-    if (h?.kind === 'theme' && h.n) add({ kind: 'count', label: 'Mentions Brew found', value: `${h.n}${h.neg != null ? ` (${h.neg} unhappy, ${h.pos || 0} happy)` : ''}`, src: 'Listening across the web', url: null });
+    if (h?.kind === 'theme' && h.n) add({ kind: 'count', label: 'Mentions we found', value: `${h.n}${h.neg != null ? ` (${h.neg} unhappy, ${h.pos || 0} happy)` : ''}`, src: 'Listening across the web', url: null });
     for (const e of c.post?.evidence || []) add({ kind: 'idea', label: plainLabel(e.label), value: cut(e.value, 200), src: e.src || hostOf(e.url) || '', url: okUrl(e.url) });
     if (c.research?.kind === 'trend') for (const r of c.rows || []) if (Array.isArray(r) && r[0]) add({ kind: 'trend', label: `Google searches for “${cut(r[0], 50)}”`, value: String(r[1] || ''), src: c.src || 'Google Trends', url: `https://trends.google.com/trends/explore?${country() ? `geo=${encodeURIComponent(country())}&` : ''}q=${encodeURIComponent(r[0])}` });
     /* a finding from Brew's read of the site: what was read, where, and when */
     if ((c.origin === 'read' || /^read from /i.test(c.src || '')) && !items.length) { const h = String(brandHost() || '').replace(/^www\./, '');
-      add({ kind: 'read', label: 'What Brew read on your site', value: cut(String(c.sub || '').split(/(?<=[.!?])\s+/)[0], 200), src: cut(c.src || h, 80), url: h ? `https://${h}/` : null }); }
+      add({ kind: 'read', label: 'What we read on your site', value: cut(String(c.sub || '').split(/(?<=[.!?])\s+/)[0], 200), src: cut(c.src || h, 80), url: h ? `https://${h}/` : null }); }
     /* real customer voice on what the card is about: a review or a thread that shares its words (or names its product) */
     const brandW = new Set(words(c.brand || ''));
     const voiceHits = (voice || []).map((v) => { let hit = 0; for (const w of (v && typeof v === 'object' ? vWords(v) : new Set(words(`${v?.text} ${v?.product || ''}`)))) if (cw.has(w) && !brandW.has(w)) hit++; const prod = v.product && cardText(c).toLowerCase().includes(String(v.product).toLowerCase().split(/\s+[-–|]\s+/)[0]); return { v, s: hit + (prod ? 3 : 0) }; })
@@ -145,7 +145,7 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
       if (/^(step \d+|where|post at|measure|backed by|move|latest|written)$/i.test(r[0])) continue;
       /* a row is proof only when it is something counted: a number, not a target, a plan setting or an assumption */
       if (!/\d/.test(String(r[1])) || /\b(target|goal|lift|decision|decides|control|guardrail|window|budget|deadline|launch|test|plan|cap|limit|max|min|specification|voltage|power)\b/i.test(r[0]) || /\b(assumption|proposed|target|estimate|goal|to confirm)\b/i.test(r[1])) continue;
-      add({ kind: 'row', label: String(r[0]), value: cut(r[1], 120), src: c.src && !/^moves?\s/i.test(c.src) ? cut(c.src, 80) : 'What Brew counted', url: null });
+      add({ kind: 'row', label: String(r[0]), value: cut(r[1], 120), src: c.src && !/^(?:moves?|plays?)\s/i.test(c.src) ? cut(c.src, 80) : 'What Brew counted', url: null });
     }
     const rawOf = (n) => (cardText(c).match(/(?:₹|\$|€|£|rs\.?\s?)?\d[\d,.]*\s?(?:%|x|×|k|lakh|crore|cr)?/gi) || []).find((x) => numbersIn(x, { strict: true }).concat(numbersIn(x)).includes(n))?.trim() || n; /* as the card wrote it: ₹5,555, not ₹5555 */
     const bare = (n) => String(n).replace(/[^\d.]/g, '').replace(/\.0+$/, ''), shown = new Set(items.flatMap((x) => [...allNums(x.value || ''), ...allNums(x.label || '')].map(bare)));
@@ -170,7 +170,7 @@ export const proofAnswer = (e) => {
   const data = (e.items || []).filter((x) => x.kind === 'source' && x.url).slice(0, 3).map((x) => ({ l: x.label, url: x.url }));
   const so = e.why?.because || (e.why?.reasons || [])[0] || '';
   const text = ['Here’s what this card is based on.', ...saw.map((x) => `Saw: ${x.v}, ${x.l}${x.src ? ` (${x.src})` : ''}.`), data.length ? `Read: ${data.map((x) => x.l).join('; ')}.` : '', so ? `So: ${so}` : '',
-    !saw.length && !data.length ? 'Brew has no source line for this card yet, so treat it as an idea to check, not a fact.' : '', (e.unbacked || []).length ? `Not matched to a source yet: ${e.unbacked.slice(0, 3).join(', ')}.` : ''].filter(Boolean).join('\n');
+    !saw.length && !data.length ? 'We have no source line for this card yet, so treat it as an idea to check, not a fact.' : '', (e.unbacked || []).length ? `Not matched to a source yet: ${e.unbacked.slice(0, 3).join(', ')}.` : ''].filter(Boolean).join('\n');
   return { text, proof: { saw, data, so, unbacked: (e.unbacked || []).slice(0, 3) } };
 };
 

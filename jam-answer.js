@@ -67,7 +67,7 @@ export const ANSWER_SCHEMA = { type: 'object', required: ['answer', 'known'], pr
   answer: { type: 'string', description: 'Under 60 words, plain words, lead with the answer. Only what the evidence says; when it does not say, say "I don\'t know that yet" and what would tell us.' },
   known: { type: 'boolean', description: 'False when the evidence does not answer the question' } } };
 
-export const UNKNOWN = 'I don’t know that yet: Brew has no results for this, so nothing shows how it performs. Connected ad and analytics accounts would tell us once it runs.';
+export const UNKNOWN = 'I don’t know that yet: we have no results for this, so nothing shows how it performs. Connected ad and analytics accounts would tell us once it runs.';
 
 /** ai(prompt, schema, max, tag) → json. evidence: the card, the package or brief, the facts and the connected numbers. */
 export async function answerGrounded({ ai, question, evidence, history = [], who = 'Brew' }) {

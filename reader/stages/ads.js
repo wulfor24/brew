@@ -59,7 +59,7 @@ async function rivalSearch(ctx) {
   const ownRank = serp.map((s) => ({ q: s.q, pos: s.results.find((r) => r.domain === own)?.pos || null }));
   /* a closed store can't rank: Google never sees a store behind Shopify's password page. The category searches still find
      rivals (and are the moves' stored evidence); the store's own rank says plainly it wasn't checked */
-  if (ctx.state?.closed) { profile.search.closed = true; ledger.add({ key: 'search.rank', label: `Google rank for the category searches (${cc.toUpperCase()})`, v: `not checked: ${CLOSED_WHY}`, url: profile.url, method: 'shopify-admin', note: 'Google can’t list a store behind the password page; Brew checks once it opens' }); }
+  if (ctx.state?.closed) { profile.search.closed = true; ledger.add({ key: 'search.rank', label: `Google rank for the category searches (${cc.toUpperCase()})`, v: `not checked: ${CLOSED_WHY}`, url: profile.url, method: 'shopify-admin', note: 'Google can’t list a store behind the password page; we check once it opens' }); }
   else ownRank.forEach((o) => ledger.add({ key: `search.rank.${o.q.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, label: `Google rank for "${o.q}" (${cc.toUpperCase()})`, v: o.pos ? `#${o.pos}` : 'not in top 20', ...(o.pos ? { n: o.pos } : {}), url: `https://www.google.com/search?q=${encodeURIComponent(o.q)}&gl=${cc}`, method: 'treg:crawl4ai.google.serp.organic' }));
   /* a re-read of a brand Brew already knows (the weekly check): its rivals stay the brand's list, so there is no paid search
      for new ones; each known rival's store is read again for today's prices, claims and offers */

@@ -104,8 +104,8 @@ export function products({ profile, liveWatch, daily, status } = {}) {
     the catalog stage ran without an error and found no product (a failed or skipped read is never "empty"), or the store is
     on a platform the read named that isn't Shopify. Worked out from the saved profile, so every saved read shows it too */
 export const NO_CATALOG_NOTE = 'We couldn’t find product pages on this site, so product cards will be thin. Add your products by link below.';
-export const CATALOG_FAILED_NOTE = 'The catalog couldn’t be read this time. Brew tries again on the next refresh.';
-export const ENQUIRY_NOTE = 'This site takes enquiries rather than orders, so Brew read what it offers from its pages.';
+export const CATALOG_FAILED_NOTE = 'The catalog couldn’t be read this time. We try again on the next refresh.';
+export const ENQUIRY_NOTE = 'This site takes enquiries rather than orders, so we read what it offers from its pages.';
 export const PAGES_NOTE = 'Read from the store’s own product pages, a sample of the whole catalog. Prices and stock on them are checked every day.';
 export function storeNote({ profile, liveWatch } = {}) {
   if (!profile) return null;

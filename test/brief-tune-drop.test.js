@@ -77,11 +77,11 @@ const jbRig = ({ staff = false, sendOk = true } = {}) => {
 test('Send brief (to=shopos) sends the brief and starts its status; Share with my team only copies it', async () => {
   const a = jbRig(); const r = await a.R['POST /api/work/:wid/doc/ship']({ to: 'shopos', force: true }, a.t, { wid: 'wk_1' });
   assert.equal(r.status, 'sent'); assert.equal(a.w.jamBrief.status, 'sent'); assert.equal(a.w.jamBrief.sender.email, 'ana@acme.com'); assert.deepEqual(a.calls.sent, ['wk_1']);
-  assert.equal(a.calls.shopos.length, 0, 'not also the throttled tag email'); assert.match(a.thread.at(-1).body, /sent to the ShopOS team/); assert.equal(a.w.stage, 'shared');
+  assert.equal(a.calls.shopos.length, 0, 'not also the throttled tag email'); assert.match(a.thread.at(-1).body, /sent to our team/); assert.equal(a.w.stage, 'shared');
   const b = jbRig(); const r2 = await b.R['POST /api/work/:wid/doc/ship']({ to: 'team', force: true }, b.t, { wid: 'wk_1' });
   assert.equal(r2.status, null); assert.equal(b.w.jamBrief.status, undefined); assert.deepEqual(b.calls.sent, []); assert.match(b.thread.at(-1).body, /copied for your team/);
   const c = jbRig({ sendOk: false }); await c.R['POST /api/work/:wid/doc/ship']({ to: 'shopos', force: true }, c.t, { wid: 'wk_1' });
-  assert.match(c.thread.at(-1).body, /ready for the ShopOS team.*Paste it/, 'an email that did not go never says sent');
+  assert.match(c.thread.at(-1).body, /ready for our team.*Paste it/, 'an email that did not go never says sent');
 });
 test('only staff move a brief on; each move writes a line in the jam and tells the sender; sending again keeps the history', async () => {
   const a = jbRig(); await a.R['POST /api/work/:wid/doc/ship']({ to: 'shopos', force: true }, a.t, { wid: 'wk_1' });

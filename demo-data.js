@@ -123,7 +123,7 @@ export function demoFor(profile, seed = {}) {
     klaviyo: ['Three missing flows drafted for your OK', `${n0(klaviyo.list)} people on the list`]
   };
   // the same numbers as evidence for the moves (refresh.js reads these keys), labelled as demo data
-  const L = (key, label, v, n) => ({ key, label: `${label} (demo account)`, v: String(v), ...(n != null ? { n: +(+n).toFixed(2) } : {}), layer: 'observed', src: 'Demo account in Brew', method: 'demo connector', demo: true });
+  const L = (key, label, v, n) => ({ key, label: `${label} (demo account)`, v: String(v), ...(n != null ? { n: +(+n).toFixed(2) } : {}), layer: 'observed', src: 'Demo account', method: 'demo connector', demo: true });
   const ledger = {
     shopify: [L('shopify.orders.30d', 'Orders, last 30 days', n0(orders), orders), L('shopify.aov', 'Average order value', money(aov), aov), L('shopify.conversion', 'Store conversion rate', pct(cr, 1), cr), L('shopify.repeat.90d', 'Second order within 90 days', pct(repeat), repeat), L('shopify.checkout.left', 'Checkouts started but not finished, 30 days', n0(left), left), ...(india ? [L('shopify.cod.share', 'Cash on delivery share of orders', pct(cod), cod), L('shopify.rto', 'COD orders returned unpaid', pct(rto), rto)] : [])],
     meta: [L('meta.spend.30d', 'Meta spend, last 30 days', big(spend), spend), L('meta.roas', 'Meta return on ad spend', `${roasX(roas)}`, roas), L('meta.cpa.first', 'Meta cost per first order', money(round(cpa)), cpa), L('meta.retargeting.frequency', 'Retargeting frequency, 7 days', rt.freq.toFixed(1), rt.freq)],

@@ -289,7 +289,7 @@ export function createBookReader({ packs, ai, treg = null, enricher = null, log 
       const cover = { ...base.cover, tagline: base.cover.tagline || (taglineOk(w.story?.tagline) ? w.story.tagline : null) };
       return { ...base, cover, kit: { ...kit, colors, typeUse: w.typeUse }, story: { ...base.story, ...(w.story || {}) }, voice: w.voice, pillars: w.pillars,
         words: { ...w.words, customers: base.people.words }, proof: { ...base.proof, claims: w.claims }, look: w.look, naming: w.naming, playbooks: w.playbooks, library, usd: +(+r.usd || 0).toFixed(4) };
-    } catch (e) { log.warn?.('[book] write', slug, e.message); return { ...base, error: e.billing ? 'The AI is paused, so the voice, story and look will be written once it’s back.' : 'The voice, story and look couldn’t be written this time; Brew tries again on the next open.' }; }
+    } catch (e) { log.warn?.('[book] write', slug, e.message); return { ...base, error: e.billing ? 'The AI is paused, so the voice, story and look will be written once it’s back.' : 'The voice, story and look couldn’t be written this time; we try again on the next open.' }; }
   }
   /* built once per read: missing, an older version, older than the read, or an error from more than an hour ago */
   /* kept up to date by itself: rebuilt when anything it is made from changes (a re-read, healed ads, new posts or films, new

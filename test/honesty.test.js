@@ -57,7 +57,7 @@ test('saved moves and seeds read honestly: no "OF N" kicker, no watching promise
   const saved = JSON.stringify({ kicker: 'PRICING · MOVE 65 OF 64', body: 'What Brew will watch: listen.x. | WEEK | BREW SHIPS |', h: 'Fifty-one moves, turned into cards.', w: 'Heart it, jam on it, do it.' });
   const out = brewFile('moves.json', Buffer.from(saved)).toString();
   assert.match(out, /PRICING · MOVE 65"/); assert.match(out, /What to watch:/); assert.match(out, /BREW DRAFTS/);
-  assert.match(out, /Your moves, turned into cards\./); assert.match(out, /share the brief/); assert.doesNotMatch(out, /OF 64|Brew will watch|do it\./);
+  assert.match(out, /Your plays, turned into cards\./); assert.match(out, /share the brief/); assert.doesNotMatch(out, /OF 64|Brew will watch|do it\./);
 });
 
 test('PDFs are drawn on download: once per move version (a failed render is tried again), a rule change forgets old ones, retired moves leave the list', async () => {
@@ -114,7 +114,7 @@ test('old move text reads honestly: no Brew re-reads, watches, ships, or we paus
   const { brewText } = await import('../brew-name.js');
   const out = brewText('Sixty-four moves for Arata. Between checks, Brew re-reads listen.x. Brew watches the CPA. We pause it if CPA rises, then we revert. Brew ships it.');
   assert.doesNotMatch(out, /Brew re-reads|Brew watches|Brew ships|\bwe (pause|revert)\b|\bWe (pause|revert)\b|Sixty-four/);
-  assert.match(out, /^The moves for Arata\./); assert.match(out, /The team ships it\.$/);
+  assert.match(out, /^The plays for Arata\./); assert.match(out, /The team ships it\.$/);
 });
 
 test('a failed or paused AI answer says so: never a canned yes, and the pause reaches the jam client and the UI', () => {

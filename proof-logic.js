@@ -19,7 +19,7 @@ export const CONNECTOR_NAMES = { shopify: 'Shopify', ga4: 'Google Analytics', me
    the check reads the sentence only up to the first word that says what the action will do, or that it is a guess ("buyers may
    worry …" is the idea said as an idea, which is how the writers are told to say what Brew didn't see) */
 const EXPECT = /\b(may|might|likely|probably|need to|needs to|should|must|before they|helps?|helping|will|would|could|can|to help|encourages?|builds?|keeps?|stops?|drives?|gets?|lowers?|raises?|makes?|lets?|gives?|captures?|answers?|addresses|addressing|improves?|so (?:the|that|you|we|they))\b/i;
-const observedOf = (claim) => { const s = String(claim || '').replace(/^\s*brew suggests this (?:because|after)\s*/i, ''); const m = s.match(EXPECT); return m ? s.slice(0, m.index) : s; };
+const observedOf = (claim) => { const s = String(claim || '').replace(/^\s*(?:brew|we) suggest(?:s)? this (?:because|after)\s*/i, ''); const m = s.match(EXPECT); return m ? s.slice(0, m.index) : s; };
 /* what people said, asked or worried about */
 const VOICE_RE = /\b(questioning|question(?:s|ed)? (?:if|whether|about)|asking (?:if|whether|about|for)|complain\w*|worr(?:y|ied|ies)|fears?|feared|doubts?|doubting|skeptic\w*|talk(?:s|ing)? about|debat\w*|say(?:s|ing)?|said|mention\w*|reviews? (?:show|say|mention)|praise\w*|verbatims?|threads?)\b/i;
 /* what people search for: shown by search data (Google, AI answers), not by reviews */
@@ -166,12 +166,12 @@ export function refine(c, e, { voice = [], connected = () => false, has = () => 
   let note = '', needs = [], metricNeeds = [];
   if (metric && !accountIn) {
     needs = metric.needs.filter((id) => has(id) && !connected(id)); metricNeeds = metric.needs.filter((id) => has(id));
-    note = needs.length ? `Brew can’t see your ${metric.what} yet, so this part is a guess. Connect ${needs.map((id) => CONNECTOR_NAMES[id] || id).join(' or ')} to check it.`
-      : `Brew hasn’t matched this to your ${metric.what} yet, so treat that part as a guess.`;
-  } else if (searchClaim && !backing.some((x) => x.kind === 'trend' || x.kind === 'read' || /search|keyword|volume|google|people also ask|ai answer|quer(?:y|ies)/i.test(`${x.label} ${x.src}`))) note = 'The card says people search for this, but Brew hasn’t kept the search numbers that show it. Treat it as a guess until you see them.';
-  else if (voiceClaim && !voiceIn.length) note = 'The card says customers are saying this, but Brew hasn’t found the reviews or posts that show it. Treat it as a guess until you see them.';
+    note = needs.length ? `We can’t see your ${metric.what} yet, so this part is a guess. Connect ${needs.map((id) => CONNECTOR_NAMES[id] || id).join(' or ')} to check it.`
+      : `We haven’t matched this to your ${metric.what} yet, so treat that part as a guess.`;
+  } else if (searchClaim && !backing.some((x) => x.kind === 'trend' || x.kind === 'read' || /search|keyword|volume|google|people also ask|ai answer|quer(?:y|ies)/i.test(`${x.label} ${x.src}`))) note = 'The card says people search for this, but we haven’t kept the search numbers that show it. Treat it as a guess until you see them.';
+  else if (voiceClaim && !voiceIn.length) note = 'The card says customers are saying this, but we haven’t found the reviews or posts that show it. Treat it as a guess until you see them.';
   else if (voiceClaim && DOUBT_RE.test(seen) && voiceIn.length && voiceIn.every((x) => x.kind === 'voice' && starsOf(x) >= 4)) {
-    const n = voiceIn.length; note = `The card says people doubt this, but what Brew found is praise: ${['', 'a', 'two', 'three', 'four', 'five'][n] || n} ${voiceIn.every((x) => starsOf(x) === 5) ? '5★' : 'happy'} review${n > 1 ? 's' : ''}. Use ${n > 1 ? 'them' : 'it'} as proof that it works, not as the problem.`; }
+    const n = voiceIn.length; note = `The card says people doubt this, but what we found is praise: ${['', 'a', 'two', 'three', 'four', 'five'][n] || n} ${voiceIn.every((x) => starsOf(x) === 5) ? '5★' : 'happy'} review${n > 1 ? 's' : ''}. Use ${n > 1 ? 'them' : 'it'} as proof that it works, not as the problem.`; }
   const sourced = backing.filter((x) => x.url || x.kind === 'account' || x.kind === 'team').length;
   return { ...e, items: backing, context, claim: { voice: voiceClaim, metric: metric && !accountIn ? metric.what : null, metricNeeds, note, needs }, count: backing.length, sourced,
     strength: note ? 'thin' : sourced >= 2 ? 'strong' : backing.length ? 'some' : 'thin' };

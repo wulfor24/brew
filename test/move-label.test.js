@@ -9,7 +9,7 @@ import { dejargon } from '../plain.js';
 test('one label: core moves keep two digits, weekly ones count from 1', () => {
   assert.equal(moveLabel(7), 'Play 07'); assert.equal(moveLabel(1011), 'Weekly play 11'); assert.equal(moveNum(1011), '11'); assert.equal(moveNum(4), '04');
   assert.equal(moveSay('Move 1011 · Run the sweep'), 'Weekly play 11 · Run the sweep');
-  assert.equal(moveSay('From Moves 1011 and 1012'), 'From weekly moves 11 and 12');
+  assert.equal(moveSay('From Moves 1011 and 1012'), 'From weekly plays 11 and 12');
   assert.equal(moveSay('Play 05 · Price ladder, 1999 rupees'), 'Play 05 · Price ladder, 1999 rupees', 'other numbers are left alone');
   assert.equal(dejargon('Run the sweep (Move 1010)'), 'Run the sweep (Weekly play 10)');
 });

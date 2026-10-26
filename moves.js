@@ -16,7 +16,7 @@ export function createMoves(ROOT) {
   const line = (n) => L[n]?.line || fit(M[n]?.gives, 120);
   const tag = (n, h) => `${moveLabel(n)} · ${h ? label(n, h) : short(n)}`;
   // "Moves 01, 04, 08 and 17" or "Move 21 · example 5" → [1, 4, 8, 17] / [21]
-  const numsOf = (src) => { const m = String(src || '').match(/^moves?\s+([\d,\sand]+)/i); return m ? [...new Set((m[1].match(/\d+/g) || []).map(Number))].filter((n) => M[n]) : []; };
+  const numsOf = (src) => { const m = String(src || '').match(/^(?:moves?|plays?)\s+([\d,\sand]+)/i); return m ? [...new Set((m[1].match(/\d+/g) || []).map(Number))].filter((n) => M[n]) : []; };
   // a section's readable text: generated moves keep blocks (p, list items, example bodies, callouts); older ones kept paras
   const textsOf = (s) => [...(s.paras || []), ...(s.blocks || []).flatMap((b) => b.t === 'p' || b.t === 'h3' ? [b.text] : b.t === 'list' ? (b.items || []).map(String) : b.t === 'example' ? [[b.title, b.body].filter(Boolean).join('. ')] : b.t === 'callout' ? [[b.title, b.text].filter(Boolean).join('. ')] : [])].filter((x) => typeof x === 'string' && x.trim());
   const firstOf = (m, kind) => { const s = (m.sections || []).find((x) => x.kind === kind); return s ? textsOf(s)[0] || null : null; };

@@ -363,7 +363,7 @@ Return every card by its id.`;
   }
   const mockCards = (move, { sector0, agent0, lanes, laneImg }) => {
     const lane = Object.keys(lanes || {})[0] || 'core';
-    return { cards: [{ id: `m${String(move.n).padStart(2, '0')}-1`, agent: agent0, sector: sector0, type: 'report', lane, roles: ROLES[sector0] || ['founder'], src: `Move ${String(move.n).padStart(2, '0')}`, time: '20 min', kind: 'rows', rows: [['Move', move.title.slice(0, 40)]], title: move.title.slice(0, 60), sub: String(move.gives || '').slice(0, 220), detail: { why: [], how: [] }, cta: { label: 'Open the scoreboard' }, mock: true }], label: { short: move.title.slice(0, 26), line: move.gives, heads: {} } };
+    return { cards: [{ id: `m${String(move.n).padStart(2, '0')}-1`, agent: agent0, sector: sector0, type: 'report', lane, roles: ROLES[sector0] || ['founder'], src: `Move ${String(move.n).padStart(2, '0')}`, time: '20 min', kind: 'rows', rows: [['Play', move.title.slice(0, 40)]], title: move.title.slice(0, 60), sub: String(move.gives || '').slice(0, 220), detail: { why: [], how: [] }, cta: { label: 'Open the scoreboard' }, mock: true }], label: { short: move.title.slice(0, 26), line: move.gives, heads: {} } };
   };
   return { fromMove, fromRead };
 }

@@ -56,7 +56,7 @@ export function createNotes({ ai, packs, log = console, allow = () => true } = {
 Pick about one card in two where a scribble adds something: the stake, the target, the one number that matters, or a blunt nudge. Skip cards where it would only repeat the title. Prefer cards with a clear number or deadline.
 
 For each pick write:
-- k: a tiny eyebrow, lowercase, 1 to 3 words, naming where it comes from, like "move 21", "reviews", "rival ads", "this week". Use the card's src for it when it names a move.
+- k: a tiny eyebrow, lowercase, 1 to 3 words, naming where it comes from, like "play 21", "reviews", "rival ads", "this week". Use the card's src for it when it names a play (say "play", never "move").
 - h: the scribble itself, all lowercase, 3 to 10 words, one or two short sentences ending with a period, like "twelve this week. forty by day 30." or "they copy us. we ship first." Spell small counts as words if it reads more naturally.
 
 Every number in k or h must appear on that card. No em dashes, no hashtags, no emoji, no quotes.

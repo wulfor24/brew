@@ -118,7 +118,7 @@ const TRIAGE = { type: 'object', properties: {
 export async function triage(ai, { name, changes, cand, moves, specs }) {
   const list = Object.entries(cand).map(([n, c]) => { const m = moves[n], sp = specs.find((s) => s.n === +n);
     return `${String(n).padStart(2, '0')} ${m.title} | ${sp?.discipline || ''} | gives: ${String(m.gives || '').slice(0, 160)} | quotes changes: ${c.quotes.join(',') || '-'} | rests on: ${c.rests.slice(0, 12).join(',') || '-'}`; });
-  if (!list.length) return { summary: 'Nothing that changes a move.', moves: [] };
+  if (!list.length) return { summary: 'Nothing that changes a play.', moves: [] };
   const r = await ai.call({ model: 'sonnet', schema: TRIAGE, max: 6000, tag: 'refresh-triage', system: 'You keep a brand\'s growth plans current. You are strict: a plan is only flagged when the change alters a number it quotes, a product or rival it is built on, its target, or its first 30 days.',
     prompt: `Brand: ${name}\n\nWhat changed in the evidence since the plans were written (index: change):\n${changes.map((c, i) => `${i}: ${changeLine(c)} [${c.area}]`).join('\n')}\n\nThe plans that touch these changes (n title | discipline | gives | changes it quotes word for word | changes in its evidence areas):\n${list.join('\n')}\n\nReturn only the plans that should be rewritten. high = it quotes a changed number or a removed product, or its core recommendation changes. medium = its evidence moved enough to change targets or examples. Leave out plans the change does not affect in substance.` });
   const keep = new Map((r.json?.moves || []).filter((x) => cand[x.n]).map((x) => [x.n, x]));

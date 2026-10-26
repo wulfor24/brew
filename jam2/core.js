@@ -15,7 +15,7 @@ const tidy = (s, n = 240) => { s = String(s || '').replace(/\s+/g, ' ').trim(); 
 /* the spark a card carries: what inspired it, in words (a rival ad is read into words elsewhere; its pixels never travel) */
 export function sparkOf(c = {}) {
   const k = c.research?.kind || (c.heard || c.post ? 'thread' : null);
-  const kind = k === 'ad' ? 'rival ad' : k === 'viral' ? 'viral video' : k === 'thread' || /heard|listen/.test(String(c.agent || c.from || '')) ? 'community thread' : c.agent ? 'move' : 'idea';
+  const kind = k === 'ad' ? 'rival ad' : k === 'viral' ? 'viral video' : k === 'thread' || /heard|listen/.test(String(c.agent || c.from || '')) ? 'community thread' : c.agent ? 'play' : 'idea';
   return { kind, title: tidy(c.title, 140), says: tidy(c.sub, 300), why: (c.detail?.why || []).slice(0, 3).map((x) => tidy(x, 200)), link: c.research?.url || c.post?.url || c.url || null, cardId: c.id || null };
 }
 /* the idea strip before the writer has run: honest, from the card alone */
@@ -61,7 +61,7 @@ export function fromV1(w = {}, ch = null, versions = []) {
 }
 export const sizeOf = (b) => SIZES[b?.size] || SIZES['ig-portrait'];
 /* the brief a team makes a board from: built from the board's current take, every section editable (board.brief.edits) */
-export const OWNERS = ['ShopOS team', 'Your in-house team', 'A creator', 'Your agency'];
+export const OWNERS = ['Our team', 'Your in-house team', 'A creator', 'Your agency'];
 export const BRIEF_STATUS = ['sent', 'received', 'in progress', 'delivered'];
 export function briefOf(j, b) {
   const r = recipe(b.recipe) || {}, t = headOf(b) || {}, w = t.words || {}, c = j.concept || {}, br = b.brief || {};
@@ -74,9 +74,9 @@ export function briefOf(j, b) {
   const sizes = (r.sizes || []).map((k) => SIZES[k]?.label).filter(Boolean);
   const spec = r.kind === 'video' ? `${r.seconds || 15} s · 9:16 MP4 · voiceover · captions from the voiceover (SRT attached; burn them in) · music: the mood in the storyboard, licensed${sizes.length ? ` · also ${sizes.join(', ')}` : ''}`
     : r.kind === 'table' ? 'Apply each row by hand in the tool it names; the sheet is attached.' : sizes.length ? `${sizes.join(' · ')} · JPG at least 1080 px · words clear of the app’s own bars` : 'Plain text, pasted as it is where it runs.';
-  const done = r.kind === 'table' ? 'Every row is applied; reply “done” and Brew checks the account.' : r.kind === 'video' ? 'The cut is back in this jam; Brew checks it against this brief.' : sizes.length ? 'Every size is back in this jam and approved.' : 'It’s posted or scheduled; paste the link in the jam.';
-  const base = [['What to make', `${b.label}${r.looks ? `: ${r.looks}` : ''}`], ['Why', [c.spark?.title, c.spark?.says].filter(Boolean).join(' · ') || c.angle || ''], ['The words · final', words || 'Brew is still writing them.'],
-    ['Specs', spec], ['References', `Brew’s draft${t.n ? ` v${t.n}` : ''} (attached) · the Brand Book${/rival|viral/.test(c.spark?.kind || '') ? ` · the original ${c.spark.kind}, for its pattern only: never copy it` : ''}`],
+  const done = r.kind === 'table' ? 'Every row is applied; reply “done” and we check the account.' : r.kind === 'video' ? 'The cut is back in this jam; we check it against this brief.' : sizes.length ? 'Every size is back in this jam and approved.' : 'It’s posted or scheduled; paste the link in the jam.';
+  const base = [['What to make', `${b.label}${r.looks ? `: ${r.looks}` : ''}`], ['Why', [c.spark?.title, c.spark?.says].filter(Boolean).join(' · ') || c.angle || ''], ['The words · final', words || 'We’re still writing them.'],
+    ['Specs', spec], ['References', `Our draft${t.n ? ` v${t.n}` : ''} (attached) · the Brand Book${/rival|viral/.test(c.spark?.kind || '') ? ` · the original ${c.spark.kind}, for its pattern only: never copy it` : ''}`],
     ['Must-haves', 'The real product photo, never redrawn · only claims from the store and its reviews'], ['Who and when', `${br.owner || OWNERS[0]}${br.due ? ` · due ${br.due}` : ''}`], ['Done when', done]];
   return base.map(([h, v], i) => ({ h, t: br.edits?.[i] != null ? br.edits[i] : v }));
 }
@@ -87,7 +87,7 @@ export const jamView = (j) => ({ ...j, boards: j.boards.map((b) => ({ ...b, head
    orders) keeps its title and "Why" to the team; jams saved before priv existed are judged by their card id */
 export function publicView(j) {
   if (!j || !(j.priv || isPrivateCard({ id: j.cardId || '' }))) return j;
-  const label = recipe(j.boards?.[0]?.recipe)?.label || j.boards?.[0]?.label || 'Brew brief';
+  const label = recipe(j.boards?.[0]?.recipe)?.label || j.boards?.[0]?.label || 'The brief';
   const boards = (j.boards || []).map((b) => (b.brief?.edits?.[1] != null ? { ...b, brief: { ...b.brief, edits: Object.assign([...b.brief.edits], { 1: null }) } } : b)); /* a team edit of the Why row stays with the team too */
   return { ...j, title: label, boards, concept: { ...(j.concept || {}), spark: { kind: j.concept?.spark?.kind || 'idea', title: '', says: '' }, angle: 'From the brand’s own accounts (kept with the team).', proof: [] } };
 }

@@ -156,7 +156,7 @@ export function createLiveWatch({ ROOT, anthropic, claudeParams, textOf, gToken,
       const sec = (r?.items || []).flatMap((i) => i.sections || []); return r && { text: sec.map((s) => s.text).join('\n'), sources: sec.flatMap((s) => (s.annotations || []).map((a) => a.url)).filter(Boolean), model: r.model_name }; },
     claude: async (q) => {
       if (!anthropic) throw new Error('no Claude key');
-      if (anthropic.provider === 'gemini') throw new Error('Claude is not asked while Brew runs on Gemini'); // its answer would be Gemini's, labelled Claude
+      if (anthropic.provider === 'gemini') throw new Error('Claude is not asked while we run on Gemini'); // its answer would be Gemini's, labelled Claude
       const messages = [{ role: 'user', content: q }]; let text = '', sources = [];
       for (let turn = 0; turn < 3; turn++) {
         const p = claudeParams(messages, 2500); p.system = `You are a helpful assistant. The user is in ${cfg.countryName || 'their country'}.`; p.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3, user_location: { type: 'approximate', country: GEO, timezone: cfg.timezone || 'UTC' } }];

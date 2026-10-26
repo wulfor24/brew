@@ -6,7 +6,7 @@
   const A = () => window.__BREW;
   const esc = (s) => String(s ?? '').replace(/\u2039(?=\s?\d)/g, '₹').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const ic = (k, s) => A()?.ic(k, s) || '';
-  const WHO = { shopos: 'the ShopOS team', team: 'your team' };
+  const WHO = { shopos: 'our team', team: 'your team' };
 
   // the work this card's jam runs on (made if the jam hasn't started yet)
   const workFor = async (p) => {
@@ -22,7 +22,7 @@
     if (r.needs) return ask(p, w, to, r.needs);
     a.closeModal?.(); if (r.error) return a.toast(esc(r.error));
     if (r.work) a.putWork(r.work); a.counts?.(); a.repaintDetail?.(); window.__shareDone?.(r);
-    if (to === 'shopos' && r.emailed && r.status) return a.toast(`${ic('send', 's16')}Brief ${esc(r.work?.ticket || '')} sent to the ShopOS team. Its status shows in the top bar.`);
+    if (to === 'shopos' && r.emailed && r.status) return a.toast(`${ic('send', 's16')}Brief ${esc(r.work?.ticket || '')} sent to our team. Its status shows in the top bar.`);
     const ok = await copy(r.share?.text || r.work?.jamBrief?.md || '');
     a.toast(ok ? `${ic('copy', 's16')}Brief ${esc(r.work?.ticket || '')} copied. Paste it where ${WHO[to]} works.` : `${ic('info', 's16')}Brief ${esc(r.work?.ticket || '')} is ready. Copy it from View the brief.`);
   };
@@ -38,8 +38,8 @@
     const w = await workFor(p); if (!w) return a.toast('Couldn’t start the jam. Try again.');
     if (to) return send(p, w, to, false);
     a.modal(`<div class="sheet act-sheet"><header class="sh-h"><b class="sh-t">Share the brief</b><button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
-        <p class="sh-sub">Send it to the ShopOS team, Brew’s build crew: they take it from here. Or copy it with a link to everything for your own team.</p>
-        <div class="sp-row rv-acts"><button class="btn btn-primary" data-share-to="shopos">${ic('send', 's16')}Send to the ShopOS team</button><button class="btn btn-ghost" data-share-to="team">Share with my team</button></div></div>`,
+        <p class="sh-sub">Send it to our team, the build crew: we take it from here. Or copy it with a link to everything for your own team.</p>
+        <div class="sp-row rv-acts"><button class="btn btn-primary" data-share-to="shopos">${ic('send', 's16')}Send to our team</button><button class="btn btn-ghost" data-share-to="team">Share with my team</button></div></div>`,
       (m) => m.querySelectorAll('[data-share-to]').forEach((b) => b.addEventListener('click', () => { const done = A().busyBtn?.(b, b.dataset.shareTo === 'shopos' ? 'Sending…' : 'Copying…') || (() => {}); send(p, w, b.dataset.shareTo, false).finally(done); })));
   };
   window.Share = { open };

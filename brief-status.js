@@ -19,7 +19,7 @@ export function startStatus(jb, { by = null, at = Date.now() } = {}) {
 }
 /* a staff move: { error } when it is not allowed, else the history line it added */
 export function moveStatus(jb, to, { by = null, note = '', at = Date.now() } = {}) {
-  if (!jb?.status) return { error: 'This brief was not sent to the ShopOS team.' };
+  if (!jb?.status) return { error: 'This brief was not sent to our team.' };
   if (!STATUSES.includes(to)) return { error: `Status is one of: ${STATUSES.join(', ')}.` };
   if (to === jb.status && !note) return { error: `It is already ${LABEL[to].toLowerCase()}.` };
   if (to !== jb.status && !canMove(jb.status, to)) return { error: `A brief that is ${LABEL[jb.status].toLowerCase()} can’t go to ${LABEL[to].toLowerCase()}.` };

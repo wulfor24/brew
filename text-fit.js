@@ -49,7 +49,7 @@ export function sentenceCase(s, keep = [], { force = false } = {}) { // force: t
 export const shipLine = ({ team, target }) => {
   const on = target && target !== 'Brew' ? ` on ${target}` : '';
   return team ? `${team} makes the change${on}. You get a note here when it’s live.`
-    : `The ShopOS team makes the change${on} with you. You get a note here when it’s live.`;
+    : `Our team makes the change${on} with you. You get a note here when it’s live.`;
 };
 
 const cap = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;

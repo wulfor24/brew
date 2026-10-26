@@ -13,7 +13,7 @@ const FLOWS = [['Welcome', /welcome|sign ?up|new subscriber/i], ['Abandoned chec
 export default {
   id: 'klaviyo', name: 'Klaviyo', modes: ['key'],
   ready: () => true,
-  keyFields: [{ k: 'key', label: 'Private API key', hint: 'Klaviyo → Settings → API keys → Create private key, with Read-only access. Brew only reads', secret: true }],
+  keyFields: [{ k: 'key', label: 'Private API key', hint: 'Klaviyo → Settings → API keys → Create private key, with Read-only access. We only read', secret: true }],
   async fromKey({ key }) {
     /* a copied key can carry spaces, quotes or invisible characters; past the pk_ prefix Klaviyo itself is the judge
        (an over-strict shape check here turned real keys away) */

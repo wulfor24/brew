@@ -94,7 +94,7 @@
     if (!DEMO) { const here = new Set((JM.here?.[w?.id] || []).map((x) => x.email)); (w?.people || []).forEach((x) => out.push({ html: `${pAv(x, 24)}${here.has(x.email) ? '<i class="jm-here" title="Here now"></i>' : ''}`, t: `${pName(x)}${x.email === myEmail() ? ' (you)' : ''}${here.has(x.email) ? ' · here now' : ''}` })); return out; }
     const names = new Set(); (w?.thread || []).forEach((m) => { if (m.from === 'colleague' && m.who) names.add(m.who); }); if (w?.with?.kind === 'team') names.add(w.with.name);
     names.forEach((n) => { const c = A.B.colleagues.map((x) => A.colleague(x.id)).find((x) => x.name === n || x.role === n) || { ini: n.slice(0, 2).toUpperCase(), color: '#666' }; out.push({ html: avatar(c, 24), t: n }); });
-    if (w?.with?.kind === 'brew' || (w?.thread || []).some((m) => m.from === 'brew')) out.push({ html: brewMark(24), t: 'ShopOS team' });
+    if (w?.with?.kind === 'brew' || (w?.thread || []).some((m) => m.from === 'brew')) out.push({ html: brewMark(24), t: 'Our team' });
     return out;
   };
   /* Brew's replies read as a short document: **bold**, "## heading" or a lone **line** as a heading, "1." and "-" lists */
@@ -114,11 +114,11 @@
     if (m.from === 'me' && m.by && m.by.email !== myEmail()) return `<div class="jm-m">${pAv(m.by, 26)}<div class="jm-mb"><small>${esc(pName(m.by))}</small><div class="jm-bub">${tagged(m.body)}</div>${edited}</div></div>`; /* a teammate's message */
     if (m.from === 'me') return `<div class="jm-m me"><div class="jm-bub">${tagged(m.body)}</div>${edited}</div>`;
     const who = m.from === 'ai' ? `<span class="jm-fav">${face(w.agent && w.agent !== 'brew' ? w.agent : 'creative')}</span>` : m.from === 'colleague' ? avatar(A.B.colleagues.map((x) => A.colleague(x.id)).find((x) => x.name === m.who || x.role === m.who) || { ini: (m.who || '?').slice(0, 2).toUpperCase(), color: '#666' }, 26) : brewMark(26);
-    return `<div class="jm-m">${who}<div class="jm-mb"><small>${esc(m.who || (m.from === 'ai' ? AGENT[w.agent] || 'AI' : 'Brew'))}${m.via === 'slack' ? ` · in Slack${w.slack?.name ? ` ${esc(w.slack.name)}` : ''}` : m.from === 'colleague' && w.with?.channel ? ` · ${esc(w.with.channel)}` : ''}${m.from === 'colleague' && !m.real ? '<span class="dummy-tag" title="A simulated teammate reply">Dummy</span>' : ''}</small><div class="jm-bub${m.from === 'ai' ? ' is-md' : ''}">${m.from === 'ai' ? mdLite(m.body) : esc(m.body)}</div>${edited}${m.pending && w?.pending?.id === m.pending ? `<div class="jm-pending" data-pend="${esc(m.pending)}"><button class="btn btn-primary sm" data-pend-go>${w.pending.kind === 'make' ? 'Make it' : 'Make this change'}</button><button class="btn btn-ghost sm" data-pend-no>Not now</button></div>` : ''}</div></div>`;
+    return `<div class="jm-m">${who}<div class="jm-mb"><small>${esc(m.who || (m.from === 'ai' ? AGENT[w.agent] || 'AI' : 'Our team'))}${m.via === 'slack' ? ` · in Slack${w.slack?.name ? ` ${esc(w.slack.name)}` : ''}` : m.from === 'colleague' && w.with?.channel ? ` · ${esc(w.with.channel)}` : ''}${m.from === 'colleague' && !m.real ? '<span class="dummy-tag" title="A simulated teammate reply">Dummy</span>' : ''}</small><div class="jm-bub${m.from === 'ai' ? ' is-md' : ''}">${m.from === 'ai' ? mdLite(m.body) : esc(m.body)}</div>${edited}${m.pending && w?.pending?.id === m.pending ? `<div class="jm-pending" data-pend="${esc(m.pending)}"><button class="btn btn-primary sm" data-pend-go>${w.pending.kind === 'make' ? 'Make it' : 'Make this change'}</button><button class="btn btn-ghost sm" data-pend-no>Not now</button></div>` : ''}</div></div>`;
   };
   const questions = (w) => {
     const qs = w?.plan?.questions || []; if (!qs.length) return ''; const open = qs.filter((q) => !q.answer);
-    const owner = (o, q) => (q?.waiting && !DEMO ? q.waiting : o === 'ai' ? AGENT[w.agent] || 'AI' : o === 'brew' ? 'ShopOS team' : DEMO ? A.colleague(o).name : 'someone');
+    const owner = (o, q) => (q?.waiting && !DEMO ? q.waiting : o === 'ai' ? AGENT[w.agent] || 'AI' : o === 'brew' ? 'Our team' : DEMO ? A.colleague(o).name : 'someone');
     return `<details class="jm-qs"${open.length ? ' open' : ''}><summary>Open questions <span>${open.length ? `${open.length} open` : 'all answered'}</span></summary>
       <ul>${qs.map((q) => `<li class="${q.answer ? 'done' : ''}"><b>${esc(q.q)}</b>${q.answer ? `<p>${esc(q.answer)}</p>` : `<div class="jm-q-a">${q.asked ? `<span><brew-load class="spin"></brew-load>Asked ${esc(owner(q.owner, q))}</span>` : !DEMO && q.owner !== 'ai' ? `<button class="linkbtn" data-jq-who="${esc(q.id)}">Ask someone</button>${JM.askQ === q.id ? `<div class="jm-pick" role="menu">${realPeople(w).filter((x) => x.sub !== 'Invited').map((x) => `<button role="menuitem" data-jq-askp="${esc(q.id)}|${esc(x.email)}">${x.html}<b>${esc(x.name)}</b></button>`).join('') || '<small>Invite your team first: Team and access, in your account menu.</small>'}</div>` : ''}` : `<button class="linkbtn" data-jq-ask="${esc(q.id)}">Ask ${esc(owner(q.owner))}</button>`}<button class="linkbtn" data-jm-answer="${esc(q.id)}">Answer it</button></div>`}</li>`).join('')}</ul></details>`;
   };
@@ -134,10 +134,10 @@
   const mentionMatches = () => { if (JM.noMention) return []; const m = JM.draft.match(AT_RE); return m ? atFilter(m[2]) : []; };
   /* emails typed after @ that aren't anyone on the team yet: invited when the message goes */
   const freshIn = (text) => { const known = new Set(realPeople().map((x) => x.email)); return [...new Set([...String(text).matchAll(/(^|\s)@([^\s@]+@[^\s@,;:!?]+\.[a-z]{2,})/gi)].map((m) => m[2].toLowerCase()))].filter((e) => !known.has(e) && e !== myEmail()); };
-  const SHOPOS = { k: 'brew', name: 'ShopOS team', sub: 'Gets an email to join', html: brewMark(20) };
+  const SHOPOS = { k: 'brew', name: 'Our team', sub: 'Gets an email to join', html: brewMark(20) };
   const mentionList = () => (DEMO ? [...A.B.colleagues.map((x) => A.colleague(x.id)).map((c) => ({ k: c.id, name: c.name, sub: c.role !== c.name ? c.role : '', html: avatar(c, 20) }))] : [...realPeople(), SHOPOS]);
-  const shoposIn = (text) => /(^|\s)@shopos team(?=$|[\s,.:;!?])/i.test(text);
-  const pName = (p) => `${p?.staff ? 'ShopOS team · ' : ''}${p?.name || p?.email || 'Someone'}`; /* a shopos.ai account shows as the ShopOS team */
+  const shoposIn = (text) => /(^|\s)@(shopos|our) team(?=$|[\s,.:;!?])/i.test(text); /* the picker now writes @Our team; @ShopOS team in older drafts still counts */
+  const pName = (p) => `${p?.staff ? 'Our team · ' : ''}${p?.name || p?.email || 'Someone'}`; /* a shopos.ai account shows as the ShopOS team */
   /* who has the jam: give it to someone, or ask someone for their OK on this version (they get an email) */
   /* the Assign popover: give the jam to someone, or ask for their OK on this version */
   const assignPop = (w) => { const a = w.assignee, ppl = realPeople(w); return JM.assign ? `<div class="jm-menu jm-assign-m" role="menu"><div class="jm-seg" role="group"><button data-jm-amode="work" aria-pressed="${JM.assign !== 'approve'}">Give it to</button><button data-jm-amode="approve" aria-pressed="${JM.assign === 'approve'}">Ask for OK on v${esc(w.current || 1)}</button></div>
@@ -167,7 +167,7 @@
     // sent from Brew. Before that: the card's make step, then whatever the brief still misses.
     const p = DPx(), c = p && A.cardOf ? A.cardOf(p) : null, miss = doc?.missing || [];
     /* the same two words as the studio (19 Oct): Send brief = the ShopOS team by email, they make it; Share with my team = copy it with a link */
-    const two = `<button class="btn btn-ghost" data-jm-ship="team" title="Copy the brief and a link to paste in your team’s chat">Share with my team</button><button class="btn btn-primary jm-go" data-jm-ship="shopos" title="The ShopOS team, Brew’s build crew, gets it by email and makes it. Its status shows in the top bar.">${ic('send', 's16')}<span>Send brief</span></button>`;
+    const two = `<button class="btn btn-ghost" data-jm-ship="team" title="Copy the brief and a link to paste in your team’s chat">Share with my team</button><button class="btn btn-primary jm-go" data-jm-ship="shopos" title="Our team, the build crew, gets it by email and makes it. Its status shows in the top bar.">${ic('send', 's16')}<span>Send brief</span></button>`;
     const share = `<button class="btn btn-ghost jm-share" data-jm-share aria-expanded="${!!JM.share}" aria-label="Send to…" title="Send to WhatsApp, Slack or a link">${ic('link', 's16')}</button>${JM.share ? `<div class="jm-menu jm-share-m" role="menu"><button data-jm-move="whatsapp">${ic('chat', 's14')}WhatsApp</button><button data-jm-move="slack"><span class="slack-ic sm">#</span>Slack</button><button data-jm-handoff>${ic('link', 's14')}Copy the link to everything</button></div>` : ''}`;
     /* the card's action, before the plan's make step ran: it makes the draft here first */
     if (JM.pick) return `<div class="jm-ship is-split">${two}${share}<button class="linkbtn jm-alt" data-jm-unpick>Not yet</button></div>`; /* "Or share the brief": the two ways, before or after the make step */
@@ -221,7 +221,7 @@
     const pl = w?.cardPlan || c.plan, made = !pl || pl.made || (w?.drafts || []).some((d) => d.state === 'ready' && !d.seeded) || (w && w.stage !== 'drafting');
     const next = pl && !made ? `Press “${jmLabel(pl.cta)}” below to make the ${pl.make?.one || pl.make?.what || 'version'} here; change it or redo it, then share the brief.`
       : miss.length ? `Tell me in the chat: ${miss.join('; ')}. Then share the brief.`
-      : 'Happy with it? Share the brief with the ShopOS team, Brew’s build crew, or your own team from the bottom bar. It copies the brief and a link to everything.';
+      : 'Happy with it? Share the brief with our team, the build crew, or your own team from the bottom bar. It copies the brief and a link to everything.';
     return `<div class="case"><small class="case-k">The case${c.src ? ` · ${esc(c.src)}` : ''}</small><b class="case-t">${esc(cut(c.title, 140))}</b>${c.sub ? `<p>${esc(cut(c.sub, 240))}</p>` : ''}
       ${why.length ? `<div class="case-s"><small>Why it matters</small><ul>${why.map((x) => `<li>${esc(cut(x, 200))}</li>`).join('')}</ul></div>` : ''}
       ${pl?.steps?.length ? `<div class="case-s"><small>The plan</small><ol>${pl.steps.map((x) => `<li>${esc(x.t)}</li>`).join('')}</ol></div>` : ''}
@@ -246,7 +246,7 @@
         ${doc ? `<article class="jm-doc" contenteditable="${shipped || (w?.jamBrief && !EARLY.includes(w.stage)) ? 'false' : 'true'}" spellcheck="true" data-jm-doc aria-label="The brief. Type to edit.">${toHtml(doc.md, JM.flash)}</article>` : '<div class="sk" style="height:320px;border-radius:12px"></div>'}
         ${shipped ? '' : doc?.missing?.length ? `<p class="jm-missing">Still missing: ${doc.missing.map((x) => `<button class="linkbtn" data-jm-fill="${esc(x)}">${esc(x.toLowerCase())}</button>`).join(', ')}</p>` : doc ? `<p class="jm-missing ok">${ic('check', 's14')}Everything the next team needs is in here.</p>` : ''}
         ${questions(w)}${draftsHtml(w)}`
-      : `<div class="jm-thread" id="jm-thread">${caseHtml(p, w) ? `<div class="jm-empty has-case">${caseHtml(p, w)}${msgs.length ? '' : altsHtml(p)}</div>` : ''}${msgs.length ? msgs.map((m) => msgHtml(m, w)).join('') : caseHtml(p, w) ? '' : `<div class="jm-empty"><b>What should change?</b><span>Type or talk. The left side updates as you go. @ brings in a teammate or the ShopOS team.</span>${altsHtml(p)}</div>`}${typingHtml(w)}${JM.busy ? `<div class="jm-m"><span class="jm-fav">${face(w?.agent || 'creative')}</span><div class="jm-mb"><div class="jm-bub"><span class="jm-typing"><i></i><i></i><i></i></span></div></div></div>` : ''}</div>`}
+      : `<div class="jm-thread" id="jm-thread">${caseHtml(p, w) ? `<div class="jm-empty has-case">${caseHtml(p, w)}${msgs.length ? '' : altsHtml(p)}</div>` : ''}${msgs.length ? msgs.map((m) => msgHtml(m, w)).join('') : caseHtml(p, w) ? '' : `<div class="jm-empty"><b>What should change?</b><span>Type or talk. The left side updates as you go. @ brings in a teammate or our team.</span>${altsHtml(p)}</div>`}${typingHtml(w)}${JM.busy ? `<div class="jm-m"><span class="jm-fav">${face(w?.agent || 'creative')}</span><div class="jm-mb"><div class="jm-bub"><span class="jm-typing"><i></i><i></i><i></i></span></div></div></div>` : ''}</div>`}
       </div>
       <form class="jm-compose" id="jm-f">${(() => { const ms = mentionMatches(); if (!ms.length) return ''; JM.mi = Math.min(JM.mi || 0, ms.length - 1); return `<div class="jm-mentions" role="listbox">${ms.map((x, i) => `<button type="button" role="option" aria-selected="${i === JM.mi}" class="${i === JM.mi ? 'is-on' : ''}" data-jm-mention="${esc(x.fresh ? x.email : x.name)}">${x.html}<b>${esc(x.name)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</button>`).join('')}</div>`; })()}
         <textarea id="jm-in" rows="1" data-nomic placeholder="${shipped ? 'Ask for the next version, or @ someone…' : w?.with?.kind === 'team' ? `Reply to ${esc(w.with.name)}, or ask AI…` : 'What should change?'}" aria-label="Message">${esc(JM.draft)}</textarea>${window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${JM.busy ? ' is-wait' : ''}" aria-label="Send" ${JM.busy ? 'disabled aria-busy="true"' : ''}>${JM.busy ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="jm-send${JM.busy ? ' is-wait' : ''}" aria-label="Send" ${JM.busy ? 'disabled aria-busy="true"' : ''}>${JM.busy ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</form>
@@ -277,7 +277,7 @@
   // the left column: each card's source moves as chips that open what the move says
   const paintMoves = (p) => {
     const box = $('#dp-moves'); if (!box) return; const ms = JM.moves[p.id];
-    if (!ms) { box.hidden = ms === null ? false : true; if (ms === null) $('.dp-moves-l', box).innerHTML = A.loader?.('Finding the moves', '', 'sm') || ''; return; }
+    if (!ms) { box.hidden = ms === null ? false : true; if (ms === null) $('.dp-moves-l', box).innerHTML = A.loader?.('Finding the plays', '', 'sm') || ''; return; }
     if (!ms.length) { box.hidden = true; return; }
     box.hidden = false; $('.dp-moves-l', box).innerHTML = ms.map((m) => `<button class="dp-move" data-jm-movedoc="${m.n}"><span class="dp-move-n">${mvLabel(m.n)}</span><b>${esc(m.title)}</b>${m.stat ? `<small>${esc(m.stat)} ${esc((m.statLabel || '').toLowerCase())}</small>` : ''}${ic('right', 's14')}</button>`).join('');
   };
@@ -285,7 +285,7 @@
     const p = DPx(), m = (JM.moves[p?.id] || []).find((x) => x.n === +n); if (!m) return;
     const tag = (x) => `${mvLabel(m.n)} · ${x}`;
     A.modal(`<div class="sheet mv-sheet"><button class="icon-btn rx-close" data-close aria-label="Close">${ic('x', 's18')}</button>
-      <small class="mv-k">${mvLabel(m.n)}${(() => { const N = +A.movesTotal?.() || 0; return N && m.n <= N ? ` of ${N}` : ''; })()} · Brew × ${esc(BNAME())}</small><h2>${esc(m.title)}</h2>
+      <small class="mv-k">${mvLabel(m.n)}${(() => { const N = +A.movesTotal?.() || 0; return N && m.n <= N ? ` of ${N}` : ''; })()} · ${esc(globalThis.PRODUCT_NAME)} × ${esc(BNAME())}</small><h2>${esc(m.title)}</h2>
       ${m.stat ? `<p class="mv-stat"><b>${esc(m.stat)}</b> ${esc((m.statLabel || '').toLowerCase())}</p>` : ''}
       ${m.gives ? `<section><h4>What it gives ${esc(BNAME())}</h4><p data-sel-from="${esc(tag('What it gives'))}">${esc(m.gives)}</p></section>` : ''}
       ${m.live ? `<section><h4>Live 30 days after we start</h4><p>${esc(m.live)}</p></section>` : ''}
@@ -320,7 +320,7 @@
       if (r.error) { JM.draft = text; toast(esc(r.error)); return paint(); }
       const names = (r.tagged || []).map((e) => realPeople().find((x) => x.email === e)?.name || e);
       /* tagged teammates are emailed right away; the ShopOS team's email is at most once per jam an hour, so only say it's tagged */
-      const said = [names.length ? `${names.join(', ')} will get an email` : '', toShopos ? 'The ShopOS team is tagged' : ''].filter(Boolean);
+      const said = [names.length ? `${names.join(', ')} will get an email` : '', toShopos ? 'Our team is tagged' : ''].filter(Boolean);
       if (said.length) toast(`${ic('send', 's16')}${esc(said.join('. '))}`); return take(r.work); }
     if (target && DEMO) {
       if (!A.conn('slack')) { JM.draft = text; return A.openConnect('slack', { then: () => send(text), why: 'Your teammate answers in Slack. Replies land in the jam and the brief.' }); }
@@ -346,15 +346,15 @@
     const r = await A.tapi('POST', `/api/work/${w.id}/doc/ship`, { to, force: !!force, base: location.origin, decided: A.S.decided?.[DPx()?.id] || null });
     if (r.needs) { JM.confirm = r.needs; return paint(); }
     JM.confirm = null; JM.pick = false; if (r.error) return toast(esc(r.error));
-    if (to === 'shopos' && r.emailed && r.status) { JM.tab = 'chat'; take(r.work); A.counts(); return toast(`${ic('check', 's16')}Sent to the ShopOS team (${esc(r.work.ticket || 'brief')}). Their reply shows here when they approve.`); }
+    if (to === 'shopos' && r.emailed && r.status) { JM.tab = 'chat'; take(r.work); A.counts(); return toast(`${ic('check', 's16')}Sent to our team (${esc(r.work.ticket || 'brief')}). Our reply shows here when we approve.`); }
     const text = r.share?.text || r.work?.jamBrief?.md || '';
     let copied = false; try { await navigator.clipboard.writeText(text); copied = true; } catch (e) {}
     JM.tab = 'chat'; take(r.work); A.counts();
-    toast(copied ? `${ic('copy', 's16')}Brief ${esc(r.work.ticket || '')} copied. Paste it where ${to === 'team' ? 'your team' : 'the ShopOS team'} works.` : `${ic('info', 's16')}Brief ${esc(r.work.ticket || '')} is ready. Open it with View the brief and copy it from there.`);
+    toast(copied ? `${ic('copy', 's16')}Brief ${esc(r.work.ticket || '')} copied. Paste it where ${to === 'team' ? 'your team' : 'our team'} works.` : `${ic('info', 's16')}Brief ${esc(r.work.ticket || '')} is ready. Open it with View the brief and copy it from there.`);
   };
   const viewBrief = () => { const w = W(); const d = w?.jamBrief || w?.doc; if (!d) return; const ho = w.jamBrief?.handoff?.url, sent = !!w.jamBrief;
     A.modal(`<div class="sheet jm-bv"><header class="jm-bv-h"><span class="jm-bv-k">${ic(sent ? 'send' : 'hand', 's14')}${esc(d.kind || 'Brief')}</span>${w.ticket ? `<span class="jm-bv-t">${esc(w.ticket)}</span>` : ''}${sent ? `<span class="jm-bv-s">${ic('check', 's14')}Brief shared</span>` : ''}<button class="icon-btn" data-close aria-label="Close">${ic('x', 's18')}</button></header>
-      <div class="jm-bv-body">${ho ? `<div class="jm-handoff">${ic('link', 's18')}<span><b>The full brief, read-only</b><small>Card, options, moves, package and assets, the jam chat and the studio chat</small></span><a class="btn btn-primary sm" href="${esc(ho)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost sm" data-jm-copyho="${esc(ho)}">Copy link</button></div>` : ''}
+      <div class="jm-bv-body">${ho ? `<div class="jm-handoff">${ic('link', 's18')}<span><b>The full brief, read-only</b><small>Card, options, plays, package and assets, the jam chat and the studio chat</small></span><a class="btn btn-primary sm" href="${esc(ho)}" target="_blank" rel="noopener">Open</a><button class="btn btn-ghost sm" data-jm-copyho="${esc(ho)}">Copy link</button></div>` : ''}
       <article class="jm-doc is-read">${toHtml(d.md)}</article>
       ${d.missing?.length ? `<p class="jm-missing">${ic('clock', 's14')}Sent with these still open: ${esc(d.missing.join(', ').toLowerCase())}</p>` : ''}</div></div>`); };
   const move = async (to, opts = {}) => {
@@ -364,14 +364,14 @@
        connection). Brew has no WhatsApp connection (sending was cut), so it says so and offers the route that does reach them:
        the brief, emailed to the ShopOS team and tracked here, their reply landing in this jam. Opening WhatsApp yourself stays,
        named for what it is: you send it, and Brew doesn't see the reply */
-    if (to === 'whatsapp' && !A.conn('whatsapp') && !opts.self) return A.waNeed({ title: 'Send it for approval', p: 'Brew can’t send this to the ShopOS team, Brew’s build crew, on WhatsApp, so it wouldn’t reach them. Send it to them from Brew instead: they get the whole brief by email, and their reply shows here in the jam.',
-      primary: 'Send to the ShopOS team', onPrimary: () => ship('shopos'), onSelf: () => move('whatsapp', { self: true }) }); /* the one "WhatsApp isn't connected" sheet (app.js waNeed) */
+    if (to === 'whatsapp' && !A.conn('whatsapp') && !opts.self) return A.waNeed({ title: 'Send it for approval', p: 'We don’t get briefs on WhatsApp, so this wouldn’t reach our team, the build crew. Send it to us from here instead: we get the whole brief by email, and our reply shows here in the jam.',
+      primary: 'Send to our team', onPrimary: () => ship('shopos'), onSelf: () => move('whatsapp', { self: true }) }); /* the one "WhatsApp isn't connected" sheet (app.js waNeed) */
     const win = to === 'whatsapp' ? window.open('', '_blank') : null;
     const r = await A.tapi('POST', `/api/work/${w.id}/jb/move`, { to, channel: A.S.slack?.channel, base: location.origin, decided: A.S.decided?.[DPx()?.id] || null }); if (r.error) { win?.close(); return toast(esc(r.error)); }
     if (r.posted) { take(r.work); return toast(`${ic('check', 's16')}Posted to ${esc(r.posted.channel)} in Slack with an Approve button. Replies in the thread land here.`); }
     try { await navigator.clipboard?.writeText(r.text); } catch (e) {}
     if (win) win.location.href = 'https://wa.me/?text=' + encodeURIComponent(r.text);
-    toast(to === 'whatsapp' ? `${ic('chat', 's16')}WhatsApp is open with the full brief and a link to it (copied too). You send it; Brew won’t see their reply, so paste it back here.` : `${ic('copy', 's16')}Copied the full context with a link to all of it. Brew doesn’t post to Slack: paste it in ${esc(A.S.slack?.channel || 'your channel')}.`);
+    toast(to === 'whatsapp' ? `${ic('chat', 's16')}WhatsApp is open with the full brief and a link to it (copied too). You send it; we won’t see their reply, so paste it back here.` : `${ic('copy', 's16')}Copied the full context with a link to all of it. We don’t post to Slack: paste it in ${esc(A.S.slack?.channel || 'your channel')}.`);
     take(r.work);
   };
 
@@ -399,7 +399,7 @@
       const host = sel.rangeCount && sel.getRangeAt(0).commonAncestorContainer; const el = host && (host.nodeType === 1 ? host : host.parentElement);
       const zone = el?.closest?.('#dp .dr-b, .mv-sheet'); if (!zone || el.closest('[data-jm-doc]') || text.length < 12 || e.target.closest?.('#jm-addsel')) { if (!e.target.closest?.('#jm-addsel')) b.hidden = true; return; }
       const r = sel.getRangeAt(0).getBoundingClientRect(); b.style.left = Math.max(8, Math.min(innerWidth - 140, r.left + r.width / 2 - 60)) + 'px'; b.style.top = Math.max(8, r.top - 40) + 'px';
-      b.dataset.text = text.slice(0, 2000); b.dataset.from = el.closest('.mv-sheet') ? ($('.mv-sheet h2')?.textContent ? `Move: ${$('.mv-sheet h2').textContent}` : 'a move') : 'the card'; b.hidden = false;
+      b.dataset.text = text.slice(0, 2000); b.dataset.from = el.closest('.mv-sheet') ? ($('.mv-sheet h2')?.textContent ? `Play: ${$('.mv-sheet h2').textContent}` : 'a play') : 'the card'; b.hidden = false;
     }, 10);
   });
   document.addEventListener('mousedown', (e) => { if (e.target.closest?.('#jm-addsel')) e.preventDefault(); });
@@ -495,7 +495,7 @@
     const mode = ctx.tab === 'slack' ? 'team' : ctx.tab === 'team' ? 'brew' : null;
     const post = ctx.post || (ctx.thread?.cardId ? A.byId(ctx.thread.cardId) : null);
     if (post) return open(post, { mode, draft: typeof ctx.ask === 'string' ? ctx.ask : '' });
-    const S0 = ctx.moves ? { title: `Lift ${BNAME()}’s score`, starter: 'Which three moves lift our score fastest? Plan the first one with me.' }
+    const S0 = ctx.moves ? { title: `Lift ${BNAME()}’s score`, starter: 'Which three plays lift our score fastest? Plan the first one with me.' }
       : ctx.batch ? { title: 'Week-one statics batch', starter: 'Plan the week-one static ads from our best-selling products.' }
       : ctx.bulk ? { title: `${ctx.bulk.length} saved cards, ${ctx.bulk.length} plans`, starter: '' }
       : ctx.signal ? { title: ctx.signal, starter: `Let’s act on this: ${ctx.signal}` } : { title: ctx.thread?.t || 'New jam', starter: '' };
@@ -536,7 +536,7 @@
   document.addEventListener('mousedown', (e) => { const b = e.target.closest?.('[data-at-pick]'); if (b) { e.preventDefault(); return atPick(b.dataset.atPick); } if (AT.box && !e.target.closest?.('.at-pop')) atClose(); }, true);
   document.addEventListener('focusout', (e) => { if (e.target === AT.box) setTimeout(() => { if (document.activeElement !== AT.box) atClose(); }, 120); });
   /* ---------- / commands in every chat box: type / and the commands show, filtered as you type; Enter or Tab picks ---------- */
-  const CMDS = [{ cmd: '/update-brand-learnings', alias: ['learn', 'learnings', 'brand-learnings', 'update-learnings'], sub: 'Teach Brew from a call, notes or emails. Paste them after it' }];
+  const CMDS = [{ cmd: '/update-brand-learnings', alias: ['learn', 'learnings', 'brand-learnings', 'update-learnings'], sub: 'Teach us from a call, notes or emails. Paste them after it' }];
   const SL = { box: null, i: 0 }, SL_BOX = '#st-in, textarea[data-at], #jm-in';
   const slMatches = (box) => { const m = box.value.slice(0, box.selectionEnd ?? box.value.length).match(/^\s*\/([\w-]*)$/); if (!m) return []; const q = m[1].toLowerCase();
     return CMDS.filter((c) => c.cmd.slice(1).startsWith(q) || c.alias.some((a) => a.startsWith(q)) || (q.length > 1 && c.cmd.includes(q))); };
@@ -565,7 +565,7 @@
     const target = mentionOf(text); if (!target || !p) return false;
     let w = A.workOfCard(p.id); if (!w || ['measuring', 'result'].includes(w.stage)) { const { _work, _ch, ...card } = p; const r = await A.tapi('POST', '/api/work', { cardId: p.id, card, decided: A.S.decided?.[p.id] || null }); w = r.work; if (w) A.putWork(w); }
     if (!w) { toast('That didn’t go through. Try again.'); return true; }
-    if (target.k === 'brew') { const r = w.with?.kind === 'brew' ? await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }) : await A.tapi('POST', `/api/work/${w.id}/send`, { to: 'brew', note: text.replace(/^@[\w ]*?Brew team[\s,:]*/i, '') || text }); if (r.work) A.putWork(r.work); toast(`${ic('send', 's16')}Sent to the Brew team`); return true; }
+    if (target.k === 'brew') { const r = w.with?.kind === 'brew' ? await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }) : await A.tapi('POST', `/api/work/${w.id}/send`, { to: 'brew', note: text.replace(/^@[\w ]*?Brew team[\s,:]*/i, '') || text }); if (r.work) A.putWork(r.work); toast(`${ic('send', 's16')}Sent to our team`); return true; }
     if (!A.conn('slack')) { A.openConnect('slack', { then: () => sendTo(p, text), why: 'Your teammate answers in Slack. Replies land in the jam and the brief.' }); return true; }
     const r = w.with?.kind === 'team' && w.with.id === target.k ? await A.tapi('POST', `/api/work/${w.id}/message`, { body: text }) : await A.tapi('POST', `/api/work/${w.id}/send`, { to: 'team', note: text, colleague: target.k, name: target.name, names: A.S.slack?.names, channel: A.S.slack?.channel });
     if (r.work) A.putWork(r.work); toast(`Simulated: nothing is sent. ${esc(target.name)} answers here as a Dummy.`); return true; };

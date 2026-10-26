@@ -75,7 +75,7 @@ export function ideaCards(ideas, seed = {}, { now = Date.now() } = {}) {
     const imgs = hasMedia ? (i.media.product?.images || []).filter((x) => typeof x === 'string' && /^https?:|^\/?b\//.test(x)).slice(0, 3) : [];
     const thread = where.find((w) => w.kind === 'thread');
     const rt = thread ? repliesText(thread.comments, thread.commentsFloor) : '';
-    const heard = thread ? `${thread.name.split(':')[0]}${rt ? ` · ${rt}` : ''}` : ev.some((e) => /^Listen|^Reddit/i.test(e.label || '')) ? 'from what Brew heard' : '';
+    const heard = thread ? `${thread.name.split(':')[0]}${rt ? ` · ${rt}` : ''}` : ev.some((e) => /^Listen|^Reddit/i.test(e.label || '')) ? 'from what we heard' : '';
     return { id: i.id, agent: P.agent, sector: P.sector, type: 'idea', kind: imgs.length ? 'media' : 'rows', ...(lane ? { lane } : {}), roles: rolesOf(P.agent), origin: 'ideas', stream: 'ideas',
       src: `Ideas · ${P.label} ${i.format}${heard ? ` · Heard ${heard}` : i.moves?.[0] ? ' · ' + i.moves[0] : ''}`, time: ageText(i.at, now),
       badge: [`${P.label} ${i.format}`, 'info'], title: cut(ideaTitle(i.title), 76), sub: cut(i.hook || i.copy, 220), ...(imgs.length ? { images: imgs } : {}),
@@ -138,9 +138,9 @@ export function heardCards(L, seed = {}, { now = Date.now(), name = seed?.brand?
     out.push({ id: `heard-t-${hash(t.name)}`, agent: 'brew', sector: 'signals', type: 'report', family: 'learning', kind: 'rows', ...(lane ? { lane } : {}), roles: rolesOf('brew'), origin: 'listen', stream: 'heard',
       src: `Heard · ${t.n} mentions${total ? ` of ${total}` : ''} · ${quotes[0]?.where || 'public posts'}`, time: ageText(at, now), badge: [mood === 'neg' ? `${share(t.neg, t.n)} negative` : `${share(t.pos, t.n)} positive`, mood === 'neg' ? 'warn' : 'ok'],
       title: `People talk about ${t.name}: ${t.n} mentions, ${mood === 'neg' ? `${share(t.neg, t.n)} negative` : mood === 'pos' ? `${share(t.pos, t.n)} positive` : 'mostly neutral'}`, sub: quotes[0] ? `“${quotes[0].text}” (${quotes[0].where})` : `${t.n} public posts and comments about ${t.name}.`,
-      rows: [['Mentions', `${t.n}${total ? ` · ${ofAll(t.n, total)} of what Brew heard` : ''}`], ['Mood', `${t.pos} positive · ${t.neg} negative · ${t.neutral} neutral`], ...(t.brand ? [[`About ${name}`, String(t.brand)]] : []), ...(wk ? [['Trend', wk]] : [])],
+      rows: [['Mentions', `${t.n}${total ? ` · ${ofAll(t.n, total)} of what we heard` : ''}`], ['Mood', `${t.pos} positive · ${t.neg} negative · ${t.neutral} neutral`], ...(t.brand ? [[`About ${name}`, String(t.brand)]] : []), ...(wk ? [['Trend', wk]] : [])],
       ...(quotes[0]?.url ? { link: { label: `Read it in ${quotes[0].where}`, url: quotes[0].url } } : {}), cta: { label: mood === 'neg' ? 'Answer it on the product page' : 'Use their words in a post' },
-      detail: { why: [...quotes.map((q) => `“${q.text}” (${q.where})`), `Counted from ${total || t.n} tagged public posts, comments and reviews.`], how: [mood === 'neg' ? `Answer the worry where buyers decide: the product page and the FAQ.` : `Use their words in the next post or ad.`, 'Reply in the threads where it comes up.', 'Brew keeps counting, so you see if it moves.'] },
+      detail: { why: [...quotes.map((q) => `“${q.text}” (${q.where})`), `Counted from ${total || t.n} tagged public posts, comments and reviews.`], how: [mood === 'neg' ? `Answer the worry where buyers decide: the product page and the FAQ.` : `Use their words in the next post or ad.`, 'Reply in the threads where it comes up.', 'We keep counting, so you see if it moves.'] },
       heard: { kind: 'theme', name: t.name, n: t.n, pos: t.pos, neg: t.neg, neutral: t.neutral, quotes } });
   }
   out.push(...rivalCards(L, { now, name, at, lane, roles: rolesOf('brew'), max: maxR, profile }), ...categoryCards(L, { now, name, at, lane, roles: rolesOf('brew'), max: maxC, skip: new Set(picks.map((t) => norm(t.name))), profile }));
@@ -186,7 +186,7 @@ export function rivalCards(L, { now = Date.now(), name = 'the brand', at = now, 
       rows: [['Mentions', `${ys.length} since ${dateText(since)}`], ['Mood', `${pos} positive · ${neg.length} negative (${negP}%)`], ...(th.length ? [['Top complaints', th.join(', ')]] : []), ['Where', whereOf(ys)]],
       ...(quotes[0]?.url ? { link: { label: `Read it in ${quotes[0].where}`, url: quotes[0].url } } : {}), cta: { label: 'Win their unhappy buyers' },
       detail: { why: [...quotes.map((q) => `“${q.text}” (${q.where})`), `Counted from ${ys.length} public posts, comments and reviews that name ${r}, last 90 days.`],
-        how: [th.length ? `Show how ${name} handles ${th[0]}, in the ads and on the product page where ${r}'s buyers compare.` : `Show where ${name} does better, in the ads and on the product page.`, `Reply where people complain, as ${name}: help first, say who you are, never knock ${r}.`, 'Brew keeps counting, so you see if it moves.'] },
+        how: [th.length ? `Show how ${name} handles ${th[0]}, in the ads and on the product page where ${r}'s buyers compare.` : `Show where ${name} does better, in the ads and on the product page.`, `Reply where people complain, as ${name}: help first, say who you are, never knock ${r}.`, 'We keep counting, so you see if it moves.'] },
       heard: { kind: 'rival', name: r, n: ys.length, neg: neg.length, pos, themes: th, quotes } });
   }
   return out;
@@ -204,7 +204,7 @@ export function categoryCards(L, { now = Date.now(), name = 'the brand', at = no
       rows: [['Posts', `${ys.length} in the last 90 days`], ['Questions', String(q)], ['Complaints', String(cpl)], ['Where', whereOf(ys)]],
       ...(quotes[0]?.url ? { link: { label: `Read it in ${quotes[0].where}`, url: quotes[0].url } } : {}), cta: { label: asks ? 'Answer it in a post' : 'Show how we solve it' },
       detail: { why: [...quotes.map((x) => `“${x.text}” (${x.where})`), `Counted from public posts about ${noun} that do not name a brand, last 90 days.`],
-        how: [asks ? `Answer it once, well: a post, a reel or an FAQ on the product page that ${name} can link to.` : `Show how ${name} solves it, with the product, in the next post or ad.`, 'Reply where it comes up, as the brand.', 'Brew keeps counting, so you see if it moves.'] },
+        how: [asks ? `Answer it once, well: a post, a reel or an FAQ on the product page that ${name} can link to.` : `Show how ${name} solves it, with the product, in the next post or ad.`, 'Reply where it comes up, as the brand.', 'We keep counting, so you see if it moves.'] },
       heard: { kind: 'category', name: t, n: ys.length, questions: q, complaints: cpl, quotes } });
   }
   return out;

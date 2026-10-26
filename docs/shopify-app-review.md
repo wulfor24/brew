@@ -104,37 +104,37 @@ from that worktree (`./deploy.sh`).
 
 ## Step 3: the listing (no statistics, no "best/first/only", no reviews in text or images: requirements 4.3–4.4)
 
-- **App name:** Brew: Daily Marketing Moves. Check the name is free on the App Store. It must lead with "Brew" and match the dashboard name.
-- **Subtitle (card):** A daily feed of marketing moves made from your store's data
-- **Introduction:** Brew reads your store, reviews and rivals, then tells your team what to do next in marketing, one move at a time.
-- **Details:** Brew reads your storefront, your Shopify orders and stock, your reviews and the ads your rivals run, then
-  writes a daily feed of marketing moves for your team: what to launch, what to fix, what to post and who to win back. Each card
-  shows where its numbers came from. Your team can talk a move through, draft the post or ad, and share the brief to Slack.
-  Brew only reads: it never changes your store, your ads or your emails.
-- **Features (short):** A daily feed of moves built from your store · Every number shows its source · Drafts for posts, ads and
-  emails · Rival ads and reviews in one place · Read-only: Brew never changes your store
+- **App name:** Brew: Daily Marketing Plays. Check the name is free on the App Store. It must lead with "Brew" and match the dashboard name.
+- **Subtitle (card):** A daily feed of marketing plays made from your store's data
+- **Introduction:** We read your store, reviews and rivals, then tell your team what to do next in marketing, one play at a time.
+- **Details:** We read your storefront, your Shopify orders and stock, your reviews and the ads your rivals run, then
+  write a daily feed of marketing plays for your team: what to launch, what to fix, what to post and who to win back. Each card
+  shows where its numbers came from. Your team can talk a play through, draft the post or ad, and share the brief to Slack.
+  We only read: we never change your store, your ads or your emails.
+- **Features (short):** A daily feed of plays built from your store · Every number shows its source · Drafts for posts, ads and
+  emails · Rival ads and reviews in one place · Read-only: we never change your store
 - **Pricing:** Free (design-partner preview)
 - **Category:** Marketing and conversion. Avoid the Analytics and Ads categories for now: Built for Shopify would then require a web pixel.
 - **Privacy policy:** https://brew.joinsquareup.com/privacy · **Support:** hello@joinsquareup.com
-- **Screenshots (1600×900, real UI, each a different view):** the home inside the admin, the feed, one move card with its
+- **Screenshots (1600×900, real UI, each a different view):** the home inside the admin, the feed, one play card with its
   proof sheet, the jam with a draft, and the connectors page. No browser frame, no prices, no reviews.
 
 ## Step 4: screencast (English, about 3 minutes; requirement 4.5.3)
 
 1. Development store admin → Apps → install Brew from the install link. Show the permission screen and Install.
-2. The admin opens Brew at once (no sign-up). Say: "Brew links this store to its brand by the store's domain."
-3. The feed: open a move card and show its numbers from Shopify (orders, average order) and the proof sheet with their source.
+2. The admin opens Brew at once (no sign-up). Say: "We link this store to its brand by the store's domain."
+3. The feed: open a play card and show its numbers from Shopify (orders, average order) and the proof sheet with their source.
 4. Open a draft (jam) and show that nothing is sent or changed in the store.
 5. Connectors: Shopify is already connected; Meta opens in a new tab to sign in (read-only).
-6. Uninstall from Settings → Apps. Say: "Brew stops reading and drops its access."
+6. Uninstall from Settings → Apps. Say: "We stop reading and drop our access."
 
 ## Step 5: testing instructions for the reviewer
 
-> Install Brew on your development store from the install link; there is no separate sign-up. Brew opens inside the admin.
+> Install Brew on your development store from the install link; there is no separate sign-up. The app opens inside the admin.
 > Add a few products to the store if it has none, then tap **Read my store**. A development store's storefront is behind
-> Shopify's password page, so Brew reads it from the Shopify admin (products, prices, photos, descriptions, stock); the checkout
+> Shopify's password page, so we read it from the Shopify admin (products, prices, photos, descriptions, stock); the checkout
 > walk, page speed and AI answers say they wait until the store opens. The read takes up to half an hour, and the feed fills in
-> with moves built from the store as each one is written. Brew is read-only: it never writes to the store. Optional: Meta Ads, Google Analytics and Klaviyo
+> with plays built from the store as each one is written. The app is read-only: it never writes to the store. Optional: Meta Ads, Google Analytics and Klaviyo
 > connect from Connectors and open in a new tab, because those services don't allow sign-in inside a frame.
 > Contact: hello@joinsquareup.com.
 

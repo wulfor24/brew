@@ -53,12 +53,12 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     if (dummy()) return { ok: true, dummy: true, why: null };
     if (!fresh && statusMemo && now() - statusMemo.at < 60e3) return statusMemo.v;
     const st = await slooshAuth.status(); let v;
-    if (!st.connected) v = { ok: false, why: 'Brew is not connected to Sloosh yet. Brew staff connect it from the ops page.' };
+    if (!st.connected) v = { ok: false, why: 'Sloosh is not connected yet, so nothing paid can run. Our team connects it.' };
     else if (sloosh.getConnection === undefined) v = { ok: false, why: 'Sloosh is not wired here.' };
     else { try { const c = await sloosh.getConnection(); const b = budgetOf(c); const set = b.configured && (b.limit == null || b.limit > 0);
         let ws = st.workspace?.name || null; if (!ws) { try { const a = await sloosh.getAccount(); ws = pick(a, 'workspace.name') || null; if (ws) await slooshAuth.setWorkspace?.({ id: pick(a, 'workspace.id') || pick(c, 'connection.workspaceId') || null, name: ws }); } catch {} }
-        v = { ok: set, workspace: ws || pick(c, 'connection.workspaceId') || null, left: b.left, limit: b.limit, spent: b.spent, held: b.held, askAbove: b.askAbove, resetsAt: b.resetsAt, settingsUrl: b.settingsUrl, scope: pick(c, 'connection.scopes') || st.scope, why: set ? null : 'Sloosh has no daily limit set for agents on Brew’s workspace yet, so nothing paid can run. Brew staff set it on sloosh.ai/settings/mcp.' }; }
-      catch (e) { v = { ok: false, why: e.expired ? 'Sloosh needs Brew staff to reconnect.' : `Sloosh did not answer: ${e.message}`, error: e.message }; } }
+        v = { ok: set, workspace: ws || pick(c, 'connection.workspaceId') || null, left: b.left, limit: b.limit, spent: b.spent, held: b.held, askAbove: b.askAbove, resetsAt: b.resetsAt, settingsUrl: b.settingsUrl, scope: pick(c, 'connection.scopes') || st.scope, why: set ? null : 'Sloosh has no daily limit set for agents on our workspace yet, so nothing paid can run. Our team sets it on sloosh.ai/settings/mcp.' }; }
+      catch (e) { v = { ok: false, why: e.expired ? 'Sloosh needs our team to reconnect it. Nothing was charged.' : `Sloosh did not answer: ${e.message}`, error: e.message }; } }
     if (!v.ok && geminiImage) v = { ...v, fallback: true, fallbackWhy: v.why, why: null }; /* an image final can still be made, on Gemini, until Sloosh can pay */
     statusMemo = { at: now(), v }; return v;
   }
@@ -66,7 +66,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   /* product photos first, then the rest (a look, a scene, a person): Gemini gets them in that order, so "image 1" is always the product */
   const productFirst = (refs = []) => [...refs.filter((r) => r?.job === 'product'), ...refs.filter((r) => r?.job !== 'product')];
   const geminiQuote = (spec, why) => { void why; if (spec.space) return { error: 'This kind of final isn’t available right now. Pick a picture final instead.' }; const vid = spec.kind === 'video'; if (vid && !makeVideo) return { error: 'A video final isn’t available right now. Make a picture final instead.' }; /* plain words: never which partner isn't connected */
-    if (!(spec.refs || []).some((r) => r?.job === 'product')) return { error: 'Pick a product photo first: Brew makes the final around the real product.' };
+    if (!(spec.refs || []).some((r) => r?.job === 'product')) return { error: 'Pick a product photo first: we make the final around the real product.' };
     spec = { ...spec, refs: productFirst((spec.refs || []).filter((r) => r?.job !== 'frame' && r?.job !== 'motion')), /* Gemini and Veo take no reference video */ ratio: vid ? (spec.ratio === '16:9' ? '16:9' : '9:16') : spec.ratio };
     const b = buildFinal({ ...spec, kind: 'image' }); const settings = vid ? { aspect_ratio: spec.ratio, resolution: '1080p', duration: Math.max(4, Math.min(8, Math.round(spec.seconds || 6))), sound: !!spec.sound } : b.settings;
     return { quoteId: `gemini-${sha(JSON.stringify([spec.kind, spec.visual, spec.text, spec.refs, spec.motion]))}`, provider: 'gemini', fallback: true, why: `on Gemini for now: ${why}`, fallbackWhy: why, credits: 0, hold: 0, model: vid ? 'veo-3.1-fast' : 'gemini-3-pro-image', label: vid ? 'Veo 3.1 Fast (Vertex)' : 'Gemini 3 Pro Image (Vertex)', prompt: b.prompt, motion: vid ? buildDraft({ ...spec, kind: 'video' }).prompt : null, settings, space: null, refs: spec.refs || [], expiresAt: now() + 3600e3, at: now() }; };
@@ -171,7 +171,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
     const credits = creditsOf(q), hold = holdOf(q) || credits, quoteId = idOf(q), warning = pick(q, 'warning') || null;
     if (warning && canFallBack && /wallet|allocation|credit|limit|short|balance|payment|402|allowance|insufficient|owned|asset|not found|unauthori/i.test(warning)) return geminiQuote(spec, `Sloosh says: ${warning}`);
     if (!quoteId) { const why = `Sloosh quoted without a quote id (keys: ${Object.keys(q || {}).join(', ')})`; return canFallBack ? geminiQuote(spec, `${why}.`) : { error: why }; }
-    if (st.left != null && hold > st.left) { const why = `This would hold ${hold} credits and Brew’s Sloosh workspace has ${st.left} left today. It resets at midnight UTC.`; return canFallBack ? geminiQuote(spec, why) : { error: why, credits, hold }; }
+    if (st.left != null && hold > st.left) { const why = `This would hold ${hold} credits and our Sloosh workspace has ${st.left} left today, so nothing was charged. It resets at midnight UTC.`; return canFallBack ? geminiQuote(spec, why) : { error: why, credits, hold }; }
     out.provider = 'sloosh';
     const over = budget.refusal('credits', slug, Math.ceil(credits)); if (over) return { error: budget.why('credits', slug, spec.brandName, Math.ceil(credits)), credits };
     return { quoteId, credits, hold, warning, expiresAt: expiresOf(q), at: now(), refs: refs.map((r) => ({ ...r, asset: r.asset })), ...out, raw: q };
@@ -220,7 +220,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
         if (q.provider === 'gemini' || q.fallback) { /* Gemini for now: the same brief and the product photo, counted in the image/video budget (the makers check it), no Sloosh credit, no quote staleness */
           if (!geminiImage) throw new Error('Gemini is not wired here');
           const refs = productFirst(q.refs?.length ? q.refs : spec.refs || []), prod = refs.find((r) => r.job === 'product' && (r.url || r.file));
-          if (!prod) throw new Error('Pick a product photo first: Brew makes the final around the real product.');
+          if (!prod) throw new Error('Pick a product photo first: we make the final around the real product.');
           const srcFile = await photo(prod.url || prod.file).catch(() => null), vid = spec.kind === 'video';
           /* the other picked photos ride along as image 2, 3… in the order the brief names them (a rival's ad as the look, a scene, a person) */
           const refFiles = (await Promise.all(refs.filter((r) => r !== prod && (r.url || r.file)).map((r) => photo(r.url || r.file).catch(() => null)))).filter(Boolean);
@@ -263,7 +263,7 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
       /* only Sloosh's own terminal state fails a run. A poll that kept failing, a sign-in that ran out, or the wait limit leaves the run open:
          Sloosh may still be making (and charging) it, so the record stays running with the reason and reconcileAll collects it on the next boot */
       if (!e.terminal && (e.pollError || e.timeout || e.expired || e.status >= 500)) {
-        const note = e.timeout ? 'still going on Sloosh; Brew will collect it' : 'Sloosh could not be read; Brew will collect it after the next restart';
+        const note = e.timeout ? 'still going on Sloosh; we’ll collect it' : 'Sloosh could not be read; we’ll collect it after the next restart';
         rec = { ...rec, state: 'running', lastError: String(e.message).slice(0, 300), lastErrorAt: now(), note }; await writeRec(slug, rec);
         throw Object.assign(new Error(`The final is ${note} (${String(e.message).slice(0, 160)}).`), { rec, open: true, cause: e }); }
       rec = { ...rec, state: 'failed', error: e.message, failedAt: now(), charged: pick(e.final, 'owner.chargedCredits') ?? (creditsOf(e.final) || null) }; await writeRec(slug, rec); throw Object.assign(e, { rec }); }
@@ -304,11 +304,11 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
         if (!['starting', 'running'].includes(rec.state)) continue;
         if (inflight.has(rec.runKey) || await beating(slug, rec.runKey)) continue; /* still being made here or on another instance */
         n++;
-        if (rec.fallback) { await settled(slug, await writeRec(slug, { ...rec, state: 'failed', error: 'Brew restarted while Gemini was making this; nothing was charged. Make it again.', charged: 0, failedAt: now() })); continue; }
+        if (rec.fallback) { await settled(slug, await writeRec(slug, { ...rec, state: 'failed', error: 'A restart stopped this while it was being made; nothing was charged. Make it again.', charged: 0, failedAt: now() })); continue; }
         (async () => { try {
           if (!rec.genId) { /* the paid call may or may not have gone out: the same quote + idempotency key gives back the same operation or a refusal, never a second charge */
             const qid = rec.quote?.id; const r = qid ? await (rec.space ? sloosh.runSpace({ quote: qid, runKey: rec.runKey, confirmed: true }) : sloosh.generate({ quote: qid, runKey: rec.runKey, confirmed: true })).catch((e) => ({ refused: e.message })) : null; const gid = idOf(r);
-            if (!gid) { const f = await writeRec(slug, { ...rec, state: 'failed', error: r?.refused ? `Brew restarted before Sloosh confirmed this one and Sloosh refused the retry (${r.refused}); check Sloosh’s Assets before paying again` : 'Brew restarted before Sloosh started this one; nothing was charged', charged: r?.refused ? null : 0, failedAt: now() }); await settled(slug, f); return; } rec.genId = gid; }
+            if (!gid) { const f = await writeRec(slug, { ...rec, state: 'failed', error: r?.refused ? `A restart came before Sloosh confirmed this one and Sloosh refused the retry (${r.refused}); check Sloosh’s Assets before paying again` : 'A restart came before Sloosh started this one; nothing was charged', charged: r?.refused ? null : 0, failedAt: now() }); await settled(slug, f); return; } rec.genId = gid; }
           const p = track(slug, rec.runKey, finish(slug, { ...rec, state: 'running' }).finally(() => inflight.delete(rec.runKey))); const done = await p; log.info?.(`[finals] ${slug} ${rec.runKey} ${done.state} after the restart`); await settled(slug, done); }
         catch (e) { log.warn('[finals] reconcile', slug, rec.runKey, e.message); if (e.rec && !e.open) await settled(slug, e.rec); } })(); }
     }

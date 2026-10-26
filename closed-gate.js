@@ -29,7 +29,7 @@ export function slugIn(req, u) {
 }
 
 export const CLOSED_H = 'This store isn’t open yet';
-export const CLOSED_P = 'It’s still behind Shopify’s password page, so Brew shows it to the store’s own team until it opens.';
+export const CLOSED_P = 'It’s still behind Shopify’s password page, so we show it to the store’s own team until it opens.';
 const enc = encodeURIComponent;
 
 /** createClosedGate({ status, profile, user, roleOf, on, renew }):
@@ -51,7 +51,7 @@ export function createClosedGate({ status, profile, user, roleOf, on = () => tru
   const team = async (slug, me) => !!me && !!(await roleOf(slug, me).catch(() => null));
   function answer(req, res, u, slug, me) {
     const p = u.pathname, head = { 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'referrer-policy': 'no-referrer' }, code = me ? 403 : 401;
-    if (p.startsWith('/api/')) { res.writeHead(code, { ...head, 'content-type': 'application/json' }); res.end(JSON.stringify({ error: `${CLOSED_H}. Brew shows it to the store’s team only until it opens.`, closed: true, team: true, signin: !me })); return true; }
+    if (p.startsWith('/api/')) { res.writeHead(code, { ...head, 'content-type': 'application/json' }); res.end(JSON.stringify({ error: `${CLOSED_H}. We show it to the store’s team only until it opens.`, closed: true, team: true, signin: !me })); return true; }
     if (/^\/b\/[^/]+\/(seed|facts)\.js$/.test(p)) { res.writeHead(code, { ...head, 'content-type': 'text/javascript; charset=utf-8' }); res.end('/* this store isn’t open yet */'); return true; }
     if (p.startsWith('/b/')) { res.writeHead(code, { ...head, 'content-type': 'text/plain; charset=utf-8' }); res.end(`${CLOSED_H}.`); return true; }
     /* the page (and the connector's start, a jam's handoff page): plain words, and the way in for the team. Inside the Shopify

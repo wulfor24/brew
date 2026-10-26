@@ -4,7 +4,7 @@ import { numbersIn } from './fact-gate.js';
 
 export const budgetMatch = (card, ch, t = null) => { if (ch.family !== 'meta_ops' || !/(shift|scale)_budget$/.test(ch.action || '')) return null;
   /* the account's own budget card is gone (today's numbers no longer support the move): the saved draft can't ship as it is */
-  if (/^live-meta-shift/.test(String(ch.cardId || '')) && !card?.shift) return { k: 'Your Meta account no longer supports this move: the budget card was withdrawn on today’s numbers. Check the campaigns in Ads Manager before moving anything.', ok: false };
+  if (/^live-meta-shift/.test(String(ch.cardId || '')) && !card?.shift) return { k: 'Your Meta account no longer supports this play: the budget card was withdrawn on today’s numbers. Check the campaigns in Ads Manager before moving anything.', ok: false };
   /* every campaign or ad set the draft moves is a real one in the connected account, never a made-up name (2.6) */
   const live = t?.member ? t.liveLedger?.['meta.campaigns.7d'] : null, known = live && !live.stale ? String(live.v).split(/;\s*/).map((x) => x.split(':')[0].trim()).filter(Boolean) : [], low = known.map((k) => k.toLowerCase());
   const names = (ch.pkg?.items || []).filter((x) => !x?.pick /* a row waiting for the team to name it (ops-rows.js) */).map((x) => String(x?.name || '').trim()).filter(Boolean), unknown = known.length ? [...new Set(names.filter((n) => !low.some((k) => k === n.toLowerCase() || k.includes(n.toLowerCase()) || n.toLowerCase().includes(k))))] : [];

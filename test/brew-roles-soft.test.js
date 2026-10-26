@@ -14,5 +14,5 @@ test('Brew roles read as the brand team', () => {
 test('the PDF says Brew drafts and the team ships', () => {
   const t = fs.readFileSync(new URL('../pdf/template.js', import.meta.url), 'utf8');
   assert.doesNotMatch(t, /BUILT, RUN AND OWNED BY THE BREW DEPLOYMENT TEAM|DEPLOYMENT TEAM<br>|45-MINUTE/);
-  assert.match(t, /BREW <b>DRAFTS<\/b> EVERY PIECE/);
+  assert.match(t, /WE <b>DRAFT<\/b> EVERY PIECE/);
 });

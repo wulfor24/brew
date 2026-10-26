@@ -136,7 +136,7 @@ export const outcome = (t, { agent, win, undo, change, now = Date.now() }) => {
   if (undo || win === false) { tr.clean = 0; if (tr.level > 0) tr.level--; }
   else if (win) { tr.clean++; if (tr.clean >= CLEAN_TO_LEVEL_UP && tr.level < LEVELS.length - 1) { tr.level++; tr.clean = 0; } }
   tr.history.unshift({ at: now, win: !!win, undo: !!undo, from, to: tr.level, title: change?.after?.title || '' }); tr.history.length = Math.min(tr.history.length, 12);
-  if (tr.level !== from) { l.newRules.push({ id: uid('tl'), text: `${LEVELS[tr.level].name} trust for ${agent}: Brew may now ship up to ${LEVELS[tr.level].objects} at once`, at: now }); addV(t, 'rule', 'trust:' + agent, { level: tr.level, name: LEVELS[tr.level].name }, { author: 'learning', reason: undo ? 'Undone' : win ? `${CLEAN_TO_LEVEL_UP} clean launches` : 'Result fell flat', at: now }); }
+  if (tr.level !== from) { l.newRules.push({ id: uid('tl'), text: `${LEVELS[tr.level].name} trust for ${agent}: we may now ship up to ${LEVELS[tr.level].objects} at once`, at: now }); addV(t, 'rule', 'trust:' + agent, { level: tr.level, name: LEVELS[tr.level].name }, { author: 'learning', reason: undo ? 'Undone' : win ? `${CLEAN_TO_LEVEL_UP} clean launches` : 'Result fell flat', at: now }); }
   if (win && change) { l.exemplars.unshift({ id: uid('ex'), agent, type: change.type, action: change.action, title: change.after.title, sub: change.after.sub, at: now }); l.exemplars = l.exemplars.filter((x, i, a) => a.filter((y) => y.agent === x.agent).indexOf(x) < 3); }
   return { from, to: tr.level };
 };

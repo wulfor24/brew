@@ -67,9 +67,9 @@ export function timeLabel(ms, cfg = {}) {
     none (a read started signed out) means it waits for someone on the team */
 export function reminderMail({ name, slug, i, base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', hours, writeAt = null, now = Date.now(), cfg = {} }) {
   const link = `${base}/${slug}?go=feed#check`;
-  const subject = i === 0 ? `${name} is waiting for you to check what Brew read` : `Still waiting: check what Brew read for ${name}`;
-  const lead = `Brew read ${name}: the store, products, reviews, rivals and ads. The brand brief and the moves are written from what you confirm.`;
-  const when = +writeAt > now ? `Brew starts your brief at ${timeLabel(+writeAt, cfg)} with what it read, unless you check first.` : 'Brew starts your brief once someone on the team checks it.';
+  const subject = i === 0 ? `${name} is waiting for you to check what we read` : `Still waiting: check what we read for ${name}`;
+  const lead = `We read ${name}: the store, products, reviews, rivals and ads. The brand brief and the plays are written from what you confirm.`;
+  const when = +writeAt > now ? `We start your brief at ${timeLabel(+writeAt, cfg)} with what we read, unless you check first.` : 'We start your brief once someone on the team checks it.';
   const since = hours >= 24 ? `It has waited ${Math.floor(hours / 24)} day${hours >= 48 ? 's' : ''}.` : `It has waited ${Math.max(1, Math.round(hours))} hours.`;
   const close = i === 0 ? 'It takes a couple of minutes: fix anything we got wrong, star your hero products, then confirm.' : 'This is the last reminder. The read stays here whenever you’re ready.';
   const html = emailHtml({ title: subject, eyebrow: name, preheader: `${since} One click opens the check page.`, base,
@@ -81,10 +81,10 @@ export function reminderMail({ name, slug, i, base = process.env.PUBLIC_URL || '
 /** the feed email: same layout, one button that opens the feed, which starts the moves */
 export function feedReminderMail({ name, slug, i, base = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', hours }) {
   const link = `${base}/${slug}?go=feed`;
-  const subject = i === 0 ? `Open your feed to start ${name}’s moves` : `Still waiting: open your feed to start ${name}’s moves`;
-  const lead = `Brew read ${name} and wrote the brand brief. Your moves, the plans every card in your feed comes from, start the moment you open your feed.`;
+  const subject = i === 0 ? `Open your feed to start ${name}’s plays` : `Still waiting: open your feed to start ${name}’s plays`;
+  const lead = `We read ${name} and wrote the brand brief. Your plays, the plans every card in your feed comes from, start the moment you open your feed.`;
   const since = hours >= 24 ? `They have waited ${Math.floor(hours / 24)} day${hours >= 48 ? 's' : ''}.` : `They have waited ${Math.max(1, Math.round(hours))} hours.`;
-  const close = i === 0 ? 'One click opens it. Cards land in the feed as each move is written.' : 'This is the last reminder. Your moves start whenever you open the feed.';
+  const close = i === 0 ? 'One click opens it. Cards land in the feed as each play is written.' : 'This is the last reminder. Your plays start whenever you open the feed.';
   const html = emailHtml({ title: subject, eyebrow: name, preheader: `${since} One click opens your feed.`, base,
     body: mailP(mailEsc(lead)) + mailP(mailEsc(`${since} ${close}`)), cta: { href: link, label: 'Open my feed' } });
   return { subject, html, text: `${subject}\n\n${lead}\n\n${since} ${close}\n\nOpen my feed: ${link}` };

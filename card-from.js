@@ -67,7 +67,7 @@ export function cardFrom(c, moves = {}) {
   /* a workspace keeps its cards with origin "seed" (feed-service), so the card's own id and stream say where it came from */
   const id = String(c.id || '');
   if (c.stream === 'ideas' || c.origin === 'ideas' || /^idea-/.test(id)) return 'New idea for you';
-  if (/^build-/.test(id) || (c.origin === 'build' && !c.campaign)) return 'From Brew'; // "All 56 moves are written" is Brew's own news; the ad plan keeps its campaign line
+  if (/^build-/.test(id) || (c.origin === 'build' && !c.campaign)) return 'From us'; // "All 56 moves are written" is Brew's own news; the ad plan keeps its campaign line
   if (/^ow-own/.test(id)) return 'From your ads'; // the brand's own live ads (the Ad Library)
   if (/^r-tr-/.test(id) || c.research?.kind === 'trend') return 'Trending in your category';
   if (/^r-viral-/.test(id) || c.research?.kind === 'viral') { const p = PLATFORM[c.research?.platform] || (/instagram/i.test(c.src) ? 'Instagram' : /youtube/i.test(c.src) ? 'YouTube' : /tiktok/i.test(c.src) ? 'TikTok' : null); return p ? `Viral on ${p}` : 'Viral in your category'; } // research.js refreshViral

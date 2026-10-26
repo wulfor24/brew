@@ -229,7 +229,7 @@ export function signalLedger({ themes, items, history, asked, pulse, videos, cal
   const out = [], add = (e) => out.push({ layer: 'observed', signal: true, ...e });
   const T = Array.isArray(themes) ? themes : themes?.themes || [], at = isoOf(themes?.at) || td;
   const IT = Array.isArray(items) ? items : items?.items || [], byId = new Map(IT.map((x) => [x.id, x]));
-  const heard = 'Brew listening (public posts, comments and reviews)';
+  const heard = 'Listening (public posts, comments and reviews)';
   const who = (x) => `${x.author || 'someone'} on ${PLAT[x.platform] || x.platform || 'the web'}${x.sub ? ` ${x.sub}` : ''}`;
   for (const t of T.slice(0, 12)) {
     if (!t?.name) continue; const k = `listen.theme.${slugOf(t.name)}`;
@@ -261,18 +261,18 @@ export function signalLedger({ themes, items, history, asked, pulse, videos, cal
   for (const q of AQ.slice(0, 8)) {
     const id = q.id || slugOf(q.question || q.text), reps = IT.filter((x) => x.mode === 'asked' && [x.askId, x.questionId, x.asked].includes(id));
     const n = q.replies ?? reps.length, need = q.threshold || 5;
-    add({ key: `listen.asked.${slugOf(id)}`, n, v: `${n} replies, threshold ${need}${n >= need ? ' (met)' : ''}`, label: `Replies to the question "${String(q.question || q.text || '').slice(0, 120)}"${q.where ? ` asked in ${q.where}` : ''}`, src: 'Brew community question', url: q.url || q.link || '', at: isoOf(q.askedAt || q.at) || at, family: 'research' });
-    reps.filter((x) => x.link).slice(0, 2).forEach((x, i) => add({ key: `listen.asked.${slugOf(id)}.q${i + 1}`, v: quoteOfItem(x), label: `Reply, ${who(x)}, ${isoOf(x.postedAt)}`, src: 'Brew community question', url: x.link, at: isoOf(x.postedAt) || at, family: 'research', quote: true }));
+    add({ key: `listen.asked.${slugOf(id)}`, n, v: `${n} replies, threshold ${need}${n >= need ? ' (met)' : ''}`, label: `Replies to the question "${String(q.question || q.text || '').slice(0, 120)}"${q.where ? ` asked in ${q.where}` : ''}`, src: 'Community question', url: q.url || q.link || '', at: isoOf(q.askedAt || q.at) || at, family: 'research' });
+    reps.filter((x) => x.link).slice(0, 2).forEach((x, i) => add({ key: `listen.asked.${slugOf(id)}.q${i + 1}`, v: quoteOfItem(x), label: `Reply, ${who(x)}, ${isoOf(x.postedAt)}`, src: 'Community question', url: x.link, at: isoOf(x.postedAt) || at, family: 'research', quote: true }));
   }
   // market pulse lines, as they are
   for (const l of (Array.isArray(pulse) ? pulse : pulse?.lines || []).slice(0, 80)) if (l?.key && l.value != null && l.value !== '')
-    add({ key: `pulse.${String(l.key).replace(/^pulse\./, '')}`, n: numOf(l.value), v: usdText(`${l.value}${l.unit ? ` ${l.unit}` : ''}`, profile?.currency) /* dollars from SEO tools in the brand's currency */, label: l.label || l.key, src: srcName(l.source, 'Brew market pulse'), url: l.url || '', at: isoOf(l.at) || isoOf(pulse?.at) || td, family: l.family || 'market' });
+    add({ key: `pulse.${String(l.key).replace(/^pulse\./, '')}`, n: numOf(l.value), v: usdText(`${l.value}${l.unit ? ` ${l.unit}` : ''}`, profile?.currency) /* dollars from SEO tools in the brand's currency */, label: l.label || l.key, src: srcName(l.source, 'Market pulse'), url: l.url || '', at: isoOf(l.at) || isoOf(pulse?.at) || td, family: l.family || 'market' });
   // video reads: the hook and structure of videos relevant to the brand
   for (const x of (videos || []).filter(Boolean).slice(0, 20)) {
     const id = x.id || slugOf(x.url), hook = x.hook?.text || x.hook?.line || x.hook, scenes = Array.isArray(x.scenes) ? x.scenes.length : null, secs = numOf(x.duration ?? x.length ?? x.secs);
     if (!hook || typeof hook !== 'string') continue;
     add({ key: `video.${slugOf(id)}`, n: numOf(x.views), v: [`Hook: "${String(hook).slice(0, 160)}"`, scenes ? `${scenes} scenes` : '', secs ? `${secs}s` : '', x.format ? String(x.format) : '', x.views != null ? `${x.views} views` : '', x.whyItWorks ? `why it works: ${String(x.whyItWorks).slice(0, 200)}` : ''].filter(Boolean).join(' · '),
-      label: `Video read: ${String(x.title || x.platform || 'video').slice(0, 80)}${x.owner || x.author || x.brand ? ` by ${x.owner || x.author || x.brand}` : ''}${x.about ? ` (${x.about})` : ''}`, src: `${PLAT[x.platform] || x.platform || 'Video'} video, read by Brew`, url: x.url || '', at: isoOf(x.at || x.readAt || x.postedAt) || td, family: 'creative' });
+      label: `Video read: ${String(x.title || x.platform || 'video').slice(0, 80)}${x.owner || x.author || x.brand ? ` by ${x.owner || x.author || x.brand}` : ''}${x.about ? ` (${x.about})` : ''}`, src: `${PLAT[x.platform] || x.platform || 'Video'} video we read`, url: x.url || '', at: isoOf(x.at || x.readAt || x.postedAt) || td, family: 'creative' });
   }
   // calendar: upcoming events in the brand's markets, with days away and the plan points
   const country = profile?.country;
@@ -438,11 +438,11 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
       `# Brand brief for ${name}\n<brief>\n${brief?.md || '(no brief)'}\n</brief>`,
       `# Evidence ledger (key | value | label | source | date; listening, pulse, video and calendar lines also end with their link). Every number you print comes from here, from derived arithmetic on it, or from a dated search you run.\n<ledger>\n${brandLedger(ledger, sig).map(ledgerLine).join('\n')}\n</ledger>`,
       `# Profile extract (what the reader found on the site)\n<profile>\n${profileSlice(profile)}\n</profile>`,
-      deps && Object.keys(deps).length ? `# Earlier moves for ${name} (stay consistent with these decisions and targets; refer to them as "Move NN")\n${Object.entries(deps).map(([k, d]) => `<move n="${pad(k)}">\n${d}\n</move>`).join('\n')}` : '',
+      deps && Object.keys(deps).length ? `# Earlier moves for ${name} (stay consistent with these decisions and targets; refer to them as "Play NN")\n${Object.entries(deps).map(([k, d]) => `<move n="${pad(k)}">\n${d}\n</move>`).join('\n')}` : '',
       lookups?.length ? `# Live lookups run for this move\n${lookups.map((l) => `<lookup id="${l.id}" for="${l.for}" at="${l.at}">${l.error ? 'ERROR ' + l.error : l.data}</lookup>`).join('\n')}` : '',
       `# Depth and format exemplar\nThis is Move ${pad(exN)} written by hand for a DIFFERENT brand (Arata, an Indian haircare company). It shows the depth, density, table use, voice and finish we expect. Do not copy its facts, numbers, names, rivals or products into ${name}'s document unless the same fact is in ${name}'s ledger. Its offers, guarantees, timelines and claims were one plan for one brand at one time: never carry a guarantee, refund promise, timed result or claim from it into this move (not even for Arata).\n<exemplar>\n${exemplarText(exN, +process.env.MOVES_EXEMPLAR_CHARS || 20000)}\n</exemplar>`,
       `# Lines to lean on for this discipline\nStart from these ledger keys${fo.keys.length ? `: ${fo.keys.slice(0, 120).join(', ')}` : ` (none yet: say so in the method note and mark the cells "To be pulled")`}. Use the rest of the ledger only where it changes a decision.`,
-      `# Your task\nWrite Move ${pad(sp.n)} of ${N} for ${name}${profile?.host ? ` (${profile.host})` : ''}: discipline "${sp.discipline}", group "${sp.group}".\nKicker (fixed): ${sp.kicker} · MOVE ${pad(sp.n)}\n${measureLine(sp).text}\nTitle: write one specific to ${name}'s situation. For scale, the Arata title for this move was "${sp.titleHint}" with the stat "${sp.statHint?.stat}" / "${sp.statHint?.statLabel}". Do not reuse those.\nDate of this snapshot: ${today()}. ${marketLine(profile || {})} Currency: ${profile?.currency || 'unknown'}.\n${webQ.map((l) => (searchN ? `Search the web for: ${l.q}. Date each fact you use and list it in newFacts with the exact quote.` : `Answer from the ledger: ${l.q}. Where the ledger does not cover it, write "To be pulled", never a guess.`)).join('\n')}\n${creativeLine(sp, profile)}${GUARD_LINE}\nFollow the house template section by section. Return the JSON object only.`];
+      `# Your task\nWrite Move ${pad(sp.n)} of ${N} for ${name}${profile?.host ? ` (${profile.host})` : ''}: discipline "${sp.discipline}", group "${sp.group}".\nKicker (fixed): ${sp.kicker} · PLAY ${pad(sp.n)}\n${measureLine(sp).text}\nTitle: write one specific to ${name}'s situation. For scale, the Arata title for this move was "${sp.titleHint}" with the stat "${sp.statHint?.stat}" / "${sp.statHint?.statLabel}". Do not reuse those.\nDate of this snapshot: ${today()}. ${marketLine(profile || {})} Currency: ${profile?.currency || 'unknown'}.\n${webQ.map((l) => (searchN ? `Search the web for: ${l.q}. Date each fact you use and list it in newFacts with the exact quote.` : `Answer from the ledger: ${l.q}. Where the ledger does not cover it, write "To be pulled", never a guess.`)).join('\n')}\n${creativeLine(sp, profile)}${GUARD_LINE}\nFollow the house template section by section. Return the JSON object only.`];
     // three cacheable blocks: brand context (shared by all moves of a brand), discipline material, the task
     const [skill, briefP, ledgerP, profileP, depsP, lookupsP, exP, focusP, task] = parts;
     return [[briefP, ledgerP, profileP], [skill, exP, depsP, lookupsP], [focusP, task]].map((g) => g.filter(Boolean).join('\n\n'));
@@ -453,7 +453,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     : Array.isArray(o) ? o.map(clean) : o && typeof o === 'object' ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, clean(v)])) : o;
   function finish(sp, raw, extra, ctx) {
     if (raw?.sections) raw = { ...raw, sections: clean(raw.sections) };
-    return { n: sp.n, group: sp.group, skill: sp.skill, kicker: `${sp.kicker} · MOVE ${pad(sp.n)}`, timing: sp.timing || null, ...(sp.dynamic ? { dynamic: sp.id } : {}), ...raw, ...extra };
+    return { n: sp.n, group: sp.group, skill: sp.skill, kicker: `${sp.kicker} · PLAY ${pad(sp.n)}`, timing: sp.timing || null, ...(sp.dynamic ? { dynamic: sp.id } : {}), ...raw, ...extra };
   }
 
   const REQUIRED_KINDS = ['why', 'found', 'plan', 'examples', 'measure', 'sources'];
@@ -650,7 +650,7 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     let ov = null;
     if (overview) try {
       const r = await ai.call({ model: MOVE_MODEL(), effort: 'medium', max: 8000, tag: 'move00', system: SYSTEM,
-        prompt: `Write the overview for Move 00, the index of ${Nw} moves for ${name}.\n<brief>\n${ctx.brief?.md || ''}\n</brief>\nThe moves written so far:\n${list.filter((x) => x.m).map((x) => `${pad(x.s.n)} ${x.m.title} | ${x.m.stat} ${x.m.statLabel} | ${x.m.gives}`).join('\n')}\n\nReturn: thread (one or two sentences naming the one idea or number that runs through all the moves for ${name}, from the evidence), today (3 to 4 sentences: "${name} today:" then the sharpest facts from the brief with numbers, ending in what the ${Nw} moves are), live (one sentence: what is live at day 30), boxes (six short 3-4 line labels, one per group, for the end-to-end diagram, each line under 15 characters, specific to ${name}). Only numbers from the brief.`,
+        prompt: `Write the overview for Play 00, the index of ${Nw} plays for ${name}.\n<brief>\n${ctx.brief?.md || ''}\n</brief>\nThe plays written so far:\n${list.filter((x) => x.m).map((x) => `${pad(x.s.n)} ${x.m.title} | ${x.m.stat} ${x.m.statLabel} | ${x.m.gives}`).join('\n')}\n\nReturn: thread (one or two sentences naming the one idea or number that runs through all the plays for ${name}, from the evidence), today (3 to 4 sentences: "${name} today:" then the sharpest facts from the brief with numbers, ending in what the ${Nw} plays are), live (one sentence: what is live at day 30), boxes (six short 3-4 line labels, one per group, for the end-to-end diagram, each line under 15 characters, specific to ${name}). Only numbers from the brief.`,
         schema: { type: 'object', properties: { thread: S, today: S, live: S, boxes: { type: 'array', items: { type: 'array', items: S } } } } });
       ov = r.json;
     } catch (e) { if (!e.mock) log.warn?.(`[index] overview failed: ${e.message}`); }
@@ -660,16 +660,16 @@ export function createMovesEngine({ ai, treg, log = console } = {}) {
     const W = 15, box = (i, r) => (boxes[i][r] || '').slice(0, W).padEnd(W);
     const diagram = [GROUPS.map((g) => g[1].slice(0, W + 2).padEnd(W + 4)).join(' '), GROUPS.map(() => '┌' + '─'.repeat(W + 2) + '┐').join('  '),
       ...[0, 1, 2, 3].map((r) => GROUPS.map((_, i) => `│ ${box(i, r)} │`).join(r === 1 ? '─>' : '  ')), GROUPS.map(() => '└' + '─'.repeat(W + 2) + '┘').join('  '),
-      GROUPS.map((_, i) => `${counts[i]} moves`.padEnd(W + 4)).join(' ')].join('\n');
+      GROUPS.map((_, i) => `${counts[i]} plays`.padEnd(W + 4)).join(' ')].join('\n');
     const sections = [
-      { h: 'What this is', kind: 'other', blocks: [p(`Working documents from the ShopOS team, Brew’s build crew, one per marketing discipline or signal, every one built on ${name}'s real catalogue, prices, claims, customers, competitors and what people say about it. New moves are added as Brew hears new things. Read this index, then open the move you want to see.`)] },
+      { h: 'What this is', kind: 'other', blocks: [p(`Working documents from our team, one per marketing discipline or signal, every one built on ${name}'s real catalogue, prices, claims, customers, competitors and what people say about it. New plays are added as we hear new things. Read this index, then open the play you want to see.`)] },
       { h: 'How to read it', kind: 'other', blocks: [p(`The six groups follow a customer from first search to repeat order. Each document ends with a 30-day deployment table and the metric we are held to.`)] },
       { h: 'The end to end', kind: 'other', blocks: [{ ...p(''), t: 'diagram', text: diagram }, ...(ov ? [p(ov.thread), p(ov.today)] : [])] },
-      ...GROUPS.map(([g, h, sub], gi) => ({ h, kind: 'other', blocks: [p(`**${sub} · ${counts[gi]} MOVES**`), { ...p(''), t: 'table', head: ['#', 'MOVE', 'WHAT IT GIVES', 'STAT'],
+      ...GROUPS.map(([g, h, sub], gi) => ({ h, kind: 'other', blocks: [p(`**${sub} · ${counts[gi]} PLAYS**`), { ...p(''), t: 'table', head: ['#', 'PLAY', 'WHAT IT GIVES', 'STAT'],
         rows: list.filter((x) => x.s.group === g).map((x) => x.m ? [pad(x.s.n), x.m.title, x.m.gives, `${x.m.stat} · ${x.m.statLabel}`] : [pad(x.s.n), `${x.s.discipline} (in progress)`, 'Being written.', '']) }] })),
-      { h: 'What is live', kind: 'other', blocks: [{ ...p(''), t: 'callout', title: 'DAY 30', text: ov?.live || `The first ten moves are live for ${name}.` }] }];
+      { h: 'What is live', kind: 'other', blocks: [{ ...p(''), t: 'callout', title: 'DAY 30', text: ov?.live || `The first ten plays are live for ${name}.` }] }];
     const done = list.filter((x) => x.m).length;
-    return { n: 0, group: 'index', skill: null, kicker: 'THE PLAYBOOK · INDEX', title: `The moves for ${name}`, stat: String(done), statLabel: `MOVES WRITTEN BY ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toUpperCase()}`, /* no count in the title: the playbook keeps growing (listening, festival and weekly moves) */
+    return { n: 0, group: 'index', skill: null, kicker: 'THE PLAYBOOK · INDEX', title: `The plays for ${name}`, stat: String(done), statLabel: `PLAYS WRITTEN BY ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toUpperCase()}`, /* no count in the title: the playbook keeps growing (listening, festival and weekly moves) */
       gives: `Every marketing discipline, run for ${name}, end to end, by one team.`, live: ov?.live || '', sections, sources: [], factsUsed: [], toConfirm: [],
       meta: { model: ov ? 'claude-opus-5-5' : 'deterministic', at: new Date().toISOString(), provisional: done < N, written: done, total: N, verified: false, issues: [] } };
   }

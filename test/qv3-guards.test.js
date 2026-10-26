@@ -19,9 +19,9 @@ test('References and the rival read are the team\'s (and its jam guests\' for Re
   assert.match(s, /\(deck\|pulse\|engine\|remixes\|learning\|ask\|tuning\|rivals\)\$/);
 });
 
-test('in Slack, approving and saying yes to a make need the brand\'s team; anyone else is told to open it in Brew', () => {
+test('in Slack, approving and saying yes to a make need the brand\'s team; anyone else is told to open the jam', () => {
   assert.match(src('feed-service.js'), /if \(\['approve', 'apply'\]\.includes\(kind\) && !\(user\.email && o\.isMemberEmail && await o\.isMemberEmail\(br\.slug, user\.email\)/);
   const r = src('slack-routes.js');
-  assert.match(r, /if \(r\?\.notMember\) return tell\('Only the brand’s team approves in Brew/);
+  assert.match(r, /if \(r\?\.notMember\) return tell\('Only the brand’s team can approve this\. Open the jam/);
   assert.match(r, /if \(r\?\.notMember\) return tell\('Only the brand’s team says yes to a make/);
 });

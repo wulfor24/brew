@@ -10,6 +10,7 @@
 import { loadView } from './jam2/brandbook.js';
 import { zipBuffer } from './pdf/render.js';
 import { faceLabel } from './font-meta.js';
+import { PRODUCT_NAME } from './product-name.js'; // the product's public name, where copy has to name it
 
 const one = (s, n = 400) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const famName = { 'ad-image': 'Image ads', 'ad-video': 'Video ads', 'ad-carousel': 'Carousel ads', 'ig-post': 'Instagram posts', 'ig-reel': 'Instagram reels', 'ig-carousel': 'Instagram carousels', tiktok: 'TikTok', youtube: 'YouTube films', 'product-photo': 'Product photos', 'site-photo': 'On their site', email: 'Emails' };
@@ -53,14 +54,14 @@ export const fallbackOf = (f = '') => /sans|grotesk|mono/i.test(f) ? (/mono/i.te
 export function toJSON(v = {}, { origin = '' } = {}) {
   const abs = (p) => (p && /^\//.test(p) ? origin + p : p || null);
   const lib = Object.fromEntries(Object.entries(v.library || {}).map(([f, xs]) => [f, xs.map((x) => ({ image: abs(x.src), video: abs(x.video), why: x.why || null, words: x.words || null, proof: x.proof || null, original: x.url || null }))]));
-  return { $schema: 'https://brew.joinsquareup.com/schema/brand-book-1.json', name: nameOf(v), site: v.host ? `https://${v.host}` : null, made: 'Brew, from the brand’s own site, ads and posts, plus its team’s edits',
+  return { $schema: 'https://brew.joinsquareup.com/schema/brand-book-1.json', name: nameOf(v), site: v.host ? `https://${v.host}` : null, made: `${PRODUCT_NAME}, from the brand’s own site, ads and posts, plus its team’s edits`,
     cover: { ...v.cover, logo: abs(v.cover?.logo || v.kit?.logo), mark: abs(v.cover?.mark || v.kit?.mark) }, story: v.story || null,
     kit: { logo: abs(v.kit?.logo), mark: abs(v.kit?.mark), colors: v.kit?.roles || [], fonts: v.kit?.fonts || {}, typeUse: v.typeUse || null },
     voice: v.tone || null, words: { ...(v.words || {}), never: [...new Set([...(v.neverSay || []), ...(v.never || [])])] }, claims: (v.claims || []).map((c) => ({ text: c.text, source: c.src || null })),
     look: v.look || null, playbooks: v.playbooks || [], library: lib, products: v.products ? { ...v.products, heroes: (v.products.heroes || []).map((p) => ({ ...p, img: abs(p.img) })) } : null,
     people: v.people || null, proof: v.proof || null, channels: v.channels || [], markets: v.markets || null, rivals: v.rivals || [], naming: v.naming || null,
     /* the rules every maker follows: must = the work can't go out breaking it; where = the channels it applies to (none = everywhere) */
-    rules: (v.rulebook || []).filter((r) => !r.off).map((r) => ({ group: r.group, rule: r.text, strength: r.strength === 'block' ? 'must' : 'prefer', where: r.where?.channels || [], ...(r.words?.length ? { words: r.words } : {}), source: r.src === 'suggested' && !r.confirmed ? 'suggested by Brew' : 'the team' })) };
+    rules: (v.rulebook || []).filter((r) => !r.off).map((r) => ({ group: r.group, rule: r.text, strength: r.strength === 'block' ? 'must' : 'prefer', where: r.where?.channels || [], ...(r.words?.length ? { words: r.words } : {}), source: r.src === 'suggested' && !r.confirmed ? 'suggested by us' : 'the team' })) };
 }
 
 /* design tokens in the W3C format (Figma variables, Style Dictionary), and the same as CSS */
