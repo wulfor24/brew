@@ -12,7 +12,7 @@ const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
 test('every picture and clip is made by Sloosh (27 Oct): no Gemini image, Veo or Higgsfield maker behind it, never a weaker fallback', () => {
   const srv = read('server.js');
   assert.match(srv, /const rawImage = async \(o\) => \{[^\n]*slooshMake\.image\(/, 'the image guard\'s model is Sloosh');
-  assert.match(srv, /setMakers\(\{ \.\.\.slooshMake, firstDraft:/, 'every clip and Studio make is Sloosh');
+  assert.match(srv, /setMakers\(\{ \.\.\.slooshMake, image: withSlug\(slooshMake\.image\)[^\n]*firstDraft:/, 'every clip and Studio make is Sloosh');
   assert.doesNotMatch(srv, /rawGeminiImage|geminiOnce|IMAGE_FALLBACK/, 'no Gemini image chain left');
   assert.doesNotMatch(srv, /createFinals\(\{[^\n]*geminiImage/, 'finals have no Gemini fallback');
   const md = read('media.js'); assert.match(md, /if \(makers\?\.video\)/); assert.match(md, /VEO_LOCAL/, 'Veo only for a local run on purpose');
