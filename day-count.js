@@ -53,12 +53,26 @@ export function healDays(text, events, nowMs, zone = {}) {
     .replace(/\b(\d+)\s+days?\s+(until|till|to)\s+/gi, (m, n, w) => (near(n) ? `${daysWords(d)} ${w} ` : m))
     .replace(/\b(within|in the next|in)\s+(\d+)\s+days?\b/gi, (m, w, n) => (near(n) && d > 0 ? `${w} ${daysWords(d)}` : m));
 }
+/* a margin note's countdown (QV round 2, 26 Oct: "diwali is 14 days away. start prep." and "critical twelve days." beside the Karva
+   Chauth card, 2 days out): a spelled count reads as digits, an event it names is counted today, and a countdown that names no event
+   (nothing to count it from) leaves the note, sentence by sentence; a note left with nothing is no note */
+const SPELL = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30 };
+const COUNTDOWN = /\b\d+\s+days?\s+(?:away|left|to go|out|until|till|from (?:today|now))\b|\b(?:critical|final|last|only|just)\s+\d+\s+days?\b/i;
+export function healNote(text, events, nowMs, zone = {}) {
+  if (typeof text !== 'string' || !/days?\b/i.test(text)) return text;
+  const t = text.replace(new RegExp(`\\b(${Object.keys(SPELL).join('|')})(?:[ -](one|two|three|four|five|six|seven|eight|nine))?\\s+(days?)\\b`, 'gi'), (m, a, b, d) => `${SPELL[a.toLowerCase()] + (b ? SPELL[b.toLowerCase()] || 1 : 0)} ${d}`);
+  const healed = healDays(t, events, nowMs, zone), named = (events || []).some((e) => e.names.some((n) => new RegExp(`\\b${esc(n)}\\b`, 'i').test(healed)));
+  if (named || !COUNTDOWN.test(healed)) return healed;
+  return healed.split(/(?<=[.!?])\s+/).filter((x) => !COUNTDOWN.test(x)).join(' ').trim();
+}
 /* every word a card or slide shows, healed in place on a copy (title, sub, rows, the proof's why/how; a slide's h, p and card) */
 export function healDaysIn(o, events, nowMs, zone = {}) {
   if (!o || typeof o !== 'object' || !events?.length) return o;
   const h = (x) => healDays(x, events, nowMs, zone), out = { ...o };
   for (const k of ['title', 'sub', 'h', 'p', 'card', 'forUs']) if (typeof out[k] === 'string') out[k] = h(out[k]);
   if (Array.isArray(out.rows)) out.rows = out.rows.map((r) => (Array.isArray(r) ? r.map((x) => h(x)) : r));
+  if (typeof out.note === 'string') out.note = healNote(out.note, events, nowMs, zone) || undefined;
+  else if (out.note && typeof out.note === 'object' && typeof out.note.h === 'string') { const nh = healNote(out.note.h, events, nowMs, zone); out.note = nh ? { ...out.note, h: nh, ...(typeof out.note.b === 'string' ? { b: healNote(out.note.b, events, nowMs, zone) } : {}) } : undefined; }
   if (out.detail && typeof out.detail === 'object') out.detail = { ...out.detail, ...(Array.isArray(out.detail.why) ? { why: out.detail.why.map(h) } : {}), ...(Array.isArray(out.detail.how) ? { how: out.detail.how.map(h) } : {}) };
   return out;
 }

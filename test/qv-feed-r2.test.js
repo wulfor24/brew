@@ -8,6 +8,7 @@ import { draftFits, draftName, draftView, notHeadline, noPlanNo } from '../draft
 import { aiTextsOf, fromAi, dropAiQuotes } from '../quote-guard.js';
 import { ownAdsSay, oosSay, ownSayIn, outInRows } from '../own-say.js';
 import { stockSay } from '../stock-say.js';
+import { healNote, healDaysIn, eventsFor } from '../day-count.js';
 import { heardCards } from '../social-feed.js';
 import { isCdn, cdnExpiry, cdnDead, keepName, createCdnKeep, keepRes } from '../cdn-keep.js';
 
@@ -152,4 +153,20 @@ test('contradictions: own ads, out of stock and a counted "3 other items" are sa
     'Anti-Grey Hair Serum Pack of 2, Anti-Hair Fall Intensive Shampoo - 15ml and 2 more are sold out; 1 other item is low on stock.');
   assert.ok(!/items is\b/.test(stockSay('Anti-Grey Hair Serum Pack of 2 and 3 other items are low on stock.', [['Anti-Grey Hair Serum Pack of 2', 'Sold out']])), 'never "items is"');
   assert.match(read('feed-service.js'), /Object\.assign\(rest, ownSayIn\(\{ title: rest\.title/);
+});
+
+/* ---------- 7. margin notes count today ---------- */
+test('margin notes: a countdown is counted today in the brand’s zone; one naming no event leaves the note', () => {
+  const now = Date.parse('2026-10-26T15:00:00Z'), z = { country: 'IN', timezone: 'Asia/Kolkata' };
+  const ev = eventsFor(z, now, [{ name: 'Diwali', date: '2026-11-08' }, { name: 'Karva Chauth', date: '2026-10-28' }]);
+  assert.equal(healNote('diwali is 14 days away. start prep.', ev, now, z), 'diwali is 13 days away. start prep.');
+  assert.equal(healNote('Diwali is fourteen days away', ev, now, z), 'Diwali is 13 days away');
+  assert.equal(healNote('rivals have 958 live ads. critical twelve days.', ev, now, z), 'rivals have 958 live ads.');
+  assert.equal(healNote('critical twelve days.', ev, now, z), '');
+  assert.equal(healNote('results in 7 days', ev, now, z), 'results in 7 days', 'a plan length is no countdown');
+  const card = healDaysIn({ title: 'x', note: { k: 'PLAY 04', h: 'diwali is 14 days away. start prep.' } }, ev, now, z); assert.equal(card.note.h, 'diwali is 13 days away. start prep.');
+  assert.equal(healDaysIn({ title: 'x', note: { k: 'TIMELY PLAY', h: 'critical twelve days.' } }, ev, now, z).note, undefined, 'nothing left: no note');
+  /* in the US zone, a day earlier at the same instant */
+  const us = { country: 'US', timezone: 'America/Los_Angeles' }, evUS = eventsFor(us, Date.parse('2026-10-27T03:00:00Z'), [{ name: 'Diwali', date: '2026-11-08' }]);
+  assert.equal(healNote('diwali is 9 days away', evUS, Date.parse('2026-10-27T03:00:00Z'), us), 'diwali is 13 days away');
 });
