@@ -782,3 +782,5 @@
 .jp .sv-beats li > :not(small):not(b){display:none}
 .jp .sv-beats li small{flex:none;color:var(--fg-3);font-size:11.5px}
 .jp .sv-beats li b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.jp .jp-stage-in .pm.pm-sv{background:none;box-shadow:none;padding:0}
+.jp .jp-for{text-align:left}
