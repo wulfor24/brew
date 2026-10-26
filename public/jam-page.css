@@ -4,7 +4,7 @@
    renderers) in the prototype's look. The brand wash takes the brand's own colours (--brand-1..3 set on the root by app.js). */
 .jp{--bg:#f6f6f6; --card:#ffffff; --surface:#f2f2f2; --surface-2:#e9e9e9;
   --line:#e6e6e6; --fg:#0a0a0a; --fg-2:#505050; --fg-3:#808080; --on-fg:#fafafa;
-  --ok:#15803d; --warn:#b45309; --ok-bg:rgba(21,128,61,.10); --warn-bg:rgba(180,83,9,.10);
+  --ok:#15803d; --warn:#b45309; --ok-bg:rgba(21,128,61,.10); --warn-bg:rgba(180,83,9,.10); --bad:#b91c1c; --bad-bg:rgba(185,28,28,.07);
   --stage:#ececee; --scrim:rgba(20,20,20,.28);
   --sh-float:0 0 0 1px rgba(0,0,0,.06),0 18px 40px rgba(0,0,0,.12);
   --sh-piece:0 1px 2px rgba(0,0,0,.06),0 24px 60px rgba(0,0,0,.14); --wash-a:.20;
@@ -20,7 +20,7 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .jp{color-scheme:dark;
   --bg:#0a0a0a; --card:#1b1b1b; --surface:#232323; --surface-2:#2b2b2b;
   --line:#262626; --fg:#fafafa; --fg-2:#a3a3a3; --fg-3:#737373; --on-fg:#0a0a0a;
-  --ok:#4ade80; --warn:#e0a63c; --ok-bg:rgba(74,222,128,.13); --warn-bg:rgba(224,166,60,.14);
+  --ok:#4ade80; --warn:#e0a63c; --ok-bg:rgba(74,222,128,.13); --warn-bg:rgba(224,166,60,.14); --bad:#f87171; --bad-bg:rgba(248,113,113,.12);
   --stage:#111111; --scrim:rgba(0,0,0,.6);
   --sh-float:0 0 0 1px rgba(255,255,255,.08),0 18px 40px rgba(0,0,0,.5);
   --sh-piece:0 0 0 1px rgba(255,255,255,.06),0 24px 60px rgba(0,0,0,.55);
@@ -28,7 +28,7 @@
 :root[data-theme="dark"] .jp{color-scheme:dark;
   --bg:#0a0a0a; --card:#1b1b1b; --surface:#232323; --surface-2:#2b2b2b;
   --line:#262626; --fg:#fafafa; --fg-2:#a3a3a3; --fg-3:#737373; --on-fg:#0a0a0a;
-  --ok:#4ade80; --warn:#e0a63c; --ok-bg:rgba(74,222,128,.13); --warn-bg:rgba(224,166,60,.14);
+  --ok:#4ade80; --warn:#e0a63c; --ok-bg:rgba(74,222,128,.13); --warn-bg:rgba(224,166,60,.14); --bad:#f87171; --bad-bg:rgba(248,113,113,.12);
   --stage:#111111; --scrim:rgba(0,0,0,.6);
   --sh-float:0 0 0 1px rgba(255,255,255,.08),0 18px 40px rgba(0,0,0,.5);
   --sh-piece:0 0 0 1px rgba(255,255,255,.06),0 24px 60px rgba(0,0,0,.55);
@@ -859,3 +859,91 @@
 .jp .st-asset .as-meta.lg.is-tighter:not(.is-story) .am-text{max-height:1lh!important}
 /* the frame no longer guesses a width from the window height (it pinned a short window's ad at 240px): fitAd sizes the ad */
 .jp .jp-stage-in .cs-stage .cs-frame.is-preview{width:100%!important}
+
+/* ---------- The panel, every state in one look (26 Oct, Param: "better the UI for the right side panel, for each state") ----------
+   Chat, Set-up, Before it goes, Brief details: one header pattern (back link, the view's name, the width toggle), one gutter, one
+   type scale (15 / 14 / 12.5), one radius (12), and quiet rows instead of boxes inside boxes. */
+.jp .st-panel-b{gap:20px}
+.jp .jp-back-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;position:sticky;top:calc(-1 * var(--s4));z-index:3;margin:calc(-1 * var(--s4)) calc(-1 * var(--s4)) 0;padding:12px var(--s4);background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.jp .jp-back-row .jp-pback{text-decoration:none;color:var(--fg-2);font-size:13px;gap:4px}
+.jp .jp-back-row .jp-pback:hover{color:var(--fg)}
+.jp .jp-ptitle{margin:0;font-size:15px;font-weight:600;letter-spacing:-.005em;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jp .jp-back-row .jp-wide{grid-column:3}
+/* chat: Brew's messages read as text beside its mark; yours sit right in a soft bubble; a fix you pressed is one quiet line */
+.jp .it-log{gap:14px}
+.jp .lgm{display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.5}
+.jp .lgm.ai > .face{display:none}
+.jp .lgm.ai::before{content:"b";flex:none;width:22px;height:22px;margin-top:1px;border-radius:7px;display:grid;place-items:center;font:700 11px/1 var(--font);background:var(--fg);color:var(--on-fg)}
+.jp .lgm.ai > div,.jp .lgm.ai > p{padding:0;background:none;border-radius:0;max-width:none;min-width:0;flex:1}
+.jp .lgm.ai p{margin:0;color:var(--fg)}
+.jp .lgm.ai p + p{margin-top:6px}
+.jp .lgm.ai .lg-made{margin-top:6px;font-size:12.5px;color:var(--fg-3);display:flex;align-items:center;gap:6px}
+.jp .lgm.you{justify-content:flex-end}
+.jp .lgm.you > p{max-width:82%;padding:8px 12px;border-radius:14px 14px 4px 14px;background:var(--surface-2);color:var(--fg)}
+.jp .lgm.you.is-fix > p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:13px;color:var(--fg-2);background:var(--surface);cursor:default}
+.jp .lgm.you.is-fix > p:hover{-webkit-line-clamp:unset}
+.jp .lgm-k{display:inline-flex;align-items:center;gap:4px;margin-right:6px;font-weight:600;color:var(--fg)}
+.jp .lgm-k svg{width:12px;height:12px}
+.jp .lgm.ai.pending p{color:var(--fg-2);display:flex;align-items:center;gap:8px}
+.jp .st-jm{font-size:14px}
+/* Brew's line on top of the chat: the line, three chips, then quiet links; "N to look at" is a status row, not a loose link */
+.jp .jp-ai{padding-bottom:16px;border-bottom:1px solid var(--line)}
+.jp .jp-ai-links .jp-lnk.is-warn{order:-1;flex-basis:100%;justify-content:space-between;text-decoration:none;padding:9px 12px;border-radius:12px;background:var(--warn-bg);color:var(--warn);font-weight:500;font-size:13.5px}
+.jp .jp-ai-links .jp-lnk.is-warn::after{content:"›";font-size:16px;line-height:1}
+.jp .jp-ai-links .jp-lnk.is-warn:hover{color:var(--warn);filter:brightness(.97)}
+/* Before it goes: what is left on top (each with its own Fix it), the parts as quiet rows, the rest folded */
+.jp .pp{display:flex;flex-direction:column;gap:16px;padding:0;border:0;background:none;box-shadow:none}
+.jp .pp > header{display:flex;flex-direction:column;gap:2px}
+.jp .pp > header b{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:var(--fg)}
+.jp .pp > header b svg{color:var(--warn)}
+.jp .pp.is-ready > header b svg{color:var(--ok)}
+.jp .pp > header span{font-size:12.5px;color:var(--fg-3)}
+.jp .pp-checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.jp .pp-checks li{display:grid;grid-template-columns:16px 1fr;gap:4px 8px;align-items:start;padding:7px 0;font-size:13px;line-height:1.45;color:var(--fg-2)}
+.jp .pp-checks li > svg{margin-top:2px;color:var(--ok)}
+.jp .pp-checks li.bad > svg{color:var(--bad)} .jp .pp-checks li.warn > svg{color:var(--warn)}
+.jp .pp-checks li .linkbtn{grid-column:2;justify-self:start;font-size:13px;font-weight:600;color:var(--fg);text-decoration:underline;text-underline-offset:3px}
+.jp .pp-checks.is-first{gap:8px}
+.jp .pp-checks.is-first li{padding:10px 12px;border-radius:12px;background:var(--surface);color:var(--fg)}
+.jp .pp-checks.is-first li.bad{background:var(--bad-bg)}
+.jp .pp-checks.is-first li.warn{background:var(--warn-bg)}
+.jp .pp dl{margin:0;display:flex;flex-direction:column}
+.jp .pp-r{padding:10px 0;border:0;border-top:1px solid var(--line);margin:0;background:none}
+.jp .pp-r:first-child{border-top:0}
+.jp .pp-r dt{display:flex;align-items:baseline;gap:8px;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3)}
+.jp .pp-r dt small{font-weight:500;letter-spacing:0;text-transform:none;margin-left:auto;font-variant-numeric:tabular-nums}
+.jp .pp-r dt .pp-by{margin-left:0;color:var(--fg-3);font-style:italic}
+.jp .pp-r dd{margin:4px 0 0;font-size:14px;line-height:1.45;color:var(--fg);overflow-wrap:anywhere;border-radius:8px;cursor:text}
+.jp .pp-r dd:hover{background:var(--surface);box-shadow:0 0 0 4px var(--surface)}
+.jp .pp-r.is-bad dt{color:var(--bad)} .jp .pp-r.is-warn dt{color:var(--warn)}
+.jp .pp-why{margin:6px 0 0;display:flex;gap:6px;font-size:12.5px;color:var(--fg-2)}
+.jp .pp-places small,.jp .pp-film small{font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3)}
+.jp .pp > footer{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding-top:12px;border-top:1px solid var(--line)}
+.jp .pp > footer small{font-size:12px;color:var(--fg-3)}
+.jp .tbm-share{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:var(--surface);border:0}
+.jp .tbm-share span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.jp .tbm-share small{font-size:12.5px;color:var(--fg-3)}
+.jp .dt-h{margin:8px 0 0;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3)}
+.jp .dt-checks{list-style:none;margin:0;padding:0;font-size:13px;color:var(--fg-2)}
+.jp .dt-checks li{display:flex;gap:8px;padding:5px 0}
+/* Set-up (Studio's sentence, and the non-Studio "What to make"): the sentence at a reading size, the pills quieter */
+.jp .cs-panel .cs-sent{font-size:17px;line-height:1.95;color:var(--fg-2)}
+.jp .cs-panel .cs-tok{font-size:inherit}
+.jp .cs-panel .cs-sec{gap:10px}
+.jp .jp-field{display:flex;flex-direction:column;gap:6px}
+.jp .jp-lab{font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3)}
+.jp .jp-prow{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:12px;background:var(--surface);text-align:left}
+.jp button.jp-prow:hover{box-shadow:inset 0 0 0 1px var(--fg-3)}
+.jp .jp-prow img{width:36px;height:36px;border-radius:8px;object-fit:cover;background:var(--card);flex:none}
+.jp .jp-prow span{flex:1;min-width:0;display:flex;flex-direction:column}
+.jp .jp-prow b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jp .jp-prow small{font-size:12.5px;color:var(--fg-3)}
+.jp .jp-plist{display:flex;flex-direction:column;gap:2px;max-height:300px;overflow:auto;padding:4px;border-radius:12px;box-shadow:inset 0 0 0 1px var(--line)}
+.jp .jp-plist .jp-prow{background:none}
+.jp .jp-plist .jp-prow[aria-pressed="true"]{background:var(--surface)}
+.jp .jp-plist .jp-prow.is-out{opacity:.5}
+.jp .jp-fmts{display:flex;gap:6px;flex-wrap:wrap}
+.jp .jp-fmts button{height:32px;padding:0 12px;border-radius:999px;font-size:13.5px;box-shadow:inset 0 0 0 1px var(--line);background:var(--card)}
+.jp .jp-fmts button small{color:var(--fg-3);margin-left:4px}
+.jp .jp-fmts button[aria-pressed="true"]{background:var(--fg);color:var(--on-fg);box-shadow:none}
+.jp .jp-fmts button[aria-pressed="true"] small{color:inherit;opacity:.7}

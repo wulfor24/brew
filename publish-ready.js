@@ -37,6 +37,17 @@ function pricesOk(text, src, catalog = []) {
     if (known.has(r) || s.includes(String(a).toLowerCase()) || s.includes(String(r))) continue; bad.push(m[0].trim()); }
   return [...new Set(bad)];
 }
+/* a real price, but another product's (26 Oct, Arata: "Combo at ₹601" printed on the 15 ml stick's slide): the piece shows one
+   product, so a price on it is that product's own, unless the words name the other product too (a bundle upsell) */
+function otherPrices(text, product, catalog = []) {
+  const row = product?.name ? (catalog || []).find((x) => (x?.t || x?.name) === product.name) : null; if (!row) return [];
+  const mine = new Set(['price', 'compareAt', 'compare_at', 'p'].map((k) => row[k]).filter((v) => v != null && Number.isFinite(num(v))).map((v) => Math.round(num(v)))); if (!mine.size) return [];
+  const low = String(text || '').toLowerCase(), out = [];
+  for (const m of String(text).matchAll(PRICE)) { const r = Math.round(num(m[2] || m[3])); if (!Number.isFinite(r) || mine.has(r)) continue;
+    const other = (catalog || []).find((x) => x !== row && ['price', 'compareAt', 'compare_at', 'p'].some((k) => x?.[k] != null && Math.round(num(x[k])) === r));
+    if (other && !low.includes(String(other.t || other.name || '').toLowerCase().slice(0, 24))) out.push({ said: m[0].trim(), of: other.t || other.name }); }
+  return out;
+}
 /* a star rating in the words is backed only when the brand's own reviews say that number */
 const RATING = /(\d(?:\.\d)?)\s*(?:★|⭐|stars?\b|\/\s*5\b|out of 5)|rated\s+(\d(?:\.\d)?)/gi;
 function ratingsOk(text, src) {
@@ -109,10 +120,11 @@ export function readyOf({ family, action = '', pkg = {}, card = {}, product = nu
   /* every word a shopper reads: the parts, and the words in the picture itself */
   const seen = [...parts.filter((x) => !x.link).map((x) => x.value), p.overlay, ...(words || [])].filter(Boolean).join('\n');
   const checks = [];
-  const cf = claimFlags(seen, source); checks.push({ k: 'claims', ok: !cf.length, t: cf.length ? `Claims your store doesn’t make: ${cf.slice(0, 3).map((f) => f.why).join('; ')}` : 'No made-up codes, guarantees or timed results' });
+  const cf = claimFlags(seen, source); checks.push({ k: 'claims', ok: !cf.length, phrases: cf.map((f) => f.phrase), t: cf.length ? `Claims your store doesn’t make: ${cf.slice(0, 3).map((f) => f.why).join('; ')}` : 'No made-up codes, guarantees or timed results' });
   const written = parts.filter((x) => !x.link && !x.opts && !x.tags && x.k !== 'alt').map((x) => x.value).filter(Boolean).join('\n\n'); /* hashtags and alt text are not sentences: "#Arata" then "Arata Curl Serum" is no repeated word */ /* a button in caps in the picture is an ad's button, not shouting */
   const lf = copyFlags(written, { source, names: [brand, ...(catalog || []).map((x) => x?.t || x?.title)].filter(Boolean) }); checks.push({ k: 'copy', ok: !lf.length, t: lf.length ? `Reads wrong: ${lf.slice(0, 2).join('; ')}` : 'Reads right' });
-  const bp = pricesOk(seen, source, catalog); checks.push({ k: 'price', ok: !bp.length, t: bp.length ? `${bp.join(', ')} isn’t a price on your store today` : 'Every price is today’s' });
+  const bp = pricesOk(seen, source, catalog), wp = bp.length ? [] : otherPrices(seen, product, catalog);
+  checks.push(bp.length ? { k: 'price', ok: false, t: `${bp.join(', ')} isn’t a price on your store today` } : wp.length ? { k: 'price', ok: false, phrases: wp.map((x) => x.said), t: `${wp[0].said} is the price of ${tidy(wp[0].of, 50)}, not of ${tidy(product.name, 50)} shown here` } : { k: 'price', ok: true, t: 'Every price is today’s' });
   const br = ratingsOk(seen, source); checks.push({ k: 'rating', ok: !br.length, t: br.length ? `“${br.join('”, “')}” isn’t from your own reviews` : 'No rating that isn’t yours', fix: br.length ? 'redo' : null });
   /* a picture whose words Brew didn't keep (made before it kept them) was never read: say so, never "no problems" */
   if (!wordsRead) { const i = checks.findIndex((c) => c.k === 'price'); for (const c of checks) if (['price', 'rating', 'claims'].includes(c.k) && c.ok) c.t = `${c.t} in the words above`; checks.splice(i, 0, { k: 'picture', ok: false, soft: true, t: 'The words in the picture weren’t read for this version: check its prices, ratings and claims yourself, or Redo it' }); }

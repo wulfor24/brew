@@ -35,16 +35,26 @@
       spec: { ...D, ask: D.ask || '', direction: D.direction || X.direction?.value || '', cast: D.cast || (X.cast?.shown && X.cast.value !== 'none' ? X.cast.label : X.cast?.value === 'none' ? 'No people' : null), ref: made0 ? made0.ref || null : X.reference?.value?.label || null, quality: D.quality || ((bd.takes || []).length ? 'standard' : 'preview') /* the first take is a cheap low-res preview of the idea (3.4); the full one comes after it looks right */ },
       prefs: d.prefs || {}, kept: d.kept || {}, brand: d.context?.slots?.brand ? (window.B?.brand?.name || '') : '', busy: jam.busy || {}, made: !!ch.versions?.some((v) => v.studio) /* made here: a Studio version in this v1 jam */, earlier: (bd.takes || []).filter((x) => x.file).slice(-3).reverse().map((x) => ({ id: x.id, file: x.studio?.kind === 'video' ? (x.cover || x.poster || x.file) : x.file, video: x.studio?.kind === 'video', label: x.studio?.label || 'A take', at: x.at })), failed: Object.values(jam.busy || {}).find((b) => b?.error)?.error || null }); /* a make that stopped says so after a reload too */
     if (!S.made) S.spec = { ...S.spec, ...loadPick() }; /* what was picked here before a reload */
+    if (!S.made) follow(ch, false); /* the jam's own product and size win over this panel's defaults */
     S.open = !S.made; /* made already: the set-up folds into one line under the frame */
     paint(); price(); if (anyBusy()) poll();
   }
+  /* the jam moved (a product or a size said in the chat, picked on the stage, or set on another device): the set-up follows it,
+     unless a make is running or this one is already made (Redo makes what was made) */
+  function follow(ch, repaint = true) { if (!S?.spec || !ch || S.making || S.working || Date.now() - (S.syncAt || 0) < 8000 /* our own pick is on its way to the jam */) return false; let moved = false;
+    const pn = ch.product?.name; if (pn && pn !== S.spec.product?.name) { const tile = (S.products || []).find((x) => x.name === pn); S.spec = { ...S.spec, product: { ...(S.spec.product || {}), ...(tile || {}), name: pn, img: tile?.img || ch.product.img || S.spec.product?.img || null } }; moved = true; }
+    const r = ['meta_ad', 'social'].includes(ch.family) ? ch.pkg?.format : null, cur = S.spec.sizes?.[0] ? SIZES?.[S.spec.sizes[0]]?.ratio : null;
+    if (r && cur && r !== cur && S.spec.kind !== 'video') { const id = [...(SIZE_OPTS.image || []), ...Object.keys(SIZES || {})].find((k) => SIZES?.[k]?.ratio === r); if (id) { S.spec = { ...S.spec, sizes: [id] }; moved = true; } }
+    if (moved && repaint) price(); return moved; }
   const anyBusy = () => !!S && Object.values(S.busy || {}).some((b) => b && b.op && !b.error);
   function price() { clearTimeout(planT); if (!S?.spec) return; S.plan = null; paint(); const mine = S, spec = S.spec;
     planT = setTimeout(async () => { const r = await api('POST', `/api/jam2/jams/${mine.jid}/studio/plan`, { spec }); if (S === mine && S.spec === spec) { S.plan = r?.plan || { error: r?.error || 'No price yet.' }; paint(); } }, 250); }
   /* who is on camera changes in the direction too: its sentence about the old cast becomes the new one (never two that disagree) */
   const set = (patch) => { if ('cast' in patch && S.spec?.direction) { const was = S.spec.cast || S.slots?.cast?.label || '', now = patch.cast || '';
       if (was && S.spec.direction.includes(was)) patch = { ...patch, direction: S.spec.direction.replace(`${was}.`, now ? `${now}.` : '').replace(was, now).replace(/\s{2,}/g, ' ').trim() }; }
-    S.spec = { ...S.spec, ...patch }; S.pop = null; savePick(); price(); };
+    S.spec = { ...S.spec, ...patch }; S.pop = null; savePick(); price();
+    /* the product and the size are the jam's, not this panel's: saved on the jam, so every part of the page says the same */
+    const fmt = patch.sizes?.[0] ? SIZES?.[patch.sizes[0]]?.ratio : null; if (patch.product?.name || fmt) S.syncAt = Date.now(); if (patch.product?.name || fmt) H.setup?.(S.chId, { ...(patch.product?.name ? { product: { name: patch.product.name, img: patch.product.img || null } } : {}), ...(fmt ? { format: fmt } : {}) }); };
   /* the set-up picked stays picked through a reload (26 Oct: a Story size went back to Feed): kept in this browser per jam, and
      brought back only when every pick is still offered (a style taken away or a size gone drops them all, never half a set-up) */
   const PICK_KEYS = ['kind', 'sizes', 'style', 'quality', 'count', 'seconds'];
@@ -288,5 +298,5 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S?.pop) { if (document.activeElement?.closest?.('.cs-pop')) document.activeElement.blur(); /* the page holds repaints while a field has focus */ S.pop = null; paint(); } });
   const reset = () => { clearTimeout(pollT); clearTimeout(planT); S = null; };
   const openSetup = () => { if (!S) return; S.open = true; H.showSetup?.(); paint(); };
-  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, html, click, input, state, reset, openSetup, redo: () => go(true), make: () => go(false) /* the bar's Make it */, select: (i) => { if (S) S.sel = +i || 0; }, fullPrice: () => fullPrice(), makeFull: () => makeFull(), /* a version restored: Redo, Made with and the full one follow the version on the stage, not the newest take (QV 25 Oct) */ respec: (v) => { if (!S?.spec || !v) return; const sl = (v.slides || []).map((x) => x.style).filter(Boolean); S.spec = { ...S.spec, ...(v.quality ? { quality: v.quality } : {}), ...(v.style ? { style: v.style } : {}), ...(v.size ? { size: v.size } : {}), ...(sl.length > 1 ? { set: sl } : {}) }; S.full = null; S.sel = 0; price(); }, afterPaint: () => toSel(false), ask, adjustHtml };
+  window.CreativeStage = { init: (h) => Object.assign(H, h), mount, follow: (ch) => (S && ch && S.chId === ch.id && !S.made ? follow(ch) : false), html, click, input, state, reset, openSetup, redo: () => go(true), make: () => go(false) /* the bar's Make it */, select: (i) => { if (S) S.sel = +i || 0; }, fullPrice: () => fullPrice(), makeFull: () => makeFull(), /* a version restored: Redo, Made with and the full one follow the version on the stage, not the newest take (QV 25 Oct) */ respec: (v) => { if (!S?.spec || !v) return; const sl = (v.slides || []).map((x) => x.style).filter(Boolean); S.spec = { ...S.spec, ...(v.quality ? { quality: v.quality } : {}), ...(v.style ? { style: v.style } : {}), ...(v.size ? { size: v.size } : {}), ...(sl.length > 1 ? { set: sl } : {}) }; S.full = null; S.sel = 0; price(); }, afterPaint: () => toSel(false), ask, adjustHtml };
 })();

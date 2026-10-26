@@ -1076,19 +1076,19 @@ export function createRemix(o) {
      (app.js polls the change while it waits), never a bare spinner */
   const ITER_JOBS = new Map(), ITER_MAX_MS = +process.env.ITER_MAX_MS || 4 * 60e3; /* revisions in flight on this instance; one longer than this stops with a plain message */
   const think = (ch, step) => { ch.thinking = step ? { step, at: ch.thinking?.at || Date.now(), stepAt: Date.now() } : null; };
-  const iterate = async (t, ch, message, { knob, quiet, show, fix, att = null, cancel = null } = {}) => {
+  const iterate = async (t, ch, message, { knob, quiet, show, fix, said = false, att = null, cancel = null } = {}) => {
     const c = t.cards.get(ch.cardId) || {};
     ANSWERED.delete(ch);
     if (!knob && !quiet && !fix /* "Fix it with AI" carries the checks' own words ("evidence", "source"): a fix, never a question (QA J-02) */ && (isQuestion(message) || EVIDENCE_ASK.test(message))) { think(ch, 'Looking it up in the facts, the moves and this version'); try { return await answerIn(t, ch, message, show, att); } finally { think(ch, null); } } /* a question never makes a version */
     const keepPhoto = photoAsk(message) === 'keep';
-    if (!quiet) ch.thread.push(youSaid(t, show || message, att?.imgs?.length ? { imgs: att.imgs } : {}));
+    if (!quiet && !said) ch.thread.push(youSaid(t, show || message, att?.imgs?.length ? { imgs: att.imgs } : {})); /* said: the fix already showed what was asked */
     let out = null, nv = null;
     if (!isMock() && spend('text')) {
       try {
         think(ch, quiet ? 'Fixing what the check flagged' : `Reading your note, the current version and the fact sheet, then writing v${versionsOf(t, ch.id).length + 1}`);
         const schema = { type: 'object', required: ['reply', 'pkg', 'newImage', 'next'], properties: { plan: { type: 'array', items: { type: 'string' }, description: 'Only when the person asks to change the plan itself (its steps): the whole updated list of steps, 3 to 6, each under 14 words, ending with the step that makes it ready to deploy or hand to the team; never a step called decided. Otherwise an empty list.' }, reply: { type: 'string', description: 'Under 30 words: what you changed, plainly' }, label: { type: 'string', description: 'A name for this new version in a version list: 2 to 4 words, sentence case, what is different about it (e.g. "As a thread", "Shorter hook", "Price up front"). Not the request repeated.' }, next: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 follow-up requests the person might tap next, each 2 to 6 words, in their voice (e.g. "Shorter, for WhatsApp"). Each one a way to cut THIS change (the card’s own action, named in the prompt), using its words: never a generic writing tip that would fit any widget. Specific to this updated package and this conversation; never repeat something already asked or already true of the package.' }, pkg: kvSchema(allKeys([ch.family])), newImage: { type: 'boolean', description: 'True only if the photo itself should change (scene, mood, subject, ratio)' } } };
         const rvI = await rivalRead(t, c).catch(() => null); /* our version of a rival's ad keeps that ad as the reference through every edit */
-        out = await claudeTool(withPics(`${cardBrief(c, seatLine(t.viewer), t)}${rvI ? `\n\n${rivalBlock(rvI.ad, rvI.style, BN())}\nKeep following that ad's angle, hook pattern and style unless the team asks to move away from it.` : viralOf(t, c) ? `\n${viralLine(t, c)}Keep following that video's format and beats unless the team asks to move away from it.` : ''}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${chSpec(ch)}\n${productLine(c, jamProduct(t, ch, c)?.t || pkgWords(ch))}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${ch.agent === 'brew' ? promptBlock(t, ch.agent) : '' /* the agent's rules are already above; only the brew agent has a second set */}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not). ${factsLine}`, att), schema, 3000, 'studio_iterate');
+        out = await claudeTool(withPics(`${cardBrief(c, seatLine(t.viewer), t)}${rvI ? `\n\n${rivalBlock(rvI.ad, rvI.style, BN())}\nKeep following that ad's angle, hook pattern and style unless the team asks to move away from it.` : viralOf(t, c) ? `\n${viralLine(t, c)}Keep following that video's format and beats unless the team asks to move away from it.` : ''}\n\nYou are the ${AGENT[ch.agent]} agent in the remix studio, iterating a ${FAMILY_NAME[ch.family]} (${ch.actionLabel} on ${ch.target.name}).${c.cta?.label ? ` The card's own action: "${c.cta.label}"; this package is that action and nothing else.` : ''}\n${promptBlock(t, ch.agent === 'brew' ? 'creative' : ch.agent)}\nIt must stay commission-ready and stay exactly this kind of change: ${chSpec(ch)}\n${productLine(c, jamProduct(t, ch, c)?.t || pkgWords(ch))}\nFields:\n${fieldsBrief(ch.family, ch.action)}\nCurrent package (field: value):\n${toKV(ch.family, ch.action, ch.pkg).map((e) => `${e.k}: ${e.v}`).join('\n')}\nKnobs set: ${JSON.stringify(ch.pkg.knobs || {})}\nThe conversation so far:\n${ch.thread.slice(-7, -1).map((m) => `${m.from === 'you' ? 'Person' : 'You'}: ${m.text}`).join('\n') || '(none)'}\n${ch.agent === 'brew' ? promptBlock(t, ch.agent) : '' /* the agent's rules are already above; only the brew agent has a second set */}${(ch.notes || []).length ? `\nThe person's notes on this package (respect them):\n${ch.notes.map((n) => `- ${n.text}`).join('\n')}` : ''}\n\nThe person now asks: "${message}"\nReturn the WHOLE updated package (every field, changed or not).${jamProduct(t, ch, c)?.t ? ` The piece is about ${jamProduct(t, ch, c).t}: keep it about that product unless the person names another one in this ask.` : ''} ${factsLine}`, att), schema, 3000, 'studio_iterate');
       } catch (e) { log.warn('[studio iterate]', e.message); }
     }
     if (cancel?.stop) return ch; /* the person was told it stopped: a late answer changes nothing */
@@ -1836,6 +1836,32 @@ export function createRemix(o) {
       if (b.always) { const l = L(t); l.myChecks ||= {}; const list = (l.myChecks[ch.family] ||= []); if (!list.some((x) => x.text === text)) list.push({ text, at: now(t) }); l.newRules.push({ id: uid('mc'), text: `Your check on every ${FAMILY_NAME[ch.family].toLowerCase()}: ${text}`, at: now(t) }); } }
     sync(t, ch); return { change: pubChange(t, ch), learned: learnedOut(t) };
   });
+  /* the jam's set-up, one place for every part of the page: a product or a size picked in the set-up, on the stage or said in the
+     chat is saved here, so the header, Brew's line, the frame, the brief, the checks and Studio all say the same thing. A new
+     product rewrites the words for it, and so the brief (in the background, text only, nothing charged); the chat says what changed */
+  const SETUP_JOBS = new Map();
+  on('POST', '/api/changes/:chid/setup', async (b, t, p) => {
+    const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
+    const cat = catalogOf(t) || [], was = jamProduct(t, ch, t.cards.get(ch.cardId) || {}), said = [];
+    if (b.product && typeof b.product === 'object') { const name = clean(String(b.product.name || '')).slice(0, 160), img = typeof b.product.img === 'string' && /^(https?:|gen\/|\/)/.test(b.product.img) ? b.product.img.slice(0, 600) : null;
+      if (name && name !== (was?.t || was?.name)) { const row = cat.find((x) => x.t === name); ch.pick = { name: row ? row.t : name, img: row?.img || img, at: now(t) }; said.push(`the **${name.split(/\s+[–—|-]\s+/)[0]}**`); } }
+    if (b.format && RATIO[b.format] && ['meta_ad', 'social'].includes(ch.family) && ch.pkg.format !== b.format) { ch.pkg.format = b.format; const nm = { '4:5': 'Feed', '1:1': 'Square', '9:16': 'Story', '16:9': 'Wide', '2:3': 'Pin' }[b.format]; said.push(`${nm ? `${nm} ` : ''}${b.format}`); }
+    if (!said.length) return { change: pubChange(t, ch) };
+    ch.thread ||= []; const last = ch.thread.at(-1), text = `Set up for ${said.join(', ')}. Everything on this jam follows it.`;
+    if (last?.setup && last.from === 'ai') Object.assign(last, { text, at: now(t) }); else ch.thread.push({ from: 'ai', text, at: now(t), setup: true }); /* a run of picks is one line, never a pile */
+    const now0 = jamProduct(t, ch, t.cards.get(ch.cardId) || {}), name = now0?.t || now0?.name || '';
+    if (ch.pick && name && (was?.t || was?.name) !== name && !isMock()) { /* the words and the brief follow the new product: text only, after the reply */
+      const prev = SETUP_JOBS.get(ch.id); if (prev) prev.stop = true; const tok = { stop: false }; SETUP_JOBS.set(ch.id, tok);
+      const price = now0.price != null ? ` (${typeof now0.price === 'number' ? inr(now0.price) : now0.price})` : '';
+      setTimeout(async () => { if (tok.stop) return; try { think(ch, `Rewriting the words for the ${name.split(/\s+[–—|-]\s+/)[0]}`);
+        await iterate(t, ch, `The product is now ${name}${price}. Rewrite the words for it: name it right, and drop anything only true of ${was?.t || 'the old product'}. Keep the angle, the offer and the format.`, { quiet: true, cancel: tok });
+        /* the brief follows on its own: a new version of the words rewrites it on its next read (team-brief.js keyOf) */
+      } catch (e) { log.warn('[setup words]', e.message); } finally { think(ch, null); if (SETUP_JOBS.get(ch.id) === tok) SETUP_JOBS.delete(ch.id); o.save?.(t); } }, 0); }
+    o.save?.(t); return { change: pubChange(t, ch), rewriting: !!SETUP_JOBS.get(ch.id) };
+  });
+  /* the products a set-up can pick from (the brand's catalog, in-stock first): the non-Studio "What to make" list */
+  on('GET', '/api/changes/:chid/products', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' };
+    const cat = (catalogOf(t) || []).filter((x) => x?.t); return { products: [...cat.filter((x) => !x.out), ...cat.filter((x) => x.out)].slice(0, 80).map((x) => ({ name: x.t, img: x.img || null, price: x.price ?? null, out: !!x.out })) }; });
   on('POST', '/api/changes/:chid/notes', async (b, t, p) => {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ch.notes ||= [];
     if (b.id && b.remove) ch.notes = ch.notes.filter((x) => x.id !== b.id);
@@ -1849,6 +1875,11 @@ export function createRemix(o) {
     /* "we use GoKwik": the team names the tool its messages go out from, once; every messaging jam of the brand uses it (2.4) */
     { const m = !att && /\b(?:we|i)\s+(?:use|send (?:with|from|through|via)|run (?:it |them |this )?(?:on|in|through))\s+([A-Za-z][\w.+-]*(?:\s[A-Z][\w.+-]*)?)/i.exec(msg);
       if (m && (ch.target?.msgTool || ch.target?.conn === 'klaviyo')) { t.msgTool = nameOfTool(m[1].trim()); ch.target = msgTarget(t, { ...ch, target: { ...ch.target, conn: 'klaviyo' } }); ch.thread.push(youSaid(t, msg)); ch.thread.push({ from: 'ai', text: `Got it: ${t.msgTool} sends these for ${BN()}. Your message jams name it from now on.`, at: now(t), answer: true }); o.save?.(t); return { change: pubChange(t, evaluate(t, ch)), answered: true }; } }
+    /* the chat moves the set-up too: a product named in the ask ("do it for the shampoo") or a size ("as a story", "make it 1:1") is
+       the jam's pick from now on, so the set-up, the frame, the header and the brief follow what was said (26 Oct) */
+    if (!b.fix && !isQuestion(msg)) { try { const cat = catalogOf(t) || [], cur = jamProduct(t, ch, t.cards.get(ch.cardId) || {}), hit = cat.length ? matchProduct(msg, cat, { brand: BN(), byNameOnly: true }) : null;
+      if (hit?.t && hit.t !== (cur?.t || cur?.name)) ch.pick = { name: hit.t, img: hit.img || null, at: now(t), said: true };
+      if (['meta_ad', 'social'].includes(ch.family)) { const f = /\b(9\s*:\s*16|story|stories|reel)\b/i.test(msg) ? '9:16' : /\b(1\s*:\s*1|square)\b/i.test(msg) ? '1:1' : /\b(4\s*:\s*5|portrait feed|feed post)\b/i.test(msg) ? '4:5' : null; if (f && RATIO[f] && /\b(make|turn|as|into|change|switch|size|format|for)\b/i.test(msg)) ch.pkg.format = f; } } catch (e) { log.warn('[chat setup]', e.message); } }
     /* a message with a screenshot always goes to the AI with its picture (the shortcuts below don't read pictures) */
     if (att) { try { await iterate(t, ch, msg, { att }); return { change: pubChange(t, ch), learned: learnedOut(t), ...(ANSWERED.has(ch) ? { answered: true } : {}) }; } finally { think(ch, null); } }
     /* a line meant for the team brief (said on the Brief side, or naming a fact of the brief: owner, budget, due…) changes the
@@ -1877,12 +1908,30 @@ export function createRemix(o) {
       return { change: pubChange(t, ch), pickPhotos: true, image: started };
     }
     const tok = { stop: false };
+    const show = b.show ? clean(String(b.show)).slice(0, 300) : null;
+    /* a claim on a made picture: words can't take it off the picture, so a fix first takes it off the picture's own word layers
+       (drawn again, free); only what is left goes to the rewrite. And the chat never says a claim is gone while the check still
+       flags it (26 Oct, Arata: "Verified all clinical claims…" under a red "Dermat-approved") */
+    const claimsLeft = () => (publishFor(t, ch)?.checks || []).find((c) => (c.k === 'claims' || (c.k === 'price' && c.phrases?.length)) && !c.ok) || null; /* a claim, or another product's price, set on the picture */
     const run = async () => {
-      await iterate(t, ch, msg, { show: b.show ? clean(String(b.show)).slice(0, 300) : null, fix: !!b.fix, cancel: tok });
+      let said = false, pic = null, phrases = [];
+      if (b.fix && o.reletter && claimsLeft()) { const sv = headOf(t, ch)?.studio;
+        if (sv?.jid && sv?.take) { phrases = (publishFor(t, ch)?.checks || []).filter((c) => !c.ok && ['claims', 'price'].includes(c.k)).flatMap((c) => c.phrases || []).filter(Boolean);
+          if (phrases.length) { ch.thread.push(youSaid(t, show || msg)); said = true; think(ch, 'Taking it off the picture');
+            pic = await Promise.resolve(o.reletter(t, sv.jid, sv.take, phrases)).catch((e) => { log.warn('[reletter]', e.message); return null; }); } } }
+      if (pic?.ok && !claimsLeft() && !(ch.fixes || []).length) return {}; /* the new picture landed (landStudio says so in the chat) */
+      const from = ch.thread.length;
+      await iterate(t, ch, msg, { show, fix: !!b.fix, said, cancel: tok });
       if (ANSWERED.has(ch)) return { answered: true }; /* a question: answered, nothing changed, no version */
       // fixing: re-check, and if anything is still wrong, try again with the exact problems (twice at most)
       for (let i = 0; b.fix && i < 2 && ch.fixes?.length && !isMock() && !tok.stop; i++) await iterate(t, ch, `Still not fixed: ${ch.fixes.join('; ')}. Fix exactly these and change nothing else.`, { quiet: true, cancel: tok });
       if (b.fix && ch.fixes?.length) ch.thread.push({ from: 'ai', text: `I couldn’t fix everything: ${ch.fixes.join('; ')}. Edit it in Details, or tell me how you want it.`, at: now(t) });
+      const left = b.fix && /claim|price/i.test(`${msg} ${show || ''}`) ? claimsLeft() : null;
+      if (left) { const ph = left.phrases?.length ? left.phrases : phrases;
+        const q = ph.length ? `“${[...new Set(ph)].slice(0, 2).join('”, “')}”` : 'The claim', where = pic?.drawn?.length ? ` It’s drawn into the picture${pic.drawn.length > 1 || (headOf(t, ch)?.studio?.slides || []).length > 1 ? ` of slide ${pic.drawn.join(' and ')}` : ''} itself, so changing the words can’t take it off.` : ' It’s in the picture itself, so changing the words can’t take it off.';
+        const text = `${q} is still on the picture.${where} Redo it without ${left.k === 'price' ? 'that price' : 'that claim'} (the price is on the button)${left.k === 'price' ? '.' : ', or approve the claim in Brand Book → Claims if you have its proof.'}`;
+        const mine = ch.thread.slice(from).filter((x) => x.from === 'ai' && !x.photoWhy); /* the rewrite's own reply would say it's gone */
+        if (mine.length) { mine[mine.length - 1].text = `Changed the words. ${text}`; } else ch.thread.push({ from: 'ai', text, at: now(t) }); }
       return {};
     };
     /* a revision is a job (1.6): it runs on the server whether or not the page stays open, says its step while it works, and lands
@@ -2273,7 +2322,7 @@ export function createRemix(o) {
      set (a listing's photo set), or a film with its poster. The words stay; History says what Studio made and what it cost */
   const tidyL = (x, n) => String(x ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
   const landStudio = (t, chId, take) => { const ch = C(t, chId); if (!ch || !take?.file) return null;
-    { const had = versionsOf(t, chId).find((v) => v.studio && ((take.id && v.studio.take === take.id) || (v.studio.file && v.studio.file === take.file))); if (had) return had; } /* a take lands once: pressed again (Use it, a resend), no copy each time (QV 25 Oct) */
+    { const had = versionsOf(t, chId).find((v) => v.studio && ((take.id && v.studio.take === take.id) || (!take.relettered && v.studio.file && v.studio.file === take.file))); if (had) return had; } /* a take lands once: pressed again (Use it, a resend), no copy each time (QV 25 Oct) */
     ensurePkg(t, ch);
     const slides = (take.slides || []).filter((x) => x?.file), st = take.studio || {}, label = slides.length > 1 ? `${slides.every((x) => /^aplus-/.test(x.style || '')) ? 'A+' : ch.family === 'listing' ? 'Listing images' : 'Carousel'} · ${slides.length} ${ch.family === 'listing' && !slides.every((x) => /^aplus-/.test(x.style || '')) ? 'images' : slides.every((x) => /^aplus-/.test(x.style || '')) ? 'modules' : 'slides'}` : cleanLabel(st.label || 'Studio') || 'Studio';
     /* a set lands whole: an A+ set as its modules (header, tiles, wide image, each with its own words), a listing as its photo
@@ -2293,13 +2342,13 @@ export function createRemix(o) {
     if (ch.family === 'listing' && !media.photoSet && !media.aplus && slides.length <= 1) delete base.photoSet; /* a single listing image replaces the set it was made instead of */
     const fmt = J2SIZES[st.size]?.ratio; if (fmt && ['meta_ad', 'social'].includes(ch.family) && RATIO[fmt]) media.format = fmt; /* the pack and the frame use the shape it was made in */
     ch.pkg = { ...base, ...media }; ch.imageError = null; sync(t, ch);
-    const v = version(t, ch, 'brew', `Studio: ${label}${take.cost?.usd ? ` · $${take.cost.usd}` : ''}`, label); const tw = take.words || {}, prod = st.spec?.product || null;
+    const v = version(t, ch, 'brew', take.relettered ? `Took ${(take.relettered.cut || []).join(', ')} off the picture (free)` : `Studio: ${label}${take.cost?.usd ? ` · $${take.cost.usd}` : ''}`, take.relettered ? 'Claim taken off' : label); const tw = take.words || {}, prod = st.spec?.product || null;
     v.studio = { take: take.id || null, file: take.file || null /* which take this version is: landing it again is a no-op */, recreated: take.recreated || null, run: take.run || null, runN: take.runN || null, runI: take.runI ?? null, style: st.style || null, slides: slides.length > 1 || aplus ? slides.map((x) => ({ style: x.style || null, file: x.file })) : null, label, kind: st.kind || null, size: st.size || null, usd: take.cost?.usd || 0, jid: take.jid || null, product: prod ? { name: prod.name || null, img: prod.img || null } : null,
       words: [...new Set([tw.headline, tw.sub, tw.button, tw.badge, tw.proof, ...(Array.isArray(take.check?.words) ? take.check.words : []), ...[take.scene, ...(take.slides || []).map((x) => x.scene)].flatMap((sc) => (sc?.layers || []).map((l) => l?.words || l?.text)) /* every word set on the picture */, ...(take.captions?.segs || []).map((x) => x.text) /* what is said in the film */, ...(take.slides || []).flatMap((x) => [x.words?.headline, x.words?.sub])].filter((x) => typeof x === 'string' && x.trim()).map((x) => x.slice(0, 200)))].slice(0, 80), quality: st.spec?.quality || null, missing: Array.isArray(take.missing) && take.missing.length ? take.missing.slice(0, 10) : null }; /* what the picture itself says (every caption line too: the closing claim is checked): the publish check reads it */
     /* a batch is made when all its takes have landed: till then the Work item says how many are in (the ready toast waits for the last one) */
     if (take.run && +take.runN > 1) { const inN = versionsOf(t, chId).filter((x) => x.studio?.run === take.run).length; if (inN < +take.runN) { studioState(t, chId, { state: 'making', line: `${inN} of ${take.runN} made · ${label}`, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; } }
     { const q = v.studio.quality, n = slides.length > 1 ? `${slides.length} slides` : st.kind === 'video' ? 'the video' : 'the picture'; /* the chat says a make landed (it stayed on the case as if nothing happened) */
-      ch.thread ||= []; ch.thread.push({ from: 'ai', text: `Made ${n}${q === 'preview' ? ' as a quick preview (low resolution)' : ''}: v${v.n} is on the stage.${q === 'preview' ? ' Check it, then make the full one before you post it.' : ' Check it, then send the brief.'}${Array.isArray(take.missing) && take.missing.length ? ` ${take.missing.length} couldn’t be made.` : ''}`, at: now(t), v: v.n }); }
+      ch.thread ||= []; if (take.relettered) { const rl = take.relettered, cut = `“${(rl.cut || []).join('”, “')}”`; ch.thread.push({ from: 'ai', text: `Took ${cut} off ${rl.slides?.length && slides.length > 1 ? `slide ${rl.slides.join(' and ')}` : 'the picture'}: v${v.n} is on the stage. Same photo, nothing charged.`, at: now(t), v: v.n }); } else ch.thread.push({ from: 'ai', text: `Made ${n}${q === 'preview' ? ' as a quick preview (low resolution)' : ''}: v${v.n} is on the stage.${q === 'preview' ? ' Check it, then make the full one before you post it.' : ' Check it, then send the brief.'}${Array.isArray(take.missing) && take.missing.length ? ` ${take.missing.length} couldn’t be made.` : ''}`, at: now(t), v: v.n }); }
     studioState(t, chId, { state: 'made', line: Array.isArray(take.missing) && take.missing.length ? `${label} · ${take.missing.length} couldn’t be made: open it to add ${take.missing.length > 1 ? 'them' : 'it'}` : label, usd: take.cost?.usd || 0, thumb: media.poster || media.image || null, kind: st.kind || null, jid: take.jid || null }); return v; };
   /* where a Studio make stands (making, made, failed), on the jam and its Work item: the Work tab follows it, so nobody waits on the page */
   const studioState = (t, chId, st) => { const ch = C(t, chId); if (!ch) return; if (st.state === 'failed' && st.error && ch.studioState?.state !== 'failed') { ch.thread ||= []; ch.thread.push({ from: 'ai', text: `The make didn’t go through: ${st.error} Nothing was charged for what wasn’t made.`, at: now(t) }); }
@@ -2320,14 +2369,31 @@ export function createRemix(o) {
     const byTitle = (n) => (n ? cat.find((x) => x.t === n) || null : null);
     const touched = (ch.thread || []).some((m) => m.from === 'you') || versionsOf(t, ch.id).some((v) => v.author === 'you');
     let m = null; try {
+      /* a product the person picked (the set-up, the stage, the chat) is the jam's product everywhere: the header, Brew's line, the
+         brief, the words and Studio all read this one pick (26 Oct: the set-up said Scalp Massager under a De-Knot brief) */
+      /* a made picture or film shows one product: from then on that is the jam's product (26 Oct: a fix rewrote the words around the
+         shampoo and the header followed, over the styling stick's picture), until someone picks another one after it was made */
+      const made = (() => { const vs = versionsOf(t, ch.id), h = headOf(t, ch); for (let k = vs.indexOf(h); k >= 0; k--) if (vs[k]?.studio?.product?.name) return vs[k]; return null; })();
+      if (made && !(ch.pick?.at && ch.pick.at > (made.at || 0))) { const mp = made.studio.product; return byTitle(mp.name) || { t: mp.name, img: mp.img || null, picked: true }; }
+      if (ch.pick?.name) { const pk = byTitle(ch.pick.name); if (pk) return pk; if (ch.pick.img) return { t: ch.pick.name, img: ch.pick.img, picked: true }; }
       m = byTitle(c.product) || (c.product && matchProduct(String(c.product), cat, { brand, byNameOnly: true })) || pricedProduct(`${c.title || ''}. ${c.sub || ''}`, cat, { brand, byNameOnly: true }) || cardProduct(c, cat, { brand, byNameOnly: true })
         || (touched && words && matchProduct(words, cat, { brand, byNameOnly: true })) || null;
       if (!m) { const dp = ch.pkg?.draft?.product || (ch.v0 === 'draft' ? o.planOf?.(t, c)?.draft?.product : null) || ''; m = byTitle(dp) || (dp && matchProduct(dp, cat, { brand })) || (words && pricedProduct(words, cat, { brand })) || cardProduct(c, cat, { brand }) /* the card's loose words, as before 26 Oct */ || (words && matchProduct(words, cat, { brand })) || null; }
     } catch { m = null; }
     if (!m) { const P = productFor(c, FACTS, words); const hit = byTitle(P?.full) || byTitle(P?.name); m = hit || (P?.img ? { t: P.name, img: P.img } : null); }
     if (!m) return null;
+    try { m = sizeTwin(m, cat, `${c.title || ''} ${c.sub || ''} ${JSON.stringify([c.rows || [], c.detail || {}, c.make || {}])} ${words} ${ch.pkg?.imageBrief || ''} ${ch.pkg?.draft?.product || ''}`); } catch { /* the pick stands */ } /* the card's evidence, the words and the picture's brief */
     if (m.out && !isRestock(c)) { const tw = inStockTwin(m, cat); if (tw) return { ...tw, swapped: m.t }; }
     return m; };
+  /* the same product in another size: the words say which ("De-Knot (200 ml)", "₹449"), so the 50 ml isn't shown under a 200 ml
+     brief (26 Oct, Arata). Only a size or price the words state moves it; otherwise the pick stands */
+  const sizeTwin = (m, cat, text) => { const SZ = /\s*[-–—(,]?\s*\b\d+(?:\.\d+)?\s*(?:ml|g|gm|gms|kg|l|ltr|oz|pcs|tablets|capsules)\b\)?.*$/i, base = (n) => String(n || '').replace(SZ, '').trim().toLowerCase();
+    const b0 = base(m.t); if (!b0) return m; const sibs = cat.filter((x) => x && x !== m && base(x.t) === b0); if (!sibs.length) return m;
+    const low = String(text || '').toLowerCase().replace(/(\d)\s+(ml|g|gm|kg|l|oz)\b/g, '$1$2'), size = (n) => (/(\d+(?:\.\d+)?)\s*(ml|g|gm|gms|kg|l|ltr|oz)\b/i.exec(String(n || '')) || []).slice(1, 3).join('').toLowerCase().replace(/gms?$/, 'g');
+    const said = (x) => { const z = size(x.t); return z && new RegExp(`(^|[^\\d.])${z.replace('.', '\\.')}(?![a-z])`).test(low); };
+    if (said(m)) return m; const bySize = sibs.find(said); if (bySize) return bySize;
+    const pr = (x) => Math.round(+String(x?.price ?? '').replace(/[^\d.]/g, '')); const amt = (n) => new RegExp(`(₹|rs\\.?\\s?|inr\\s?)${n.toLocaleString('en-IN').replace(/,/g, ',?')}\\b`), own = pr(m); if (own && amt(own).test(low)) return m;
+    return sibs.find((x) => pr(x) && amt(pr(x)).test(low)) || m; };
   /* a Work item whose jam was opened as the wrong deliverable before its card was read right (an exclusion card opened "Scale the
      budget": 25 Oct): while nobody has touched that jam (no ask, no edit, no make, nothing sent), it lets go of it, and the card's
      next open makes the jam its card asks for. A touched jam is never dropped: the team's work stays */

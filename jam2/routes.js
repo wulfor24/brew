@@ -16,6 +16,7 @@ import { createEngines } from './engines.js';
 import { createMaker } from './make.js';
 import { claimMake, makeKeys } from './make-claim.js';
 import { createReady, tokenFor, parseToken } from './ready.js';
+import { stripScenes } from './reletter.js';
 import { RECIPES, FAMILIES, SIZES, HOW, HOW_LABEL, recipe, recipeFor, alsoFor, planFor } from './catalogue.js';
 import { newJam, newBoard, boardOf, headOf, bumpConcept, fromV1, jamView, note, uid, addTake, OWNERS, BRIEF_STATUS, publicView } from './core.js';
 import { productFor, productTiles } from './ingredients.js';
@@ -467,5 +468,21 @@ export function mountJam2(d) {
       (j.chat ||= []).push({ id: uid('m'), from: 'brew', t: `${user.name || 'Someone'} approved ${bd.label} v${h.n} in Slack.`, at: Date.now() }); await store.put(slug, j); return { w: shape }; }
     return { w: shape };
   }
-  return { slackIn, publicHandle, store, flush: () => store.flush(), engines, brandbook: bb };
+  /* a claim set in our own words on a made picture (a badge, a headline: layers laid over the shot) is taken off and the picture
+     drawn again from its scene: free, no new photo, no model. Words a model drew into the picture itself can't be edited: those
+     slides are named so the chat says so (26 Oct, Arata: Fix it rewrote the caption, said it was done, and the badge stayed) */
+  const reletter = async (t, jid, takeId, phrases) => {
+    const j = await store.get(slugOfT(t), jid, whoOf(t)).catch(() => null); if (!j) return { error: 'gone' };
+    const bd = j.boards.find((b) => (b.takes || []).some((x) => x.id === takeId)), tk = bd && bd.takes.find((x) => x.id === takeId); if (!tk) return { error: 'gone' };
+    const { set, slides: st, drawn } = stripScenes(tk, phrases); let changed = 0; const slides = [], redrawn = [];
+    for (const [k, x] of st.entries()) { if (!x.changed) { slides.push(x.slide); continue; }
+      const file = await maker.render(x.slide.scene).catch((e) => { log.warn?.('[jam2] reletter render', e.message); return null; });
+      if (!file) { slides.push((tk.slides || [])[k] || x.slide); continue; } slides.push({ ...x.slide, file }); redrawn.push(k + 1); changed++; }
+    if (!changed) return { ok: false, changed: 0, drawn };
+    const { id: _i, n: _n, at: _a, gate: _g, ...rest } = tk;
+    const nt = addTake(j, bd, { ...rest, ...(set ? { slides } : {}), scene: slides[0].scene, file: slides[0].file, words: slides[0].words, made: [], cost: { usd: 0, credits: 0 }, relettered: { cut: [...new Set(phrases)].slice(0, 4), slides: redrawn, from: tk.id } });
+    await store.put(slugOfT(t), j); toV1(t, j, nt);
+    return { ok: true, changed, drawn, takeId: nt.id };
+  };
+  return { slackIn, publicHandle, store, flush: () => store.flush(), engines, brandbook: bb, reletter };
 }
