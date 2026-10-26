@@ -19,7 +19,7 @@ import { beatWords, buildDraft, motionOnly, onScreen } from './sloosh-prompt.js'
 import { versionLabel } from './text-fit.js';
 import { ctaName } from './seed-template.js'; /* a renamed button (Publish Campaign, List what points there) maps as its new name */
 import { withSteps, isBatchCard, planFor as planOfAction } from './card-plan.js';
-import { readyOf } from './publish-ready.js';
+import { readyOf, otherNamed, pkgWordsOf } from './publish-ready.js';
 import { boardOf, isFilm } from './film-board.js'; // a film brief drawn as the founder's storyboard on the stage // ready to publish: every part the platform needs, and the check
 import { planFor as j2Plan, recipe as j2Recipe, SIZES as J2SIZES } from './jam2/catalogue.js'; import { inStudio } from './jam2/studio.js'; // v1's pictures, sets and videos are made by Brew Studio (priced, on a yes)
 import { CHAT_FORMAT, shopperLine, familyOf, FAMILY_NAME, fieldsFor, knobsFor, suggestFor, fitChip, GRADES, pkgSchema, fieldsBrief, kvSchema, allKeys, fromKV, toKV, cleanPkg, publicText, missing, afterFromPkg, mockPkg, RATIO, leaks, isMulti, ACTION_SPEC, ACTION_GUARD, productFor, ideaAction, ideaPkg, chipsFor, chipRelates, chipCtx, isAdVideo, namesLiveTest } from './studio.js';
@@ -562,7 +562,10 @@ export function createRemix(o) {
     const lf = copyFlags(shopperText, { source: src, names: [BN(), o.SEED?.brand?.name, ...(catalogOf(t) || []).map((x) => x?.t)] }); if (lf.length) checks.push({ k: `Reads wrong: ${lf.join('; ')}`, ok: false, fix: true });
     /* the product it sells is in stock today (1.11): an ad or message for a sold-out product waits, unless the card is about the restock */
     { const cat = catalogOf(t) || []; let pr = null; try { pr = jamProduct(t, ch, card); } catch {} /* the product the jam actually makes (its in-stock twin when the card's sold out), the one Studio uses */
-      if (pr?.out && !isRestock(card) && ch.family !== 'meta_ops') /* one rule with Studio's: only a restock card, or an ad-account change about the sold-out product itself, goes ahead */ /* the card's words only: copy saying "before it sells out" is no restock */ checks.push({ k: `${pr.t} is out of stock on the store right now: pick an in-stock product, or hold this until it’s back`, ok: false, fix: true, stock: true }); }
+      if (pr?.out && !isRestock(card) && ch.family !== 'meta_ops') /* one rule with Studio's: only a restock card, or an ad-account change about the sold-out product itself, goes ahead */ /* the card's words only: copy saying "before it sells out" is no restock */ checks.push({ k: `${pr.t} is out of stock on the store right now: pick an in-stock product, or hold this until it’s back`, ok: false, fix: true, stock: true });
+      /* a draft piece (no Studio make: publishFor checks those) whose words name another product than the jam's (26 Oct, QV P0-1, P1-15) */
+      const p0 = ch.pkg || {}; if (pr && !studioOf(t, ch) && ['social', 'meta_ad', 'post', 'listing', 'print'].includes(ch.family) && !(p0.products?.length > 1 || p0.productSet || (ch.family === 'meta_ad' && p0.cards?.length > 1))) { const ot = otherNamed(pkgWordsOf(p0), { name: pr.t || pr.name }, cat, BN());
+        if (ot.length) checks.push({ k: `The words are about ${[...new Set(ot.map((x) => String(x.of).split(/\s+[–—|-]\s+/)[0]))].slice(0, 2).join(' and ')} (“${ot[0].said}”), not ${String(pr.t || pr.name).split(/\s+[–—|-]\s+/)[0]}: rewrite them for it`, ok: false, fix: true, product: true }); } }
     if (ch.imagePending) checks.push({ k: 'The new creative is still rendering', ok: false, soft: true });
     checks.push(act.irreversible ? { k: `Can’t be undone: ${act.irreversible}. Whoever ships it from the brief should know.`, ok: true, team: true } : { k: `Can be undone: ${act.rollback}`, ok: !!act.rollback && !/^—/.test(act.rollback), soft: true }); /* "Nothing ships until it is sent" is safe, not a failure (QA J-17) */
     /* a connector check only for a tool this build can connect (Marketplaces is not one any more: QA J-17) */
@@ -792,7 +795,9 @@ export function createRemix(o) {
   /* a Studio jam's ready-to-publish parts and check (publish-ready.js), from the version on the stage */
   const publishFor = (t, ch) => { if (!studioOf(t, ch)) return null; try {
     const head = headOf(t, ch), sv = head?.studio || null, card = t.cards.get(ch.cardId) || {}, cat = catalogOf(t) || [];
-    const name = sv?.product?.name || null, pe = name ? cat.find((x) => x.t === name) || cat.find((x) => sv.product.img && (x.img === sv.product.img || (x.imgs || []).includes(sv.product.img))) : null;
+    /* the jam's product (a pick, then a made version's product, then the card): the stage, the header and the words check read one (26 Oct, QV P0-1) */
+    const jp = (() => { try { return jamProduct(t, ch, card); } catch { return null; } })();
+    const name = jp?.t || jp?.name || sv?.product?.name || null, pe = name ? cat.find((x) => x.t === name) || cat.find((x) => sv?.product?.img && (x.img === sv.product.img || (x.imgs || []).includes(sv.product.img))) : null;
     const cp = (() => { try { return cardProduct(card, cat); } catch { return null; } })();
     return { made: !!sv, ...readyOf({ family: ch.family, action: ch.action, pkg: ch.pkg, card, product: name ? { name, url: pe?.url || null } : cp ? { name: cp.t, url: cp.url || null } : null, cardProduct: cp ? { name: cp.t } : null, catalog: cat, brand: BN(), host: BH(), source: brandSource(t, card), words: sv?.words || [], wordsRead: !sv || Array.isArray(sv.words) /* nothing made yet: no picture to read */, quality: sv?.quality || null, recreated: sv?.recreated || (sv?.style === 'recreate-swap' ? {} : null), style: sv ? (sv.slides?.length > 1 ? { id: 'set', label: `${sv.slides.length} ${ch.family === 'meta_ad' ? 'carousel cards' : ch.family === 'listing' ? 'listing images' : 'slides'}`, look: `${sv.slides.length} ${ch.family === 'meta_ad' ? 'carousel cards' : ch.family === 'listing' ? 'listing images' : 'slides'}` } : { id: sv.style, label: sv.label }) : null, version: head?.n || 1 }) };
   } catch (e) { log.warn('[publish]', e.message); return null; } };
@@ -1100,7 +1105,14 @@ export function createRemix(o) {
      (app.js polls the change while it waits), never a bare spinner */
   const ITER_JOBS = new Map(), ITER_MAX_MS = +process.env.ITER_MAX_MS || 4 * 60e3; /* revisions in flight on this instance; one longer than this stops with a plain message */
   const think = (ch, step) => { ch.thinking = step ? { step, at: ch.thinking?.at || Date.now(), stepAt: Date.now() } : null; };
-  const iterate = async (t, ch, message, { knob, quiet, show, fix, said = false, att = null, cancel = null } = {}) => {
+  /* a chat line never names another product than the jam's (26 Oct, QV P1-19: "Updated the product focus to Anti-Hair Fall Intensive
+     Shampoo" under the styling stick's picture): a sentence that does is dropped, unless the person named that product in their ask.
+     Old lines stay as they were */
+  const onProduct = (t, ch, c, text, ask = '') => { try { const jp = jamProduct(t, ch, c || {}), mine = jp?.t || jp?.name; if (!mine || !text) return text;
+    const low = String(ask || '').toLowerCase(), bad = otherNamed(text, { name: mine }, catalogOf(t) || [], BN()).filter((x) => x.kind !== 'kind' && !low.includes(String(x.said).toLowerCase().replace(/^#/, ''))); if (!bad.length) return text;
+    const kept = String(text).split(/(?<=[.!?])\s+/).filter((sn) => !bad.some((x) => sn.toLowerCase().includes(String(x.said).toLowerCase()))).join(' ').trim();
+    return kept || `Updated the words for the ${String(mine).split(/\s+[–—|-]\s+/)[0]}.`; } catch { return text; } };
+  const iterate = async (t, ch, message, { knob, quiet, show, fix, said = false, att = null, cancel = null, wordsOnly = false } = {}) => {
     const c = t.cards.get(ch.cardId) || {};
     ANSWERED.delete(ch);
     if (!knob && !quiet && !fix /* "Fix it with AI" carries the checks' own words ("evidence", "source"): a fix, never a question (QA J-02) */ && (isQuestion(message) || EVIDENCE_ASK.test(message))) { think(ch, 'Looking it up in the facts, the moves and this version'); try { return await answerIn(t, ch, message, show, att); } finally { think(ch, null); } } /* a question never makes a version */
@@ -1128,13 +1140,13 @@ export function createRemix(o) {
       const same = JSON.stringify(snapOf(ch)) === snapIn;
       if (!same) { const v = version(t, ch, `ai:${ch.agent}`, message.slice(0, 90), out.label); nv = v; if (!quiet) try { o.onVersion?.(t, ch, v, message); } catch {} } /* e.g. the jam's Slack thread */
       else ANSWERED.add(ch);
-      if (!quiet) ch.thread.push({ from: 'ai', text: clean(out.reply || (same ? 'Nothing needed changing.' : 'Updated.')), at: now(t), ...(same ? {} : { v: versionsOf(t, ch.id).length }) });
+      if (!quiet) ch.thread.push({ from: 'ai', text: onProduct(t, ch, c, clean(out.reply || (same ? 'Nothing needed changing.' : 'Updated.')), message), at: now(t), ...(same ? {} : { v: versionsOf(t, ch.id).length }) });
       // the chips follow the conversation: what to try next on this version
       if (Array.isArray(out.next)) { const ctx = chipCtx(ch.action, ch.actionLabel, c); const nx = out.next.map((x) => clean(String(x)).replace(/[.]$/, '')).filter((x) => x && x.length <= 48 && chipRelates(x, ctx)); if (nx.length >= 2) ch.next = nx.slice(0, 4); } /* only chips about this change's action */
       /* "keep the photo" never starts a paid one. The photo lands on the words version just made (target), never a second
          "New creative" version; when it can't start (the limit, a remake or a photo still being made) the chat says why,
          so the reply above never stands as a promise of a photo that isn't coming */
-      if (!keepPhoto && (out.newImage || knob?.kind === 'image')) { const started = genImage(t, ch, message, nv ? { target: nv.id } : {}); if (!started && !quiet) ch.thread.push({ from: 'ai', text: imageWhy(ch), at: now(t), photoWhy: true }); }
+      if (!keepPhoto && !wordsOnly /* a words fix or a product rewrite is text only: never a new photo (26 Oct) */ && (out.newImage || knob?.kind === 'image')) { const started = genImage(t, ch, message, nv ? { target: nv.id } : {}); if (!started && !quiet) ch.thread.push({ from: 'ai', text: imageWhy(ch), at: now(t), photoWhy: true }); }
     } else {
       // offline: apply what can be applied without AI, and say so
       /* a new version only when something really changed (a setting applied without AI); a failed rewrite adds no "Not rewritten" version */
@@ -1880,7 +1892,7 @@ export function createRemix(o) {
       const prev = SETUP_JOBS.get(ch.id); if (prev) prev.stop = true; const tok = { stop: false }; SETUP_JOBS.set(ch.id, tok);
       const price = now0.price != null ? ` (${typeof now0.price === 'number' ? inr(now0.price) : now0.price})` : '';
       setTimeout(async () => { if (tok.stop) return; try { think(ch, `Rewriting the words for the ${name.split(/\s+[–—|-]\s+/)[0]}`);
-        await iterate(t, ch, `The product is now ${name}${price}. Rewrite the words for it: name it right, and drop anything only true of ${was?.t || 'the old product'}. Keep the angle, the offer and the format.`, { quiet: true, cancel: tok });
+        await iterate(t, ch, `The product is now ${name}${price}. Rewrite the words for it: name it right, and drop anything only true of ${was?.t || 'the old product'}. Keep the angle, the offer and the format.`, { quiet: true, cancel: tok, wordsOnly: true });
         /* the brief follows on its own: a new version of the words rewrites it on its next read (team-brief.js keyOf) */
       } catch (e) { log.warn('[setup words]', e.message); } finally { think(ch, null); if (SETUP_JOBS.get(ch.id) === tok) SETUP_JOBS.delete(ch.id); o.save?.(t); } }, 0); }
     o.save?.(t); return { change: pubChange(t, ch), rewriting: !!SETUP_JOBS.get(ch.id) };
@@ -1939,8 +1951,16 @@ export function createRemix(o) {
        (drawn again, free); only what is left goes to the rewrite. And the chat never says a claim is gone while the check still
        flags it (26 Oct, Arata: "Verified all clinical claims…" under a red "Dermat-approved") */
     const claimsLeft = () => (publishFor(t, ch)?.checks || []).find((c) => (c.k === 'claims' || (c.k === 'price' && c.phrases?.length)) && !c.ok) || null; /* a claim, or another product's price, set on the picture */
+    /* the words name another product than the jam's (publish-ready otherNamed): its Fix it rewrites the words for the jam's product, in the
+       server's own words, text only and at the same angle; never a new photo, never a picture fix (26 Oct, QV P0-1) */
+    const otherLeft = () => (publishFor(t, ch)?.checks || []).find((c) => c.k === 'match' && !c.ok && c.ask) || null;
+    const wordsFix = b.fix && b.check === 'match' ? otherLeft() : null;
     const run = async () => {
       let said = false, pic = null, phrases = [];
+      if (wordsFix) { await iterate(t, ch, wordsFix.ask, { show: show || `Fix: ${wordsFix.t}`, fix: true, cancel: tok, wordsOnly: true }); if (ANSWERED.has(ch)) return { answered: true };
+        const left = !isMock() && !tok.stop ? otherLeft() : null; if (left) await iterate(t, ch, `Still about the wrong product: ${left.ask}`, { quiet: true, fix: true, cancel: tok, wordsOnly: true });
+        if (!isMock() && otherLeft()) ch.thread.push({ from: 'ai', text: `The words still name ${(otherLeft().of || []).join(' and ') || 'another product'}. Edit them in Details, or tell me how you want them.`, at: now(t) });
+        return {}; }
       if (b.fix && o.reletter && claimsLeft()) { const sv = headOf(t, ch)?.studio;
         if (sv?.jid && sv?.take) { phrases = (publishFor(t, ch)?.checks || []).filter((c) => !c.ok && ['claims', 'price'].includes(c.k)).flatMap((c) => c.phrases || []).filter(Boolean);
           if (phrases.length) { ch.thread.push(youSaid(t, show || msg)); said = true; think(ch, 'Taking it off the picture');

@@ -65,7 +65,7 @@ test('the studio: a question never makes a version, a package that came back unc
   assert.doesNotMatch(r, /PHOTO_ASK/, 'the old regex that matched "photo, change" is gone');
   assert.match(r, /if \(!knob && !quiet && !fix [^&]*&& \(isQuestion\(message\) \|\| EVIDENCE_ASK\.test\(message\)\)\) \{ think\(ch, [^)]*\); try \{ return await answerIn\(/, 'questions are answered before any rewrite');
   assert.match(r, /photoAsk\(msg\) === 'change' && !isQuestion\(msg\)/, 'a paid photo only for an ask to change it');
-  assert.match(r, /if \(!keepPhoto && \(out\.newImage/, 'the model can’t start a photo the person said to keep');
+  assert.match(r, /if \(!keepPhoto && !wordsOnly .{0,120}&& \(out\.newImage/, 'the model can’t start a photo the person said to keep, nor on a words-only fix (26 Oct)');
   assert.match(r, /const same = JSON\.stringify\(snapOf\(ch\)\) === snapIn;\s*\n\s*if \(!same\) \{ const v = version\(/, 'no identical version');
   assert.match(r, /if \(ANSWERED\.has\(ch\)\) return \{ change: pubChange\(t, ch\), answered: true \}; \/\* a question: no new version in the jam either/);
   const fsv = src('feed-service.js');

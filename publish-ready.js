@@ -33,6 +33,8 @@ const num = (s) => { let x = String(s).replace(/\s/g, ''); if (/,\d{1,2}$/.test(
 function pricesOk(text, src, catalog = []) {
   const known = new Set(); for (const x of catalog || []) for (const k of ['price', 'compareAt', 'compare_at', 'p']) if (x?.[k] != null && Number.isFinite(num(x[k]))) known.add(Math.round(num(x[k])));
   const s = String(src || '').toLowerCase(), bad = [];
+  /* a price the brand's own words state, rounded to whole rupees, is that price (26 Oct, QV N-P1-3: the words say ₹2,182 for the facts' ₹2,182.15) */
+  for (const m of s.matchAll(PRICE)) { if (!/^(₹|rs\.?|inr)$/.test(String(m[1] || '').trim())) continue; const n = num(m[2]); if (Number.isFinite(n)) known.add(Math.round(n)); }
   for (const m of String(text).matchAll(PRICE)) { const a = m[2] || m[3], n = num(a); if (!Number.isFinite(n)) continue; const r = Math.round(n);
     if (known.has(r) || s.includes(String(a).toLowerCase()) || s.includes(String(r))) continue; bad.push(m[0].trim()); }
   return [...new Set(bad)];
@@ -48,6 +50,43 @@ function otherPrices(text, product, catalog = []) {
     if (other && !low.includes(String(other.t || other.name || '').toLowerCase().slice(0, 24))) out.push({ said: m[0].trim(), of: other.t || other.name }); }
   return out;
 }
+/* the words name another product of the catalog than the one the piece shows (26 Oct, QV P0-1: Arata's Stories jam put the styling
+   stick on the stage and the shampoo in the caption, slides and #antihairfall; P1-15: "apply your scalp serum" on the stick's
+   carousel). Any brand: 1. another product's name written out; 2. another product's kind ("serum", "shampoo") used as a noun when the
+   piece's own product isn't that kind; 3. a hashtag cut from another product's name. The same product in another size, a piece
+   of the jam's own bundle and a name inside the jam's own name never count. → [{ said, of, kind }] */
+const PW = (s) => String(s || '').toLowerCase().replace(/[’']/g, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+const pName = (x) => String(x?.t || x?.name || x?.title || '');
+const baseOf = (n) => String(n || '').split(/\s+[–—|:-]\s+|,\s|\s*\(/)[0];
+const BUNDLE = /\b(?:combo|kit|set|bundle|duo|trio|regimen|routine|pack of|gift|hamper|collection)\b|\s[+&]\s/i;
+const NOT_KIND = new Set(['hair', 'skin', 'care', 'pack', 'size', 'mini', 'travel', 'edition', 'bottle', 'refill', 'women', 'woman', 'mens', 'kids', 'baby', 'daily', 'night', 'free', 'sample', 'original', 'classic', 'new', 'plus', 'pro', 'max', 'black', 'white', 'blue', 'green', 'pink', 'combo']);
+const sing = (w) => w.replace(/(?:es|s)$/, '');
+export function otherNamed(text, product, catalog = [], brand = '') {
+  const mine = pName(product), T = String(text || ''); if (!mine || !T.trim() || !(catalog || []).length) return [];
+  const bw = new Set(PW(brand)), mineWs = PW(baseOf(mine)).filter((w) => !bw.has(w)), mineAll = new Set(PW(mine).map(sing)), mineSp = ` ${PW(mine).join(' ')} `, mineJoin = PW(mine).join('');
+  const bundle = BUNDLE.test(mine), spaced = ` ${PW(T).join(' ')} `, out = [], seen = new Set();
+  const add = (said, of, kind) => { const k = `${kind}:${said.toLowerCase()}`; if (seen.has(k)) return; seen.add(k); out.push({ said, of, kind }); };
+  for (const x of catalog) { const n = pName(x); if (!n || n === mine) continue;
+    const ws = PW(baseOf(n)).filter((w) => !bw.has(w)), ph = ws.join(' '); if (!ws.length || ph === mineWs.join(' ')) continue; /* the same product in another size */
+    if (mineSp.includes(` ${ph} `)) continue; /* a name inside the jam's own name ("Styling Stick" in "Sleek Hair Styling Stick"), or a piece of its bundle */
+    if (ws.length >= 2 && spaced.includes(` ${ph} `)) { add(baseOf(n), n, 'name'); continue; }
+    /* its kind as a noun: "your scalp serum", "this shampoo"; never the verb ("shampoo your hair", "after you shampoo") */
+    const kind = ws[ws.length - 1]; if (!bundle && kind.length >= 4 && !/\d/.test(kind) && !NOT_KIND.has(kind) && !mineAll.has(sing(kind)) && !seen.has(`kind:${kind}`)) {
+      const re = new RegExp(`(^|[^\\p{L}\\p{N}])(${kind}(?:e?s)?)(?![\\p{L}\\p{N}])`, 'giu');
+      for (const m of T.matchAll(re)) { const before = T.slice(Math.max(0, m.index - 24), m.index + m[1].length).toLowerCase(), after = T.slice(m.index + m[0].length, m.index + m[0].length + 16).toLowerCase();
+        if (/\b(?:you|to|we|i|they|then|and|never|don['’]t|just|or)\s+$/.test(before) || /^\s+(?:your|it|them|the|daily|regularly|twice|once|gently)\b/.test(after) || /#\S*$/.test(before)) continue;
+        const prev = (/([\p{L}\p{N}-]+)\s+$/u.exec(before) || [])[1]; add(prev && !/^(?:your|the|a|an|this|that|our|my|with|of|and|in)$/.test(prev) ? `${prev} ${m[2]}` : m[2], n, 'kind'); seen.add(`kind:${kind}`); break; } }
+  }
+  /* a hashtag cut from another product's name (#antihairfall), when it isn't part of the jam's own name or the brand's */
+  for (const m of T.matchAll(/#([\p{L}\p{N}_]{8,})/gu)) { const h = m[1].toLowerCase().replace(/_/g, ''); if (mineJoin.includes(h) || PW(brand).join('').includes(h)) continue;
+    const of = catalog.find((x) => { const j = PW(pName(x)).join(''); return pName(x) !== mine && PW(baseOf(pName(x))).join(' ') !== mineWs.join(' ') && j.includes(h); }); if (of) add(`#${m[1]}`, pName(of), 'tag'); }
+  return out;
+}
+/* every word of a package that goes out with the piece (the caption, slide words and their picture notes, hashtags, the ad's lines):
+   what the "about another product" check and its Fix it read */
+export const pkgWordsOf = (p = {}) => [p.caption, Array.isArray(p.hashtags) ? p.hashtags.join(' ') : p.hashtags, p.primaryText, p.headline, p.description, p.copy, p.title, p.overlay, p.stickers, p.front, p.back, p.name, Array.isArray(p.bullets) ? p.bullets.join('\n') : p.bullets,
+  ...(Array.isArray(p.slides) ? p.slides.flatMap((x) => [x?.onSlide, x?.imageBrief, x?.visual, x?.text]) : [])].filter((x) => typeof x === 'string' && x.trim()).join('\n');
+
 /* a star rating in the words is backed only when the brand's own reviews say that number */
 const RATING = /(\d(?:\.\d)?)\s*(?:★|⭐|stars?\b|\/\s*5\b|out of 5)|rated\s+(\d(?:\.\d)?)/gi;
 function ratingsOk(text, src) {
@@ -138,7 +177,14 @@ export function readyOf({ family, action = '', pkg = {}, card = {}, product = nu
   /* the words were written for this piece: they name the product it shows (a caption written for another idea before the film was made reads wrong) */
   const key = String(product?.name || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w.length >= 4 && !/^(pack|with|from|this|that|combo|bottle|tube)$/.test(w)).slice(0, 3);
   const said = parts.filter((x) => ['caption', 'copy', 'primaryText', 'title', 'headline'].includes(x.k)).map((x) => String(x.value || '')).join(' ').toLowerCase();
-  if (key.length && said.trim() && !key.some((w) => said.includes(w))) checks.push({ k: 'match', ok: false, soft: true, t: `The words don’t mention ${tidy(product.name, 50)}: they may have been written for another idea. Ask us to rewrite them from this ${p.video ? 'film' : 'picture'}.` });
+  /* the words name another product than the one the piece shows: red, and its Fix it rewrites the words for this product (text only,
+     the same angle, never a new photo). A carousel or collection of several products is about all of them */
+  const many = (Array.isArray(p.products) && p.products.length > 1) || p.productSet || (family === 'meta_ad' && Array.isArray(p.cards) && p.cards.length > 1);
+  const other = product?.name && !many ? otherNamed(pkgWordsOf(p), product, catalog, brand) : [];
+  if (other.length) { const o0 = other[0], names = [...new Set(other.map((x) => baseOf(x.of)))].slice(0, 2), mine = tidy(baseOf(product.name), 60);
+    checks.push({ k: 'match', ok: false, fix: 'words', said: other.map((x) => x.said).slice(0, 4), of: names, t: `The words are about ${tidy(names.join(' and '), 80)}${names.some((n) => n.toLowerCase() === o0.said.toLowerCase()) ? '' : ` (“${tidy(o0.said, 40)}”)`}, but the ${p.video ? 'film' : 'picture'} shows ${mine}: rewrite them for ${mine}`,
+      ask: `The piece shows ${product.name}. Its words (the caption, the words and notes on each slide, the hashtags) talk about ${names.join(' and ')}: ${other.slice(0, 4).map((x) => `“${x.said}”`).join(', ')}. Rewrite them for ${product.name}: name it right and drop anything only true of ${names.join(' and ')}. Keep the angle, the offer and the format; change only the words.` }); }
+  else if (key.length && said.trim() && !key.some((w) => said.includes(w))) checks.push({ k: 'match', ok: false, soft: true, t: `The words don’t mention ${tidy(product.name, 50)}: they may have been written for another idea. Ask us to rewrite them from this ${p.video ? 'film' : 'picture'}.` });
   if (cardProduct?.name && product?.name && cardProduct.name !== product.name) checks.push({ k: 'product', ok: false, soft: true, t: `It shows ${tidy(product.name, 50)}; the card is about ${tidy(cardProduct.name, 50)}` });
   else if (product?.name) checks.push({ k: 'product', ok: true, t: `Shows ${tidy(product.name, 60)}, the card’s product` });
   const places = p.video ? [] /* a film runs in the shape it was made; its cover and GIF are listed with it */ : (PLACES[Array.isArray(p.aplus) && p.aplus.length ? 'aplus' : /ig_story$/.test(action) ? 'story' : /collection_ad$/.test(action) ? 'collection' : family] || []).map(([shape, where]) => ({ shape, where }));
