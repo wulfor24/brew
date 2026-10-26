@@ -108,7 +108,10 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     const extra = (o.refFiles || []).map((f, i) => ({ src: f, job: o.refJobs?.[i] || 'style', label: o.refLabels?.[i] || null }));
     const refs = gather([prod, o.refs || [], extra, o.noBrandRefs ? [] : b.refs], route.maxRefs || 14);
     const words = [].concat(o.words || []).map(one).filter(Boolean);
-    const prompt = [o.prompt, words.length ? `Set these words in the picture exactly as written, in the brand's type, where they read first: ${words.map((w) => `"${w}"`).join(' / ')}.` : '',
+    /* a look reference (the brand's own posts) can show other products: only the product photo's product may appear (27 Oct, Arata: a
+       sea-salt spray from a post walked into a shampoo ad) */
+    const onlyProduct = prod.length && refs.some((r) => r.job === 'style' || r.job === 'logo') ? 'Only the product from image 1 appears; never a product, bottle or pack from any other image (those are for the look only).' : '';
+    const prompt = [o.prompt, onlyProduct, words.length ? `Set these words in the picture exactly as written, in the brand's type, where they read first: ${words.map((w) => `"${w}"`).join(' / ')}.` : '',
       b.block ? `The brand's art direction (follow it):\n${b.block}` : '', refLines(refs.map((r, i) => ({ ...r, n: i + 1 })))].filter(Boolean).join('\n\n');
     return run({ slug: o.slug, mode: 'image_gen', prompt, route, refs, path: o.path || job });
   }
@@ -127,7 +130,7 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     const route = pickRoute({ specs: await specs('video_gen'), job: 'video', ratio: o.ratio || '9:16', tier: o.tier || 'draft', seconds: o.seconds || 8, sound: o.sound });
     const b = o.brand === false ? { block: '', refs: [] } : await brand(o.slug, o.kind || 'reel');
     const refs = gather([o.srcFile ? [{ src: o.srcFile, job: 'product', label: o.productName || 'the product' }] : [], o.refs || [], b.refs.filter((r) => r.job !== 'logo')], route.maxRefs || 9);
-    const prompt = [o.prompt, o.line ? `Spoken line: "${one(o.line)}".` : '', b.block ? `The brand's look (follow it):\n${b.block}` : '', o.frame ? 'Open exactly on the start frame and keep the product as it is there.' : '',
+    const prompt = [o.prompt, o.srcFile && refs.length > 1 ? 'Only the product from image 1 appears; never a product, bottle or pack from any other image.' : '', o.line ? `Spoken line: "${one(o.line)}".` : '', b.block ? `The brand's look (follow it):\n${b.block}` : '', o.frame ? 'Open exactly on the start frame and keep the product as it is there.' : '',
       route.framesAlone && o.frame ? '' : refLines(refs.map((r, i) => ({ ...r, n: i + 1 })))].filter(Boolean).join('\n\n');
     return run({ slug: o.slug, mode: 'video_gen', prompt, route, refs, frame: o.frame || null, endFrame: o.endFrame || null, path: o.path || 'video' });
   }
