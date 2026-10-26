@@ -4438,7 +4438,10 @@
       if (want < .79) { m.style.aspectRatio = String(want); const rest = ad.offsetHeight - m.offsetHeight, bar = $('.std .ship, .std .jp-ship')?.getBoundingClientRect().top || innerHeight, avail = Math.min(roomH, bar - ad.getBoundingClientRect().top - ($('.cs-sizes')?.offsetHeight || 0) - 72); /* what shows above the bar and the sizes (they float 12px over the stage's foot) */
         ad.style.width = Math.round(Math.max(180, Math.min(roomW, 470, (avail - rest) * want))) + 'px'; return; } }
     if (ad.matches('.as-meta.lg') && m.matches('.am-media')) { const ar = (im?.naturalWidth && im.naturalWidth / im.naturalHeight) || parseFloat(getComputedStyle(ad).getPropertyValue('--ar')) || .8;
-      ad.style.width = Math.round(Math.min(roomW, 470)) + 'px'; m.style.aspectRatio = String(Math.min(1.91, Math.max(0.8, ar))); return; }
+      ad.style.width = Math.round(Math.min(roomW, 470)) + 'px'; const r2 = Math.min(1.91, Math.max(0.8, ar)); m.style.aspectRatio = String(r2);
+      /* the whole ad fits above the bar, its headline and button included (at 1000×620 they ran under it): the picture shrinks, the words stay */
+      const avail = roomH - ($('.cs-sizes')?.offsetHeight || 0) - 16; for (let i = 0; i < 3 && ad.offsetHeight > avail; i++) { const rest = ad.offsetHeight - m.offsetHeight; ad.style.width = Math.round(Math.max(240, Math.min(roomW, 470, (avail - rest) * r2))) + 'px'; }
+      return; }
     for (let i = 0; i < 2 && ad.offsetHeight > roomH && m.offsetHeight > 0; i++) { const rest = ad.offsetHeight - m.offsetHeight, k = (roomH - rest) / m.offsetHeight; if (k >= 1 || k <= 0) break;
       ad.style.width = Math.round(Math.max(320, Math.min(roomW, ad.offsetWidth * k))) + 'px'; } };
   addEventListener('resize', () => { if (view === 'remix') fitAd(); });
