@@ -82,7 +82,7 @@ export function createMaker({ engines, brandbook, claudeTool, ai = null, profile
       r.id === 'ai-faq' ? 'Write body as 3–5 questions people ask AI apps about this product, each on its own line ending in "?", each followed by a two-sentence answer on the next line. Then blocks: "Product schema" (JSON-LD, real price only) and "llms.txt line".' : '',
       r.kind === 'table' ? 'This is a change list someone applies by hand in their own tool. Fill cols (3 short names) and rows (one change per row, 3–8 rows). Use only names, prices and places from the facts given; where a fact is missing write [YOURS]. Put the steps to apply it in blocks: "Where", "Steps", "Done when".' : '',
       board.ask ? `This board: ${board.label}. ${board.ask}` : '',
-      ctx.notes?.length ? `The team added for this jam (follow these):\n${ctx.notes.slice(-6).map((n) => `- ${tidy(n, 600)}`).join('\n')}` : '',
+      ctx.notes?.length ? `The team added for this jam (follow these):\n${ctx.notes.slice(-6).map((n) => `- ${tidy(n, /^The direction for this piece/.test(n) ? 1000 : 600)}`) /* the set-up's direction, whole (26 Oct) */.join('\n')}` : '',
       ctx.memory ? `What Brew has learned about this brand (memory is on):\n${tidy(ctx.memory, 2500)}` : '',
       ask ? `The team asked: ${ask}` : '',
       'Never invent numbers, discounts, codes, guarantees or reviews. Quote reviews only word for word from the lines given, and only as a customer\'s words (in quotes, said by a customer): a result a customer describes is never the brand\'s own headline or claim. One version only.'

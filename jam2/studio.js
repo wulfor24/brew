@@ -8,7 +8,8 @@ import { SIZES } from './catalogue.js';
 import { srtOf } from '../video-finish.js';
 import { claimFlags } from '../claims.js';
 import { isRestock, sceneOf } from '../product-match.js';
-import { kitColours } from './kit-colours.js';
+import { kitColours, fitDirection, healDirection } from './kit-colours.js';
+const DIR_NOTE = 900; // the set-up's direction, whole (jam2/routes.js cleanSpec keeps 900)
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(HERE, '..', 'data', f), 'utf8')); } catch { return d; } };
@@ -262,7 +263,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     if (spec.product?.img) ctx.product = { ...spec.product };
     /* what the team set on the composer (the direction Brew wrote and they may have changed, who is on camera, the reference to
        follow, the quality) is what every maker below reads: the art direction, the shot, the film */
-    const asks = [spec.direction ? `The direction for this piece (follow it): ${tidy(spec.direction, 600)}` : '', spec.cast ? `On camera: ${tidy(spec.cast, 160)}.` : '', spec.ref ? `Follow the idea and layout of the reference (${tidy(spec.ref, 120)}), never copy its brand, words or people.` : ''].filter(Boolean);
+    const asks = [spec.direction ? `The direction for this piece (follow it): ${fitDirection(healDirection(spec.direction), DIR_NOTE) /* whole sentences, the brand's rules kept (26 Oct, QV N-P1-5) */}` : '', spec.cast ? `On camera: ${tidy(spec.cast, 160)}.` : '', spec.ref ? `Follow the idea and layout of the reference (${tidy(spec.ref, 120)}), never copy its brand, words or people.` : ''].filter(Boolean);
     if (asks.length && !ctx.asked) { ctx.notes = [...(ctx.notes || []), ...asks]; ctx.asked = true; } if (spec.quality) ctx.tier = spec.quality === 'premium' ? 'premium' : spec.quality === 'preview' ? 'preview' : null;
     const no = blockOf(st, ctx); if (no) throw new Error(no); /* the Brand Book may have changed since the price was shown */
     /* the first take carries the jam's own words (the headline and line the brand already has, checked and edited), so the picture
@@ -309,7 +310,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
       const showsProduct = !!(st.preset || st.designed), job = showsProduct ? 'product-shot' : st.job, o = hf.pick(job, ctx.tier || 'default'), photos = showsProduct ? cr.photosOf(ctx, ctx.profile).slice(0, st.preset ? 1 : 3).map((u) => engines.pub(u)) : [];
       const base = st.preset ? { ...o.input, enhance_prompt: true, preset_id: st.preset, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) }
         : showsProduct ? { ...o.input, quality: 'high', image_urls: photos, aspect_ratio: hf.nearestRatio(o.id, size.ratio) } : { ...o.input, aspect_ratio: hf.nearestRatio(o.id, size.ratio) };
-      const colours = kitColours(ctx.bbv || {}) /* the brand's own, never a framework's stock blues (26 Oct, QV P1-17) */, promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}${colours.length ? `, in its colours ${colours.join(', ')}` : ''}.`, showsProduct && photos.length ? 'The product is exactly the one in the reference photos: same shape, colours, label and count.' : '', cr.productLine(ctx.profile), spec.direction ? tidy(spec.direction, 600) : '', rules, fix, /* the brand line last: a long prompt is cut from the end, and the exact-words rule and the retry's fix must never be what goes */ brandScene(ctx, { people: st.people !== 'none' && !['none', 'consented'].includes(ctx.bbv?.comfort?.people), scene: showsProduct && !/^mp-/.test(st.id || '') /* marketplace pictures and type-only posters get the colours, not a room and props */ })].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
+      const colours = kitColours(ctx.bbv || {}) /* the brand's own, never a framework's stock blues (26 Oct, QV P1-17) */, promptOf = (fix = '') => tidy([st.preset ? `An ad for ${ctx.bbv?.name || 'the brand'}.` : `${st.look} For ${ctx.bbv?.name || 'the brand'}${colours.length ? `, in its colours ${colours.join(', ')}` : ''}.`, showsProduct && photos.length ? 'The product is exactly the one in the reference photos: same shape, colours, label and count.' : '', cr.productLine(ctx.profile), spec.direction ? fitDirection(healDirection(spec.direction), DIR_NOTE) : '', rules, fix, /* the brand line last: a long prompt is cut from the end, and the exact-words rule and the retry's fix must never be what goes */ brandScene(ctx, { people: st.people !== 'none' && !['none', 'consented'].includes(ctx.bbv?.comfort?.people), scene: showsProduct && !/^mp-/.test(st.id || '') /* marketplace pictures and type-only posters get the colours, not a room and props */ })].filter(Boolean).join(' '), st.preset ? 4800 : 2000);
       let file = null, check = null;
       for (let t = 0; t < 2 && !file; t++) {
         const input = { ...base, prompt: promptOf(t && check ? `The last one was wrong: ${check.same ? '' : 'the product changed. '}${check.invented.length ? `it added "${check.invented.join('", "')}" — leave those out.` : ''}` : '') };
@@ -388,7 +389,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
      and for a video its shot list. No picture or video model runs, so nothing is charged; Generate makes the real one */
   async function sketch(ctx, spec) {
     if (spec.product?.img) ctx.product = { ...spec.product }; const st = styleOf(spec.style), video = st?.kind === 'video' || spec.kind === 'video';
-    if (spec.direction && !ctx.asked) { ctx.notes = [...(ctx.notes || []), `The direction for this piece (follow it): ${tidy(spec.direction, 600)}`]; ctx.asked = true; }
+    if (spec.direction && !ctx.asked) { ctx.notes = [...(ctx.notes || []), `The direction for this piece (follow it): ${fitDirection(healDirection(spec.direction), DIR_NOTE)}`]; ctx.asked = true; }
     const v1w = v1Words(ctx, spec); /* the free look shows the words the paid make will set: the jam's own */
     const words = v1w || await maker.write(ctx, { recipe: video ? 'reel' : 'image-ad' }, { ask: spec.ask || '' }).catch(() => ({}));
     const size = sizeOf(spec.sizes?.[0] || (video ? 'story' : 'ig-portrait')), img = ctx.product?.img || null;

@@ -6,14 +6,25 @@
 import { styleOf, blockOf, angleOf, carriesAngle, cardText } from './studio.js';
 import { SIZES } from './catalogue.js';
 import { refsFor } from './brandbook.js';
-import { kitColours, colourName } from './kit-colours.js'; // the kit's own colours, named (26 Oct)
-export { UI_DEFAULTS, colourName, kitColours } from './kit-colours.js';
+import { kitColours, colourName, fitDirection, healDirection } from './kit-colours.js'; // the kit's own colours, named (26 Oct)
+export { UI_DEFAULTS, colourName, kitColours, fitDirection, healDirection } from './kit-colours.js';
 
 const tidy = (s, n = 160) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const VIDEO_KINDS = new Set(['video']);
 /* "…in use.; The product…" and "wash.”.": each part ends once, with its own stop */
 const stop = (s) => { s = String(s || '').trim().replace(/[\s;,:]+$/, ''); return !s ? '' : /[.!?…][”’"')]*$/.test(s) ? s : `${s}.`; };
 const PEOPLE = { none: 'No people on camera', hands: 'Hands only', 'ai-cast': 'An AI person who fits your buyer', consented: 'Your own people (with consent)' };
+
+/* the brand's rules for the maker, each one whole sentence: its colours in words (never hex), and its Never list */
+export const DIR_MAX = 900; // what the set-up keeps (jam2/routes.js cleanSpec)
+export const rulesOf = (bbv = {}) => { const names = [...new Set(kitColours(bbv).slice(0, 3).map(colourName).filter(Boolean))];
+  return { colours: names.length ? `In the brand’s ${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]}.` : 'No brand colours in the Brand Book yet: the colours follow the product photo.',
+    never: (bbv.never || []).length ? stop(`Never: ${(bbv.never || []).slice(0, 3).map((x) => String(x).replace(/[.;\s]+$/, '')).join('; ')}`) : '' }; };
+/* a saved direction (a made take's set-up, written before 26 Oct): healed (the brand's colours in words, clean joins), with the brand's
+   rules put back when a cut had dropped them; whole sentences. Free */
+export const healDir = (dir, bbv = {}) => { if (typeof dir !== 'string' || !dir.trim()) return dir; const R = rulesOf(bbv); let x = healDirection(dir, kitColours(bbv));
+  if (!/(?:^|[.!?”]\s)(?:In the brand[’']s\b|No brand colou?rs\b)/.test(x)) x = `${x} ${R.colours}`; if (R.never && !/(?:^|[.!?”]\s)Never:/.test(x)) x = `${x} ${R.never}`;
+  return fitDirection(x, DIR_MAX); };
 
 /* the platform a size is for, in the words the card used */
 const sizeWhy = (card, key) => { const s = SIZES[key]; if (!s) return null; const where = /instagram|\big\b|reel|story|stories/i.test(`${card?.title || ''} ${card?.cta?.label || ''}`) ? 'Instagram' : /meta|facebook|ad\b|ads\b/i.test(`${card?.title || ''} ${card?.cta?.label || ''} ${card?.agent || ''}`) ? 'Meta ads' : null;
@@ -58,8 +69,10 @@ export function contextOf(ctx = {}, d0 = {}) {
   const words = { value: { headline: tidy(head0, 90), line: first(line0) || null, review: review ? tidy(review.text || review.quote || review, 160) : null }, why: review ? 'The card’s claim, and a real review from your Brand Book.' : 'The card’s claim. No review is quoted: none are in your Brand Book yet.' };
   /* the direction: one paragraph a person can read and change */
   const look = (set ? set.map((x) => stop(x.look || x.label)).join(' ') : stop(st?.look || st?.label || ''));
-  const names = [...new Set(kc.slice(0, 3).map(colourName).filter(Boolean))], hl = String(words.value.headline || '').replace(/[\s.!?…]+$/, '');
-  const direction = { value: tidy([p?.name ? `${p.name}, exactly as in its photos.` : '', look, hl ? `Built around: “${hl}”.` : '', cast.shown && people !== 'none' ? stop(cast.label) : people === 'none' ? 'No people.' : '', names.length ? `In the brand’s ${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]}.` : 'No brand colours in the Brand Book yet: the colours follow the product photo.', (bbv.never || []).length ? stop(`Never: ${(bbv.never || []).slice(0, 3).map((x) => String(x).replace(/[.;\s]+$/, '')).join('; ')}`) : ''].filter(Boolean).join(' '), 600), why: 'Written by us from everything above. Change anything; it is what the maker reads.' };
+  const hl = String(words.value.headline || '').replace(/[\s.!?…]+$/, ''), R = rulesOf(bbv);
+  /* the brand's rules first (its colours, its Never list), then the look: whole sentences, so a set-up with many styles never loses
+     the rules (26 Oct, QV N-P1-5: cut at 600 characters mid-sentence) */
+  const direction = { value: fitDirection([p?.name ? `${p.name}, exactly as in its photos.` : '', R.colours, R.never, look, hl ? `Built around: “${hl}”.` : '', cast.shown && people !== 'none' ? stop(cast.label) : people === 'none' ? 'No people.' : ''].filter(Boolean).join(' '), DIR_MAX), rules: [R.colours, R.never].filter(Boolean), why: 'Written by us from everything above. Change anything; it is what the maker reads.' };
   const size = { value: d0.sizes?.[0] || null, why: sizeWhy(card, d0.sizes?.[0]) };
   const length = kind === 'video' ? { value: d0.seconds, why: `${d0.seconds} s: ${st?.group === 'UGC' || /ugc/.test(st?.id || '') ? 'long enough for a hook, the product and a reason to buy' : d0.seconds <= 5 ? 'one moment that loops well in a feed' : 'the length this format holds attention for'}.` } : null;
   const count = { value: d0.count || 1, why: (d0.count || 1) > 1 ? `The card asks for ${d0.count}.` : 'One. Not right? Redo it.' };

@@ -4,7 +4,7 @@
 import { askMarket } from '../market.js';
 import { ME as INSTANCE } from '../instance.js'; // whose make a board's mark is (several web instances)
 import { createStudio, library as studioLibrary, inStudio } from './studio.js';
-import { contextOf } from './context.js';
+import { contextOf, healDir } from './context.js';
 import { createVideoFinish, vertexTranscribe, srtOf } from '../video-finish.js';
 import { gToken } from '../vertex-media.js';
 import { isBatchCard } from '../card-plan.js';
@@ -135,6 +135,7 @@ export function mountJam2(d) {
       /* words start at once (cheap); a picture or a video waits on the Studio composer, set up from the card, until the price gets a yes */
       const bd = jam.boards[0]; if (!inStudio(bd) || isMock() && process.env.STUDIO_AUTO === '1') runBg(t, jam, bd.id, 'first', async () => { const ctx = await ctxOf(t, jam); await maker.first(ctx, bd); }); else jam.studio = true; }
     if (b.v1ch && t.changes?.[b.v1ch] && jam.v1ch !== b.v1ch) { jam.v1ch = String(b.v1ch); await store.put(slug, jam); } /* the v1 jam this composer sits on */
+    if (await healDirs(t, jam).catch(() => false)) await store.put(slug, jam).catch(() => {}); /* "What the maker reads" of a take made before 26 Oct */
     return { jam: out(jam), also: alsoFor(jam.boards[0]?.recipe) };
   }));
   /* v1 asks this when a card's button is pressed: does it make a picture, a set or a video? Then Studio makes it (v1's own Make
@@ -290,7 +291,11 @@ export function mountJam2(d) {
      words give the same name, so the link the jam already holds starts working */
   const healFiles = async (j) => { for (const bd of j.boards) for (const tk of bd.takes || []) { if (!tk.srt || !tk.captions?.segs?.length || !d.genFile || !d.saveGen) continue;
     const name = String(tk.srt).replace(/^\/?gen\//, ''); if (await d.genFile(name).catch(() => null)) continue; const buf = Buffer.from(srtOf(tk.captions.segs)); if (engines.keep(buf, 'srt') !== tk.srt) tk.srt = engines.keep(buf, 'srt'); } };
-  on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); await healFiles(j).catch((e) => log.warn?.('[jam2] heal files', e.message)); await resumeCut(t, j).catch((e) => log.warn?.('[jam2] resume', e.message)); return { jam: out(j, t), also: alsoFor(j.boards[0]?.recipe) }; }));
+  /* a made take's set-up written before 26 Oct reads right on every open (free, saved with the jam): its direction in whole sentences, the
+     brand's own colours in words and its Never rules kept, never a framework's stock hex or a ".;" join (QV P1-17, N-P1-5) */
+  const healDirs = async (t, j) => { const sps = (j?.boards || []).flatMap((bd) => (bd.takes || []).map((tk) => tk?.studio?.spec)).filter((sp) => typeof sp?.direction === 'string' && sp.direction.trim()); if (!sps.length) return false;
+    let v = {}; try { v = bb.view(await bb.load(slugOfT(t))) || {}; } catch { v = {}; } let moved = false; for (const sp of sps) { const h = healDir(sp.direction, v); if (h && h !== sp.direction) { sp.direction = h; moved = true; } } return moved; };
+  on('GET', '/api/jam2/jams/:jid', wrap(async (b, t, p) => { const j = await load(t, p.jid); if (await healDirs(t, j).catch(() => false)) await store.put(slugOfT(t), j).catch(() => {}); await healFiles(j).catch((e) => log.warn?.('[jam2] heal files', e.message)); await resumeCut(t, j).catch((e) => log.warn?.('[jam2] resume', e.message)); return { jam: out(j, t), also: alsoFor(j.boards[0]?.recipe) }; }));
   on('POST', '/api/jam2/jams/:jid/concept', wrap(async (b, t, p) => { const j = await load(t, p.jid); const changed = bumpConcept(j, b || {}, whoOf(t).me); await store.put(slugOfT(t), j); return { jam: out(j), changed }; }));
   on('POST', '/api/jam2/jams/:jid/boards', wrap(async (b, t, p) => { const j = await load(t, p.jid);
     if (b.fromRecipe) { const rc = ((await bb.load(slugOfT(t))).recipes || []).find((x) => x.id === b.fromRecipe); if (!rc) return { error: 'That recipe is gone.' }; Object.assign(b, { recipe: rc.recipe, label: rc.name, ask: rc.ask, how: rc.how }); }
