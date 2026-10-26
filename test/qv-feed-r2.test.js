@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { aiRingNow, aiFact, healAiText, healAiCard } from '../ai-count.js';
 import { healthFrom } from '../health.js';
+import { draftFits, draftName, draftView, notHeadline, noPlanNo } from '../drafts-bg.js';
 import { heardCards } from '../social-feed.js';
 import { isCdn, cdnExpiry, cdnDead, keepName, createCdnKeep, keepRes } from '../cdn-keep.js';
 
@@ -94,4 +95,23 @@ test('counts: a Heard card counts everything heard, as every page does; the widg
   assert.match(app, /jams\.length \? `\$\{jams\.length\} jam\$\{jams\.length === 1 \? '' : 's'\} on the Work board/, 'the widget counts the Work board');
   assert.ok(!/thing\$\{n === 1 \? '' : 's'\} in progress/.test(app));
   assert.match(app, /class="shf-ini"/, 'a rival with no logo shows its initials');
+});
+
+/* ---------- 4. drafts that match their card ---------- */
+test('drafts: one with no saved product is matched by the name in its title; a headline is not said again; no plan numbers', () => {
+  const card = { title: 'Set automated budget rules to protect hero inventory', sub: 'Pause ads on sizes that run out', rows: [['Out of Stock', '2 products']] };
+  const cat = [{ t: 'Velocity Nitro 3 Running Shoes' }, { t: 'Honeymoon Travel Pack' }];
+  assert.equal(draftName({ title: 'Email: Honeymoon Travel Pack' }, cat), 'Honeymoon Travel Pack');
+  assert.equal(draftName({ title: 'Email: Honeymoon Travel Pack' }, []), 'Honeymoon Travel Pack', 'a product-like title, with no catalog');
+  assert.equal(draftName({ title: 'Email: three ways to wear it' }, []), '', 'a sentence is no product');
+  assert.equal(draftFits({ title: 'Email: Honeymoon Travel Pack', copy: 'x' }, card, { catalog: cat, brand: 'PUMA' }), false);
+  assert.equal(draftFits({ title: 'Video: Velocity Nitro 3 Running Shoes' }, { title: 'Show how light the Velocity Nitro 3 Running Shoes are' }, { catalog: cat, brand: 'PUMA' }), true);
+  assert.equal(draftFits({ title: 'Post' }, card, { catalog: cat }), true, 'a draft naming nothing stays');
+  assert.equal(notHeadline('• The biggest plus is how light these shoes are.\nBorn in the 1970s.', '• The biggest plus is how light these shoes are.'), 'Born in the 1970s.');
+  assert.equal(notHeadline('Born in the 1970s.', 'Light as air'), 'Born in the 1970s.');
+  const v = draftView({ image: 'gen/a.png', headline: 'The biggest plus is how light these shoes are', copy: '• The biggest plus is how light these shoes are.\nBorn in the 1970s.' });
+  assert.ok(!/biggest plus/.test(v.copy), v.copy);
+  assert.equal(noPlanNo('Edit this post 21 template and use it in your ads.'), 'Edit this template and use it in your ads.');
+  assert.equal(noPlanNo('Run this Play 21 static next week'), 'Run this static next week');
+  assert.match(read('feed-service.js'), /rest\.title = noPlanNo\(rest\.title\); rest\.sub = noPlanNo\(rest\.sub\)/);
 });

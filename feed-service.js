@@ -56,7 +56,7 @@ import { cardProduct, cardScene, matchProduct, pricedProduct } from './product-m
 import { LOOKS_V } from './draft-quality.js'; // watcher pictures saved before the look check are swapped for the real product photo (housekeep)
 import { gapFix } from './ai-gap.js';
 import { newsForUs, newsCta, adForUs } from './for-us.js'; // every rival and news story ends on one line for the brand (QA FEED-ARV-10) // the AI-answers gap card's own fix (QA FEED-ARV-09)
-import { seedDrafts, draftFor, draftView, draftFits } from './drafts-bg.js';
+import { seedDrafts, draftFor, draftView, draftFits, noPlanNo } from './drafts-bg.js';
 import { planFor, planPrompt, PLAN_V, isBatchCard } from './card-plan.js';
 import { createMoves } from './moves.js';
 import { rulesFor, addLesson, stepOnce, lessonsFor, promptBlock, outcome, memoryBlock } from './learn.js';
@@ -820,6 +820,11 @@ export function createFeedService(o) {
     if (Array.isArray(rest.rows) && rest.rows.length > 1) { const kept = rest.rows.filter((r) => !Array.isArray(r) || !/^(?:store )?(?:currency|platform)$/i.test(String(r[0]).trim())); if (kept.length) rest.rows = kept; }
     /* "Brew saw we have 52 live ads": in what Brew saw, the brand is "you" (card-voice.js, QV P2-17); a rival's ad and a post are quoted */
     if (!c0.post && !['ad', 'viral'].includes(c0.research?.kind)) { rest.title = oneVoice(rest.title); rest.sub = oneVoice(rest.sub); }
+    /* the plan's numbering never reaches a card's words either ("Edit this post 21 template and use it in your ads" on PUMA's Play 21 statics, QV round 2) */
+    rest.title = noPlanNo(rest.title); rest.sub = noPlanNo(rest.sub); if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map(noPlanNo) : r));
+    if (rest.detail && typeof rest.detail === 'object') rest.detail = { ...rest.detail, ...(Array.isArray(rest.detail.why) ? { why: rest.detail.why.map(noPlanNo) } : {}), ...(Array.isArray(rest.detail.how) ? { how: rest.detail.how.map(noPlanNo) } : {}) };
+    if (rest.make && typeof rest.make === 'object') rest.make = { ...rest.make, pieces: noPlanNo(rest.make.pieces) };
+    if (rest.post && typeof rest.post.copy === 'string') rest.post = { ...rest.post, copy: noPlanNo(rest.post.copy), ...(typeof rest.post.hook === 'string' ? { hook: noPlanNo(rest.post.hook) } : {}) };
     /* a stock sentence says what its own rows say: a sold-out row is "sold out", never "nearly gone" (stock-say.js, QV P1-8) */
     if (Array.isArray(rest.rows)) { rest.title = stockSay(rest.title, rest.rows); rest.sub = stockSay(rest.sub, rest.rows); }
     /* a rows card with no rows and no picture (a watcher's idea, a trend card: QV P0-1, 26 Oct) shows the photo of the product its words
