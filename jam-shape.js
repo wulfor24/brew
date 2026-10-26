@@ -2,6 +2,7 @@
 // Brew's one line on what it set up ("One message to **past buyers**, in English, with one button."). Every piece has both, so the
 // page never opens on an empty line. Words in ** ** are the ones the page sets in bold.
 import { dlOf } from './deliverables.js';
+import { BN } from './brand-ctx.js';
 
 export const LAYOUTS = { pic: 'Picture', set: 'Several pictures', reel: 'Video', msg: 'Message', mail: 'Email', page: 'Page', post: 'Community post', acct: 'Account change', check: 'Checklist', brief: 'Brief' };
 
@@ -41,7 +42,8 @@ export const setupLine = (ch = {}, product = null) => {
     case 'mail': return `${p.subject ? `An email, “${cut(p.subject, 60)}”` : 'An email'}${who ? `, to **${lower(who)}**` : ''}.`;
     case 'page': return `${p.heading ? `A page, “${cut(p.heading, 60)}”` : `The ${lower(ch.actionLabel || 'page')}`}${p.pages ? ` on ${cut(p.pages, 40)}` : ''}.`;
     case 'post': { const net = cut(String(p.platform && !/^social post$/i.test(p.platform) ? p.platform : ch.target?.name || ch.actionLabel || 'post').replace(/\s+(?:post|reply|thread|answer)$/i, ''), 30), what = /reply|answer/i.test(ch.actionLabel || '') ? 'reply' : /thread/i.test(ch.actionLabel || '') ? 'thread' : 'post';
-      return `A **${net}** ${what}, ready to paste.`; }
+      const place = String((p.where || [])[0]?.name || '').split(/:\s+/)[0], says = /\b(?:i|we) work at\b|disclosure/i.test(String(p.copy || ''));
+      return place && /^r\/|group|community|forum/i.test(place) ? `A ${what} in **${cut(place, 40)}**${says ? ` that says you work at ${(() => { try { return BN() || 'the brand'; } catch { return 'the brand'; } })()}` : ''}.` : `A **${net}** ${what}, ready to paste.`; }
     case 'acct': return `${cut(p.summary || p.rule || ch.after?.title || ch.actionLabel, 110)}${p.tool || ch.target?.name ? ` in **${cut(p.tool || ch.target.name, 30)}**` : ''}.`.replace(/\.\./, '.');
     default: { const n = (p.steps || p.changes || p.scenes || []).length; return `**${cut(p.what || p.title || p.decision || ch.actionLabel, 70)}**${n ? `: ${n} step${n > 1 ? 's' : ''}` : ''}${p.tool ? ` in ${cut(p.tool, 30)}` : ''}.`.replace(/\.\./, '.'); }
   }

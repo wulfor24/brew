@@ -766,3 +766,8 @@
 .jp.jp-portal{height:0;min-height:0;background:none}
 .jp .jp-pk-in.dl-menu{position:relative;top:auto;left:auto;right:auto;bottom:auto;z-index:auto;min-width:0;grid-template-rows:none;border:0}
 @media (max-width:640px){.jp .jp-pk-in.dl-menu{position:relative;left:auto;right:auto;bottom:auto;width:100%}}
+/* the sizes sit under the piece (floating, they hid behind the bar); the tag already says it's a preview, so the picture carries no note */
+.jp .cs-sizes{position:static;transform:none;margin:12px auto 0}
+.jp .cs-frame.is-preview .am-media::after{display:none}
+/* the email's hero is light, the product on the page's own surface */
+.jp .jp-mail-hero.jp-wash{background:linear-gradient(180deg,var(--surface),var(--surface-2))}
