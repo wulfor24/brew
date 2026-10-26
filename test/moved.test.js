@@ -65,7 +65,7 @@ test('every background loop that spends or writes to people skips moved brands',
   for (const [f, re] of [['build.js', /for \(const b of stayHere\(await packs\.list\(\)/], ['build.js', /for \(const x of stayHere\(await packs\.list\(\)\)\)/], ['confirm-remind.js', /stayHere\(await packs\.list/],
     ['digest.js', /stayHere\(await packs\.list/], ['facts-desk.js', /stayHere\(await packs\.list/], ['drafts-bg.js', /stayHere\(list \|\| await packs\.list/], ['moves-cadence.js', /stayHere\(await packs\.list/],
     ['social-feed.js', /stayHere\(await packs\.list/], ['server.js', /stayHere\(await builder\.list\(\)\)\.filter/], ['server.js', /stayHere\(await builder\.list\(\)\.catch/],
-    ['research.js', /if \(!isLeader\(\) \|\| movedAway\(brand\.slug\)\) return/], ['live-watch.js', /if \(!isLeader\(\) \|\| movedAway\(brand\?\.slug\)\) return/]]) assert.match(src(f), re, f);
+    ['research.js', /healLogos\(\)\.catch\(\(\) => \{\}\); if \(movedAway\(brand\.slug\)\) return;/ /* logos (a free picture copy) heal first, the paid reads skip moved brands (26 Oct) */], ['live-watch.js', /if \(!isLeader\(\) \|\| movedAway\(brand\?\.slug\)\) return/]]) assert.match(src(f), re, f);
   assert.match(src('research.js'), /const need = \(k\) => \{ if \(!isLeader\(\) \|\| movedAway\(brand\.slug\)/, 'no on-demand paid re-read either');
   assert.match(src('feed-service.js'), /if \(isLeader\(\) && !movedAway\(b\.slug\)\) runIn\?\.\(b, \(\) => prereadRivals\(b\)\)/);
   assert.match(src('feed-service.js'), /if \(done\.includes\('ads'\) && !movedAway\(b\.slug\)\)/);
