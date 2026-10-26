@@ -98,7 +98,7 @@ test('QV r2: "+N more" opens a list you can see on every layout, and the line ne
   assert.match(css, /\.jp \.jp-tx \.jp-l:has\(\.ship-fixes\)\{overflow:visible\}/, 'N-P1-1: the line no longer clips its list');
   assert.match(css, /\.jp \.jp-ship \.ship-fixes\{position:static/, 'N-P1-1: the list is placed on the bar, outside the clipped line');
   assert.match(css, /\.jp \.jp-ship \.ship-fixes ol\{position:absolute;left:16px;[^}]*bottom:calc\(100% \+ 8px\);[^}]*max-height:[^}]*overflow:auto/, 'N-P1-1: over the stage, inside the window');
-  assert.match(css, /@container jp-stage \(max-width:860px\)\{\.jp \.jp-ship\{grid-template-columns:minmax\(0,1fr\)\}/, 'N-P2-5: a narrow stage gives the line its own row at every height');
+  assert.match(css, /@container jp-stage \(max-width:700px\)\{\.jp \.jp-ship\{flex-wrap:wrap\}/, 'N-P2-5, 26 Oct: only a stage under ~700px lets the buttons take a row of their own');
   assert.match(css, /\.jp \.jp-ship \.ship-one > \.linkbtn,\.jp \.jp-ship \.ship-one > \.ship-fixes\{flex:none;white-space:nowrap\}/, 'N-P2-5: "+N more" is never cut');
 });
 
@@ -144,4 +144,23 @@ test('QV r2: the ad text, the beat chips and a phone\'s priced buttons read whol
   assert.match(css, /\.jp \.st-asset \.as-meta\.lg:not\(\.is-story\) \.am-text:not\(:focus\)\{white-space:normal\}/, 'N-P2-3: never one line and a bare "…"');
   assert.match(css, /\.jp \.sv-beats li small\{text-transform:none\}/, 'P1-7: "0–3 s", never "0–3 S"');
   assert.match(css, /@media \(max-width:640px\)\{\.jp \.jp-ship > \.jp-btns\{flex-wrap:wrap;/, 'a phone\'s primary drops to its own row rather than lose its price');
+});
+
+// Param, 26 Oct: "the bottom section takes up too much vertical space". The bar is one row: the steps a small indicator beside the line.
+const lastRule = (css, sel) => { const all = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(new RegExp(`(?:^|})\\s*${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\{([^}]*)\\}`, 'g'))]; return all.length ? all[all.length - 1][1] : ''; };
+test('the bar is one compact row, its freed height goes to the stage, and every state keeps its hooks', () => {
+  const css = CSS(), app = APP(), last = (sel) => lastRule(css, sel), bar = last('.jp .jp-ship');
+  assert.match(bar, /display:flex;flex-direction:row;flex-wrap:nowrap/, 'one row: steps, line, buttons'); assert.match(bar, /min-height:64px/); assert.match(bar, /padding:9px 16px 10px/, '64px with a 44px button');
+  assert.ok(!/flex-direction:column/.test(bar), 'never the two stacked rows');
+  assert.match(css, /\.jp \.jp-ship > \.jp-steps\{flex:none;display:flex;align-items:center;[^}]*border-right/, 'the steps sit inline, left of the line');
+  assert.match(last('.jp .jp-ship > .jp-steps li'), /flex-direction:row/, 'a short segment beside each step\'s name');
+  assert.match(css, /\.jp \.jp-ship > \.jp-tx\{flex:1 1 0;min-width:0\}/); assert.match(css, /\.jp \.jp-ship > \.jp-btns\{flex:none;margin-left:auto/, 'the buttons on the right');
+  assert.match(last('.jp .jp-tx .jp-l:not(:has(.ship-one))'), /-webkit-line-clamp:2/, 'the line wraps to two lines at most, never a row of its own');
+  assert.ok(!/@container jp-stage \(max-width:860px\)\{\.jp \.jp-ship\{grid-template-columns/.test(css), 'no second full row at 700–860px');
+  assert.match(css, /@container jp-stage \(max-width:860px\)\{\.jp \.jp-ship > \.jp-steps li:not\(\.is-on\)\{font-size:0/, 'a narrow stage names only the step it is at');
+  assert.match(css, /@media \(max-width:640px\)\{\.jp \.jp-ship \.jp-btns > details > summary\{min-width:44px;min-height:44px/, 'phones keep 44px targets, ⋯ included');
+  assert.match(css, /\.jp-stage\{grid-column:1;display:grid;grid-template-rows:minmax\(0,1fr\) auto/, 'the stage takes whatever height the bar leaves');
+  for (const hook of ['ship-fixes', 'data-fix-one', 'data-cs-full', 'data-cs-make', 'data-v-back', 'data-v-use', 'The team makes it', 'ship-redo', 'btn-free']) assert.ok(app.includes(hook), hook);
+  assert.match(css, /\.jp \.jp-ship \.ship-fixes ol\{position:absolute;left:16px;[^}]*bottom:calc\(100% \+ 8px\)/, '"+N more" still opens over the stage');
+  assert.match(app, /fitAd\(\); jpFit\(\);/, 'the pieces are fitted to the taller stage on every paint');
 });
