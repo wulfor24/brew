@@ -8,6 +8,16 @@
 # 3. check for a minute that nothing came back, then stop once more with nothing hidden (fresh disk) and sweep. Paste the address on the landing to read it again.
 # Instances running code from before retire.js ignore the stop; they only end when Cloud Run reaps them.
 set -euo pipefail
+# BUCKET ERA: this edits gs://brew-prototype files. Since 25 Oct 2026 staging and production keep their data in Postgres
+# (STORAGE=pg), so these edits no longer reach what the site reads. It runs only with STORAGE=gcs (a revision back on the bucket).
+if [ "${STORAGE:-pg}" = pg ]; then
+  echo "$(basename "$0") is bucket-era: the sites keep their data in Postgres (STORAGE=pg) since 25 Oct 2026." >&2
+  echo "Use the brew-ops job instead: db/reset-brand.mjs, e.g." >&2
+  echo "  gcloud run jobs execute brew-ops --region=asia-south1 --args=db/reset-brand.mjs,--slug,<slug> --wait          (dry run)" >&2
+  echo "  gcloud run jobs execute brew-ops --region=asia-south1 --args=db/reset-brand.mjs,--slug,<slug>,--rev-n,<n>,--yes --wait" >&2
+  echo "See docs/production.md, 'Resetting and deleting a brand'. (STORAGE=gcs runs this script against the bucket.)" >&2
+  exit 3
+fi
 [ $# -ge 1 ] || { echo "usage: $0 <slug> [<slug> ...]"; exit 1; }
 SVC=shopos-feed; REGION=asia-south1; B=gs://brew-prototype; URL=https://brew.joinsquareup.com
 ARCH=$B/_deleted/$(date -u +%Y%m%dT%H%M%SZ); TMP=$(mktemp -d)
