@@ -29,12 +29,12 @@
   },
   "settings": {
     "event_subscriptions": {
-      "request_url": "https://feed.joinsquareup.com/slack/events",
+      "request_url": "https://brew.joinsquareup.com/slack/events",
       "bot_events": ["message.channels", "message.groups", "app_uninstalled", "tokens_revoked"]
     },
     "interactivity": {
       "is_enabled": true,
-      "request_url": "https://feed.joinsquareup.com/slack/actions"
+      "request_url": "https://brew.joinsquareup.com/slack/actions"
     },
     "org_deploy_enabled": false,
     "socket_mode_enabled": false,
