@@ -86,7 +86,7 @@ echo "   candidate $REV at $TAG"
 
 echo "4/8 smoke test and clean gate (from inside the VPC)"
 gcloud run jobs deploy brew-prod-clean --image="$IMG" --project=$P --region=$REGION --service-account=$PSA --network=default --subnet=default --vpc-egress=all-traffic --command=node --args=db/prod-clean.mjs \
-  --set-env-vars="^|^STORAGE=pg|PROD_SERVICES=brew-web|GOOGLE_CLOUD_PROJECT=$P|REGION=$REGION|SMOKE_URL=$TAG|EXPECT_IMAGE=$IMG|EXPECT_WEB_REV=$REV" --set-secrets="DATABASE_URL=BREW_PROD_DATABASE_URL:latest" --max-retries=0 --task-timeout=600 --quiet >/dev/null
+  --set-env-vars="^|^STORAGE=pg|PROD_SERVICES=brew-web|GOOGLE_CLOUD_PROJECT=$P|REGION=$REGION|SMOKE_URL=$TAG|EXPECT_IMAGE=$IMG|EXPECT_WEB_REV=$REV|EXPECT_PUBLIC_URL=$PROD_URL|EXPECT_STAGING_URL=$STAGING_URL" --set-secrets="DATABASE_URL=BREW_PROD_DATABASE_URL:latest" --max-retries=0 --task-timeout=600 --quiet >/dev/null
 if ! gcloud run jobs execute brew-prod-clean --project=$P --region=$REGION --wait >/dev/null 2>&1; then
   gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="brew-prod-clean" AND textPayload:"[clean]"' --project=$P --limit=40 --freshness=10m --format='value(textPayload)' | tac
   die "the smoke test or the clean gate refused: production traffic is unchanged"; fi
