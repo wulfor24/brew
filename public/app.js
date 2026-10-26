@@ -3268,6 +3268,7 @@
   /* discard, restore and start fresh, for jams and remixes. Discarding never deletes: it moves to Discarded, one tap brings it back */
   const libRepaint = () => { if (view === 'jams') renderJams(false); else if (view === 'remixes') renderJams(false); else if (view === 'refs') renderReferences(false); else if (view === 'saved') $('.lib-seg')?.replaceWith(htmlEl(libTabs('saved'))); counts(); };
   const libAct = {
+    versions: () => { RX.vmenu = true; paintStudio(); }, theme: () => setTheme(curTheme() === 'dark' ? 'light' : 'dark'),
     async discard(kind, id, o = {}) {
       const r = await tapi('POST', kind === 'jam' ? `/api/work/${id}/discard` : `/api/changes/${id}/discard`, {});
       if (r.error) { toast(esc(r.error)); return false; }
@@ -3308,7 +3309,8 @@
     const item = (k, icon, h, sub, cls = '') => `<button data-la="${k}" class="${cls}" role="menuitem"><span class="lp-ic">${ic(icon, 's16')}</span><span class="lp-tx"><b>${h}</b>${sub ? `<small>${sub}</small>` : ''}</span></button>`;
     pop.setAttribute('role', 'menu');
     pop.innerHTML = off ? item('restore', 'refresh', 'Restore', `Back to ${kind === 'jam' ? 'Jams' : 'My remixes'}`)
-      : item('fresh', 'refresh', 'Start fresh', `Begin a clean ${kind === 'jam' ? 'jam' : 'remix'} on this card`) + '<hr>' + item('discard', 'minus', 'Discard', 'You can restore it later', 'is-bad');
+      : (kind === 'remix' ? item('versions', 'clock', 'Every version', 'Nothing is ever lost') + item('theme', curTheme() === 'dark' ? 'sun' : 'moon', curTheme() === 'dark' ? 'Light theme' : 'Dark theme', '') + '<hr>' : '') /* the jam page's header keeps only the piece, its version and who's here (26 Oct redesign) */
+      + item('fresh', 'refresh', 'Start fresh', `Begin a clean ${kind === 'jam' ? 'jam' : 'remix'} on this card`) + '<hr>' + item('discard', 'minus', 'Discard', 'You can restore it later', 'is-bad');
     document.body.appendChild(pop);
     pop.onclick = (e) => { const b = e.target.closest('[data-la]'); if (!b) return; closePop(); libAct[b.dataset.la](kind, id); };
   };
@@ -3832,7 +3834,7 @@
     }
     if (ch.family === 'meta_ad') {
       const made = imgOf(ch), img = made || (lg ? cardPhoto() : null), shp = drShape && (p.draft.images || []).includes(img) ? drShape : p.format || '4:5', ratio = shp.replace(':', '/'), [rw, rh] = shp.split(':').map(Number);
-      return `<div class="as as-meta${lg ? ' lg' : ''}" style="--ar:${(rw / rh) || 0.8}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${esc(B.brand.name)}</b><small>Sponsored</small></div></div>
+      return `<div class="as as-meta${lg ? ' lg' : ''}${rw / rh < .79 ? ' is-story' : ''}" style="--ar:${(rw / rh) || 0.8}"><div class="am-h"><span class="am-logo"><img src="${esc(B.brand.mark)}" alt=""></span><div><b>${esc(B.brand.name)}</b><small>Sponsored</small></div></div>
         <p class="am-text">${esc(p.primaryText || '')}</p>
         <div class="am-media${img ? '' : ' noimg'}" style="aspect-ratio:${ratio}">${img ? `<img src="${esc(img)}" alt="" style="filter:${esc(ch.gradeF || 'none')}">` : !lg ? `<div class="am-empty">${ic('sparkles', 's16')}<span>The photo is made in the studio</span></div>` : ''}${p.overlay && img && wordsOver(img, p, ch) && !(ch.studio && ch.versions?.find((v) => v.id === ch.head)?.studio) /* a Studio take has its own words */ ? `<span class="am-ov">${esc(p.overlay)}</span>` : ''}${pending}${!p.image && lg && !ch.imagePending ? (img ? `<button class="am-newpic" data-rx="image">${ic('sparkles', 's14')}New photo for this ad${freeTag()}</button>` : `<div class="am-make"><span>No photo for this version yet</span><button class="btn btn-primary sm" data-rx="image">${ic('sparkles', 's14')}Make the photo${freeTag()}</button></div>`) : ''}</div>
         <div class="am-foot"><div><small>${esc(B.brand.host)}</small>${hlHtml(ch, p, lg)}${p.description ? `<span>${esc(p.description)}</span>` : ''}</div><span class="am-cta">${esc(p.cta || 'Shop now')}</span></div>
@@ -4417,12 +4419,16 @@
   /* every widget fits the stage: a Meta ad's photo gets the height its header, copy and footer leave (so it never
      scrolls); any other widget with a picture (a carousel, a post, an Instagram slide, a phone) narrows until it fits,
      never under 320px. Text widgets (a page, an email, a sheet) keep their reading width and scroll in the stage */
-  const fitAd = () => { const box = $('.std .st-asset'), ad = box && box.firstElementChild; if (!ad || innerWidth < 861) return;
+  const fitAd = () => { const box = $('.std .st-asset'), ad = box && (box.querySelector(':scope > .cs-frame > .as') || box.firstElementChild); if (!ad || innerWidth < 861) return; /* a Studio stage: the piece in its frame, never the Preview badge before it (26 Oct) */
     const m = $('.am-media', ad) || $('.as-swipe, .pm-media, .sv-phone', ad); ad.style.width = ''; if (!m || ad.querySelector('.am-chat')) return;
     const im = $('img', m); if (im && !im.complete) im.addEventListener('load', fitAd, { once: true });
     const cs = getComputedStyle(box), roomH = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 4, roomW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     /* the Meta ad on the stage is sized like a post in Instagram's feed: 470px wide, and the photo between 1.91:1 and 4:5
        (Instagram crops anything taller to 4:5), so a tall photo never makes the ad taller than it would run */
+    /* set up as a Story (9:16): drawn as the story it is, as tall as the stage allows, never cropped back to a 4:5 feed post (26 Oct) */
+    if (ad.matches('.as-meta.lg') && m.matches('.am-media')) { const want = parseFloat(getComputedStyle(ad).getPropertyValue('--ar')) || .8;
+      if (want < .79) { m.style.aspectRatio = String(want); const rest = ad.offsetHeight - m.offsetHeight, bar = $('.std .ship')?.getBoundingClientRect().top || innerHeight, avail = Math.min(roomH, bar - ad.getBoundingClientRect().top - ($('.cs-sizes')?.offsetHeight || 0) - 72); /* what shows above the bar and the sizes (they float 12px over the stage's foot) */
+        ad.style.width = Math.round(Math.max(180, Math.min(roomW, 470, (avail - rest) * want))) + 'px'; return; } }
     if (ad.matches('.as-meta.lg') && m.matches('.am-media')) { const ar = (im?.naturalWidth && im.naturalWidth / im.naturalHeight) || parseFloat(getComputedStyle(ad).getPropertyValue('--ar')) || .8;
       ad.style.width = Math.round(Math.min(roomW, 470)) + 'px'; m.style.aspectRatio = String(Math.min(1.91, Math.max(0.8, ar))); return; }
     for (let i = 0; i < 2 && ad.offsetHeight > roomH && m.offsetHeight > 0; i++) { const rest = ad.offsetHeight - m.offsetHeight, k = (roomH - rest) / m.offsetHeight; if (k >= 1 || k <= 0) break;
@@ -4638,7 +4644,7 @@
   const dlRow = (ch) => { if (ch.batchKey || !ch.cardId) return ''; const d = RX.dl?.cid === ch.cardId ? RX.dl : null; if (!d) { loadDl(ch); return ''; }
     const items = d.items.some((x) => x.id === ch.id) ? d.items : [...d.items, { id: ch.id, label: ch.actionLabel }], guest = document.body.classList.contains('is-guest');
     if (items.length < 2 && (!d.add.length || guest)) return `<nav class="dl-row" aria-label="Deliverables for this card"><span class="dl-pill on" aria-current="true">${esc(ch.actionLabel)}</span></nav>`;
-    return `<nav class="dl-row" aria-label="Deliverables for this card">${items.map((x) => `<button type="button" class="dl-pill${x.id === ch.id ? ' on' : ''}" data-dl-open="${esc(x.id)}"${x.id === ch.id ? ' aria-current="true"' : ''}>${esc(x.label)}</button>`).join('')}${d.add.length && !guest ? `<span class="dl-addw"><button type="button" class="dl-add" data-dl-menu aria-haspopup="menu" aria-expanded="${!!RX.dlMenu}" aria-label="Make this card as another deliverable" title="Make this card as another deliverable">${ic('plus', 's16')}</button>${RX.dlMenu ? dlMenuHtml(d.add) : ''}</span>` : ''}</nav>`; };
+    return `<nav class="dl-row" aria-label="Deliverables for this card">${items.map((x) => { const dot = x.id === ch.id ? dlDot(ch) : x.dot || 'ready'; return `<button type="button" class="dl-pill${x.id === ch.id ? ' on' : ''}" data-dl-open="${esc(x.id)}"${x.id === ch.id ? ' aria-current="true"' : ''}><i class="dl-dot is-${dot}" title="${dot === 'writing' ? 'Being written' : dot === 'fix' ? 'Needs a fix' : 'Ready'}"></i>${esc(x.label)}</button>`; }).join('')}${d.add.length && !guest ? `<span class="dl-addw"><button type="button" class="dl-add" data-dl-menu aria-haspopup="menu" aria-expanded="${!!RX.dlMenu}" aria-label="Make this card as another deliverable" title="Make this card as another deliverable">${ic('plus', 's16')}</button>${RX.dlMenu ? dlMenuHtml(d.add) : ''}</span>` : ''}</nav>`; };
   /* "+": every deliverable in Brew's list (228), searchable, by channel; the card's own kinds first. One marked Brief is written and
      checked here and handed over as a brief: a person makes it (26 Oct) */
   const dlMenuHtml = (add) => { const groups = []; for (const a of add) { const k = a.group || 'More'; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, items: [] }); g.items.push(a); }
@@ -4648,8 +4654,10 @@
     const no = $('.dl-menu .dl-none'); if (no) no.hidden = !!any; };
   addEventListener('input', (e) => { if (e.target.id === 'dl-q') dlFilter(e.target.value); });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && RX.dlMenu && e.target.closest?.('.dl-menu')) { e.preventDefault(); RX.dlMenu = false; paintStudio(); $('[data-dl-menu]')?.focus(); } });
+  /* each piece's tab says where it is: being written or made, needs a fix, or ready (the prototype's dots) */
+  const dlDot = (x) => x.copyPending || x.ctaPending || x.imagePending || x.videoPending || x.remakePending ? 'writing' : (x.checks || []).some((c) => !c.ok && !c.soft && !c.mine) ? 'fix' : 'ready';
   const loadDl = async (ch) => { if (RX.dlLoading === ch.cardId) return; RX.dlLoading = ch.cardId; const g = await tapi('GET', `/api/cards/${ch.cardId}/remix`).catch(() => null); RX.dlLoading = null; if (!g || g.error) { RX.dl = { cid: ch.cardId, items: [], add: [] }; return; }
-    RX.dl = { cid: ch.cardId, items: (g.changes || []).slice().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map((x) => ({ id: x.id, label: x.actionLabel || x.familyName || 'Draft' })), add: g.add || [] }; if (view === 'remix' && RX.ch?.cardId === ch.cardId) paintStudio(); };
+    RX.dl = { cid: ch.cardId, items: (g.changes || []).slice().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map((x) => ({ id: x.id, label: x.actionLabel || x.familyName || 'Draft', dot: dlDot(x) })), add: g.add || [] }; if (view === 'remix' && RX.ch?.cardId === ch.cardId) paintStudio(); };
   const lookOf = (ch) => [...(ch?.publish?.parts || []).filter((x) => x && !x.ok).map((x) => ({ t: x.why?.[0] || `${x.label} needs a fix`, part: x.k })), /* a field over its limit counts on the bar and in Details alike (QV 25 Oct) */
     ...(ch?.publish?.checks || []).filter((x) => x && !x.ok && x.t).sort((a, b) => (a.soft ? 1 : 0) - (b.soft ? 1 : 0))];
   /* one check as a line, with its own fix when it has one */
@@ -4667,6 +4675,7 @@
         <ul>${fm.srt ? `<li><a href="${esc(fm.srt)}" download>Captions (.srt)</a></li>` : ''}${fm.raw ? `<li><a href="${esc(fm.raw)}" download>The film without captions</a></li>` : ''}${pkgCh.pkg.video ? `<li><a href="${esc(pkgCh.pkg.video)}" download>The film${fm.raw ? ', captions in' : ''}</a></li>` : ''}</ul></div></div>`; })() : ''}
       ${pb.checks.some((c) => !lk.includes(c)) ? `<ul class="pp-checks">${pb.checks.filter((c) => !lk.includes(c)).map(ckLi).join('')}</ul>` : ''}
       <footer><button class="btn btn-ghost sm" data-st-dl>${ic('down', 's14')}Download everything</button><small>The picture in every shape, and copy.txt with every part above</small></footer></section>`; };
+  const SHAPE_NAME = { '4:5': 'Feed', '1:1': 'Square', '9:16': 'Story', '16:9': 'Wide', '2:3': 'Pin', '3:4': 'Portrait' }; /* the sizes under the piece, by shape */
   const studioStage = (ch, pkgCh, viewing) => { const made = studioMade(ch), cs = window.CreativeStage, st = cs?.state(ch.id);
     if (cs && !st) cs.mount(ch, RX.p); requestAnimationFrame(() => cs?.afterPaint?.()); /* the picked slide stays in view */
     const making = !!st?.making;
@@ -4677,10 +4686,11 @@
     const pv = made || viewing || !st?.productImg ? pkgCh : (() => { const p0 = pkgCh.pkg || {}, n = st.frames, rows = p0.cards || p0.slides;
       if (n && Array.isArray(rows) && rows.length) { const k = p0.cards ? 'cards' : 'slides', list = Array.from({ length: n }, (_, i) => rows[i] || { onSlide: '', headline: '' });
         return { ...pkgCh, pkg: { ...p0, [k]: list, image: st.productImg, cardImages: list.map(() => st.productImg), draft: null, wordsIn: null } }; }
-      return /^gen\//.test(p0.image || '') && !(p0.draft?.images || []).includes(p0.image) ? pkgCh : { ...pkgCh, pkg: { ...p0, image: st.productImg, cardImages: null, draft: null, wordsIn: null } }; })();
+      return /^gen\//.test(p0.image || '') && !(p0.draft?.images || []).includes(p0.image) ? pkgCh : { ...pkgCh, pkg: { ...p0, image: st.productImg, cardImages: null, draft: null, wordsIn: null, ...(st.ratio ? { format: st.ratio } : {}) } }; })();
     /* not made yet: the frame says plainly that the picture is the product photo standing in, dressed like the style picked, and fits above the bar */
     const pvNote = !made && !making && st?.styleLabel ? `Your photo for now · Make it for ${st.styleLabel}` : '';
     return `<div class="st-asset cs-stage">${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made · you can leave' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ` is-preview cs-t-${esc(st?.treat || 'plain')}` : ''}${making ? ' is-making' : ''}"${pvNote ? ` style="--pv:'${esc(pvNote.replace(/['"\\]/g, ''))}'${/^#[0-9a-f]{3,8}$/i.test(st?.bc || '') ? `;--bc:${st.bc}` : ''}"` : ''}>${assetHtml(pv, 'lg')}</div>
+      ${!made && !making && !viewing && (st?.sizeOpts || []).length > 1 ? `<div class="cs-sizes" role="radiogroup" aria-label="Size">${st.sizeOpts.map((o) => `<button type="button" role="radio" data-cs-size="${esc(o.id)}" aria-checked="${o.id === st.size}">${esc(SHAPE_NAME[o.ratio] || String(o.label).replace(/\s*\d+:\d+$/, ''))}${o.ratio ? ` <small>${esc(o.ratio)}</small>` : ''}</button>`).join('')}</div>` : ''}
       ${ch.filmOk && !making ? `<p class="fb-alt">Would the founder rather film it for real? <button class="linkbtn" data-film-alt>Brief a film instead</button></p>` : ''}</div>${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => (made && !viewing ? m + dlTool(ch, pkgCh) : m))}`; };
   document.addEventListener('input', (e) => { if (view === 'remix') window.CreativeStage?.input(e); }); /* the composer's Direction and template search */
   window.FilmBoard?.init({ tapi, esc, toast, sound, ch: () => RX.ch, paint: () => { if (view === 'remix' && RX.ch) paintStudio(); }, saved: (c) => { RX.ch = c; putCh(c); if (view === 'remix') paintStudio(); } });
@@ -4722,12 +4732,23 @@
     box.insertAdjacentHTML('afterbegin', `<div class="stg-mode" role="tablist" aria-label="Show">${[['one', 'One'], ['all', `All ${n}`]].map(([k, l]) => `<button type="button" role="tab" data-stg-mode="${k}" aria-selected="${mode === k}">${l}</button>`).join('')}</div>`);
     if (mode === 'one') card.insertAdjacentHTML('afterend', `<div class="stg-nav"><button type="button" class="icon-btn" data-stg-go="-1" aria-label="Previous slide" ${i ? '' : 'disabled'}>${ic('left', 's16')}</button>${items.map((_, k) => `<button type="button" class="stg-dot${k === i ? ' on' : ''}" data-stg-i="${k}" aria-label="Slide ${k + 1}">${k + 1}</button>`).join('')}<button type="button" class="icon-btn" data-stg-go="1" aria-label="Next slide" ${i < n - 1 ? '' : 'disabled'}>${ic('right', 's16')}</button></div>`); };
   const stagePick = (i) => { const ch = RX.ch; if (!ch) return; RX.stgI = { ...(RX.stgI || {}), [ch.id]: i }; if (ch.studio) window.CreativeStage?.select?.(i); paintStudio(); };
+  /* the header (26 Oct redesign, the prototype): Back · the piece and its product · ‹ vN › · Creative | Brief · who's here · ⋯ */
+  const stSub = (ch) => { const st = ch.studio ? window.CreativeStage?.state(ch.id) : null; if (st?.productName) return `· ${cutW(st.productName, 44)}`; const w = stWhere(ch); return w ? `on ${w}` : ''; };
+  const verSw = (ch) => { const vs = [...(ch.versions || [])].sort((a, b) => (a.n || 0) - (b.n || 0)), cur = RX.viewing || ch.head, i = Math.max(0, vs.findIndex((v) => v.id === cur)), n = vs[i]?.n || curN(ch);
+    return `<div class="st-vwrap st-vsw"><button type="button" class="icon-btn" data-vstep="-1" aria-label="Older version"${i > 0 ? '' : ' disabled'}>${ic('left', 's14')}</button><button type="button" class="st-vpill${RX.vmenu ? ' is-open' : ''}${RX.viewing ? ' is-old' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Every version">v${n}</button><button type="button" class="icon-btn" data-vstep="1" aria-label="Newer version"${i < vs.length - 1 ? '' : ' disabled'}>${ic('right', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>`; };
+  /* the panel's top, no tabs: in the chat, Brew's one line on what it set up and "Change it yourself"; in the controls or the checks, the way back */
+  const panelTop = (ch, tab) => { const wide = `<button class="st-wide" data-st-wide aria-pressed="${panelWide()}" title="${panelWide() ? 'Make the panel narrower' : 'Make the panel wider'}" aria-label="${panelWide() ? 'Make the panel narrower' : 'Make the panel wider'}">${panelWide() ? '⇥' : '⇤'}</button>`;
+    if (RX.stage === 'brief') return `<div class="st-ptop">${tab === 'details' ? `<button type="button" class="st-pback" data-tab="iterate">${ic('left', 's14')}Back to the chat</button>` : `<button type="button" class="st-plink" data-tab="details">Brief details</button>`}${wide}</div>`;
+    if (tab === 'adjust' || tab === 'details') return `<div class="st-ptop"><button type="button" class="st-pback" data-tab="iterate">${ic('left', 's14')}${tab === 'adjust' ? 'Let Brew set it up' : 'Back to the chat'}</button>${wide}</div>`;
+    const st = ch.studio ? window.CreativeStage?.state(ch.id) : null, made = ch.studio ? studioMade(ch) : true, look = made ? lookOf(ch).length : 0;
+    const line = st?.plan?.line ? `Set up from the card: ${st.plan.line}.` : '';
+    return `<div class="st-ptop is-brew">${line ? `<p class="st-bline"><span class="st-bmark">b</span>${esc(line.replace(/\.\.$/, '.'))}</p>` : ''}<div class="st-plinks"><button type="button" class="st-plink" data-tab="adjust">Change it yourself</button>${made ? `<button type="button" class="st-plink${look ? ' is-warn' : ''}" data-tab="details">${look ? `${look} to look at before it goes` : 'Ready-to-post checks'}</button>` : ''}</div>${wide}</div>`; };
   const paintStudio = () => {
     const pg = $('#view .std'); const ch = RX.ch; if (!pg || !ch) return;
     window.__GR = { Original: 'none', Warm: 'sepia(.25) saturate(1.25) hue-rotate(-8deg)', Quiet: 'saturate(.6) brightness(1.05) contrast(.92)', Vivid: 'saturate(1.6) contrast(1.08)', 'Golden hour': 'sepia(.45) saturate(1.4) brightness(1.05)' };
     if ($('#st-in')) RX.draft = $('#st-in').value;
     const viewing = RX.viewing && RX.viewing !== ch.head ? ch.versions.find((v) => v.id === RX.viewing) : null; if (!viewing) RX.viewing = null;
-    const pkgCh = asPkg(ch, viewing), edit = ch.state !== 'jam', tab = RX.tab && RX.tab !== 'history' ? RX.tab : ch.studio && !studioMade(ch) && edit ? 'adjust' : 'iterate'; /* history is the dropdown on the History button now */
+    const pkgCh = asPkg(ch, viewing), edit = ch.state !== 'jam', tab = RX.tab && RX.tab !== 'history' ? RX.tab : 'iterate'; /* Brew sets it up and says so in one line; the controls are behind Change it yourself (26 Oct redesign) */
     const formFocus = window.FilmBoard?.editing() || document.activeElement?.closest?.('#st-spec') || (document.activeElement?.matches?.('textarea, input:not(#cs-q), [contenteditable]') && document.activeElement.closest('.cs')) || /* a clicked button keeps focus in Chrome: only typing holds the repaint */ document.activeElement?.matches?.('.pp [contenteditable]');
     if (formFocus || document.activeElement?.id === 'dl-q' /* searching the + list */ || document.activeElement?.id === 'bf-ed' || document.activeElement?.id === 'tbm-ed' || document.activeElement?.id === 'bf-cm-in' || bfPop.el?.classList.contains('is-form') || document.activeElement?.matches?.('[data-hl-edit][contenteditable]')) { pollJob(ch); return; } // never repaint under someone typing in the spec or the brief (the job poll keeps going, so no status is left behind)
     const logScroll = $('.st-panel-b')?.scrollTop, tbmScroll = $('.tbm-scroll')?.scrollTop || 0, hadErr = !!$('.st-panel-b .j2-err'); /* brief mode keeps its place through a repaint */
@@ -4736,11 +4757,10 @@
     /* a repaint from the jam's poll (a teammate's line, a version) never takes the box from someone typing in it */
     const typingAt = document.activeElement?.id === 'st-in' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     pg.innerHTML = `<header class="st-top"><button class="q-back" data-st-back>${ic('left', 's16')}${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : 'Back'}</button>
-        <div class="st-ttl"><b>${esc(ch.actionLabel)}${stWhere(ch) ? ` <span>on ${esc(stWhere(ch))}</span>` : ''}</b><small>${face(ch.agent)}${RX.p && cardOf(RX.p).title ? `<button type="button" class="st-for" data-tab="iterate" title="${esc(cardOf(RX.p).title)}">For: ${esc(cutW(cardOf(RX.p).title, 90))}</button> · ` : ''}${studioFrom(ch)}</small></div>${tbSwitch()}${studioJamCtl()}
-        <div class="st-vwrap"><button class="st-vpill${RX.vmenu ? ' is-open' : ''}" data-vmenu aria-haspopup="dialog" aria-expanded="${!!RX.vmenu}" title="Version history">${ic('clock', 's14')}<span>History</span>${ic('chev', 's14')}</button>${RX.vmenu ? `<div class="st-vmenu" role="dialog" aria-label="Version history"><div class="st-vmenu-h"><b>Versions</b><small>${ch.versions.length} saved · nothing is ever lost</small></div><div class="st-vmenu-b">${historyTab(ch)}</div></div>` : ''}</div>${themeBtn()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
+        <div class="st-ttl"><b>${esc(ch.actionLabel)}${stSub(ch) ? ` <span>${esc(stSub(ch))}</span>` : ''}</b><small>${RX.p && cardOf(RX.p).title ? `<button type="button" class="st-for" data-tab="iterate" title="${esc(cardOf(RX.p).title)}">For: ${esc(cutW(cardOf(RX.p).title, 90))}</button> · ` : ''}${studioFrom(ch)}</small></div>${verSw(ch)}${tbSwitch()}${studioJamCtl()}<button class="icon-btn st-more" aria-label="More" data-lmenu="remix:${esc(ch.id)}">${ic('more', 's16')}</button></header>
       <div class="st-body${panelWide() ? ' is-wide' : ''}">
         <main class="st-canvas${RX.stage === 'brief' ? ' is-brief' : ''}">${RX.stage === 'brief' ? `<div class="tbm-scroll">${tbStage(ch)}</div>` : `${dlRow(ch)}${refBtnHtml(ch)}${rivalReadHtml(ch)}${optTabs(ch, viewing)}${ch.studio ? studioStage(ch, pkgCh, viewing) : `<div class="st-asset${ch.copyPending ? ' is-writing' : ''}">${ch.copyPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!ch.copyPending && ch.ctaPending ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>${esc(ch.ctaPending)}…</p>` : ''}${ch.film && window.FilmBoard && (!viewing || viewing === ch.head) ? window.FilmBoard.html(ch) : assetHtml(pkgCh, 'lg')}</div>${phTools(ch, pkgCh, viewing)}${shipBar(ch, viewing).replace(/(<div class="ship-tx"><b>[\s\S]*?<\/b>)/, (m) => m + dlTool(ch, pkgCh))}`}`}</main>
-        <aside class="st-panel"><div class="st-tabs" role="tablist">${(RX.stage === 'brief' ? [['iterate', 'Chat'], ['details', 'Details']] : [['iterate', 'Chat'], ['adjust', 'Set-up'], ['details', 'Details']]).map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${(RX.stage === 'brief' && tab === 'adjust' ? 'iterate' : tab) === k}">${n}</button>`).join('')}<button class="st-wide" data-st-wide aria-pressed="${panelWide()}" title="${panelWide() ? 'Make the panel narrower' : 'Make the panel wider'}" aria-label="${panelWide() ? 'Make the panel narrower' : 'Make the panel wider'}">${panelWide() ? '⇥' : '⇤'}</button></div>
+        <aside class="st-panel">${panelTop(ch, tab)}
           <div class="st-panel-b${tab === 'iterate' || (RX.stage === 'brief' && tab === 'adjust') ? ' is-chat' : ''}">${RX.stage === 'brief' ? (tab === 'details' ? tbDetails() : chatTab(ch, edit)) : tab === 'iterate' ? chatTab(ch, edit) : tab === 'adjust' ? adjustTab(ch, edit) : tab === 'details' ? detailsTab(ch, pkgCh, edit) : chatTab(ch, edit)}</div></aside>
       </div>`;
     /* Change photo sits on the photo itself, never under the post. A swiping carousel gets a still frame around it, so the
@@ -5043,6 +5063,8 @@
       const g = e.target.closest('[data-stg-go]'); if (g) { const n = $$('.std .st-asset .as-swipe > figure').length, cur = +($('.stg-dot.on')?.dataset.stgI || 0); return stagePick(Math.max(0, Math.min(n - 1, cur + +g.dataset.stgGo))); } } /* the bar's Make it: Studio makes the set-up in the panel, at its price */
     if (window.CreativeStage?.click(e)) return; /* the creative stage's composer (creative-stage.js) */
     if (e.target.closest('[data-vmenu]')) { RX.vmenu = !RX.vmenu; return paintStudio(); }
+    { const vs0 = e.target.closest('[data-vstep]'); if (vs0 && RX.ch) { const ch = RX.ch, vs = [...(ch.versions || [])].sort((a, b) => (a.n || 0) - (b.n || 0)), i = vs.findIndex((v) => v.id === (RX.viewing || ch.head)), to = vs[i + +vs0.dataset.vstep];
+      if (to) { RX.vmenu = false; RX.viewing = to.id === ch.head ? null : to.id; sound('step'); } return paintStudio(); } } /* ‹ vN ›: look at an older version; Use this (on the bar) makes it the newest */
     { const k = e.target.closest('[data-j2-pack],[data-j2-impact],[data-j2-remake]'); if (k && RX.ch) return j2Run(k.hasAttribute('data-j2-pack') ? 'pack' : k.hasAttribute('data-j2-impact') ? 'impact' : 'remake', RX.ch, k.dataset.j2Remake); }
     const nm = e.target.closest('[data-nav-move]'); if (nm) { closeModal(); location.hash = `#v=move&m=${nm.dataset.navMove}`; return; }
     if (e.target.closest('[data-ph-open]')) return openPhotos();

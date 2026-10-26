@@ -34,6 +34,7 @@
     Object.assign(S, { loading: false, jid: jam.id, bid: bd.id, boards: jam.boards.map((b) => b.id), products: d.products || [], slots: X, missing: d.context?.missing || [], blocked: D.blocked || {}, picks: D.styles || [],
       spec: { ...D, ask: D.ask || '', direction: D.direction || X.direction?.value || '', cast: D.cast || (X.cast?.shown && X.cast.value !== 'none' ? X.cast.label : X.cast?.value === 'none' ? 'No people' : null), ref: made0 ? made0.ref || null : X.reference?.value?.label || null, quality: D.quality || ((bd.takes || []).length ? 'standard' : 'preview') /* the first take is a cheap low-res preview of the idea (3.4); the full one comes after it looks right */ },
       prefs: d.prefs || {}, kept: d.kept || {}, brand: d.context?.slots?.brand ? (window.B?.brand?.name || '') : '', busy: jam.busy || {}, made: !!ch.versions?.some((v) => v.studio) /* made here: a Studio version in this v1 jam */, earlier: (bd.takes || []).filter((x) => x.file).slice(-3).reverse().map((x) => ({ id: x.id, file: x.studio?.kind === 'video' ? (x.cover || x.poster || x.file) : x.file, video: x.studio?.kind === 'video', label: x.studio?.label || 'A take', at: x.at })), failed: Object.values(jam.busy || {}).find((b) => b?.error)?.error || null }); /* a make that stopped says so after a reload too */
+    if (!S.made) S.spec = { ...S.spec, ...loadPick() }; /* what was picked here before a reload */
     S.open = !S.made; /* made already: the set-up folds into one line under the frame */
     paint(); price(); if (anyBusy()) poll();
   }
@@ -43,7 +44,14 @@
   /* who is on camera changes in the direction too: its sentence about the old cast becomes the new one (never two that disagree) */
   const set = (patch) => { if ('cast' in patch && S.spec?.direction) { const was = S.spec.cast || S.slots?.cast?.label || '', now = patch.cast || '';
       if (was && S.spec.direction.includes(was)) patch = { ...patch, direction: S.spec.direction.replace(`${was}.`, now ? `${now}.` : '').replace(was, now).replace(/\s{2,}/g, ' ').trim() }; }
-    S.spec = { ...S.spec, ...patch }; S.pop = null; price(); };
+    S.spec = { ...S.spec, ...patch }; S.pop = null; savePick(); price(); };
+  /* the set-up picked stays picked through a reload (26 Oct: a Story size went back to Feed): kept in this browser per jam, and
+     brought back only when every pick is still offered (a style taken away or a size gone drops them all, never half a set-up) */
+  const PICK_KEYS = ['kind', 'sizes', 'style', 'quality', 'count', 'seconds'];
+  const savePick = () => { try { if (S?.chId && S.spec) localStorage.setItem(`cs-pick:${S.chId}`, JSON.stringify(Object.fromEntries(PICK_KEYS.filter((k) => S.spec[k] != null).map((k) => [k, S.spec[k]])))); } catch {} };
+  const loadPick = () => { try { const x = JSON.parse(localStorage.getItem(`cs-pick:${S.chId}`) || 'null'); if (!x || typeof x !== 'object') return {};
+    const ok = Object.entries(x).every(([k, v]) => k === 'sizes' ? Array.isArray(v) && v.length && v.every((id) => SIZES?.[id]) : k === 'style' ? !!styleById(v) && !S.blocked?.[v] : PICK_KEYS.includes(k));
+    return ok ? x : {}; } catch { return {}; } };
 
   async function go(redo = false) {
     const pl = S?.plan; if (!pl || pl.error || pl.usd == null || S.working || S.making || anyBusy()) return; /* one paid make at a time, whichever button asked */ const mine = S; S.working = true; paint();
@@ -198,7 +206,7 @@
   }
   /* clicks on the composer: true when handled */
   function click(e) {
-    const g = (sel) => e.target.closest(sel); if (!S || !g('.cs, .cs-line, [data-cs-open], .cs-adjust')) return false; const sp = S.spec;
+    const g = (sel) => e.target.closest(sel); if (!S || !g('.cs, .cs-line, [data-cs-open], .cs-adjust, .cs-sizes')) return false; /* .cs-sizes: the sizes under the piece on the stage */ const sp = S.spec;
     if (g('[data-cs-retry]')) { const id = S.chId; S = null; H.paint?.(); H.remount?.(id); return true; }
     if (g('[data-cs-feed]')) { H.toFeed?.(); return true; }
     if (g('[data-cs-game]')) { /* the game is loaded on the first tap only (brew-game.js), never before */
@@ -273,7 +281,10 @@
     const value = off ? null : slot === 'product' ? sp.product?.img : slot === 'cast' ? sp.cast || S.slots?.cast?.label : slot === 'size' ? sp.sizes?.[0] : slot === 'quality' ? sp.quality || 'standard' : null;
     const r = await api('POST', '/api/jam2/studio/remember', { slot, value, kind, name: el.dataset.name || sp.product?.name || '' }); if (r?.error) return H.toast?.(H.esc(r.error));
     S.prefs = r.prefs || S.prefs; H.toast?.(off ? 'We won’t always use that any more.' : 'Saved: we use this for every new piece. Change it any time here or in your Brand Book.'); paint(); }
-  const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), working: !!S.working, made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null, styleLabel: Array.isArray(S.spec?.set) ? null : styleById(S.spec?.style)?.label || null, treat: (() => { const x = styleById(S.spec?.style); return x && !x.cover ? treat(x) : 'plain'; })(), bc: (S.slots?.brand?.value?.colors || [])[0] || null, /* the stage's preview dresses the photo like the style */ frames: Array.isArray(S.spec?.set) ? S.spec.set.length : null /* the stage previews this many frames */, sel: S.sel ?? 0 /* the slide picked here is the one on the stage */, error: S.error || null } : null);
+  const state = (id) => (S && S.chId === id ? { loading: !!S.loading, making: !!(S.making || anyBusy()), working: !!S.working, made: !!S.made, open: !!S.open, plan: S.plan, productImg: S.spec?.product?.img || null, styleLabel: Array.isArray(S.spec?.set) ? null : styleById(S.spec?.style)?.label || null, treat: (() => { const x = styleById(S.spec?.style); return x && !x.cover ? treat(x) : 'plain'; })(), bc: (S.slots?.brand?.value?.colors || [])[0] || null, /* the stage's preview dresses the photo like the style */ frames: Array.isArray(S.spec?.set) ? S.spec.set.length : null /* the stage previews this many frames */,
+    /* the size set up, so the stage draws the piece in that shape, and the three sizes the stage offers under it (26 Oct: Set-up said Story 9:16, the stage drew a 4:5 feed post) */
+    ratio: SIZES?.[S.spec?.sizes?.[0]]?.ratio || null, size: S.spec?.sizes?.[0] || null, productName: S.spec?.product?.name || null,
+    sizeOpts: [...new Set([...(SIZE_OPTS[S.spec?.kind === 'video' ? 'video' : 'image']).slice(0, 3), ...(S.spec?.sizes?.[0] ? [S.spec.sizes[0]] : [])])].map((id) => ({ id, label: SIZES?.[id]?.label || id, ratio: SIZES?.[id]?.ratio || '' })), sel: S.sel ?? 0 /* the slide picked here is the one on the stage */, error: S.error || null } : null);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S?.pop) { if (document.activeElement?.closest?.('.cs-pop')) document.activeElement.blur(); /* the page holds repaints while a field has focus */ S.pop = null; paint(); } });
   const reset = () => { clearTimeout(pollT); clearTimeout(planT); S = null; };
   const openSetup = () => { if (!S) return; S.open = true; H.showSetup?.(); paint(); };

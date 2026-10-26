@@ -1,0 +1,74 @@
+/* The jam page, redesigned (26 Oct, the prototype Param approved): one quiet header (Back · the piece and its product · ‹ vN ›
+   · Creative | Brief · who's here · ⋯), the piece in the shape it was set up in with the sizes under it, a panel with no tabs
+   (Brew's one line, then the chat; "Change it yourself" and the checks open in place with a way back), and a bar whose steps are a
+   thin progress line. Loaded last: it only reshapes the shell, every renderer keeps its own styles. */
+
+/* header */
+.std .st-top{gap:10px;padding-block:10px;border-bottom:1px solid var(--line-soft)}
+.std .st-ttl{flex:1 1 auto}
+.std .st-ttl b{font-size:17px;line-height:24px;font-weight:600}
+.std .st-ttl b span{font-weight:450;color:var(--fg-2)}
+.st-vsw{display:inline-flex;align-items:center;gap:0;position:relative}
+.st-vsw .icon-btn{width:30px;height:30px;color:var(--fg-3)}
+.st-vsw .icon-btn:disabled{opacity:.35;cursor:default}
+.std .st-vsw .st-vpill{height:30px;min-width:36px;padding:0 6px;border:0;border-radius:8px;background:transparent;box-shadow:none;color:var(--fg-2);font:500 13.5px/1 inherit;font-variant-numeric:tabular-nums;cursor:pointer}
+.std .st-vsw .st-vpill:hover,.std .st-vsw .st-vpill.is-open{background:var(--surface);color:var(--fg)}
+.std .st-vsw .st-vpill.is-old{color:var(--accent,#3b82f6)}
+.st-vsw .st-vmenu{top:38px;right:auto;left:50%;transform:translateX(-50%)}
+.std .st-top .tbm-switch{margin:0}
+
+/* the piece's size, under it (Feed · Story · Square): the stage redraws in that shape at once; the price follows on the bar */
+.cs-sizes{position:sticky;bottom:12px;z-index:5;display:flex;justify-content:center;flex-wrap:wrap;gap:4px;margin:12px auto 0;padding:4px;width:max-content;max-width:100%;border-radius:999px;background:var(--card);border:1px solid var(--line);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+.cs-sizes button{height:32px;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--fg-2);font:500 13px/1 inherit;cursor:pointer;white-space:nowrap}
+.cs-sizes button small{color:var(--fg-3);font-size:11.5px;margin-left:2px}
+.cs-sizes button:hover{color:var(--fg)}
+.cs-sizes button[aria-checked="true"]{background:var(--fg);color:var(--on-fg)}
+.cs-sizes button[aria-checked="true"] small{color:inherit;opacity:.7}
+
+/* a Meta ad set up as a Story (9:16) is drawn as a Story: the picture full height, the name on top, the words and the button over
+   its foot, the way Stories shows it; never a feed post stretched tall */
+.as.as-meta.is-story{position:relative;overflow:hidden;border-radius:14px;background:#000}
+.as.as-meta.is-story .am-media{margin:0;border-radius:0}
+.as.as-meta.is-story .am-media img{width:100%;height:100%;object-fit:cover}
+.as.as-meta.is-story .am-h{position:absolute;inset:0 0 auto;z-index:2;padding:12px;color:#fff;background:linear-gradient(rgba(0,0,0,.5),transparent)}
+.as.as-meta.is-story .am-h small,.as.as-meta.is-story .am-h b{color:#fff}
+.as.as-meta.is-story .am-text{position:absolute;left:14px;right:14px;bottom:70px;z-index:2;margin:0;color:#fff;font-size:14px;line-height:19px;text-shadow:0 1px 6px rgba(0,0,0,.6);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.as.as-meta.is-story .am-foot{position:absolute;inset:auto 0 0;z-index:2;justify-content:center;padding:14px 14px 18px;border:0;background:linear-gradient(transparent,rgba(0,0,0,.55))}
+.as.as-meta.is-story .am-foot > div{display:none}
+.as.as-meta.is-story .am-cta{background:#fff;color:#111;border-radius:999px;padding:8px 18px}
+
+/* the pieces' tabs: a dot each, being written · needs a fix · ready */
+.dl-pill{display:inline-flex;align-items:center;gap:7px}
+.dl-dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;background:#22c55e}
+.dl-dot.is-fix{background:#f97316}
+.dl-dot.is-writing{background:var(--fg-3);animation:dl-pulse 1.2s ease-in-out infinite}
+@keyframes dl-pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.dl-dot.is-writing{animation:none}}
+
+/* panel: no tabs */
+.st-panel .st-tabs{display:none}
+.st-ptop{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 12px;padding:14px 16px 12px;border-bottom:1px solid var(--line-soft)}
+.st-ptop .st-wide{margin-left:auto;order:9}
+.st-ptop.is-brew{flex-direction:column;align-items:stretch;position:relative}
+.st-ptop.is-brew .st-wide{position:absolute;top:10px;right:10px}
+.st-bline{display:flex;gap:10px;margin:0;padding-right:28px;font-size:14.5px;line-height:21px;color:var(--fg)}
+.st-bmark{flex:0 0 22px;height:22px;display:grid;place-items:center;border-radius:7px;background:var(--fg);color:var(--on-fg);font:700 12px/1 inherit}
+.st-plinks{display:flex;flex-wrap:wrap;gap:4px 14px;padding-left:32px}
+.st-ptop:not(:has(.st-bline)) .st-plinks{padding-left:0}
+.st-plink,.st-pback{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0;border:0;background:none;color:var(--fg-2);font:500 13.5px/1.2 inherit;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.st-plink:hover,.st-pback:hover{color:var(--fg);text-decoration-color:currentColor}
+.st-plink.is-warn{color:#c2410c}
+.st-pback{text-decoration:none}
+
+/* bar: the steps are a thin progress line over one line and one button */
+.std .ship .ship-steps{gap:0;margin:0 0 2px;font-size:12px}
+.std .ship .ship-steps li{flex:1;display:block;padding-top:7px;border-top:2px solid var(--line);color:var(--fg-3)}
+.std .ship .ship-steps li+li::before{display:none}
+.std .ship .ship-steps li.is-done{border-top-color:var(--fg-3);color:var(--fg-2)}
+.std .ship .ship-steps li.is-on{border-top-color:var(--fg);color:var(--fg);font-weight:600}
+
+@media (max-width:860px){
+  .std .st-ttl b{font-size:15.5px}
+  .st-vsw .icon-btn{width:36px;height:36px}
+  .cs-sizes button{height:36px}
+}

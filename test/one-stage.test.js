@@ -23,9 +23,12 @@ test('the stage holds only the piece: the Studio set-up is the panel’s Set-up 
   assert.ok(!/cs\.html\(ch\)/.test(st), 'no composer on the stage');
   assert.match(st, /shipBar\(ch, viewing\)/, 'the bar shows before anything is made');
   assert.match(st, /st\.frames/, 'the preview has as many frames as the set-up makes');
-  assert.match(app, /\['adjust', 'Set-up'\], \['details', 'Details'\]/, 'one name for the tab, whatever is made (26 Oct)');
-  assert.match(app, /RX\.stage === 'brief' \? \[\['iterate', 'Chat'\], \['details', 'Details'\]\]/, 'Brief mode: no maker set-up in the panel');
-  assert.match(app, /ch\.studio && !studioMade\(ch\) && edit \? 'adjust' : 'iterate'/, 'a Studio piece not made yet opens on its set-up');
+  /* 26 Oct redesign: no tabs in the panel; Brew's line, then Change it yourself (the set-up) and the checks, each with a way back */
+  const top = fn('panelTop');
+  assert.match(top, /data-tab="adjust">Change it yourself/); assert.match(top, /'Let Brew set it up'/); assert.match(top, /data-tab="details"/);
+  assert.match(top, /RX\.stage === 'brief'[^\n]*Brief details/, 'Brief mode: no maker set-up in the panel');
+  assert.match(app, /tab = RX\.tab && RX\.tab !== 'history' \? RX\.tab : 'iterate'/, 'a jam opens on the chat: Brew sets it up');
+  assert.ok(!/ch\.studio && !studioMade\(ch\) && edit \? 'adjust' : 'iterate'/.test(app), 'the 26 Oct redesign (AI first): a Studio piece opens on Brew\'s one line and the chat; its set-up is behind Change it yourself');
   assert.match(app, /data-cs-make/); assert.match(cs, /make: \(\) => go\(false\)/);
   assert.ok(!/data-cs-go/.test(cs.slice(cs.indexOf('function full()'), cs.indexOf('function full()') + 9000)), 'no second Generate in the set-up');
   assert.match(cs, /frames: Array\.isArray\(S\.spec\?\.set\)/);
