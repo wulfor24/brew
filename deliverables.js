@@ -17,6 +17,7 @@ export const dlAction = (r) => r ? r.action || r.key : null;
 export const dlSpec = (r) => r ? `${r.name} (${r.platform}): ${r.what}. Rules it must meet: ${r.checks}. Made and shipped by: ${r.who}. Hand-off: ${r.handoff}.` : '';
 
 /* what a planning deliverable is, in one word, beside where it goes ("End screen and cards plan on YouTube · Plan") */
+const LAYOUT_NAME = { pic: 'Picture', set: 'Several pictures', reel: 'Video', msg: 'Message', mail: 'Email', page: 'Page', post: 'Community post', acct: 'Account change', check: 'Checklist', brief: 'Brief' };
 const NOUN = { pic: 'Picture', set: 'Set of pictures', reel: 'Video', post: 'Post', msg: 'Message', mail: 'Email', page: 'Page', check: 'Plan', acct: 'Account change', brief: 'Brief' };
 /* the planning rows as actions and families, merged into ACTIONS and FAMILY_OF where those are defined */
 export const planActions = () => { const out = {};
@@ -42,4 +43,4 @@ export const planSpecs = () => Object.fromEntries(DELIVERABLES.filter((r) => r.k
 
 /* the "+" list for a card: every deliverable not already open on it, in the catalogue's order, each with its group for the picker */
 export const dlMenu = (open = []) => { const have = new Set(open.filter(Boolean));
-  return DELIVERABLES.filter((r) => !have.has(r.id)).map((r) => ({ id: r.id, label: r.name, group: cap(r.section.replace(/^Social: /, '')), platform: r.platform, common: r.tier === 'C', plan: !r.action })); };
+  return DELIVERABLES.filter((r) => !have.has(r.id)).map((r) => ({ id: r.id, label: r.name, group: cap(r.section.replace(/^Social: /, '')), platform: r.platform, layoutName: LAYOUT_NAME[r.layout] || '', common: r.tier === 'C', plan: !r.action })); };

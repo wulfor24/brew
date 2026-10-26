@@ -36,9 +36,9 @@ test('set-up picks survive a reload, only when every pick is still offered', () 
 test('header: the piece, a version switcher, the rest in the More menu; panel: no tabs; tabs: a status dot each', () => {
   assert.match(fn('verSw'), /data-vstep="-1"[^\n]*data-vmenu[^\n]*data-vstep="1"/);
   assert.match(app, /\[data-vstep\]/); assert.match(app, /RX\.viewing = to\.id === ch\.head \? null : to\.id/, 'look only; Use this on the bar makes it the newest');
-  assert.match(app, /item\('versions', 'clock', 'Every version'/); assert.match(app, /versions: \(\) => \{ RX\.vmenu = true; paintStudio\(\); \}/);
-  assert.match(app, /<aside class="st-panel">\$\{panelTop\(ch, tab\)\}/); assert.ok(!/<div class="st-tabs" role="tablist">\$\{\(RX\.stage === 'brief'/.test(app), 'no tab bar');
-  assert.match(fn('dlDot'), /'writing'[^\n]*'fix'[^\n]*'ready'/); assert.match(app, /<i class="dl-dot is-\$\{dot\}"/);
+  assert.match(fn('jpMenuPop'), /data-vmenu[^\n]*History/); assert.match(fn('jpMenuPop'), /data-jp-theme/);
+  assert.match(app, /<aside class="jp-panel st-panel"><div class="jp-panel-scroll st-panel-b/); assert.ok(!/<div class="st-tabs" role="tablist">\$\{\(RX\.stage === 'brief'/.test(app), 'no tab bar');
+  assert.match(fn('dlDot'), /'writing'[^\n]*'fix'[^\n]*'ready'/); assert.match(fn('dlRow'), /<i class="jp-pd \$\{dot\}"/);
   assert.match(html, /<link rel="stylesheet" href="stage\.css">/); assert.ok(html.indexOf('href="stage.css"') > html.indexOf('href="jam-fit.css"'), 'loaded last');
 });
 

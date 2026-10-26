@@ -18,7 +18,7 @@ import { createStudioFinals } from './finals-routes.js';
 import { beatWords, buildDraft, motionOnly, onScreen } from './sloosh-prompt.js'; // Make the final on a version: Sloosh, quote first, behind a button
 import { versionLabel } from './text-fit.js';
 import { ctaName } from './seed-template.js'; /* a renamed button (Publish Campaign, List what points there) maps as its new name */
-import { withSteps, isBatchCard } from './card-plan.js';
+import { withSteps, isBatchCard, planFor as planOfAction } from './card-plan.js';
 import { readyOf } from './publish-ready.js';
 import { boardOf, isFilm } from './film-board.js'; // a film brief drawn as the founder's storyboard on the stage // ready to publish: every part the platform needs, and the check
 import { planFor as j2Plan, recipe as j2Recipe, SIZES as J2SIZES } from './jam2/catalogue.js'; import { inStudio } from './jam2/studio.js'; // v1's pictures, sets and videos are made by Brew Studio (priced, on a yes)
@@ -40,7 +40,8 @@ import { launchBrowser, zipBuffer, withBrowser } from './pdf/render.js';
 import { fitsRatio } from './vertex-media.js'; // a reused first frame must already be the clip's shape
 import { addV, versionsOf, versionById, signal, answered, autoCheck, outcome, ruleChecks, promptBlock, orderIntents, pickScore, takeNew, trustOf, summary, L, DETECTORS } from './learn.js';
 import { PRODUCT_NAME } from './product-name.js'; // the product's public name, where copy has to name it
-import { planActions, dlOf, dlAction, dlMenu, dlSpec } from './deliverables.js'; // every deliverable a card can be made as, under "+"
+import { planActions, dlOf, dlAction, dlMenu, dlSpec } from './deliverables.js';
+import { layoutOf, setupLine } from './jam-shape.js'; // the jam page's layout and Brew's one line, for every piece // every deliverable a card can be made as, under "+"
 import { moveLabel } from './move-label.js'; // "Weekly move 11", never "Move 1011"
 
 /* ---------- what each agent can change, live ---------- */
@@ -795,10 +796,23 @@ export function createRemix(o) {
   const catalogPics = (t, ch) => { const p = ch.pkg || {}; if (ch.family !== 'meta_ad' || !(p.products?.length || p.productSet)) return null; const cat = (catalogOf(t) || []).filter((x) => x?.img && !x.out);
     const pick = p.products?.length ? p.products.slice(0, 8).map((n) => { try { return matchProduct(String(n), cat, { brand: BN(), byNameOnly: true }); } catch { return null; } }).filter(Boolean) : cat.slice(0, 8);
     return [...new Map(pick.map((x) => [x.img, x])).values()].slice(0, 8).map((x) => ({ name: x.t, img: x.img, price: x.price ?? null })); };
+  /* a deliverable added under "+" is its own piece: it never takes the card's first draft or the card's plan (26 Oct: "Highlight
+     covers" showed the card's Stories draft and its plan). Jams added before this fix let go of the card's draft media on read, only
+     what came from that draft, never a picture made for the jam; the plan becomes the deliverable's own. No spend */
+  const healAdded = (t, ch) => { if (!(ch.added || ch.dl) || !ch.pkg) return; const c = t.cards.get(ch.cardId) || {};
+    if (ch.pkg.draft && !ch.pkg.draft.studio) { const d = ch.pkg.draft, from = new Set([...(d.images || []), d.poster, d.video].filter(Boolean)), p = { ...ch.pkg }; delete p.draft;
+      if (from.has(p.image)) { delete p.image; delete p.wordsIn; } if ((p.cardImages || []).some((x) => from.has(x))) delete p.cardImages; if (from.has(p.video)) { delete p.video; delete p.poster; }
+      ch.pkg = p; ch.v0 = 'none'; try { sync(t, ch, c); } catch (e) { log.warn('[heal added]', e.message); } }
+    if (!ch.plan || ch.plan.action !== ch.action) { try { ch.plan = planOfAction(c, { action: ch.action }); } catch { ch.plan = null; } }
+    ch.fromCard = false; };
+  /* the jam page's header, line and frame (26 Oct redesign): the product the piece is about, its layout, Brew's one line */
+  const jamShape = (t, ch, c) => { let pr = null; try { const x = jamProduct(t, ch, c || {}); if (x?.t) pr = { name: x.t, price: x.priceLabel || (x.price != null ? String(x.price) : null), img: x.img || null, out: !!x.out }; } catch {}
+    let line = ''; try { line = setupLine(ch, pr); } catch { line = ''; } return { product: pr, layout: layoutOf(ch), setupLine: line || `${ch.actionLabel || 'The piece'}, from the card.` }; };
   const pubChange = (t, ch) => {
     ensurePkg(t, ch); const tr = trustOf(t, ch.agent);
-    if (ch.v0 !== 'draft' && !ch.batchKey && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch); /* 'none' tries again while the jam is untouched: the card's draft may land after the jam opened */
-    if (ch.plan && o.planOf) { const fresh = o.planOf(t, t.cards.get(ch.cardId) || {}); if (fresh && ch.plan.v !== fresh.v) ch.plan = fresh; } /* plans saved before one-always rebuild */
+    healAdded(t, ch);
+    if (ch.v0 !== 'draft' && !ch.batchKey && !ch.added && !ch.dl && (ch.fromCard || (t.work || []).some((w) => w.changeId === ch.id))) seedV0(t, t.cards.get(ch.cardId), ch); /* 'none' tries again while the jam is untouched: the card's draft may land after the jam opened */ /* never on a deliverable added under "+": it is its own piece */
+    if (ch.plan && o.planOf && !ch.added && !ch.dl) { const fresh = o.planOf(t, t.cards.get(ch.cardId) || {}); if (fresh && ch.plan.v !== fresh.v) ch.plan = fresh; } /* plans saved before one-always rebuild */
     adClip(ch);
     if (ch.state === 'draft' && !ch.batchKey) { const lf = labelFor(ch.action, t.cards.get(ch.cardId) || {}); /* jams opened before the card-led names heal on read */
       if (lf && lf.label !== ch.actionLabel && ['creative.add_variants', 'creative.short_video'].includes(ch.action)) { ch.actionLabel = lf.label; ch.target = targetOf(lf.target); } }
@@ -813,7 +827,7 @@ export function createRemix(o) {
     const card0 = t.cards.get(ch.cardId); /* our version of a rival's ad: what Brew read from it, shown in the studio */
     /* the jam's own name in plain words ("syncing our Shopify products.json stock levels", final QA pass 19 Oct); the package itself is untouched */
     if (pub.after?.title && dejargon(pub.after.title) !== pub.after.title) pub.after = { ...pub.after, title: dejargon(pub.after.title) };
-    return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), ...(isReferenceCard(card0) && o.refSummary ? { ref: o.refSummary(t, card0) } : {}), /* View references: the ad or video it remakes */ thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, studio: studioOf(t, ch), /* made by Brew Studio on the stage */ filmOk: (() => { const sid = studioOf(t, ch); if (!sid || !card0 || isFilm(ch)) return false; try { return j2Recipe(sid)?.kind === 'video' && sid !== 'gif'; } catch { return false; } })(), /* a video jam offers "Brief a film instead" */ film: isFilm(ch) ? (() => { const b = boardOf(ch, { card: card0 || {} }); return b && { ...b, img: cardPhoto(t, card0 || {}) }; })() : null, /* the founder storyboard */ catalogPics: catalogPics(t, ch), publish: publishFor(t, ch), /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || o.planOf?.(t, t.cards.get(ch.cardId)) || null, copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
+    return { ...pub, ...(isRivalCard(card0) && o.rivalSummary ? { rival: o.rivalSummary(t, card0) } : {}), ...(isReferenceCard(card0) && o.refSummary ? { ref: o.refSummary(t, card0) } : {}), /* View references: the ad or video it remakes */ thinking: ch.thinking && Date.now() - ch.thinking.at < 300e3 ? ch.thinking : null, studio: studioOf(t, ch), /* made by Brew Studio on the stage */ filmOk: (() => { const sid = studioOf(t, ch); if (!sid || !card0 || isFilm(ch)) return false; try { return j2Recipe(sid)?.kind === 'video' && sid !== 'gif'; } catch { return false; } })(), /* a video jam offers "Brief a film instead" */ film: isFilm(ch) ? (() => { const b = boardOf(ch, { card: card0 || {} }); return b && { ...b, img: cardPhoto(t, card0 || {}) }; })() : null, /* the founder storyboard */ catalogPics: catalogPics(t, ch), publish: publishFor(t, ch), /* what the studio is doing right now, for the waiting person (think()) */ plan: ch.plan || (ch.added || ch.dl ? null : o.planOf?.(t, t.cards.get(ch.cardId))) || null, ...jamShape(t, ch, card0), copyPending: !!ch.copyPending && FILL_JOBS.has(ch.id) /* "Writing…" while the writer is really running, not a clock */, ctaPending: ch.ctaPending && CTA_JOBS.has(ch.id) ? ch.ctaPending : null /* the card's button is making it: the studio says what and keeps polling */, realOnly: realOnly(ch) /* community posts: real photos only, so no AI remakes */, trust: { level: tr.level, name: tr.name, objects: tr.objects, toNext: tr.toNext }, scope: ch.scope.map((s) => ({ ...s, locked: s.n > tr.objects })),
       familyName: ch.action === 'creative.short_video' && ch.target?.conn === 'meta' ? 'Meta video ad' : FAMILY_NAME[ch.family], fields: fieldsFor(ch.family, ch.action).filter((f) => !isAdClip(ch) || !['postAt', 'hashtags', 'where'].includes(f.k)).map(({ k, label, type, opts, cols, req, pub, hint }) => ({ k, label: isAdClip(ch) ? ({ copy: 'Ad text', title: 'Headline', platform: 'Placement' }[k] || label) : label, type, opts, cols, req, pub, hint })),
       knobs: knobsFor(ch.family, B()), suggest: suggestOf(t, ch), gradeF: GRADES[ch.pkg.grade] || 'none', missing: missing(ch.family, ch.action, ch.pkg),
       options: opts /* the cuts as tabs: pick one (Param, 19 Oct) */, head: headOf(t, ch)?.id || null, versions: versionsOf(t, ch.id).map((v) => ({ id: v.id, n: v.n, author: v.author, reason: v.reason, label: v.label || versionLabel(v.reason, { first: v.n === 1 }), at: v.at, parent: v.parentVersionId, diff: v.diff, snapshot: v.snapshot, ...(v.final ? { final: v.final } : {}),
@@ -1618,7 +1632,7 @@ export function createRemix(o) {
     if (intent) signal(t, 'pick', { agent: made[0]?.agent, intent }, now(t));
     t.acted.add(c.id);
     if (made[0] && !pickA) seedV0(t, c, made[0]); /* the jam's package opens on the card's own first draft (an added deliverable starts from its own words) */
-    if (pickA) made.forEach((x) => { x.added = true; if (row) { x.dl = row.id; x.actionLabel = row.name; } }); /* named as the deliverable picked ("Welcome flow", "Trial reel"), never its family's action */
+    if (pickA) made.forEach((x) => { x.added = true; x.fromCard = false; if (row) { x.dl = row.id; x.actionLabel = row.name; } healAdded(t, x); }); /* its own piece and its own plan, never the card's draft */ /* named as the deliverable picked ("Welcome flow", "Trial reel"), never its family's action */
     /* "Make our version" of a rival's ad: the person asked for our ad, so its first picture (in the rival's style, our product)
        is made once the words are written; nothing else opens a paid picture by itself */
     const firstPic = isRivalCard(c) && made[0] && !studioOf(t, made[0], null, c) && !/^gen\//.test(made[0].pkg?.image || '') ? () => (isVideoPost(made[0]) ? genVideo(t, made[0], 'our version of the rival video') : genImage(t, made[0], 'our version of the rival ad')) : null;

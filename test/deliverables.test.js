@@ -17,10 +17,10 @@ const BRAND = { slug: 'acme', name: 'Acme', host: 'acme.com', sym: '$', config: 
 const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'dl-')); fs.mkdirSync(path.join(DIR, 'gen'), { recursive: true });
 configureGen({ dir: path.join(DIR, 'gen'), remote: false, log: { warn() {} } });
 const quiet = { warn() {}, log() {}, error() {} };
-const studio = () => {
+const studio = (extra = {}) => {
   const R = {}, on = (m, pat, fn) => (R[`${m} ${pat}`] = fn); let n = 0;
   const RMX = createRemix({ on, claudeTool: null, geminiImage: null, PUB: DIR, LANE_PHOTO: {}, FACTS: {}, SEED: { connectors: { meta: { name: 'Meta Ads' } }, colleagues: [] }, AGENT: { creative: 'Creative' }, cardBrief: () => '', seatLine: () => '', qaCheck: () => [], mechanicalFix: (x) => x, clean: (x) => String(x ?? ''), BANNED: /$^/,
-    isMock: () => true, spend: () => true, uid: (p) => `${p}_${++n}`, now: (t) => Date.now() + (t?.clock || 0), clone: (x) => JSON.parse(JSON.stringify(x)), inr: (x) => `$${x}`, say: (t, w, m) => w.thread.push(m), move: () => {}, notify: () => {}, curV: (w) => w.versions.at(-1), log: quiet });
+    isMock: () => true, spend: () => true, uid: (p) => `${p}_${++n}`, now: (t) => Date.now() + (t?.clock || 0), clone: (x) => JSON.parse(JSON.stringify(x)), inr: (x) => `$${x}`, say: (t, w, m) => w.thread.push(m), move: () => {}, notify: () => {}, curV: (w) => w.versions.at(-1), log: quiet, ...extra });
   const call = (key, b, t, p) => runIn(BRAND, () => R[key](b, t, p)); call.RMX = RMX; return call;
 };
 const tenant = () => ({ id: 't_1', brandId: 'acme', clock: 0, cards: new Map([['c1', { id: 'c1', title: 'Warm paws all winter', sub: 'Cold hands, sorted. One balm, every morning.', agent: 'creative', sector: 'creatives', type: 'idea', detail: { why: ['Searches for hand balm doubled this week'] } }]]), changes: {}, work: [], conn: {}, acted: new Set(), shown: {} });
@@ -68,4 +68,16 @@ test('a row with an action opens as that action, named as the row; an unknown on
   assert.equal(r.changes[0].action, row.action); assert.equal(r.changes[0].actionLabel, row.name);
   const bad = await call('POST /api/cards/:cid/remix', { action: 'dl:no_such_thing' }, t, { cid: 'c1' });
   assert.ok(bad.error && !bad.changes, 'never the default piece in its place');
+});
+
+test('a deliverable added under "+" never takes the card\'s first draft or plan, and an old one lets go of them on read', async () => {
+  const DRAFT = { v: 9, action: 'creative.ig_story', draft: { as: 'image', images: ['b/acme/drafts/story1.png', 'b/acme/drafts/story2.png'], ratio: '9:16', title: 'Story draft' } };
+  const call = studio({ planOf: () => DRAFT }), t = tenant();
+  const r = await call('POST /api/cards/:cid/remix', { action: 'dl:highlight_covers', fast: true }, t, { cid: 'c1' }), ch = r.changes[0];
+  assert.equal(ch.fromCard, false); assert.ok(!ch.pkg.draft, 'no card draft'); assert.ok(!/drafts\/story/.test(JSON.stringify(ch.pkg)), 'no card draft picture');
+  assert.equal(ch.plan?.action, ch.action, 'its own plan, not the card\'s');
+  /* a jam saved before the fix: the card's draft seeded into it */
+  const raw = t.changes[ch.id]; raw.pkg = { ...raw.pkg, draft: { ...DRAFT.draft }, image: 'b/acme/drafts/story1.png', cardImages: DRAFT.draft.images }; raw.v0 = 'draft'; raw.fromCard = true; raw.plan = DRAFT;
+  const g = await call('GET /api/cards/:cid/remix', {}, t, { cid: 'c1' }), healed = g.changes.find((x) => x.id === ch.id);
+  assert.ok(!healed.pkg.draft && !healed.pkg.image && !healed.pkg.cardImages, 'the card\'s draft media let go'); assert.equal(healed.plan?.action, ch.action); assert.equal(healed.v0, 'none');
 });

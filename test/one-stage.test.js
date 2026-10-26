@@ -24,9 +24,9 @@ test('the stage holds only the piece: the Studio set-up is the panel’s Set-up 
   assert.match(st, /shipBar\(ch, viewing\)/, 'the bar shows before anything is made');
   assert.match(st, /st\.frames/, 'the preview has as many frames as the set-up makes');
   /* 26 Oct redesign: no tabs in the panel; Brew's line, then Change it yourself (the set-up) and the checks, each with a way back */
-  const top = fn('panelTop');
-  assert.match(top, /data-tab="adjust">Change it yourself/); assert.match(top, /'Let Brew set it up'/); assert.match(top, /data-tab="details"/);
-  assert.match(top, /RX\.stage === 'brief'[^\n]*Brief details/, 'Brief mode: no maker set-up in the panel');
+  const ai = fn('jpAi');
+  assert.match(ai, /data-tab="adjust">Change it yourself/); assert.match(app, /jpBack\('Let Brew set it up'\)/); assert.match(ai, /data-tab="details"/);
+  assert.match(ai, /brief \? `<button type="button" class="jp-lnk" data-tab="details">Brief details/, 'Brief mode: no maker set-up in the panel');
   assert.match(app, /tab = RX\.tab && RX\.tab !== 'history' \? RX\.tab : 'iterate'/, 'a jam opens on the chat: Brew sets it up');
   assert.ok(!/ch\.studio && !studioMade\(ch\) && edit \? 'adjust' : 'iterate'/.test(app), 'the 26 Oct redesign (AI first): a Studio piece opens on Brew\'s one line and the chat; its set-up is behind Change it yourself');
   assert.match(app, /data-cs-make/); assert.match(cs, /make: \(\) => go\(false\)/);
@@ -187,7 +187,7 @@ test('a chat ask on a set never turns its slides into takes', () => {
 });
 
 test('v1 has v2’s "+": a card’s deliverables as pills over the stage, and another made from the same card', async () => {
-  assert.match(app, /const dlRow = \(ch\) =>/); assert.match(app, /\$\{dlRow\(ch\)\}\$\{refBtnHtml\(ch\)\}/);
+  assert.match(app, /const dlRow = \(ch\) =>/); assert.match(app, /\$\{RX\.stage === 'brief' \? '' : dlRow\(ch\)\}/, 'the piece tabs sit under the header (26 Oct, the prototype)');
   assert.match(app, /tapi\('POST', `\/api\/cards\/\$\{RX\.p\.id\}\/remix`, \{ action: key, fast: true \}\)/);
   const rmx = fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8');
   assert.match(rmx, /changes: mine, add: addable\(r, mine\) \}/); assert.match(rmx, /pickA = row \? dlAction\(row\) : b\.action && canAdd\(r00, String\(b\.action\)\)/); /* 26 Oct: a catalogue row (dl:<id>) opens as its own action */
