@@ -16,6 +16,9 @@ die() { echo "STOP: $*"; exit 1; }
 STAGE_REV=$(gcloud run services describe $STAGING --region=$REGION --project=$P --format='value(status.latestReadyRevisionName)')
 IMG=${1:-$(gcloud run revisions describe "$STAGE_REV" --region=$REGION --project=$P --format='value(spec.containers[0].image)')}
 SHA=$(gcloud run revisions describe "$STAGE_REV" --region=$REGION --project=$P --format='value(metadata.labels.git-sha)')
+# an image named by hand (an earlier staging revision): its commit is that revision's label, never the newest one's (26 Oct: staging
+# had moved on to another session's d6154b3 and production would have been labelled with it while running b9362bc)
+if [ -n "${1:-}" ]; then SHA=$(gcloud run revisions list --service=$STAGING --region=$REGION --project=$P --format='value(spec.containers[0].image,metadata.labels.git-sha)' | awk -v i="$1" '$1==i{print $2; exit}'); [ -n "$SHA" ] || die "no staging revision runs $1: promote only what staging ran"; fi
 [ -n "$IMG" ] && [ -n "$SHA" ] || die "could not read staging's live revision"
 for i in 1 2 3; do git fetch -q origin && break; [ $i = 3 ] && die "could not reach GitHub to check staging's commit (3 tries)"; sleep 5; done
 if [ -z "${1:-}" ] && ! git merge-base --is-ancestor "$SHA" origin/main; then die "staging runs $SHA, which is not on origin/main: deploy staging from main first"; fi
