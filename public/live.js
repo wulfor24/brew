@@ -264,7 +264,7 @@
       const GOOG = id === 'google' || id === 'ga4', groups = id === 'google' ? [['ads', 'Google Ads'], ['ga4', 'Google Analytics']] : id === 'ga4' ? [['ga4', 'Google Analytics property']] : [[null, 'Ad account']];
       /* several accounts at once (Meta): checkboxes, the brand's own ones ticked first (the server checked each for the brand's Page) */
       const multi = !!(r.multi || L.avail?.[id]?.multi) && !GOOG;
-      const row = (name, val, nm2, sub, on, o = {}) => `<label class="cxb-row"><input type="${multi ? 'checkbox' : 'radio'}" name="${name}" value="${esc(val)}" data-name="${esc(nm2)}"${on ? ' checked' : ''}><span><b>${esc(nm2)}</b>${sub ? `<small>${esc(sub)}${o.own === true ? ` · ${esc(B().brand.name)}’s page` : o.own === false ? ' · another page' : ''}</small>` : ''}</span><i class="cxb-radio" aria-hidden="true"></i></label>`;
+      const row = (name, val, nm2, sub, on, o = {}) => `<label class="cxb-row"><input type="${multi ? 'checkbox' : 'radio'}" name="${name}" value="${esc(val)}" data-name="${esc(nm2)}"${on ? ' checked' : ''}><span><b>${esc(nm2)}</b>${sub ? `<small>${esc(sub)}${o.own === true ? ` · ${esc(possT(B().brand.name))} page` : o.own === false ? ' · another page' : ''}</small>` : ''}</span><i class="cxb-radio" aria-hidden="true"></i></label>`;
       /* Google Ads sign-in with no Ads account on that login: Ads can't connect, so the sheet offers Google Analytics alone
          (no "Connect Google Ads only" row) and a way back to sign in with the login that runs the ads */
       const noAds = id === 'google' && !opts.some((o) => o.kind === 'ads');

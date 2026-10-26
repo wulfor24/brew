@@ -55,9 +55,10 @@ export function createCdnKeep({ has = async () => false, save = async () => {}, 
 }
 
 /* the server's answers: a JSON or text body that names a CDN link goes out with our copies (wraps res.end/res.write once) */
-export function keepRes(res, K) {
+/* words: an optional fix for JSON answers and server-sent data only (served-words.js possFix), never a page or a script */
+export function keepRes(res, K, words = null) {
   if (!K || res.__cdnKeep) return; res.__cdnKeep = true;
-  const en = res.end, wr = res.write;
-  res.end = function (b, ...rest) { if (typeof b === 'string' && MARK.test(b)) b = K.body(b); return en.call(res, b, ...rest); };
-  res.write = function (b, ...rest) { if (typeof b === 'string' && MARK.test(b)) b = b.replace(/^data: (.*)$/gm, (m, j) => `data: ${K.body(j)}`); return wr.call(res, b, ...rest); };
+  const en = res.end, wr = res.write, json = (b) => /^\s*[[{]/.test(b);
+  res.end = function (b, ...rest) { if (typeof b === 'string') { if (MARK.test(b)) b = K.body(b); if (words && json(b)) b = words(b); } return en.call(res, b, ...rest); };
+  res.write = function (b, ...rest) { if (typeof b === 'string' && /^data: /m.test(b)) b = b.replace(/^data: (.*)$/gm, (m, j) => `data: ${words && json(j) ? words(K.body(j)) : K.body(j)}`); return wr.call(res, b, ...rest); };
 }

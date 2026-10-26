@@ -10,6 +10,8 @@ import { ownAdsSay, oosSay, ownSayIn, outInRows } from '../own-say.js';
 import { stockSay } from '../stock-say.js';
 import { healNote, healDaysIn, eventsFor } from '../day-count.js';
 import { brandVocab, fitRising, fitTrends } from '../trend-fit.js';
+import { possFix, possBody } from '../served-words.js';
+import { bookNumbers, bestFounded } from '../facts-desk.js';
 import { heardCards } from '../social-feed.js';
 import { isCdn, cdnExpiry, cdnDead, keepName, createCdnKeep, keepRes } from '../cdn-keep.js';
 
@@ -64,7 +66,7 @@ test('CDN links: every server answer goes through keepRes, and the research tick
   const dead = `https://scontent.xx.fbcdn.net/v/b.jpg?oe=${hex('2026-10-01T00:00:00Z')}`;
   res.end(JSON.stringify({ a: dead, b: 'ok' })); res.write(`data: ${JSON.stringify({ img: dead })}\n\n`);
   assert.deepEqual(JSON.parse(out[0]), { a: null, b: 'ok' }); assert.equal(out[1], 'data: {"img":null}\n\n');
-  const srv = read('server.js'); assert.match(srv, /zipRes\(req, res\);\n\s*keepRes\(res, CDN\);/); assert.match(srv, /CDN\.scan\(x\.research\.get\(\)\)/);
+  const srv = read('server.js'); assert.match(srv, /zipRes\(req, res\);\n\s*keepRes\(res, CDN, possBody\);/); assert.match(srv, /CDN\.scan\(x\.research\.get\(\)\)/);
   assert.match(read('research.js'), /if \(!isLeader\(\)\) return; healLogos\(\)\.catch\(\(\) => \{\}\); if \(movedAway\(brand\.slug\)\) return;/);
 });
 
@@ -181,4 +183,27 @@ test('trends: a list that rose around a product keeps only that product’s sear
   const healed = fitTrends(saved, V); assert.deepEqual(healed.items[0].rising.map((x) => x.q), ['hair serum for women']); assert.deepEqual(healed.rising['hair serum'].map((x) => x.q), ['hair serum for women']);
   const PUMA = brandVocab({ name: 'PUMA India', config: { terms: ['running shoes'] } }); assert.deepEqual(fitRising([{ q: 'pharmacy online india' }, { q: 'running shoes for men' }], PUMA, 'running shoes').map((x) => x.q), ['running shoes for men']);
   assert.ok(!/class="up-banner"/.test(read('public/app.js')), 'no "36 plays are out of date" banner, staff included');
+});
+
+/* ---------- 9. words ---------- */
+test('possessives: a name ending in s takes an apostrophe only, in every JSON answer and the Brand Book’s own lines', () => {
+  assert.equal(possFix('Mana Projects’s look'), 'Mana Projects’ look'); assert.equal(possFix("Copy Birla Estates's 30-day payment plan"), 'Copy Birla Estates’ 30-day payment plan');
+  assert.equal(possFix("Build ads that last like Fix My Curls's 183-day campaign"), 'Build ads that last like Fix My Curls’ 183-day campaign');
+  assert.equal(possFix("Arata's serum and the boss's call"), "Arata's serum and the boss's call", 'other possessives and lowercase words untouched');
+  assert.equal(JSON.parse(possBody(JSON.stringify({ t: 'Mana Projects’s team', u: 'https://x.com/a' }))).t, 'Mana Projects’ team');
+  const K = createCdnKeep({ log: {} }), out = []; const res = { end(b) { out.push(b); }, write(b) { out.push(b); } }; keepRes(res, K, possBody);
+  res.end(JSON.stringify({ title: "Birla Estates's plan" })); res.end("const re = /Projects's/;"); res.write(`data: ${JSON.stringify({ h: "Projects's" })}\n\n`);
+  assert.equal(JSON.parse(out[0]).title, 'Birla Estates’ plan'); assert.equal(out[1], "const re = /Projects's/;", 'a script is never rewritten'); assert.match(out[2], /Projects’"/);
+  assert.match(read('server.js'), /keepRes\(res, CDN, possBody\)/);
+  assert.ok(!/\$\{esc\(nm\)\}’s|\$\{nm\}’s|\$\{esc\(n\)\}’s/.test(read('public/brand-book.js')), 'the Brand Book’s own lines use possN');
+});
+
+test('Brand Book: one founding year, the best-sourced; the "since" line says the same year', () => {
+  const truth = { a: { key: 'company.founded', label: 'Founded', v: '2016', src: 'https://www.crunchbase.com/x' }, b: { key: 'company.founded.2', label: 'Founded (another source)', v: 'Founded in 2019', src: 'https://arata.in/pages/about' },
+    c: { key: 'company.founded.3', label: 'Founded (another source)', v: '2016', src: 'https://tracxn.com/y' }, d: { key: 'catalog.count', label: 'Products', v: '93', src: 'arata.in/sitemap.xml' } };
+  const rows = bookNumbers(truth, { host: 'arata.in' }), fy = rows.filter((x) => /^company\.founded/.test(x.key));
+  assert.equal(fy.length, 1); assert.equal(fy[0].v, '2019', 'the brand’s own site first'); assert.equal(fy[0].label, 'Founded');
+  assert.equal(bestFounded(bookNumbers(truth, { host: 'other.com' }).length ? Object.values(truth).map((f) => ({ ...f })) : [], 'other.com').v, '2016', 'else the year most sources agree on');
+  assert.match(read('brand-book-routes.js'), /v\.story = \{ \.\.\.v\.story, founded: fy\.v \}/);
+  assert.match(read('tools/audit-brand-book.mjs'), /more than one founding year/);
 });

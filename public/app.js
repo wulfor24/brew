@@ -518,7 +518,7 @@
     const ra = !GEN && res?.ads?.items?.length ? res.ads : null; // a generated brand's reader already shows its real ads
     /* the ads step quotes the one count (pack-numbers.js, window.BREW_NUMBERS) when the brand has it: the same rivals and numbers as the check page */
     const NB = window.BREW_NUMBERS, steps = ra && !NB?.rivalAds ? B.steps.map((x) => x.k === 'ads' ? { ...x, done: `${ra.brands.length} rivals: ${ra.brands.reduce((n, b) => n + (b.live || 0), 0).toLocaleString('en-IN')} live ads` } : x) : B.steps;
-    const cards = ra ? B.scrape.map((c) => c.kind === 'ad' ? { ...c, src: `Meta Ad Library · ${B.config?.countryName || 'live'}`, img: ra.items[0].poster, copy: ra.items.slice(0, 3).map((a) => `${a.brand}: ${a.hook}`).join(' · '), foot: `${ra.items[0].brand}'s top ad has run ${ra.items[0].days} days in ${ra.items[0].versions} versions.` } : c) : B.scrape;
+    const cards = ra ? B.scrape.map((c) => c.kind === 'ad' ? { ...c, src: `Meta Ad Library · ${B.config?.countryName || 'live'}`, img: ra.items[0].poster, copy: ra.items.slice(0, 3).map((a) => `${a.brand}: ${a.hook}`).join(' · '), foot: `${possT(ra.items[0].brand)} top ad has run ${ra.items[0].days} days in ${ra.items[0].versions} versions.` } : c) : B.scrape;
     /* v1 (19 Oct, from the prototype): the read shows once, then five questions take the whole screen while the read carries on
        behind them, then the read comes back with everything that landed meanwhile (OB2.questions, questions.js). Once per
        brand per browser; no tutorial, stack or gate on v1 */

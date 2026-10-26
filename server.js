@@ -6,6 +6,7 @@ import { makePhotoFile } from './safe-path.js';
 import { createJamMail } from './jam-mail.js';
 import { configureGen, saveGen, genFile, genFlush, researchFile, saveResearch } from './gen-store.js';
 import { createCdnKeep, keepRes } from './cdn-keep.js'; // Facebook/Instagram CDN pictures served from our storage, dropped once expired (26 Oct)
+import { possBody } from './served-words.js'; // "Mana Projects’s" reads "Mana Projects’" in every JSON answer (26 Oct)
 import { lighter } from './img-light.js'; // light copies of big pictures for the page (26 Oct)
 import http from 'node:http';
 import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
@@ -1053,7 +1054,7 @@ const demoRoutes = DEMO ? createDemoRoutes({ packs, builder, auth, connectors, r
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   zipRes(req, res);
-  keepRes(res, CDN); /* no answer serves an expiring Facebook/Instagram CDN link (26 Oct) */
+  keepRes(res, CDN, possBody); /* no answer serves an expiring Facebook/Instagram CDN link, nor "Mana Projects’s" (26 Oct) */
   res.once('finish', () => alerts.response(res.statusCode)); /* the 5xx rate for the ops alerts */
   retire.claim(); // traffic reaches this revision: it is the live one
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => timed(req, res, u, () => serve(req, res, u))); }
