@@ -127,12 +127,29 @@ export function cardBriefText(c = {}, { moveDocs = {} } = {}) {
    picture coming", never "First draft" over a packshot. A clip's poster is its first frame with the headline set */
 /* Brew's own words never carry an em dash (plain.js tidy does the same on cards); saved drafts read so on every serve (QA UI 20 Oct) */
 const undash = (s) => String(s || '').replace(/\s*—\s*/g, ', ').replace(/(\s)–(\s)/g, '$1-$2').replace(/,\s*,/g, ',');
+/* a line said twice in a draft reads once ("• The biggest plus is how light these shoes are." twice under a PUMA card), and the plan's
+   numbering never reaches the brand's words ("Edit this post 21 template": QV P1-17, 26 Oct) */
+export const onceLines = (s) => { const seen = new Set(); return String(s ?? '').split('\n').filter((l) => { const k = l.replace(/^[\s•*\-–\d.)]+/, '').trim().toLowerCase(); if (k.length < 12) return true; if (seen.has(k)) return false; seen.add(k); return true; }).join('\n')
+  .replace(/\b(this|the|that)\s+(?:post|play|move|template)\s+\d{1,4}\s+template\b/gi, '$1 template'); };
+/* a draft belongs under its card when the product it shows is the one the card is about: the product's own words are in the card's
+   (title, line, rows, asset line, how-steps), or the card names no product and shares a telling word with it. A draft about another
+   product ("Honeymoon Travel Pack" under "Set automated budget rules to protect hero inventory") is not shown on the card (QV P1-17) */
+const STOPW = new Set('with your from this that their them they into over more most only also about after before than then what when will just pack packs combo set kit size each pair free best ever all new'.split(' '));
+const tell = (s, drop = new Set()) => new Set((String(s || '').toLowerCase().match(/[a-z][a-z0-9]{3,}/g) || []).map((w) => (w.length > 4 && /s$/.test(w) && !/ss$/.test(w) ? w.slice(0, -1) : w)).filter((w) => !STOPW.has(w) && !drop.has(w)));
+export function draftFits(d, c = {}, { catalog = [], brand = '' } = {}) {
+  const name = String(d?.product || '').trim(); if (!name || !c) return true;
+  const drop = tell(brand), pw = tell(name, drop); if (!pw.size) return true;
+  const cw = tell([c.title, c.sub, ...(c.rows || []).flat(), c.make?.pieces, ...(c.detail?.how || [])].filter((x) => typeof x === 'string').join(' '), drop);
+  const named = catalog.length ? cardProduct(c, catalog, { brand, byNameOnly: true }) : null;
+  if (named?.t) return String(named.t).toLowerCase() === name.toLowerCase() || [...tell(named.t, drop)].every((w) => pw.has(w)); /* the card names a product: the draft shows that one */
+  return [...pw].some((w) => cw.has(w));
+}
 export function draftView(d, c = null) {
   if (!d) return null; const images = d.slides?.length ? d.slides.map((x) => x.image).filter(Boolean) : d.render ? [d.render] : d.image ? [d.image] : [];
   if (!images.length && !d.video) return null;
   const fallback = hasCode(d.copy) ? null : [d.photo, ...(isRivalCard(c) ? [] : [...(c?.images || []), c?.img])].find((x) => x && typeof x === 'string' && !images.includes(x) && !isResearchImage(x)) || null; /* never a rival's poster under our draft */
   const bare = !!d.photoOnly && !d.render && !d.video && !d.slides?.length;
-  return { as: d.as, kind: d.kind || d.as, images, video: d.video || null, poster: d.video ? d.poster || d.render || d.image || images[0] || null : null, ratio: d.video && d.clipStill ? '9:16' : d.ratio || null, title: undash(d.title || ''), copy: cut(undash(String(d.copy || '').replace(/[#*_>`]/g, '')), 240), ...(hasCode(d.copy) ? { code: String(d.copy).slice(0, 6000) } : {}) /* the jam's stage shows code as code, not as the mock's picture */,
+  return { as: d.as, kind: d.kind || d.as, images, video: d.video || null, poster: d.video ? d.poster || d.render || d.image || images[0] || null : null, ratio: d.video && d.clipStill ? '9:16' : d.ratio || null, title: undash(d.title || ''), copy: cut(undash(onceLines(String(d.copy || '')).replace(/[#*_>`]/g, '')), 240), ...(hasCode(d.copy) ? { code: String(d.copy).slice(0, 6000) } : {}) /* the jam's stage shows code as code, not as the mock's picture */,
     ...(d.product ? { product: d.product } : {}) /* the product its pictures show: the jam's Studio sets up the same one */, ...(d.headline ? { headline: undash(d.headline) } : {}), ...(d.render && d.headline && ['image', 'video'].includes(d.kind || d.as) ? { wordsIn: d.render } /* the headline is already set in this picture: the page never lays it on again */ : {}), ...(fallback ? { fallback } : {}), ...(d.imgRetry || bare ? { remaking: true } : {}), ...(bare ? { photoOnly: true } : {}) };
 }
 

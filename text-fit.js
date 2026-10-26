@@ -115,7 +115,9 @@ export const oneOf = (x) => String(x ?? '').replace(/\b([234]):one\b/g, (m, a) =
 /* the card's own prose (title, line, how-steps): only counts of creative takes become one ("three hook variants", "Make three reel
    scripts", "Two fresh versions of each winner"); counts that are the plan itself stay ("Pack of 2", "three featured options",
    "8 ads", "two posts a week") */
-const TAKES = /(?<!\b(?:of|pack|set|buy|get)\s)(?<![\d:/.,×])\b(?:two|three|four|five|six|[2-6])\s+(new\s+|more\s+|different\s+|fresh\s+)?((?:hook|reel|video|ad|caption|headline|creative)\s+)?(hooks|versions|variants|variations|cuts|scripts|takes|concepts|angles)\b/gi;
+/* a count that is a fact about an ad already running stays as it is: "live 44 days in 2 versions", "running across 3 variations", "3
+   versions live" (QV P1-7, 26 Oct: the feed said "in one version" while the story and the proof sheet said 2 and 3) */
+const TAKES = /(?<!\b(?:of|pack|set|buy|get|in|across|with|has|had|have|runs?|ran|running|tested|testing)\s)(?<![\d:/.,×])\b(?:two|three|four|five|six|[2-6])\s+(new\s+|more\s+|different\s+|fresh\s+)?((?:hook|reel|video|ad|caption|headline|creative)\s+)?(hooks|versions|variants|variations|cuts|scripts|takes|concepts|angles)\b(?!\s+(?:live|running|active|so far|still|of (?:it|this|that|the ad|their|its)\b|(?:on|in) (?:the )?(?:ad library|meta)))/gi;
 export const oneTake = (x) => String(x ?? '').replace(TAKES, (m, nw, mid, noun, at) => `${at === 0 || /[.!?]\s*$/.test(String(x).slice(0, at)) ? 'One' : 'one'} ${nw || ''}${mid || ''}${one(noun)}`);
 /* a card said as one (title, line, source, how-steps: oneTake; the asset line: oneOf), for every card wherever it is read:
    the pack load (brand-pack fitCard), every card sent to the page (feed-service pub), the brief (jam-brief). The same card back

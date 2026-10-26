@@ -31,7 +31,7 @@
     if (ico) { const r = ico.getBoundingClientRect(), cs = getComputedStyle(ico);
       Object.assign(sp.style, { width: `${r.width}px`, height: `${r.height}px`, display: cs.display === 'inline' ? 'inline-block' : cs.display, margin: cs.margin, verticalAlign: cs.verticalAlign, flex: 'none' });
       sp.classList.add('is-ico'); ico.before(sp); ico.style.display = 'none'; }
-    else if (big) { b.appendChild(sp); const m = media && b.querySelector('img,video'), mr = m?.getBoundingClientRect(), br = b.getBoundingClientRect(); /* centred on the picture, not on the tile with its label */
+    else if (big) { b.appendChild(sp); const m = media ? b.querySelector('img,video') : null, mr = m?.getBoundingClientRect?.(), br = b.getBoundingClientRect(); /* centred on the picture, not on the tile with its label */
       if (mr?.width) Object.assign(sp.style, { left: `${mr.left - br.left + mr.width / 2}px`, top: `${mr.top - br.top + mr.height / 2}px` }); }
     else { /* words only: the button keeps its exact size; the words fade out under the loader, centred where they were */
       const col = getComputedStyle(b).color; sp.classList.replace('bl-a', 'bl-mid'); sp.style.color = col; b.classList.add('bl-hush');

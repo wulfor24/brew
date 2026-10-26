@@ -17,4 +17,6 @@ export const moveSay = (s) => (typeof s !== 'string' || !/\bMoves?\b[\d ,&and]*\
   .replace(/\bMove (\d{3,4})\b/gi, (m, n, at, all) => one(n, all, at) || m));
 /* a source line a person reads ("Move 08 · Ads", "Moves 3 and 4"): moves are called Plays (23 Oct QA 3.10). Only lines that name a
    plan item by its number, never a card's own words, where "Move 5 ads" is an instruction */
-export const playSrc = (s) => (typeof s !== 'string' ? s : moveSay(s).replace(/\b(Weekly |Timely )?(M|m)oves(?= \d| and \d)/g, (m, w = '', c) => `${w}${c === 'M' ? 'P' : 'p'}lays`).replace(/\b(Weekly |Timely )?(M|m)ove(?= \d{1,2}\b| T\b| ·|$)/g, (m, w = '', c) => `${w}${c === 'M' ? 'P' : 'p'}lay`));
+/* a part said twice in a row reads once: saved srcs carry "Move 05 · Play 05 · …", which read "Play 05 · Play 05" (QV P1-9, 26 Oct) */
+export const oneEach = (s) => (typeof s !== 'string' || !s.includes('·') ? s : s.split(/\s*·\s*/).filter((x, i, a) => !i || x.trim().toLowerCase() !== a[i - 1].trim().toLowerCase()).join(' · '));
+export const playSrc = (s) => (typeof s !== 'string' ? s : oneEach(moveSay(s).replace(/\b(Weekly |Timely )?(M|m)oves(?= \d| and \d)/g, (m, w = '', c) => `${w}${c === 'M' ? 'P' : 'p'}lays`).replace(/\b(Weekly |Timely )?(M|m)ove(?= \d{1,2}\b| T\b| ·|$)/g, (m, w = '', c) => `${w}${c === 'M' ? 'P' : 'p'}lay`)));
