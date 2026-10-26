@@ -2852,7 +2852,7 @@ body.rx-boot #view{visibility:hidden}
 .wb-col.is-empty .wb-empty{padding:18px 12px;border:0;font-size:13.5px;line-height:19px;color:var(--fg-3);text-align:left;align-items:flex-start}
 .wb-col.is-ai:not(.is-empty){flex:0 0 330px;width:330px}
 .wb-col.is-ai .col-top h2{font-size:16px}
-@media (max-width:700px){.wb-head{padding:10px 16px}.wb-head small,.wb-head .side-act span{display:none}.wb-col.is-empty,.wb-col.is-ai:not(.is-empty){flex:0 0 100vw;width:100vw}}
+@media (max-width:700px){.wb-head{padding:10px 16px;flex-wrap:wrap;row-gap:8px}.wb-head > span{flex:1 0 100%}.wb-head b{flex:none} /* the title on its own line, the buttons under it: "Work" sat on the jam button (26 Oct) */.wb-head small,.wb-head .side-act span{display:none}.wb-col.is-empty,.wb-col.is-ai:not(.is-empty){flex:0 0 100vw;width:100vw}}
 .wb-col.is-empty .col-top{min-width:0;gap:8px}
 .wb-col.is-empty .col-top h2{min-width:0;font-size:15px;line-height:20px;white-space:normal;color:var(--fg-2)}
 .wb-col.is-empty .col-top .col-fill{display:none}

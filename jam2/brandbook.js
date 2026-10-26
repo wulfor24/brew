@@ -19,6 +19,14 @@ const getPath = (o, p) => p.split('.').reduce((x, k) => (x == null ? x : x[k]), 
 const setPath = (o, p, v) => { const ks = p.split('.'), last = ks.pop(); let x = o; for (const k of ks) { if (x[k] == null || typeof x[k] !== 'object') x[k] = {}; x = x[k]; } x[last] = v; };
 const cleanVal = (v) => Array.isArray(v) ? v.slice(0, 30).map(cleanVal) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).slice(0, 20).map(([k, x]) => [k, cleanVal(x)])) : typeof v === 'string' ? tidy(v, 1200) : typeof v === 'number' || typeof v === 'boolean' || v == null ? v : String(v);
 const tidy = (s, n = 240) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
+/* one claim once (26 Oct QA: Nutrova's book listed each claim twice, once with its "(Improvements were observed…)" note and once
+   without, or cut with "…"): the same words before any bracketed note are one claim; the first keeps its place and takes a source */
+export const claimKey = (t) => String(t || '').toLowerCase().replace(/\s*[([].*$/s, '').replace(/…|\.\.\./g, ' ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+export const oneClaimEach = (xs = []) => { const out = [];
+  for (const c of xs || []) { const k = claimKey(c?.text); if (!k) continue;
+    const i = out.findIndex((y) => { const j = claimKey(y.text); return j === k || (Math.min(j.length, k.length) >= 24 && (j.startsWith(k) || k.startsWith(j))); });
+    if (i < 0) out.push(c); else if (!out[i].src && c.src) out[i] = { ...out[i], src: c.src }; }
+  return out; };
 const hexOk = (c) => /^#[0-9a-f]{3,8}$/i.test(String(c || ''));
 const lum = (hex) => { const h = String(hex).replace('#', ''), f = h.length === 3 ? h.split('').map((x) => x + x).join('') : h.slice(0, 6); const [r, g, b] = [0, 2, 4].map((i) => parseInt(f.slice(i, i + 2), 16) / 255); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 
@@ -115,8 +123,8 @@ export function readLayer({ slug = null, profile = null, brief = null, config = 
   const neverRe = String(config?.banned || '').trim() || null;
   const top = []; { let d = 0, cur = ''; for (const ch of String(neverRe || '')) { if (ch === '(' || ch === '[') d++; if (ch === ')' || ch === ']') d = Math.max(0, d - 1); if (ch === '|' && d === 0) { top.push(cur); cur = ''; } else cur += ch; } if (cur) top.push(cur); }
   const banned = top.map((x) => x.replace(/\(\?:/g, '(').replace(/\\[bsdw]\*?|\\[bsdw]\+?|[\^$]/g, ' ').replace(/\[[^\]]*\]\?/g, '').replace(/\[([^\]]*)\]/g, (m, c) => (/[- ]/.test(c) ? '-' : c[0] || '')).replace(/\(([^()|]*)\|[^()]*\)\??/g, '$1').replace(/[()?*+\\]/g, '').replace(/\s+/g, ' ').trim()).flatMap((x) => x.split('|')).map((x) => x.trim()).filter((x) => x.length >= 4).slice(0, 20); /* a wrapping group (\b(cure|regrow…)\b) is left as one alternation once its inner groups fold: split it into words */
-  const claims = [...(book?.proof?.claims || []).map((c) => ({ text: c.text, basis: 'on their own site or ads', from: 'read', src: c.from?.[0]?.url || null })),
-    ...(brief?.claims || []).slice(0, 8).map((x) => ({ text: tidy(x.claim, 140), basis: tidy(x.basis, 80), product: x.product || null, from: 'read' }))].filter((c, i, a) => c.text && a.findIndex((y) => y.text === c.text) === i).slice(0, 12);
+  let claims = [...(book?.proof?.claims || []).map((c) => ({ text: c.text, basis: 'on their own site or ads', from: 'read', src: c.from?.[0]?.url || null })),
+    ...(brief?.claims || []).slice(0, 8).map((x) => ({ text: tidy(x.claim, 140), basis: tidy(x.basis, 80), product: x.product || null, from: 'read' }))].filter((c) => c.text); claims = oneClaimEach(claims).slice(0, 12);
   /* the site's own reviews, then verified buyers on the marketplaces it sells on (the book's proof chapter, shelf.js); all quotable word for word */
   const reviews = [...(profile?.reviews?.quotes || []).slice(0, 8).map((q) => ({ text: tidy(q.text, 220), rating: q.rating || null, product: q.product || null, src: q.src || 'review' })),
     ...(book?.proof?.quotes || []).filter((q) => q.verified).map((q) => ({ text: tidy(q.text, 220), rating: q.rating || null, product: q.product || null, src: q.where || 'marketplace' }))]
@@ -136,7 +144,7 @@ export function viewOf(bb, { scope = 'member' } = {}) {
   const styleRefs = [...(team ? bb.pinned.styleRefs : []), ...(r.styleRefs || [])].filter((x) => !team || !bb.removed.styleRefs.includes(x.src)).slice(0, 6);
   const golden = [...(team ? bb.pinned.golden : []), ...(r.golden || [])].filter((x) => !team || !bb.removed.golden.includes(x.text)).slice(0, 6);
   const v = { name: r.name, host: r.host, category: r.category, kit: { ...k, colors, accent, ink: lum(accent) > 0.55 ? '#111111' : '#ffffff', roles: k.colors || [] }, styleRefs, golden,
-    claims: [...(team ? bb.claimsAllowed : []), ...(r.claims || [])], never: [...new Set([...(r.never || []), ...(team ? bb.neverSay : [])])], neverRe: r.neverRe || null, neverSay: team ? bb.neverSay || [] : [],
+    claims: oneClaimEach([...(team ? bb.claimsAllowed : []), ...(r.claims || [])]), /* saved reads heal: the view dedupes too */ never: [...new Set([...(r.never || []), ...(team ? bb.neverSay : [])])], neverRe: r.neverRe || null, neverSay: team ? bb.neverSay || [] : [],
     reviews: r.reviews || [], personas: r.personas || [], language: r.language || [], currency: r.currency, ...structuredClone(chapters(r.book)) }; /* a copy: edits never touch the cached read */
   v.src = {}; /* where each edited field came from: the page's source chips */
   /* the store's own Shopify brand settings (connected, team views only): the merchant set them on purpose, so they lead the

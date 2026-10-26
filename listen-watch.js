@@ -635,7 +635,7 @@ export function createListenWatch({ slug, packs, treg, ai, apify = undefined, lo
   }
 
   /* ---------- the derived views ---------- */
-  const quoteOf = (x) => { const t = String(x.title || '').replace(/[.!?…\s]+$/, ''); return (t && !String(x.text).toLowerCase().startsWith(t.toLowerCase()) ? `${t}. ${x.text}` : x.text).slice(0, 260); };
+  const quoteOf = (x) => { const t = String(x.title || '').replace(/[.!?…\s]+$/, ''); const q = String(t && !String(x.text).toLowerCase().startsWith(t.toLowerCase()) ? `${t}. ${x.text}` : x.text || ''); return q.length <= 260 ? q : q.slice(0, 260).replace(/\s+\S*$/, '').replace(/[\s,;:–—-]+$/, '') + '…'; }; /* whole words and an ellipsis, never "…my hairfall. Bu" (26 Oct) */
   /* a thread's reply count: the platform's live count, else a floor (an archive's count or the comments Brew heard, whichever is
      more, flagged repliesFloor), else unknown (null). Never the number of comments Brew happened to keep, shown as the total */
   const repliesOf = (post, xs) => { const heardC = xs.filter((y) => y.kind === 'comment').length, n = post?.replies;

@@ -17,7 +17,7 @@ import { readRivalAd, rivalPicture, isResearchImage, isRivalCard } from './rival
 import vm from 'node:vm';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { near, noPaise } from './research.js';
+import { near, noPaise, picDead } from './research.js';
 import { buildRecap, visitTick, sinceLabel } from './recap.js';
 import { B, live as liveView, liveArr, liveRe, runIn, BN, BH, CTRY, FESTN, FESTD } from './brand-ctx.js';
 import { cardValue, moveNo } from './value.js'; // what a card is worth doing (expected value), for the ranker
@@ -865,9 +865,12 @@ export function createFeedService(o) {
       const checks = qaCheck(c); const failed = checks.filter((x) => !x.ok);
       const entry = { id: uid('qa'), cardId: c.id, title: c.title, by: w?.name || 'Agent', attempt, checks, at: now(t) };
       if (!failed.length) { entry.result = 'pass'; t.qa.unshift(entry); setState(t, c, 'ready'); t.cards.set(c.id, c); return c; }
-      if (failed.length === 1 && failed[0].k === 'Names a number') {
+      /* a card about the brand's own ads is never a Trends slide (26 Oct: "No live PUMA India ads found" sat in Trends while Store
+         health counted 10 live): with no number it is dropped, not posted as a story */
+      const ring = c.story?.ring || (/^ow-/.test(String(c.id)) || c.sector === 'ads' ? null : 'trends');
+      if (failed.length === 1 && failed[0].k === 'Names a number' && ring && t.storyExtra[ring]) {
         entry.result = 'story'; t.qa.unshift(entry); setState(t, c, 'story'); t.cards.set(c.id, c);
-        t.storyExtra[c.story?.ring || 'trends'].push({ c: SEED.brand.wash[attempt % 3], h: c.title, p: c.sub, from: w?.name, at: now(t) });
+        t.storyExtra[ring].push({ c: SEED.brand.wash[attempt % 3], h: c.title, p: c.sub, from: w?.name, at: now(t), cardId: c.id });
         return c;
       }
       if (attempt === 3) { entry.result = 'dropped'; t.qa.unshift(entry); setState(t, c, 'dropped'); t.cards.set(c.id, c); return c; }
@@ -902,6 +905,7 @@ export function createFeedService(o) {
     for (const e of o?.events || []) {
       if (out.length >= n) break; const id = 'ow-' + e.id; if (t.used.has(id) || t.cards.has(id)) continue;
       if (e.kind === 'none' && +o.live > 0) continue; /* a day the page wasn't found, overtaken by a read that counts live ads */
+      if (e.kind === 'none' && !(B()?.numbers?.ownAds?.n === 0)) continue; /* "none" only when the one count (pack-numbers ownAds) says 0: it counts live ads, or its check failed, which is never "none" (26 Oct) */
       t.used.add(id);
       const base = { id, agent: 'performance', sector: 'creatives', lane: Object.keys(SEED.lanes)[0], roles: ['brand', 'growth', 'founder'], src: `Meta Ad Library · ${CTRY()} · ${at}`, link: { label: 'See it in the Ad Library', url: e.items?.[0]?.url || 'https://www.facebook.com/ads/library/' } };
       const nums = (e.items || []).flatMap((x) => [String(x.days), String(x.versions)]).concat([String(e.n || ''), String(e.was || ''), String(e.now || ''), String(o.live)]);
@@ -1349,8 +1353,16 @@ export function createFeedService(o) {
       ? [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. We try again within the hour.', from: PRODUCT_NAME, at: r0[k].lastError.at }]
       : slides); /* a ring that is only waiting for its next read has nothing to show: it is hidden, not a "Finding new stories" slide (QA FEED-QA-28) */
     const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map(bgFor), ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
-    const extra = (k) => t.storyExtra[k].slice().reverse().map((x) => ({ ...x, type: 'note' }));
+    /* notes posted to a ring: each once, and never an own-ads note in Trends (saved ones from before 26 Oct heal here: "No live PUMA
+       India ads found in the Meta Ad Library" twice in Trends, while the one count said 10 live) */
+    const ADS_NOTE = /\bAd Library\b|\blive (?:\S+ ){0,3}ads?\b/i;
+    const extra = (k) => { const seen = new Set(); return t.storyExtra[k].slice().reverse().filter((x) => { const key = `${x.h}|${x.p}`.toLowerCase(); if (seen.has(key)) return false; seen.add(key);
+      return !(k === 'trends' && (ADS_NOTE.test(`${x.h} ${x.p}`) || /^ow-/.test(String(x.cardId || '')))); }).map((x) => ({ ...x, type: 'note' })); };
     const ads = r.ads, tr = r.trends, nw = r.news, ht = r.howto;
+    /* one how-to per topic: two playbooks on the same search or the same rival ad (Nutrova's 1 and 4 were both "best multivitamin
+       for women india", 26 Oct) show once, the first kept */
+    const topicOf = (x) => { const t = `${x.h || ''} ${x.p || ''} ${x.card || ''}`; return [x.adId ? `ad:${x.adId}` : null, ...[...t.matchAll(/["“]([^"”]{6,80})["”]/g)].map((m) => m[1].toLowerCase().trim())].filter(Boolean); };
+    const oneTopic = (xs) => { const seen = new Set(), kept = []; for (const x of xs) { const ks = topicOf(x); if (ks.some((k) => seen.has(k)) || kept.some((y) => near(x, y))) continue; ks.forEach((k) => seen.add(k)); kept.push(x); } return kept; };
     const adSlides = (ads?.items || []).map((a) => ({ type: 'ad', ...a, forUs: a.take || adForUs(a, BN()), total: ads.brands.find((b) => b.name === a.brand)?.live, cardId: t.cards.has('r-ad-' + a.id) ? 'r-ad-' + a.id : null }));
     const where = B()?.config?.countryName || null; /* the brand's own market, never a hard-coded country (QA STO-05/06) */
     /* a trend slide shows a search series under its "Search interest" chip: one the AI wrote with no series ("We currently have 0 live Meta ads") is dropped; calendar and rising-searches slides stand on their own (final QA pass 19 Oct, FEED-QA-28) */
@@ -1381,7 +1393,7 @@ export function createFeedService(o) {
       ring('trends', 'Trends', [...trSlides, ...extra('trends')], { updatedAt: lastAt(tr), source: tr?.source, spark: spark(tr?.items?.[0]?.terms?.[0]), loading: !tr && !fails.trends }),
       ring('ads', 'Popular ads', [...adSlides, ...extra('ads')], { updatedAt: lastAt(ads), source: ads?.source, cover: adSlides[0]?.poster, loading: !ads && !fails.ads }),
       ring('news', 'Industry news', newsSlides.slice(0, 10), { updatedAt: lastAt(nw), source: nw?.source, cover: newsSlides.find((x) => x.img)?.img, loading: !nw && !fails.news }),
-      ring('howto', 'How to', (ht?.items || []).map((x) => ({ type: 'howto', ...x, cardId: t.cards.has('r-' + x.id) ? 'r-' + x.id : null })), { updatedAt: lastAt(ht), source: ht?.source, cover: ht?.items.find((x) => x.img)?.img, loading: !ht && !fails.howto })
+      ring('howto', 'How to', oneTopic(ht?.items || []).map((x) => ({ type: 'howto', ...x, cardId: t.cards.has('r-' + x.id) ? 'r-' + x.id : null })), { updatedAt: lastAt(ht), source: ht?.source, cover: ht?.items.find((x) => x.img)?.img, loading: !ht && !fails.howto })
 
     ].filter((x) => x.k === 'brand' || x.slides.length); /* a ring with no slides is hidden (QA FEED-QA-28); the brand's own ring stays. A ring whose read failed keeps its note */
   };
@@ -1872,7 +1884,7 @@ export function createFeedService(o) {
     const rivals = [...new Set([...(R.ads?.brands || []).map((x) => x.name), ...ads.map((a) => a.brand)])].filter((n) => n && n !== BN());
     const read = (p0?.rivals || brandOfT(t)?.rivals || []), aiNamed = (n) => { try { const st = B()?.aiStanding?.rivals || []; const x = st.find((y) => y.name === n); return x ? x.share ?? x.n ?? null : null; } catch { return null; } };
     return { rivals: rivals.map((n) => { const meta = (R.ads?.brands || []).find((x) => x.name === n) || {}, r = read.find((x) => x.name === n) || {};
-      return { name: n, live: meta.live ?? null, page: meta.page || null, error: meta.error || r.error || null, avatar: meta.avatar || null, host: r.host || null, prices: (r.prices || []).slice(0, 6), ai: aiNamed(n),
+      return { name: n, live: meta.live ?? null, page: meta.page || null, error: meta.error || r.error || null, avatar: meta.avatar && !picDead(meta.avatar) ? meta.avatar : null, /* an expired CDN logo is no picture, never a broken one (26 Oct) */ host: r.host || null, prices: (r.prices || []).slice(0, 6), ai: aiNamed(n),
         ads: ads.filter((a) => a.brand === n).slice(0, 24).map((a) => ({ id: a.id, poster: a.poster, video: a.video, format: a.format, title: a.title, hook: a.hook, angle: a.angle, why: a.why, days: a.days, versions: a.versions, url: a.url })) }; }),
       at: R.ads?.fetchedAt || null, brand: prof.name || BN() };
   });
@@ -2439,7 +2451,12 @@ export function createFeedService(o) {
       /* "No live ads" cards from days the tracker couldn't find the brand's page, while the one count says its ads run (PUMA India,
          Scrubroom, 24 Oct): gone unless someone is working on one */
       let stale = 0; if (+br.numbers?.ownAds?.n > 0) for (const id of [...t.cards.keys()]) if (/^ow-own-none-/.test(id) && !t.acted?.has?.(id) && !(t.work || []).some((w) => w.cardId === id)) { t.cards.delete(id); stale++; }
-      if (healRivalWork(t) + stale) store?.save(t);
+      /* trend cards written from a rising list that carried off-topic searches (26 Oct): rebuilt from the healed read (research.js
+         fitTrends), or gone when nothing of the brand's is left; a card someone acted on or works on stays as it is */
+      let trendFix = 0; for (const [id, c] of [...t.cards]) { if (c?.research?.kind !== 'trend' || !c.rows?.length || t.acted?.has?.(id) || (t.work || []).some((w) => w.cardId === id)) continue;
+        let f = null; try { f = researchCard('trend', c.research.id); } catch {} if (!f) { if (resAll(research?.get?.()?.trends).length) { t.cards.delete(id); trendFix++; } continue; }
+        if (JSON.stringify(f.rows) !== JSON.stringify(c.rows) || f.sub !== c.sub) { Object.assign(c, { rows: f.rows, sub: f.sub, title: f.title, detail: f.detail }); trendFix++; } }
+      if (healRivalWork(t) + stale + trendFix) store?.save(t);
       t.lastSeen = Date.now(); tenants.set(t.id, t); log.log?.(`[store] loaded ${t.id}`); return t;
     });
   };
