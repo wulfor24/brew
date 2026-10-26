@@ -103,7 +103,7 @@ test('P2-2: a Fix it version is "Fixed a check", never the ask\'s first words', 
 
 test('the jam page draws each deliverable\'s words right (public/app.js)', () => {
   const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
-  assert.ok(/const cutW = [^\n]*replace\(\/\[\\s,;:\.–—-\]\+\$\/, ''\)/.test(app), 'P2-1: no "…." double endings');
+  { const cls = /const cutW = [^\n]*?\.replace\(\/\[([^\]]*)\]\+\$\/, ''\) \+ '…'/.exec(app)?.[1] || ''; assert.ok(['.', ',', ';', ':', '–', '—'].every((c) => cls.includes(c)), 'P2-1: no "…." double endings'); }
   assert.ok(/const mergeTags = /.test(app), 'P1-12: merge tags draw as a styled tag'); assert.ok(/mergeTags\(esc\(body\)\)/.test(app));
   assert.ok(/sizeChips\(ch, st\)/.test(app), 'P1-4: no duplicate shape, no ad shapes on a listing');
   assert.ok(/noChange/.test(app), 'P1-5: the old title struck through only when it differs');

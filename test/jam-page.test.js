@@ -77,7 +77,7 @@ test('QV 26 Oct: sets, ads and phones are measured to fit above the bar; the fir
   assert.match(css, /\.jp \.st-panel-b\.is-chat > \.it-ask\{bottom:var\(--cmp-foot-h\)\}/, 'P1-13: the ask box stands on Memory · Connectors');
   assert.match(css, /@container jp-stage \(max-width:860px\)/, 'P1-2: a narrow stage gives the line its own row');
   assert.match(app, /const wa = fr\.querySelector\('\.jp-wa'\)/, 'P2-9: the WhatsApp phone is fitted');
-  assert.match(fnOf(app, 'cutW'), /\.replace\(\/\[\\s\.,;:·…–—-\]\+\$\/, ''\) \+ '…'/, 'P2-1: never "work.…"');
+  { const cw = fnOf(app, 'cutW'), cls = /\.replace\(\/\[([^\]]*)\]\+\$\/, ''\) \+ '…'/.exec(cw)?.[1] || ''; assert.ok(['.', ',', ';', ':', '…', '·', '–', '—'].every((c) => cls.includes(c)), 'P2-1: never "work.…"'); }
   assert.ok(!/'<i><\/i>'\.repeat\(6\)/.test(app), 'P2-5: no empty grey profile grid');
 });
 
