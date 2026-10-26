@@ -66,7 +66,7 @@ test('P1-10: a countdown baked into saved words reads today\'s count, from the c
   /* every brand: a US brand's Black Friday from the curated list when its calendar has not loaded */
   const us = eventsFor({ country: 'US', timezone: 'America/New_York' }, Date.parse('2026-11-01T15:00:00Z'));
   assert.equal(healDays('Black Friday is 30 days away', us, Date.parse('2026-11-01T15:00:00Z'), { timezone: 'America/New_York' }), 'Black Friday is 26 days away');
-  assert.match(fsvc, /return healCount\(\{ \.\.\.rest, history:/, 'every served card');
+  assert.match(fsvc, /return healCount\([^\n]*numeralsCard\(out, \{ locale: [^\n]*\), t\); \};/, 'every served card');
   assert.match(fsvc, /slides: slides\.map\(\(x\) => healCount\(bgFor\(x\), t\)\)/, 'every story slide');
   assert.match(read('server.js'), /calendarOf: async \(slug\) =>[^\n]*calendar\/\$\{x\}\.json/, 'the saved calendar, no new AI call');
 });
@@ -77,6 +77,7 @@ test('P1-14 and P1-15: the loader never calls a method on false; /api/jobs is an
   const files = fs.readdirSync(new URL('../', import.meta.url)).filter((f) => f.endsWith('.js')).map((f) => read(f)).concat(fs.readdirSync(new URL('../jam2/', import.meta.url)).filter((f) => f.endsWith('.js')).map((f) => read(`jam2/${f}`)));
   const routes = [...new Set(files.flatMap((s) => [...s.matchAll(/\bon\('(?:GET|POST|PUT|DELETE|PATCH)', '(\/api\/[^']+)'/g)].map((m) => m[1])))];
   assert.ok(routes.includes('/api/jobs'));
+  assert.match(fsvc, /if \(!\/\^\\\/\(h\\\/\|p\\\/\|brief\\\/\|api\\\/share\)\/\.test\(u\.pathname\) && !API_GATE\.test\(u\.pathname\)\) return false;/, 'the first gate in handle() is the same list (it answered 404 first)');
   for (const r of routes) assert.ok(API_GATE.test(r.replace(/:(\w+)/g, 'x1')), `${r} is inside the service's gate (it answered 404)`);
 });
 
@@ -131,4 +132,85 @@ test('P1-17: a draft about another product is not shown under the card; a line s
   assert.equal(onceLines('Edit this post 21 template and use it in your ads.'), 'Edit this template and use it in your ads.');
   assert.equal(draftView({ image: 'a.png', copy: 'Light.\nThe biggest plus is how light they are.\nThe biggest plus is how light they are.' }).copy, 'Light. The biggest plus is how light they are.');
   assert.match(fsvc, /dv = dv0 && draftFits\(dv0, c,/);
+});
+
+/* ---------- the P2 polish (same report) ---------- */
+const { numeralsIn, numeralsCard } = await import('../num-words.js');
+const { oneVoice } = await import('../card-voice.js');
+const { dejargon } = await import('../plain.js');
+const { cardFrom, FROM_SKILL } = await import('../card-from.js');
+const { dayWords } = await import('../evidence.js');
+const { storeConnectors } = await import('../seed-template.js');
+const css = read('public/brew.css');
+
+test('P2-16: times, dates, decades and counts of 11+ in numerals; small counts stay words; notes keep their counts', () => {
+  assert.equal(numeralsIn('post at ten fifteen am this thursday.'), 'post at 10:15 am this thursday.');
+  assert.equal(numeralsIn('Launch before November eighth'), 'Launch before 8 November');
+  assert.equal(numeralsIn('forty-one public reviews with twelve unanswered'), '41 public reviews with 12 unanswered');
+  assert.equal(numeralsIn('Born in the nineteen-seventies'), 'Born in the 1970s');
+  assert.equal(numeralsIn('one version, two posts a week'), 'one version, two posts a week');
+  assert.equal(numeralsIn('a seven-day run'), 'a seven-day run');
+  const c = numeralsCard({ title: 'Answer forty-one reviews', note: { k: 'play 01', h: 'post at ten fifteen am. twelve this week.' } });
+  assert.equal(c.title, 'Answer 41 reviews'); assert.equal(c.note.h, 'post at 10:15 am. twelve this week.', 'a margin note keeps its handwritten counts');
+});
+
+test('P2-5: a big count gets its separators, only before a word that counts something', () => {
+  assert.equal(numeralsIn('1015 live ads and 3018 replies'), '1,015 live ads and 3,018 replies');
+  assert.equal(numeralsIn('Rivals run 125000 ads', { locale: 'en-IN' }), 'Rivals run 1,25,000 ads');
+  assert.equal(numeralsIn('Rivals run 125000 ads', { locale: 'en-US' }), 'Rivals run 125,000 ads');
+  assert.equal(numeralsIn('Since 2019 the store'), 'Since 2019 the store', 'a year stays');
+  assert.equal(numeralsIn('SKU 10234 is out'), 'SKU 10234 is out', 'a code stays');
+});
+
+test('P2-17: what Brew saw speaks of the brand as "you"', () => {
+  assert.equal(oneVoice('Brew saw we have 52 live ads. Refresh the oldest.'), 'Brew saw you have 52 live ads. Refresh the oldest.');
+  assert.equal(oneVoice('Brew saw buyers ask about our engraving.'), 'Brew saw buyers ask about your engraving.');
+  assert.equal(oneVoice('Our bestseller is back.'), 'Our bestseller is back.', 'no "Brew saw": unchanged');
+  assert.match(fsvc, /rest\.title = oneVoice\(rest\.title\)/);
+});
+
+test('P2-18: newsroom labels and audience-before-format titles read plainly; outreach cards are not "Selling to businesses"', () => {
+  assert.equal(dejargon('Embargoed: New data on whey protein'), 'New data on whey protein');
+  assert.equal(dejargon('Premium cold audience carousel for doctors'), 'Premium carousel for doctors new to you');
+  assert.equal(dejargon('Engraving retargeting Carousel for Stethoscopes'), 'Engraving carousel of Stethoscopes for past visitors');
+  assert.equal(dejargon('Run retargeting ads on Meta'), 'Run ads to past visitors on Meta', 'the older rule stands');
+  assert.equal(dejargon('Book a site visit this weekend'), 'Book a site visit this weekend', 'every space kept');
+  assert.ok(!Object.values(FROM_SKILL).includes('Selling to businesses'));
+  assert.equal(cardFrom({ id: 'm40-1' }, { 40: { skill: 'prospecting' } }), 'Finding new buyers');
+});
+
+test('P2-3 and P2-4: days and counts said as people say them', () => {
+  assert.equal(dayWords('2026-10-19', Date.parse('2026-10-26')), '19 Oct');
+  assert.equal(dayWords('2025-09-10', Date.parse('2026-10-26')), '10 Sept 2025');
+  assert.match(read('evidence.js'), /src: \[x\.src, x\.at \? dayWords\(x\.at\) : ''\]/);
+  assert.match(app, /v = isoDay\(v\); l = isoDay\(l\);/, 'a proof row\'s ISO value reads a day');
+  assert.match(app, /return isoDay\(\[parts\[0\]/, 'Learned "added by …, 2026-10-19"');
+  assert.match(app, /\$\{a\.days\} day\$\{\+a\.days === 1 \? '' : 's'\} live/);
+  assert.doesNotMatch(read('public/live.js'), /\$\{n\}’s|\$\{esc\(n\)\}’s/, '"Mana Projects’s team" reads "Mana Projects’ team"');
+});
+
+test('P2-12, 13, 15: the recap counts the feed\'s own new cards; one ring label; one How to per topic', () => {
+  assert.match(fsvc, /const ids = new Set\(newIdsOf\(t, ranked\.map\(\(c\) => c\.id\)\)\); return ranked\.filter/);
+  assert.match(fsvc, /ring\('brand', 'Today'/);
+  assert.match(fsvc, /\(ht\?\.items \|\| \[\]\)\.filter\(\(x, i, a\) => \{ const k = howTopic\(x\)/);
+});
+
+test('P2-19, 23, 24: the make line says the format once; a column heads with its first card\'s reason; an enquiry brand gets no store guide', () => {
+  assert.match(app, /<b>\$\{esc\(f\)\}<\/b>\$\{pc \? ` <span>/, 'a space between format and pieces');
+  assert.match(app, /const one = \/\^\(\?:1\|one\|a\)\\s\+\(\?:static/, '"1 static:" after "Single image ad" goes');
+  assert.match(app, /const colWhy = \(k\) => \{ const top = byCol\(k\)\.slice\(0, 1\)/);
+  assert.match(fsvc, /\/\^\(\?:store \)\?\(\?:currency\|platform\)\$\/i/, '"Store currency INR · Platform shopify" rows go');
+  const seed = { connectors: { shopify: {}, klaviyo: {} } };
+  storeConnectors(seed, { storeKind: 'enquiry', platform: 'shopify' }); assert.equal(seed.storeKind, 'enquiry');
+  storeConnectors(seed, { platform: 'shopify' }); assert.equal(seed.storeKind, undefined, 'a store again: healed back');
+  assert.match(app, /B\.storeKind === 'enquiry' && !sigLive\(\)\)\) return '';/);
+});
+
+test('P1-13, P1-21, P2-1, 2, 26: Work on phones and tablets, margin notes, short row values, the floating pill', () => {
+  assert.match(css, /@media \(max-width:700px\)\{\.wb-head\{flex-wrap:wrap;row-gap:8px\}\.wb-head > span\{flex:1 0 100%\}/);
+  assert.match(css, /#wb-deck \.wb-col:not\(\.is-empty\)\{flex:1 1 var\(--col-w,440px\)/);
+  assert.match(css, /\.rows div:not\(\.is-long\) b\{white-space:nowrap/);
+  assert.match(css, /body:not\(:has\(\.std\)\) \.topbar \.seg\.glass-chrome\{background:color-mix/);
+  assert.doesNotMatch(app, /fromPool|noteGap/, 'no pool of loose notes');
+  assert.match(app, /own = p\?\.note\?\.h && !used\.has\(p\.note\.h\) \? p\.note : null/, 'a note only beside its own card, once');
 });

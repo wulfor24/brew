@@ -962,6 +962,8 @@
       <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>${p.proof?.seen ? `<button class="pf-seen" data-act="proof" aria-label="Seen in ${esc(p.proof.seen)}: open the proof">${ic('search', 's14')}<span>Seen in ${esc(p.proof.seen)}</span></button>` : ''}`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
   const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 plays are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="${n ? `${n} ${n === 1 ? 'proof' : 'proofs'} behind this card` : 'Why this card, and the proof'}" title="Why we suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n} ${n === 1 ? 'proof' : 'proofs'}</span>` : ''}</button>`; }; /* a number on a card always says what it counts (1.14) */
+  /* an ISO date in words a person reads ("2026-10-19" → "19 Oct", with the year when it is not this year), wherever it sits in a line */
+  const isoDay = (s) => String(s ?? '').replace(/\b(\d{4})-(\d\d)-(\d\d)(?:T[\d:.]+Z?)?\b/g, (m, y, mo, d) => { const t = Date.UTC(+y, +mo - 1, +d); return isNaN(t) ? m : new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', ...(+y !== new Date().getFullYear() ? { year: 'numeric' } : {}), timeZone: 'UTC' }); });
   const pfDay = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
   /* the sheet says only what a brand needs: the one reason, the few numbers behind it (each with where it came from) and the plan it
      belongs to. Kind labels, move source lists and repeats stay out; the full plan is one tap away */
@@ -972,6 +974,7 @@
      A page Brew read that says its number in its label ("MitoActive price: ₹1,499") shows that number like any other */
   const pfRow = (x) => { let v = String(x.value || ''), l = String(x.label || '');
     if (!v && x.kind === 'source') { const m = l.match(/^(.{3,}?):\s*(.+)$/), t = m && m[2].replace(/\s*\([^)]*\)?\s*…?$/, '').replace(/…$/, '').trim(); if (t && /\d/.test(t) && t.length <= 24) { l = m[1]; v = t; } }
+    v = isoDay(v); l = isoDay(l); /* "2026-09-10 · Live since" reads "10 Sept 2026" (QV P2-3) */
     const label = `${esc(l)}${x.extra ? ` · ${esc(x.extra)}` : ''}`;
     if (v && v.length <= 9) return `<li class="pf-r"><b class="pf-v">${esc(v)}</b><span class="pf-l">${label}</span>${pfSrc(x)}</li>`;
     const quote = /^(quote|voice|ad|idea|read|team)$/.test(x.kind) && v.length > 24; if (quote) v = v.replace(/^[“"]\s*|\s*[”"]$/g, '');
@@ -1111,13 +1114,13 @@
   /* the pieces never repeat the format beside it: "Page section on /: JSON-LD …" reads "Homepage: JSON-LD …", "Email · 1 email:
      day-3 note" reads "Email · Day-3 note"; a count above one stays (19 Oct) */
   const mkPieces = (c) => { const f = c.make.format.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), p = mkWhole(c.make.pieces), m = p.match(new RegExp(`^(?:(?:1|one|a)\\s+)?${f}s?(?:\\s+on\\s+(\\/\\S*?))?\\s*:\\s*`, 'i'));
-    if (!m) return p; const rest = p.slice(m[0].length); if (!rest) return '';
+    if (!m) { const one = /^(?:1|one|a)\s+(?:static|still|image|picture|post|ad|creative)s?\s*:\s*(?=\S)/i.exec(p); /* "Single image ad · 1 static: Face Wash" says the format twice (QV P2-19) */ return one && /image|post|static|ad$/i.test(c.make.format) ? p.slice(one[0].length).replace(/^\w/, (x) => x.toUpperCase()) : p; } const rest = p.slice(m[0].length); if (!rest) return '';
     return m[1] ? `${m[1] === '/' ? 'Homepage' : m[1]}: ${rest}` : rest[0].toUpperCase() + rest.slice(1); };
   /* "Page section" is the builder's word: say which page (QA FEED-ARV-06) */
   const pageName = (c) => /\/products?\/|product pages?|\bPDPs?\b/i.test(`${c.make?.pieces || ''} ${c.title || ''}`) ? 'Product page' : 'Store page';
   const mkName = (f, c) => (/^page sections?$/i.test(f) && c ? pageName(c) : f[0].toUpperCase() + f.slice(1)).replace(/\bwhatsapp\b/i, 'WhatsApp').replace(/\binstagram\b/i, 'Instagram');
   const makeChip = (c) => { if (!c.make?.format) return ''; const f = mkName(c.make.format, c), pc = mkPieces(c);
-    return `<p class="mk-chip" title="${esc([f, pc].filter(Boolean).join(' · '))}">${ic(MAKE_IC[c.make.format] || 'sparkles', 's14')}<b>${esc(f)}</b>${pc ? `<span>${esc(pc)}</span>` : ''}</p>`; };
+    return `<p class="mk-chip" title="${esc([f, pc].filter(Boolean).join(' · '))}">${ic(MAKE_IC[c.make.format] || 'sparkles', 's14')}<b>${esc(f)}</b>${pc ? ` <span>${esc(pc)}</span>` : ''}</p>`; }; /* a space between them: read aloud or copied, never "ad1 static" */
   /* the first draft Brew made for this card (drafts-bg.js, served as card.draft): the asset itself in place of the lane photo.
      A clip plays muted and looped only while it is on screen (armDraftVideos); slides use the feed's own carousel */
   const DRAFT_IC = { video: 'vid', carousel: 'grid', collection: 'grid', catalog: 'grid', email: 'send', whatsapp: 'chat', page: 'doc', image: 'pic' };
@@ -1398,7 +1401,7 @@
     if (!RIV) { $('#view').innerHTML = `<div class="qpage"><div class="sk" style="height:140px;border-radius:20px"></div></div>`; RIV = await tapi('GET', '/api/tenants/:t/rivals'); if (view !== 'rivals') return; }
     if (RIV.error || !RIV.rivals) { RIV = null; $('#view').innerHTML = `<div class="qpage"><p class="lx-empty">The rivals didn’t load. Reload the page.</p></div>`; return; }
     const L = RIV.rivals, pick = L.find((x) => x.name === one), list = pick ? [pick] : L;
-    const ad = (a, r) => `<a class="rv-ad" href="${esc(a.url)}" target="_blank" rel="noopener">${a.poster ? `<img src="${esc(a.poster)}" alt="" loading="lazy">` : ''}<b>${esc(a.title || a.hook || r.name)}</b><small>${esc([a.days != null ? `${a.days} days live` : '', a.versions ? `${a.versions} versions` : '', a.angle].filter(Boolean).join(' · '))}</small>${a.why ? `<span>${esc(a.why)}</span>` : ''}</a>`;
+    const ad = (a, r) => `<a class="rv-ad" href="${esc(a.url)}" target="_blank" rel="noopener">${a.poster ? `<img src="${esc(a.poster)}" alt="" loading="lazy">` : ''}<b>${esc(a.title || a.hook || r.name)}</b><small>${esc([a.days != null ? `${a.days} day${+a.days === 1 ? '' : 's'} live` : '', a.versions ? `${a.versions} version${+a.versions === 1 ? '' : 's'}` : '' /* "1 day live · 1 version" (QV P2-4) */, a.angle].filter(Boolean).join(' · '))}</small>${a.why ? `<span>${esc(a.why)}</span>` : ''}</a>`;
     const page = (r) => `<section class="shf"><header class="shf-h">${r.avatar ? `<img src="${esc(r.avatar)}" alt="" loading="lazy">` : ''}<div><b>${esc(r.name)}</b><small>${esc([r.live != null ? `${r.live} live ads` : r.error ? 'Their ads couldn’t be read this time; the next refresh tries again' : '', r.ai != null ? `AI answers name them ${typeof r.ai === 'number' && r.ai <= 1 ? Math.round(r.ai * 100) + '%' : r.ai} of the time` : ''].filter(Boolean).join(' · '))}</small></div>${pick ? '' : `<button class="linkbtn" data-rv="${esc(r.name)}">Their page ${ic('right', 's14')}</button>`}</header>
       ${pick && r.prices.length ? `<div class="rv-prices">${r.prices.map((x) => `<span>${esc(x.title)} · <b>${esc(String(x.price))}</b></span>`).join('')}</div>` : ''}
       ${r.ads.length ? `<div class="shf-stack">${r.ads.slice(0, pick ? 24 : 6).map((a) => ad(a, r)).join('')}</div>` : `<p class="shf-none">${r.error ? 'Their ads couldn’t be read this time.' : 'No live ads read for them.'}</p>`}</section>`;
@@ -1798,33 +1801,26 @@
 
   /* ---------- margin notes ---------- */
   const ARROW = '<svg viewBox="0 0 48 24" aria-hidden="true"><path d="M46 14 C 34 4, 18 4, 4 10 M4 10 l7 -5 M4 10 l8 3"/></svg>';
-  /* a note after every 2 or 3 cards, as long as the brand has notes. The gaps are random but fixed for this visit (a seed
-     kept for the session), so a repaint never moves them. A card with its own note gets it, arrow and all; between cards
-     without one, the next note from the feed's pool, never the same one twice in a row */
-  const NOTE_SEED = (() => { try { const k = 'brew-note-seed', v = +sessionStorage.getItem(k); if (v) return v; const n = 1 + Math.floor(Math.random() * 1e9); sessionStorage.setItem(k, String(n)); return n; } catch { return 1 + Math.floor(Math.random() * 1e9); } })();
-  const noteGap = (k) => { let x = (NOTE_SEED ^ Math.imul(k + 1, 0x9e3779b1)) >>> 0; x = Math.imul(x ^ (x >>> 15), 0x85ebca6b) >>> 0; x = (x ^ (x >>> 13)) >>> 0; return 2 + (x % 2); }; // 2 or 3
+  /* a card with its own margin note gets it, arrow and all, beside that card only and once per feed (QV P1-21) */
   const placeNotes = () => {
     const layer = $('#notes'); if (!layer) return; layer.innerHTML = ''; $$('.mnote.is-inline').forEach((n) => n.remove());
     if (view !== 'feed' && view !== 'saved') return;
     const wide = innerWidth >= 1060, st = $('#stage').getBoundingClientRect(), cards = $$('#col .card[data-post]');
-    const seen = new Set(), pool = cards.map((c) => cardOf(FEED[+c.dataset.post] || {}).note).filter((n) => n?.h && !seen.has(n.h) && seen.add(n.h));
-    if (!pool.length) return;
-    let lastBottom = -1e9, since = 0, slot = 0, gap = noteGap(0), last = '', ptr = NOTE_SEED % pool.length; /* notes never land on the one above them */
-    const near = (i) => new Set(cards.slice(i + 1, i + 4).map((c) => cardOf(FEED[+c.dataset.post] || {}).note?.h).filter(Boolean)); /* a note its own card is about to show */
-    const fromPool = (avoid) => { for (const ok of [(n) => n.h !== last && !avoid.has(n.h), (n) => n.h !== last || pool.length === 1]) for (let k = 0; k < pool.length; k++) { const n = pool[(ptr + k) % pool.length]; if (ok(n)) { ptr = (ptr + k + 1) % pool.length; return n; } } return null; };
-    cards.forEach((card, i) => {
-      if (since < gap) { since++; return; } /* the note goes before this card, once gap cards have passed since the last */
-      const p = cardOf(FEED[+card.dataset.post] || {}), own = p?.note?.h && p.note.h !== last ? p.note : null, note = own || fromPool(near(i)); if (!note) { since++; return; }
+    /* a note sits only beside its own card, and once: the pool of loose notes laid one card's note beside others ("MOVE 01 · post at
+       ten fifteen am" three times, before cards it had nothing to do with: QV P1-21, 26 Oct) */
+    const used = new Set(); let lastBottom = -1e9, since = 2;
+    cards.forEach((card) => {
+      const p = cardOf(FEED[+card.dataset.post] || {}), own = p?.note?.h && !used.has(p.note.h) ? p.note : null, note = own; if (!note || since < 2) { since++; return; } /* two cards at least between notes */
       const eyebrow = own && p.liveFrom ? `live from ${B.connectors[p.liveFrom].name.toLowerCase()}` : note.k;
       const html = `<span class="k">${esc(eyebrow)}</span><span class="h">${esc(note.h)}</span>`;
       if (!wide) { const n = document.createElement('div'); n.className = 'mnote is-inline'; n.innerHTML = html; card.before(n); }
       else {
         const r = card.getBoundingClientRect(), anchor = card.querySelector('.media, .inset') || card, a = anchor.getBoundingClientRect();
-        const top = a.top - st.top + Math.min(90, a.height * .3); if (top < lastBottom + 24) { since++; return; } lastBottom = top + 110; /* no room: the next card takes it */
-        const n = document.createElement('div'); n.className = `mnote${own ? '' : ' is-loose'}`; n.innerHTML = (own ? ARROW : '') + html; /* only a card's own note points at it */
+        const top = a.top - st.top + Math.min(90, a.height * .3); if (top < lastBottom + 24) { since++; return; } lastBottom = top + 110; /* no room beside it: left out */
+        const n = document.createElement('div'); n.className = 'mnote'; n.innerHTML = ARROW + html; /* its own card's note points at it */
         n.style.left = (r.right - st.left + 44) + 'px'; n.style.top = top + 'px'; layer.appendChild(n);
       }
-      last = note.h; since = 1; gap = noteGap(++slot);
+      used.add(note.h); since = 1;
     });
     const io = new IntersectionObserver((es) => es.forEach((en) => en.isIntersecting && en.target.classList.add('on')), { threshold: .4 });
     $$('#notes .mnote').forEach((n) => io.observe(n));
@@ -3389,7 +3385,7 @@
   const sigFake = () => !!window.BREW_DEMO && sigLive() && !window.LiveConn?.isLive?.('shopify'); /* DUMMY: demo site only, and never next to a connected Shopify */
   /* the Signals column always shows when the brand has a store connector: with nothing connected it says what to connect
      and why (18 Oct testing notes: an empty or hidden column read as broken) */
-  const sigEmpty = () => !window.BREW_DEMO && !byCol('signals').length && !B.connectors?.shopify;
+  const sigEmpty = () => !window.BREW_DEMO && !byCol('signals').length && (!B.connectors?.shopify || B.storeKind === 'enquiry'); /* a brand that sells by enquiry has no orders or checkouts to read: no "connect your store" guide (QV P2-24) */
   /* V1 hides the Storefront column (testing notes 18 Oct: not ready, it overwhelms the customer); ?storefront=1 shows it to us */
   const STOREFRONT_COL = SF_ON;
   const deckCols = () => COL_ORDER.filter((k) => !(k === 'signals' && sigEmpty()) && (k !== 'storefront' || STOREFRONT_COL));
@@ -3428,13 +3424,13 @@
       : `<i class="pulse"></i>We keep reading ${esc(andList(sigSources().filter(conn).map((id) => B.connectors[id].name)))}. ${n ? 'Each card below is a group of people to reach.' : 'Nothing to act on yet; new people land here as we find them.'}`}${!bad.length && more.length ? ` Connect ${esc(andList(more.map((id) => B.connectors[id].name)))} to find more.` : ''}</p>
       <div class="sig-pills">${sigSources().map((id) => { const c = B.connectors[id], st = sigState(id); return st?.[0] === 'ok' ? `<span class="sig-pill is-on">${glyph(id, 16)}${esc(c.name)}${ic('check', 's14')}</span>` : window.LiveConn?.boss?.() === false ? '' : `<button class="sig-pill" data-cx="${id}">${glyph(id, 16)}${esc(c.name)}${st ? '<small>connect again</small>' : SIG_WHY[id]?.need === 'Optional' ? '<small>optional</small>' : ''}</button>`; }).join('')}</div></div>`; };
   const sigBody = () => {
-    if (!sigSources().length) return '';
+    if (!sigSources().length || (B.storeKind === 'enquiry' && !sigLive())) return ''; /* by enquiry: its cards stand alone, never an orders-and-checkouts guide */
     if (!sigLive() || sigState('shopify')?.[0] === 'bad') return sigGuide();
     /* a real Shopify shows only what it really found (those arrive as live cards in this column), never the sample signal */
     return sigStrip() + (sigFake() ? SIGS.map(sigCard).join('') : '');
   };
   /* why a column sits where it does (3.11): its most urgent card's reason and when to act, never only how many cards it holds */
-  const colWhy = (k) => { const top = byCol(k).map(([p]) => [p, SCORES[p.id]]).filter(([, sc]) => sc?.rankWhy).sort((a, b) => (+b[1].urgency || 0) - (+a[1].urgency || 0))[0]; if (!top) return '';
+  const colWhy = (k) => { const top = byCol(k).slice(0, 1).map(([p]) => [p, SCORES[p.id]]).filter(([, sc]) => sc?.rankWhy)[0]; if (!top) return ''; /* the reason of the card that sits first, never another one's: "Do first: Sold out or nearly" headed a column led by a rival's price card (QV P2-23, 26 Oct) */
     const u = +top[1].urgency || 0, when = u >= 4 ? 'Do first' : u >= 3 ? 'Today' : 'This week';
     return `<span class="col-why" title="${esc(top[0].title || '')}"><b>${when}</b> ${esc(top[1].rankWhy)}</span>`; };
   const colHTML = (k) => {
@@ -5741,7 +5737,7 @@
       ls.forEach((l) => { const k = /own meta ad/i.test(l) ? 'Meta ad' : /instagram/i.test(l) ? 'Instagram post' : /measured result/i.test(l) ? 'measured result' : /lesson/i.test(l) ? 'shipped work' : null; if (k) cnt[k] = (cnt[k] || 0) + 1; else other.push(l.replace(/,?\s*read \d{4}-\d\d-\d\d.*$/i, '').replace(/\s*\(.*?\)\s*/g, ' ').trim()); });
       const more = +((ls.join(' ').match(/\+(\d+)/) || [])[1] || 0);
       const parts = [...Object.entries(cnt).map(([k, n]) => (k === 'measured result' || k === 'shipped work' ? k : `${n + (k === 'Meta ad' || k === 'Instagram post' ? more : 0)} ${k}${n + more > 1 ? 's' : ''}`)), ...other.slice(0, 1)];
-      const at = f.updatedAt || f.source?.at; return [parts[0] ? parts.join(', ') : '', at ? fmtDay(at) : ''].filter(Boolean).join(' · '); };
+      const at = f.updatedAt || f.source?.at; return isoDay([parts[0] ? parts.join(', ') : '', at ? fmtDay(at) : ''].filter(Boolean).join(' · ')); }; /* "added by Param Jain, 2026-10-19" reads a day (QV P2-3) */
     const memGroups = MEM_T.map(([k, name]) => [name, memLines.filter((f) => f.topic === k).slice(0, 3)]).filter(([, xs]) => xs.length);
     const memHtml = memGroups.length ? `<details class="q-more"><summary>What we know about ${esc(B.brand.name)}</summary>
       ${memGroups.map(([name, xs]) => `<div class="mem-g"><h4>${esc(name)}</h4>${xs.map((f) => `<div class="mem-l"><p>${esc(f.text)}</p><small>${esc(memSrc(f))}</small></div>`).join('')}</div>`).join('')}</details>` : '';

@@ -41,6 +41,8 @@ const isEvRow = (x) => /^[^:]{2,60}:\s*[₹$€£]?[\d.,]+\s*$/.test(x) || /^[^:
    "Learned:" lines its rewritten move carries), each matched to the saved learning so the sheet shows its words and source.
    Never by shared words alone: a rival's ad that happens to use the same words is not what the team told Brew */
 const pubId = (id) => String(id || '').replace(/-p$/, '');
+/* a day a person reads ("19 Oct", "10 Sept 2025"), never "2026-10-19" (QV P2-3, 26 Oct) */
+export const dayWords = (at, now = Date.now()) => { const d = new Date(/^\d{4}-\d\d-\d\d$/.test(String(at)) ? `${at}T00:00:00Z` : at); if (isNaN(d)) return String(at || ''); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(d.getUTCFullYear() !== new Date(now).getUTCFullYear() ? { year: 'numeric' } : {}), timeZone: 'UTC' }); };
 export function teamOf(c, T, ns = [], M = {}) {
   const out = { items: [], contra: null }; if (!c || !T?.items?.length) return out;
   const L = T.items, seen = new Set(), id = pubId(c.id);
@@ -166,7 +168,7 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
 export const EVIDENCE_ASK = /\b(evidence|proof|sources?|sourced|based on|backs? (?:this|it|that)( up)?|back (?:this|it|that) up|how do (?:you|we) know|where (?:did|does|do|is) .{1,40}? (?:come|coming) from|data behind|why (?:this|that) (?:card|move|idea|suggestion|number|price)|why (?:did|do|would) (?:you|brew) (?:suggest|say|think|recommend)|what(?:'s| is) (?:this|that|it) based)\b/i;
 export const proofAnswer = (e) => {
   if (!e) return null;
-  const saw = (e.items || []).filter((x) => x.value && x.kind !== 'source').slice(0, 4).map((x) => ({ v: x.value, l: x.label, src: [x.src, x.at ? String(x.at).slice(0, 10) : ''].filter(Boolean).join(' · '), url: x.url || null, kind: x.kind }));
+  const saw = (e.items || []).filter((x) => x.value && x.kind !== 'source').slice(0, 4).map((x) => ({ v: x.value, l: x.label, src: [x.src, x.at ? dayWords(x.at) : ''].filter(Boolean).join(' · '), url: x.url || null, kind: x.kind }));
   const data = (e.items || []).filter((x) => x.kind === 'source' && x.url).slice(0, 3).map((x) => ({ l: x.label, url: x.url }));
   const so = e.why?.because || (e.why?.reasons || [])[0] || '';
   const text = ['Here’s what this card is based on.', ...saw.map((x) => `Saw: ${x.v}, ${x.l}${x.src ? ` (${x.src})` : ''}.`), data.length ? `Read: ${data.map((x) => x.l).join('; ')}.` : '', so ? `So: ${so}` : '',

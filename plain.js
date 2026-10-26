@@ -43,7 +43,11 @@ const JARGON = [
   [/\bmeta descriptions?\b/gi, 'search snippet'], [/\btitle tags?\b/gi, 'page title'], [/\bH1s?\b/g, 'main heading'],
   [/\bsitemap (?:pages|urls|links)\b/gi, 'pages listed for Google'], [/\bsitemap files\b/gi, 'page lists for Google'], [/\bsitemaps\b/gi, 'page lists for Google'], [/\bsitemap\b/gi, 'page list for Google'], [/\bcrawl budget\b/gi, 'Google’s visits'], [/\bcrawlers?\b/gi, 'search bots'],
   [/\bheadless (?:platform|commerce|store(?:front)?)\b/gi, 'store platform'], [/\bscript blocks?\b/gi, 'code snippet'],
-  [/\bstructured (answer|content|FAQ|data block)/gi, (m, w) => w]
+  [/\bstructured (answer|content|FAQ|data block)/gi, (m, w) => w],
+  /* a newsroom's label is not the brand's title ("Embargoed: New data on whey protein…" on a jam: QV P2-18, 26 Oct) */
+  [/^\s*(?:embargoed(?: until [^:]{1,40})?|press release|for immediate release|exclusive|breaking(?: news)?)\s*[:|–—-]\s*/i, () => ''], /* a function: an empty string in SWAPS would match every space */
+  /* an audience said before the format reads as one noun ("Premium people new to you carousel for doctors"): the format first */
+  [/\b(people new to you|ads to past visitors)\s+(carousel|reel|video|static|post|story|stories|ad)s?\b(?:\s+for\s+([^,.;:]{2,40}))?/gi, (m, a, f, x) => { const past = /past visitors/i.test(a); const who = past ? 'past visitors' : 'people new to you'; return !x ? `${f.toLowerCase()} for ${who}` : /^[A-Z]/.test(x) ? `${f.toLowerCase()} of ${x} for ${who}` /* a product */ : `${f.toLowerCase()} for ${x} ${past ? 'who visited before' : 'new to you'}`; }]
 ];
 /* a swap at the start of a sentence starts with a capital, like the words it replaced */
 const cap1 = (to, m, at, all) => (/^[A-Z`/]/.test(m) && /^[a-z]/.test(to) && (at === 0 || /[.!?:·]\s+$/.test(all.slice(Math.max(0, at - 3), at)) || /^-[A-Z]/.test(all.slice(at + m.length, at + m.length + 2))) ? to[0].toUpperCase() + to.slice(1) : to); /* and in a Title-Case compound ("SKU-Specific" → "Product-Specific") */

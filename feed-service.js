@@ -27,6 +27,8 @@ import { liveTruth, replacedKeys } from './facts-desk.js'; // one truth per view
 import { allowedFrom, unbacked, numbersIn } from './fact-gate.js';
 import { createRemix } from './remix.js';
 import { eventsFor, healDaysIn } from './day-count.js'; /* a saved "Diwali is 14 days away" reads today's count, in the brand's zone (26 Oct) */
+import { numeralsCard } from './num-words.js'; /* "ten fifteen am", "November eighth", "forty-one reviews" read in numerals (26 Oct) */
+import { oneVoice } from './card-voice.js';
 import { stockSay } from './stock-say.js'; /* a sold-out row is never "nearly gone" in the card's words (26 Oct) */
 import { saveGen } from './gen-store.js';
 import { createJamBrief } from './jam-brief.js';
@@ -805,13 +807,17 @@ export function createFeedService(o) {
        question counts the AI tools that answered it; a play's count is across all the questions asked */
       const perQ = /^lv-vis-/.test(String(c0.id || '')), aiLbl = (x) => (typeof x !== 'string' ? x : perQ ? x.replace(/\b(\d+) of (\d+) answers\b/g, '$1 of $2 AI tools on this question') : x.replace(/\b(\d+) of (\d+) (?:AI )?prompts\b/gi, '$1 of $2 questions asked across AI tools'));
       rest.title = aiLbl(rest.title); rest.sub = aiLbl(rest.sub); if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map(aiLbl) : r)); }
-    { const yours = (x) => (typeof x === 'string' ? x.replace(/\b(O|o)ur (?=[₹$£€]\s?\d)/g, (m, o) => (o === 'O' ? 'Your ' : 'your ')) : x); rest.title = yours(rest.title); rest.sub = yours(rest.sub); } /* a card talks to the team: "your ₹449 shampoo", never "our" beside it (1.14); drafts for shoppers keep "our" */ if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map((x, i) => (i === 0 && /^to confirm$/i.test(String(x)) ? 'Still to check' : tc(x))) : r)); } /* the moves' planning marker "(to confirm)" never shows on a card face (QA 20 Oct) */ { const sc = sectorOf(c0); if (sc && sc !== rest.sector) rest.sector = sc; } /* the column it changes (1.13) */ rest.src = rest.src === 'Brew deployment team' ? 'Our team' : playSrc(rest.src); /* Plays, not moves (3.10) */ /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ /* a stock sentence says what its own rows say: a sold-out row is "sold out", never "nearly gone" (stock-say.js, QV P1-8) */
+    { const yours = (x) => (typeof x === 'string' ? x.replace(/\b(O|o)ur (?=[₹$£€]\s?\d)/g, (m, o) => (o === 'O' ? 'Your ' : 'your ')) : x); rest.title = yours(rest.title); rest.sub = yours(rest.sub); } /* a card talks to the team: "your ₹449 shampoo", never "our" beside it (1.14); drafts for shoppers keep "our" */ if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map((x, i) => (i === 0 && /^to confirm$/i.test(String(x)) ? 'Still to check' : tc(x))) : r)); } /* the moves' planning marker "(to confirm)" never shows on a card face (QA 20 Oct) */ { const sc = sectorOf(c0); if (sc && sc !== rest.sector) rest.sector = sc; } /* the column it changes (1.13) */ rest.src = rest.src === 'Brew deployment team' ? 'Our team' : playSrc(rest.src); /* Plays, not moves (3.10) */ /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ /* a row that only says how the store is set up ("Store currency INR", "Platform shopify") tells nobody anything (QV P2-23) */
+    if (Array.isArray(rest.rows) && rest.rows.length > 1) { const kept = rest.rows.filter((r) => !Array.isArray(r) || !/^(?:store )?(?:currency|platform)$/i.test(String(r[0]).trim())); if (kept.length) rest.rows = kept; }
+    /* "Brew saw we have 52 live ads": in what Brew saw, the brand is "you" (card-voice.js, QV P2-17); a rival's ad and a post are quoted */
+    if (!c0.post && !['ad', 'viral'].includes(c0.research?.kind)) { rest.title = oneVoice(rest.title); rest.sub = oneVoice(rest.sub); }
+    /* a stock sentence says what its own rows say: a sold-out row is "sold out", never "nearly gone" (stock-say.js, QV P1-8) */
     if (Array.isArray(rest.rows)) { rest.title = stockSay(rest.title, rest.rows); rest.sub = stockSay(rest.sub, rest.rows); }
     /* a rows card with no rows and no picture (a watcher's idea, a trend card: QV P0-1, 26 Oct) shows the photo of the product its words
        name outright, as a media card; naming none, it has no slot at all (app.js slotHtml), never an empty grey bar or another product's photo */
     if (rest.kind === 'rows' && !(rest.rows || []).some((r) => Array.isArray(r) && r[1] != null && String(r[1]).trim()) && !rest.images?.length && !isRivalCard(c0) && !['ad', 'viral'].includes(c0.research?.kind)) try { const cat = (t ? brandOfT(t) : B())?.catalog || [], named = cat.length ? cardProduct(rest, cat, { brand: BN(), byNameOnly: true }) : null;
       if (named?.img) Object.assign(rest, { kind: 'media', images: [named.img], product: rest.product || named.t }); } catch {}
-    return healCount({ ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }, t); }; /* its countdowns are today's (day-count.js) */
+    const out = { ...rest, history: (history || []).slice(-6), measure: measureOf(t, c), decided: t?.decided?.[c.id] || null }; return healCount(['ad', 'viral'].includes(c0.research?.kind) || /^(?:r-ad-|heard-)/.test(String(c0.id || '')) ? out : numeralsCard(out, { locale: safeLocale((t ? brandOfT(t) : B())?.config?.locale || 'en-IN') }), t); }; /* times, dates and counts of 11+ in numerals (num-words.js, QV P2-16); a rival's ad and a shopper's words are quoted as they are */ /* its countdowns are today's (day-count.js) */
   /* the cards the page needs, not every card the workspace ever held: the feed's order, pinned ones, cards with a jam, saved and
      hearted ones (the Library and the jams open them by id). With no order yet, every card, as before */
   const lastOrder = new WeakMap();
@@ -1343,6 +1349,8 @@ export function createFeedService(o) {
     const today = scored.filter((x) => x.age < STORY_LIFE);
     if (today.length) return today.slice(0, Math.min(max, 5)).map(strip);
     return scored.sort((a, b) => b.firstSeen - a.firstSeen).slice(0, Math.min(max, 5)).map((x) => ({ ...strip(x), older: true })); };
+  /* the search or topic a How to slide is about: the first quoted phrase in its words, else its title, lower case */
+  const howTopic = (x) => { const q = /["“']([^"”']{6,80})["”']/.exec(`${x?.h || ''} ${x?.p || ''}`); return (q ? q[1] : String(x?.h || '')).toLowerCase().replace(/\s+/g, ' ').trim() || null; };
   const stories = (t) => {
     const r0 = research?.get() || {};
     const withArchive = (o) => [...(o.items || []), ...(o.archive || [])]; /* expired stories stay in reach for the older fallback */
@@ -1396,16 +1404,16 @@ export function createFeedService(o) {
     const brandSlides = [...topCards, ...waiting, ...shipped, ...t.batches.slice(0, 3).map((b, i) => ({ type: 'brand', chip: 'Your agents, this week', h: b.t, p: `${b.s}.`, agent: b.team ? 'brew' : b.agent, pct: b.pct, st: b.st, at: batches[i]?.at }))].slice(0, 8);
     /* Recap: what happened since this person was last here (recap.js). No last visit, or nothing since: no ring */
     const v = t.visit, recapSlides = v?.prev ? buildRecap({ waits: (w) => waitsOn(w, meOf(t)?.email, studioOf(t, w)), since: v.prev, sinceReal: v.prevReal, when: sinceLabel(v.prev, now(t), B()?.tzMs ?? 5.5 * H), work: t.work, notes: t.notes,
-      cards: ranked.filter((c) => !c.done && !c.loading && !String(c.id).startsWith('r-')), moveDocs: brandOfT(t)?.moveDocs, plain: dejargon, ledger: t.member ? t.liveLedger : null, base: v.base,
+      cards: (() => { const ids = new Set(newIdsOf(t, ranked.map((c) => c.id))); return ranked.filter((c) => ids.has(c.id) && !c.loading); })() /* the feed's own "N new since your last visit" set: one count on both (QV P2-12, 26 Oct: Recap 37, feed 30) */, moveDocs: brandOfT(t)?.moveDocs, plain: dejargon, ledger: t.member ? t.liveLedger : null, base: v.base,
       moveCard: (n) => ranked.find((c) => moveNo(c.id) === n)?.id || null }) : [];
     const recapRing = recapSlides.length ? [{ k: 'recap', title: 'Recap', slides: recapSlides.map((x) => healCount(x, t)), updatedAt: Math.max(...recapSlides.map((x) => x.at || 0)) || null, source: 'Since your last visit', seen: (t.storySeen.recap || 0) >= (v.atReal || v.at || 0) }] : [];
     return [
-      ring('brand', SEED.brand.name.length <= 8 ? `${SEED.brand.name} today` : 'Today', brandSlides, { updatedAt: Math.max(0, ...brandSlides.map((x) => x.at || 0)) || null, cover: topCards.find((x) => x.img)?.img, source: 'Your feed, work and results' }),
+      ring('brand', 'Today' /* one label for every brand: a short name read "Arata today", a long one "Today" (QV P2-13, 26 Oct) */, brandSlides, { updatedAt: Math.max(0, ...brandSlides.map((x) => x.at || 0)) || null, cover: topCards.find((x) => x.img)?.img, source: 'Your feed, work and results' }),
       ...recapRing,
       ring('trends', 'Trends', [...trSlides, ...extra('trends')], { updatedAt: lastAt(tr), source: tr?.source, spark: spark(tr?.items?.[0]?.terms?.[0]), loading: !tr && !fails.trends }),
       ring('ads', 'Popular ads', [...adSlides, ...extra('ads')], { updatedAt: lastAt(ads), source: ads?.source, cover: adSlides[0]?.poster, loading: !ads && !fails.ads }),
       ring('news', 'Industry news', newsSlides.slice(0, 10), { updatedAt: lastAt(nw), source: nw?.source, cover: newsSlides.find((x) => x.img)?.img, loading: !nw && !fails.news }),
-      ring('howto', 'How to', (ht?.items || []).map((x) => ({ type: 'howto', ...x, cardId: t.cards.has('r-' + x.id) ? 'r-' + x.id : null })), { updatedAt: lastAt(ht), source: ht?.source, cover: ht?.items.find((x) => x.img)?.img, loading: !ht && !fails.howto })
+      ring('howto', 'How to', (ht?.items || []).filter((x, i, a) => { const k = howTopic(x); return !k || !a.slice(0, i).some((y) => howTopic(y) === k); }) /* one slide per search topic (QV P2-15: How to 1 and 4 were both "best multivitamin for women india") */.map((x) => ({ type: 'howto', ...x, cardId: t.cards.has('r-' + x.id) ? 'r-' + x.id : null })), { updatedAt: lastAt(ht), source: ht?.source, cover: ht?.items.find((x) => x.img)?.img, loading: !ht && !fails.howto })
 
     ].filter((x) => x.k === 'brand' || x.slides.length); /* a ring with no slides is hidden (QA FEED-QA-28); the brand's own ring stays. A ring whose read failed keeps its note */
   };
@@ -2520,7 +2528,7 @@ export function createFeedService(o) {
   const DEMO_OK = /^\/api\/(tenants|work|tenants\/[^/]+\/(ready|clock|events|pin|find-more|cards|notes\/(clear|read)|stories\/[^/]+\/seen|deck-layout|state|learning\/.+)|cards\/[^/]+\/(feedback|decided)|work\/[^/]+\/(decided|discard|restore|pick|version|approve|reopen|edit|jb\/move|draft\/[^/]+\/drop)|changes\/[^/]+\/(open|discard|restore|pick|notes|edit))$/;
   // every request runs inside its brand: the tenant's brand, or (creating one) the brand the page was opened for
   const handle = async (req, res, u) => {
-    if (!/^\/(h\/|p\/|brief\/|api\/(share|tenants|cards|jams|jam2|work|changes|brands\/[a-z0-9-]+\/(?:drop\/read|learnings\/answer)$|brands\/[a-z0-9-]+\/(drop|references(\/[^/]+(\/remove)?)?|voice)$|brands\/[a-z0-9-]+\/book(\/(?:import|refresh|ask))?$))/.test(u.pathname)) return false;
+    if (!/^\/(h\/|p\/|brief\/|api\/share)/.test(u.pathname) && !API_GATE.test(u.pathname)) return false; /* the routes' own gate (API_GATE): one list, so a new route is never answered 404 here first (/api/jobs, 26 Oct) */
     let tid = null;
     /* Jam v2's ready-to-post and brief links are signed: the link is the key, so they run before any sign-in, demo or team check (a team that got a brief marks its status without an account) */
     if (/^\/(p|brief)\//.test(u.pathname)) { if (JAM2 && await JAM2.publicHandle(req, res, u)) return true; send(res, 404, { error: 'not found' }); return true; }

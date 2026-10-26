@@ -185,6 +185,8 @@ export function storeConnectors(seed, p, { keepShopify = false } = {}) {
   if ((shopifyBacked(p) || keepShopify) && !seed.connectors.shopify) { seed.connectors = { shopify: shopifyConnector(p.host), ...seed.connectors }; changed = true; }
   if ((p.reviews?.onSite === 'off' || p.storeKind === 'enquiry') && seed.connectors.reviews) { delete seed.connectors.reviews; changed = true; }
   if (p.storeKind === 'enquiry' && seed.connectors.marketplaces) { delete seed.connectors.marketplaces; changed = true; }
+  /* the page knows a brand that sells by enquiry: no orders, checkouts or email-flow asks in its Signals column (QV P2-24, 26 Oct, Mana) */
+  if ((p.storeKind === 'enquiry') !== (seed.storeKind === 'enquiry')) { if (p.storeKind === 'enquiry') seed.storeKind = 'enquiry'; else delete seed.storeKind; changed = true; }
   if (p.storeKind === 'enquiry' && seed.vocab?.item === 'product') { seed.vocab = { ...seed.vocab, buyer: 'buyer', buyers: 'buyers' }; changed = true; }
   return changed;
 }
