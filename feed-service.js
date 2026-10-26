@@ -1429,7 +1429,9 @@ export function createFeedService(o) {
     const hasSeries = (x) => x.kind === 'calendar' || (x.kind === 'rising' && x.rising?.length) || (x.terms || []).some((term) => tr?.series?.[term]?.values?.length);
     const trSlides = (tr?.items || []).filter(hasSeries).map((x) => ({ type: x.kind === 'rising' ? 'rising' : 'trend', ...x, where, rising: x.rising ? x.rising.map((r) => ({ ...r, v: riseLabel(r.v) })) : x.rising, series: (x.terms || []).filter((term) => tr.series?.[term]).map((term) => { const s = tr.series[term]; return { term, values: s.values, change: s.change, last: s.last }; }), dates: tr.series[x.terms[0]]?.dates || Object.values(tr.series)[0]?.dates }));
     const batches = t.batches.slice(0, 3).map((b) => ({ type: 'note', c: SEED.brand.wash[1], h: b.t, p: `${b.s}. ${b.st === 'Running' ? b.pct + '% done.' : b.st + '.'}`, from: 'Your work' }));
-    const newsSlides = (nw?.items || []).map((x) => ({ type: 'news', ...x, id: newsId(x), forUs: x.take || newsForUs(x, BN()), cta: newsCta(x) }));
+    /* one story once (QV round 2, N7: Nutrova's Industry news slides 1 and 3 were both Meta's 20 November AI ad terms): the same link, or nearly the same words, shows once */
+    const sameNews = (x, y) => (x.url && y.url && String(x.url).replace(/[?#].*$/, '') === String(y.url).replace(/[?#].*$/, '')) || near(x, y) || near({ h: `${x.h} ${x.p || ''}` }, { h: `${y.h} ${y.p || ''}` });
+    const newsSlides = (nw?.items || []).filter((x, i, all) => !all.slice(0, i).some((y) => sameNews(x, y))).map((x) => ({ type: 'news', ...x, id: newsId(x), forUs: x.take || newsForUs(x, BN()), cta: newsCta(x) }));
     const spark = (term) => tr?.series[term]?.values;
     // the brand today: its own most important new things, never outside news.
     // The two top-ranked open cards, then work waiting on you, the latest measured result, and work the team finished.

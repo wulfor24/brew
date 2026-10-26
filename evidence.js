@@ -117,7 +117,7 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
     }
     /* 2. what the card was built on */
     const ad = c.research?.kind === 'ad' ? adOf(c.research.id) : null;
-    if (ad) add({ kind: 'ad', label: `${ad.brand || 'A rival'}’s live ad`, value: cut(ad.hook || ad.headline || '', 160), src: `Meta Ad Library${country() ? ` · ${country()}` : ''}`, url: okUrl(ad.url), at: null, extra: [ad.days != null ? `running ${ad.days} days` : '', ad.versions > 1 ? `${ad.versions} versions` : '', ad.since ? `since ${ad.since}` : ''].filter(Boolean).join(', ') });
+    if (ad) add({ kind: 'ad', label: `${ad.brand || 'A rival'}’s live ad`, value: cut(ad.hook || ad.headline || '', 160), src: `Meta Ad Library${country() ? ` · ${country()}` : ''}`, url: okUrl(ad.url), at: null, extra: [ad.days != null ? `running ${ad.days} days` : '', ad.versions > 1 ? `${ad.versions} versions` : '', ad.since ? `since ${dayWords(ad.since)}` /* "since 10 Sept", never "since 2026-09-10" (QV round 2, P2-3) */ : ''].filter(Boolean).join(', ') });
     else if (c.link?.url && okUrl(c.link.url)) add({ kind: 'link', label: c.link.label || 'The source', value: '', src: hostOf(c.link.url), url: c.link.url });
     const h = c.heard;
     if (h?.kind === 'thread') add({ kind: 'quote', label: h.where ? `People talking on ${h.where}` : 'What people are saying', value: cut(h.quote, 220), src: hostOf(h.url) || h.where || '', url: okUrl(h.url), extra: h.replies != null ? `${h.replies} replies` : '' });

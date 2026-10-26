@@ -5816,9 +5816,9 @@
     // What your team told Brew (brand-learnings.js, learned.json): goals, beliefs and facts from the calls, notes and emails the team added; about 6 show, the rest fold
     const told = TOLD?.told, toldRows = told ? [['essence', 'Essence'], ['goals', 'Goals and plans'], ['beliefs', 'Beliefs'], ['tried', 'What they tried'], ['facts', 'Facts they stated']].flatMap(([k, h]) => (told[k] || []).map((x) => ({ ...x, h }))) : [];
     // one heading per group (Goals, Beliefs, Facts), each line plain; with more than one source, each line names its own
-    const oneSrc = (told?.sources || []).length <= 1, toldList = (xs) => xs.map((x, i) => `${i === 0 || xs[i - 1].h !== x.h ? `<h4>${esc(x.h)}</h4>` : ''}<div class="mem-l"><p>${esc(x.text)}</p>${oneSrc || !x.source ? '' : `<small>${esc(x.source)}</small>`}</div>`).join('');
+    const oneSrc = (told?.sources || []).length <= 1, toldList = (xs) => xs.map((x, i) => `${i === 0 || xs[i - 1].h !== x.h ? `<h4>${esc(x.h)}</h4>` : ''}<div class="mem-l"><p>${esc(x.text)}</p>${oneSrc || !x.source ? '' : `<small>${esc(isoDay(x.source))}</small>`}</div>`).join('');
     const TOLD_N = 4;
-    const toldHtml = toldRows.length ? `<section class="lx-sec mem-g">${lxHead('lx-told', 'What your team told us', toldRows.length, `From ${oneSrc ? esc(told.sources?.[0]?.label || 'your team') : `${told.sources.length} calls, notes and emails`}. The plays follow these.`)}
+    const toldHtml = toldRows.length ? `<section class="lx-sec mem-g">${lxHead('lx-told', 'What your team told us', toldRows.length, `From ${oneSrc ? esc(isoDay(told.sources?.[0]?.label || 'your team')) /* "added by Param Jain, 2026-10-19" reads a day (QV round 2, P2-3) */ : `${told.sources.length} calls, notes and emails`}. The plays follow these.`)}
       ${toldList(toldRows.slice(0, TOLD_N))}${toldRows.length > TOLD_N ? `<details class="q-more"><summary>${toldRows.length - TOLD_N} more</summary>${toldList(toldRows.slice(TOLD_N))}</details>` : ''}</section>` : '';
     const anyLearned = moved.length + lessons.length + L.rules.length + L.autoChecks.length + toldRows.length;
     /* ui=1: one row of what Brew holds, each tile opens its part; a tile with nothing in it never shows */

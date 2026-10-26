@@ -11,7 +11,7 @@ import { stockSay } from '../stock-say.js';
 import { healNote, healDaysIn, eventsFor } from '../day-count.js';
 import { brandVocab, fitRising, fitTrends } from '../trend-fit.js';
 import { possFix, possBody } from '../served-words.js';
-import { bookNumbers, bestFounded } from '../facts-desk.js';
+import { bookNumbers, bestFounded, dateWordsIn } from '../facts-desk.js';
 import { heardCards } from '../social-feed.js';
 import { isCdn, cdnExpiry, cdnDead, keepName, createCdnKeep, keepRes } from '../cdn-keep.js';
 
@@ -216,4 +216,16 @@ test('fonts: Google Fonts are asked for after the load, with display=swap; no bl
     assert.match(h, /<script>[^<]*addEventListener\("load"[^<]*<\/script>/, `${f}: added after load`); assert.match(h, /<script>[^<]*l\.href="https:\/\/fonts\.googleapis\.com\/css2\?[^"]*display=swap"[^<]*<\/script>/, `${f}: display=swap`);
   }
   assert.match(read('public/index.html'), /<link rel="preconnect" href="https:\/\/fonts\.gstatic\.com" crossorigin>/);
+});
+
+/* ---------- 11. P2s ---------- */
+test('P2: no ISO dates in Brand Book values, sources or the proof sheet; one news story once; shelf names cut on a word', () => {
+  assert.equal(dateWordsIn('Series A, $4 million, 2024-12'), 'Series A, $4 million, Dec 2024'); assert.equal(dateWordsIn('Seal Deal Curl Gel - 50 ml, 2026-10-22'), 'Seal Deal Curl Gel - 50 ml, 22 Oct 2026');
+  assert.equal(dateWordsIn('FY 2019-20 revenue ₹12 Cr'), 'FY 2019-20 revenue ₹12 Cr');
+  const rows = bookNumbers({ a: { key: 'catalog.newest', label: 'Newest product (published date)', v: 'Seal Deal Curl Gel - 50 ml, 2026-10-22', src: 'arata.in/sitemap.xml' } }, { host: 'arata.in' });
+  assert.equal(rows[0].label, 'Newest product'); assert.ok(!/\d{4}-\d\d-\d\d/.test(rows[0].v));
+  assert.match(read('evidence.js'), /since \$\{dayWords\(ad\.since\)\}/);
+  assert.match(read('public/app.js'), /esc\(isoDay\(x\.source\)\)/); assert.match(read('public/app.js'), /esc\(isoDay\(told\.sources\?\.\[0\]\?\.label/);
+  assert.match(read('feed-service.js'), /\(nw\?\.items \|\| \[\]\)\.filter\(\(x, i, all\) => !all\.slice\(0, i\)\.some\(\(y\) => sameNews\(x, y\)\)\)/);
+  assert.ok(!/String\(x\.name \|\| ''\)\.slice\(0, 46\)/.test(read('public/watch.js')), 'shelf names never cut mid-word');
 });
