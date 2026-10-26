@@ -91,3 +91,57 @@ test('QV 26 Oct: the page frame names the domain once (P2-8)', () => {
   assert.equal(urlOf('arata.in', { pages: 'Product page' }, cut), 'arata.in · Product page');
   assert.equal(urlOf('arata.in', {}, cut), 'arata.in');
 });
+
+// QV round 2, 26 Oct (docs/qv/jam-r2.md): what still ran under the bar, out of the window or out of its box, on every layout.
+test('QV r2: "+N more" opens a list you can see on every layout, and the line never pushes it out of the bar', () => {
+  const css = CSS();
+  assert.match(css, /\.jp \.jp-tx \.jp-l:has\(\.ship-fixes\)\{overflow:visible\}/, 'N-P1-1: the line no longer clips its list');
+  assert.match(css, /\.jp \.jp-ship \.ship-fixes\{position:static/, 'N-P1-1: the list is placed on the bar, outside the clipped line');
+  assert.match(css, /\.jp \.jp-ship \.ship-fixes ol\{position:absolute;left:16px;[^}]*bottom:calc\(100% \+ 8px\);[^}]*max-height:[^}]*overflow:auto/, 'N-P1-1: over the stage, inside the window');
+  assert.match(css, /@container jp-stage \(max-width:860px\)\{\.jp \.jp-ship\{grid-template-columns:minmax\(0,1fr\)\}/, 'N-P2-5: a narrow stage gives the line its own row at every height');
+  assert.match(css, /\.jp \.jp-ship \.ship-one > \.linkbtn,\.jp \.jp-ship \.ship-one > \.ship-fixes\{flex:none;white-space:nowrap\}/, 'N-P2-5: "+N more" is never cut');
+});
+
+test('QV r2: the older version keeps Back and Use in the window, and its pill off One | All', () => {
+  const css = CSS(), app = APP();
+  assert.match(css, /\.jp \.jp-ship\.viewing\{height:auto;/, 'N-P1-2: never the top bar\'s 34px .viewing pill');
+  assert.match(css, /\.jp \.jp-ship:not\(:has\(> \.jp-steps\)\) > \.jp-tx,\.jp \.jp-ship:not\(:has\(> \.jp-steps\)\) > \.jp-btns\{grid-row:1\}/, 'a bar with no steps has no empty row');
+  assert.match(css, /\.jp \.jp-oldv\{left:16px;right:auto;top:16px\}/, 'N-P1-2: the pill takes the tag\'s corner');
+  assert.match(app, /const jpTag = \(ch, viewing\) => \{ if \(viewing\) return '';/, '…which is empty while you look back');
+  assert.match(app, /<span>\$\{esc\(vWhy\(viewing\)\)\} · /, 'N-P2-7: the older version says what it was');
+  const vWhy = new Function('PRODUCT', 'vLabel', `${app.split('\n').find((l) => l.includes('const vWhy = ')).trim()}\nreturn vWhy;`)('Brew', (v) => v.reason);
+  assert.equal(vWhy({ reason: 'Studio: Carousel · 3 slides · $0.096' }), 'Made in Brew Studio');
+  assert.equal(vWhy({ reason: 'Shorter · ₹12' }), 'Shorter');
+});
+
+test('QV r2: a merge tag stays in its line, and the email body is one block', () => {
+  const css = CSS(), app = APP();
+  assert.match(app, /<div class="jp-mail-b">\$\{body\.trim\(\) \? `<div class="jp-mail-txt">\$\{mergeTags/, 'N-P1-4: the words are one block, never loose flex items');
+  assert.match(css, /\.jp \.tok\{display:inline-flex;[^}]*white-space:nowrap/, 'N-P1-4: "Hi [first name]," on one line');
+});
+
+test('QV r2: slide dots, a video and a framed set end above the bar at every size (P1-1, N-P2-1)', () => {
+  const app = APP(), css = CSS();
+  const sf = app.slice(app.indexOf('const stageFrames = '), app.indexOf('const stagePick = '));
+  assert.match(sf, /const over = \(\) => Math\.max\(room\.scrollHeight - room\.clientHeight, jpUnderBar\(\[card, box\.querySelector\('\.stg-nav'\)\]\)\)/, 'a phone\'s floating bar counts');
+  assert.match(sf, /box\.classList\.add\('stg-tighter'\)/, 'a story too tall at 130px steps back once more');
+  assert.match(fnOf(app, 'jpUnderBar'), /position !== 'fixed'\) return 0/, 'only a floating bar: an in-flow bar is the stage\'s own overflow');
+  assert.match(app, /addEventListener\('resize', \(\) => \{ if \(view === 'remix'\) \{ stageFrames\(\); jpFit\(\); \} \}\)/, 'a set is fitted again at a new window size');
+  assert.match(fnOf(app, 'jpFit'), /under = \(\) => Math\.max\(room\.scrollHeight - room\.clientHeight, jpUnderBar\(/, 'a framed set is measured, its frame\'s padding included');
+  assert.match(fnOf(app, 'jpFit'), /getComputedStyle\(bar\)\.position === 'fixed'/, 'a phone\'s framed piece ends above its bar');
+  assert.match(fnOf(app, 'fitAd'), /const ph = ad\.querySelector\('\.sv-phone'\); if \(ph\)/, 'N-P2-1: the video phone narrows until its beats and sizes clear the bar');
+  assert.match(fnOf(app, 'fitAd'), /if \(!fit\(170\)\) \{ box\.classList\.add\('sv-tight'\); fit\(140\); \}/, 'N-P2-1: then a short window steps the beats and sizes back');
+  assert.match(css, /\.jp \.st-asset\.sv-tight \.sv-beats\{flex-wrap:nowrap;/);
+  assert.match(css, /\.jp \.st-asset\[data-stg\]\.stg-tighter \.am-h/, 'stg-tighter drops the header and copy');
+  assert.match(sf, /box\.classList\.toggle\('stg-stuck', !fit\(130\)\)/, 'still under the bar at the smallest: the dots stick');
+  assert.match(fnOf(app, 'jpFit'), /fr\.classList\.toggle\('jp-stuck', under\(\) > 1\)/);
+  assert.match(css, /\.jp \.st-asset\[data-stg\]\.stg-stuck \.stg-nav,\.jp \.jp-framed\.jp-stuck \.jp-dots\{position:sticky;bottom:0/, 'the dots never scroll under the bar');
+  assert.match(css, /\.jp \.jp-stage-in > \.st-asset\.jp-framed\{padding-bottom:0\}/);
+});
+
+test('QV r2: the ad text, the beat chips and a phone\'s priced buttons read whole', () => {
+  const css = CSS();
+  assert.match(css, /\.jp \.st-asset \.as-meta\.lg:not\(\.is-story\) \.am-text:not\(:focus\)\{white-space:normal\}/, 'N-P2-3: never one line and a bare "…"');
+  assert.match(css, /\.jp \.sv-beats li small\{text-transform:none\}/, 'P1-7: "0–3 s", never "0–3 S"');
+  assert.match(css, /@media \(max-width:640px\)\{\.jp \.jp-ship > \.jp-btns\{flex-wrap:wrap;/, 'a phone\'s primary drops to its own row rather than lose its price');
+});

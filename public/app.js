@@ -4164,8 +4164,11 @@
     if (op.picked) { const it = op.list.find((x) => x.id === op.picked); return it ? `<div class="st-opts is-picked"><span>${ic('check', 's14')}Using <b>${esc(it.name)}</b></span><button type="button" class="linkbtn" data-opt-change>Change</button></div>` : ''; }
     const HAS = { final: 'Final', video: 'Video', photo: 'Photo', words: isReel(ch) ? 'Script' : 'Words' };
     return `<div class="st-opts" role="tablist" aria-label="Options">${op.list.map((it) => `<button type="button" role="tab" class="st-opt${it.id === op.on ? ' is-on' : ''}" data-opt="${esc(it.id)}" aria-selected="${it.id === op.on}">${it.image ? `<img src="/${esc(String(it.image).replace(/^\//, ''))}" alt="" loading="lazy">` : `<i class="st-opt-l">${esc(it.letter)}</i>`}<span><b>${esc(it.name)}</b><small>${esc(it.letter)} · ${HAS[it.has] || ''}</small></span></button>`).join('')}${op.list.length < 6 ? `<button type="button" class="st-opt is-add" data-opt-more${RX.sending ? ' disabled' : ''}><i class="st-opt-l">+</i><span><b>One more</b><small>A different angle</small></span></button>` : ''}</div>`; };
+  /* the older version's line says what it was, never the maker's own note ("Studio: Carousel · 3 slides · $0.096" on a Stories jam:
+     the wrong kind and a dollar cost; 26 Oct, QV N-P2-7) */
+  const vWhy = (v) => (/^Studio:/i.test(String(v.reason || '')) ? `Made in ${PRODUCT} Studio` : vLabel({ ...v, reason: String(v.reason || '').split(/\s+·\s+/).filter((x) => !/[$₹€£]\s?\d/.test(x)).join(' · ') }));
   const shipBar = (ch, viewing) => {
-    if (viewing) return `<div class="ship viewing"><div class="ship-tx"><b>You’re looking at v${viewing.n}</b><span>${esc(viewing.reason || '')} · ${esc(authorName(viewing.author))}</span></div><div class="ship-btns"><button class="btn btn-ghost" data-v-back>Back to v${curN(ch)}</button><button class="btn btn-primary" data-v-use="${viewing.id}">Use v${viewing.n}</button></div></div>`;
+    if (viewing) return `<div class="ship viewing"><div class="ship-tx"><b>You’re looking at v${viewing.n}</b><span>${esc(vWhy(viewing))} · ${esc(authorName(viewing.author))}</span></div><div class="ship-btns"><button class="btn btn-ghost" data-v-back>Back to v${curN(ch)}</button><button class="btn btn-primary" data-v-use="${viewing.id}">Use v${viewing.n}</button></div></div>`;
     if (RX.sending) { if (!RX.thinkI) thinkStart(ch.id); return `<div class="ship busy"><div class="ship-tx"><b><brew-load class="spin"></brew-load>${esc(RX.sending)}</b><span id="ship-think">${esc(thinkLine())}</span></div><div class="ship-btns"><button class="btn btn-primary ship-go" disabled>${ic('sparkles', 's16')}Working…</button></div></div>`; }
     if (RX.thinkI) thinkStop();
     /* once Share the brief is gone (sent, live), the link can still be copied: a small icon next to what's left */
@@ -4459,6 +4462,11 @@
     const m = $('.am-media', ad) || $('.as-swipe, .pm-media, .sv-phone', ad); ad.style.width = ''; if (!m || ad.querySelector('.am-chat')) return;
     const im = $('img', m); if (im && !im.complete) im.addEventListener('load', fitAd, { once: true });
     const room = $('.jp-stage-in') || box, cs = getComputedStyle(room), roomH = room.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 4, roomW = room.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); /* the jam page's stage is the room the piece has */
+    /* a short video is its phone: the phone narrows (its own 9:16) until the phone, its beats and the sizes all end above the bar; it was
+       a fixed 300px, so at 1440x900 the beats and the sizes ran under the bar (26 Oct, QV N-P2-1) */
+    { const ph = ad.querySelector('.sv-phone'); if (ph) { const fit = (min) => { ph.style.width = ''; for (let i = 0; i < 4; i++) { const over = room.scrollHeight - room.clientHeight; if (over <= 1) return true; ph.style.width = `${Math.round(Math.max(min, (ph.offsetHeight - over - 2) * ph.offsetWidth / ph.offsetHeight))}px`; } return room.scrollHeight - room.clientHeight <= 1; };
+      /* a short window (1024x620): the beats go on one scrolling row and the sizes step off (the size is in the Set-up sentence too) */
+      box.classList.remove('sv-tight'); if (!fit(170)) { box.classList.add('sv-tight'); fit(140); } return; } }
     /* the Meta ad on the stage is sized like a post in Instagram's feed: 470px wide, and the photo between 1.91:1 and 4:5
        (Instagram crops anything taller to 4:5), so a tall photo never makes the ad taller than it would run */
     /* set up as a Story (9:16): drawn as the story it is, as tall as the stage allows, never cropped back to a 4:5 feed post (26 Oct) */
@@ -4798,10 +4806,13 @@
   /* the stage (25 Oct, "the stage doesn't feel like a stage"): a set of slides (stories, carousels, carousel and catalog ads) shows
      one slide big at the stage's own height, with arrows and numbered dots, or all of them side by side (One | All). The slide
      picked here and in Set-up is the same one. Everything else on the stage keeps its frame, centred and lit */
+  /* how far these reach under the bar, where the bar floats over the stage (a phone: fixed at the window's foot), measured as if the page
+     were at its top; 0 where the bar sits under the stage in the flow (the stage's own overflow says that) (26 Oct, QV P1-1) */
+  const jpUnderBar = (els) => { const bar = $('.std .jp-ship, .std .ship'); if (!bar || getComputedStyle(bar).position !== 'fixed') return 0; const low = Math.max(0, ...els.filter(Boolean).map((x) => x.getBoundingClientRect().bottom)); return low ? Math.ceil(low + scrollY - bar.getBoundingClientRect().top + 8) : 0; };
   const stageFrames = () => { const box = $('.std .st-canvas > .st-asset'), sw = box?.querySelector('.as-swipe'), card = sw?.closest('.as');
     box?.querySelectorAll(':scope > .stg-mode, .stg-nav').forEach((x) => x.remove()); if (!box) return;
     const items = sw ? [...sw.children].filter((x) => x.matches('figure')) : [];
-    if (!sw || items.length < 2 || !card) { box.removeAttribute('data-stg'); box.classList.remove('stg-tight'); box.style.removeProperty('--stg-w'); return; }
+    if (!sw || items.length < 2 || !card) { box.removeAttribute('data-stg'); box.classList.remove('stg-tight', 'stg-tighter', 'stg-stuck'); box.style.removeProperty('--stg-w'); return; }
     const ch = RX.ch, n = items.length, cs = ch?.studio ? window.CreativeStage?.state(ch.id) : null;
     const i = Math.max(0, Math.min(n - 1, cs?.sel ?? RX.stgI?.[ch?.id] ?? 0)), mode = RX.stgMode === 'all' ? 'all' : 'one';
     box.dataset.stg = mode; items.forEach((x, k) => x.toggleAttribute('data-on', k === i));
@@ -4816,8 +4827,14 @@
     if (mode === 'one') card.insertAdjacentHTML('afterend', `<div class="stg-nav"><button type="button" class="icon-btn" data-stg-go="-1" aria-label="Previous slide" ${i ? '' : 'disabled'}>${ic('left', 's16')}</button>${items.map((_, k) => `<button type="button" class="stg-dot${k === i ? ' on' : ''}" data-stg-i="${k}" aria-label="Slide ${k + 1}">${k + 1}</button>`).join('')}<button type="button" class="icon-btn" data-stg-go="1" aria-label="Next slide" ${i < n - 1 ? '' : 'disabled'}>${ic('right', 's16')}</button></div>`);
     /* then measured, not guessed: whatever still runs under the bar (the dots, the stage's own padding, a header) comes off the slide's height, so the arrows and dots sit above the bar on every set (26 Oct, QV P1-1) */
     /* a short window first narrows the slide (never under 220px: a narrower card wraps its caption into a tower), then the set steps back (one line of copy, no card description, closer dots) */
-    const fit = (min) => { for (let k = 0, cw = parseFloat(box.style.getPropertyValue('--stg-w')) || w; k < 3; k++) { const over = room.scrollHeight - room.clientHeight; if (over <= 1) return true; cw = Math.max(min, cw - Math.ceil(over * (mode === 'one' ? ar : n * ar)) - 1); box.style.setProperty('--stg-w', `${Math.round(cw)}px`); } return room.scrollHeight - room.clientHeight <= 1; };
-    box.classList.remove('stg-tight'); if (!fit(220)) { /* a phone too: its stage is a fixed share of the screen, and a story cropped behind the bar was QV P2-16 */ box.classList.add('stg-tight'); box.style.setProperty('--stg-w', `${Math.round(w)}px`); fit(130); } }; /* stepped back, its caption is one line, so a narrower slide no longer towers */
+    /* what runs under the bar is the stage's own overflow, or, where the bar floats over the stage (a phone: fixed at the foot), how far the
+       slide or its dots reach under it (26 Oct, QV P1-1: dots under the bar at 1024x620, half under it on a phone) */
+    const over = () => Math.max(room.scrollHeight - room.clientHeight, jpUnderBar([card, box.querySelector('.stg-nav')]));
+    const fit = (min) => { for (let k = 0, cw = parseFloat(box.style.getPropertyValue('--stg-w')) || w; k < 5; k++) { const o = over(); if (o <= 1) return true; cw = Math.max(min, cw - Math.ceil(o * (mode === 'one' ? ar : n * ar)) - 1); box.style.setProperty('--stg-w', `${Math.round(cw)}px`); } return over() <= 1; };
+    /* then two steps back: one line of copy and closer dots (stg-tight), then the card's header and copy off (stg-tighter: a 9:16 story's
+       header and copy wrap into a tower at 130px, so narrowing alone never fit it at 1024x620); the picture, the headline, the button
+       and the dots always stay, and the dots stick to the stage's foot if a window is shorter still (jam-page.css) */
+    box.classList.remove('stg-tight', 'stg-tighter', 'stg-stuck'); if (!fit(220)) { /* a phone too: its stage is a fixed share of the screen, and a story cropped behind the bar was QV P2-16 */ box.classList.add('stg-tight'); box.style.setProperty('--stg-w', `${Math.round(w)}px`); if (!fit(130)) { box.classList.add('stg-tighter'); box.style.setProperty('--stg-w', `${Math.round(w)}px`); box.classList.toggle('stg-stuck', !fit(130)); } } }; /* stepped back, its caption is one line, so a narrower slide no longer towers */
   const stagePick = (i) => { const ch = RX.ch; if (!ch) return; RX.stgI = { ...(RX.stgI || {}), [ch.id]: i }; if (ch.studio) window.CreativeStage?.select?.(i); paintStudio(); };
   /* ---------- the jam page's stage frames, one per layout (26 Oct, the prototype; jam-page.css). A piece with its own made
      picture or video keeps the renderer that draws its platform (assetHtml); everything else is drawn the prototype's way from its
@@ -4844,7 +4861,7 @@
     if (L === 'mail') { const subj = String(p.subject || ch.actionLabel || ''), body = String(p.message || p.body || ''), out = ch.family === 'outreach', pre = jpCut(body.replace(/^\s*(?:hi|hey|hello|dear)\b[^,!.\n]{0,24}[,!.]\s*/i, '').split('\n').find((x) => x.trim()) || body, 60); /* the inbox shows what follows the greeting */
       return `<div class="jp-inbox"><span class="jp-ib-from">${esc(out ? 'You' : brand)}</span><span class="jp-ib-txt"><b>${mergeTags(esc(subj.length > 50 ? cutW(subj, 49) : subj))}</b> — ${mergeTags(esc(pre))}</span><span class="jp-ib-t">${esc(p.trigger ? jpCut(p.trigger, 16) : '6:30 pm')}</span></div><div class="jp-pvbar jp-mailbar"><span class="jp-cnt${subj.length > 50 ? ' is-over' : ''}">Subject ${subj.length} / 50</span>${p.segment || p.to ? `<span class="jp-cnt">To ${esc(jpCut(p.segment || p.to, 40))}</span>` : ''}</div>
         <div class="jp-mail"><div class="jp-mail-h"><b>${mergeTags(esc(subj))}</b><small>${esc(out ? `${p.to || 'Them'} · from you at ${brand}` : `${brand} <hello@${host}>${p.flow ? ` · ${p.flow}` : ''}`)}</small></div>${!out ? `<div class="jp-mail-hero jp-wash">${prImg ? `<img src="${esc(prImg)}" alt="">` : ''}</div>` : ''}
-        <div class="jp-mail-b">${body.trim() ? mergeTags(esc(body)).replace(/\n/g, '<br>') : '<span class="jp-empty">Not written yet. Ask Brew below, or press Fix it to write it.</span>'}${!out && (p.buttons || [])[0] ? `<span class="jp-mail-cta">${esc(p.buttons[0])}</span>` : ''}</div>${!out ? `<div class="jp-mail-f">You get this because you shopped at ${esc(host)}. Unsubscribe</div>` : ''}</div>`; }
+        <div class="jp-mail-b">${body.trim() ? `<div class="jp-mail-txt">${mergeTags(esc(body)).replace(/\n/g, '<br>')}</div>` /* one block: as loose flex items, "Hi {first name}," broke onto three lines (26 Oct, QV N-P1-4) */ : '<span class="jp-empty">Not written yet. Ask Brew below, or press Fix it to write it.</span>'}${!out && (p.buttons || [])[0] ? `<span class="jp-mail-cta">${esc(p.buttons[0])}</span>` : ''}</div>${!out ? `<div class="jp-mail-f">You get this because you shopped at ${esc(host)}. Unsubscribe</div>` : ''}</div>`; }
     if (L === 'page') { const h1 = p.heading || p.title || p.name || (p.items || [])[0]?.new || ch.actionLabel, body = p.body || p.a || p.reason || '', pts = (p.bullets || p.descriptions || []).map((x) => (typeof x === 'object' ? Object.values(x).join(' · ') : x));
       const pg = String(p.pages || '').trim().replace(/^https?:\/\//i, '').replace(/^www\./i, ''), h0 = String(host).replace(/^www\./i, ''); /* the address bar says the domain once: "arata.in/blogs/news", never "arata.in · arata.in/blogs/news" (QV P2-8) */
       const url = !pg ? host : /\s/.test(pg) ? `${host} · ${jpCut(pg, 40)}` : h0 && pg.toLowerCase().startsWith(h0.toLowerCase()) ? jpCut(pg, 60) : pg.startsWith('/') ? `${host}${jpCut(pg, 50)}` : /\.[a-z]{2,}(\/|$)/i.test(pg) ? jpCut(pg, 60) : `${host} · ${jpCut(pg, 40)}`;
@@ -4883,14 +4900,20 @@
     /* a phone (WhatsApp) is as tall as the stage leaves after its info line: measured, so the line never sits on the phone's foot under the bar (26 Oct, QV P2-9) */
     { const wa = fr.querySelector('.jp-wa'); if (wa && innerWidth > 640) { wa.style.height = ''; const over = room.scrollHeight - room.clientHeight; if (over > 0) wa.style.height = `${Math.max(300, wa.offsetHeight - over - 2)}px`; } }
     const post = fr.querySelector(':scope .jp-set-row > .jp-post, :scope .jp-reel > .jp-post, :scope > .jp-post'), art = post?.querySelector('.jp-art'); if (!post || !art) return;
-    post.style.transition = 'none'; post.style.width = ''; const cs = getComputedStyle(room), H = room.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom), W = room.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    post.style.transition = 'none'; post.style.width = ''; const cs = getComputedStyle(room), bar = $('.std .jp-ship'), barTop = bar && getComputedStyle(bar).position === 'fixed' ? bar.getBoundingClientRect().top - (room.getBoundingClientRect().top + scrollY) - 8 : Infinity /* a phone's bar floats over the stage's foot: the piece and its dots end above it (26 Oct, QV P1-1) */, H = Math.min(room.clientHeight - parseFloat(cs.paddingBottom), barTop) - parseFloat(cs.paddingTop), W = room.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     const [aw, ah] = String(art.style.aspectRatio || '4/5').split('/').map((x) => +x || 1), ar = aw / ah, max = post.closest('.jp-reel') ? 380 : post.closest('.jp-set-row') ? 460 : 560;
     let others = 0; for (let el = post; el && el !== room; el = el.parentElement) { const par = el.parentElement; if (!par || par === room) break; const col = getComputedStyle(par).flexDirection === 'column' || getComputedStyle(par).display === 'block';
       if (col) for (const x of par.children) if (x !== el && getComputedStyle(x).position !== 'absolute') others += x.offsetHeight + 12; } /* what sits above and below it: the One/All toggle, the dots, the beats */
     let w = Math.min(W - (post.closest('.jp-set-row') ? 100 : 0), max);
     for (let i = 0; i < 3; i++) { post.style.width = `${Math.round(w)}px`; const chrome = post.offsetHeight - art.offsetHeight; w = Math.max(post.closest('.jp-reel') ? 150 : 200, Math.min(W, max, (H - chrome - others - 8) * ar)); }
-    post.style.width = `${Math.round(w)}px`; requestAnimationFrame(() => { post.style.transition = ''; }); };
-  addEventListener('resize', () => { if (view === 'remix') jpFit(); });
+    post.style.width = `${Math.round(w)}px`;
+    /* then measured, not guessed: the frame's own padding (24 over, 60 under) was never in the sum, so a deck's dots ran under the bar at
+       1440x900; whatever still runs under it comes off the piece (26 Oct, QV P1-1, every set and story layout) */
+    const minW = post.closest('.jp-reel, .jp-set-row') ? 150 : 200 /* a short window's set or reel goes smaller before its dots stick */, under = () => Math.max(room.scrollHeight - room.clientHeight, jpUnderBar([post, fr.querySelector('.jp-dots, .jp-beats')]));
+    for (let i = 0, o = under(); i < 4 && o > 1 && w > minW; i++, o = under()) { w = Math.max(minW, w - Math.ceil(o * ar) - 1); post.style.width = `${Math.round(w)}px`; }
+    fr.classList.toggle('jp-stuck', under() > 1); /* still under it at the smallest piece: the dots stick to the stage's foot (jam-page.css) */
+    requestAnimationFrame(() => { post.style.transition = ''; }); };
+  addEventListener('resize', () => { if (view === 'remix') { stageFrames(); jpFit(); } }); /* a set is fitted again at the new size, never left at the old one's width (26 Oct) */
   /* ---------- the jam page's parts (26 Oct, the prototype Param approved; jam-page.css) ---------- */
   /* the title is the piece, the way the prototype names it ("Meta ad", "Email", "Reddit reply"), never the card's button words ("Make new ads") */
   const VERBISH = /^(?:make|add|swap|launch|queue|rewrite|change|publish|fix|pause|set|scale|shift|exclude|update|restart|post|reply|answer|print|ask|brief|draft|request|create|turn|use|approve|write|send|build|start|run|plan)\b/i;
