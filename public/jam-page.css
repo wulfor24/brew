@@ -857,3 +857,5 @@
 .jp .std .st-asset .as-meta.lg:not(.is-story) .am-text{padding-bottom:0!important;margin-bottom:10px!important;max-height:3lh!important}
 .jp .std .st-asset .as-meta.lg.is-tight:not(.is-story) .am-text{max-height:2lh!important}
 .jp .std .st-asset .as-meta.lg.is-tighter:not(.is-story) .am-text{max-height:1lh!important}
+/* the frame no longer guesses a width from the window height (it pinned a short window's ad at 240px): fitAd sizes the ad */
+.jp .jp-stage-in .cs-stage .cs-frame.is-preview{width:100%!important}
