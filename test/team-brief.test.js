@@ -97,3 +97,18 @@ test('each deliverable tab keeps its own brief; the person picked is the To line
   assert.equal(c.brief.memo.to, 'Your agency'); assert.equal(c.brief.recipient.email, 'riya@pixel.in'); assert.equal(w.teamBrief.recipient, null, 'the first tab is untouched');
   await routes['GET /api/work/:wid/team-brief']({}, t, { wid: 'w1' }, q('other')); assert.ok(!w.teamBriefs.other, 'a tab of another card falls back to the jam’s own brief');
 });
+
+test('a sent brief remembers who it went to and which version, and its link counts opens (not the team’s own)', async () => {
+  const TB = make(false), w = { id: 'w1', doc: { rev: 2 } }, t = { id: 't_abc', work: [w] }, R = {};
+  TB.routes({ on: (m, pat, fn) => (R[`${m} ${pat}`] = fn), W: (t2, id) => t2.work.find((x) => x.id === id) });
+  await R['POST /api/work/:wid/team-brief/to']({ kind: 'designer', email: 'priya@studio.in', name: 'Priya' }, t, { wid: 'w1' }, new URLSearchParams());
+  const r = await R['POST /api/work/:wid/team-brief/sent']({ via: 'gmail' }, t, { wid: 'w1' }, new URLSearchParams());
+  assert.match(r.link, /^\/h\/t_abc~w1~[\w-]+\?full=1&r=[\w-]+$/, 'the brief’s own signed link, with this send’s id');
+  assert.deepEqual({ to: r.brief.sent.to, opened: r.brief.sent.opened, version: r.brief.sent.version }, { to: 'Priya', opened: null, version: 3 });
+  const rid = new URL(r.link, 'https://x').searchParams.get('r');
+  assert.equal(TB.opened(t, w, null, 'nope'), false, 'an unknown link counts nothing');
+  assert.equal(TB.opened(t, w, null, rid), true); assert.equal(TB.opened(t, w, null, rid), true);
+  const v = TB.view(w, null); assert.equal(v.sent.opened, 5); assert.equal(v.sent.opens, 2); assert.equal(v.sent.changed, false);
+  w.teamBrief.version = 4; assert.equal(TB.view(w, null).sent.changed, true, 'the piece changed since: send the new version');
+  await TB.build(t, w); assert.equal((w.teamBrief.sent || []).length, 1, 'a rebuilt brief keeps where it was sent');
+});

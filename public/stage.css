@@ -72,3 +72,24 @@
   .st-vsw .icon-btn{width:36px;height:36px}
   .cs-sizes button{height:36px}
 }
+
+/* the checks as one line over the button: red stops Send brief, amber advises; each with its own fix */
+.ship-one{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 10px;min-width:0;font-weight:500}
+.ship-one > i{width:8px;height:8px;border-radius:50%;flex:0 0 8px;background:#f59e0b}
+.ship-one.is-red > i{background:#ef4444}
+.ship-one > span{min-width:0}
+.ship-one .linkbtn{font-weight:600}
+
+/* point, then ask: a part of the piece shows it can be picked; the picked one rides in the chat box as a chip */
+.std .st-asset .as :is(.am-hl,.am-text,.am-ov,.am-cta,.am-foot span,.ig-cap,.ig-st,figure,.am-media,p,h2,h3,li,figcaption){cursor:pointer;border-radius:6px;transition:box-shadow .12s}
+.std .st-asset .as :is(.am-hl,.am-text,.am-ov,.am-cta,.am-foot span,.ig-cap,.ig-st,p,h2,h3,li,figcaption):hover{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent,#3b82f6) 55%,transparent)}
+.it-part{display:flex;align-items:center;gap:6px;margin:0 0 8px;padding:4px 4px 4px 12px;width:max-content;max-width:100%;border-radius:999px;background:color-mix(in srgb,var(--accent,#3b82f6) 14%,var(--surface));font-size:13px;color:var(--fg)}
+.it-part span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it-part .icon-btn{width:26px;height:26px}
+
+/* who the brief went to, and whether they opened it */
+.st-sent{display:inline-flex;align-items:center;gap:6px;max-width:320px;padding:0 10px;height:30px;border-radius:999px;background:var(--surface);color:var(--fg-2);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-sent.is-open{color:var(--fg)}
+.st-sent.is-open svg{color:#22c55e}
+.st-sent .linkbtn{font-size:13px}
+@media (max-width:860px){.st-sent{order:6;max-width:100%}}

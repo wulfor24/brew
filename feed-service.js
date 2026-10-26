@@ -2556,11 +2556,14 @@ export function createFeedService(o) {
       const tok = parseToken(hm[1]); const t = tok && await getTenant(tok.tid); const w = t && (W(t, tok.wid) || teamJam(t, tok.wid));
       if (!w) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('This handoff link is not valid.'); return true; }
       /* a jam on the team's own numbers opens only for a signed-in member of the brand's team */
+      /* a sent brief's link (team-brief.js /sent): opened by someone outside the team counts as opened; the team's own clicks don't */
+      { const rid = u.searchParams.get('r'), team = !!(viewer?.email && o.isMemberEmail && await o.isMemberEmail(t.brandId || DEFAULT_BRAND, viewer.email).catch(() => false)); if (rid && !team && TB?.opened?.(t, w, u.searchParams.get('ch'), rid)) store?.save(t); }
       if (jamPrivate(t, w) && !t.member) { res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }); res.end(`${TEAM_ONLY} Sign in with your work email to open it.`); return true; }
       /* links shared before the jam link existed open the jam itself (same card, same change, latest state); ?full=1 is the read-only page */
       if (u.searchParams.get('full') !== '1') { res.writeHead(302, { location: jamPath(t, w), 'cache-control': 'no-store' }); res.end(); return true; }
       /* a shared brief is frozen: the page shows what was shared (w.jamBrief.context), not the jam as it is now; sharing again replaces it */
-      const x = w.jamBrief?.context ? { ...w.jamBrief.context, frozenAt: w.jamBrief.sharedAt || null } : await HO.build(t, w, { base: `${req.headers['x-forwarded-proto'] || (req.socket.encrypted ? 'https' : 'http')}://${req.headers.host}` });
+      const wv = u.searchParams.get('ch') && TB?.forCh ? TB.forCh(t, w, u.searchParams.get('ch')) : w; /* a tab's own brief (the link names its piece) */
+      const x = w.jamBrief?.context && wv === w ? { ...w.jamBrief.context, frozenAt: w.jamBrief.sharedAt || null } : await HO.build(t, wv, { base: `${req.headers['x-forwarded-proto'] || (req.socket.encrypted ? 'https' : 'http')}://${req.headers.host}` });
       /* the content is frozen, the stamp is not: it shows where the brief is now (Received, In progress, Delivered…) */
       const jb = w.jamBrief; if (jb) x.memo = { ...(x.memo || {}), status: jb.status ? BRIEF_LABEL[jb.status] || null : null, ...(jb.sender && !x.memo?.from ? { from: jb.sender.name || jb.sender.email || null } : {}) };
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(HO.html(x)); return true;

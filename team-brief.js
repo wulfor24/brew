@@ -12,6 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { saveGen, genFile } from './gen-store.js';
 import { withBrowser } from './pdf/render.js';
 import { checkCopyIn } from './claims.js'; // the brief's words carry no claim the materials don't back
+import { handoffPath } from './handoff.js'; // the brief's own link, which counts opens
 import { sentenceCase } from './text-fit.js'; // a brief title reads like a sentence, names kept
 
 export const TB_V = 4; // bump when the brief starts being written differently: every saved one is written again
@@ -108,13 +109,20 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
     if (d.rules) d.rules = d.rules.split('\n').filter((l) => { const q = l.toLowerCase().replace(/\s+/g, ' '); return !/^\W*(use the exact|.{0,40}\bmust (be|read)\s*:)/i.test(l) && !fv.some((v) => q.includes(v.slice(0, 40))); }).join('\n').trim() || d.rules;
     const auto = { ...Object.fromEntries(AI_KEYS.map((k) => [k, d[k]])), words: wordsOf(x) || 'To confirm.', measure: m || 'To confirm.', open: (d.open || []).length ? d.open.map((s) => `- ${s}`).join('\n') : 'Nothing open.' };
     const edits = old?.edits || {};
-    w.teamBrief = { v: TB_V, key, over: old?.over || {}, recipient: old?.recipient || null, ai: d.ai, at: now(t), title: sentenceCase(d.title || x.title, [x.brand, ...(x.pkg?.fields || []).filter((f) => f.pub).map((f) => f.value)]), auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
+    w.teamBrief = { v: TB_V, key, over: old?.over || {}, recipient: old?.recipient || null, sent: old?.sent || [], ai: d.ai, at: now(t), title: sentenceCase(d.title || x.title, [x.brand, ...(x.pkg?.fields || []).filter((f) => f.pub).map((f) => f.value)]), auto, edits, evidence: d.evidence || [], creatives: creativesOf(x), version: x.pkg?.version || null, pdf: null,
       brand: x.brand, mark: x.mark || null, memo: { from: x.memo?.from || null, to: RECIPIENTS[old?.recipient?.kind] || 'Your team' } }; /* a brief to hand over: their own team or agency (Send to the ShopOS team stays its own button) */
     return { tb: w.teamBrief, x }; };
+  /* who the brief went to and whether they opened its link (the prototype's "Sent to Priya · opened"): the newest send, and whether
+     the piece changed since (then the bar offers to send the new version) */
+  const sentOf = (tb) => { const last = (tb.sent || []).at(-1); if (!last) return null;
+    return { to: last.name || RECIPIENTS[last.kind] || 'Your team', email: last.email || null, at: last.at, via: last.via || null, version: last.version ?? null, opened: last.openedAt || null, opens: last.opens || 0, changed: last.version != null && tb.version != null && last.version !== tb.version, n: tb.sent.length }; };
+  /* a link from a sent brief was opened by someone outside the team: counted once per open */
+  const opened = (t, w0, chId, rid) => { const w = forCh(t, w0, chId || null), e = (w?.teamBrief?.sent || []).find((x) => x.rid === rid); if (!e) return false;
+    e.opens = (e.opens || 0) + 1; e.openedAt ||= now(t); e.lastAt = now(t); w.updatedAt = now(t); return true; };
   const view = (w, x) => { const tb = w.teamBrief; if (!tb) return null;
     const ov = tb.over || {};
     return { rev: tb.rev || tb.at || 0, docRev: w.doc?.rev || 0, title: ov.title || sentenceCase(tb.title, [tb.brand]), at: tb.at, ai: tb.ai, version: tb.version, stale: !!x && keyOf(w, x) !== tb.key, brand: tb.brand || '', mark: tb.mark || null,
-      recipient: tb.recipient || null, memo: { from: ov.from || tb.memo?.from || null, to: ov.to || tb.recipient?.name || RECIPIENTS[tb.recipient?.kind] || tb.memo?.to || 'Your team', due: String(ov.due || '').replace(/^(?:due|deadline)\s*:\s*/i, '') || w.doc?.plan?.when || null, ref: w.ticket || null },
+      recipient: tb.recipient || null, sent: sentOf(tb), memo: { from: ov.from || tb.memo?.from || null, to: ov.to || tb.recipient?.name || RECIPIENTS[tb.recipient?.kind] || tb.memo?.to || 'Your team', due: String(ov.due || '').replace(/^(?:due|deadline)\s*:\s*/i, '') || w.doc?.plan?.when || null, ref: w.ticket || null },
       sections: SECTIONS.map(([k, h]) => ({ k, h, t: tb.edits[k] ?? tb.auto[k] ?? '', edited: tb.edits[k] != null, locked: k === 'words' })), evidence: tb.evidence, creatives: tb.creatives, pdf: tb.pdf }; };
 
   /* the PDF: Brew's own type, the creatives large on the first page, then every section and the evidence */
@@ -203,6 +211,12 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
     on('POST', '/api/work/:wid/team-brief/to', async (b, t, p, q) => { const w = W(t, p.wid, b, q); if (!w) return { error: 'not found' }; if (!w.teamBrief) await build(t, w);
       const kind = Object.hasOwn(RECIPIENTS, b.kind) ? b.kind : 'team', email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(b.email || '').trim()) ? String(b.email).trim().slice(0, 120) : null, name = one(b.name || '', 60) || null;
       w.teamBrief.recipient = { kind, email, name }; if (w.teamBrief.over) delete w.teamBrief.over.to; w.teamBrief.pdf = null; touch(t, w); return { brief: view(w, null) }; });
+    /* the brief was sent (Gmail or a Mail draft opened with it): who to, which version, and the link that counts its opens */
+    on('POST', '/api/work/:wid/team-brief/sent', async (b, t, p, q) => { const w = W(t, p.wid, b, q); if (!w) return { error: 'not found' }; if (!w.teamBrief) await build(t, w);
+      const tb = w.teamBrief, r = tb.recipient || {}, rid = crypto.randomBytes(6).toString('base64url'), chId = q?.get?.('ch') || b?.ch || null;
+      (tb.sent ||= []).push({ rid, kind: r.kind || 'team', email: r.email || null, name: r.name || null, via: ['gmail', 'mail', 'share'].includes(b.via) ? b.via : null, at: now(t), version: tb.version ?? null, opens: 0, openedAt: null });
+      if (tb.sent.length > 12) tb.sent.splice(0, tb.sent.length - 12); touch(t, w);
+      return { brief: view(w, null), link: `${handoffPath(t, w)}?full=1&r=${rid}${chId ? `&ch=${encodeURIComponent(chId)}` : ''}` }; });
     on('POST', '/api/work/:wid/team-brief/ai', async (b, t, p, q) => { const w = W(t, p.wid, b, q); if (!w) return { error: 'not found' };
       try { return await aiEdit(t, w, { ask: b.ask, quote: b.quote }); } catch (e) { log.warn?.('[team brief ai]', e.message); return { error: 'That didn’t go through. Try again.' }; } });
     on('GET', '/api/work/:wid/team-brief', async (b, t, p, q) => { const w = W(t, p.wid, b, q); if (!w) return { error: 'not found' };
@@ -221,5 +235,5 @@ export function createTeamBrief({ onEdit = null, claudeTool, isMock = () => true
         w.teamBrief.pdf = { url: `gen/${name}`, name: fileName(v), bytes: buf.length, at: now(t) }; return { pdf: w.teamBrief.pdf, brief: view(w, x) }; }
       catch (e) { log.warn?.('[team brief pdf]', e.message); return { error: 'The PDF didn’t come together. Try again.' }; } });
   };
-  return { build, view, routes, pdfHtml, aiEdit, isBriefAsk, follow, forCh };
+  return { build, view, routes, pdfHtml, aiEdit, isBriefAsk, follow, forCh, opened };
 }

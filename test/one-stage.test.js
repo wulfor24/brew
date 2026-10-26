@@ -95,7 +95,8 @@ test('the draft view keeps the product its pictures show', async () => {
 });
 
 test('a made piece that needs a look says what, on the bar', () => {
-  assert.match(fn('stepBar'), /things to look at before you post it/); assert.match(fn('stepBar'), /Needs a look · \$\{esc\(String\(look\[0\]\)/); assert.match(fn('stepBar'), /Needs a fix · /); /* one line on the bar, the whole of it in the pop-up (26 Oct) */
+  /* 26 Oct redesign: the first problem itself on one line, red or amber, with its own fix and "+N more" */
+  assert.match(fn('stepBar'), /head = look\.length \? checkLine\(ch\)/); assert.match(fn('stepBar'), /<span class="ship-one is-red">/, 'Needs a fix says the first fix, in red');
 });
 
 test('a made Studio piece: the stage is the piece, Details holds the checklist, the bar offers the full one, Set-up is Studio only', () => {

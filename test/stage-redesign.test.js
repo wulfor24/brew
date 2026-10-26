@@ -41,3 +41,23 @@ test('header: the piece, a version switcher, the rest in the More menu; panel: n
   assert.match(fn('dlDot'), /'writing'[^\n]*'fix'[^\n]*'ready'/); assert.match(app, /<i class="dl-dot is-\$\{dot\}"/);
   assert.match(html, /<link rel="stylesheet" href="stage\.css">/); assert.ok(html.indexOf('href="stage.css"') > html.indexOf('href="jam-fit.css"'), 'loaded last');
 });
+
+test('point, then ask: a tapped part rides in the box, and the ask changes that part only', () => {
+  assert.match(app, /const partOf = \(el\) =>/); assert.match(app, /\$\{partChip\(\)\}<div class="it-row/);
+  assert.match(app, /keep every other word and setting as it is/);
+  assert.match(app, /if \(ch\.studio && PIC_PART\.test\(p\.label\)\) msg = m; else \{ body = \{ message: m, show:/, 'words go to the writer, a picture to the Studio set-up');
+  assert.match(fn('partOf'), /\[contenteditable="true"\]/, 'typing straight into the piece stays a free edit');
+});
+
+test('checks: one line over the button, red stops Send brief, each with its own fix', () => {
+  assert.match(fn('checkLine'), /is-red' : 'is-amber'/); assert.match(fn('checkLine'), /data-fix-one=/);
+  assert.match(app, /main = `<button class="btn btn-primary ship-go" data-fix-one="\$\{i\}">/, 'red: Fix it is the button, the brief waits');
+  assert.match(app, /if \(act === 'fix-one'\)/); assert.match(app, /fix: true, show: `Fix: \$\{x\.t\}`/);
+});
+
+test('Send brief says who it went to and whether they opened it', () => {
+  assert.match(app, /const link = await tbSent\('gmail'\)/); assert.match(app, /link = await tbSent\('mail'\)/);
+  assert.match(fn('sentHtml'), /Sent to \$\{esc\(x\.to\)\}/); assert.match(fn('sentHtml'), /changed since: send again/);
+  const fs0 = fs.readFileSync(new URL('../feed-service.js', import.meta.url), 'utf8');
+  assert.match(fs0, /if \(rid && !team && TB\?\.opened\?\.\(t, w, u\.searchParams\.get\('ch'\), rid\)\)/, 'opens by the brand’s own team don’t count');
+});
