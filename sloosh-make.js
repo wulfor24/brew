@@ -56,7 +56,9 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     const vid = mode !== 'image_gen'; let prompt = prompt0;
     if (mock()) { const first = frame || refs[0]?.src; const buf = Buffer.isBuffer(first) ? first : isFile(first) ? fs.readFileSync(first) : Buffer.from('mock');
       return Object.assign(Buffer.from(buf), { provider: 'sloosh', mock: true, model: route.model, ask: { mode, prompt, route, refs: refs.map((r) => ({ job: r.job, label: r.label })), frame: !!frame } }); }
-    const asset0 = async (src, role, label) => { const a = await finals.assetFor(slug, { url: await linkFor(src), label }); return { kind: a.kind, id: a.id, url: a.url, type: a.type || (vid && role === 'reference' && /\.mp4/.test(a.url) ? 'video' : 'image'), role }; };
+    /* no brand: imported straight, no per-brand cache */
+    const importOf = (url, label) => (slug ? finals.assetFor(slug, { url, label }) : sloosh.importAsset(url, label).then((x) => ({ ...refOf(x), url: linkOf(x) || url, type: /video/.test(String(x?.asset?.assetType || '')) ? 'video' : 'image' })));
+    const asset0 = async (src, role, label) => { const a = await importOf(await linkFor(src), label); return { kind: a.kind, id: a.id, url: a.url, type: a.type || (vid && role === 'reference' && /\.mp4/.test(a.url) ? 'video' : 'image'), role }; };
     /* a reference Sloosh won't take as it is (an SVG logo, a HEIC photo: asset_media_unsupported) is turned into a PNG first */
     const asset = async (src, role, label) => { try { return await asset0(src, role, label); }
       catch (e) { if (!toPng || !/unsupported|media|image or video/i.test(String(e.message))) throw e;

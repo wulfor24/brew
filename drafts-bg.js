@@ -326,7 +326,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     if (box.usd + cfg.videoUsd > box.cap + 1e-9) { d.note = cut(`${String(d.note || '').replace(/ The clip.*$/, '')} The clip waits for tomorrow's budget; here is the first frame.`, 220); return false; }
     if (!spent && !spend('video', slug)) { d.note = cut(`${String(d.note || '').replace(/ The clip.*$/, '')} The clip waits for today's video limit; here is the first frame.`, 220); return false; }
     const tag = `draftsbg-${slug}`, t0 = tregUsd.get(tag) || 0;
-    try { d.video = 'gen/' + await M.video(first.slice(4), d.motion || '');
+    try { d.video = 'gen/' + await M.video(first.slice(4), d.motion || '', { slug });
       if (d.script && spend('voice', slug)) { const au = await M.voice(d.script, '', 'Kore').catch(() => null); const both = au ? await M.mux(d.video.slice(4), au).catch(() => null) : null; if (both) d.video = 'gen/' + both; else if (au) d.audio = 'gen/' + au; }
       if (d.headline && launchBrowser && M.headClip) { const hv = await M.headClip(d.video.slice(4), { text: d.headline, small: d.headSmall || '' }).catch((e) => { log.warn?.('[drafts-bg] clip headline', slug, d.cardId, e.message); return null; }); if (hv) { d.video = 'gen/' + hv; d.clipHead = true; } }
       if (d.kind === 'video') d.as = 'video'; d.videoDay = today(now()); delete d.wants; delete d.clipRetry; delete d.err; d.note = String(d.note || '').replace(/ The clip.*$/, '');

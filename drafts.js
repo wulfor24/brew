@@ -312,10 +312,10 @@ export function createMakers({ geminiImage, treg, launchBrowser, zipBuffer, save
   };
 
   // Veo 3.1 Fast, 6 s at 1080p from the first frame: one handheld shot, hands may use the product, which keeps its shape and mark
-  const video = async (frameName, motion, { onStep = () => {}, ratio = '9:16' } = {}) => {
+  const video = async (frameName, motion, { onStep = () => {}, ratio = '9:16', slug = undefined, line = '' } = {}) => {
     const ff = await file(frameName); if (!ff) throw new Error('the first frame is missing'); const frame = fs.readFileSync(ff);
     const buf = await vertexVideo(frame, buildDraft({ kind: 'video', motion, ratio }).prompt,
-      { ratio, onWait: () => onStep('Animating it, about a minute more') });
+      { ratio, slug, line, onWait: () => onStep('Animating it, about a minute more') });
     const name = keyOf(frameName + (motion || '')) + '.mp4'; save(name, buf); return name;
   };
 
