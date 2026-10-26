@@ -14,6 +14,16 @@
 # never reads them), then gen/ and research-media/ are swept. Sign-in needs nothing stored: the first owner claims a
 # brand again when its read is done. Connected accounts are gone with the vault: the team connects them again.
 set -euo pipefail
+# BUCKET ERA: this edits gs://brew-prototype files. Since 25 Oct 2026 staging and production keep their data in Postgres
+# (STORAGE=pg), so these edits no longer reach what the site reads. It runs only with STORAGE=gcs (a revision back on the bucket).
+if [ "${STORAGE:-pg}" = pg ]; then
+  echo "$(basename "$0") is bucket-era: the sites keep their data in Postgres (STORAGE=pg) since 25 Oct 2026." >&2
+  echo "Use the brew-ops job instead: db/reset-brand.mjs (one brand at a time) or db/delete-brand.mjs, e.g." >&2
+  echo "  gcloud run jobs execute brew-ops --region=asia-south1 --args=db/reset-brand.mjs,--slug,<slug> --wait          (dry run)" >&2
+  echo "  gcloud run jobs execute brew-ops --region=asia-south1 --args=db/reset-brand.mjs,--slug,<slug>,--rev-n,<n>,--yes --wait" >&2
+  echo "See docs/production.md, 'Resetting and deleting a brand'. (STORAGE=gcs runs this script against the bucket.)" >&2
+  exit 3
+fi
 cd "$(dirname "$0")/.."
 B=gs://brew-prototype
 SLUGS=$(gcloud storage ls "$B/brands/" | sed -E 's#.*/brands/([^/]+)/$#\1#' | grep -v '^_' | grep -v '^brew-sample$' || true)

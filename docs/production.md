@@ -63,6 +63,52 @@ Restore test, 25 Oct 2026: the export was imported into a scratch database on `b
 4. `gcloud sql import sql brew-staging gs://brew-prod-backups/nightly/brew.sql.gz --database=restore_drill`.
 5. Count rows per brand in both databases (a one-off job inside the VPC), compare, then drop `restore_drill` and remove the temporary read access.
 
+## Resetting and deleting a brand
+
+Both sites keep their data in Postgres, so these run as Cloud Run jobs inside the VPC (the database has a private IP only).
+`tools/reset-brand.sh` and `tools/flush-live.sh` are bucket-era: with `STORAGE=pg` (the default) they print where to go and exit 3.
+Every tool below is a **dry run unless `--yes`** is given: it prints exactly what it would remove and removes nothing. Read the
+dry run first. Never run them from a laptop, and never on a design partner who did not ask.
+
+| Job | What it does | Keeps |
+|---|---|---|
+| `db/reset-jams.mjs` | Empties jams and remix state | everything else |
+| `db/reset-brand.mjs` | One brand back to a fresh first run: its rows under `brands/<slug>/`, workspaces, build progress, its jobs and bus messages, the brand folder's bucket files. A copy goes to `_deleted/brand-<slug>-<time>/` on staging. | connections, sign-in tokens, connected numbers (`private/connections.json`, `private/vault/`, `live/`, `private/live/`, `private/live-base.json`, `private/connected-ledger.json`), checked byte for byte afterwards |
+| `db/delete-brand.mjs` | A data request: all the brand's data, our stored tokens included, its `_deleted/` copies, counters, access log rows, every bucket version of its files, and made or research media no other row points at | one `data_deletions` row: counts by folder, when, who, the grants, what backups still hold |
+
+Both refuse the five design partners (`arata-in`, `nutrova-com`, `manaprojects-com`, `in-puma-com`, `scrubroom-in`) unless
+`--partner-override --confirm-slug <slug>` is given. A brand in `PROTECTED_CONNECTIONS` is never deleted: take it out of that setting first.
+Neither tool calls Shopify, Meta, Google, Slack or Klaviyo. A deletion prints the grants the brand must revoke itself; put them in the reply.
+
+**Staging** (`brew-ops`). `n` is the live revision number, from `shopos-feed-<n>-xxx`. The stop marker hides the brand while it goes, as for jams:
+
+```bash
+gcloud run jobs execute brew-ops --region=asia-south1 --args=db/reset-jams.mjs,--slug,<slug>,--rev-n,<n> --wait
+gcloud run jobs execute brew-ops --region=asia-south1 --args=db/reset-brand.mjs,--slug,<slug> --wait                     # dry run
+gcloud run jobs execute brew-ops --region=asia-south1 --args=db/reset-brand.mjs,--slug,<slug>,--rev-n,<n>,--yes --wait
+gcloud run jobs execute brew-ops --region=asia-south1 --args=db/delete-brand.mjs,--slug,<slug> --wait                    # dry run
+gcloud run jobs execute brew-ops --region=asia-south1 --args=db/delete-brand.mjs,--slug,<slug>,--rev-n,<n>,--yes,--request,<ref>,--operator,<name> --wait
+```
+
+Then check with `db/status.mjs` through `brew-ops` that Arata's connections still read.
+
+**Production** (`brew-prod-ops`; production sets `RETIRE_OFF=1`, so there is no stop marker: the job removes, waits and sweeps
+three times for anything an instance wrote back, then verifies). The `data_deletions` table arrives with the next promote
+(migration 010). Make the job once from the promoted image, then run it:
+
+```bash
+gcloud run jobs deploy brew-prod-ops --image=<the image brew-web runs> --region=asia-south1 --service-account=brew-prod-runtime@<project>.iam.gserviceaccount.com \
+  --network=default --subnet=default --vpc-egress=all-traffic --command=node \
+  --set-env-vars="^|^STORAGE=pg|ENV=production|RETIRE_OFF=1|RESEARCH_BUCKET=brew-prod|PROTECTED_CONNECTIONS=arata-in" \
+  --set-secrets="DATABASE_URL=BREW_PROD_DATABASE_URL:latest" --max-retries=0 --task-timeout=1800
+gcloud run jobs execute brew-prod-ops --region=asia-south1 --args=db/delete-brand.mjs,--slug,<slug> --wait               # dry run
+gcloud run jobs execute brew-prod-ops --region=asia-south1 --args=db/delete-brand.mjs,--slug,<slug>,--yes,--request,<ref>,--operator,<name> --wait
+```
+
+What still holds a deleted brand for a while, to say in the reply: point-in-time logs (7 days), daily backups (14 kept), the
+nightly export (overwritten nightly) and the bucket's 7-day soft delete. A `data_deletions` row with `done_at` empty did not
+finish: run the deletion again.
+
 ## Alerts
 
 - **Cloud Monitoring** emails param@ and hello@. Uptime: `/`, `/healthz/ready`, `/api/config`. Policies: server errors, many slow requests, worker lost its lease, worker not running, a release job failed, database disk above 85%, connections above 160, CPU above 80%, export failed, unhandled errors, site down.
