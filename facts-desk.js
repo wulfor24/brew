@@ -400,9 +400,21 @@ export const dayLine = (at, now = Date.now()) => { const t = typeof at === 'numb
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(d.getUTCFullYear() !== new Date(now).getUTCFullYear() ? { year: 'numeric' } : {}), timeZone: 'UTC' }); };
 /* a label with a test note in brackets ("Time from product page to cart (headless, one run)") reads without it */
 const plainLabel = (l) => String(dejargon(l) || '').replace(/\s*\((?=[^)]*\b(?:headless|one run|runs?|render\w*|crawl\w*|api|json|scrap\w*|sandbox|pixel|regex|ledger|sample)\b)[^)]*\)/gi, '').trim();
+/* a date inside a value reads as people say it (QV round 2, N4: "Series A, $4 million, 2024-12", "Seal Deal Curl Gel - 50 ml, 2026-10-22") */
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const dateWordsIn = (s) => String(s ?? '').replace(/\b(\d{4})-(\d\d)-(\d\d)(?:T[\d:.]+Z?)?\b/g, (m, y, mo, d) => (+mo >= 1 && +mo <= 12 ? `${+d} ${MON[+mo - 1]} ${y}` : m)).replace(/\b(\d{4})-(\d\d)\b(?!-)/g, (m, y, mo) => (+mo >= 1 && +mo <= 12 && +y > 1900 ? `${MON[+mo - 1]} ${y}` : m));
+/* one founding year (QV round 2, 26 Oct: Arata's Brand Book said 2016, "another source" 2019 and "since 2018"): of the sources that state
+   one, the brand's own site first, then the year most sources agree on, then the earliest read; the others stay in the ledger */
+export function bestFounded(rows = [], host = '') {
+  const fs = rows.filter((r) => /^company\.founded(?:\.\d+)?$/.test(r.key || '')).map((r) => ({ r, y: (String(r.v).match(/\b(1[89]|20)\d{2}\b/) || [])[0] || null })).filter((x) => x.y);
+  if (!fs.length) return null; const own = hostOf(host), votes = fs.reduce((m, x) => m.set(x.y, (m.get(x.y) || 0) + 1), new Map());
+  const score = (x) => (own && hostOf(x.r.src || '') === own ? 100 : 0) + votes.get(x.y) * 10 - fs.indexOf(x) * 0.1;
+  const best = [...fs].sort((a, b) => score(b) - score(a))[0]; return { ...best.r, label: 'Founded', v: best.y };
+}
 export function bookNumbers(truth = {}, { max = 40, host = '', now = Date.now() } = {}) {
-  const rows = Object.entries(truth || {}).filter(([, f]) => SHOWN(f) && f.v != null && String(f.v).length <= 160 && !/^(price|mrp)\./.test(f.key || '') && /\d/.test(String(f.v)))
-    .map(([k, f]) => ({ key: f.key || k, group: groupOf(k, f), label: plainLabel(f.label), v: String(f.v).trim().replace(/[,;·\s]+$/, ''), src: f.src || null, at: f.at || null, from: srcLine(f.src, host), day: dayLine(f.at, now), ...(f.connected ? { connected: f.connected } : {}), ...(f.stale ? { stale: true } : {}) }));
+  let rows = Object.entries(truth || {}).filter(([, f]) => SHOWN(f) && f.v != null && String(f.v).length <= 160 && !/^(price|mrp)\./.test(f.key || '') && /\d/.test(String(f.v)))
+    .map(([k, f]) => ({ key: f.key || k, group: groupOf(k, f), label: plainLabel(f.label).replace(/\s*\((?:published|release|launch) date\)/i, ''), v: dateWordsIn(String(f.v).trim().replace(/[,;·\s]+$/, '')), src: f.src || null, at: f.at || null, from: srcLine(f.src, host), day: dayLine(f.at, now), ...(f.connected ? { connected: f.connected } : {}), ...(f.stale ? { stale: true } : {}) }));
   const order = new Map(GROUPS.map(([g], i) => [g, g === 'accounts' ? -1 : i]));
+  { const one = bestFounded(rows, host); if (one) { const i = rows.findIndex((r) => /^company\.founded(?:\.\d+)?$/.test(r.key || '')); const rest = rows.filter((r) => !/^company\.founded(?:\.\d+)?$/.test(r.key || '')); rest.splice(Math.max(0, i), 0, one); rows = rest; } }
   return rows.sort((a, b) => (order.get(a.group) ?? 9) - (order.get(b.group) ?? 9)).slice(0, max);
 }

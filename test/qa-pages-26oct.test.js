@@ -136,7 +136,7 @@ test('rival logos: a Facebook CDN link’s expiry is read, a dead one is never s
   assert.equal(picDead('research/abc.jpg'), false); assert.equal(fbExpiry('https://cdn.shopify.com/x.jpg?oe=6AE30BEC'), null);
   const src = read('research.js'), fsrc = read('feed-service.js');
   assert.match(src, /avatar = await saveMedia\(b, imgExt\(b\)\)/, 'a fresh read saves the logo');
-  assert.match(src, /async function healLogos\(\)/); assert.match(src, /healClips\(\)\.catch\(\(\) => \{\}\); healLogos\(\)\.catch/);
+  assert.match(src, /async function healLogos\(\)/); assert.match(src, /if \(!isLeader\(\)\) return; healLogos\(\)\.catch\(\(\) => \{\}\); if \(movedAway/, 'logos heal before the moved-brand return (QV round 2)');
   assert.match(fsrc, /avatar: meta\.avatar && !picDead\(meta\.avatar\) \? meta\.avatar : null/);
 });
 

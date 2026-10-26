@@ -30,6 +30,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { matchProduct, cardProduct, sceneOf } from './product-match.js';
+import { aiTextsOf, dropAiQuotes, QUOTE_RULE } from './quote-guard.js'; // only real customers are quoted, never an AI answer (QV round 2, 26 Oct)
 import { draftPrompt, imagePrompt, hookBlock, smallOf, DRAFT_SCHEMA, DRAFT_RATIOS, createMakers, HEAD_V } from './drafts.js';
 import { cardValue } from './value.js'; // what a card is worth doing: the order drafts are made in
 import { emailHtml, whatsappHtml, pageHtml, collectionHtml } from './draft-mocks.js';
@@ -129,15 +130,27 @@ export function cardBriefText(c = {}, { moveDocs = {} } = {}) {
 const undash = (s) => String(s || '').replace(/\s*—\s*/g, ', ').replace(/(\s)–(\s)/g, '$1-$2').replace(/,\s*,/g, ',');
 /* a line said twice in a draft reads once ("• The biggest plus is how light these shoes are." twice under a PUMA card), and the plan's
    numbering never reaches the brand's words ("Edit this post 21 template": QV P1-17, 26 Oct) */
+/* the plan's number inside a sentence for the brand ("Edit this post 21 template", "this Play 21 template"): the template is just the template */
+export const noPlanNo = (s) => (typeof s === 'string' ? s.replace(/\b(this|the|that)\s+(?:post|play|move|template)\s+\d{1,4}\s+template\b/gi, '$1 template').replace(/\b(this|the|that)\s+(?:post|play|move)\s+\d{1,4}\s+(post|ad|static|carousel|reel|video)\b/gi, '$1 $2') : s);
 export const onceLines = (s) => { const seen = new Set(); return String(s ?? '').split('\n').filter((l) => { const k = l.replace(/^[\s•*\-–\d.)]+/, '').trim().toLowerCase(); if (k.length < 12) return true; if (seen.has(k)) return false; seen.add(k); return true; }).join('\n')
   .replace(/\b(this|the|that)\s+(?:post|play|move|template)\s+\d{1,4}\s+template\b/gi, '$1 template'); };
+/* the copy's first line said again under its own headline reads once (QV round 2: "• The biggest plus is how light these shoes are." as the
+   headline and the first body line of a PUMA video ad) */
+export const notHeadline = (copy, headline) => { const k = (x) => String(x || '').replace(/^[\s•*\-–\d.)]+/, '').replace(/[.!?\s]+$/, '').trim().toLowerCase(); const h = k(headline); if (h.length < 8) return copy;
+  const ls = String(copy ?? '').split('\n'), i = ls.findIndex((l) => l.trim()); return i >= 0 && k(ls[i]) === h ? ls.filter((_, j) => j !== i).join('\n').replace(/^\s*\n/, '') : copy; };
 /* a draft belongs under its card when the product it shows is the one the card is about: the product's own words are in the card's
    (title, line, rows, asset line, how-steps), or the card names no product and shares a telling word with it. A draft about another
    product ("Honeymoon Travel Pack" under "Set automated budget rules to protect hero inventory") is not shown on the card (QV P1-17) */
 const STOPW = new Set('with your from this that their them they into over more most only also about after before than then what when will just pack packs combo set kit size each pair free best ever all new'.split(' '));
 const tell = (s, drop = new Set()) => new Set((String(s || '').toLowerCase().match(/[a-z][a-z0-9]{3,}/g) || []).map((w) => (w.length > 4 && /s$/.test(w) && !/ss$/.test(w) ? w.slice(0, -1) : w)).filter((w) => !STOPW.has(w) && !drop.has(w)));
+/* the product a draft is about when it saved none: a catalog product its title or headline names, else a product-like name in its
+   title ("Email: Honeymoon Travel Pack": every word capitalised, 2 to 6 words). QV round 2, 26 Oct: the P1-17 check returned "fits" for a
+   draft with no product, so the honeymoon email stayed under the budget-rules card */
+export const draftName = (d, catalog = [], brand = '') => { if (d?.product) return String(d.product).trim(); const t = String(d?.title || '').replace(/^[^:]{1,24}:\s*/, '').trim();
+  const named = catalog.length ? cardProduct({ title: `${t} ${d?.headline || ''}` }, catalog, { brand, byNameOnly: true }) : null; if (named?.t) return named.t;
+  const ws = t.split(/\s+/).filter(Boolean); return ws.length >= 2 && ws.length <= 6 && ws.every((w) => /^[A-Z0-9&'’(-]/.test(w)) && !/[.!?]$/.test(t) ? t : ''; };
 export function draftFits(d, c = {}, { catalog = [], brand = '' } = {}) {
-  const name = String(d?.product || '').trim(); if (!name || !c) return true;
+  const name = draftName(d, catalog, brand); if (!name || !c) return true;
   const drop = tell(brand), pw = tell(name, drop); if (!pw.size) return true;
   const cw = tell([c.title, c.sub, ...(c.rows || []).flat(), c.make?.pieces, ...(c.detail?.how || [])].filter((x) => typeof x === 'string').join(' '), drop);
   const named = catalog.length ? cardProduct(c, catalog, { brand, byNameOnly: true }) : null;
@@ -149,7 +162,7 @@ export function draftView(d, c = null) {
   if (!images.length && !d.video) return null;
   const fallback = hasCode(d.copy) ? null : [d.photo, ...(isRivalCard(c) ? [] : [...(c?.images || []), c?.img])].find((x) => x && typeof x === 'string' && !images.includes(x) && !isResearchImage(x)) || null; /* never a rival's poster under our draft */
   const bare = !!d.photoOnly && !d.render && !d.video && !d.slides?.length;
-  return { as: d.as, kind: d.kind || d.as, images, video: d.video || null, poster: d.video ? d.poster || d.render || d.image || images[0] || null : null, ratio: d.video && d.clipStill ? '9:16' : d.ratio || null, title: undash(d.title || ''), copy: cut(undash(onceLines(String(d.copy || '')).replace(/[#*_>`]/g, '')), 240), ...(hasCode(d.copy) ? { code: String(d.copy).slice(0, 6000) } : {}) /* the jam's stage shows code as code, not as the mock's picture */,
+  return { as: d.as, kind: d.kind || d.as, images, video: d.video || null, poster: d.video ? d.poster || d.render || d.image || images[0] || null : null, ratio: d.video && d.clipStill ? '9:16' : d.ratio || null, title: undash(d.title || ''), copy: cut(undash(notHeadline(onceLines(String(d.copy || '')), d.headline).replace(/[#*_>`]/g, '')), 240), ...(hasCode(d.copy) ? { code: String(d.copy).slice(0, 6000) } : {}) /* the jam's stage shows code as code, not as the mock's picture */,
     ...(d.product ? { product: d.product } : {}) /* the product its pictures show: the jam's Studio sets up the same one */, ...(d.headline ? { headline: undash(d.headline) } : {}), ...(d.render && d.headline && ['image', 'video'].includes(d.kind || d.as) ? { wordsIn: d.render } /* the headline is already set in this picture: the page never lays it on again */ : {}), ...(fallback ? { fallback } : {}), ...(d.imgRetry || bare ? { remaking: true } : {}), ...(bare ? { photoOnly: true } : {}) };
 }
 
@@ -237,10 +250,11 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     let mem = ''; try { mem = memory ? await memory.promptBlock(slug, { query: `${c.title} ${c.sub || ''}`, agent: 'creative', name: p.name }) : ''; } catch {}
     const hooks = hookBlock(p), scenes = o.cache ? scenesOf(o.cache, c.id) : [], take = o.take ? TAKES[(o.take + (+moveOf(c) || 0)) % TAKES.length] : '';
     const card = `${p.factBrief || ''}\n\nCard (by the ${c.agent} agent, from ${c.src || 'the move documents'}):\nTitle: ${c.title}\nBody: ${c.sub || ''}\n${(c.rows || []).map((r) => `- ${r[0]}: ${r[1]}`).join('\n')}\nThe person reading is the founder.${hooks ? `\n\n${hooks}` : ''}${scenes.length ? `\n\nSCENES ALREADY IN THIS FEED (use another setting, person and angle):\n${scenes.map((v) => `- ${v}`).join('\n')}` : ''}`;
-    const ask = [ASK[kind] || '', take ? `This is today's new take on a draft the team has seen: build the visual as ${take}, with a new headline.` : ''].filter(Boolean).join(' ');
+    const ask = [ASK[kind] || '', QUOTE_RULE, take ? `This is today's new take on a draft the team has seen: build the visual as ${take}, with a new headline.` : ''].filter(Boolean).join(' ');
     const prompt = draftPrompt({ card, role: c.agent === 'brew' ? 'creative' : c.agent || 'creative', brief: cardBriefText(c, { moveDocs: p.moveDocs }), mem, as, ask });
     const r = await ai.call({ model: 'sonnet', prompt, schema: DRAFT_SCHEMA, max: 4500, tag: 'draft-bg', ...(p.bookWords ? { system: `You write for ${p.name || 'the brand'}. Follow its Brand Book in every word:\n${p.bookWords}` } : {}) }); box.usd += r.usd || 0; /* 3000 was hit once: a plan cut off mid-JSON */
     const j = r.json || {}; j.as = as;
+    { const kept = dropAiQuotes(j, aiTextsOf({ profile: p.profile })); if (kept !== j) { log.info?.('[drafts-bg] dropped an AI answer quoted as a customer', c.id); Object.assign(j, kept); if (!kept.headline) delete j.headline; } }
     const cut0 = cleanDraftClaims(j, packSource(p, c)); if (cut0.length) log.info?.('[drafts-bg] dropped unbacked claims', c.id, cut0.map((f) => f.phrase).join(', ')); /* QA-25: a code, guarantee or timed result the store never made never reaches a first draft */
     /* a clip is 9:16 from its first frame (Veo takes 9:16 or 16:9); Stories too */
     const ratio = kind === 'stories' || kind === 'video' ? '9:16' : DRAFT_RATIOS.includes(j.ratio) && j.ratio !== '16:9' ? j.ratio : c.make?.format === 'reel' ? '9:16' : '4:5';

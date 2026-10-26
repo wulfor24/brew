@@ -119,6 +119,7 @@
 /* the product shelf (3.3) */
 .shf { border: 1px solid var(--line, #e5e5e5); border-radius: 16px; padding: 14px; display: grid; gap: 10px; margin-bottom: 12px; }
 .shf-h { display: flex; gap: 12px; align-items: center; } .shf-h img { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; }
+.shf-ini { width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center; flex: none; background: var(--surface-2, #f1f0ec); color: var(--fg-2, #444); font-weight: 600; } /* a rival with no logo (26 Oct) */
 .shf-h div { display: grid; flex: 1; min-width: 0; } .shf-h small { color: var(--muted, #6b6b6b); }
 .shf-stack { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
 .shf-a { flex: 0 0 120px; display: grid; gap: 4px; position: relative; text-decoration: none; color: inherit; }

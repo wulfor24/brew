@@ -4,7 +4,9 @@
 import { PRODUCT_NAME, productNameScript } from './product-name.js';
 import { makePhotoFile } from './safe-path.js';
 import { createJamMail } from './jam-mail.js';
-import { configureGen, saveGen, genFile, genFlush, researchFile } from './gen-store.js';
+import { configureGen, saveGen, genFile, genFlush, researchFile, saveResearch } from './gen-store.js';
+import { createCdnKeep, keepRes } from './cdn-keep.js'; // Facebook/Instagram CDN pictures served from our storage, dropped once expired (26 Oct)
+import { possBody } from './served-words.js'; // "Mana Projects’s" reads "Mana Projects’" in every JSON answer (26 Oct)
 import { lighter } from './img-light.js'; // light copies of big pictures for the page (26 Oct)
 import http from 'node:http';
 import { safeFetch } from './reader/util.js'; // photo links reach only the public internet
@@ -381,6 +383,8 @@ const alerts = createAlerts({ treg, log: console, shared: COUNTERS, store: { get
     if (!r.ok) throw new Error(`resend ${r.status}`); } });
 alerts.start();
 configureGen({ dir: GEN, researchDir: path.join(PUB, 'research'), bucket: BUCKET, gToken, log: console });
+/* every fbcdn/cdninstagram link any answer carries: our copy once made, copied in the background while it loads, dropped once expired (26 Oct) */
+const CDN = createCdnKeep({ has: async (n) => !!(await researchFile(n)), save: saveResearch, log: console });
 const store = createStore({ dir: path.join(ROOT, '.tenants'), bucket: BUCKET, gToken, objects: OBJ });
 // each brand gets its own research (story rings) and live watchers. A generated brand gets them once its read is in
 // (they need its rivals, search terms, questions and country); until then a quiet stand-in answers.
@@ -407,6 +411,8 @@ const attach = (p) => {
       live: createLiveWatch({ ROOT, anthropic, claudeParams: params, textOf, gToken, brand: p, tregClient: treg, objects: OBJ, namePass: (as) => namedPass(p, as) }) };
     INST.set(p.slug, x);
     x.research.start().catch((e) => console.error('[research] start', p.slug, e.message)); x.live.start().catch((e) => console.error('[live] start', p.slug, e.message));
+    /* CDN pictures in the saved reads (rival logos, ad posters, tagged posts) are copied on boot, before anyone opens the page (26 Oct) */
+    x.research.ready().then(() => { const n = CDN.scan(x.research.get()) + CDN.scan(x.live.get?.()); if (n) console.log(`[cdn-keep] ${p.slug}: ${n} CDN links queued`); }).catch(() => {});
     { const need = x.research.need; x.research.need = (k) => { if (isLeader()) return need(k); BUS?.publish('research.need', { slug: p.slug, k }); return false; }; } /* asked of the leader */
     p.research = x.research; p.live = x.live; feedSvc?.wire(p);
     // the catalog watch saw something new: the builder decides if the moves need a fresh look
@@ -1048,6 +1054,7 @@ const demoRoutes = DEMO ? createDemoRoutes({ packs, builder, auth, connectors, r
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   zipRes(req, res);
+  keepRes(res, CDN, possBody); /* no answer serves an expiring Facebook/Instagram CDN link, nor "Mana Projects’s" (26 Oct) */
   res.once('finish', () => alerts.response(res.statusCode)); /* the 5xx rate for the ops alerts */
   retire.claim(); // traffic reaches this revision: it is the live one
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => timed(req, res, u, () => serve(req, res, u))); }

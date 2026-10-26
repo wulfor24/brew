@@ -88,7 +88,8 @@ export function mountBrandBook({ on, BOOK, GP, reqOf, meOf = () => null, factsOf
     const raw = await BOOK.load(slug), v = BOOK.view(raw, { scope: member(t) ? 'member' : 'share' });
     const building = builder?.bookBuilding ? !!(await builder.bookBuilding(slug).catch(() => false)) : !!builder?.book?.running?.(slug), stale = builder?.book ? await builder.book.stale(slug).catch(() => false) : false;
     if (stale && !building && !isMock()) builder.bookAfter?.(slug); /* a missing or older read layer is written now, in the background */
-    { const tr = factsOf(t); if (tr) v.numbers = bookNumbers(tr, { host: v.host }); } /* the numbers chapter: today's fact sheet, this viewer's truth (a member's connected accounts) */
+    { const tr = factsOf(t); if (tr) v.numbers = bookNumbers(tr, { host: v.host }); }
+    { const fy = (v.numbers || []).find((x) => x.key && /^company\.founded/.test(x.key)); if (fy && v.story && typeof v.story === 'object') v.story = { ...v.story, founded: fy.v }; } /* "since …" says the same one founding year as the numbers (QV round 2, 26 Oct) */ /* the numbers chapter: today's fact sheet, this viewer's truth (a member's connected accounts) */
     return { book: v, building: building || stale, canEdit: member(t), readiness: BOOK.readiness(v, { products: (v.products?.heroes || []).length }),
       options: { comfort: COMFORT, narrators: NARRATORS, moods: MOODS, voices: VOICES, families: REF_FAMILIES, groups: GROUPS, channels: CHANNELS }, share: { page: `/${slug}/brand`, md: `/${slug}/brand.md`, json: `/${slug}/brand.json`, llms: `/${slug}/llms.txt`, zip: `/${slug}/brand-kit.zip`, pdf: `/${slug}/brand.pdf` } };
   };

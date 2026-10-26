@@ -14,8 +14,14 @@ export function stockSay(text, rows) {
   return text.replace(LOW_SAID, (m, subj, verb, said) => {
     const lead = /^\s*/.exec(subj)[0], names = subj.trim().split(/\s*,\s*(?:and\s+)?|\s+and\s+|\s*&\s*/).filter(Boolean), found = names.map((n) => ({ n, r: rowOf(n) }));
     if (!found.some((x) => x.r?.sold)) return m; /* the sentence names no sold-out row: it stands */
-    const sold = found.filter((x) => x.r?.sold).map((x) => x.n), low = found.filter((x) => !x.r?.sold).map((x) => x.n);
-    if (!low.length) low.push(...st.filter((r) => r.low && !found.some((x) => x.r === r)).slice(0, 2).map((r) => r.name)); /* the low ones the rows list, as the card shows them */
-    const be = (xs) => (xs.length > 1 ? 'are' : 'is');
+    /* "3 other items" is counted from the rows the sentence did not name (QV round 2, 26 Oct: "3 other items is low on stock" when two of
+       the three were sold out): the sold-out ones join "sold out", the rest are "N other item(s)" with the verb that agrees */
+    const COUNT = /^(\d+|two|three|four|five|six|seven|eight|nine|ten)\s+(?:other|more)\s+(?:items?|products?|sizes?|variants?|pieces?)$/i, counted = found.filter((x) => !x.r && COUNT.test(x.n.trim()));
+    const rest = st.filter((r) => !found.some((x) => x.r === r)), restSold = rest.filter((r) => r.sold).length, restLow = rest.filter((r) => !r.sold && r.low).length;
+    const sold = found.filter((x) => x.r?.sold).map((x) => x.n), low = found.filter((x) => !x.r?.sold && !(counted.length && counted.includes(x))).map((x) => x.n);
+    if (counted.length && rest.length) { if (restSold) sold.push(`${restSold} more`); if (restLow) low.push(`${restLow} other item${restLow === 1 ? '' : 's'}`); }
+    else if (counted.length) low.push(...counted.map((x) => x.n));
+    if (!low.length && !counted.length) low.push(...st.filter((r) => r.low && !found.some((x) => x.r === r)).slice(0, 2).map((r) => r.name)); /* the low ones the rows list, as the card shows them */
+    const be = (xs) => (xs.length > 1 || /^(?:[2-9]|\d{2,}|two|three|four|five|six|seven|eight|nine|ten)\b/i.test(String(xs[0] || '').trim()) ? 'are' : 'is');
     return `${lead}${andList(sold)} ${be(sold)} sold out${low.length ? `; ${andList(low)} ${be(low)} ${said}` : ''}`; });
 }

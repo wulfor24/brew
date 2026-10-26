@@ -158,7 +158,7 @@ test('several instances: a v1 job running on another instance is never called cu
 
 test('the Plays page says plays: its title, counts and the out-of-date banner (3.10)', () => {
   const i = app.indexOf('/* ---------- The moves: every plan Brew wrote'), seg = app.slice(i, app.indexOf('\n  /* ----------', i + 50));
-  assert.match(seg, /<h2>The plays<\/h2>/); assert.match(seg, /\} plays for \$\{esc\(B\.brand\.name\)\}/); assert.match(seg, /play\$\{nStale === 1 \? ' is' : 's are'\} out of date/);
+  assert.match(seg, /<h2>The plays<\/h2>/); assert.match(seg, /\} plays for \$\{esc\(B\.brand\.name\)\}/); assert.ok(!/class=\"up-banner\"/.test(seg), 'no out-of-date banner on the plays page, staff included (QV round 2, 26 Oct)');
   assert.ok(!/<h2>The moves<\/h2>|\} moves for \$\{esc/.test(seg));
 });
 

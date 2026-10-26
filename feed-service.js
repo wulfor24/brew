@@ -26,6 +26,9 @@ import { moneyParse, safeLocale, viewerPack } from './brand-pack.js';
 import { liveTruth, replacedKeys } from './facts-desk.js'; // one truth per viewer: the public sheet, or a member's with their live connected facts over
 import { allowedFrom, unbacked, numbersIn, wholeTwin } from './fact-gate.js';
 import { createRemix } from './remix.js';
+import { aiRingNow, aiFact, healAiCard } from './ai-count.js';
+import { aiTextsOf, dropAiQuotes } from './quote-guard.js';
+import { ownSayIn, outInRows } from './own-say.js'; // "while we have none" beside 10 live ads, "zero out-of-stock" beside an out-of-stock row: said again from the counts (QV round 2) // a draft never quotes an AI answer as a customer (QV round 2, 26 Oct) // one AI-answers count per brand, the newest single check, recounted into saved cards (QV round 2, 26 Oct)
 import { eventsFor, healDaysIn } from './day-count.js'; /* a saved "Diwali is 14 days away" reads today's count, in the brand's zone (26 Oct) */
 import { numeralsCard } from './num-words.js'; /* "ten fifteen am", "November eighth", "forty-one reviews" read in numerals (26 Oct) */
 import { oneVoice } from './card-voice.js';
@@ -55,7 +58,7 @@ import { cardProduct, cardScene, matchProduct, pricedProduct } from './product-m
 import { LOOKS_V } from './draft-quality.js'; // watcher pictures saved before the look check are swapped for the real product photo (housekeep)
 import { gapFix } from './ai-gap.js';
 import { newsForUs, newsCta, adForUs } from './for-us.js'; // every rival and news story ends on one line for the brand (QA FEED-ARV-10) // the AI-answers gap card's own fix (QA FEED-ARV-09)
-import { seedDrafts, draftFor, draftView, draftFits } from './drafts-bg.js';
+import { seedDrafts, draftFor, draftView, draftFits, noPlanNo } from './drafts-bg.js';
 import { planFor, planPrompt, PLAN_V, isBatchCard } from './card-plan.js';
 import { createMoves } from './moves.js';
 import { rulesFor, addLesson, stepOnce, lessonsFor, promptBlock, outcome, memoryBlock } from './learn.js';
@@ -306,6 +309,20 @@ export function createFeedService(o) {
     if (o.calendarOf && sl && (!hit || Date.now() - hit.at > 3600e3)) { hit = { at: Date.now(), evs: hit?.evs || [] }; CALS.set(sl, hit); Promise.resolve(o.calendarOf(sl)).then((evs) => { if (Array.isArray(evs)) CALS.set(sl, { at: Date.now(), evs }); }).catch(() => {}); }
     const at = now(t), k = `${sl}|${Math.floor(at / 36e5)}|${hit?.at || 0}`; let e = EVS.get(sl); if (e?.k !== k) { e = { k, evs: eventsFor(cfg, at, hit?.evs || []) }; EVS.set(sl, e); }
     return { evs: e.evs, at, zone: cfg }; };
+  /* the AI-answers count Store health shows (the newest of the read's ring and the weekly run), once a minute per brand */
+  const AIF = new Map();
+  const aiFactNow = (t) => { try { const b = t ? brandOfT(t) : B(), sl = b?.slug || ''; const hit = AIF.get(sl); if (hit && Date.now() - hit.at < 60e3) return hit.f;
+    const f = aiFact(aiRingNow((b?.seed?.health?.rings || []).find((r) => r?.k === 'AI answers'), sl === B()?.slug ? aiRingWeekly() : null)); AIF.set(sl, { at: Date.now(), f }); return f; } catch { return null; } };
+  /* the AI answers a brand's checks read, to keep them out of drafts as customer quotes (quote-guard.js); once a minute per brand */
+  const AIT = new Map();
+  const aiTextsNow = (t) => { try { const b = t ? brandOfT(t) : B(), sl = b?.slug || ''; const hit = AIT.get(sl); if (hit && Date.now() - hit.at < 60e3) return hit.v;
+    const v = aiTextsOf({ profile: b?.profile, runs: sl === B()?.slug ? live?.get?.()?.visibility?.runs || [] : [] }); AIT.set(sl, { at: Date.now(), v }); return v; } catch { return []; } };
+  /* the brand's own counts the words must agree with: live ads (the one count, pack-numbers ownAds) and products out of stock (the catalog
+     watch, or the most a card's rows state); once a minute per workspace */
+  const OWNC = new Map();
+  const ownNow = (t) => { try { const k = t?.id || B()?.slug || ''; const hit = OWNC.get(k); if (hit && Date.now() - hit.at < 60e3) return hit.v; const b = t ? brandOfT(t) : B();
+    const its = (b?.slug === B()?.slug ? live?.get?.()?.catalog?.items : null) || [], cards = t ? [...t.cards.values()] : [];
+    const v = { ads: b?.numbers?.ownAds?.n ?? null, out: Math.max(its.filter((i) => i?.inStock === false).length, ...cards.map((c) => outInRows(c?.rows)), 0) }; OWNC.set(k, { at: Date.now(), v }); return v; } catch { return { ads: null, out: 0 }; } };
   const healCount = (x, t) => { try { const d = daysOf(t); return healDaysIn(x, d.evs, d.at, d.zone); } catch (e) { log.warn?.('[days]', e.message); return x; } };
   const brandTenants = (b) => [...tenants.values()].filter((t) => (t.brandId || DEFAULT_BRAND) === b.slug);
   /* a move card (id mNN-i) remembers the version of the move it was made from (mv), so a workspace that was not open when its move
@@ -803,14 +820,25 @@ export function createFeedService(o) {
        go before the feed shows it, as on every other card (QV 25 Oct: "entirely dermat-approved" showed in a founder post's preview);
        a rival's ad and a shopper's thread stay quoted as they are, and the post's evidence keeps its source wording */
     if (c0.post && !['ad', 'viral'].includes(c0.research?.kind) && !/^(?:r-|r-ad-|heard-)/.test(String(c0.id || ''))) try { const src = packSource(packFor(t)), post = JSON.parse(JSON.stringify(rest.post || c0.post));
-      checkCopyIn(post, src, { skip: /^(id|url|src|img|image|images|key|handle|at|by|from|kind|state|status|evidence|moves|refs|sources?|quote|author|platform|where)$/i }); rest.post = post; } catch {} const dv0 = draftView(draftFor(c, B()?.firstDrafts), c), dv = dv0 && draftFits(dv0, c, { catalog: (t ? brandOfT(t) : B())?.catalog || [], brand: BN() }) ? dv0 : null; /* a draft about another product than the card's is not shown under it (drafts-bg draftFits, QV P1-17) */ if (dv) { const said = { headline: dv.headline, copy: dv.copy }; try { cleanDraftClaims(said, packSource(packFor(t))); } catch {} rest.draft = { ...dv, headline: said.headline, copy: said.copy, ...(dv.title ? { title: dejargon(dv.title) } : {}) }; if (!said.headline) delete rest.draft.headline; } /* a draft saved before the claims check shows no unbacked claim under the card (QA-25) */ /* the draft's own name in plain words ("Saaya Blue PDP Comfort FAQ Section") */ /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldSeen(t) && toldCard(c)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ { const fr = cardFrom(c0, (t ? brandOfT(t) : B())?.moveDocs); if (fr) rest.from = fr; else delete rest.from; } /* where the card came from, in plain words (card-from.js), worked out on every serve so saved cards heal */ { const tc = (x) => (typeof x === 'string' ? x.replace(/\bRs\.?\s?(?=\d)/g, '₹').replace(/([₹$£€])(\d{1,3}(?:,\d{2,3})+|\d{3,})\.(\d{2})\b/g, (m, c, n, p) => `${c}${Math.round(+String(n).replace(/,/g, '') + +p / 100).toLocaleString(c === '₹' ? 'en-IN' : 'en-US')}`) /* ₹927.96 reads ₹928, Rs 285 reads ₹285 */.replace(/\s*\((?:exact (?:figures?|numbers?|dates?) )?(?:still )?to (?:be )?confirm(?:ed)?\)/gi, '').replace(/,?\s*(?:still )?to confirm\b\.?$/i, ' (not checked yet)').replace(/^to confirm$/i, 'Not checked yet') : x); rest.title = tc(rest.title); rest.sub = tc(rest.sub); if (typeof rest.sub === 'string') rest.sub = rest.sub.replace(/\b(your|from|in) Move (\d{1,2})\b/g, '$1 Play $2'); /* saved cards that named their play "Move 21" (3.10) */ { /* two AI-answer counts that read alike measure different things (1.3: "0 of 15 answers" beside "0 of 10 prompts"): a card about one
+      checkCopyIn(post, src, { skip: /^(id|url|src|img|image|images|key|handle|at|by|from|kind|state|status|evidence|moves|refs|sources?|quote|author|platform|where)$/i }); rest.post = post; } catch {} const dv0 = draftView(draftFor(c, B()?.firstDrafts), c), dv = dv0 && draftFits(dv0, c, { catalog: (t ? brandOfT(t) : B())?.catalog || [], brand: BN() }) ? dv0 : null; /* a draft about another product than the card's is not shown under it (drafts-bg draftFits, QV P1-17) */ if (dv) { const said = { headline: dv.headline, copy: dv.copy }; try { cleanDraftClaims(said, packSource(packFor(t))); } catch {} rest.draft = { ...dv, headline: said.headline, copy: said.copy, ...(dv.title ? { title: dejargon(dv.title) } : {}) }; if (!said.headline) delete rest.draft.headline; rest.draft = dropAiQuotes(rest.draft, aiTextsNow(t)); } /* a draft saved before the claims check shows no unbacked claim under the card (QA-25) */ /* the draft's own name in plain words ("Saaya Blue PDP Comfort FAQ Section") */ /* the first draft Brew made for this card (drafts-bg.js), shown on the feed card */ const pl = planOfCard(c); if (pl) rest.plan = pl; /* its plan: what the jam opens on */ if (toldSeen(t) && toldCard(c)) rest.told = true; /* the card itself rests on what the team told Brew: the feed labels it (team only, like the told list) */ { const fr = cardFrom(c0, (t ? brandOfT(t) : B())?.moveDocs); if (fr) rest.from = fr; else delete rest.from; } /* where the card came from, in plain words (card-from.js), worked out on every serve so saved cards heal */ { const tc = (x) => (typeof x === 'string' ? x.replace(/\bRs\.?\s?(?=\d)/g, '₹').replace(/([₹$£€])(\d{1,3}(?:,\d{2,3})+|\d{3,})\.(\d{2})\b/g, (m, c, n, p) => `${c}${Math.round(+String(n).replace(/,/g, '') + +p / 100).toLocaleString(c === '₹' ? 'en-IN' : 'en-US')}`) /* ₹927.96 reads ₹928, Rs 285 reads ₹285 */.replace(/\s*\((?:exact (?:figures?|numbers?|dates?) )?(?:still )?to (?:be )?confirm(?:ed)?\)/gi, '').replace(/,?\s*(?:still )?to confirm\b\.?$/i, ' (not checked yet)').replace(/^to confirm$/i, 'Not checked yet') : x); rest.title = tc(rest.title); rest.sub = tc(rest.sub); if (typeof rest.sub === 'string') rest.sub = rest.sub.replace(/\b(your|from|in) Move (\d{1,2})\b/g, '$1 Play $2'); /* saved cards that named their play "Move 21" (3.10) */ { /* two AI-answer counts that read alike measure different things (1.3: "0 of 15 answers" beside "0 of 10 prompts"): a card about one
        question counts the AI tools that answered it; a play's count is across all the questions asked */
       const perQ = /^lv-vis-/.test(String(c0.id || '')), aiLbl = (x) => (typeof x !== 'string' ? x : perQ ? x.replace(/\b(\d+) of (\d+) answers\b/g, '$1 of $2 AI tools on this question') : x.replace(/\b(\d+) of (\d+) (?:AI )?prompts\b/gi, '$1 of $2 questions asked across AI tools'));
       rest.title = aiLbl(rest.title); rest.sub = aiLbl(rest.sub); if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map(aiLbl) : r)); }
+    /* a saved theme card counts what was heard as the pages do today: its line and rows come from the brand's current heard cards (QV round 2: "of 2720" vs 2,952) */
+    if (/^heard-t-/.test(String(c0.id || ''))) { const sp = ((t ? brandOfT(t) : B())?.seed?.posts || []).find((p) => p?.id === c0.id); if (sp) { if (sp.src) rest.src = sp.src; if (Array.isArray(sp.rows)) rest.rows = sp.rows; if (sp.detail) rest.detail = sp.detail; } }
+    /* a card quoting an older AI-answers check ("0 of 10", "zero of ten", "1 of 18" beside Store health's 0 of 15) reads the newest one (ai-count.js) */
+    { const af = aiFactNow(t); if (af) Object.assign(rest, healAiCard({ id: c0.id, family: rest.family, title: rest.title, sub: rest.sub, rows: rest.rows, detail: rest.detail }, af)); }
     { const yours = (x) => (typeof x === 'string' ? x.replace(/\b(O|o)ur (?=[₹$£€]\s?\d)/g, (m, o) => (o === 'O' ? 'Your ' : 'your ')) : x); rest.title = yours(rest.title); rest.sub = yours(rest.sub); } /* a card talks to the team: "your ₹449 shampoo", never "our" beside it (1.14); drafts for shoppers keep "our" */ if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map((x, i) => (i === 0 && /^to confirm$/i.test(String(x)) ? 'Still to check' : tc(x))) : r)); } /* the moves' planning marker "(to confirm)" never shows on a card face (QA 20 Oct) */ { const sc = sectorOf(c0); if (sc && sc !== rest.sector) rest.sector = sc; } /* the column it changes (1.13) */ rest.src = rest.src === 'Brew deployment team' ? 'Our team' : playSrc(rest.src); /* Plays, not moves (3.10) */ /* one name for the team (FEED-QA-10) */ /* the source line a person reads: "Weekly move 11" (QA FEED-QA-12); t.cards keeps "Move 1011" for numsOf */ /* a row that only says how the store is set up ("Store currency INR", "Platform shopify") tells nobody anything (QV P2-23) */
     if (Array.isArray(rest.rows) && rest.rows.length > 1) { const kept = rest.rows.filter((r) => !Array.isArray(r) || !/^(?:store )?(?:currency|platform)$/i.test(String(r[0]).trim())); if (kept.length) rest.rows = kept; }
     /* "Brew saw we have 52 live ads": in what Brew saw, the brand is "you" (card-voice.js, QV P2-17); a rival's ad and a post are quoted */
     if (!c0.post && !['ad', 'viral'].includes(c0.research?.kind)) { rest.title = oneVoice(rest.title); rest.sub = oneVoice(rest.sub); }
+    /* the plan's numbering never reaches a card's words either ("Edit this post 21 template and use it in your ads" on PUMA's Play 21 statics, QV round 2) */
+    rest.title = noPlanNo(rest.title); rest.sub = noPlanNo(rest.sub); if (Array.isArray(rest.rows)) rest.rows = rest.rows.map((r) => (Array.isArray(r) ? r.map(noPlanNo) : r));
+    if (rest.detail && typeof rest.detail === 'object') rest.detail = { ...rest.detail, ...(Array.isArray(rest.detail.why) ? { why: rest.detail.why.map(noPlanNo) } : {}), ...(Array.isArray(rest.detail.how) ? { how: rest.detail.how.map(noPlanNo) } : {}) };
+    if (rest.make && typeof rest.make === 'object') rest.make = { ...rest.make, pieces: noPlanNo(rest.make.pieces) };
+    if (rest.post && typeof rest.post.copy === 'string') rest.post = { ...rest.post, copy: noPlanNo(rest.post.copy), ...(typeof rest.post.hook === 'string' ? { hook: noPlanNo(rest.post.hook) } : {}) };
+    /* a card never says the brand runs no ads while the one count says it does, nor "zero out-of-stock" while products are out (own-say.js) */
+    if (!c0.post && !['ad', 'viral'].includes(c0.research?.kind) && !/^(?:r-ad-|heard-)/.test(String(c0.id || ''))) Object.assign(rest, ownSayIn({ title: rest.title, sub: rest.sub, rows: rest.rows, detail: rest.detail }, ownNow(t)));
     /* a stock sentence says what its own rows say: a sold-out row is "sold out", never "nearly gone" (stock-say.js, QV P1-8) */
     if (Array.isArray(rest.rows)) { rest.title = stockSay(rest.title, rest.rows); rest.sub = stockSay(rest.sub, rest.rows); }
     /* a rows card with no rows and no picture (a watcher's idea, a trend card: QV P0-1, 26 Oct) shows the photo of the product its words
@@ -1384,7 +1412,7 @@ export function createFeedService(o) {
       : r0[k]?.lastError
       ? [{ type: 'note', c: SEED.brand.wash[2], h: `Couldn't refresh ${title} this time`, p: 'The source didn’t answer. We try again within the hour.', from: PRODUCT_NAME, at: r0[k].lastError.at }]
       : slides); /* a ring that is only waiting for its next read has nothing to show: it is hidden, not a "Finding new stories" slide (QA FEED-QA-28) */
-    const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map((x) => healCount(bgFor(x), t)) /* a story's "14 days away" is counted today (day-count.js) */, ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
+    const ring = (k, title, slides, o = {}) => { slides = failedNote(k, title, slides); return { k, title, slides: slides.map((x) => healCount(healAiCard(x.type === 'ad' ? bgFor(x) : ownSayIn(bgFor(x), ownNow(t)), aiFactNow(t)), t)) /* a story's "14 days away" is counted today (day-count.js) */, ...o, seen: !!o.updatedAt && (t.storySeen[k] || 0) >= o.updatedAt }; };
     /* notes posted to a ring: each once, and never an own-ads note in Trends (saved ones from before 26 Oct heal here: "No live PUMA
        India ads found in the Meta Ad Library" twice in Trends, while the one count said 10 live) */
     const ADS_NOTE = /\bAd Library\b|\blive (?:\S+ ){0,3}ads?\b/i;
@@ -1401,7 +1429,9 @@ export function createFeedService(o) {
     const hasSeries = (x) => x.kind === 'calendar' || (x.kind === 'rising' && x.rising?.length) || (x.terms || []).some((term) => tr?.series?.[term]?.values?.length);
     const trSlides = (tr?.items || []).filter(hasSeries).map((x) => ({ type: x.kind === 'rising' ? 'rising' : 'trend', ...x, where, rising: x.rising ? x.rising.map((r) => ({ ...r, v: riseLabel(r.v) })) : x.rising, series: (x.terms || []).filter((term) => tr.series?.[term]).map((term) => { const s = tr.series[term]; return { term, values: s.values, change: s.change, last: s.last }; }), dates: tr.series[x.terms[0]]?.dates || Object.values(tr.series)[0]?.dates }));
     const batches = t.batches.slice(0, 3).map((b) => ({ type: 'note', c: SEED.brand.wash[1], h: b.t, p: `${b.s}. ${b.st === 'Running' ? b.pct + '% done.' : b.st + '.'}`, from: 'Your work' }));
-    const newsSlides = (nw?.items || []).map((x) => ({ type: 'news', ...x, id: newsId(x), forUs: x.take || newsForUs(x, BN()), cta: newsCta(x) }));
+    /* one story once (QV round 2, N7: Nutrova's Industry news slides 1 and 3 were both Meta's 20 November AI ad terms): the same link, or nearly the same words, shows once */
+    const sameNews = (x, y) => (x.url && y.url && String(x.url).replace(/[?#].*$/, '') === String(y.url).replace(/[?#].*$/, '')) || near(x, y) || near({ h: `${x.h} ${x.p || ''}` }, { h: `${y.h} ${y.p || ''}` });
+    const newsSlides = (nw?.items || []).filter((x, i, all) => !all.slice(0, i).some((y) => sameNews(x, y))).map((x) => ({ type: 'news', ...x, id: newsId(x), forUs: x.take || newsForUs(x, BN()), cta: newsCta(x) }));
     const spark = (term) => tr?.series[term]?.values;
     // the brand today: its own most important new things, never outside news.
     // The two top-ranked open cards, then work waiting on you, the latest measured result, and work the team finished.
@@ -1913,10 +1943,15 @@ export function createFeedService(o) {
      how often AI answers name it. A rival whose ads couldn't be read says so (brew-external-data rule 1) */
   on('GET', '/api/tenants/:id/rivals', async (b, t) => {
     const R = research?.get() || {}, ads = resAll(R.ads).filter((a) => a && a.brand), prof = brandOfT(t)?.seed?.brand || {}, p0 = B()?.profile || null;
+    const read = (p0?.rivals || brandOfT(t)?.rivals || []), sq = (n) => String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    /* every rival the read names, whether or not its Ad Library page was matched (QV round 2, 26 Oct: What we watch said "5 rivals", this
+       page 4 and 3): one without ads says so, never leaves the list */
     const rivals = [...new Set([...(R.ads?.brands || []).map((x) => x.name), ...ads.map((a) => a.brand)])].filter((n) => n && n !== BN());
-    const read = (p0?.rivals || brandOfT(t)?.rivals || []), aiNamed = (n) => { try { const st = B()?.aiStanding?.rivals || []; const x = st.find((y) => y.name === n); return x ? x.share ?? x.n ?? null : null; } catch { return null; } };
+    for (const r of read.slice(0, 6)) if (r?.name && sq(r.name) !== sq(BN()) && !rivals.some((n) => sq(n) === sq(r.name))) rivals.push(r.name);
+    const adsRead = (n) => (p0?.ads?.rivals || []).find((x) => sq(x?.name) === sq(n)) || {}, aiNamed = (n) => { try { const st = B()?.aiStanding?.rivals || []; const x = st.find((y) => y.name === n); return x ? x.share ?? x.n ?? null : null; } catch { return null; } };
     return { rivals: rivals.map((n) => { const meta = (R.ads?.brands || []).find((x) => x.name === n) || {}, r = read.find((x) => x.name === n) || {};
-      return { name: n, live: meta.live ?? null, page: meta.page || null, error: meta.error || r.error || null, avatar: meta.avatar && !picDead(meta.avatar) ? meta.avatar : null, /* an expired CDN logo is no picture, never a broken one (26 Oct) */ host: r.host || null, prices: (r.prices || []).slice(0, 6), ai: aiNamed(n),
+      const pa = meta.name ? {} : adsRead(n);
+      return { name: n, live: meta.live ?? pa.live ?? null, page: meta.page || pa.page || null, error: meta.error || pa.error || r.error || null, avatar: meta.avatar && !picDead(meta.avatar) ? meta.avatar : null, /* an expired CDN logo is no picture, never a broken one (26 Oct) */ host: r.host || null, prices: (r.prices || []).slice(0, 6), ai: aiNamed(n),
         ads: ads.filter((a) => a.brand === n).slice(0, 24).map((a) => ({ id: a.id, poster: a.poster, video: a.video, format: a.format, title: a.title, hook: a.hook, angle: a.angle, why: a.why, days: a.days, versions: a.versions, url: a.url })) }; }),
       at: R.ads?.fetchedAt || null, brand: prof.name || BN() };
   });

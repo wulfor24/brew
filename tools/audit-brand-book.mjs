@@ -51,6 +51,8 @@ export function auditBook({ slug, profile, brief, config, bookRead, saved, shop,
   if (facts) for (const x of bookNumbers(facts.facts || facts, { host: profile?.host || '' })) {
     if (/https?:|\/[\w-]+\.json|\b\d{4}-\d{2}-\d{2}\b/.test(`${x.from} ${x.day}`)) P.push(`number "${x.label}" shows a raw source: "${x.from} · ${x.day}"`);
     if (/\((?:[^)]*\b(?:headless|one run)\b)/i.test(x.label)) P.push(`number "${x.label}" carries a test note`); }
+  /* 10. one founding year (QV round 2, 26 Oct: Arata's book said 2016, 2019 and 2018) */
+  if (facts) { const ys = new Set(bookNumbers(facts.facts || facts, { host: profile?.host || '' }).filter((x) => /^company\.founded/.test(x.key || '')).map((x) => x.v)); if (ys.size > 1) P.push(`more than one founding year: ${[...ys].join(', ')}`); }
   /* 7. change cards: none left open for weeks (they float over the book) */
   const old = (saved?.uploads || []).filter((u) => !u.applied && !u.dismissed && u.at && Date.now() - Date.parse(u.at) > 14 * 864e5);
   if (old.length) P.push(`${old.length} change card(s) left open for over two weeks`);

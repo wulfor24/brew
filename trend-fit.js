@@ -15,15 +15,23 @@ export const termWords = (s) => String(s || '').toLowerCase().normalize('NFKC').
 
 /** the brand's own words: search terms, category, product names and noun, its name and its rivals' */
 export function brandVocab(brand = {}) {
-  const c = brand.config || brand || {}, out = new Set();
+  const c = brand.config || brand || {}, out = new Set(), names = new Set();
   const add = (x) => { for (const w of termWords(x)) out.add(w); };
   [c.terms, c.rising, c.category, c.listingTerm, c.product?.noun, c.rivals, c.brandName, brand.name, brand.seed?.brand?.name, brand.profile?.category, brand.profile?.subcategory].flat(3).forEach(add);
   for (const p of (brand.catalog || []).slice(0, 400)) add(p?.t || p?.title);
+  /* the names (the brand's and its rivals'): a search rising around one of them alone may be about anything the brand sells */
+  [c.brandName, brand.name, brand.seed?.brand?.name, c.rivals].flat(3).forEach((x) => { for (const w of termWords(typeof x === 'string' ? x : x?.name)) names.add(w); });
+  out.names = names;
   return out;
 }
 
 /** does one rising query belong to this brand? (the term it rose around counts as the brand's words too) */
-export const onTopic = (q, vocab, seed = '') => { const ws = termWords(q); if (!ws.length) return false; const seedW = new Set(termWords(seed)); return ws.some((w) => vocab.has(w) || seedW.has(w)); };
+/* QV round 2, 26 Oct: "body wash +60%" stayed under "Arata hair serum searches" because Arata sells a body wash, so the word was the
+   brand's. A list that rose around a product ("arata hair serum") keeps what shares a word with that product or a brand or rival name;
+   a list that rose around a name alone ("arata") keeps anything the brand sells */
+export const onTopic = (q, vocab, seed = '') => { const ws = termWords(q); if (!ws.length) return false; const seedW = new Set(termWords(seed)), names = vocab?.names || new Set();
+  const own = [...seedW].filter((w) => !names.has(w)); if (own.length) return ws.some((w) => seedW.has(w) || names.has(w));
+  return ws.some((w) => vocab.has(w) || seedW.has(w)); };
 
 /** a rising list with only the brand's searches left */
 export const fitRising = (list = [], vocab = new Set(), seed = '') => (list || []).filter((x) => x?.q && onTopic(x.q, vocab, seed));

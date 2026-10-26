@@ -64,3 +64,11 @@ export const researchFile = async (name) => {
   return null;
 };
 
+/* a research picture copied in by name (cdn-keep.js, 26 Oct): this instance's disk and the bucket's research-media/, where every
+   instance's researchFile() finds it */
+export const saveResearch = async (name, buf) => {
+  if (!/^[a-f0-9]{20}\.(jpg|png|mp4)$/.test(String(name || ''))) throw new Error('bad name');
+  const dir = cfg?.researchDir; if (!dir) throw new Error('no research dir'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, name), buf);
+  if (remote()) { let ok = false; for (let i = 0; i < 3 && !ok; i++) { try { await gcs('PUT', name, buf, 'research-media/'); ok = true; } catch (e) { if (i === 2) throw e; await sleep((cfg.backoffMs ?? 1000) * 4 ** i); } } }
+  return 'research/' + name;
+};
