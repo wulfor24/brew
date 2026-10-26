@@ -3221,3 +3221,10 @@ body.qf-on{overflow:hidden}
 /* tablets and phones show a lane per tab: Needs you always has its tab, so its quiet line shows when empty */
 @media (max-width:1100px){.wb-col.is-empty[data-bcol="you"]{display:flex}}
 @media (max-width:700px){.wb-mv em{display:none}.wb-strip{gap:7px;padding:0 12px}}
+/* Work cards stay compact (27 Oct: one card with its full feed picture filled the screen): the picture is a 160px strip, the words two
+   lines, so a lane shows several jams at a glance; the jam itself shows the whole piece */
+.wb-card .media{max-height:160px;aspect-ratio:auto!important;overflow:hidden}
+.wb-card .media img,.wb-card .media video{width:100%;height:160px;object-fit:cover}
+.wb-card .body p{-webkit-line-clamp:2}
+.wb-col .card .media{max-height:160px;aspect-ratio:auto!important;overflow:hidden}
+.wb-col .card .media img,.wb-col .card .media video{width:100%;height:160px;object-fit:cover}

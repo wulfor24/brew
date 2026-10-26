@@ -2073,6 +2073,7 @@
       /* a link to a card this view hasn't loaded (from Learned, the deck, a pasted URL): load the cards once, then open it; never a dead link */
       if (!p) { if (route.tried === location.hash) return; route.tried = location.hash; loadFeed().then(() => { if (byId(decodeURIComponent(rm[1]))) route(); else toast('That card isn’t in this feed any more.'); }); return; }
       route.tried = null; closePop(); closeModal(); if (DP) closeDetail(true);
+      if (!$('#view')) appShell(); /* a jam link opened on the first-run screens (a teammate's first visit) opens the jam, never a spinner on a page with no frame (27 Oct) */
       if (view !== 'remix' || RX.p?.id !== p.id) return openRemix(p, rm[2], { fromHistory: true });
       if ((rm[2] || null) !== (RX.ch?.id || null)) return rm[2] ? openStudio(rm[2], { fromHistory: true }) : backToOptions(true);
       return; }
@@ -4723,7 +4724,8 @@
      Stories, a WhatsApp message…): v2's board tabs, in v1. Each is its own jam with its own versions; the card's kinds come first */
   const dlRow = (ch) => { if (ch.batchKey || !ch.cardId) return ''; const d = RX.dl?.cid === ch.cardId ? RX.dl : null; if (!d) { loadDl(ch); return ''; }
     const items = (d.items.some((x) => x.id === ch.id) ? d.items : [...d.items, { id: ch.id, label: ch.actionLabel }]).map((x) => (x.id === ch.id ? { ...x, label: jpKind(ch) } : x)), guest = document.body.classList.contains('is-guest');
-    return `<nav class="jp-ptabs" aria-label="Pieces on this card">${items.map((x) => { const dot = x.id === ch.id ? jpDot(ch) : jpDotOf(x.dot); return `<button type="button" data-dl-open="${esc(x.id)}" aria-current="${x.id === ch.id}"><i class="jp-pd ${dot}" title="${dot === 'draft' ? 'Being written' : dot === 'red' ? 'Needs a fix' : dot === 'sent' ? 'Brief sent' : dot === 'todo' ? 'Not made yet' : 'Ready'}"></i>${esc(x.label)}</button>`; }).join('')}${d.add.length && !guest ? `<button type="button" class="jp-padd" data-dl-menu aria-haspopup="dialog" aria-expanded="${!!RX.dlMenu}">+ Add</button>` : ''}</nav>`; };
+    const twin = (x, k) => { const same = items.filter((y) => y.label === x.label); return same.length > 1 ? `${x.label} ${same.indexOf(x) + 1}` : x.label; }; /* two "Meta ad" tabs read Meta ad 1 · Meta ad 2 (27 Oct) */
+    return `<nav class="jp-ptabs" aria-label="Pieces on this card">${items.map((x) => { const dot = x.id === ch.id ? jpDot(ch) : jpDotOf(x.dot); return `<button type="button" data-dl-open="${esc(x.id)}" aria-current="${x.id === ch.id}"><i class="jp-pd ${dot}" title="${dot === 'draft' ? 'Being written' : dot === 'red' ? 'Needs a fix' : dot === 'sent' ? 'Brief sent' : dot === 'todo' ? 'Not made yet' : 'Ready'}"></i>${esc(twin(x))}</button>`; }).join('')}${d.add.length && !guest ? `<button type="button" class="jp-padd" data-dl-menu aria-haspopup="dialog" aria-expanded="${!!RX.dlMenu}">+ Add</button>` : ''}</nav>`; };
   /* the add sheet sits on the page itself, above the app's columns (inside the jam it was clipped at the left: 26 Oct) */
   const jpPortal = (ch) => { const d = RX.dl?.cid === ch?.cardId ? RX.dl : null, want = !!(RX.dlMenu && d && !document.body.classList.contains('is-guest') && view === 'remix'), old = $('#jp-portal');
     if (!want) { old?.remove(); return; } if (old && $('#dl-q') && document.activeElement === $('#dl-q')) return; old?.remove(); document.body.insertAdjacentHTML('beforeend', `<div class="jp jp-portal" id="jp-portal">${dlMenuHtml(d.add)}</div>`); };

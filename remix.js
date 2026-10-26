@@ -1896,10 +1896,10 @@ export function createRemix(o) {
     const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (editable(ch)) return { error: editable(ch) };
     const cat = catalogOf(t) || [], was = jamProduct(t, ch, t.cards.get(ch.cardId) || {}), said = [];
     if (b.product && typeof b.product === 'object') { const name = clean(String(b.product.name || '')).slice(0, 160), img = typeof b.product.img === 'string' && /^(https?:|gen\/|\/)/.test(b.product.img) ? b.product.img.slice(0, 600) : null;
-      if (name && name !== (was?.t || was?.name)) { const row = cat.find((x) => x.t === name); ch.pick = { name: row ? row.t : name, img: row?.img || img, at: now(t) }; said.push(`the **${name.split(/\s+[–—|-]\s+/)[0]}**`); } }
+      if (name && name !== (was?.t || was?.name)) { const row = cat.find((x) => x.t === name); ch.pick = { name: row ? row.t : name, img: row?.img || img, at: now(t) }; said.push(name.split(/\s+[–—|-]\s+/)[0]); } }
     if (b.format && RATIO[b.format] && ['meta_ad', 'social'].includes(ch.family) && ch.pkg.format !== b.format) { ch.pkg.format = b.format; const nm = { '4:5': 'Feed', '1:1': 'Square', '9:16': 'Story', '16:9': 'Wide', '2:3': 'Pin' }[b.format]; said.push(`${nm ? `${nm} ` : ''}${b.format}`); }
     if (!said.length) return { change: pubChange(t, ch) };
-    ch.thread ||= []; const last = ch.thread.at(-1), text = `Set up for ${said.join(', ')}. Everything on this jam follows it.`;
+    ch.thread ||= []; const last = ch.thread.at(-1), text = `Now set up for ${said.join(', ')}. Everything on this jam follows it.`; /* plain words: the chat shows no markdown, and "the The Long Day Kit" read wrong (27 Oct) */
     if (last?.setup && last.from === 'ai') Object.assign(last, { text, at: now(t) }); else ch.thread.push({ from: 'ai', text, at: now(t), setup: true }); /* a run of picks is one line, never a pile */
     const now0 = jamProduct(t, ch, t.cards.get(ch.cardId) || {}), name = now0?.t || now0?.name || '';
     if (ch.pick && name && (was?.t || was?.name) !== name && !isMock()) { /* the words and the brief follow the new product: text only, after the reply */

@@ -297,3 +297,6 @@
 .cs-look-ref img{width:100%;border-radius:10px;opacity:.9}
 .cs-look-ref figcaption{font-size:11.5px;line-height:1.3;color:var(--fg-3,#808080)}
 .cs-look-row{flex-wrap:wrap}.cs-look-row > div{flex:1 1 100%;min-width:0}
+.cs-pop .cs-plist button.cs-prow{flex:none} /* rows never squash into each other in the scrolling list (27 Oct) */
+.cs-pop .cs-plist .cs-ptx b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.cs-pop .cs-plist .cs-ptx small{color:var(--fg-2,#505050)}

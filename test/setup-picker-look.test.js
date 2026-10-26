@@ -33,3 +33,11 @@ test('Fix it on a part over its length re-counts it and asks again with the exac
   assert.match(app, /\.\.\.\(x\.part \? \{ part: x\.part \} : \{\}\) \}\); RX\.fixing = false; return; \}/);
   assert.match(rm, /for \(let i = 0; b\.fix && i < 3 && over\(partNow\(\)\)/); assert.match(rm, /characters now: it fits\./); assert.match(rm, /is still \$\{pp\.n\} characters \(the limit is \$\{lim\}\)/);
 });
+
+test('27 Oct walk-through fixes: picks stay picked, rows carry their product, jam links open on first-run screens, twin tabs numbered, compact work cards', () => {
+  const cs = read('public/creative-stage.js'), app = read('public/app.js'), css = read('public/brew.css'), rm = read('remix.js');
+  const i = cs.indexOf('if (patch.product?.name || fmt) S.syncAt = Date.now();'), j = cs.indexOf('S.spec = { ...S.spec, ...patch }; S.pop = null; savePick(); price(); relook();'); assert.ok(i > 0 && j > i, 'the guard goes up before the repaint');
+  assert.match(cs, /data-cs-pname=/); assert.match(cs, /S\.products\.find\(\(x\) => \(pr\.dataset\.csPname/);
+  assert.match(app, /if \(!\$\('#view'\)\) appShell\(\); \/\* a jam link opened on the first-run screens/); assert.match(app, /const twin = \(x, k\) =>/);
+  assert.match(css, /\.wb-card \.media\{max-height:160px/); assert.match(rm, /Now set up for \$\{said\.join/); assert.doesNotMatch(rm, /said\.push\(`the \*\*/);
+});
