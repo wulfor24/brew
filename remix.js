@@ -4,6 +4,7 @@ import { B, BN, BH, CTRY, FESTN, FESTD, live } from './brand-ctx.js';
 // Its verdict says what is left before the brief is ready: a fix, the team's own checks, or a plan in the jam.
 // The jam is a versioned plan (goal, the changes, open questions with owners, readiness). It ends with Share the brief:
 // nothing is run from Brew. Learning reads every step (learn.js).
+import { firstDraftNow } from './media.js'; // a jam opened on a card with no first draft gets one at once (sloosh-make via drafts-bg)
 import { ME as INSTANCE } from './instance.js'; // whose job a jam's spinner is (several web instances)
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1638,6 +1639,8 @@ export function createRemix(o) {
   };
   on('POST', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
+    /* a jam opened on a card with no first draft yet gets one now, in the background, on Sloosh (27 Oct): the frames fill in as it lands */
+    if (!isMock() && !o.planOf?.(t, c)?.draft) { const sl = o.slugOfT?.(t); if (sl) Promise.resolve().then(() => firstDraftNow(sl, c.id)).catch(() => {}); }
     if (/^build-/.test(String(c.id || ''))) return { changes: [], navOnly: true }; /* "Read all 57 plans" goes to the moves, never a page-copy jam (QA J-14) */
     if (b.queue) return v2Remix(b, t, c); /* Another take: answers at once, the picture in the background (the block above) */
     const dlKey = /^dl:/.test(String(b.action || '')) ? String(b.action).slice(3) : b.dl, row = dlKey ? dlOf(dlKey) : null; /* a catalogue deliverable (deliverables.js) */

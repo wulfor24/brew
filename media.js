@@ -47,6 +47,8 @@ let makers = null; /* { video({ slug, frame, prompt, ratio, seconds, sound, line
 export const setMakers = (m) => { makers = m; };
 /* the Sloosh makers for modules that can't be handed them (Studio's helper, jam2/sloosh-studio.js): { image, edit, video, editVideo, space } */
 export const makersNow = () => makers;
+/* a card's first draft, made now (drafts-bg runOne for that card only): server.js registers it with the makers */
+export const firstDraftNow = (slug, cardId) => makers?.firstDraft?.(slug, cardId);
 /** first frame + motion prompt → MP4 buffer: Sloosh (o.slug, o.ratio, o.seconds, o.sound, o.line, o.tier) */
 export async function makeVideo(frame, prompt, o = {}, log = console) {
   if (makers?.video) { const buf = await makers.video({ slug: o.slug, frame, prompt, ratio: o.ratio, seconds: o.seconds, sound: o.sound, line: o.line, tier: o.tier, kind: o.kind });

@@ -569,8 +569,8 @@ const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlu
   onDone: async (slug, rec) => { const ok = await feedSvc?.finalDone?.(slug, rec); console.log(`[finals] ${slug} ${rec.runKey} ${rec.state} after the restart: ${ok ? 'landed on its card' : 'no card to land on'}`); return !!ok; } /* a run reconcileAll settles lands where it was asked */ });
 /* Sloosh makes and edits every picture and clip (sloosh-make.js): the image guard's model above, every clip (media.js), the jam's
    engines and Studio. Each charge is recorded per brand (budget 'credits'), never capped while the account is unlimited */
-slooshMake = createSlooshMake({ sloosh, finals, packs, saveGen, genFlush, log: console, record: (slug, credits) => { if (slug && credits > 0) budget.spend('credits', slug, Math.ceil(credits)); } });
-setMakers(slooshMake);
+slooshMake = createSlooshMake({ sloosh, finals, packs, saveGen, genFlush, log: console, onRefuse: (e) => noteAlert('sloosh', String(e?.message || e).slice(0, 300)), record: (slug, credits) => { if (slug && credits > 0) budget.spend('credits', slug, Math.ceil(credits)); } });
+setMakers({ ...slooshMake, firstDraft: (slug, cardId) => draftsBg.runOne(slug, { manual: true, only: [cardId], n: 1 }) });
 /* Sloosh's health for the ops alerts: when it needs a reconnect or can't pay, finals quietly go to Gemini, so staff hear it once a day */
 /* SLOOSH_CHECK=0: Sloosh is off on purpose here (production until Param says, 25 Oct): finals use Gemini and nobody is emailed about it */
 if (process.env.K_SERVICE && process.env.DEMO_MODE !== '1' && process.env.AI_MOCK !== '1' && process.env.SLOOSH_CHECK !== '0') { const slooshCheck = () => finals.status({ fresh: true }).then((st) => { if (!st.ok && !st.dummy) noteAlert('sloosh', st.fallbackWhy || st.why || 'not ready'); }).catch((e) => noteAlert('sloosh', e.message));

@@ -23,7 +23,7 @@ const one = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const transient = (e) => e?.timeout || e?.pollError || e?.status >= 500 || /timed? ?out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|socket hang up|busy|overload|rate|429|503|try again/i.test(String(e?.message || ''));
 
 export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = async () => {}, publicUrl = process.env.PUBLIC_URL || '', fetchImpl = fetch,
-  record = () => {}, mock = () => process.env.AI_MOCK === '1', viewOf = (slug) => loadView(packs, slug, { scope: 'member' }), tries = 3, backoffMs = 20e3, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), log = console } = {}) {
+  record = () => {}, onRefuse = () => {}, mock = () => process.env.AI_MOCK === '1', viewOf = (slug) => loadView(packs, slug, { scope: 'member' }), tries = 3, backoffMs = 20e3, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), log = console } = {}) {
   const base = String(publicUrl || '').replace(/\/$/, '');
 
   /* any reference (a buffer, a file on this instance, a gen/ or brand path, a store URL) → a public https link Sloosh can import */
@@ -78,6 +78,7 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
         return Object.assign(buf, { provider: 'sloosh', model: route.model, credits, generationId: refOf(out)?.id || null, link });
       } catch (e) { last = e; if (!transient(e) || i === tries - 1) break; log.warn?.(`[sloosh-make] ${where} for ${slug}: ${String(e.message).slice(0, 160)}; trying again`); await sleep(backoffMs * (i + 1)); }
     }
+    try { onRefuse(last, { slug, where }); } catch {} /* staff hear it (an upload agreement to accept, a limit, a refused model): the ops alert */
     throw Object.assign(new Error(`Sloosh couldn't make this just now (${String(last?.message || last).slice(0, 200)}). We'll try again.`), { soft: true, sloosh: true, cause: last });
   }
   const specs = (mode) => (mock() || !sloosh?.modelSpecs ? Promise.resolve(null) : sloosh.modelSpecs(mode).catch(() => null));
