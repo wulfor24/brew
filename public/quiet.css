@@ -345,7 +345,8 @@ a.fs-src:hover{color:var(--fg);background:var(--surface-2)}
 .hd-q blockquote{font-size:15.5px;line-height:23px;-webkit-line-clamp:6}
 .hd-q blockquote::before{content:'“';display:block;height:18px;margin-bottom:2px;font-size:40px;line-height:40px;font-family:Georgia,serif;color:color-mix(in oklab,var(--fg) 20%,transparent)}
 .hd-q figcaption{padding-top:12px;border-top:1px solid var(--line-soft,var(--line))}
-.hd-q .hd-qs{flex-direction:column;align-items:flex-start;gap:1px}
+.hd-q .hd-qs{flex-direction:column;align-items:stretch;gap:1px}
+.hd-q .hd-qs em{max-width:100%} /* the source line ellipsises in its card: flex-start let the nowrap line size the page to 486px on a phone (26 Oct) */
 .hd-q .hd-qs b{font-weight:600;color:var(--fg)}
 .hd-q .hd-lg{flex-basis:22px;width:22px;height:22px;border-radius:6px}
 .hd-q .hd-lg img{width:14px;height:14px}

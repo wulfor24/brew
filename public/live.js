@@ -9,6 +9,7 @@
   const slug = window.BRAND, GENB = !!slug && slug !== 'brew';
   const L = (window.LIVE = { me: null, access: null, conns: {}, avail: {}, ready: false });
   const timeout = (ms) => new Promise((r) => setTimeout(r, ms));
+  const possT = (n) => `${n ?? ''}${/s$/i.test(String(n ?? '').trim()) ? '’' : '’s'}`; /* "Mana Projects’ team", never "Projects’s" (26 Oct) */
   /* the server's view of who you are and what is connected. It is awaited in full (no 2.5 s race: a slow first load left
      avail empty and the app fell back to a fake sign-in sheet); a failed call is tried once more. L.ready says it answered */
   const liveCall = () => fetch(GENB ? `/api/brands/${slug}/live` : '/api/me', { credentials: 'same-origin' }).then((x) => { if (!x.ok) throw new Error(`live ${x.status}`); return x.json(); });
@@ -143,7 +144,7 @@
   function guide(id, av, oauth) {
     const shop = L.shop || '', handle = shop.replace(/\.myshopify\.com$/, ''), n = B().brand.name;
     const last = (t, p) => ({ t, p, last: true });
-    if (id === 'meta') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Facebook', p: `Facebook asks which ad accounts we may read. Tick ${esc(n)}’s, then pick it here.`, last: true, oauth: true }] };
+    if (id === 'meta') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Facebook', p: `Facebook asks which ad accounts we may read. Tick ${esc(possT(n))}, then pick it here.`, last: true, oauth: true }] };
     if (id === 'shopify') return oauth && !av.fields?.length ? { time: 'About 1 minute', steps: [{ t: 'Sign in with Shopify', last: true, oauth: true }] } : { time: 'Takes about 3 minutes', alt: 'Use your own app', steps: [
       { t: `Create an app called ${globalThis.PRODUCT_NAME}`, p: 'Sign in to the Dev Dashboard (the store’s owner, or an agency or collaborator login). Click <b>Create app</b>, paste this as the <b>App URL</b> and untick <b>Embed app in Shopify admin</b>.', go: ['Open the Dev Dashboard', 'https://dev.shopify.com/dashboard'], copy: location.origin },
       { t: 'Let it come back here', p: 'Paste this into <b>Allowed redirection URL(s)</b> and tick <b>Use legacy install flow</b>. If the app sits in another organization than the store, we open the store’s approve screen once and come back here.', copy: `${location.origin}/shopify/own/callback` },
@@ -151,7 +152,7 @@
       { t: `Install it on ${shop ? esc(shop) : 'your store'}`, p: 'On the app’s home, click <b>Install app</b>.' },
       last('Paste the app’s keys', 'They’re in the app’s <b>Settings</b>.') ] };
     if (id === 'slack') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Slack', p: 'Slack asks which channel we post to. Pick the one your team plans in. Replies in our threads come back to the jam.', last: true, oauth: true }] };
-    if (id === 'google') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Google', p: `Pick ${esc(n)}’s Google Ads account. You can add Google Analytics in the same step.`, last: true, oauth: true }] };
+    if (id === 'google') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Google', p: `Pick ${esc(possT(n))} Google Ads account. You can add Google Analytics in the same step.`, last: true, oauth: true }] };
     if (id === 'ga4') return { time: 'Takes about a minute', alt: 'Use a property ID', steps: [
       ...(av.email ? [{ t: 'Add us to GA4 as a Viewer', p: '<b>Admin</b> → <b>Property access management</b> → <b>Add users</b>. Paste this email and pick <b>Viewer</b>.', copy: av.email, go: ['Open GA4 Admin', 'https://analytics.google.com/analytics/web/#/admin'] }] : []),
       last('Paste the property ID', 'It’s under <b>Admin</b> → <b>Property details</b>.') ] };
@@ -312,9 +313,9 @@
     const full = (x.accounts || []).length > 1 ? x.accounts.map((a) => a.name || a.id).join(', ') : x.account || nm(id), accts = ` title="${esc(`${full}${x.lastSync ? ` · read ${ago(x.lastSync)}` : ''}`)}"`;
     return `<span class="cn-acct"${accts}>${ic('check', 's14')}<span class="cn-an">${esc(x.account || nm(id))}</span>${x.lastSync ? `<span class="cn-ago">· ${ago(x.lastSync)}</span>` : ''}</span>${member() || L.avail?.[id]?.modes?.includes('public') ? `<button class="cn-btn is-ghost" data-lsync="${id}">Sync now</button>` : ''}${member() && boss() ? `<button class="cn-btn is-ghost" data-lunlink="${id}">Disconnect</button>` : ''}`; };
   const intro = () => { if (!GENB || (!L.signin && !L.me)) return null; const n = B().brand.name;
-    if (!L.me) return L.dummy ? `Every source we read for ${n}. <a href="${signin()}">Sign in with Google</a> to connect accounts. Connected accounts are simulated in this demo (Dummy).` : `Every source we read for ${n}. <a href="${signin()}">Sign in with Google</a> to connect ${n}’s real accounts, read-only (Slack posts to the channel you pick).`;
-    if (member() && !boss()) return `Every source we read for ${n}. Only ${n}’s admins connect or disconnect accounts; you can sync the connected ones.`;
-    if (member()) return L.dummy ? `Every source we read for ${n}. Connected accounts are simulated in this demo (Dummy), built from what we read, and only ${n}’s team sees them.` : `Every source we read for ${n}. Connected accounts are read-only (Slack posts to the channel you pick), refresh every few hours, and only ${n}’s team sees them.`;
+    if (!L.me) return L.dummy ? `Every source we read for ${n}. <a href="${signin()}">Sign in with Google</a> to connect accounts. Connected accounts are simulated in this demo (Dummy).` : `Every source we read for ${n}. <a href="${signin()}">Sign in with Google</a> to connect ${possT(n)} real accounts, read-only (Slack posts to the channel you pick).`;
+    if (member() && !boss()) return `Every source we read for ${n}. Only ${possT(n)} admins connect or disconnect accounts; you can sync the connected ones.`;
+    if (member()) return L.dummy ? `Every source we read for ${n}. Connected accounts are simulated in this demo (Dummy), built from what we read, and only ${possT(n)} team sees them.` : `Every source we read for ${n}. Connected accounts are read-only (Slack posts to the channel you pick), refresh every few hours, and only ${possT(n)} team sees them.`;
     if (L.access?.claimed) return `Every source we read for ${n}. Its team sees the live numbers; here you see the demo. Ask them to invite you.`;
     if (L.access?.eligible) return `Every source we read for ${n}. You’re the first from ${esc(host())}: connect an account and ${n} is yours. <button class="linkish" data-lclaim>Claim it with your email</button>`;
     return `Every source we read for ${n}. Here you see the demo: the first person to sign in with a work email at ${esc(host())} and connect an account becomes its admin.`; };
@@ -347,7 +348,7 @@
     const href = `mailto:${HELLO}?subject=${encodeURIComponent(`Delete my data${GENB ? ` · ${slug}` : ''}`)}&body=${encodeURIComponent(body)}`;
     A()?.modal?.(`<div class="sheet del-sheet"><h3>Delete my data</h3>
       <p>This sends a deletion request to our team from your own email. We delete your data within 7 days and reply when it’s done.</p>
-      <ul class="del-what"><li>Your sign-in: the name, email and photo Google gave us</li><li>Your saved cards, feed settings and jam messages</li>${GENB ? `<li>If you’re ${esc(n)}’s admin and ask for it: the whole workspace (the read, plays, jams and connected keys)</li>` : ''}</ul>
+      <ul class="del-what"><li>Your sign-in: the name, email and photo Google gave us</li><li>Your saved cards, feed settings and jam messages</li>${GENB ? `<li>If you’re ${esc(possT(n))} admin and ask for it: the whole workspace (the read, plays, jams and connected keys)</li>` : ''}</ul>
       <div class="cx-btns"><button class="btn btn-ghost" data-close>Cancel</button><a class="btn btn-primary" href="${esc(href)}" data-close>Email the request</a></div></div>`);
   }
   function menu(btn) {
@@ -355,11 +356,11 @@
     const pop = document.createElement('div'); pop.id = 'lc-pop'; pop.className = 'lc-pop';
     const r = btn.getBoundingClientRect(); pop.style.left = (r.right + 10) + 'px'; pop.style.bottom = Math.max(12, innerHeight - r.bottom) + 'px'; pop.style.position = 'fixed';
     const ac = L.access, n = B()?.brand?.name || 'this brand';
-    const role = ac?.role === 'owner' ? `Owner of ${n}` : ac?.role === 'admin' ? 'Our team · full access' : ac?.role ? `On ${n}’s team` : L.full ? 'Our team · full access' : GENB ? `Visitor · you see ${n}’s demo` : '';
+    const role = ac?.role === 'owner' ? `Owner of ${n}` : ac?.role === 'admin' ? 'Our team · full access' : ac?.role ? `On ${possT(n)} team` : L.full ? 'Our team · full access' : GENB ? `Visitor · you see ${possT(n)} demo` : '';
     pop.innerHTML = !L.me ? `<div class="lc-me"><b>Not signed in</b><small>Sign in to read a new brand, claim yours and connect real accounts.</small></div><a class="btn btn-primary sm" href="${signin()}">Sign in with Google</a><div class="lc-grp">${tuneRow()}</div>${window.BrewAcct?.rows?.() || ''}${helpRows()}`
       : `<div class="lc-me">${L.me.pic ? `<img src="${esc(L.me.pic)}" alt="" referrerpolicy="no-referrer">` : ''}<span><b>${esc(L.me.name || L.me.email)}</b><small>${esc(L.me.demo || /@demo\.brew$/i.test(L.me.email || '') ? 'Demo visitor, no email' : L.me.email)}</small>${role ? `<em>${esc(role)}</em>` : ''}</span></div>
         ${GENB && ac?.canClaim ? `<button class="btn btn-primary sm" data-lclaim>Claim ${esc(n)}</button>` : ''}
-        ${GENB && ac && !ac.gen ? `<small class="lc-hint">${ac.claimed ? `Ask ${esc(n)}’s team to invite you.` : `Sign in with your work email at ${esc(ac.host || host())} to claim it.`}</small>` : ''}
+        ${GENB && ac && !ac.gen ? `<small class="lc-hint">${ac.claimed ? `Ask ${esc(possT(n))} team to invite you.` : `Sign in with your work email at ${esc(ac.host || host())} to claim it.`}</small>` : ''}
         ${GENB && ac?.role && ac.role !== 'owner' && ac.role !== 'admin' ? `<div class="lc-views"><small>Your views</small><span>${esc(seatWords(ac.seats))}</span></div>` : ''}
         <div class="lc-grp">${GENB && ac?.role && ac.role !== 'owner' && ac.role !== 'admin' ? `<button class="lc-it" data-lteamsheet>${ic('person', 's16')}<b>Team and invites</b><span>${(ac.team || []).length}</span></button>` : ''}
         ${GENB && (ac?.role === 'owner' || ac?.role === 'admin') ? `<button class="lc-it" data-lteamsheet>${ic('person', 's16')}<b>Team and access</b><span>${(ac.members || []).length}${(ac.members || []).filter((x) => Array.isArray(x.seats) && !x.seats.length).length ? ' · needs you' : ''}</span></button>` : ''}

@@ -65,6 +65,7 @@
   };
 
   const poss = (n) => `${esc(n)}${/s$/i.test(String(n ?? '').trim()) ? '’' : '’s'}`; // Allbirds’ feed, Comet’s feed
+  const possT = (n) => `${n ?? ''}${/s$/i.test(String(n ?? '').trim()) ? '’' : '’s'}`; /* the same, unescaped: "Mana Projects’ team", never "Projects’s" (26 Oct) */
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }, del(k) { try { localStorage.removeItem(k); } catch (e) {} } };
   /* a rival's ad card, or one built on a rival's ad (rival-ad.js isRivalCard): its poster is only ever shown as theirs */
@@ -301,7 +302,7 @@
       <div class="sw-mark"><img src="${B.brand.mark}" alt=""></div>
       ${team ? '' : `<span class="sw-ok">${ic('check', 's14')}${esc(B.brand.name)} is read</span>`}
       <h1>${team ? `Sign in to open ${esc(B.brand.name)}` : 'Sign in to see your feed'}</h1>
-      <p>${team ? `${esc(B.brand.name)}’s feed and plays are for its team. Sign in with your work email at ${esc(B.brand.host)}, or ask the team to invite you.` : `We’ve read ${esc(B.brand.host)}: the store, reviews, rivals and ads. Sign in with your work email at ${esc(B.brand.host)} to open ${esc(B.brand.name)}’s feed and get the plays written.`}</p>
+      <p>${team ? `${poss(B.brand.name)} feed and plays are for its team. Sign in with your work email at ${esc(B.brand.host)}, or ask the team to invite you.` : `We’ve read ${esc(B.brand.host)}: the store, reviews, rivals and ads. Sign in with your work email at ${esc(B.brand.host)} to open ${poss(B.brand.name)} feed and get the plays written.`}</p>
       <a class="btn btn-primary lg sw-go" href="/auth/google?next=${encodeURIComponent(next)}"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continue with Google</a>
       <small>We get your Google name, email and photo, nothing else.</small></div></main>`;
     return true;
@@ -461,13 +462,13 @@
   // the cursor pill's line while the mouse is over a finding: what Brew found, said about the brand
   const gist = (c) => { const n = B.brand.name, t = String(c.t || '');
     if (c.kind === 'text') return `Found the story behind ${n}`;
-    if (c.kind === 'kit') return `Found ${n}’s logo, colours and type`;
-    if (c.kind === 'grid') return `Found ${n}’s best-selling product photos`;
+    if (c.kind === 'kit') return `Found ${possT(n)} logo, colours and type`;
+    if (c.kind === 'grid') return `Found ${possT(n)} best-selling product photos`;
     if (c.kind === 'quotes') return `Found what your customers think about ${n}`;
     if (c.kind === 'ad') return `Found the ads ${n} and its rivals run`;
     if (c.kind === 'film') return `Found the videos around ${n}`;
     if (c.kind === 'answer') return `Found what AI tools say about ${n}`;
-    if (c.kind === 'rows') return /checkout|path/i.test(t) ? `Walked ${n}’s path to checkout` : /catalog|product/i.test(t) ? `Found everything ${n} sells` : `Found ${t.toLowerCase()} for ${n}`;
+    if (c.kind === 'rows') return /checkout|path/i.test(t) ? `Walked ${possT(n)} path to checkout` : /catalog|product/i.test(t) ? `Found everything ${n} sells` : `Found ${t.toLowerCase()} for ${n}`;
     return `Found ${t.toLowerCase() || 'something'} for ${n}`; };
   /* a font's family name only (reader/stages/brand.js fontName): reads saved before 22 Oct can carry Google Fonts weights ("Cormorant:100,100italic,…") */
   const fontOnly = (v) => { let f = String(v ?? ''); try { f = decodeURIComponent(f); } catch (e) {} f = f.replace(/\+/g, ' ').split(/[|&]/)[0].split(/[:@;]/)[0].replace(/["']/g, '').replace(/\s+/g, ' ').trim(); return f.slice(0, 60).trim(); };
@@ -1206,7 +1207,7 @@
     return `${compact ? '' : `<div class="ais-hd"><p class="ais-h">Who AI names when shoppers ask</p><button class="icon-btn pf-btn" data-ais-proof="${esc(st.src || 'weekly')}" aria-label="The questions we asked, why, and each AI’s answer" title="The questions we asked, why, and each AI’s answer">${ic('shield')}<span class="pf-n">${st.questions || ''}</span></button></div>`}<p class="ais-sub">${st.unOf ? `${of} answers to ${nq} question${nq === 1 ? '' : 's'} where the shopper named no brand` : `${of} answers to ${nq} shopper question${nq === 1 ? '' : 's'}`}, from ${st.tools} AI tool${st.tools === 1 ? '' : 's'}${st.at ? ` · ${esc(fmtDay(Date.parse(st.at)) || st.at)}` : ''}</p>
       <div class="ais-rows">${row(st.brand, true)}${rv.map((r) => row(r)).join('')}</div>
       ${!compact && (st.knownUnnamed || []).length ? `<p class="ais-note">Not named in any of these answers: ${esc(st.knownUnnamed.join(', '))}.</p>` : ''}
-      ${st.rivalsError ? `<p class="ais-note">${esc(st.rivalsError)}</p>` : !st.rivals.length ? `<p class="ais-note">We haven’t found ${esc(B.brand.name)}’s rivals yet, so only ${esc(B.brand.name)} is counted.</p>` : ''}
+      ${st.rivalsError ? `<p class="ais-note">${esc(st.rivalsError)}</p>` : !st.rivals.length ? `<p class="ais-note">We haven’t found ${poss(B.brand.name)} rivals yet, so only ${esc(B.brand.name)} is counted.</p>` : ''}
       ${!compact && st.unOf && st.of > st.unOf ? `<p class="ais-note">Counting the questions that name a brand too: ${esc(st.brand.name)} ${st.brand.n} of ${st.of}${top ? `, ${esc(top.name)} ${top.n} of ${st.of}` : ''}.</p>` : ''}
       ${st.named?.error ? `<p class="ais-note">${esc(st.named.error)}</p>` : (() => { const nm = aisNamed(st.named); if (!nm) return '';
         return `<p class="ais-h2">Named most often</p>${nm.of !== of ? `<p class="ais-sub">Counted in ${nm.of} answers${st.named.at ? ` from ${esc(fmtDay(Date.parse(st.named.at)) || st.named.at)}` : ''}</p>` : ''}${nm.top.length ? `<div class="ais-rows">${nm.top.slice(0, compact ? 3 : 5).map((r) => `<div class="ais-row"><b>${esc(r.name)}</b><span class="ais-bar"><i style="width:${nm.of ? Math.round((100 * nm.c(r)) / nm.of) : 0}%"></i></span><em>${nm.c(r)} of ${nm.of}</em></div>`).join('')}</div>` : `<p class="ais-note">These answers name no other brands.</p>`}`; })()}`; };
@@ -1274,7 +1275,7 @@
   const healthCard = () => { const h = healthNow(), read = h.rings.filter((r) => r.read !== false), low = [...read].sort((a, b) => a.v - b.v)[0] || null;
     const fixLine = low && (h.moves || []).find((x) => x.k === low.k)?.t;
     const [said, todo] = fixLine ? [fixLine.split(/(?<=\.)\s+/)[0], fixLine.split(/(?<=\.)\s+/).slice(1).join(' ')] : [null, null];
-    const head1 = !read.length ? `${B.brand.name}’s store couldn’t be read this time.` : said || (low && low.v < 60 ? `${low.k} is ${B.brand.name}’s weakest ring, at ${low.v} of 100.` : `${B.brand.name}’s store reads well on every ring.`);
+    const head1 = !read.length ? `${possT(B.brand.name)} store couldn’t be read this time.` : said || (low && low.v < 60 ? `${low.k} is ${possT(B.brand.name)} weakest ring, at ${low.v} of 100.` : `${possT(B.brand.name)} store reads well on every ring.`);
     const sub1 = !read.length ? 'The next refresh tries again. Nothing here is a guess.' : said ? (todo || '') /* a finding with no action sentence stands alone: the move under the rings is the action */ : (low && low.v < 60 ? hcLine(low) : `The lowest is ${low.k}, at ${low.v} of 100.`);
     const when = B.health.at ? (fmtDay(Date.parse(B.health.at)) || B.health.at) : '';
     if (GEN && !HC_MOVES) hcMoves().then(() => { const el = $('.card[data-health] [data-hc-how]'); if (el && hcFix(low)) el.outerHTML = hcCta(low); }).catch(() => {});
@@ -1392,8 +1393,8 @@
     if (!RIV) { $('#view').innerHTML = `<div class="qpage"><div class="sk" style="height:140px;border-radius:20px"></div></div>`; RIV = await tapi('GET', '/api/tenants/:t/rivals'); if (view !== 'rivals') return; }
     if (RIV.error || !RIV.rivals) { RIV = null; $('#view').innerHTML = `<div class="qpage"><p class="lx-empty">The rivals didn’t load. Reload the page.</p></div>`; return; }
     const L = RIV.rivals, pick = L.find((x) => x.name === one), list = pick ? [pick] : L;
-    const ad = (a, r) => `<a class="rv-ad" href="${esc(a.url)}" target="_blank" rel="noopener">${a.poster ? `<img src="${esc(a.poster)}" alt="" loading="lazy">` : ''}<b>${esc(a.title || a.hook || r.name)}</b><small>${esc([a.days != null ? `${a.days} days live` : '', a.versions ? `${a.versions} versions` : '', a.angle].filter(Boolean).join(' · '))}</small>${a.why ? `<span>${esc(a.why)}</span>` : ''}</a>`;
-    const page = (r) => `<section class="shf"><header class="shf-h">${r.avatar ? `<img src="${esc(r.avatar)}" alt="" loading="lazy">` : ''}<div><b>${esc(r.name)}</b><small>${esc([r.live != null ? `${r.live} live ads` : r.error ? 'Their ads couldn’t be read this time; the next refresh tries again' : '', r.ai != null ? `AI answers name them ${typeof r.ai === 'number' && r.ai <= 1 ? Math.round(r.ai * 100) + '%' : r.ai} of the time` : ''].filter(Boolean).join(' · '))}</small></div>${pick ? '' : `<button class="linkbtn" data-rv="${esc(r.name)}">Their page ${ic('right', 's14')}</button>`}</header>
+    const ad = (a, r) => `<a class="rv-ad" href="${esc(a.url)}" target="_blank" rel="noopener">${a.poster ? `<img src="${esc(a.poster)}" alt="" loading="lazy">` : ''}<b>${esc(a.title || a.hook || r.name)}</b><small>${esc([a.days != null ? `${a.days} day${+a.days === 1 ? '' : 's'} live` : '', a.versions ? `${a.versions} version${+a.versions === 1 ? '' : 's'}` : '', a.angle] /* "1 day live · 1 version" (26 Oct) */.filter(Boolean).join(' · '))}</small>${a.why ? `<span>${esc(a.why)}</span>` : ''}</a>`;
+    const page = (r) => `<section class="shf"><header class="shf-h">${r.avatar ? `<img src="${esc(r.avatar)}" alt="" loading="lazy">` : ''}<div><b>${esc(r.name)}</b><small>${esc([r.live != null ? `${Number(r.live).toLocaleString()} live ad${+r.live === 1 ? '' : 's'}` : r.error ? 'Their ads couldn’t be read this time; the next refresh tries again' : '', r.ai != null ? `AI answers name them ${typeof r.ai === 'number' && r.ai <= 1 ? Math.round(r.ai * 100) + '%' : r.ai} of the time` : ''].filter(Boolean).join(' · '))}</small></div>${pick ? '' : `<button class="linkbtn" data-rv="${esc(r.name)}">Their page ${ic('right', 's14')}</button>`}</header>
       ${pick && r.prices.length ? `<div class="rv-prices">${r.prices.map((x) => `<span>${esc(x.title)} · <b>${esc(String(x.price))}</b></span>`).join('')}</div>` : ''}
       ${r.ads.length ? `<div class="shf-stack">${r.ads.slice(0, pick ? 24 : 6).map((a) => ad(a, r)).join('')}</div>` : `<p class="shf-none">${r.error ? 'Their ads couldn’t be read this time.' : 'No live ads read for them.'}</p>`}</section>`;
     $('#view').innerHTML = `<div class="qpage shf-page"><button class="q-back" data-nav="${pick ? 'rivals' : 'learned'}">${ic('left', 's16')}${pick ? 'All rivals' : 'What we learned'}</button><header class="q-head"><h1>${pick ? esc(pick.name) : `Rivals <span>${L.length}</span>`}</h1><p>${RIV.at ? `Ads read ${esc(new Date(RIV.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }))}` : ''}</p></header>
@@ -3345,7 +3346,7 @@
         <footer>${LC?.footer(id) || (conn(id) ? `<span class="cn-acct">${ic('check', 's14')}${esc(c.account)}</span><button class="cn-btn is-ghost" data-unlink="${id}">Disconnect</button>` : `<span class="cn-acct is-muted">${ic(id === 'slack' ? 'send' : 'lock', 's14')}${accessOf(id)}</span><button class="cn-btn" data-cx="${id}">Connect${ic('right', 's14')}</button>`)}</footer></article>`;
     const sec = (name, hint, items) => items.length ? `<section class="cn-sec"><h3>${name}<em>${items.length}</em>${hint ? `<small>${hint}</small>` : ''}</h3><div class="cn-grid">${items.map(card).join('')}</div></section>` : '';
     const pct = Math.round(on.length / list.length * 100);
-    libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || (LC?.L?.dummy === false ? `Every source we read for ${B.brand.name}. Connected accounts are read-only (Slack posts to the channel you pick) and only ${B.brand.name}’s team sees them.` : `Every source we read for ${B.brand.name}. Connected accounts are simulated in this demo (Dummy): connecting shows what would change, and nothing touches a real account.`),
+    libShell(`Connectors${LC?.L?.dummy === false ? '' : ' <span class="dummy-tag" title="Connected accounts are simulated in this demo">Dummy</span>'}`, LC?.intro() || (LC?.L?.dummy === false ? `Every source we read for ${B.brand.name}. Connected accounts are read-only (Slack posts to the channel you pick) and only ${possT(B.brand.name)} team sees them.` : `Every source we read for ${B.brand.name}. Connected accounts are simulated in this demo (Dummy): connecting shows what would change, and nothing touches a real account.`),
       `<div class="cn-sum">${on.length ? `<div class="cn-sum-n"><b>${on.length}</b><span>of ${list.length} connected</span></div><div class="cn-bar"><i style="width:${pct}%"></i></div>` : '<div class="cn-sum-n"><span>Connect your accounts</span></div>'}<div class="cn-logos">${list.map(([id]) => `<span class="${conn(id) ? '' : 'is-off'}" title="${esc(B.connectors[id].name)}">${glyph(id, 28)}</span>`).join('')}</div></div>
        ${sec('Not connected yet', 'Connect these to unlock the cards that need them', need)}${sec('Connected', '', on)}${sec('Optional', 'Nice to have', opt)}${soonSec()}`);
     $('#col')?.classList.add('lib-col', 'cn-col'); if (LC && $('#col')) { LC.bindPage(document.getElementById('view') || $('#col')); }
@@ -5614,7 +5615,7 @@
     const log = (D.edits || []).length ? `<section class="fs-g"><header><h3>Changes</h3></header><ul class="fs-log">${D.edits.slice(0, 12).map((e) => `<li><time>${fmtWhen(e.at)}</time><span><b>${esc(e.by)}</b> ${esc(e.what)}</span></li>`).join('')}</ul></section>` : '';
     const q = (FS.q || '').toLowerCase(), hit = (r) => !q || `${lab(r.label)} ${r.v}`.toLowerCase().includes(q);
     const groups = D.groups.map((g) => ({ ...g, rows: g.rows.filter(hit) })).filter((g) => g.rows.length), focusQ = document.activeElement?.matches?.('[data-fsq]');
-    el.innerHTML = `<div class="fs-top"><label class="hd-search fs-q">${ic('search', 's16')}<input data-fsq data-nomic type="search" placeholder="Find a fact" value="${esc(FS.q || '')}" aria-label="Find a fact"></label><span>${q ? `${groups.reduce((n, g) => n + g.rows.length, 0)} of ${D.total}` : `${D.total} facts`}</span>${D.daily ? `<span title="${esc(D.daily.summary || '')}">Prices and stock checked ${fmtWhen(D.daily.at)}</span>` : ''}${D.canEdit ? '' : `<span class="fs-ro">${ic('lock', 's14')}Only ${esc(B.brand.name)}’s team can change these</span>`}</div>
+    el.innerHTML = `<div class="fs-top"><label class="hd-search fs-q">${ic('search', 's16')}<input data-fsq data-nomic type="search" placeholder="Find a fact" value="${esc(FS.q || '')}" aria-label="Find a fact"></label><span>${q ? `${groups.reduce((n, g) => n + g.rows.length, 0)} of ${D.total}` : `${D.total} facts`}</span>${D.daily ? `<span title="${esc(D.daily.summary || '')}">Prices and stock checked ${fmtWhen(D.daily.at)}</span>` : ''}${D.canEdit ? '' : `<span class="fs-ro">${ic('lock', 's14')}Only ${poss(B.brand.name)} team can change these</span>`}</div>
       ${!q && D.groups.length > 2 ? `<nav class="mv2-nav fs-nav">${D.groups.map((g) => `<a href="#fsg-${g.k}" data-fsjump="${g.k}">${esc(g.name)}</a>`).join('')}${choices ? '<a href="#fsg-choices" data-fsjump="choices">Hero products and rivals</a>' : ''}</nav>` : ''}
       ${q && !groups.length ? '<p class="lx-empty">No fact matches that.</p>' : ''}
       ${groups.map((g) => { const all = q || FS.all.has(g.k) || g.rows.length <= 10; return `<section class="fs-g" id="fsg-${g.k}"><header><h3>${esc(g.name)}<em>${g.rows.length}</em></h3></header><ul class="fs-list">${(all ? g.rows : g.rows.slice(0, 8)).map(row).join('')}</ul>${all ? '' : `<button class="linkbtn fs-more" data-fsall="${g.k}">Show all ${g.rows.length}</button>`}</section>`; }).join('')}
@@ -5856,7 +5857,7 @@
       /* the result: what changed in the brief, the moves and the feed, each in its own block */
       const answered = (r) => { const c = r.changed; sheet.classList.add('is-wide'); body.scrollTop = 0;
         if (!c) { head(r.cancelled ? 'Nothing saved' : 'Nothing new to save', ''); return paint(`<div class="dz-reply">${dlReply(r.reply || '')}</div>`, `<span></span><button class="btn btn-primary sm" data-close>Done</button>`); }
-        head(`Saved to ${B.brand.name}’s brand context`, `${c.learned} learning${c.learned === 1 ? '' : 's'}${c.again ? ` · ${c.again} it already knew` : ''}${c.conflicts ? ` · ${c.conflicts} left to the fact sheet` : ''}`);
+        head(`Saved to ${possT(B.brand.name)} brand context`, `${c.learned} learning${c.learned === 1 ? '' : 's'}${c.again ? ` · ${c.again} it already knew` : ''}${c.conflicts ? ` · ${c.conflicts} left to the fact sheet` : ''}`);
         const mv = (x) => `<li><span class="dz-mn">${esc(mvNum(x.n))}</span><span>${esc(x.title || mvLabel(x.n))}</span></li>`, t = (x) => `<li><span>${esc(x.title || x)}</span>${x.why ? `<small>${esc(x.why)}</small>` : ''}</li>`;
         const moves = [c.rewrite.length ? `<p class="dz-k">${c.queued ? 'Rewriting next, after the work running now' : 'Rewriting now'} · ${c.rewrite.length}</p><ul class="dz-ul">${c.rewrite.map(mv).join('')}</ul>` : '',
           r.pending ? `<p class="dz-k">${r.pending.all} plays change with this</p><p class="dz-note">Rewrite all of them, or the ${r.pending.top} that matter most within this upload’s budget.</p><div class="dz-acts"><button class="btn btn-primary sm" data-dl-say="go ahead">Rewrite all ${r.pending.all}</button><button class="btn btn-ghost sm" data-dl-say="just the top ones">Just the top ${r.pending.top}</button></div>` : '',
@@ -6178,7 +6179,7 @@
     /* anyone can look; signing in makes them a guest of this one jam (never the whole team) */
     if (r.guest) ls.set(`${LSP()}guest`, '1'); /* the team wall lets them back in later without the link (signWall) */
     if (!r.member) document.body.classList.add('is-guest'); /* a guest makes words and drafts; paid pictures, videos and finals are the team's (the server refuses them too) */
-    setTimeout(() => toast(r.guest ? `${ic('person', 's16')}You’re in this jam as a guest. You can chat, edit the brief and make drafts.` : r.signedIn ? `${ic('person', 's16')}You’re viewing ${esc(B.brand.name)}’s shared jam` : `${ic('person', 's16')}You’re viewing a shared jam. Sign in to take part.`), 900); };
+    setTimeout(() => toast(r.guest ? `${ic('person', 's16')}You’re in this jam as a guest. You can chat, edit the brief and make drafts.` : r.signedIn ? `${ic('person', 's16')}You’re viewing ${poss(B.brand.name)} shared jam` : `${ic('person', 's16')}You’re viewing a shared jam. Sign in to take part.`), 900); };
   // real connected accounts (live.js) replace the demo numbers before anything renders
   if (window.BREW_DEMO && !LANDING) { document.body.insertAdjacentHTML('beforeend', `<button class="demo-pill" type="button" title="Demo controls (press .)" aria-label="Demo controls">${ic('sliders', 's14')}<span>Demo</span></button>`); $('.demo-pill').onclick = () => openDemo(); }
   Promise.resolve(window.LIVE_P).catch(() => null).then(() => {
@@ -6192,7 +6193,7 @@
      the read replay and the setup steps; the hash after it still applies (#check, #v=moves, #team, #jam=…) */
   const GO_FEED = /[?&]go=feed\b/.test(location.search); if (GO_FEED) { GO_LINK = true; const u0 = new URL(location.href); u0.searchParams.delete('go'); history.replaceState(null, '', u0.pathname + u0.search + u0.hash);
     if (GEN && !LANDING && window.LIVE?.me && !S.onboarded) { S.onboarded = true; save(); } }
-  if (/[?&]joined=1/.test(location.search)) { history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => toast(`${ic('check', 's14')}You’re on ${esc(B.brand.name)}’s team`), 600); }
+  if (/[?&]joined=1/.test(location.search)) { history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => toast(`${ic('check', 's14')}You’re on ${poss(B.brand.name)} team`), 600); }
   if (location.hash === '#team' && ['owner', 'admin'].includes(window.LIVE?.access?.role)) setTimeout(() => window.LiveConn?.teamSheet(), 700);
   const cxBack = /[#&]cx(err)?=/.test(location.hash) ? (() => { try { const k = `brew-cxback:${window.BRAND}`, v = sessionStorage.getItem(k); sessionStorage.removeItem(k); return v; } catch (e) { return null; } })() : null;
   if (hashParams().s) adoptShare().then(() => { if (S.onboarded) feed(); else start(); });
