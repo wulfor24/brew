@@ -3179,3 +3179,6 @@ body.qf-on{overflow:hidden}
 .dcol.is-refreshing{position:relative}.dcol.is-refreshing .col-body{opacity:.45;transition:opacity .2s;pointer-events:none}
 .dcol .col-wait{position:absolute;left:0;right:0;top:72px;z-index:2;pointer-events:none}
 .lib-load .spin{width:34px;height:34px}
+/* briefs sent to our team: the staff controls (brief-staff.js) */
+.bs-staff .ship-tx{min-width:0}.bs-note{display:block;width:100%;box-sizing:border-box;margin-top:8px;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:10px;font:inherit;resize:vertical}
+.jm-ship.bs-staff{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}.jm-ship.bs-staff .ship-btns .btn{height:36px}

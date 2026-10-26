@@ -404,7 +404,7 @@ export function createJamBrief(o) {
        person who sent the brief gets an email (never on the demo site) */
     on('POST', '/api/work/:wid/brief/status', async (b, t, p) => {
       const w = get(t, p.wid); if (!w) return { error: 'not found' };
-      const me = o.staffOf?.(t); if (!me) return { status: 403, error: 'Only the ShopOS team moves a brief on.' };
+      const me = o.staffOf?.(t); if (!me) return { status: 403, error: 'Only our team moves a brief on.' };
       const to = String(b.status || ''), note = String(b.note || '').trim().slice(0, 2000);
       const r = moveStatus(w.jamBrief, to, { by: me, note, at: now(t) }); if (r.error) return { error: r.error, work: w };
       /* a status with a note is a real reply (it folds into the brief, jam-brief onSay); a bare status changes nothing in it */

@@ -161,6 +161,7 @@
     if (w && !EARLY.includes(w.stage)) return JM.later ? `<div class="jm-later">${JM.later}</div>` : '';
     /* the team replied: the answer they need is one tap */
     if (w?.stage === 'needs_you') return `<div class="jm-ship is-split"><button class="btn btn-primary jm-go" data-approve>${ic('check', 's16')}<span>Approve v${esc(w.current || 1)}</span></button><button class="linkbtn jm-alt" data-jm-tab="chat">Or tell them what to change in the chat</button></div>`;
+    if (w && window.BriefStaff?.shows(w)) return window.BriefStaff.html(w, { esc, ic, cls: 'jm-ship is-sent' }); /* our team only: the brief's status and the next step */
     if (w?.jamBrief) return `<div class="jm-ship is-sent"><span>${ic('check', 's16')}<b>Brief shared</b> · ${esc(w.ticket || '')}</span><button class="linkbtn" data-jm-ship="${esc(w.jamBrief.to || 'shopos')}">Copy it again</button><button class="linkbtn" data-jm-view>View the brief</button></div>`;
     if (JM.confirm) return `<div class="jm-ship is-ask"><p>Still missing: <b>${esc(JM.confirm.join(', ').toLowerCase())}</b>. Whoever runs it will ask you. Share it anyway?</p><div><button class="btn btn-ghost" data-jm-noship>Keep jamming</button><button class="btn btn-primary" data-jm-ship="${esc(JM.to || 'shopos')}" data-force>${ic('copy', 's16')}Copy it anyway</button></div></div>`;
     // the jam ends with Share the brief: to the ShopOS team or to your own team. Both copy the brief and its link; nothing is
@@ -584,5 +585,6 @@
   /* the studio's own view of the jam: who's in it and here now, and its messages, in the jam pane's own look */
   const peopleHtml = (w) => { if (!w || DEMO) return ''; const ps = people(w).slice(1); if (!ps.length) return '';
     return `<span class="jm-people st-people" title="${esc(ps.map((x) => x.t).join(', '))}">${ps.slice(0, 5).map((x) => `<span class="jm-pp">${x.html}</span>`).join('')}${ps.length > 5 ? `<span class="jm-pp st-pp-more">+${ps.length - 5}</span>` : ''}</span>`; };
+  window.BriefStaff?.onPaint(() => paint());
   window.JamRoom = { setHere, open, openFromCtx, close: () => {}, decorateDetail, fromHash, isOpen: () => false, isEditing, paint, addToBrief, send, sendTo, mentionOf, hasTag, changeAsk, assignHtml: (w) => assignHtml(w), crewHtml: (w) => crewHtml(w), peopleHtml, typingHtml: (w) => typingHtml(w), teamMsg: (m, w) => msgHtml(m, w), toHtml: (md) => toHtml(md) };
 })();
