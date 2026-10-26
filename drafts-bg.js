@@ -451,7 +451,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   /* the cards in the order they are worth doing (value.js), the feed's order breaking ties */
   const byValue = (p, cards) => { const grades = p.moveValue || {}; return cards.map((c, i) => ({ c, i, v: cardValue(c, grades, now()) })).sort((a, b) => b.v - a.v || a.i - b.i).map((x) => x.c); };
   // make the missing drafts for one brand, best-valued first → { made: [{cardId, as, kind, title, image}], usd, errors }
-  async function runOne(slug, { manual = false, n = cfg.perRun, only = null } = {}) {
+  async function runOne(slug, { manual = false, n = cfg.perRun, only = null, fresh = false } = {}) {
     if (busy.has(slug)) return { busy: true };
     busy.add(slug);
     try {
@@ -462,7 +462,8 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
           if (c0) { const n0 = Object.values(c0).filter((d) => d?.qv === LOOKS_V).length; const h = await healHeads(p0, c0, 12, slug); const l = await healLooks(p0, c0); if (h || l || Object.values(c0).filter((d) => d?.qv === LOOKS_V).length !== n0) await save(slug, c0).catch(() => {}); } }
         return { made: [], usd: 0, why: due.why }; }
       const p = await loadPack(slug); if (!p?.seed?.posts) return { made: [], usd: 0, why: 'no feed yet' };
-      const cache = await cacheOf(slug), ranked = rankCards(p.seed.posts), top = new Set(ranked.slice(0, cfg.topN).map((c) => c.id)), order = byValue(p, ranked), day = today(now());
+      const cache = await cacheOf(slug); if (fresh && only?.length) for (const id of only) delete cache[id]; /* staff: make these cards' drafts again now */
+      const ranked = rankCards(p.seed.posts), top = new Set(ranked.slice(0, cfg.topN).map((c) => c.id)), order = byValue(p, ranked), day = today(now());
       if (await healMissing(slug, cache)) await save(slug, cache).catch(() => {});
       if (healWrongProduct(p, cache)) await save(slug, cache).catch(() => {});
       if (await healCodeMocks(p, cache)) await save(slug, cache).catch(() => {});

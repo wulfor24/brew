@@ -312,6 +312,10 @@ const routes = {
     return { busy: Object.values(by).reduce((a, n) => a + n, 0), by, rev: process.env.K_REVISION || null }; },
   'GET /api/ops/sloosh': async (b, req) => slooshOps(req),
   /* SquareUp staff: listen for one brand now (a brand whose run was cut off, or one a customer is waiting on). Same caps */
+  /* staff: a brand's first drafts made now on Sloosh (any brand, a moved one too: staff test it here), for chosen cards or the next few;
+     fresh: true makes the chosen cards' drafts again from scratch */
+  'POST /api/ops/drafts': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only' }; const slug = String(b.slug || ''); if (!slug) return { error: 'slug' };
+    const only = Array.isArray(b.only) ? b.only.map(String).slice(0, 12) : null; draftsBg.runOne(slug, { manual: true, only, n: Math.min(+b.n || 3, 12), fresh: !!b.fresh }).then((r) => console.log('[ops] drafts', slug, JSON.stringify({ made: (r?.made || []).map((m) => m.cardId), why: r?.why || null }))).catch((e) => console.warn('[ops] drafts', slug, e.message)); return { started: slug, only }; },
   'POST /api/ops/listen': async (b, req) => { if (!auth.isAdmin(auth.user(req))) return { error: 'admins only' }; const slug = String(b?.slug || '').replace(/[^a-z0-9-]/g, ''); if (!slug || blocked(slug)) return { error: 'unknown brand' };
     const due = await social.due(slug); if (due.why?.some((w) => /off here|mock/.test(w))) return { error: due.why.join('; ') };
     social.runOne(slug, { ...due, listen: true, listenFull: b.full !== false, ideas: false }).catch((e) => console.warn('[ops] listen', slug, e.message)); return { started: slug }; },
@@ -569,7 +573,7 @@ const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlu
   onDone: async (slug, rec) => { const ok = await feedSvc?.finalDone?.(slug, rec); console.log(`[finals] ${slug} ${rec.runKey} ${rec.state} after the restart: ${ok ? 'landed on its card' : 'no card to land on'}`); return !!ok; } /* a run reconcileAll settles lands where it was asked */ });
 /* Sloosh makes and edits every picture and clip (sloosh-make.js): the image guard's model above, every clip (media.js), the jam's
    engines and Studio. Each charge is recorded per brand (budget 'credits'), never capped while the account is unlimited */
-slooshMake = createSlooshMake({ sloosh, finals, packs, saveGen, genFlush, log: console, onRefuse: (e) => noteAlert('sloosh', String(e?.message || e).slice(0, 300)), record: (slug, credits) => { if (slug && credits > 0) budget.spend('credits', slug, Math.ceil(credits)); } });
+slooshMake = createSlooshMake({ sloosh, finals, packs, saveGen, genFlush, log: console, toPng: (buf) => imgNorm.normalizeBuf(buf, 'ref'), onRefuse: (e) => noteAlert('sloosh', String(e?.message || e).slice(0, 300)), record: (slug, credits) => { if (slug && credits > 0) budget.spend('credits', slug, Math.ceil(credits)); } });
 setMakers({ ...slooshMake, firstDraft: (slug, cardId) => draftsBg.runOne(slug, { manual: true, only: [cardId], n: 1 }) });
 /* Sloosh's health for the ops alerts: when it needs a reconnect or can't pay, finals quietly go to Gemini, so staff hear it once a day */
 /* SLOOSH_CHECK=0: Sloosh is off on purpose here (production until Param says, 25 Oct): finals use Gemini and nobody is emailed about it */

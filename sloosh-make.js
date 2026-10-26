@@ -23,7 +23,7 @@ const one = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const transient = (e) => e?.timeout || e?.pollError || e?.status >= 500 || /timed? ?out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|socket hang up|busy|overload|rate|429|503|try again/i.test(String(e?.message || ''));
 
 export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = async () => {}, publicUrl = process.env.PUBLIC_URL || '', fetchImpl = fetch,
-  record = () => {}, onRefuse = () => {}, mock = () => process.env.AI_MOCK === '1', viewOf = (slug) => loadView(packs, slug, { scope: 'member' }), tries = 3, backoffMs = 20e3, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), log = console } = {}) {
+  record = () => {}, onRefuse = () => {}, toPng = null /* (buf) → PNG buffer (img-norm normalizeBuf): an SVG or HEIC Sloosh won't take */, mock = () => process.env.AI_MOCK === '1', viewOf = (slug) => loadView(packs, slug, { scope: 'member' }), tries = 3, backoffMs = 20e3, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), log = console } = {}) {
   const base = String(publicUrl || '').replace(/\/$/, '');
 
   /* any reference (a buffer, a file on this instance, a gen/ or brand path, a store URL) → a public https link Sloosh can import */
@@ -52,15 +52,26 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     return out; };
 
   /* one Sloosh generation, start to bytes: import the references, quote (Sloosh enhances the prompt), generate with a key, wait, fetch */
-  async function run({ slug, mode, prompt, route, refs = [], frame = null, endFrame = null, path: where = 'image' }) {
-    const vid = mode !== 'image_gen';
+  async function run({ slug, mode, prompt: prompt0, route, refs = [], frame = null, endFrame = null, path: where = 'image' }) {
+    const vid = mode !== 'image_gen'; let prompt = prompt0;
     if (mock()) { const first = frame || refs[0]?.src; const buf = Buffer.isBuffer(first) ? first : isFile(first) ? fs.readFileSync(first) : Buffer.from('mock');
       return Object.assign(Buffer.from(buf), { provider: 'sloosh', mock: true, model: route.model, ask: { mode, prompt, route, refs: refs.map((r) => ({ job: r.job, label: r.label })), frame: !!frame } }); }
-    const asset = async (src, role, label) => { const a = await finals.assetFor(slug, { url: await linkFor(src), label }); return { kind: a.kind, id: a.id, url: a.url, type: a.type || (vid && role === 'reference' && /\.mp4/.test(a.url) ? 'video' : 'image'), role }; };
-    const uploaded = [];
+    const asset0 = async (src, role, label) => { const a = await finals.assetFor(slug, { url: await linkFor(src), label }); return { kind: a.kind, id: a.id, url: a.url, type: a.type || (vid && role === 'reference' && /\.mp4/.test(a.url) ? 'video' : 'image'), role }; };
+    /* a reference Sloosh won't take as it is (an SVG logo, a HEIC photo: asset_media_unsupported) is turned into a PNG first */
+    const asset = async (src, role, label) => { try { return await asset0(src, role, label); }
+      catch (e) { if (!toPng || !/unsupported|media|image or video/i.test(String(e.message))) throw e;
+        const raw = Buffer.isBuffer(src) ? src : isFile(src) ? fs.readFileSync(src) : await fetchImpl(/^https?:/.test(String(src)) ? src : `${base}/${String(src).replace(/^\//, '')}`, { signal: AbortSignal.timeout(30e3) }).then(async (r) => (r.ok ? Buffer.from(await r.arrayBuffer()) : null));
+        if (!raw) throw e; return asset0(await toPng(raw), role, label); } };
+    const uploaded = []; let skipped = 0; const kept = [];
+    try {
     if (frame) uploaded.push(await asset(frame, 'start_frame', 'opening frame'));
     if (endFrame) uploaded.push(await asset(endFrame, 'end_frame', 'closing frame'));
-    if (!(vid && frame && route.framesAlone)) for (const r of refs) uploaded.push(await asset(r.src, 'reference', r.label));
+    /* the product photo must go in (no picture without it); any other reference that still won't import is left out, never the whole picture */
+    if (!(vid && frame && route.framesAlone)) for (const r of refs) { try { uploaded.push(await asset(r.src, 'reference', r.label)); kept.push(r); }
+      catch (e) { if (r.job === 'product' || transient(e)) throw e; skipped++; log.warn?.(`[sloosh-make] reference left out (${r.label || r.job}): ${String(e.message).slice(0, 140)}`); } }
+    } catch (e) { try { onRefuse(e, { slug, where }); } catch {} throw Object.assign(new Error(`Sloosh couldn't take the photos for this just now (${String(e.message).slice(0, 200)}). We'll try again.`), { soft: true, sloosh: true, cause: e }); }
+    /* the prompt names references by position: when one was left out, the lines are renumbered to what went in */
+    if (skipped) prompt = String(prompt).replace(/\n\n(?:Image \d+ [^\n]*)$/, '') + '\n\n' + refLines(kept.map((r, i) => ({ ...r, n: i + 1 })));
     const ask = { mode, prompt: one(prompt).slice(0, 30000), model: route.model, references: uploaded.slice(0, 20), ratio: route.ratio, resolution: route.resolution, seconds: vid ? route.seconds : undefined, sound: vid ? route.sound : undefined, count: 1, enhance: true };
     const key = `brew-${sha(JSON.stringify([slug, ask.mode, ask.prompt, ask.model, ask.ratio, ask.resolution, ask.seconds, uploaded.map((u) => u.id)]))}`;
     let last;

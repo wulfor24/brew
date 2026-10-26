@@ -65,7 +65,9 @@ const nearest = (opts, want, order) => { if (!opts?.length) return want; if (opt
  * list that Sloosh offers today and that has the ratio wins; with none, the first offered model at its nearest ratio.
  */
 export function pick({ specs = null, job = 'image', ratio = '4:5', tier = 'draft', seconds = null, sound = undefined, model = null } = {}) {
-  const vid = job === 'video' || job === 'videoEdit', live = specs?.models || {}, list = [model, ...(ROUTES[job] || ROUTES.image)].filter(Boolean);
+  /* a final picture leads with Nano Banana Pro (the most faithful small print and type; 27 Oct A/B on Arata), a draft with Nano Banana 2.1 (bolder, 2.6x cheaper) */
+  const base = job === 'image' && tier === 'final' ? ['gemini-3-pro-image-preview', ...ROUTES.image] : ROUTES[job] || ROUTES.image;
+  const vid = job === 'video' || job === 'videoEdit', live = specs?.models || {}, list = [model, ...base].filter(Boolean);
   const offered = Object.keys(live).length ? list.filter((m) => live[m]) : list; const pool = offered.length ? offered : [specs?.default || list[0]];
   const want = ratio === 'auto' ? 'auto' : String(ratio || (vid ? '9:16' : '4:5'));
   const exact = pool.find((m) => has(live[m]?.fields?.aspectRatio, want)) || pool.find((m) => (NEAR[want] || []).some((r) => has(live[m]?.fields?.aspectRatio, r))) || pool[0];
