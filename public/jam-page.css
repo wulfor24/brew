@@ -846,3 +846,10 @@
 .jp .jp-mode button[aria-pressed="true"] svg{opacity:1}
 /* the stage-in already pads the piece; the old studio padding under it (24 top, 60 bottom) only cost a short window its ad */
 .jp .jp-stage-in > .st-asset.cs-stage{padding-top:0!important;padding-bottom:0!important}
+/* the ad's words clamp to whole lines (the older "never cut" rule set display:block, so the clamp alone did nothing and a
+   sliver of the next line showed); a short window gets two, then one */
+.jp .std .st-asset .as-meta.lg:not(.is-story) .am-text{display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden!important;max-height:none;padding-bottom:0;margin-bottom:10px;-webkit-mask-image:none;mask-image:none}
+.jp .std .st-asset .as-meta.lg.is-tight:not(.is-story) .am-text{-webkit-line-clamp:2}
+.jp .std .st-asset .as-meta.lg.is-tighter:not(.is-story) .am-text{-webkit-line-clamp:1}
+/* the stage's tag keeps its corner: the piece starts under it */
+.jp .jp-stage-in > .st-asset.cs-stage{padding-top:30px!important}
