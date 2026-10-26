@@ -24,7 +24,7 @@ import { cardValue, moveNo } from './value.js'; // what a card is worth doing (e
 import { oneAsk, noiseOf, conflicts } from './same-ask.js'; // one card per ask: six moves saying "fix the pack prices" show once
 import { moneyParse, safeLocale, viewerPack } from './brand-pack.js';
 import { liveTruth, replacedKeys } from './facts-desk.js'; // one truth per viewer: the public sheet, or a member's with their live connected facts over
-import { allowedFrom, unbacked, numbersIn } from './fact-gate.js';
+import { allowedFrom, unbacked, numbersIn, wholeTwin } from './fact-gate.js';
 import { createRemix } from './remix.js';
 import { eventsFor, healDaysIn } from './day-count.js'; /* a saved "Diwali is 14 days away" reads today's count, in the brand's zone (26 Oct) */
 import { numeralsCard } from './num-words.js'; /* "ten fifteen am", "November eighth", "forty-one reviews" read in numerals (26 Oct) */
@@ -852,7 +852,7 @@ export function createFeedService(o) {
   const truthRows = (t) => (t?.member ? Object.entries(packFor(t)?.facts || {}).filter(([, f]) => f?.connected).map(([k, f]) => ({ key: f.key || k, label: f.label, v: f.v, n: f.n, at: f.at, src: f.src })) : []);
   // an idea's title quotes a price its text doesn't ("the ₹399 + ₹399 pair" over "₹399 shampoo with the ₹642.32 serum"): the AI mixed two items up
   const titlePricesMatch = (c) => { const money = (x) => numbersIn(x, { strict: true }).filter((n) => /^[^\d]+\d/.test(n)); const have = money([c.sub, ...(c.detail?.why || [])].join(' '));
-    return money(c.title).every((n) => { const i = have.indexOf(n); if (i < 0) return false; have.splice(i, 1); return true; }); };
+    return money(c.title).every((n) => { const i = have.findIndex((h) => h === n || wholeTwin(h) === n) /* ₹2,182 in the title is the text's ₹2,182.15 (26 Oct) */; if (i < 0) return false; have.splice(i, 1); return true; }); };
   /* a banned claim the brand itself makes: never inside quotes (a shopper's question, a thread title) and never denied ("it's not a
      miracle", "no overnight cure", "without a guarantee"): QA J-04 */
   const bannedSaid = (txt) => { const x = String(txt || '').replace(/“[^”]*(”|$)/g, ' ').replace(/"[^"\n]*"/g, ' '); if (!BANNED.test(x)) return false;

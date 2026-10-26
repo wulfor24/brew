@@ -36,10 +36,17 @@ export const numbersIn = (text, { strict = false } = {}) => {
   return out.filter((x) => !(strict && /^\d{4}$/.test(x) && +x >= 1900 && +x <= 2100)).map(canon);
 };
 
+/* a whole-rupee rounding of a real price is that price (26 Oct, QV N-P1-3): the jam's words round ₹2,182.15 to ₹2,182 (jam-words.js
+   wholeRupees), so the sheet's "₹2182.15" also backs "₹2182". Rupees only: $29.99 is never "$30" */
+export const wholeTwin = (n) => { const m = /^₹(\d+)\.\d+$/.exec(String(n || '')); return m ? `₹${Math.round(+String(n).slice(1))}` : null; };
+/* is canon number n backed by the allowed set: itself, or a ₹ price with paise that rounds to it (any Set, or a set-like with an iterator) */
+export const backs = (allowed, n) => { if (!allowed) return false; if (allowed.has(n)) return true; if (!/^₹\d+$/.test(n) || typeof allowed[Symbol.iterator] !== 'function') return false;
+  for (const a of allowed) if (wholeTwin(a) === n) return true; return false; };
+
 export const allowedFrom = (facts) => {
   const ok = new Set();
   for (const f of Object.values(facts || {})) {
-    for (const s of [f.v, ...(f.aliases || [])]) numbersIn(s, { strict: true }).forEach((n) => ok.add(n));
+    for (const s of [f.v, ...(f.aliases || [])]) numbersIn(s, { strict: true }).forEach((n) => { ok.add(n); const w = wholeTwin(n); if (w) ok.add(w); });
     if (Number.isFinite(f.n) && Math.abs(f.n) >= 1000) ok.add(fmtN(f.n)); // a count fact ("5069") backs "5,069 reviews"
   }
   return ok;
@@ -57,7 +64,7 @@ export const unbacked = (card, allowed, { strict = false } = {}) => {
   const bad = [];
   for (const [at, s] of texts(card)) {
     if (/⟨\w+\?⟩|\{\{\w+\}\}/.test(s)) bad.push({ at, n: s.match(/⟨\w+\?⟩|\{\{\w+\}\}/)[0], text: s });
-    for (const n of numbersIn(s, { strict })) if (!allowed.has(n)) bad.push({ at, n, text: s });
+    for (const n of numbersIn(s, { strict })) if (!backs(allowed, n)) bad.push({ at, n, text: s });
   }
   return bad;
 };

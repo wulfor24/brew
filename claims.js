@@ -49,8 +49,13 @@ export const approvedText = (claims = []) => { const xs = (claims || []).map((c)
 /* the phrase sits inside one of the Brand Book's approved claims, never just anywhere in the brand's words (QA audit 24 Oct: Arata's
    tagline said "dermat-approved" and passed because an approved list existed) */
 const approvedHas = (src, phrase) => { const k = String(phrase).toLowerCase().trim(); return src.split('¶').some((seg) => seg.includes('[approved claims]') && seg.includes(k)); };
+/* a rupee price with paise in the brand's words also stands as its whole-rupee rounding, the way the jam's words print it (jam-words.js
+   wholeRupees): "₹2,182.15" backs "₹2,182" in every check that reads these words (26 Oct, QV N-P1-3). Added once, at the end */
+const PAISE = /(₹|\brs\.?\s?|\binr\s?)\s?(\d[\d,]*)\.(\d{1,2})\b/g;
+export const withWhole = (n) => { const tw = new Set(); for (const m of String(n || '').matchAll(PAISE)) { const r = Math.round(+`${m[2].replace(/,/g, '')}.${m[3]}`); if (Number.isFinite(r)) { tw.add(`₹${r.toLocaleString('en-IN')}`); tw.add(`₹${r}`); } }
+  return tw.size ? `${n} ¶ ${[...tw].join(' ')}` : n; };
 /* the brand's own words, for "is this claim theirs?": every string in the facts, the catalog rows, evidence, about */
-export const sourceText = (...parts) => { const out = []; const walk = (o, d = 0) => { if (d > 6 || o == null) return; if (typeof o === 'string' || typeof o === 'number') out.push(String(o)); else if (Array.isArray(o)) o.slice(0, 2000).forEach((x) => walk(x, d + 1)); else if (typeof o === 'object') for (const [k, v] of Object.entries(o)) if (!/^(img|image|images|src|url|logo|id|handle)$/i.test(k)) walk(v, d + 1); }; parts.forEach((p) => walk(p)); const n = norm(out.join(' ¶ ')); /* ¶ marks where one fact, product or review ends (certifiedIn reads one at a time) */ if (n.length > 2000) { if (NORMED.size >= 12) NORMED.delete(NORMED.keys().next().value); NORMED.set(n, n); } return n; };
+export const sourceText = (...parts) => { const out = []; const walk = (o, d = 0) => { if (d > 6 || o == null) return; if (typeof o === 'string' || typeof o === 'number') out.push(String(o)); else if (Array.isArray(o)) o.slice(0, 2000).forEach((x) => walk(x, d + 1)); else if (typeof o === 'object') for (const [k, v] of Object.entries(o)) if (!/^(img|image|images|src|url|logo|id|handle)$/i.test(k)) walk(v, d + 1); }; parts.forEach((p) => walk(p)); const n = withWhole(norm(out.join(' ¶ '))); /* ¶ marks where one fact, product or review ends (certifiedIn reads one at a time) */ if (n.length > 2000) { if (NORMED.size >= 12) NORMED.delete(NORMED.keys().next().value); NORMED.set(n, n); } return n; };
 
 /* a brand pack's own words (brand-pack.js: facts, catalog, the review quotes, about), plus the card's real evidence */
 const PACK_SRC = new WeakMap();
