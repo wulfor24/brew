@@ -3,6 +3,9 @@
 # brew-partner-copy service account: reads staging's database, vault key and bucket; writes production's). Staging's live image.
 #   tools/partner-copy.sh scrubroom-in [nutrova-com …] [global]     a dry run (nothing written)
 #   tools/partner-copy.sh scrubroom-in apply                         the copy
+#   … jams workspaces sync [apply]    go-live words (docs/go-live-swap.md section 4): jams and finals come too, the partners'
+#                                     workspaces where production has none, and staging wins (connections never written, members
+#                                     unioned, production-only parts kept, replaced rows exported to gs://brew-prod-backups/presync/)
 # (plain words, no flags: gcloud mangles repeated flags in a job's args)
 # Prints the job's [partner] lines. db/partner-copy.js says what is copied and what stays on staging.
 set -euo pipefail
@@ -12,7 +15,7 @@ STAGE_REV=$(gcloud run services describe shopos-feed --region=$REGION --project=
 IMG=$(gcloud run revisions describe "$STAGE_REV" --region=$REGION --project=$P --format='value(spec.containers[0].image)')
 ARGS="db/migrate-to-prod.mjs"; for a in "$@"; do case "$a" in -*) echo "STOP: plain words only ($a)"; exit 1;; esac; ARGS="$ARGS:$a"; done
 gcloud run jobs deploy brew-partner-copy --image="$IMG" --project=$P --region=$REGION --service-account=brew-partner-copy@$P.iam.gserviceaccount.com $NET \
-  --command=node "--args=^:^$ARGS" --set-env-vars="^|^STORAGE=pg|SRC_BUCKET=brew-prototype|RESEARCH_BUCKET=brew-prod" \
+  --command=node "--args=^:^$ARGS" --set-env-vars="^|^STORAGE=pg|SRC_BUCKET=brew-prototype|RESEARCH_BUCKET=brew-prod|BACKUP_BUCKET=brew-prod-backups" \
   --set-secrets="SRC_DATABASE_URL=BREW_STAGING_DATABASE_URL:latest,DATABASE_URL=BREW_PROD_DATABASE_URL:latest,SRC_VAULT_KEY=FEED_VAULT_KEY:latest,FEED_VAULT_KEY=FEED_VAULT_KEY_PROD:latest" \
   --max-retries=0 --task-timeout=3600 --memory=2Gi --quiet >/dev/null
 START=$(date -u +%Y-%m-%dT%H:%M:%SZ); OK=1

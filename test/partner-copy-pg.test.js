@@ -19,6 +19,9 @@ const quiet = { log() {}, warn() {} };
 let src, dst, copyBrand, copyGlobal, mediaRefs;
 const dbUrl = (name) => url.replace(/\/postgres\?/, `/${name}?`);
 const STUB = 'application/x-parted';
+/* these tests are the first copy (25 Oct), before Arata was on production: today arata-in is protected and its sign-ins are never
+   written again (test/partner-sync-pg.test.js); here no brand is, so the copy mechanics are tested on a fresh production */
+const FIRST_COPY = new Set();
 const put = (pool, key, body, type = 'application/json') => pool.query(`INSERT INTO objects (key, body, content_type) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET body = EXCLUDED.body, content_type = EXCLUDED.content_type, version = nextval('objects_version'), src = NULL`, [key, Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)), type]);
 const putParted = async (pool, key, doc) => { await pool.query(`INSERT INTO objects (key, body, content_type) VALUES ($1, '\\x', '${STUB}') ON CONFLICT (key) DO UPDATE SET content_type = '${STUB}', src = NULL, version = nextval('objects_version')`, [key]);
   await pool.query('DELETE FROM doc_parts WHERE key = $1', [key]);
@@ -71,7 +74,7 @@ const files = () => { const s = fakeStore(); s.add('stg', 'brands/arata-in/asset
   s.add('stg', 'brands/arata-in/raw/2026-10-24/shot.png', 'raw'); s.add('stg', 'media/0123456789abcdef0123.jpg', 'old-research'); s.add('stg', 'gen/hero-1.png', 'hero'); return s; };
 
 test('a dry run plans the copy and writes nothing', { skip }, async () => {
-  const s = files(), r = await copyBrand({ src, dst, slug: 'arata-in', keys, store: s, log: quiet });
+  const s = files(), r = await copyBrand({ protect: FIRST_COPY, src, dst, slug: 'arata-in', keys, store: s, log: quiet });
   assert.equal((await dst.query('SELECT count(*)::int AS n FROM objects')).rows[0].n, 0);
   assert.equal(s.copies.length, 0);
   assert.equal(r.rows, 6); /* status, profile, moves, members, the one live sign-in, brief */
@@ -85,7 +88,7 @@ test('a dry run plans the copy and writes nothing', { skip }, async () => {
 });
 
 test('the copy reads back the same on production, with sign-ins on production\'s key', { skip }, async () => {
-  const s = files(); const r = await copyBrand({ src, dst, slug: 'arata-in', keys, store: s, apply: true, log: quiet });
+  const s = files(); const r = await copyBrand({ protect: FIRST_COPY, src, dst, slug: 'arata-in', keys, store: s, apply: true, log: quiet });
   assert.equal(r.copied, 6);
   for (const k of ['status.json', 'profile.json', 'moves.json', 'private/members.json']) assert.deepEqual((await read(dst, `brands/arata-in/${k}`)).doc, (await read(src, `brands/arata-in/${k}`)).doc, k);
   assert.equal((await dst.query(`SELECT content_type FROM objects WHERE key = 'brands/arata-in/moves.json'`)).rows[0].content_type, STUB, 'moves stay in parts');
@@ -104,8 +107,8 @@ test('the copy reads back the same on production, with sign-ins on production\'s
 });
 
 test('again: nothing is copied twice', { skip }, async () => {
-  const s = files(); for (const [n, x] of (await (async () => { const t = files(); await copyBrand({ src, dst, slug: 'arata-in', keys, store: t, apply: true, log: quiet }); return t.b.prd; })())) s.b.prd.set(n, x);
-  const r = await copyBrand({ src, dst, slug: 'arata-in', keys, store: s, apply: true, log: quiet });
+  const s = files(); for (const [n, x] of (await (async () => { const t = files(); await copyBrand({ protect: FIRST_COPY, src, dst, slug: 'arata-in', keys, store: t, apply: true, log: quiet }); return t.b.prd; })())) s.b.prd.set(n, x);
+  const r = await copyBrand({ protect: FIRST_COPY, src, dst, slug: 'arata-in', keys, store: s, apply: true, log: quiet });
   assert.equal(r.copied, 0); assert.equal(r.same, 6); assert.equal(r.filesCopied, 0); assert.equal(r.mediaCopied, 0); assert.equal(s.copies.length, 0);
 });
 
@@ -114,7 +117,7 @@ test('the final delta takes staging\'s new changes and never overwrites what pro
   await putParted(src, 'brands/arata-in/moves.json', { moves: { ...moves, 3: { title: 'A third move' } } });
   await put(dst, 'brands/arata-in/private/members.json', { owner: 'marketing@shopos.ai', members: [{ email: 'founder@arata.in' }] }); /* production's own change */
   await putParted(dst, 'brands/arata-in/status.json', { name: 'Arata', state: 'Ready', done: true, seenAt: 5 }); /* production rewrote it, in parts */
-  const r = await copyBrand({ src, dst, slug: 'arata-in', keys, store: files(), apply: true, log: quiet });
+  const r = await copyBrand({ protect: FIRST_COPY, src, dst, slug: 'arata-in', keys, store: files(), apply: true, log: quiet });
   assert.equal(r.copied, 2); assert.equal(r.keptProd, 2);
   assert.equal((await read(dst, 'brands/arata-in/profile.json')).doc.tagline, 'new on staging');
   assert.equal((await read(dst, 'brands/arata-in/moves.json')).doc.moves[3].title, 'A third move');

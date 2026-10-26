@@ -10,6 +10,10 @@ import { isClosedRead } from '../closed-gate.js';
 const P = process.env.GOOGLE_CLOUD_PROJECT || 'squareup-492617', R = process.env.REGION || 'asia-south1';
 const SERVICES = String(process.env.PROD_SERVICES || '').split(',').filter(Boolean);
 const TEST_BRANDS = new Set(String(process.env.TEST_BRANDS || 'cozysnugglet-shop,zenant-club,zenant-club-yt,adpage,adpage-ads,questions').split(','));
+/* production's own address, and staging's (a partner whose home is staging is sent there): tools/promote.sh passes both from
+   tools/prod-env.sh, so the go-live swap changes them in one place; the defaults are the addresses before the swap */
+const EXPECT_PUBLIC_URL = String(process.env.EXPECT_PUBLIC_URL || 'https://feed.joinsquareup.com').replace(/\/+$/, '');
+const EXPECT_STAGING_URL = String(process.env.EXPECT_STAGING_URL || 'https://brew.joinsquareup.com').replace(/\/+$/, '');
 const found = []; const bad = (why) => { found.push(why); console.log(`[clean] ${why}`); };
 
 if (!SERVICES.length) bad('no production services named (PROD_SERVICES): nothing about them was checked'); /* a gate with nothing to check never passes */
@@ -32,7 +36,7 @@ for (const s of SERVICES) {
     if (env.ENV !== 'production') bad(`${s}: ENV is ${env.ENV || 'unset'}, not production`);
     if (env.RESEARCH_BUCKET !== 'brew-prod') bad(`${s}: RESEARCH_BUCKET is ${env.RESEARCH_BUCKET || 'unset'}, not brew-prod`);
     if (env.STORAGE !== 'pg') bad(`${s}: STORAGE is ${env.STORAGE || 'unset'}, not pg`);
-    if (!/^https:\/\/feed\.joinsquareup\.com$/.test(env.PUBLIC_URL || '')) bad(`${s}: PUBLIC_URL is ${env.PUBLIC_URL || 'unset'}`);
+    if ((env.PUBLIC_URL || '') !== EXPECT_PUBLIC_URL) bad(`${s}: PUBLIC_URL is ${env.PUBLIC_URL || 'unset'}`);
     if (env.OBJECTS_READTHROUGH === '1' || env.OBJECTS_MIRROR === '1') bad(`${s}: reads or writes the staging bucket path (OBJECTS_READTHROUGH/MIRROR)`);
     if (!/(secret BREW_PROD_DATABASE_URL)/.test(env.DATABASE_URL || '')) bad(`${s}: DATABASE_URL is not the production database`);
     /* production's own secrets (a staging key here would open staging's vault and sessions), sign-in on, the access policy set */
@@ -55,7 +59,7 @@ if (process.env.SMOKE_URL) {
   for (const r of st) { let s0 = null; try { s0 = JSON.parse(r.body.toString('utf8')); } catch {} if (!s0?.done) continue; brandsNow.push(r.s);
     if (s0.source?.kind === 'shopify-admin') { const pr = (await q('SELECT body FROM objects WHERE key = $1', [`brands/${r.s}/profile.json`])).rows[0]; let p0 = null; try { p0 = JSON.parse(pr?.body?.toString('utf8') || 'null'); } catch {} if (isClosedRead(s0, p0)) closed.add(r.s); } }
   for (const p of ['/', '/healthz/ready', '/api/config', '/privacy', ...brandsNow.slice(0, 12).flatMap((b) => [`/${b}`, `/b/${b}/seed.js`])]) {
-    const b = (/^\/(?:b\/)?([a-z0-9-]+)/.exec(p) || [])[1], ok = (c, r) => c === 200 || (closed.has(b) && (c === 401 || c === 403)) || (c === 302 && /^https:\/\/brew\.joinsquareup\.com\//.test(r?.headers?.get?.('location') || '')); /* a partner whose home is staging (STAGING_HOME) is sent there */
+    const b = (/^\/(?:b\/)?([a-z0-9-]+)/.exec(p) || [])[1], ok = (c, r) => c === 200 || (closed.has(b) && (c === 401 || c === 403)) || (c === 302 && (r?.headers?.get?.('location') || '').startsWith(`${EXPECT_STAGING_URL}/`)); /* a partner whose home is staging (STAGING_HOME) is sent there */
     try { const r = await fetch(process.env.SMOKE_URL + p, { signal: AbortSignal.timeout(30e3), redirect: 'manual' }); if (!ok(r.status, r)) bad(`smoke: ${p} answered ${r.status}`); else console.log(`[clean] smoke ${p} ${r.status}`); }
     catch (e) { bad(`smoke: ${p} did not answer (${e.message})`); } } }
 
