@@ -1,0 +1,37 @@
+# The same test gate deploy.sh runs before every deploy: AI_MOCK=1 node --test test/*.test.js
+name: test
+on:
+  push:
+  pull_request:
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      AI_MOCK: '1'        # every AI call is mocked: no keys, no spend
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22  # Dockerfile: node:22-bookworm-slim
+          cache: npm
+      # The pg tests (test/pg-helper.js) start their own throwaway Postgres 17 cluster per file from
+      # /usr/lib/postgresql/17/bin, so files running in parallel never share a database. Only the binaries are needed.
+      - name: Install Postgres 17 binaries
+        run: |
+          if [ ! -x /usr/lib/postgresql/17/bin/initdb ]; then
+            sudo install -d /usr/share/postgresql-common/pgdg
+            sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+            echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --no-install-recommends postgresql-17 >/dev/null
+          fi
+          sudo systemctl stop postgresql || true
+          /usr/lib/postgresql/17/bin/initdb --version
+      - run: npm ci --no-audit --no-fund
+      - name: Tests
+        run: node --test test/*.test.js
