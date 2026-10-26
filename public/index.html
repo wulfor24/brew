@@ -3,7 +3,9 @@
 <meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600&display=swap"></noscript>
+<!-- Google Fonts never hold the first load (QV round 2, 26 Oct: its CSS stalled 3.3 s and held the load event to 4.3 s; a media="print"
+     sheet still holds the load event): asked for after the page has loaded, display=swap, the system font until it lands -->
+<script>(function(){var f=function(){var l=document.createElement("link");l.rel="stylesheet";l.href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600&display=swap";document.head.appendChild(l)};if(document.readyState==="complete")f();else addEventListener("load",function(){setTimeout(f,0)},{once:true})})()</script><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600&display=swap"></noscript>
 <link rel="stylesheet" href="feed-system.css">
 <link rel="stylesheet" href="brew.css">
 <link rel="stylesheet" href="jam-room.css">

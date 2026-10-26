@@ -207,3 +207,13 @@ test('Brand Book: one founding year, the best-sourced; the "since" line says the
   assert.match(read('brand-book-routes.js'), /v\.story = \{ \.\.\.v\.story, founded: fy\.v \}/);
   assert.match(read('tools/audit-brand-book.mjs'), /more than one founding year/);
 });
+
+/* ---------- 10. fonts never hold the first load ---------- */
+test('fonts: Google Fonts are asked for after the load, with display=swap; no blocking font stylesheet in the head', () => {
+  for (const f of ['public/index.html', 'public/demo-picker.html']) {
+    const h = read(f).replace(/<noscript>[\s\S]*?<\/noscript>/g, '');
+    assert.ok(!/<link[^>]+href="https:\/\/fonts\.googleapis\.com\/css2[^"]*"[^>]*>/.test(h), `${f}: no font <link> in the markup`);
+    assert.match(h, /<script>[^<]*addEventListener\("load"[^<]*<\/script>/, `${f}: added after load`); assert.match(h, /<script>[^<]*l\.href="https:\/\/fonts\.googleapis\.com\/css2\?[^"]*display=swap"[^<]*<\/script>/, `${f}: display=swap`);
+  }
+  assert.match(read('public/index.html'), /<link rel="preconnect" href="https:\/\/fonts\.gstatic\.com" crossorigin>/);
+});
