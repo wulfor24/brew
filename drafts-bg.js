@@ -50,6 +50,23 @@ const today = (ms) => new Date(ms).toISOString().slice(0, 10);
 /* the budgets reset at midnight UTC (budget.js and the brand's day cap): a refused picture is tried five minutes after */
 export const nextDay = (ms) => { const d = new Date(ms); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1, 0, 5); };
 /* a new take's composition, one of the thumb-stoppers the plan picks from (drafts.js SCHEMA.visual), turned day by day */
+/* the look of each first draft, rotated across a brand's feed so neighbouring cards never look alike (27 Oct: Arata's feed was one
+   bottle on a plain ground after another). The least-used look in the brand's saved drafts goes next, ties by the card's id */
+export const LOOKS = [
+  { key: 'in-use', how: 'an everyday customer using the product mid-action in a real, specific place, the product in their hands' },
+  { key: 'close-up', how: 'a tight close-up of the result or the texture the product is about (skin, hair, fabric, food, the material) with the product in the corner of the frame, in a hand or on the surface' },
+  { key: 'still-life', how: 'a styled still life: the product among the real things of its moment (ingredients, the routine’s tools, the place it is used), props in layers, warm light and real shadows' },
+  { key: 'ugc', how: 'a phone-shot creator frame: a person holds the product up to the camera, mid-sentence, in their own room, slightly imperfect framing' },
+  { key: 'poster', how: 'a bold type-led poster: the headline large in the brand’s type on the brand’s colours, the product photographed in a real hand or on a real surface below it' },
+  { key: 'moment', how: 'the problem moment just before the product fixes it, as a real person in a real place, the product within reach' },
+];
+export const pickLook = (cache = {}, id = '', kind = 'image') => {
+  const n = Object.fromEntries(LOOKS.map((l) => [l.key, 0])); for (const d of Object.values(cache || {})) if (d?.look && d.cardId !== id && n[d.look] != null) n[d.look]++;
+  const pool = LOOKS.filter((l) => kind !== 'video' || l.key !== 'poster'), least = Math.min(...pool.map((l) => n[l.key])), ties = pool.filter((l) => n[l.key] === least);
+  let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return ties[h % ties.length];
+};
+/* an image card's clip: its own scene brought to life (the person moves, one slow camera move), never a bare push-in on a bottle */
+export const clipMotion = (d = {}) => `${d.visual ? `The scene: ${cut(d.visual, 300)} ` : ''}The person in it moves naturally through the moment (a hand reaches, hair moves, a smile, a turn to the camera) while the camera makes one slow push in. 6 seconds, unhurried, the product stays as it is.`;
 export const TAKES = ['a hand or person using the product mid-action', 'the problem moment just before the product fixes it', 'the product unboxed in hands', 'the product beside what it replaces', 'a first-person view of the routine'];
 
 /* ---------- which cards, and in what form ---------- */
@@ -102,7 +119,7 @@ export const sameCard = (d, c) => { if (!d?.cardTitle || d.cardTitle === c?.titl
   let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.min(a.size, b.size) >= 0.5; };
 /* 3 (27 Oct): made by Sloosh with the Brand Book, every reference and the headline set in the picture. A saved draft of an older
    version stays on its card until its Sloosh draft lands (needsDraft asks for one; draftFor keeps showing the old one) */
-export const DRAFT_K = 3;
+export const DRAFT_K = 4; /* 4 (27 Oct): a look per card, rotated across the feed, and real scenes (never a packshot on a plain ground) */
 export function draftFor(c, all = {}) {
   const d = c?.id ? all?.[c.id] : null; if (!d || d.failedAt) return null;
   if (d.k >= 2) return d.key === draftKey(c) && sameCard(d, c) ? d : null;
@@ -173,17 +190,17 @@ export function draftView(d, c = null) {
 /* imageUsd: one flash picture on Vertex (about $0.039; it was booked at $0.17, so the $4 day bought 23 pictures, not 100);
    proImageUsd: one on the other model (a misspelled name made again, image-guard TEXT). readyMs: how often a brand that just
    turned ready is looked for. takes: the top make cards that get a new take a day */
-export const DRAFTS_DEFAULTS = { tickMs: 30 * 60e3, firstMs: 4 * 60e3, readyMs: 3 * 60e3, openDays: 3, dayCapUsd: 1e6 /* Sloosh, unlimited for now (27 Oct): counted in budget 'credits', not capped here */, topN: 6, perTick: 2, perRun: 8, takes: 2, textUsd: 0.04, imageUsd: 0.04, proImageUsd: 0.14, videoUsd: 0.9, voiceUsd: 0.01, slides: 5 };
+export const DRAFTS_DEFAULTS = { tickMs: 30 * 60e3, firstMs: 4 * 60e3, readyMs: 3 * 60e3, openDays: 3, dayCapUsd: 12 /* a brand's day: Sloosh is counted in budget 'credits'; this caps what its Vertex stand-in spends (27 Oct) */, topN: 6, perTick: 2, perRun: 8, takes: 2, textUsd: 0.04, imageUsd: 0.04, proImageUsd: 0.14, videoUsd: 0.9, voiceUsd: 0.01, slides: 5, clipsPerDay: 3 };
 export function draftsConfig(env = process.env) {
   const n = (k, d) => (env[k] != null && env[k] !== '' && Number.isFinite(+env[k]) ? +env[k] : d);
-  return { ...DRAFTS_DEFAULTS, dayCapUsd: n('DRAFTS_DAY_CAP_USD', DRAFTS_DEFAULTS.dayCapUsd), topN: n('DRAFTS_TOP_N', DRAFTS_DEFAULTS.topN), perRun: n('DRAFTS_PER_RUN', DRAFTS_DEFAULTS.perRun), imageUsd: n('DRAFTS_IMAGE_USD', DRAFTS_DEFAULTS.imageUsd), videoUsd: n('DRAFTS_VIDEO_USD', DRAFTS_DEFAULTS.videoUsd), readyMs: n('DRAFTS_READY_MS', DRAFTS_DEFAULTS.readyMs), takes: n('DRAFTS_TAKES', DRAFTS_DEFAULTS.takes),
+  return { ...DRAFTS_DEFAULTS, dayCapUsd: n('DRAFTS_DAY_CAP_USD', DRAFTS_DEFAULTS.dayCapUsd), topN: n('DRAFTS_TOP_N', DRAFTS_DEFAULTS.topN), perRun: n('DRAFTS_PER_RUN', DRAFTS_DEFAULTS.perRun), imageUsd: n('DRAFTS_IMAGE_USD', DRAFTS_DEFAULTS.imageUsd), videoUsd: n('DRAFTS_VIDEO_USD', DRAFTS_DEFAULTS.videoUsd), readyMs: n('DRAFTS_READY_MS', DRAFTS_DEFAULTS.readyMs), takes: n('DRAFTS_TAKES', DRAFTS_DEFAULTS.takes), clipsPerDay: n('DRAFTS_CLIPS_PER_DAY', DRAFTS_DEFAULTS.clipsPerDay),
     killed: env.DRAFTS_BG_OFF === '1', mock: env.AI_MOCK === '1', local: env.DRAFTS_BG !== '1' && (!!env.RESEARCH_OFF || !!env.LIVE_OFF) };
 }
 /* what one draft of each kind costs before it is made (the words, then the pictures and the clip); booked after at real cost */
 export const estUsd = (kind, cfg = DRAFTS_DEFAULTS) => cfg.textUsd + ({ image: cfg.imageUsd, collection: cfg.imageUsd, carousel: cfg.imageUsd * cfg.slides, stories: cfg.imageUsd * cfg.slides, video: cfg.imageUsd + cfg.videoUsd + cfg.voiceUsd }[kind] || 0);
 /* an image's real cost: every picture the image guard made for it (a wrong product or a misspelled name is made again), the
    ones on the dearer model at its price */
-export const imageCost = (buf, cfg = DRAFTS_DEFAULTS) => { const g = buf?.guard || {}, n = Number.isFinite(g.gens) ? g.gens : g.retried ? 2 : 1, pro = Math.min(n, g.pro || 0);
+export const imageCost = (buf, cfg = DRAFTS_DEFAULTS) => { const g = buf?.guard || {}, n = Number.isFinite(g.gens) ? g.gens : g.retried ? 2 : 1, pro = buf?.provider === 'vertex' ? n /* the stand-in's Gemini Pro picture */ : Math.min(n, g.pro || 0);
   return +((n - pro) * cfg.imageUsd + pro * (cfg.proImageUsd ?? cfg.imageUsd)).toFixed(4); };
 export const spentToday = (st, now) => (st?.spend?.day === today(now) ? st.spend.usd || 0 : 0);
 export function draftsDue(st = {}, cfg, { now = Date.now(), aiLive = true, lastOpen = 0, manual = false } = {}) {
@@ -245,7 +262,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     try { return await M.head(buf, { text: d.headline, small: d.headSmall || '' }, ratio, key); } catch (e) { log.warn?.('[drafts-bg] headline', d.cardId, e.message); return null; } };
   const brandOf = (p) => ({ name: p.seed?.brand?.name || p.name || '', host: p.seed?.brand?.host || '', colors: p.seed?.brand?.colors || [] });
   /* the scenes the brand's last drafts already show, so the next one goes somewhere else */
-  const scenesOf = (cache, id) => Object.values(cache || {}).filter((x) => x?.visual && x.cardId !== id && !x.failedAt).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 10).map((x) => cut(x.visual, 160));
+  const scenesOf = (cache, id) => Object.values(cache || {}).filter((x) => x?.visual && x.cardId !== id && !x.failedAt).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 10).map((x) => `${x.look ? `[${x.look}] ` : ''}${cut(x.visual, 160)}`);
   /* a budget refusal is not a failure: the picture is made after the reset from the saved prompt, with no new plan */
   const budgetWait = (d, why) => { d.imgRetry = { n: 0, next: nextDay(now()), err: 'budget' }; d.note = cut(`${String(d.note || '').replace(/ The picture comes.*$/, '')} ${why}`, 220); return null; };
   // o.cache: the brand's drafts (the scenes already shown); o.take: a new take of a card drafted on an earlier day, its number
@@ -254,7 +271,8 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     let mem = ''; try { mem = memory ? await memory.promptBlock(slug, { query: `${c.title} ${c.sub || ''}`, agent: 'creative', name: p.name }) : ''; } catch {}
     const hooks = hookBlock(p), scenes = o.cache ? scenesOf(o.cache, c.id) : [], take = o.take ? TAKES[(o.take + (+moveOf(c) || 0)) % TAKES.length] : '';
     const card = `${p.factBrief || ''}\n\nCard (by the ${c.agent} agent, from ${c.src || 'the move documents'}):\nTitle: ${c.title}\nBody: ${c.sub || ''}\n${(c.rows || []).map((r) => `- ${r[0]}: ${r[1]}`).join('\n')}\nThe person reading is the founder.${hooks ? `\n\n${hooks}` : ''}${scenes.length ? `\n\nSCENES ALREADY IN THIS FEED (use another setting, person and angle):\n${scenes.map((v) => `- ${v}`).join('\n')}` : ''}`;
-    const ask = [ASK[kind] || '', QUOTE_RULE, take ? `This is today's new take on a draft the team has seen: build the visual as ${take}, with a new headline.` : ''].filter(Boolean).join(' ');
+    const look = ['image', 'video', 'collection', 'carousel', 'stories'].includes(kind) ? pickLook(o.cache, c.id, kind) : null;
+    const ask = [ASK[kind] || '', QUOTE_RULE, take ? `This is today's new take on a draft the team has seen: build the visual as ${take}, with a new headline.` : look ? `LOOK: build the visual as ${look.how}.` : ''].filter(Boolean).join(' ');
     const prompt = draftPrompt({ card, role: c.agent === 'brew' ? 'creative' : c.agent || 'creative', brief: cardBriefText(c, { moveDocs: p.moveDocs }), mem, as, ask });
     const r = await ai.call({ model: 'sonnet', prompt, schema: DRAFT_SCHEMA, max: 4500, tag: 'draft-bg', ...(p.bookWords ? { system: `You write for ${p.name || 'the brand'}. Follow its Brand Book in every word:\n${p.bookWords}` } : {}) }); box.usd += r.usd || 0; /* 3000 was hit once: a plan cut off mid-JSON */
     const j = r.json || {}; j.as = as;
@@ -263,6 +281,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     /* a clip is 9:16 from its first frame (Veo takes 9:16 or 16:9); Stories too */
     const ratio = kind === 'stories' || kind === 'video' ? '9:16' : DRAFT_RATIOS.includes(j.ratio) && j.ratio !== '16:9' ? j.ratio : c.make?.format === 'reel' ? '9:16' : '4:5';
     const d = { k: DRAFT_K, qv: LOOKS_V /* made through the judged guard */, cardId: c.id, key: draftKey(c), kind, format: c.make?.format || null, cardTitle: c.title, as: kind === 'stories' ? 'carousel' : ['email', 'whatsapp', 'page', 'collection', 'catalog'].includes(kind) ? kind : as, title: cut(j.title || 'First draft', 70), copy: String(j.copy || '').trim(), note: cut(j.note || '', 160), ratio, at: now(), by: PRODUCT_NAME, bg: true };
+    if (look && !take) d.look = look.key; /* the look this card took, so the next card takes another */
     if (j.visual) d.visual = cut(j.visual, 400); /* the scene, so the next draft goes elsewhere (and a final reruns it) */
     if (j.headline && ['image', 'collection', 'video'].includes(kind)) { d.headline = cut(String(j.headline).replace(/[#*_>`"“”]/g, ''), 80); d.headSmall = smallOf(d.copy, d.headline); }
     if (take) d.take = { n: o.take + 1, look: take, day: today(now()) };
@@ -284,7 +303,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       try { const r = await makeStill(slug, c, { src, ip, ratio, text, catalog: p.catalog || null, brand: p.seed?.brand?.name || '', named, salt: take ? today(now()) : '', words: kind === 'image' && d.headline ? d.headline : null, kind: c.make?.format || kind });
         if (kind === 'image' && d.headline && !r.failed && !r.buf?.guard?.wordsMissing) d.wordsIn = true; /* the headline is in the picture: nothing is laid over it */
         if (r.failed) { d.photoOnly = true; d.imgRetry = { n: 1, next: now() + retryWait(1), err: cut(r.error || '', 160) }; d.note = cut(`${d.note} For now this is the real product photo; the new picture is being made again.`, 220); log.warn?.('[drafts-bg] image fell back to the real photo', slug, c.id, r.error || ''); }
-        else { box.usd += imageCost(r.buf, cfg); if (r.retried) d.retried = true; if (r.buf?.guard?.labelApprox) d.labelApprox = true; }
+        else { box.usd += imageCost(r.buf, cfg); d.maker = r.buf?.provider || null; /* sloosh | vertex (the stand-in): kept after a top-up */ if (r.retried) d.retried = true; if (r.buf?.guard?.labelApprox) d.labelApprox = true; }
         stillBuf = r.buf; d.fromPhoto = true; return r.rel; }
       catch (e) { if (e.budget) return budgetWait(d, 'The picture comes when the picture budget resets.'); /* the brand's image share for today is used */
         d.err = 'The words are here; the picture did not come through.'; d.imgRetry = { n: 1, next: now() + retryWait(1), err: cut(e.message, 160) }; log.warn?.('[drafts-bg] image', slug, c.id, e.message); return null; }
@@ -431,7 +450,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       const t0 = box.usd; tried++;
       const inPic = d.kind === 'image' && d.headline; try { const r = await makeStill(slug, c, { src, ip: d.ip, ratio: d.ratio || '4:5', text: d.imgText || '', catalog: p.catalog || null, brand: brand.name, named, retry: true, words: inPic ? d.headline : null, kind: c.make?.format || d.kind });
         if (r.failed) throw new Error(r.error || 'the picture still showed another product'); /* the real photo again is not a made picture: back off and try later */
-        box.usd += imageCost(r.buf, cfg); d.image = r.rel; d.fromPhoto = true; d.qv = LOOKS_V; delete d.imgRetry; delete d.photoOnly; delete d.err; d.note = cut(String(d.note || '').replace(/ ?For now this is the real product photo;.*$/, '').replace(/ The picture comes.*$/, ''), 220);
+        box.usd += imageCost(r.buf, cfg); d.maker = r.buf?.provider || null; d.image = r.rel; d.fromPhoto = true; d.qv = LOOKS_V; delete d.imgRetry; delete d.photoOnly; delete d.err; d.note = cut(String(d.note || '').replace(/ ?For now this is the real product photo;.*$/, '').replace(/ The picture comes.*$/, ''), 220);
         if (r.buf?.guard?.labelApprox) d.labelApprox = true;
         if (d.as === 'text') d.as = d.kind === 'collection' ? 'collection' : 'image';
         if (d.kind === 'video' && !d.video) d.wants = 'video';
@@ -523,25 +542,31 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
      ad or post, whose clip starts from a 9:16 still made for it so it fills a phone. Only when its draft has no clip yet and was
      not worked on in this run (a card refreshed by a new take gets its clip with it); at most one a brand a day, inside the
      brand's day cap and the server's video limit. A packshot stand-in of an image ad is not animated: its picture comes first */
+  /* clips beyond the reel cards: up to cfg.clipsPerDay a brand a day (27 Oct: about one card in three moves), the top cards first,
+     reel and video cards before image cards; never on the real product photo. An image card gets a 9:16 first frame of the same scene */
   async function dailyClip(slug, p, order, cache, box, made, st, n, day) {
-    if (st.clipDay === day || made.length >= n) return;
-    const c = order.find((x) => /^(reel|video ad)$/.test(x.make?.format || '')) || order.find((x) => /^(single image ad|instagram post)$/.test(x.make?.format || '')); if (!c) return;
-    const d = draftFor(c, cache); if (!d?.image || d.video || d.failedAt || (d.photoOnly && d.kind !== 'video') || made.some((m) => m.cardId === c.id) || now() < (d.clipRetry?.next || 0)) return;
-    if (box.usd + cfg.videoUsd + (d.kind === 'video' ? 0 : cfg.imageUsd) > box.cap + 1e-9) return;
-    st.clipDay = day; /* tried today, whatever comes of it */
-    if (!spend('video', slug)) return; /* the server's video limit for today is used: the picture is not made for nothing */
-    box.start = box.usd; let frame = null;
-    if (d.kind !== 'video') { /* an image card: a 9:16 first frame of the same scene, then the clip */
-      const brand = brandOf(p), named = cardProduct(c, p.catalog, { brand: brand.name }) || matchProduct(d.imgText || `${d.title}. ${d.copy}`, p.catalog, { brand: brand.name });
-      const src = await photo(c, named) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); if (!src) return;
-      const ip = imagePrompt({ title: d.title, visual: d.visual || '' }, true, c, { name: brand.name, ...(p.config?.product || {}), product: named?.t || d.product || '' }, { ratio: '9:16', topSpace: !!d.headline });
-      try { const r = await makeStill(slug, c, { src, ip, ratio: '9:16', text: d.imgText || '', catalog: p.catalog || null, brand: brand.name, named, salt: `clip|${day}` });
-        if (r.failed) return; box.usd += imageCost(r.buf, cfg); frame = r.rel; d.clipStill = r.rel; const h = await headOn(r.buf, d, '9:16', r.rel); if (h) d.poster = h; }
-      catch (e) { log.warn?.('[drafts-bg] clip still', slug, c.id, e.message); return; } }
-    if (!d.motion) d.motion = 'A hand reaches in and uses the product.';
-    if (await animate(slug, d, box, { frame, spent: true })) { d.usd = +((d.usd || 0) + box.usd - box.start).toFixed(4); made.push({ cardId: c.id, as: d.as, kind: d.kind, title: d.title, image: d.poster || d.render || d.image, video: d.video, usd: +(box.usd - box.start).toFixed(4), clip: true }); }
-    else if (!d.video && d.kind !== 'video') { delete d.clipStill; delete d.poster; delete d.clipRetry; delete d.err; d.note = String(d.note || '').replace(/ The clip.*$/, ''); } /* an image ad stays a finished image ad: tried again another day */
-    await save(slug, cache).catch(() => {});
+    if (st.clipDay !== day) { st.clipDay = day; st.clipN = 0; }
+    const want = (c) => { const d = draftFor(c, cache); return d?.image && !d.video && !d.failedAt && !d.photoOnly && ['image', 'video'].includes(d.kind) && !made.some((m) => m.cardId === c.id) && now() >= (d.clipRetry?.next || 0) && !(d.clipDay === day); };
+    const picks = [...order.filter((x) => /^(reel|video ad)$/.test(x.make?.format || '')), ...order].filter((c, i, a) => a.indexOf(c) === i && want(c));
+    for (const c of picks) {
+      if ((st.clipN || 0) >= cfg.clipsPerDay || made.length >= n) return;
+      const d = draftFor(c, cache);
+      if (box.usd + cfg.videoUsd + (d.kind === 'video' ? 0 : cfg.imageUsd) > box.cap + 1e-9) return;
+      st.clipN = (st.clipN || 0) + 1; d.clipDay = day; /* tried today, whatever comes of it */
+      if (!spend('video', slug)) return; /* the server's video limit for today is used: the picture is not made for nothing */
+      box.start = box.usd; let frame = null;
+      if (d.kind !== 'video') { /* an image card: a 9:16 first frame of the same scene, then the clip */
+        const brand = brandOf(p), named = cardProduct(c, p.catalog, { brand: brand.name }) || matchProduct(d.imgText || `${d.title}. ${d.copy}`, p.catalog, { brand: brand.name });
+        const src = await photo(c, named) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); if (!src) continue;
+        const ip = imagePrompt({ title: d.title, visual: d.visual || '' }, true, c, { name: brand.name, ...(p.config?.product || {}), product: named?.t || d.product || '' }, { ratio: '9:16', topSpace: !!d.headline });
+        try { const r = await makeStill(slug, c, { src, ip, ratio: '9:16', text: d.imgText || '', catalog: p.catalog || null, brand: brand.name, named, salt: `clip|${day}` });
+          if (r.failed) continue; box.usd += imageCost(r.buf, cfg); frame = r.rel; d.clipStill = r.rel; const h = await headOn(r.buf, d, '9:16', r.rel); if (h) d.poster = h; }
+        catch (e) { log.warn?.('[drafts-bg] clip still', slug, c.id, e.message); continue; } }
+      if (!d.motion) d.motion = clipMotion(d);
+      if (await animate(slug, d, box, { frame, spent: true })) { d.usd = +((d.usd || 0) + box.usd - box.start).toFixed(4); made.push({ cardId: c.id, as: d.as, kind: d.kind, title: d.title, image: d.poster || d.render || d.image, video: d.video, usd: +(box.usd - box.start).toFixed(4), clip: true }); }
+      else if (!d.video && d.kind !== 'video') { delete d.clipStill; delete d.poster; delete d.clipRetry; delete d.err; d.note = String(d.note || '').replace(/ The clip.*$/, ''); } /* an image ad stays a finished image ad: tried again another day */
+      await save(slug, cache).catch(() => {});
+    }
   }
   /* brands whose read turned ready since the last look, and (on the first look after a start) ready brands never drafted:
      their first drafts are made now, not at the next half-hourly tick */

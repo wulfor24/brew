@@ -12,7 +12,7 @@
 import sharp from 'sharp';
 
 // quality version: drafts and watcher pictures saved before it are judged once (drafts-bg healLooks, feed-service housekeep)
-export const LOOKS_V = 2; /* 2 (25 Oct): EXPERT fails a picture (a lab coat beside the shampoo on Arata); saved drafts are judged again */ /* the judge's words changed 25 Oct (split-screens pass, doubt passes): saved drafts already passed stay passed */
+export const LOOKS_V = 3; /* 3 (27 Oct): designed layouts and busy real scenes pass; only paste-ups are COLLAGE */ /* 2 (25 Oct): EXPERT fails a picture (a lab coat beside the shampoo on Arata); saved drafts are judged again */ /* the judge's words changed 25 Oct (split-screens pass, doubt passes): saved drafts already passed stay passed */
 const N = 64, SEG = 8;
 
 /* the picture shrunk to N×N, transparency on white (a see-through packshot reads as a plain ground) */
@@ -92,8 +92,8 @@ export async function cutQuality(input) {
    those, spelled exactly, are part of the design, never a paste-up */
 export const lookPrompt = (words = '', set = null) => `This is a first-draft ad picture for a card in a brand's feed.${String(words).trim() ? ` The card says: "${String(words).replace(/\s+/g, ' ').trim().slice(0, 500)}".` : ''}${set ? ` These words were asked to be set in the picture as its headline: "${[].concat(set).join(' / ').replace(/\s+/g, ' ').trim().slice(0, 200)}". Set in a text box, band or block of brand colour, spelled exactly, they are designed type and GOOD. If they are missing or misspelled, answer WORDS.` : ''}
 Judge only the picture, like a creative director who wants it shippable. Reply with one word, then a short reason.
-GOOD: a coherent photograph (or a clean product shot) that shows what the card is about. A deliberate split-screen or before/after made of real photographs is GOOD. Small soft print on a pack is fine. When in doubt, GOOD.
-COLLAGE: an obvious paste-up: products cut out with hard or jagged edges and no real shadow, flat panels or blocks of colour behind or beside them, a picture framed inside the picture, a blank band, or big words or numbers the image model drew (garbled or doubled lettering).
+GOOD: a coherent photograph or a deliberate designed ad that shows what the card is about. A busy real scene (people, props, a lived-in place), a deliberate split-screen or before/after made of real photographs, or a type-led poster with intentional colour blocks is GOOD. Small soft print on a pack is fine. When in doubt, GOOD.
+COLLAGE: an obvious paste-up: products cut out with hard or jagged edges and no real shadow, a product pasted onto a panel that is not part of the scene or the design, a picture framed inside the picture by accident, a blank band, or big words or numbers the image model drew (garbled or doubled lettering).
 CROPPED: the product or the main subject is clearly cut off by the frame edge.
 OFFTOPIC: it shows something the card is not about (another kind of product, an unrelated scene).
 EXPERT: a person shown as a doctor, dermatologist, scientist or other expert (a lab coat, scrubs, a clinic or a laboratory): a fake endorsement.`;
@@ -105,7 +105,7 @@ export function lookVerdict(text = '') {
 /* the line added to the prompt when a picture is made again after failing */
 export const FIX = {
   words: 'The last picture left out or misspelled the headline. Set the headline exactly as asked, once, in clean bold type where it reads first.',
-  collage: 'The last picture looked like a collage. Make ONE real photograph: the product physically in the scene with true contact shadows, a single continuous background, no panels, blocks, borders, bands, swatches or cut-out edges, and nothing copied from a designed graphic.',
+  collage: 'The last picture looked like a collage. Make ONE coherent picture: the product physically in the scene, held or placed, with true contact shadows and light that matches; no cut-out edges, no product pasted on a panel, nothing copied from a designed graphic. Keep the scene’s people, props and setting.',
   cropped: 'The last picture cut the product off at the frame edge. Keep the whole product inside the frame with space around it.',
   offtopic: 'The last picture did not show what the card is about. Show exactly the product and the moment the card names.',
   expert: 'The last picture showed someone as a doctor or scientist. Show an everyday customer in an ordinary home: no lab coat, scrubs, clinic or laboratory.',

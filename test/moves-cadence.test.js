@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { auditScorecard, listenDigest, automationContext, evidenceFor, nextNumbers, shapeMove, writeFamily, movesDue, movesConfig, createMovesScheduler, tagCards, weekKey, FAMILIES } from '../moves-cadence.js';
-import { pickTopCards, draftFormat, draftKind, draftKey, draftsDue, draftsConfig, createDraftsBg, seedDrafts, cardKey, cardBriefText } from '../drafts-bg.js';
+import { pickTopCards, draftFormat, draftKind, draftKey, draftsDue, draftsConfig, createDraftsBg, seedDrafts, cardKey, cardBriefText, DRAFT_K } from '../drafts-bg.js';
 import { createPacks } from '../brand-pack.js';
 
 const H = 3600e3, DAY = 24 * H, NOW = Date.parse('2026-10-14T12:00:00Z');
@@ -197,7 +197,7 @@ test('draft job picks the top cards that have no draft, never progress, live or 
   const top = pickTopCards(POSTS, { n: 6 });
   assert.equal(top.length, 6); assert.equal(top[0].id, 'm51-1', 'a fresh cadence move that asks for an asset leads');
   assert.ok(!top.some((c) => ['build-moves', 'heard-t-x', 'live-1'].includes(c.id)));
-  const have = { 'm51-1': { k: 3, key: draftKey(POSTS[1]) } }; assert.ok(!pickTopCards(POSTS, { n: 6, have }).some((c) => c.id === 'm51-1'), 'a cached draft is not made again');
+  const have = { 'm51-1': { k: DRAFT_K, key: draftKey(POSTS[1]) } }; assert.ok(!pickTopCards(POSTS, { n: 6, have }).some((c) => c.id === 'm51-1'), 'a cached draft is not made again');
   const stale = { 'm51-1': { key: 'old' } }; assert.ok(pickTopCards(POSTS, { n: 6, have: stale }).some((c) => c.id === 'm51-1'), 'a draft for another move or format is made again');
   assert.equal(draftKind(POSTS[1]), 'image'); assert.equal(draftKind(POSTS[2]), 'video', 'a reel is drafted as a clip');
   assert.equal(draftKind(POSTS[3]), 'email'); assert.equal(draftKind(POSTS[4]), 'text'); assert.equal(draftKind(POSTS[5]), 'text');
@@ -216,7 +216,7 @@ test('draft gating: kill switch, mock, local, the 3-day open window and the dail
   const capped = draftsConfig({ DRAFTS_DAY_CAP_USD: '4' });
   assert.equal(draftsDue({ spend: { day: '2026-10-14', usd: 3.99 } }, capped, { now: NOW, lastOpen: open }).ok, false, 'a set cap still holds');
   assert.equal(draftsDue({ spend: { day: '2026-10-13', usd: 9 } }, capped, { now: NOW, lastOpen: open }).ok, true);
-  assert.ok(cfg.dayCapUsd >= 1e6, 'Sloosh is unlimited for now (27 Oct): counted, not capped');
+  assert.equal(cfg.dayCapUsd, 12, 'Sloosh is counted in credits; the cap holds what its Vertex stand-in spends a brand a day (27 Oct)');
 });
 
 test('the draft job caches each draft per card, respects the cap, and the jam opens with it', async () => {

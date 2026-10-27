@@ -131,3 +131,50 @@ test('a run key an earlier make already spent (idempotency_conflict, e.g. after 
   const buf = await M.image({ slug: 'arata', prompt: 'p', srcFile: 'https://a.test/s.jpg', productName: 'Balance Shampoo 200 ml', ratio: '4:5' });
   assert.ok(buf.length); assert.equal(r.gens.length, 2); assert.notEqual(r.gens[0].runKey, r.gens[1].runKey);
 });
+
+/* the stand-in (27 Oct, Param: Sloosh out of credit): the same prompt and references go to Vertex; a refusal that won't change
+   by itself skips Sloosh for 30 minutes; a busy Sloosh still gets the stand-in but no skip; a failed stand-in keeps Sloosh's error */
+function standinRig({ refuse = 'Sloosh generate: CREDIT_FUNDING_REJECTED — workspace has no credits', standinFails = false } = {}) {
+  const asks = [], made = []; let t = 1e9;
+  const sloosh = { modelSpecs: async (m) => SPECS[m], quoteGeneration: async (a) => { asks.push(a); throw Object.assign(new Error(refuse), /503|busy/.test(refuse) ? { status: 503 } : { terminal: true }); } };
+  const finals = { assetFor: async (slug, x) => ({ kind: 'workspace', id: 'a1', url: x.url, type: 'image' }) };
+  const standin = { image: async (o) => { made.push({ kind: 'image', ...o }); if (standinFails) throw new Error('Gemini 429'); return Buffer.from('vx'); },
+    video: async (o) => { made.push({ kind: 'video', ...o }); return Buffer.from('mp4'); } };
+  const M = createSlooshMake({ sloosh, finals, viewOf: async () => VIEW, saveGen: () => {}, publicUrl: 'https://feed.test', fetchImpl: async () => ({ ok: true, arrayBuffer: async () => new Uint8Array([1]).buffer }),
+    mock: () => false, tries: 2, backoffMs: 1, sleep: async () => {}, standin, standinOn: () => true, now: () => t, log: { warn() {}, log() {} } });
+  return { M, asks, made, tick: (ms) => { t += ms; } };
+}
+
+test('Sloosh out of credit: the stand-in makes the same picture from the same prompt and references, and Sloosh is skipped for 30 minutes', async () => {
+  const r = standinRig();
+  const buf = await r.M.image({ slug: 'arata', prompt: 'A woman runs her hand through her hair at a sunlit window.', srcFile: 'https://a.test/s.jpg', productName: 'Balance Shampoo', ratio: '4:5', words: 'Softer by Sunday' });
+  assert.equal(buf.provider, 'vertex'); assert.equal(buf.standin, true);
+  assert.equal(r.asks.length, 1, 'a refusal that will not change is not tried again');
+  const s = r.made[0]; assert.equal(s.prompt, r.asks[0].prompt.replace(/\s+/g, ' ').trim() === s.prompt.replace(/\s+/g, ' ').trim() ? s.prompt : null, 'the very prompt Sloosh had');
+  assert.match(s.prompt, /Softer by Sunday/); assert.match(s.prompt, /art direction/); assert.equal(s.refs[0].job, 'product'); assert.equal(s.refs[0].src, 'https://a.test/s.jpg'); assert.equal(s.ratio, '4:5');
+  await r.M.image({ slug: 'arata', prompt: 'p2', srcFile: 'https://a.test/s.jpg' }); assert.equal(r.asks.length, 1, 'Sloosh skipped while the refusal stands'); assert.equal(r.made.length, 2);
+  r.tick(31 * 60e3); await r.M.image({ slug: 'arata', prompt: 'p3', srcFile: 'https://a.test/s.jpg' }); assert.equal(r.asks.length, 2, 'after 30 minutes Sloosh is asked again');
+});
+
+test('a busy Sloosh: the stand-in makes it, but Sloosh is not skipped; a failed stand-in keeps Sloosh\'s soft error', async () => {
+  const b = standinRig({ refuse: 'Sloosh MCP 503: busy' });
+  assert.equal((await b.M.image({ slug: 'x', prompt: 'p', srcFile: 'https://a.test/s.jpg' })).provider, 'vertex'); assert.equal(b.asks.length, 2, 'tried again first');
+  await b.M.image({ slug: 'x', prompt: 'q', srcFile: 'https://a.test/s.jpg' }); assert.equal(b.asks.length, 4, 'not skipped');
+  const f = standinRig({ standinFails: true });
+  await assert.rejects(() => f.M.image({ slug: 'x', prompt: 'p', srcFile: 'https://a.test/s.jpg' }), (e) => e.soft && e.sloosh && /Sloosh couldn/.test(e.message));
+});
+
+test('a clip the stand-in makes is Veo from the opening still: the motion and the look, no reference lines', async () => {
+  const r = standinRig();
+  const buf = await r.M.video({ slug: 'arata', frame: 'https://feed.test/gen/still.png', prompt: 'She shakes her hair loose and smiles.', ratio: '9:16', seconds: 8 });
+  assert.equal(buf.provider, 'vertex'); const v = r.made[0];
+  assert.equal(v.kind, 'video'); assert.equal(v.frame, 'https://feed.test/gen/still.png'); assert.equal(v.seconds, 8);
+  assert.match(v.prompt, /^She shakes her hair loose/); assert.doesNotMatch(v.prompt, /Image \d/);
+});
+
+test('the stand-in is off under VERTEX_STANDIN=0 or without one: Sloosh alone, as before', async () => {
+  const r = standinRig(); const M = createSlooshMake({ sloosh: { modelSpecs: async (m) => SPECS[m], quoteGeneration: async () => { throw Object.assign(new Error('no credit'), { terminal: true }); } },
+    finals: { assetFor: async (s, x) => ({ kind: 'workspace', id: 'a', url: x.url }) }, viewOf: async () => ({}), saveGen: () => {}, publicUrl: 'https://feed.test', mock: () => false, tries: 1,
+    standin: { image: async () => { throw new Error('must not run'); } }, standinOn: () => false, log: { warn() {} } });
+  await assert.rejects(() => M.image({ slug: 'x', prompt: 'p', srcFile: 'https://a.test/s.jpg' }), /Sloosh couldn/); assert.ok(r);
+});

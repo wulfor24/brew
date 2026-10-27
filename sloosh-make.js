@@ -3,8 +3,10 @@
 // posts), handed to Sloosh in the way its prompt guide asks: each reference named by position with its job, the product with a keep
 // line. Sloosh writes the final prompt itself (enhancePrompt on the quote) and picks nothing Brew didn't route (sloosh-map.js).
 // Every picture and clip path in Brew lands here: the image guard's model (server.js rawImage), the video maker (media.js), the
-// jam's engines and Studio, finals. There is no other maker behind it: when Sloosh can't answer, the call waits and tries again,
-// then fails softly (the caller shows its loader or sketch and retries later); it never falls back to a weaker model.
+// jam's engines and Studio, finals. When Sloosh can't answer, the call waits and tries again; when it still can't (no credit, not
+// connected, a refusal), the stand-in (vertex-standin.js: Gemini image, Veo on our Google credits, 27 Oct) makes the same picture
+// from the same prompt and references, and a refusal that won't change by itself skips Sloosh for 30 minutes. With the stand-in off
+// (VERTEX_STANDIN=0, or none given) it fails softly and the caller shows its loader or sketch and retries later.
 // Credits: one shared workspace, recorded per brand and path (record → budget.js 'credits'), never capped while Param's account is
 // unlimited. Under AI_MOCK nothing is called: the first reference comes back as the "picture" (tests and local runs, never live).
 import crypto from 'node:crypto';
@@ -24,11 +26,27 @@ const one = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const personWait = (e) => /real_person_reference/i.test(String(e?.message || '') + String(e?.final?.owner?.errorCode || ''));
 /* a key an earlier make already spent (that run failed, e.g. the wallet was empty) is never reusable: the next try takes a new one */
 const keyUsed = (e) => /idempotency_conflict/i.test(String(e?.message || '') + String(e?.code || ''));
-const transient = (e) => personWait(e) || e?.timeout || e?.pollError || e?.status >= 500 || /timed? ?out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|socket hang up|busy|overload|rate|429|503|try again/i.test(String(e?.message || ''));
+const transient = (e) => personWait(e) || e?.timeout || e?.pollError || e?.status >= 500 || /timed? ?out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|socket hang up|busy|overload|rate.?limit|too many requests|429|503|try again/i.test(String(e?.message || ''));
 
 export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = async () => {}, publicUrl = process.env.PUBLIC_URL || '', fetchImpl = fetch,
-  record = () => {}, onRefuse = () => {}, toPng = null /* (buf) → PNG buffer (img-norm normalizeBuf): an SVG or HEIC Sloosh won't take */, mock = () => process.env.AI_MOCK === '1', viewOf = (slug) => loadView(packs, slug, { scope: 'member' }), tries = 3, backoffMs = 20e3, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), log = console } = {}) {
+  record = () => {}, onRefuse = () => {}, toPng = null /* (buf) → PNG buffer (img-norm normalizeBuf): an SVG or HEIC Sloosh won't take */, mock = () => process.env.AI_MOCK === '1', viewOf = (slug) => loadView(packs, slug, { scope: 'member' }), tries = 3, backoffMs = 20e3, sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+  standin = null /* { image({ prompt, refs, ratio }), video({ frame, prompt, ratio, seconds }) } (vertex-standin.js) */, standinOn = () => process.env.VERTEX_STANDIN !== '0', now = Date.now, log = console } = {}) {
   const base = String(publicUrl || '').replace(/\/$/, '');
+  /* Sloosh first; when it can't (after its own retries), the stand-in makes the same thing. A refusal that won't change by itself
+     (an empty wallet, not connected, a refused model) skips Sloosh for 30 minutes, so drafts don't each wait through its retries */
+  let skipUntil = 0;
+  const standinReady = () => !!standin && !mock() && standinOn();
+  async function orStandin(where, slug, viaSloosh, viaStandin) {
+    if (standinReady() && now() < skipUntil) return stood(where, slug, viaStandin, null);
+    try { return await viaSloosh(); }
+    catch (e) { if (!standinReady() || !e?.sloosh) throw e; if (!transient(e.cause || e)) skipUntil = now() + 30 * 60e3; return stood(where, slug, viaStandin, e); }
+  }
+  async function stood(where, slug, viaStandin, why) {
+    try { const buf = await viaStandin(); log.log?.(`[sloosh-make] ${where} for ${slug || '-'} made by the stand-in (${buf.model || 'vertex'})${why ? `: Sloosh ${String(why.cause?.message || why.message).slice(0, 120)}` : ': Sloosh skipped for now'}`);
+      return Object.assign(buf, { provider: 'vertex', standin: true }); }
+    catch (e) { log.warn?.(`[sloosh-make] stand-in ${where} for ${slug || '-'} failed: ${String(e.message).slice(0, 200)}`);
+      throw why || Object.assign(new Error(`This couldn't be made just now (${String(e.message).slice(0, 200)}). We'll try again.`), { soft: true, sloosh: true, cause: e }); }
+  }
 
   /* any reference (a buffer, a file on this instance, a gen/ or brand path, a store URL) → a public https link Sloosh can import */
   async function linkFor(x) {
@@ -48,7 +66,7 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     let v = null; try { v = await viewOf(slug); } catch (e) { log.warn?.('[sloosh-make] brand book', slug, e.message); }
     const refs = [];
     if (v?.kit?.logo) refs.push({ src: v.kit.logo, job: 'logo', label: `the ${v.name || 'brand'} logo`, keep: 'only where the product or the layout would really carry it' });
-    for (const r of refsFor(v || {}, kind, 12)) refs.push({ src: r.src, job: 'style', label: `one of the brand's own ${r.label || 'posts'}`, keep: 'match its light, colour and feel, never copy its subject or words' });
+    for (const r of refsFor(v || {}, kind, 12)) refs.push({ src: r.src, job: 'style', label: `one of the brand's own ${r.label || 'posts'}`, keep: 'match its light, colour, type and feel only, never copy its subject, composition or words' });
     const out = { block: v ? creativeBlock(v, kind) : '', refs }; memo.set(k, { at: Date.now(), v: out }); return out;
   }
 
@@ -127,7 +145,7 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     const onlyProduct = prod.length && refs.some((r) => r.job === 'style' || r.job === 'logo') ? 'Only the product from image 1 appears; never a product, bottle or pack from any other image (those are for the look only).' : '';
     const prompt = [o.prompt, pack, onlyProduct, words.length ? `Set these words in the picture exactly as written, in the brand's type, where they read first: ${words.map((w) => `"${w}"`).join(' / ')}. No other words, banners, badges, prices or buttons anywhere; only the product's own label.` : '',
       b.block ? `The brand's art direction (follow it):\n${b.block}` : '', refLines(refs.map((r, i) => ({ ...r, n: i + 1 })))].filter(Boolean).join('\n\n');
-    return run({ slug: o.slug, mode: 'image_gen', prompt, route, refs, path: o.path || job });
+    return orStandin(o.path || job, o.slug, () => run({ slug: o.slug, mode: 'image_gen', prompt, route, refs, path: o.path || job }), () => standin.image({ prompt, refs, ratio: route.ratio || o.ratio }));
   }
 
   /** an edit: change one thing, keep the rest (Sloosh's own way: the current picture as image 1 plus a keep line) */
@@ -136,7 +154,7 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     const refs = gather([[{ src: o.src, job: 'other', label: 'the current picture' }], o.srcFile ? [{ src: o.srcFile, job: 'product', label: o.productName || 'the product' }] : [], o.refs || []], route.maxRefs || 14);
     const prompt = [`Edit image 1. Change only this: ${one(o.instruction)}.`, `Keep everything else exactly as in image 1: the product, its label and colours, any people, the layout and the words.`,
       refs.length > 1 ? refLines(refs.slice(1).map((r, i) => ({ ...r, n: i + 2 }))) : ''].filter(Boolean).join(' ');
-    return run({ slug: o.slug, mode: 'image_gen', prompt, route, refs, path: o.path || 'edit' });
+    return orStandin(o.path || 'edit', o.slug, () => run({ slug: o.slug, mode: 'image_gen', prompt, route, refs, path: o.path || 'edit' }), () => standin.image({ prompt, refs, ratio: o.ratio }));
   }
 
   /** a clip: o: { slug, frame (opening still), endFrame, prompt (what happens), ratio, seconds, sound, refs, tier, kind } */
@@ -146,7 +164,10 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     const refs = gather([o.srcFile ? [{ src: o.srcFile, job: 'product', label: o.productName || 'the product' }] : [], o.refs || [], b.refs.filter((r) => r.job !== 'logo')], route.maxRefs || 9);
     const prompt = [o.prompt, o.srcFile && refs.length > 1 ? 'Only the product from image 1 appears; never a product, bottle or pack from any other image.' : '', o.line ? `Spoken line: "${one(o.line)}".` : '', b.block ? `The brand's look (follow it):\n${b.block}` : '', o.frame ? 'Open exactly on the start frame and keep the product as it is there.' : '',
       route.framesAlone && o.frame ? '' : refLines(refs.map((r, i) => ({ ...r, n: i + 1 })))].filter(Boolean).join('\n\n');
-    return run({ slug: o.slug, mode: 'video_gen', prompt, route, refs, frame: o.frame || null, endFrame: o.endFrame || null, path: o.path || 'video' });
+    /* Veo takes only the opening still (no references with it): the motion asked for and the look, never the reference lines */
+    const veo = [o.prompt, b.block ? `The look: ${one(b.block).slice(0, 600)}` : '', 'Keep the product exactly as it is in the first frame.'].filter(Boolean).join('\n\n');
+    return orStandin(o.path || 'video', o.slug, () => run({ slug: o.slug, mode: 'video_gen', prompt, route, refs, frame: o.frame || null, endFrame: o.endFrame || null, path: o.path || 'video' }),
+      () => standin.video({ frame: o.frame || o.srcFile, prompt: veo, ratio: route.ratio || o.ratio, seconds: o.seconds || route.seconds }));
   }
 
   /** a video edit (restyle, change the setting, extend): Sloosh's video_edit / video_extend on the clip itself */
@@ -167,5 +188,5 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     return rec;
   }
 
-  return { image, edit, video, editVideo, space, brand, linkFor, run };
+  return { image, edit, video, editVideo, space, brand, linkFor, run, skipping: () => standinReady() && now() < skipUntil };
 }

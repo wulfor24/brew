@@ -9,13 +9,13 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
-test('every picture and clip is made by Sloosh (27 Oct): no Gemini image, Veo or Higgsfield maker behind it, never a weaker fallback', () => {
+test('every picture and clip is Sloosh first; only when Sloosh can\'t does the Vertex stand-in make it (27 Oct), never Higgsfield', () => {
   const srv = read('server.js');
   assert.match(srv, /const rawImage = async \(o\) => \{[^\n]*slooshMake\.image\(/, 'the image guard\'s model is Sloosh');
   assert.match(srv, /setMakers\(\{ \.\.\.slooshMake, image: withSlug\(slooshMake\.image\)[^\n]*firstDraft:/, 'every clip and Studio make is Sloosh');
-  assert.doesNotMatch(srv, /rawGeminiImage|geminiOnce|IMAGE_FALLBACK/, 'no Gemini image chain left');
-  assert.doesNotMatch(srv, /createFinals\(\{[^\n]*geminiImage/, 'finals have no Gemini fallback');
-  const md = read('media.js'); assert.match(md, /if \(makers\?\.video\)/); assert.match(md, /VEO_LOCAL/, 'Veo only for a local run on purpose');
+  assert.match(srv, /createSlooshMake\(\{[^\n]*standin: standinOn\(\) \? createStandin\(/, 'the stand-in sits inside the Sloosh maker, behind it');
+  assert.doesNotMatch(srv, /rawGeminiImage|geminiOnce|IMAGE_FALLBACK/, 'no separate Gemini image chain in the server');
+  const md = read('media.js'); assert.match(md, /if \(makers\?\.video\)/); assert.match(md, /VEO_LOCAL/, 'Veo on its own only for a local run on purpose');
 });
 
 test('a slow studio reply shows its step and the clock', () => {

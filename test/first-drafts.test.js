@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { draftKind, draftKey, draftFor, needsDraft, draftView, estUsd, imageCost, FORMAT_KIND, DRAFTS_DEFAULTS, createDraftsBg, seedDrafts } from '../drafts-bg.js';
+import { draftKind, draftKey, draftFor, needsDraft, draftView, estUsd, imageCost, FORMAT_KIND, DRAFTS_DEFAULTS, createDraftsBg, seedDrafts, DRAFT_K } from '../drafts-bg.js';
 import { inferMake, fillMake } from '../cards-gen.js';
 import { emailHtml, whatsappHtml, pageHtml, collectionHtml, splitCopy, mdHtml } from '../draft-mocks.js';
 import { createPacks } from '../brand-pack.js';
@@ -65,7 +65,7 @@ test('old packs get "make" at load, with the button fitted to it', async () => {
 test('drafts are keyed by card id, move and format: a rewrite in the same format keeps its draft, a new format re-drafts', () => {
   const card = { id: 'm21-1', src: 'Move 21 · Ads', title: 'Run the carousel', type: 'idea', make: { format: 'carousel ad' } };
   assert.equal(draftKey(card), 'm21-1|21|carousel');
-  const all = { 'm21-1': { k: 3, key: draftKey(card), as: 'carousel', slides: [{ image: 'gen/a.jpg' }], cardTitle: card.title } };
+  const all = { 'm21-1': { k: DRAFT_K, key: draftKey(card), as: 'carousel', slides: [{ image: 'gen/a.jpg' }], cardTitle: card.title } };
   assert.ok(draftFor(card, all)); assert.ok(draftFor({ ...card, title: 'Run the Hukum carousel', sub: 'rewritten' }, all), 'same format, new words: the draft stays');
   assert.equal(draftFor({ ...card, make: { format: 'instagram carousel' } }, all) && 'kept', 'kept', 'carousel ad and Instagram carousel are one draft format');
   assert.equal(draftFor({ ...card, make: { format: 'reel' } }, all), null, 'a new format: the old draft is not shown');
@@ -75,11 +75,11 @@ test('drafts are keyed by card id, move and format: a rewrite in the same format
   const old = { 'm21-1': { key: 'abc', cardTitle: 'Run the carousel', as: 'text', copy: 'x' } };
   assert.ok(draftFor(card, old)); assert.equal(draftFor({ ...card, title: 'Other' }, old), null); assert.equal(needsDraft(card, old, NOW), true);
   // a failure is tried again with backoff (30 min after the first, 2 h after the second, never more than a day), and is never shown
-  const failed = { 'm21-1': { k: 3, key: draftKey(card), failedAt: NOW - 20 * 60e3 } };
+  const failed = { 'm21-1': { k: DRAFT_K, key: draftKey(card), failedAt: NOW - 20 * 60e3 } };
   assert.equal(draftFor(card, failed), null); assert.equal(needsDraft(card, failed, NOW), false); assert.equal(needsDraft(card, failed, NOW + 15 * 60e3), true);
-  const twice = { 'm21-1': { k: 3, key: draftKey(card), failedAt: NOW - 3600e3, fails: 2 } };
+  const twice = { 'm21-1': { k: DRAFT_K, key: draftKey(card), failedAt: NOW - 3600e3, fails: 2 } };
   assert.equal(needsDraft(card, twice, NOW), false, 'the second failure waits 2 hours'); assert.equal(needsDraft(card, twice, NOW + 3600e3), true);
-  const many = { 'm21-1': { k: 3, key: draftKey(card), failedAt: NOW, fails: 9 } };
+  const many = { 'm21-1': { k: DRAFT_K, key: draftKey(card), failedAt: NOW, fails: 9 } };
   assert.equal(needsDraft(card, many, NOW + DAY - 1), false); assert.equal(needsDraft(card, many, NOW + DAY), true, 'never more than a day');
   // the feed sees only drafts with something to look at
   assert.deepEqual(draftView({ as: 'carousel', ratio: '4:5', title: 'T', copy: '**Bold** words', slides: [{ image: 'gen/1.jpg' }, { image: 'gen/2.jpg' }], image: 'gen/1.jpg' }), { as: 'carousel', kind: 'carousel', images: ['gen/1.jpg', 'gen/2.jpg'], video: null, poster: null, ratio: '4:5', title: 'T', copy: 'Bold words' });
@@ -129,7 +129,7 @@ test('the job drafts every card that names a format, in that format, booked at r
     video: async () => { made.video++; return 'clip.mp4'; } /* made on our Vertex account: booked at the clip's set price */, voice: async () => 'vo.wav', mux: async () => 'both.mp4' };
   let n = 0; const geminiImage = async () => Object.assign(Buffer.from('png'), { guard: { retried: ++n === 1 } }); /* the first picture needed an image-guard retry */
   const J = createDraftsBg({ packs: P, ai: fakeAI(), geminiImage, saveGen: () => {}, genFile: async () => photo, photoAsync: async () => photo, treg, launchBrowser: () => ({}), makers, spend: (k) => (k === 'video' ? videoOk : true),
-    loadPack: (slug) => P.load(slug, { fresh: true }), lastOpenOf: async () => NOW - DAY, log: quiet, env: { DRAFTS_BG: '1', DRAFTS_PER_RUN: '20' }, now: () => NOW });
+    loadPack: (slug) => P.load(slug, { fresh: true }), lastOpenOf: async () => NOW - DAY, log: quiet, env: { DRAFTS_BG: '1', DRAFTS_PER_RUN: '20', DRAFTS_CLIPS_PER_DAY: '0' }, now: () => NOW });
   const r = await J.runOne('acme-com');
   const cache = await J.cacheOf('acme-com'), by = (id) => cache[id];
   assert.deepEqual(Object.keys(cache).filter((k) => cache[k].format).sort(), ['m01-1', 'm02-1', 'm03-1', 'm04-1', 'm05-1', 'm06-1'], 'every card that names a format (m06-1 by back-fill)');
@@ -179,8 +179,8 @@ test('a draft made before Sloosh (k 2) stays on its card until its Sloosh draft 
   const { draftFor, needsDraft, draftKey: dk, DRAFT_K } = await import('../drafts-bg.js');
   const card = { id: 'm9-1', title: 'Warm feet at the desk', make: { format: 'image' } };
   const old = { 'm9-1': { k: 2, key: dk(card), as: 'image', image: 'gen/old.png', cardTitle: card.title } };
-  assert.equal(DRAFT_K, 3); assert.ok(draftFor(card, old), 'still shown'); assert.equal(needsDraft(card, old), true, 'remade on Sloosh');
-  assert.equal(needsDraft(card, { 'm9-1': { ...old['m9-1'], k: 3 } }), false);
+  assert.equal(DRAFT_K, 4); assert.ok(draftFor(card, old), 'still shown'); assert.equal(needsDraft(card, old), true, 'remade on Sloosh');
+  assert.equal(needsDraft(card, { 'm9-1': { ...old['m9-1'], k: DRAFT_K } }), false);
 });
 
 test('the team’s private move cards (private/cards.json, ids ending -p) get first drafts too; live readings still never do (27 Oct)', async () => {
@@ -188,4 +188,26 @@ test('the team’s private move cards (private/cards.json, ids ending -p) get fi
   const posts = [{ id: 'm24-2-p', title: 'Stop curl buildup', liveOnly: true, privateOf: 24, make: { format: 'instagram carousel' } }, { id: 'live-ga4', title: 'Sessions', liveOnly: true }];
   const r = rankCards(posts).map((c) => c.id); assert.ok(r.includes('m24-2-p')); assert.ok(!r.includes('live-ga4'));
   const src = fs.readFileSync(new URL('../drafts-bg.js', import.meta.url), 'utf8'); assert.match(src, /getJSON\(slug, 'private\/cards\.json'/);
+});
+
+/* 27 Oct (Arata's feed was one bottle on a plain ground after another, and hardly a clip): every card takes a look the feed has
+   used least, and up to three cards a day get a clip, image cards too, never on the real product photo */
+test('looks rotate across the feed, and up to DRAFTS_CLIPS_PER_DAY image cards get a clip, never a real-photo stand-in', async () => {
+  const { LOOKS, pickLook, clipMotion } = await import('../drafts-bg.js');
+  const a = pickLook({}, 'm1-1'), seen = { 'm1-1': { cardId: 'm1-1', look: a.key } }, b = pickLook(seen, 'm2-1');
+  assert.notEqual(a.key, b.key, 'the next card takes another look'); assert.ok(LOOKS.length >= 5);
+  const all = {}; for (let i = 0; i < LOOKS.length; i++) { const l = pickLook(all, `c${i}`); all[`c${i}`] = { cardId: `c${i}`, look: l.key }; }
+  assert.equal(new Set(Object.values(all).map((d) => d.look)).size, LOOKS.length, 'one of each before any repeats');
+  assert.notEqual(pickLook({}, 'v', 'video').key, 'poster'); assert.match(clipMotion({ visual: 'a woman at a misty mirror' }), /misty mirror[\s\S]*moves naturally/);
+  const posts = [1, 2, 3, 4, 5].map((i) => ({ id: `m0${i}-1`, type: 'idea', kind: 'media', images: ['b/acme-com/a/runner.jpg'], title: `Runner ad ${i}`, sub: 's', src: `Move 0${i}`, time: '5 min', agent: 'creative', make: { format: 'single image ad' } }));
+  const { P, photo } = await setup(posts); let clips = 0, k = 0;
+  const makers = { render: async () => 'gen/r.jpg', video: async () => { clips++; return `clip${clips}.mp4`; }, voice: async () => 'vo.wav', mux: async () => 'both.mp4', head: async () => null };
+  const geminiImage = async () => Object.assign(Buffer.from('png'), { guard: ++k === 2 ? { genFailed: true } : {} }); /* card 2 is the real photo */
+  const J = createDraftsBg({ packs: P, ai: fakeAI(), geminiImage, saveGen: () => {}, genFile: async () => photo, photoAsync: async () => photo, treg: { onCharge: () => {} }, launchBrowser: () => ({}), makers, spend: () => true,
+    loadPack: (slug) => P.load(slug, { fresh: true }), lastOpenOf: async () => NOW - DAY, log: quiet, env: { DRAFTS_BG: '1', DRAFTS_PER_RUN: '20' }, now: () => NOW });
+  await J.runOne('acme-com'); await J.runOne('acme-com');
+  const cache = await J.cacheOf('acme-com'), ds = posts.map((p) => cache[p.id]);
+  assert.ok(ds.every((d) => d.look), 'every picture card has its look'); assert.ok(new Set(ds.map((d) => d.look)).size >= 4, 'neighbours look different');
+  const withClip = ds.filter((d) => d.video); assert.equal(withClip.length, 3, 'three clips a day'); assert.ok(!withClip.some((d) => d.photoOnly), 'never on the real photo');
+  assert.ok(withClip.every((d) => d.kind === 'image' && d.clipStill), 'an image card clip opens on its own 9:16 still');
 });

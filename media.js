@@ -1,7 +1,8 @@
 // Draft asset generation, one chain per kind, on our own keys (never treg). Each step that fails hands over to the next, and
 // the result says which provider made it, so a draft never loses its picture, clip or voice to one provider's bad minute.
 // Since 27 Oct every picture and clip is made by Sloosh (sloosh-make.js): server.js registers it here with setMakers, and makeVideo
-// sends every clip to it, with no Veo behind it (a clip Sloosh can't make now waits and is tried again; never a weaker model).
+// sends every clip to it. When Sloosh can't (no credit, not connected), sloosh-make hands the clip to its stand-in (Veo on our
+// Google credits, vertex-standin.js); the buffer says which made it (.provider 'sloosh' | 'vertex').
 //   voice: Gemini TTS → OpenAI TTS (a spoken line on its own; a clip's own sound comes from the Sloosh video model)
 import { mimeOf } from './img-norm.js';
 import { vertexVoice, vertexVideo, pcmToWav } from './vertex-media.js';
@@ -52,7 +53,7 @@ export const firstDraftNow = (slug, cardId) => makers?.firstDraft?.(slug, cardId
 /** first frame + motion prompt → MP4 buffer: Sloosh (o.slug, o.ratio, o.seconds, o.sound, o.line, o.tier) */
 export async function makeVideo(frame, prompt, o = {}, log = console) {
   if (makers?.video) { const buf = await makers.video({ slug: o.slug, frame, prompt, ratio: o.ratio, seconds: o.seconds, sound: o.sound, line: o.line, tier: o.tier, kind: o.kind });
-    return Object.assign(buf, { provider: 'sloosh' }); }
+    return Object.assign(buf, { provider: buf.provider || 'sloosh' }); }
   if (!process.env.VEO_LOCAL) throw Object.assign(new Error('Video is made by Sloosh, which is not connected here'), { soft: true });
   return veoVideo(frame, prompt, o, log);
 }

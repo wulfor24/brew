@@ -98,7 +98,7 @@ test('saved drafts heal: a picture gone from the bucket is made again; a clip th
   const gone = new Set(); let clock = NOW, tregDown = true, clips = 0;
   const makers = { video: async () => { clips++; if (tregDown) throw new Error('treg minimax.video-gen.from_image 402: insufficient_balance'); return 'clip.mp4'; }, voice: async () => 'vo.wav', mux: async () => 'both.mp4', render: async () => null };
   const J = createDraftsBg({ packs: P, ai: fakeAI(), geminiImage: createImageGuard({ gen: async () => Buffer.from('png'), log: quiet }), saveGen: () => {}, genFile: async (n) => (gone.has(n) ? null : photo), genFlush: async () => {}, photoAsync: async () => photo,
-    treg: { onCharge: () => {} }, makers, spend: () => true, loadPack: (slug) => P.load(slug, { fresh: true }), lastOpenOf: async () => NOW, log: quiet, env: { DRAFTS_BG: '1' }, now: () => clock });
+    treg: { onCharge: () => {} }, makers, spend: () => true, loadPack: (slug) => P.load(slug, { fresh: true }), lastOpenOf: async () => NOW, log: quiet, env: { DRAFTS_BG: '1', DRAFTS_CLIPS_PER_DAY: '0' }, now: () => clock });
   await J.runOne('acme-com');
   let c = await J.cacheOf('acme-com');
   assert.equal(c['m02-1'].as, 'image'); assert.equal(c['m02-1'].wants, 'video', 'the reel waits as its still'); assert.equal(c['m02-1'].clipRetry.n, 1); assert.match(c['m02-1'].err, /tried again/);

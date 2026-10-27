@@ -37,7 +37,7 @@ export const refLines = (refs = []) => refs.filter(Boolean).map((r, i) => (JOB_L
 /* anyone in a picture is an everyday customer, never a doctor or scientist (a lab coat reads as a fake endorsement: Arata 25 Oct, a
    first draft put a woman in a lab coat beside the shampoo). Same rule as Studio's (jam2/studio.js NO_EXPERT) */
 export const EVERYDAY = 'Anyone shown is an everyday customer: never a doctor, dermatologist, scientist, pharmacist or other expert, no lab coat, scrubs, clinic or laboratory';
-export const keepLine = ({ brand = {}, text = false, people = true } = {}) => one(`${text ? 'No writing anywhere except the words asked for and the product’s own label' : 'Nothing in the picture carries writing except the product’s own label'}: no calendars, notes, signs, screens, books, posters or other packaging. No logos or watermarks that are not the brand’s own. No body shown as a result, no before and after of a body${people ? `. ${EVERYDAY}` : ', no people'}. Nothing invented on the product. ${scrub(text ? noTextOff(brand.avoid) : brand.avoid || '')}`);
+export const keepLine = ({ brand = {}, text = false, people = true } = {}) => one(`${text ? 'No writing anywhere except the words asked for and the product’s own label' : 'Nothing in the picture carries writing except the product’s own label'}: no calendars, notes, signs, screens or posters with words, and no other brand’s packaging. Props, people and a real setting around the product are welcome. No logos or watermarks that are not the brand’s own. No body shown as a result, no before and after of a body${people ? `. ${EVERYDAY}` : ', no people'}. Nothing invented on the product. ${scrub(text ? noTextOff(brand.avoid) : brand.avoid || '')}`);
 /* a brand's avoid line says "No text" for its photos; where words were asked for it would cancel them (Arata's reel, 21 Oct) */
 const noTextOff = (s) => String(s || '').replace(/\b(?:no|without) (?:text|words|writing|copy)(?: (?:on|in) (?:the )?(?:image|picture|photo))?\s*(?:,\s*|\.\s*|;\s*|$)/gi, '').replace(/^\s*[,;.]\s*/, '');
 /* "HEADLINE" in bold sans-serif, top third: exact words, a place, a lettering; one line each; rendered once */
@@ -47,7 +47,7 @@ export const textLines = (text = []) => { const xs = (Array.isArray(text) ? text
    natural light (a still life on a surface reads as a catalog photo and is scrolled past) */
 /* the brand's own look when it has one; else a bold, scroll-stopping product hero (the old default, a phone snapshot in daylight, was
    plain on purpose and was scrolled past). The Brand Book's art direction rides along in sloosh-make.js */
-export const lookOf = (brand = {}, kind = 'image') => scrub(brand.style || brand.editorial || (kind === 'video' ? 'A scroll-stopping product moment with real energy, true colours' : 'A bold, scroll-stopping product hero with a clear focal point, true colours and confident light'));
+export const lookOf = (brand = {}, kind = 'image') => scrub(brand.style || brand.editorial || (kind === 'video' ? 'A real moment shot like a creator’s post, with people, hands and movement, true colours, natural light' : 'A real, lived-in moment shot like a creator’s post: people or hands, texture and props around the product, true colours and natural light; never a packshot on an empty background'));
 export const useOf = (ratio) => `${USE[ratio] || USE['4:5']}`;
 
 /* planning notes a writer left in a picture brief ("Measure: high watch time…", "Goal: …") are not things to draw */
