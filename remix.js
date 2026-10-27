@@ -33,6 +33,7 @@ import { moveNo } from './value.js';
 import { budgetMatch } from './budget-match.js'; // a budget draft against its card and the account
 import { healOps, opsCheck } from './ops-rows.js'; // an ad account change names the account's real campaigns
 import { safeFetch, stripTags, UA as READ_UA } from './reader/util.js'; // the product page as it reads today, before copy is written
+import { formatFix } from './format-check.js'; // every piece formatted for its channel before it is shown
 import { claimFlags, claimCheck, copyFlags, quoteFlags, shortQuote, sourceText, CLAIMS_RULE, COPY_RULE, checkCopyIn, writerSlips } from './claims.js'; // invented codes, guarantees, timed results and copy that reads wrong are flagged before shipping
 import { dejargon } from './plain.js'; // jam names in plain words, like the cards
 import { budgetWhy } from './budget.js'; // v2 words/takes: a refused spend is said with its real reason, never a silent fallback
@@ -631,6 +632,11 @@ export function createRemix(o) {
   /* the Brand Book's claims we may make, in the writer's prompt: the same list the checks accept, so the writer and the checker agree */
   /* the brand's real reviews, for any customer quote in the copy (the quote check reads the same list, claims.js quoteFlags): every edit
      and redo quotes one of these word for word, or none (27 Oct: an edit "fixed" an invented review with another invented one) */
+  /* an ask to take something out ("remove text", "drop the emoji", "no hashtags", "without the headline") */
+  const CLEAR_ASK = /\b(?:remove|delete|drop|clear|erase|strip|take (?:out|off|away)|get rid of|lose|cut)\b|\bno (?:text|words|headline|emoji|emojis|hashtags?|caption|title|line|button)\b|\bwithout (?:the |any )?(?:text|words|headline|emoji|emojis|hashtags?|caption|title)\b/i;
+  /* the words a person quoted, or named after "text:", in what they asked: what must be gone afterwards */
+  const quotedIn = (m) => { const out = [...String(m || '').matchAll(/[“"']([^“”"']{4,200})[”"']/g)].map((x) => x[1]); const tx = /\b(?:text|words|headline|line)\s*:\s*(.{4,200})$/i.exec(String(m || '')); if (tx) out.push(tx[1].trim()); return out; };
+  const normWords = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}₹%]+/gu, ' ').trim();
   const reviewsLine = (t) => { let rv = []; try { rv = (o.reviewsOf?.(t) || []).filter((x) => x && x.length >= 20 && x.length <= 400).slice(0, 12); } catch { rv = []; }
     return rv.length ? `\nREAL REVIEWS (a quote from a customer must be one of these, word for word, cut short only at a sentence end; never write or extend a review):\n${rv.map((x) => `- "${String(x).replace(/"/g, '”')}"`).join('\n')}` : '\nThere are no real reviews to quote: never put words in a customer\'s mouth.'; };
   const claimsLine = (t) => { let cl = []; try { cl = (o.approvedClaimsOf?.(t) || []).map((x) => (typeof x === 'string' ? x : x?.text)).filter(Boolean).slice(0, 8); } catch { cl = []; } return cl.length ? `\nCLAIMS ${BN()} MAY MAKE (approved, as written): ${cl.map((x) => `"${x}"`).join('; ')}. Any other health, proof or measured claim stays out.\n` : `\nNo claims are approved in ${BN()}'s Brand Book yet: no health, proof or measured claim at all.\n`; };
@@ -689,6 +695,8 @@ export function createRemix(o) {
     return { v: LANDING_V, hero, sub, benefits, quote: quote ? { text: quote, who: 'A customer review' } : null, cta: cut(p.button || 'Shop now', 30) }; };
   const sync = (t, ch, c) => {
     const act = actOf(ch.action); c ||= t.cards.get(ch.cardId) || {};
+    /* formatted for where it runs, every save, every piece (format-check.js): no raw Markdown, WhatsApp bold, buttons that are labels */
+    if (ch.pkg && !ch.studio) { try { const L = ch.layout || layoutOf(ch), r = formatFix({ ...ch, layout: L }); ch.pkg = r.pkg; if (r.fixes.length) ch.formatted = r.fixes; } catch (e) { log.warn?.('[remix] format check', e.message); } }
     adClip(ch);
     if (ch.pkg && isLanding(ch, c)) ch.pkg.landing = landingOf(t, ch, c);
     ch.after = afterFromPkg(ch.family, ch.pkg, { images: ['meta_ad', 'social'].includes(ch.family) && c.images && !isReferenceCard(c) ? [ch.batchKey ? ch.pkg.image : c.images[0]] : null });
@@ -1137,15 +1145,22 @@ export function createRemix(o) {
     const before = { ...ch.after };
     if (Array.isArray(out?.plan) && out.plan.length >= 3) { const pl = withSteps(ch.plan || o.planOf?.(t, c), out.plan.map((x) => clean(String(x)))); if (pl) { ch.plan = pl; const w = (t.work || []).find((x) => x.changeId === ch.id); if (w) w.cardPlan = { ...pl, made: w.cardPlan?.made || null }; } } /* the plan, refined in the chat */
     if (out?.pkg) {
-      const snapIn = JSON.stringify(snapOf(ch));
-      ch.pkg = { ...ch.pkg, ...cleanPkg(ch.family, ch.action, fromKV(ch.family, ch.action, out.pkg), clean), ...keepMedia(ch.pkg) };
+      const snapIn = JSON.stringify(snapOf(ch)), pubIn = publicText(ch.family, ch.action, ch.pkg).join('\n');
+      const nextPkg = cleanPkg(ch.family, ch.action, fromKV(ch.family, ch.action, out.pkg), clean);
+      /* "remove the text / the headline / the emoji": a field the writer sent back empty is cleared, never kept as it was (27 Oct) */
+      if (CLEAR_ASK.test(message)) for (const { k, v } of Array.isArray(out.pkg) ? out.pkg : []) if (k && String(v ?? '').trim() === '' && ch.pkg[k] != null && !(k in nextPkg)) nextPkg[k] = Array.isArray(ch.pkg[k]) ? [] : '';
+      ch.pkg = { ...ch.pkg, ...nextPkg, ...keepMedia(ch.pkg) };
       if (BANNED.test(publicText(ch.family, ch.action, ch.pkg).join(' '))) ch.pkg = rulePkg(t, ch.agent, ch.family, ch.pkg);
       sync(t, ch, c);
       /* a version only when the package really changed: the same words back (a question the router missed) is no new version */
       const same = JSON.stringify(snapOf(ch)) === snapIn;
       if (!same) { const v = version(t, ch, `ai:${ch.agent}`, message.slice(0, 90), out.label); nv = v; if (!quiet) try { o.onVersion?.(t, ch, v, message); } catch {} } /* e.g. the jam's Slack thread */
       else ANSWERED.add(ch);
-      if (!quiet) ch.thread.push({ from: 'ai', text: onProduct(t, ch, c, clean(out.reply || (same ? 'Nothing needed changing.' : 'Updated.')), message), at: now(t), ...(same ? {} : { v: versionsOf(t, ch.id).length }) });
+      /* the reply says what really happened (27 Oct, Param: "I asked to remove text, it didn't remove, just confirmed"): nothing changed is
+         never "Removed…"/"Updated…", and words asked out that are still there are named, whatever the writer wrote */
+      const pubOut = publicText(ch.family, ch.action, ch.pkg).join('\n'), still = CLEAR_ASK.test(message) ? quotedIn(message).filter((q) => normWords(pubOut).includes(normWords(q))) : [];
+      const reply = same ? `Nothing changed in the words${still.length ? `: “${still[0].slice(0, 80)}” is still there` : ''}. Say it another way, or use Change it yourself.` : still.length ? `${clean(out.reply || 'Updated.').replace(/^(?:removed|deleted|cleared|took out)\b[^.]*\.?\s*/i, '')} “${still[0].slice(0, 80)}” is still in it: say which part to drop, or use Change it yourself.`.trim() : clean(out.reply || 'Updated.');
+      void pubIn; if (!quiet) ch.thread.push({ from: 'ai', text: onProduct(t, ch, c, reply, message), at: now(t), ...(same ? {} : { v: versionsOf(t, ch.id).length }) });
       // the chips follow the conversation: what to try next on this version
       if (Array.isArray(out.next)) { const ctx = chipCtx(ch.action, ch.actionLabel, c); const nx = out.next.map((x) => clean(String(x)).replace(/[.]$/, '')).filter((x) => x && x.length <= 48 && chipRelates(x, ctx)); if (nx.length >= 2) ch.next = nx.slice(0, 4); } /* only chips about this change's action */
       /* "keep the photo" never starts a paid one. The photo lands on the words version just made (target), never a second

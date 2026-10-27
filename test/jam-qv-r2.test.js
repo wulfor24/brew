@@ -93,7 +93,8 @@ test('P0-1 Fix it: the words are rewritten for the jam\'s product, text only (a 
 
 test('P1-19: a new chat line never says the jam moved to another product; the person naming it is the exception', async () => {
   let reply = 'Updated the product focus to Anti-Hair Fall Intensive Shampoo. Tightened the hook.';
-  const ai = async (prompt, schema, mx, tag) => (tag === 'studio_iterate' ? { reply, label: 'Shorter hook', next: [], newImage: false, pkg: [{ k: 'caption', v: 'Tame flyaways with the Sleek Hair Styling Stick.' }] } : null);
+  let n = 0; /* each ask really changes the words: a reply about words that didn't change is "Nothing changed" (27 Oct) */
+  const ai = async (prompt, schema, mx, tag) => (tag === 'studio_iterate' ? { reply, label: 'Shorter hook', next: [], newImage: false, pkg: [{ k: 'caption', v: `Tame flyaways with the Sleek Hair Styling Stick${'!'.repeat(++n)}` }] } : null);
   const S = harness(ai), t = tenant(), { id, ch } = await madeJam(S, t);
   const old = { from: 'ai', text: 'Updated the product focus to Anti-Hair Fall Intensive Shampoo', at: 1 }; ch.thread.unshift(old);
   await S.call('POST /api/changes/:chid/iterate', { message: 'Make the hook shorter', wait: true }, t, { chid: id });

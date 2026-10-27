@@ -45,7 +45,7 @@ test('header: the piece, a version switcher, the rest in the More menu; panel: n
 test('point, then ask: a tapped part rides in the box, and the ask changes that part only', () => {
   assert.match(app, /const partOf = \(el\) =>/); assert.match(app, /\$\{partChip\(\)\}<div class="it-row/);
   assert.match(app, /keep every other word and setting as it is/);
-  assert.match(app, /if \(ch\.studio && PIC_PART\.test\(p\.label\)\) msg = m; else \{ body = \{ message: m, show:/, 'words go to the writer, a picture to the Studio set-up');
+  assert.match(app, /if \(ch\.studio && PIC_PART\.test\(p\.label\) && !\(WORDS_ASK\.test\(msg\) && !studioMade\(ch\)\)\) msg = m; else \{ body = \{ message: m, show:/, 'words go to the writer (a slide\'s words too, before it is made), a picture to the Studio set-up');
   assert.match(fn('partOf'), /\[contenteditable="true"\]/, 'typing straight into the piece stays a free edit');
 });
 

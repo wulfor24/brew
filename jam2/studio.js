@@ -202,7 +202,7 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
   }
   /* the plan line and its price: what will be made, how many, at what cost */
   /* the jam's own words (its headline and first line, checked and edited in v1): one helper for the free look, the make and its batch's first take */
-  const v1Words = (ctx, spec = {}) => { if (spec.ask) return null; const v1 = ctx.v1 || {}, h = tidy(v1.headline || v1.overlay || v1.slides?.[0]?.onSlide || v1.heading || v1.front || '', 90); if (!h) return null;
+  const v1Words = (ctx, spec = {}) => { if (spec.fixed) return spec.fixed; /* a set's slide: the words its preview showed, a removed line stays removed */ if (spec.ask) return null; const v1 = ctx.v1 || {}, h = tidy(v1.headline || v1.overlay || v1.slides?.[0]?.onSlide || v1.heading || v1.front || '', 90); if (!h) return null;
     return { headline: h, sub: tidy(String(v1.primaryText || v1.caption || v1.copy || v1.description || v1.back || '').split(/\n|(?<=[.!?])\s/)[0], 120) || '', cta: v1.cta || '' }; };
   /* a sold-out product isn't made into a paid creative (v1 wouldn't let it be posted), unless the card is about it coming back */
   const soldOut = (ctx) => { const P = ctx.product || {}, pn = String(P.name || '').trim(); if (!pn && !P.img && !P.handle) return null;
@@ -376,7 +376,9 @@ export function createStudio({ engines, maker, profileOf = async () => null, isM
     const J = opts.jobs || {}, runKey = `set:${board.takes?.length || 0}:${set.map((x) => x.id).join(',')}:${tidy(spec.product?.img || '', 80)}`;
     for (let i = 0; i < set.length; i++) {
       const kept = J[`${runKey}:${i}`]; if (kept?.slide) { slides.push(kept.slide); continue; } /* made before the restart: paid for once */
-      try { const t = await make(ctx, board, { ...spec, set: null, style: set[i].id, count: 1, ask: [`Slide ${i + 1} of ${set.length} of one ${tidy(board.label, 40) || 'carousel'} (${labels}): its own short line that builds on the slides before it${i === 0 ? '; this one is the cover, the hook' : i === set.length - 1 ? '; this one closes with the reason to buy' : ''}.`, spec.ask].filter(Boolean).join(' ') }, i, opts);
+      /* the slide's own words from the jam (what the stage showed, edits and removals included); new words only for a slide it has none for */
+      const row = Array.isArray(ctx.v1?.slides) ? ctx.v1.slides[i] : null, fixed = row && ('onSlide' in row) ? { headline: tidy(row.onSlide || '', 90), sub: tidy(row.small || '', 120), cta: i === set.length - 1 ? ctx.v1?.cta || '' : '' } : null;
+      try { const t = await make(ctx, board, { ...spec, set: null, style: set[i].id, count: 1, ...(fixed ? { fixed } : {}), ask: [`Slide ${i + 1} of ${set.length} of one ${tidy(board.label, 40) || 'carousel'} (${labels}): its own short line that builds on the slides before it${i === 0 ? '; this one is the cover, the hook' : i === set.length - 1 ? '; this one closes with the reason to buy' : ''}.`, spec.ask].filter(Boolean).join(' ') }, i, opts);
         made.push(...(t.made || [])); const slide = { scene: t.scene, file: t.file, style: set[i].id, words: t.words, shot: t.shot || null, drawn: t.drawn || null }; slides.push(slide);
         J[`${runKey}:${i}`] = { slide, at: Date.now() }; await Promise.resolve(opts.save?.()).catch(() => {}); }
       catch (e) { made.push(...(e.made || [])); missing.push(`${set[i].label}: ${tidy(e.message, 120)}`); missingIds.push(set[i].id); log.warn?.('[studio] slide', set[i].id, e.message); } }
