@@ -501,7 +501,16 @@ export function createFeedService(o) {
       if (!/^gen\//.test(String(c.images?.[0] || '')) && !(was >= LOOKS_V && c.product)) continue; /* a picture this heal already swapped is matched again */
       const named = cat.length ? pricedProduct(`${c.title || ''}. ${c.sub || ''}`, cat, { brand: BN() }) : null;
       /* the idea names no product the store sells (a price or a line the catalog doesn't carry): no picture at all, never another product's */
-      if (named) { c.images = [named.img]; c.product = named.t; } else { delete c.product; c.images = []; c.kind = 'rows'; c.rows ||= []; } } };
+      if (named) { c.images = [named.img]; c.product = named.t; } else { delete c.product; c.images = []; c.kind = 'rows'; c.rows ||= []; } }
+    /* 27 Oct: a watcher card still showing a raw store photo of its product gets its picture made on Sloosh (a couple a load, in the
+       background); the raw photo stays until the new one lands */
+    if (isMock()) return;
+    const due = [...t.cards.values()].filter((c) => c.watcher === 'creative' && c.product && c.imgS !== 1 && !/^gen\//.test(String(c.images?.[0] || '')) && ['ready', 'shown'].includes(c.state)).slice(0, 2);
+    for (const c of due) { c.imgS = 1; const named = cat.find((x) => x.t === c.product); if (!named?.img) continue;
+      Promise.resolve().then(async () => { const buf = await geminiImage({ srcFile: named.img, prompt: buildDraft({ kind: 'image', title: 'an ad', visual: c.scene || `${c.title}. ${c.sub || ''}`, hasSrc: true, ratio: '4:5', product: { name: named.t }, brand: { name: BN() } }).prompt,
+          ratio: '4:5', text: `${c.title}. ${c.sub || ''}`, catalog: cat, brand: BN(), named, slug: B()?.slug, fallback: true, kind: 'single image ad' });
+        if (buf?.guard?.genFailed) return; const key = crypto.createHash('sha1').update(`${c.id}|${c.title}|sloosh`).digest('hex').slice(0, 16); saveGen(key + '.png', buf); c.images = [`gen/${key}.png`]; c.kind = 'media'; store?.save(t); })
+        .catch((e) => log.warn('[creative watcher] picture on Sloosh', c.id, e.message)); } };
   /* saved catalog cards are written again from their reading (QA FEED-ARV-08, CAT_V): product · issue · fix, best sellers first.
      The old "products our cards sell" reading is part of the one stock-out card now: its own card steps aside (kept if worked on) */
   const healCatalog = (t, keep = new Set()) => { const evs = live?.get()?.catalog?.events || [], vevs = live?.get()?.visibility?.events || [];
@@ -1024,7 +1033,7 @@ export function createFeedService(o) {
       const refFile = !ref ? null : named ? ref /* the guard fetches the named product's photos itself (a store URL too) */ : await fileOfRel(ref);
       if (refFile && spend('image')) {
         try {
-          const buf = await geminiImage({ srcFile: refFile, prompt: buildDraft({ kind: 'image', title: 'an ad' /* never the card's words: the model draws a title it is given (25 Oct, Cozy) */, visual: j.scene || 'the product in use in a real moment, soft daylight', hasSrc: true, ratio: '4:5', topSpace: true, product: { name: named?.t || `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt,
+          const buf = await geminiImage({ srcFile: refFile, prompt: buildDraft({ kind: 'image', title: 'an ad' /* never the card's words: the model draws a title it is given (25 Oct, Cozy) */, visual: j.scene || 'the product in use in a real moment', hasSrc: true, ratio: '4:5', product: { name: named?.t || `${BN()} ${B().config.product?.noun || 'product'}` }, brand: { name: BN(), ...(B().config.product || {}) } }).prompt,
             ratio: '4:5', text: words, catalog: cat.length ? cat : null, brand: BN(), ...(named ? { named } : {}), slug: B()?.slug, fallback: true, ...(process.env.WATCHER_IMAGE_MODEL ? { model: process.env.WATCHER_IMAGE_MODEL } : {}) });
           if (buf?.guard?.genFailed) imgNote = `the real product photo (the new picture was held back: ${String(buf.guard.error || '').slice(0, 80)})`;
           else { const key = crypto.createHash('sha1').update(j.title + j.scene).digest('hex').slice(0, 16); saveGen(key + '.png', buf); img = `gen/${key}.png`; imgNote = 'made around the product the idea names, checked as an ad'; }
