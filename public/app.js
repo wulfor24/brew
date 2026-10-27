@@ -4986,7 +4986,7 @@
       ${RX.jpSw ? jpSwPop(ch) : ''}${RX.jpMenu ? jpMenuPop(ch) : ''}${RX.vmenu ? vmenuHtml(ch) : ''}</header>`;
   /* the tag on the stage: what the piece on it is right now */
   const jpTag = (ch, viewing) => { if (viewing) return ''; const st = ch.studio ? window.CreativeStage?.state(ch.id) : null, making = !!(st?.making || st?.working || ch.imagePending || ch.videoPending || ch.remakePending);
-    const t = making ? 'Being made · you can leave' : ch.studio ? (studioMade(ch) ? `Made · v${curN(ch)}` : 'Preview · your photo for now') : ch.copyPending ? 'Writing it · a moment' : ['pic', 'set', 'reel'].includes(ch.layout) && !imgOf(ch) && !(ch.pkg?.cardImages || []).length ? 'Preview' : `Draft · v${curN(ch)}`;
+    const t = making ? 'Being made · you can leave' : ch.studio ? (studioMade(ch) ? `Made · v${curN(ch)}` : /^gen\//.test(ch.pkg?.draft?.images?.[0] || '') ? 'First draft · in your look' : 'Preview · your photo for now') /* a Sloosh first draft is not "your photo" (27 Oct) */ : ch.copyPending ? 'Writing it · a moment' : ['pic', 'set', 'reel'].includes(ch.layout) && !imgOf(ch) && !(ch.pkg?.cardImages || []).length ? 'Preview' : `Draft · v${curN(ch)}`;
     return `<span class="jp-tag${making || ch.copyPending ? ' is-busy' : ''}"><i></i>${esc(t)}</span>`; };
   const jpOldv = (v) => `<div class="jp-oldv">You’re looking at v${esc(v.n)}</div>`;
   /* the stage's top strip, one row (Param, 26 Oct: the tag sat on View references, and the two reference cards floated at their own
