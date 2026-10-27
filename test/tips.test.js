@@ -10,7 +10,7 @@ const pub = new URL('../public/', import.meta.url);
 const read = (f) => fs.readFileSync(new URL(f, pub), 'utf8');
 const box = { window: {} };
 vm.runInNewContext(read('tips.js'), box);
-const { T, attr } = box.window.BrewTips;
+const { T, attr, area } = box.window.BrewTips;
 const FILES = ['app.js', 'jam-room.js', 'composer.js', 'brand-book.js', 'creative-stage.js'];
 
 test('every tip is one short sentence in plain words, with no brand in it', () => {
@@ -40,6 +40,16 @@ test('every tip key a page asks for exists', () => {
 
 test('a tipped element has no native title too', () => {
   for (const f of FILES) for (const tag of read(f).match(/<(?:button|span|b|em|small|ol)\b[^<>]*(?:tipA\(|BrewTips\?\.attr\(|data-tip=)[^<>]*>/g) || []) assert.doesNotMatch(tag, /\stitle="[^"$]/, `${f}: ${tag.slice(0, 120)}`);
+});
+
+test('every feed area and health ring name says what it means', () => {
+  const src = read('app.js'), keys = [...src.match(/const SECTORS = \{([\s\S]*?)\n  \};/)[1].matchAll(/(\w+): \{ name:/g)].map((m) => m[1]);
+  assert.ok(keys.length >= 6);
+  for (const k of keys) assert.match(area(k), /^ data-tip="[A-Z]/, `area ${k}`);
+  for (const n of ['Creative', 'Storefront', 'AI answers']) assert.notEqual(area(n), '', `ring ${n}`);
+  assert.equal(area('nope'), '');
+  assert.match(src, /<em\$\{tipArea\(c\.sector\)\}>/); /* the card page's own area tag; a From label never borrows an area's words it doesn't show */
+  assert.match(src, /<h2\$\{tipArea\(k\)\}>/);
 });
 
 test('the tip layer: no hover on touch, a long press that doesn’t press, never over its own button', () => {

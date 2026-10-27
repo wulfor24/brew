@@ -37,7 +37,7 @@
     const push = () => { const t = buf.join('\n'); buf = []; if (code) { const x = t.replace(/^\s*\n|\n\s*$/g, ''); if (x.trim()) out.push({ code: true, lang: code.lang, text: x }); } else if (t.trim()) out.push({ code: false, text: t }); };
     for (const l of String(s ?? '').replace(/\r/g, '').split('\n')) { const m = /^\s*```\s*([\w+#./-]*)/.exec(l); if (m) { push(); code = code ? null : { lang: m[1].toLowerCase() }; continue; } buf.push(l); }
     push(); return out; };
-  const tipA = (k) => window.BrewTips?.attr(k) || ''; /* ` data-tip="…"` from tips.js: the one place tooltip words live */
+  const tipA = (k) => window.BrewTips?.attr(k) || '', tipArea = (k) => window.BrewTips?.area(k) || ''; /* ` data-tip="…"` from tips.js: the one place tooltip words live */
   const hasCode = (s) => /(^|\n)\s*```/.test(String(s ?? ''));
   const codePre = (b) => `<pre class="rx-code"${b.lang ? ` data-lang="${esc(b.lang)}"` : ''}><code>${esc(b.text)}</code></pre>`;
   const rich = (text) => hasCode(text) ? splitCode(text).map((x) => (x.code ? codePre(x) : richText(x.text))).join('') : richText(text);
@@ -1293,7 +1293,7 @@
     if (GEN && !HC_MOVES) hcMoves().then(() => { const el = $('.card[data-health] [data-hc-how]'); if (el && hcFix(low)) el.outerHTML = hcCta(low); }).catch(() => {});
     return `<article class="card hc${B.health.dummy ? ' is-dummy' : ''}" data-health>${head('brew', B.health.public ? `From your public site${Object.values(SRV.healthLive || {}).some((x) => x?.what) ? ' and your accounts' : ''}${when ? ` · ${esc(when)}` : ''}` : `Up ${h.delta + Object.keys(S.conn).filter(conn).length} this week`, null, false, 'Store health')}
       <div class="body hc-body"><h3>${esc(head1)}</h3>${sub1 ? `<p>${esc(sub1)}</p>` : ''}</div>
-      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}${r.was != null && r.was !== r.v ? ` <small class="hc-was">Was ${r.was}${r.changed ? `: ${esc(r.changed)}` : ''}</small>` : ''}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.filter((x, i, all) => !((x.real || all.some((y) => +y.v)) && (x.v === 0 || x.v === '0'))) /* a zero reading stays quiet; the ring's own score says it once */.map((x) => `<li><span>${esc(x.k)}</span><b>${esc(String(x.v))}${x.of != null ? `<small>/${x.of}</small>` : x.real ? '<small> from your account</small>' : ''}</b><small>${esc(x.note || '')}${(x.at || r.at) ? ` · checked ${esc(fmtDay(Date.parse(x.at || r.at)) || x.at || r.at)}` : ''}</small></li>`).join('')}</ul>` : ''}${r.k === 'AI answers' && aiStand()?.rivals ? `<div class="ais ais-mini">${aisHtml(aiStand(), { compact: true })}<button class="linkbtn hc-ais" data-ais-proof="${esc(aiStand().src || 'weekly')}">${ic('shield', 's14')}Every question and each AI’s answer</button></div>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
+      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b${tipArea(r.k)}>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}${r.was != null && r.was !== r.v ? ` <small class="hc-was">Was ${r.was}${r.changed ? `: ${esc(r.changed)}` : ''}</small>` : ''}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.filter((x, i, all) => !((x.real || all.some((y) => +y.v)) && (x.v === 0 || x.v === '0'))) /* a zero reading stays quiet; the ring's own score says it once */.map((x) => `<li><span>${esc(x.k)}</span><b>${esc(String(x.v))}${x.of != null ? `<small>/${x.of}</small>` : x.real ? '<small> from your account</small>' : ''}</b><small>${esc(x.note || '')}${(x.at || r.at) ? ` · checked ${esc(fmtDay(Date.parse(x.at || r.at)) || x.at || r.at)}` : ''}</small></li>`).join('')}</ul>` : ''}${r.k === 'AI answers' && aiStand()?.rivals ? `<div class="ais ais-mini">${aisHtml(aiStand(), { compact: true })}<button class="linkbtn hc-ais" data-ais-proof="${esc(aiStand().src || 'weekly')}">${ic('shield', 's14')}Every question and each AI’s answer</button></div>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
       ${read.length ? hcCta(low) : ''}</article>`; };
 
   /* the widget counts what the Work board counts (QV round 2, 26 Oct: "2 things in progress" over a board "Drafting 10"; "Nothing is
@@ -2375,7 +2375,7 @@
     const mFmt = (v) => /^(₹|\$|£|€|[ACS]\$)$/.test(m.unit || '') ? m.unit + Math.round(v) : m.unit === '%' ? (+v).toFixed(1) + '%' : v;
     return `${nowHtml(ph, p, c, w, pg, m, ch)}${ph !== 'fresh' ? '<small class="cp-k-card">The card</small>' : ''}<header class="cp-hero ag-${esc(ag)}${visual ? ' has-visual' : ''}${ph !== 'fresh' ? ' is-recap' : ''}">
         <div class="cp-hero-main">
-          <div class="cp-meta">${face(ag)}<span${tipA('from')}>${esc(fromLabel(c))}</span>${c.type ? `<em>${esc(KIND[c.type] || c.type)}</em>` : ''}${SECTOR[c.sector] ? `<em>${esc(SECTOR[c.sector])}</em>` : ''}</div>
+          <div class="cp-meta">${face(ag)}<span${tipA('from')}>${esc(fromLabel(c))}</span>${c.type ? `<em>${esc(KIND[c.type] || c.type)}</em>` : ''}${SECTOR[c.sector] ? `<em${tipArea(c.sector)}>${esc(SECTOR[c.sector])}</em>` : ''}</div>
           <h1 class="cp-t">${esc(c.title)}</h1><p class="cp-s">${esc(c.sub)}</p>${makeChip(c)}
           ${stats}${c.kind === 'variants' ? varPicker(p, c) : ''}
         </div>${visual}
@@ -3460,7 +3460,7 @@
   const colHTML = (k) => {
     const cards = byCol(k), sb = k === 'signals' ? sigBody() : k === 'visibility' ? `<article class="sig-lock ais-card"><div class="sig-lock-body ais">${aisHtml(aiStand())}</div></article>` : '';
     return `<section class="dcol" data-col="${k}">
-        <div class="col-head"><div class="col-top"><h2><span class="col-emo" aria-hidden="true">${SECTORS[k].emo}</span>${SECTORS[k].name}</h2>${colWhy(k)}<span class="col-fill"></span>
+        <div class="col-head"><div class="col-top"><h2${tipArea(k)}><span class="col-emo" aria-hidden="true">${SECTORS[k].emo}</span>${SECTORS[k].name}</h2>${colWhy(k)}<span class="col-fill"></span>
           <span class="col-menu"><button class="col-dots" aria-label="Column options"${tipA('colMore')}>${ic('more', 's18')}</button>
             <div class="col-pop"><button data-colact="refresh">${ic('refresh', 's16')} Refresh new cards</button><button data-colact="hide">${ic('x', 's16')} Hide this column</button></div></span></div><hr></div>
         <div class="col-body">${sb ? `<div class="sig-body">${sb}</div>` : ''}${cards.map(([p, i]) => postCard(p, i)).join('')}${cards.length ? `<p class="col-end">You are caught up on ${SECTORS[k].name.toLowerCase()}.</p>` : ''}</div>
@@ -3471,7 +3471,7 @@
     <p class="side-note">Every agent has its own column and posts all day.${sigEmpty() ? '' : ' Signals reads your orders and tells you which customers to reach today.'}</p>
     <div class="side-rule"></div>
     <div class="side-nav">${deckCols().map((k) => { const n = k === 'signals' ? byCol(k).length + (sigFake() ? SIGS.length : 0) : byCol(k).length;
-      return `<button data-colnav="${k}" class="${colState[k].hidden ? 'muted' : ''}" aria-current="false"><i class="col-dot" style="background:${SECTORS[k].dot}"></i>${SECTORS[k].name}<span class="n">${n || ''}</span></button>`; }).join('')}</div>
+      return `<button data-colnav="${k}" class="${colState[k].hidden ? 'muted' : ''}" aria-current="false"${tipArea(k)}><i class="col-dot" style="background:${SECTORS[k].dot}"></i>${SECTORS[k].name}<span class="n">${n || ''}</span></button>`; }).join('')}</div>
     <div class="side-acts"><button class="side-act" data-side="dash">${ic('grid', 's16')} Open dashboard</button><button class="side-act" data-side="jam">${ic('hand', 's16')} Jam with the team</button><button class="side-act" data-side="tune">${ic('sparkles', 's16')} Tune the deck</button></div>`;
   const deckEl = () => $('#deck');
   // the column you picked stays highlighted, even when the deck can't scroll far enough to make it the leftmost one;
@@ -3492,7 +3492,7 @@
     d.innerHTML = deckCols().filter((k) => !colState[k].hidden).map(colHTML).join('');
     d.style.setProperty('--col-w', colW + 'px');
     $('#deck-side').innerHTML = sideHTML();
-    $('#deck-tabs').innerHTML = $$('.dcol', d).map((c, i) => `<button class="dtab" role="tab" data-i="${i}">${SECTORS[c.dataset.col].name}</button>`).join('');
+    $('#deck-tabs').innerHTML = $$('.dcol', d).map((c, i) => `<button class="dtab" role="tab" data-i="${i}"${tipArea(c.dataset.col)}>${SECTORS[c.dataset.col].name}</button>`).join('');
     $$('.dcol', d).forEach((c) => { const b = $('.col-body', c); if (b && keepY[c.dataset.col]) b.scrollTop = keepY[c.dataset.col]; });
     d.scrollLeft = keep; markTab();
     requestAnimationFrame(() => { d.scrollLeft = keep; document.body.classList.remove('col-dragging'); });
@@ -3548,7 +3548,7 @@
       <div class="db-list">${bs.map((b) => `<div class="db-row">${b.team ? podFaces() : face(b.agent)}<div class="db-tx"><b>${esc(b.t)}</b><span>${esc(b.s)}</span></div>${pill(b)}</div>`).join('') || '<p class="sh-p">Nothing in progress yet.</p>'}</div></div>`); };
   const WIDTHS = [['Narrow', 380], ['Medium', 480], ['Wide', 600]];
   const openTune = () => {
-    const row = (k) => { const on = !colState[k].hidden, n = byCol(k).length + (k === 'signals' && sigFake() ? SIGS.length : 0); return `<button class="tn-row${on ? '' : ' is-off'}" data-tune="${k}" aria-pressed="${on}"><span class="tn-emo" aria-hidden="true">${SECTORS[k].emo}</span><span class="tn-tx"><b>${SECTORS[k].name}</b><span>${n ? `${n} card${n === 1 ? '' : 's'}` : 'Nothing yet'}</span></span><span class="sw" aria-checked="${on}" aria-hidden="true"><i></i></span></button>`; };
+    const row = (k) => { const on = !colState[k].hidden, n = byCol(k).length + (k === 'signals' && sigFake() ? SIGS.length : 0); return `<button class="tn-row${on ? '' : ' is-off'}" data-tune="${k}" aria-pressed="${on}"${tipArea(k)}><span class="tn-emo" aria-hidden="true">${SECTORS[k].emo}</span><span class="tn-tx"><b>${SECTORS[k].name}</b><span>${n ? `${n} card${n === 1 ? '' : 's'}` : 'Nothing yet'}</span></span><span class="sw" aria-checked="${on}" aria-hidden="true"><i></i></span></button>`; };
     const paintT = (m) => { $('.tn-list', m).innerHTML = deckCols().map(row).join(''); const near = WIDTHS.reduce((a, b) => (Math.abs(b[1] - colW) < Math.abs(a[1] - colW) ? b : a))[1]; $$('[data-tw]', m).forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.tw === near))); bindT(m); };
     const bindT = (m) => $$('[data-tune]', m).forEach((b) => (b.onclick = () => { const k = b.dataset.tune;
       if (!colState[k].hidden && COL_ORDER.filter((x) => !colState[x].hidden).length === 1) return toast('Keep at least one column on screen');

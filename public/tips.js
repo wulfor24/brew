@@ -39,11 +39,21 @@
     bbUndo: 'Go back to what we read from your site.',
     bbRuleOff: 'Turn this rule off.',
     bbBlock: 'This rule stops the work; tap to only warn.',
-    bbWarn: 'This rule only warns; tap to make it stop the work.'
+    bbWarn: 'This rule only warns; tap to make it stop the work.',
+    /* the feed's areas: what each word on a card, a Deck column or a health ring means */
+    area_signals: 'Signals are what your customers do and say: orders, reviews, messages and searches.',
+    area_catalog: 'Catalog is your products: names, photos, prices and stock.',
+    area_creatives: 'Creatives are the pictures, videos and words in your ads and posts.',
+    area_ads: 'Ads are your paid campaigns: what they cost, what they bring and what to change.',
+    area_storefront: 'Storefront is your website: its pages, checkout and what makes people buy.',
+    area_visibility: 'AI answers is how ChatGPT and other AI tools talk about you when people ask.'
   };
+  /* an area by its key (a card's sector, a Deck column) or by the name a health ring shows */
+  const AREA_NAME = { creative: 'creatives', storefront: 'storefront', 'ai answers': 'visibility', signals: 'signals', catalog: 'catalog', creatives: 'creatives', ads: 'ads' };
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   /* ` data-tip="…"` for a key (or words of its own), ready to drop into a tag; nothing when there are no words */
   const attr = (k) => { const t = T[k] || (k && !/^[a-z][A-Za-z]*$/.test(k) ? k : ''); return t ? ` data-tip="${esc(t)}"` : ''; };
-  if (typeof window !== 'undefined') window.BrewTips = { T, attr };
-  if (typeof module !== 'undefined') module.exports = { T, attr };
+  const area = (k) => { const key = AREA_NAME[String(k || '').toLowerCase()] || k; return T[`area_${key}`] ? attr(`area_${key}`) : ''; };
+  if (typeof window !== 'undefined') window.BrewTips = { T, attr, area };
+  if (typeof module !== 'undefined') module.exports = { T, attr, area };
 })();
