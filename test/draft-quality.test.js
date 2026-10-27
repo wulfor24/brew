@@ -146,3 +146,21 @@ test('a see-through packshot reaches the model on white, never on the black hidd
   const jpg = path.join(dir, 'photo.jpg'); fs.writeFileSync(jpg, await sharp({ create: { width: 40, height: 40, channels: 3, background: '#335' } }).jpeg().toBuffer());
   assert.equal(await N.normalize(jpg), jpg, 'an opaque photo is used as it is');
 });
+
+test('the headline set in a picture is read back word for word: a repeated, dropped or changed word fails (27 Oct, "a a change")', async () => {
+  const { lookVerdict, wordsMatch, doubled, lookPrompt } = await import('../draft-quality.js');
+  assert.match(lookPrompt('x', 'Softer by Sunday'), /READ:/);
+  const v = lookVerdict('GOOD clean shot\nREAD: "I can definitely notice a a change"'); assert.equal(v.read, 'I can definitely notice a a change'); assert.doesNotMatch(v.why, /READ/);
+  assert.equal(wordsMatch('I can definitely notice a change', v.read), false); assert.equal(doubled(v.read), true);
+  assert.equal(wordsMatch('Soft hair, one wash', 'SOFT HAIR\nONE WASH.'), true); assert.equal(doubled('Buy 2 2 get one'), false, 'numbers may repeat');
+});
+
+test('a picture whose set-in headline reads wrong is made again, then once more with no words so the headline is set in exact type', async () => {
+  const { createImageGuard } = await import('../image-guard.js');
+  const os = await import('node:os'), p = await import('node:path'); const ref = p.join(os.tmpdir(), 'ig-words.jpg'); fs.writeFileSync(ref, Buffer.from([0xff, 0xd8, 0xff, 0xe0]));
+  const asks = []; const gen = async (o) => { asks.push(o); return Buffer.from(o.words ? 'with-words' : 'clean'); };
+  const looks = async (buf) => (String(buf) === 'clean' ? { ok: true, verdict: 'good', why: '' } : { ok: true, verdict: 'good', why: 'fine', read: 'notice a a change' });
+  const G = createImageGuard({ gen, looks, pixels: async () => ({ collage: false }), log: { warn() {}, log() {} } });
+  const buf = await G({ srcFile: ref, prompt: 'scene', words: 'notice a change' });
+  assert.equal(String(buf), 'clean'); assert.equal(buf.guard.wordsMissing, true); assert.equal(asks.length, 3); assert.equal(asks[2].words, null); assert.match(asks[2].prompt, /No words, letters or numbers/);
+});

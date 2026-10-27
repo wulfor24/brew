@@ -4770,6 +4770,17 @@
   /* one chip per shape (the picked one kept when two sizes share 1:1), and none on a marketplace listing: its gallery is the
      marketplace's own square, never an ad shape (QV P1-4, 26 Oct) */
   const sizeChips = (ch, st) => { if (ch.family === 'listing' || /listing/.test(String(ch.studio || ''))) return []; const by = new Map(); for (const o of st?.sizeOpts || []) { const k = o.ratio || o.id; if (!by.has(k) || o.id === st.size) by.set(k, o); } return [...by.values()]; };
+  /* the first look of a jam piece with no made picture (drafts-bg firstLook, 27 Oct): asked once per piece, frames, size and product,
+     then looked at again every 20 s while it is being made; the stage repaints as frames land. Never the store photo repeated */
+  const LOOKS = new Map();
+  const lookFor = (ch, st, rows) => { if (!st?.productImg || !ch.cardId) return null; const n = st.frames || 1, k = [ch.cardId, ch.studio || ch.layout || '', n, st.ratio || '', st.productName || ''].join('|');
+    let x = LOOKS.get(k); if (!x) { x = { images: [], busy: false, tries: 0, at: 0 }; LOOKS.set(k, x); }
+    if (!x.busy && !x.done && x.tries < 40 && Date.now() - x.at > (x.tries ? 20e3 : 0)) { x.busy = true; x.at = Date.now(); x.tries++;
+      const keep = FEED_LOADED; tapi('POST', `/api/cards/${ch.cardId}/firstlook`, { piece: ch.studio || ch.layout || '', n, ratio: st.ratio || '', product: st.productName || '', kind: st.kind || 'image', words: (rows || []).map((r) => r?.onSlide || r?.headline || '') })
+        .then((r) => { x.busy = false; if (!r || r.error) return; const had = x.images.filter(Boolean).length; x.images = r.images || []; x.done = !!r.done; x.pending = !!r.pending;
+          if (x.images.filter(Boolean).length !== had && view === 'remix' && RX.ch?.id === ch.id) paintRemix(); if (!x.done && x.pending) setTimeout(() => { if (view === 'remix' && RX.ch?.id === ch.id) paintRemix(); }, 20e3); })
+        .catch(() => { x.busy = false; }); FEED_LOADED = keep; /* asking for a picture changes nothing in the feed */ }
+    return x; };
   const studioStage = (ch, pkgCh, viewing, out = null) => { const made = studioMade(ch), cs = window.CreativeStage, st = cs?.state(ch.id);
     if (cs && !st) cs.mount(ch, RX.p); else if (cs && !viewing) cs.follow?.(ch); /* the set-up follows the jam (a product or size said in the chat) */ requestAnimationFrame(() => cs?.afterPaint?.()); /* the picked slide stays in view */
     const making = !!st?.making;
@@ -4781,12 +4792,17 @@
        any draft exists or when the set-up moved to another product (never one photo repeated over every slide when drafts exist) */
     const pv = made || viewing || !st?.productImg ? pkgCh : (() => { const p0 = pkgCh.pkg || {}, n = st.frames, rows = p0.cards || p0.slides;
       const sameProd = !p0.draft?.product || !st.productName || String(p0.draft.product).toLowerCase() === String(st.productName).toLowerCase();
-      const drafted = sameProd ? [...(p0.draft?.images || []), ...(p0.cardImages || [])].filter((x, i, a) => /^gen\//.test(x || '') && a.indexOf(x) === i) : [];
+      const drafted0 = sameProd ? [...(p0.draft?.images || []), ...(p0.cardImages || [])].filter((x, i, a) => /^gen\//.test(x || '') && a.indexOf(x) === i) : [];
+      /* a draft with fewer pictures than the piece has frames (a one-picture card as a 4-slide carousel): the piece's own first look fills in */
+      const fl = drafted0.length >= (n || 1) ? null : lookFor(ch, st, rows), flImgs = (fl?.images || []).filter(Boolean), drafted = drafted0.length >= (n || 1) ? drafted0 : flImgs.length >= drafted0.length ? fl.images.map((x) => x || null) : drafted0;
+      const any = drafted.filter(Boolean), at = (i) => drafted[i] || any[i % Math.max(1, any.length)] || st.productImg; /* frames still being made show a made frame of the set, the store photo only before the first lands */
       if (n && Array.isArray(rows) && rows.length) { const k = p0.cards ? 'cards' : 'slides', list = Array.from({ length: n }, (_, i) => rows[i] || { onSlide: '', headline: '' });
-        return { ...pkgCh, pkg: { ...p0, [k]: list, image: drafted[0] || st.productImg, cardImages: list.map((_, i) => drafted[i] || st.productImg), draft: drafted.length ? p0.draft : null, wordsIn: drafted.length ? p0.wordsIn : null } }; }
-      return (/^gen\//.test(p0.image || '') && (sameProd || !(p0.draft?.images || []).includes(p0.image))) ? pkgCh : { ...pkgCh, pkg: { ...p0, image: st.productImg, cardImages: null, draft: null, wordsIn: null, ...(st.ratio ? { format: st.ratio } : {}) } }; })();
+        return { ...pkgCh, firstLook: fl && !fl.done ? (flImgs.length ? 'filling' : 'making') : null, pkg: { ...p0, [k]: list, image: at(0), cardImages: list.map((_, i) => at(i)), draft: any.length ? (drafted0.length ? p0.draft : { as: 'image', images: any, product: st.productName || null }) : null, wordsIn: drafted0.length >= (n || 1) ? p0.wordsIn : null } }; }
+      if (/^gen\//.test(p0.image || '') && (sameProd || !(p0.draft?.images || []).includes(p0.image))) return pkgCh;
+      const one = lookFor(ch, st, []), img = (one?.images || []).find(Boolean);
+      return { ...pkgCh, firstLook: one && !one.done ? 'making' : null, pkg: { ...p0, image: img || st.productImg, cardImages: null, draft: img ? { as: 'image', images: [img], product: st.productName || null } : null, wordsIn: null, ...(st.ratio ? { format: st.ratio } : {}) } }; })();
     /* not made yet: the frame says plainly that the picture is the product photo standing in, dressed like the style picked, and fits above the bar */
-    const pvDraft = /^gen\//.test(pv.pkg?.image || ''), pvNote = !made && !making && st?.styleLabel ? (pvDraft ? `First draft · in your look · Make it for ${st.styleLabel}` : `Your photo for now · Make it for ${st.styleLabel}`) : '';
+    const pvDraft = /^gen\//.test(pv.pkg?.image || ''), pvNote = !made && !making && pv.firstLook ? (pv.firstLook === 'filling' ? 'First look · the other frames are being made' : 'First look being made · a minute or two') : !made && !making && st?.styleLabel ? (pvDraft ? `First draft · in your look · Make it for ${st.styleLabel}` : `Your photo for now · Make it for ${st.styleLabel}`) : '';
     /* the first draft still being written: the card's own words (its task, "Enforce strict lowercase UTM…") never stand in as the ad's copy; the words are a skeleton until the draft lands, as on every other layout (26 Oct, QV P1-20) */
     const wr = !made && !making && !viewing && !!ch.copyPending;
     return `<div class="st-asset cs-stage${wr ? ' is-writing' : ''}">${wr ? `<p class="st-writing" role="status"><brew-load class="spin"></brew-load>Writing the first draft from the card…</p>` : ''}${!made ? `<span class="cs-badge">${making ? '<brew-load class="spin"></brew-load>Being made · you can leave' : 'Preview · not made yet'}</span>` : ''}<div class="cs-frame${!made ? ` is-preview cs-t-${esc(st?.treat || 'plain')}` : ''}${making ? ' is-making' : ''}"${pvNote ? ` style="--pv:'${esc(pvNote.replace(/['"\\]/g, ''))}'${/^#[0-9a-f]{3,8}$/i.test(st?.bc || '') ? `;--bc:${st.bc}` : ''}"` : ''}>${assetHtml(pv, 'lg')}</div>
@@ -4986,7 +5002,7 @@
       ${RX.jpSw ? jpSwPop(ch) : ''}${RX.jpMenu ? jpMenuPop(ch) : ''}${RX.vmenu ? vmenuHtml(ch) : ''}</header>`;
   /* the tag on the stage: what the piece on it is right now */
   const jpTag = (ch, viewing) => { if (viewing) return ''; const st = ch.studio ? window.CreativeStage?.state(ch.id) : null, making = !!(st?.making || st?.working || ch.imagePending || ch.videoPending || ch.remakePending);
-    const t = making ? 'Being made · you can leave' : ch.studio ? (studioMade(ch) ? `Made · v${curN(ch)}` : /^gen\//.test(ch.pkg?.draft?.images?.[0] || '') ? 'First draft · in your look' : 'Preview · your photo for now') /* a Sloosh first draft is not "your photo" (27 Oct) */ : ch.copyPending ? 'Writing it · a moment' : ['pic', 'set', 'reel'].includes(ch.layout) && !imgOf(ch) && !(ch.pkg?.cardImages || []).length ? 'Preview' : `Draft · v${curN(ch)}`;
+    const t = making ? 'Being made · you can leave' : ch.studio ? (studioMade(ch) ? `Made · v${curN(ch)}` : /^gen\//.test(ch.pkg?.draft?.images?.[0] || '') ? 'First draft · in your look' : [...LOOKS.entries()].some(([k, x]) => k.startsWith(`${ch.cardId}|`) && x.images?.some(Boolean)) ? 'First look · in your look' : 'Preview · first look being made') /* a Sloosh first draft is not "your photo" (27 Oct) */ : ch.copyPending ? 'Writing it · a moment' : ['pic', 'set', 'reel'].includes(ch.layout) && !imgOf(ch) && !(ch.pkg?.cardImages || []).length ? 'Preview' : `Draft · v${curN(ch)}`;
     return `<span class="jp-tag${making || ch.copyPending ? ' is-busy' : ''}"><i></i>${esc(t)}</span>`; };
   const jpOldv = (v) => `<div class="jp-oldv">You’re looking at v${esc(v.n)}</div>`;
   /* the stage's top strip, one row (Param, 26 Oct: the tag sat on View references, and the two reference cards floated at their own

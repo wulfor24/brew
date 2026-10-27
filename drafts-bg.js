@@ -39,7 +39,7 @@ import { inferMake } from './cards-gen.js';
 import { isRivalCard, isResearchImage } from './rival-ad.js'; // a rival's poster is never our product photo
 import { genFlush as genFlush0 } from './gen-store.js';
 import { cleanDraftClaims, packSource } from './claims.js'; // the store's own claims only, in drafts made with nobody watching
-import { collageEdges, plainest, LOOKS_V } from './draft-quality.js'; // every saved draft picture passes the look check once
+import { collageEdges, plainest, LOOKS_V, wordsMatch, doubled } from './draft-quality.js'; // every saved draft picture passes the look check once
 import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 import { PRODUCT_NAME } from './product-name.js';
 
@@ -120,7 +120,7 @@ export const sameCard = (d, c) => { if (!d?.cardTitle || d.cardTitle === c?.titl
 /* 3 (27 Oct): made by Sloosh with the Brand Book, every reference and the headline set in the picture. A saved draft of an older
    version stays on its card until its Sloosh draft lands (needsDraft asks for one; draftFor keeps showing the old one) */
 /* a draft that shows a made picture, slides or a clip of its own (not only words, not only the real product photo) */
-export const hasPicture = (d) => !!d && !d.failedAt && (!!d.video || !!d.slides?.length || (!!(d.image || d.render) && !d.photoOnly) || ['email', 'whatsapp', 'page', 'catalog'].includes(d.as) && !!d.render);
+export const hasPicture = (d) => !!d && !d.failedAt && (!!d.video || !!d.slides?.some((x) => x?.image && !x.photo) || (!!(d.image || d.render) && !d.photoOnly) || ['email', 'whatsapp', 'page', 'catalog'].includes(d.as) && !!d.render);
 export const DRAFT_K = 4; /* 4 (27 Oct): a look per card, rotated across the feed, and real scenes (never a packshot on a plain ground) */
 export function draftFor(c, all = {}) {
   const d = c?.id ? all?.[c.id] : null; if (!d || d.failedAt) return null;
@@ -421,8 +421,11 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       const words = `${c.title || ''}. ${c.sub || ''}${d.product ? ` Product: ${d.product}.` : ''}`; let bad = null, answered = true;
       for (const r of pics) { const f = await genFile(String(r).slice(4)).catch(() => null); if (!f) continue; const buf = fs.readFileSync(f);
         const px = await collageEdges(buf); if (px.collage) { bad = px.why; break; }
-        const q = looks ? await looks(buf, words).catch(() => null) : null; if (!q) { if (looks) answered = false; continue; } /* no answer: judged again on a later run */ if (!q.ok) { bad = q.why; break; } }
-      if (bad) { log.log?.('[drafts-bg] saved draft failed the look check; making it again', c.id, bad); delete cache[c.id]; n++; }
+        const set = d.wordsIn && d.headline && !d.slides?.length ? d.headline : null; /* the headline set in the picture is read back too */
+        const q = looks ? await looks(buf, words, set).catch(() => null) : null; if (!q) { if (looks) answered = false; continue; } /* no answer: judged again on a later run */
+        if (!q.ok) { bad = q.why; break; } if (set && q.read && (!wordsMatch(set, q.read) || doubled(q.read))) { bad = `the picture reads "${cut(q.read, 100)}"`; break; } }
+      /* made again from its saved brief while the old picture stays up (remakeStills); a draft with no saved brief is drafted afresh */
+      if (bad) { log.log?.('[drafts-bg] saved draft failed the look check; making it again', c.id, bad); if (d.ip && !d.slides?.length) { d.imgRetry = { n: 0, next: 0, err: cut(bad, 160) }; d.qv = LOOKS_V; } else delete cache[c.id]; n++; }
       else if (answered) d.qv = LOOKS_V;
     }
     return n;
@@ -442,9 +445,9 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   /* pictures that came back as the real photo, were refused by the day's budget, or did not come at all are made again when due,
      from the saved prompt; the headline is set on the new one and the card heals on its next load. A real-photo stand-in keeps
      being tried once a day (it is never left as the packshot); a budget refusal waits for the reset without counting as a try */
-  async function remakeStills(slug, p, cache, box, made) {
+  async function remakeStills(slug, p, cache, box, made, priv = []) {
     let tried = 0; const brand = brandOf(p);
-    for (const c of rankCards(p.seed?.posts || [])) {
+    for (const c of rankCards([...(p.seed?.posts || []), ...priv])) { /* the team's private cards too (27 Oct: a private static stayed the packshot) */
       const d = draftFor(c, cache); if (!d?.imgRetry || !d.ip || now() < (d.imgRetry.next || 0)) continue;
       if (d.video && d.kind === 'video') { delete d.imgRetry; continue; } /* the clip is made: its first frame stays */
       if (made.length >= cfg.perRun || box.cap - box.usd < cfg.imageUsd) break;
@@ -466,6 +469,27 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
         if (e.budget) { d.imgRetry = { n: d.imgRetry.n || 0, next: nextDay(now()), err: 'budget' }; log.warn?.('[drafts-bg] picture again waits for the budget', slug, c.id); continue; }
         const n = (d.imgRetry.n || 0) + 1; if (n >= MAX_RETRIES && !d.photoOnly) { delete d.imgRetry; d.err = 'The new picture did not come through; this is the real product photo.'; } else d.imgRetry = { n: Math.min(n, MAX_RETRIES), next: now() + retryWait(n), err: cut(e.message, 160) };
         log.warn?.('[drafts-bg] picture again', slug, c.id, e.message); }
+    }
+    return tried;
+  }
+  /* carousel and Stories slides that came back as the real product photo (drafts.js carousel marks them photo, with their own brief)
+     are made again one by one when due, the same backoff as a still; the made slide replaces the photo, its words set in it */
+  async function remakeSlides(slug, p, cache, box, made, priv = []) {
+    let tried = 0; const brand = brandOf(p);
+    for (const c of rankCards([...(p.seed?.posts || []), ...priv])) {
+      const d = draftFor(c, cache); if (!d?.slides?.some((x) => x?.photo && x.ip) || now() < (d.slideRetry?.next || 0)) continue;
+      if (made.length >= cfg.perRun || box.cap - box.usd < cfg.imageUsd) break;
+      const named = cardProduct(c, p.catalog, { brand: brand.name }) || matchProduct(d.imgText || `${d.title}. ${d.copy}`, p.catalog, { brand: brand.name });
+      const src = await photo(c, named) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); if (!src) continue;
+      const t0 = box.usd; let fixed = 0, left = 0; tried++;
+      for (let i = 0; i < d.slides.length; i++) { const sl = d.slides[i]; if (!sl?.photo || !sl.ip) continue; if (box.cap - box.usd < cfg.imageUsd) { left++; continue; }
+        try { const r = await makeStill(slug, c, { src, ip: sl.ip, ratio: d.ratio || '4:5', text: `${sl.text || ''}. ${d.title || ''}`, catalog: p.catalog || null, brand: brand.name, named, retry: true, salt: `slide|${i}`, words: sl.text || null, kind: 'carousel' });
+          box.usd += imageCost(r.buf, cfg); if (r.failed) { left++; continue; }
+          d.slides[i] = { text: sl.text, image: r.rel, ...(r.buf?.guard?.wordsMissing ? {} : { wordsIn: true }) }; fixed++; }
+        catch (e) { left++; if (e.budget) break; log.warn?.('[drafts-bg] slide again', slug, c.id, i, e.message); } }
+      if (fixed) { d.image = d.slides[0]?.image || d.image; made.push({ cardId: c.id, as: d.as, kind: d.kind, title: d.title, image: d.image, video: null, usd: +(box.usd - t0).toFixed(4), remade: true }); }
+      if (left) { const n = (d.slideRetry?.n || 0) + 1; d.slideRetry = { n, next: now() + retryWait(n) }; } else delete d.slideRetry;
+      d.usd = +((d.usd || 0) + box.usd - t0).toFixed(4);
     }
     return tried;
   }
@@ -520,7 +544,8 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
           cache[c.id] = { k: DRAFT_K, cardId: c.id, key: draftKey(c), failedAt: now(), fails: (old0?.failedAt && old0.key === draftKey(c) ? old0.fails || 1 : 0) + 1, err: cut(e.message, 160), ...(e.budget ? { retryAt: nextDay(now()) } : {}) }; /* a budget refusal waits for the reset, then the card is drafted again */
           await save(slug, cache).catch(() => {}); log.warn?.('[drafts-bg]', slug, c.id, e.message); }
       }
-      if (await remakeStills(slug, p, cache, box, made)) await save(slug, cache); /* made again, or its next try booked */
+      if (await remakeStills(slug, p, cache, box, made, priv)) await save(slug, cache); /* made again, or its next try booked */
+      if (await remakeSlides(slug, p, cache, box, made, priv)) await save(slug, cache); /* slides that fell back to the real photo */
       for (const c of clips) { if (made.length >= n) break; const d = cache[c.id]; box.start = box.usd;
         if (await animate(slug, d, box)) { d.usd = +((d.usd || 0) + box.usd - box.start).toFixed(4); made.push({ cardId: c.id, as: 'video', kind: 'video', title: d.title, image: d.image, video: d.video, usd: +(box.usd - box.start).toFixed(4) }); await save(slug, cache); }
         else if (d.clipRetry || d.err) await save(slug, cache).catch(() => {}); }
@@ -604,7 +629,40 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     timer = setTimeout(function go() { leaderOnly(tick).catch((e) => log.warn?.('[drafts-bg] tick', e.message)).finally(() => { timer = setTimeout(go, cfg.tickMs); timer.unref?.(); }); }, cfg.firstMs); timer.unref?.();
     if (cfg.readyMs > 0) { watcher = setInterval(() => { leaderOnly(watch).catch((e) => log.warn?.('[drafts-bg] ready watch', e.message)); }, cfg.readyMs); watcher.unref?.(); }
     return true; };
-  return { cfg, tick, watch, start, runOne, opened, stateOf, cacheOf, busy: () => busy.size };
+  /* a jam piece's first look (27 Oct, Param: "why the same photo in all 4 carousel slides?"): the jam's own deliverable (a Carousel ad
+     on a single-image card, a Story set, a square post), one made picture per frame, each a different look of the same product, never
+     the store photo repeated. No words are drawn in: the stage sets each frame's words in exact type. Kept per card, piece, frames,
+     size and product in drafts/looks.json; made in the background, frame by frame, so the stage fills in as each one lands */
+  const L = 'drafts/looks.json', lookJobs = new Map();
+  const lookKey = (cardId, o) => sha(`${cardId}|${o.piece || ''}|${o.n}|${o.ratio || ''}|${String(o.product || '').toLowerCase()}`);
+  async function firstLook(slug, cardId, o = {}) {
+    const n = Math.max(1, Math.min(10, +o.n || 1)), ratio = DRAFT_RATIOS.includes(o.ratio) ? o.ratio : o.ratio === '3:4' ? '3:4' : '4:5', opts = { ...o, n, ratio }, key = lookKey(cardId, opts);
+    const all = (await packs.getJSON(slug, L, null).catch(() => null)) || {}, rec = all[key];
+    const view = (r) => ({ key, images: r?.images || [], done: !!r && (r.images || []).filter(Boolean).length >= n, pending: lookJobs.has(`${slug}|${key}`), ...(r?.err ? { err: r.err } : {}) });
+    if (rec && (rec.images || []).filter(Boolean).length >= n) return view(rec);
+    if (lookJobs.has(`${slug}|${key}`) || cfg.mock || (rec?.retryAt && now() < rec.retryAt)) return view(rec);
+    const job = (async () => {
+      const p = await loadPack(slug); const priv = ((await packs.getJSON(slug, 'private/cards.json', []).catch(() => [])) || []);
+      const c = [...(p?.seed?.posts || []), ...priv].find((x) => x?.id === cardId); if (!c) return;
+      const brand = brandOf(p), named = (o.product && matchProduct(String(o.product), p.catalog, { brand: brand.name })) || cardProduct(c, p.catalog, { brand: brand.name });
+      const src = await photo(c, named) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); if (!src) return;
+      const words = [].concat(o.words || []).map((w) => cut(w, 140));
+      let r = { images: Array.from({ length: n }, (_, i) => rec?.images?.[i] || null), at: now(), piece: o.piece || null }; /* frames already made are kept */
+      const seen = {}; /* the looks this set already took: every frame takes another */
+      for (let i = 0; i < n; i++) {
+        const lk = pickLook(seen, `${cardId}|${i}`, o.kind === 'video' ? 'video' : 'image'); seen[`f${i}`] = { cardId: `f${i}`, look: lk.key }; if (r.images[i]) continue;
+        const ip = imagePrompt({ title: `${o.piece || 'ad'}${n > 1 ? `, frame ${i + 1} of ${n}` : ''}`, visual: `Built as ${lk.how}.${words[i] ? ` This frame goes with the words "${words[i]}" (set on it afterwards: leave calm space for them, draw no words).` : ''}${n > 1 ? ' Every frame of the set shares one light and colour story, each a new composition.' : ''}` }, true, c, { name: brand.name, ...(p.config?.product || {}), product: named?.t || '' }, { ratio, topSpace: true });
+        try { const m = await makeStill(slug, c, { src, ip, ratio, text: `${words[i] || ''}. ${c.title || ''}`, catalog: p.catalog || null, brand: brand.name, named, retry: true, salt: `look|${key}|${i}`, kind: 'carousel' });
+          r.images[i] = m.rel; }
+        catch (e) { r.err = cut(e.message, 160); log.warn?.('[drafts-bg] first look', slug, cardId, i, e.message); if (e.budget) break; }
+        const cur = (await packs.getJSON(slug, L, null).catch(() => null)) || {}; cur[key] = r; await genFlush().catch(() => {}); await packs.put(slug, L, cur).catch(() => {}); /* the stage fills in frame by frame */
+      }
+      if (r.images.some((x) => !x)) { r.tries = (rec?.tries || 0) + 1; r.retryAt = now() + retryWait(r.tries); const cur = (await packs.getJSON(slug, L, null).catch(() => null)) || {}; cur[key] = { ...r, images: r.images }; await packs.put(slug, L, cur).catch(() => {}); }
+    })().catch((e) => log.warn?.('[drafts-bg] first look', slug, cardId, e.message)).finally(() => lookJobs.delete(`${slug}|${key}`));
+    lookJobs.set(`${slug}|${key}`, job);
+    return { ...view(rec), pending: true };
+  }
+  return { cfg, tick, watch, start, runOne, opened, stateOf, cacheOf, firstLook, busy: () => busy.size };
 }
 
 /* ---------- the jam: a cached draft becomes the jam's first draft ---------- */

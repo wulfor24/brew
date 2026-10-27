@@ -24,7 +24,7 @@
 import fs from 'node:fs';
 import { matchProduct, junkPhoto } from './product-match.js';
 import path from 'node:path';
-import { collageEdges, plainest, FIX } from './draft-quality.js';
+import { collageEdges, plainest, FIX, wordsMatch, doubled } from './draft-quality.js';
 
 const KEEP = (name) => `The product${name ? `, ${name},` : ''} must be the same product as in the reference photo: the same product type, shape, colours, materials, pack design and brand mark, and the same number of items. Do not redesign it, swap it for another product, or add a second product; its small print may be soft or turned away, never rewritten.`;
 const STRICT = 'Important: the last attempt showed a different product. Copy the product from the reference photo faithfully; only the scene, light and framing may change.';
@@ -57,7 +57,10 @@ export function createImageGuard({ balance = null, gen, verify = null, fetchPhot
   async function judge(buf, o) {
     /* a picture with words set in it on purpose (a headline box, a band) is not run through the flat-panel pixel test: its box is the design */
     if (!o.words) { const px = await pixels(buf).catch(() => null); if (px?.collage) return { ok: false, verdict: 'collage', why: px.why }; }
-    if (!looks) return null; try { return await looks(buf, o.text || '', o.words || null); } catch (e) { log.warn?.('[image-guard] looks check unavailable', e.message); return null; } }
+    if (!looks) return null; let q; try { q = await looks(buf, o.text || '', o.words || null); } catch (e) { log.warn?.('[image-guard] looks check unavailable', e.message); return null; }
+    /* the words set in the picture, read back and compared word for word: the judge's GOOD is not enough (a repeated "a a" passed) */
+    if (q && o.words && q.read && (q.ok || q.verdict === 'words') && (!wordsMatch(o.words, q.read) || doubled(q.read))) return { ok: false, verdict: 'words', why: `the picture reads "${String(q.read).slice(0, 120)}"`, read: q.read };
+    return q; }
   async function gated(o) {
     const r = await guardedImage(o);
     if (o.product === false || o.edit || o.gate === false || !Buffer.isBuffer(r) || r.guard?.fallback) return r;
@@ -68,7 +71,11 @@ export function createImageGuard({ balance = null, gen, verify = null, fetchPhot
     let q2 = null; if (r2 && !r2.guard?.fallback) { q2 = await judge(r2, o); if (!q2 || q2.ok) { r2.guard = { ...r2.guard, gens, pro, retried: true, looks: q2?.verdict || null, looksFixed: q.verdict }; return r2; } q.why = q2.why || q.why; }
     /* still not right twice: the second Sloosh picture is kept (never a raw store photo; 27 Oct), marked with what the judge saw, so the
        caller can lay the headline on itself (wordsMissing) or offer a redo. Only a fake expert (a lab coat) is never shown */
-    const keep = r2 && !r2.guard?.fallback ? r2 : r;
+    let keep = r2 && !r2.guard?.fallback ? r2 : r;
+    /* the headline came out wrong twice: one more picture with no words in it at all, so the caller sets the headline in exact type
+       on a clean picture (never laid over a misspelled one) */
+    if ((q2?.verdict || q.verdict) === 'words' && o.words) { try { const r3 = await guardedImage({ ...o, words: null, prompt: `${o.prompt}\nNo words, letters or numbers anywhere in the picture except the product's own label; leave calm space where a headline can be set.` });
+      if (r3 && !r3.guard?.fallback) { r3.guard = { ...r3.guard, gens: gens + (r3.guard?.gens || 1), pro, retried: true, looks: 'words', wordsMissing: true, wordsOff: true }; return r3; } } catch (e) { log.warn?.('[image-guard] wordless retry failed', e.message.slice(0, 160)); } }
     if (q.verdict !== 'expert' && (q2?.verdict || q.verdict) !== 'expert') { keep.guard = { ...keep.guard, gens, pro, retried: !!r2, looks: q2?.verdict || q.verdict, looksDoubt: String(q.why).slice(0, 160), ...((q2?.verdict || q.verdict) === 'words' ? { wordsMissing: true } : {}) }; return keep; }
     /* held back: never shown. The real product photo stands in for callers that take one; the rest get a plain error */
     const ref = r[REF] || r2?.[REF];

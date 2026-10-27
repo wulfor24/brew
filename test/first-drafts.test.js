@@ -225,3 +225,21 @@ test('a redraft (DRAFT_K bump) that comes back without a picture keeps the card\
   assert.equal(d.image, 'gen/old.png', 'the old picture stays'); assert.ok(hasPicture(d)); assert.ok(d.retryAt > NOW, 'the redraft is tried again later');
   assert.equal(needsDraft(posts[0], { 'm01-1': d }, NOW), false); assert.equal(needsDraft(posts[0], { 'm01-1': d }, d.retryAt + 1), true);
 });
+
+/* 27 Oct (Param: "why the same photo in all 4 carousel slides?"): a jam piece gets its own first look, a made picture per frame, each
+   a different look, no words drawn in; a frame that fails is asked again later, never the store photo */
+test('a jam piece\'s first look: one made picture per frame, each a different look, no words in them; a failed frame waits and is made later', async () => {
+  const posts = [{ id: 'static-wash-p', type: 'idea', kind: 'media', images: ['b/acme-com/a/runner.jpg'], title: 'Runner ad', sub: 's', src: 'Move 01', time: '5 min', agent: 'creative', make: { format: 'single image ad' } }];
+  const { P, photo } = await setup(posts); const asks = []; let fail = 1;
+  const geminiImage = async (o) => { asks.push(o); if (asks.length === 3 && fail-- > 0) throw new Error('Vertex 429'); return Object.assign(Buffer.from(`png${asks.length}`), { guard: {} }); };
+  let clock = NOW; const J = createDraftsBg({ packs: P, ai: fakeAI(), geminiImage, saveGen: () => {}, genFile: async () => photo, photoAsync: async () => photo, treg: { onCharge: () => {} }, launchBrowser: () => ({}), makers: { render: async () => 'gen/r.jpg' }, spend: () => true,
+    loadPack: (slug) => P.load(slug, { fresh: true }), lastOpenOf: async () => NOW, log: quiet, env: { DRAFTS_BG: '1' }, now: () => clock });
+  const o = { piece: 'carousel-ad', n: 4, ratio: '1:1', product: 'Runner', words: ['One', 'Two', 'Three', 'Four'] };
+  assert.equal((await J.firstLook('acme-com', 'static-wash-p', o)).pending, true);
+  await new Promise((r) => setTimeout(r, 50)); let v = await J.firstLook('acme-com', 'static-wash-p', o);
+  assert.equal(asks.length, 4); assert.equal(v.images.filter(Boolean).length, 3, 'three made, one failed'); assert.equal(v.done, false);
+  assert.equal(new Set(asks.map((a) => a.prompt)).size, 4, 'every frame its own brief'); assert.ok(asks.every((a) => !a.words), 'no words drawn in: the stage sets them');
+  assert.ok(asks.every((a) => a.fallback === false || a.fallback === undefined), 'never the store photo as a frame'); assert.match(asks[0].prompt, /"One"/);
+  clock = NOW + 31 * 60e3; await J.firstLook('acme-com', 'static-wash-p', o); await new Promise((r) => setTimeout(r, 50)); v = await J.firstLook('acme-com', 'static-wash-p', o);
+  assert.equal(v.images.filter(Boolean).length, 4); assert.equal(v.done, true); assert.equal(asks.length, 5, 'only the missing frame is made again');
+});

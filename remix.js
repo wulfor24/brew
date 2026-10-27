@@ -4,7 +4,7 @@ import { B, BN, BH, CTRY, FESTN, FESTD, live } from './brand-ctx.js';
 // Its verdict says what is left before the brief is ready: a fix, the team's own checks, or a plan in the jam.
 // The jam is a versioned plan (goal, the changes, open questions with owners, readiness). It ends with Share the brief:
 // nothing is run from Brew. Learning reads every step (learn.js).
-import { firstDraftNow } from './media.js'; // a jam opened on a card with no first draft gets one at once (sloosh-make via drafts-bg)
+import { firstDraftNow, firstLookNow } from './media.js'; // a jam opened on a card with no first draft gets one at once (sloosh-make via drafts-bg)
 import { ME as INSTANCE } from './instance.js'; // whose job a jam's spinner is (several web instances)
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1637,6 +1637,14 @@ export function createRemix(o) {
     drawTake(t, c, ch, v, ask); o.save?.(t);
     return { queued: true, changeId: ch.id, versionId: v.id, n: v.n, drawing: !!v.drawing, ...(v.drawError ? { drawError: v.drawError } : {}) };
   };
+  /* the stage's first look for a jam piece that has no made picture yet: one made picture per frame for the piece, size and product
+     on the stage (drafts-bg firstLook), never the store photo repeated; asked again by the stage until every frame is there */
+  on('POST', '/api/cards/:cid/firstlook', async (b, t, p) => {
+    const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; if (isMock()) return { images: [], done: false, pending: false };
+    const sl = o.slugOfT?.(t); if (!sl) return { error: 'no brand' };
+    const r = await firstLookNow(sl, c.id, { piece: String(b.piece || '').slice(0, 60), n: Math.min(10, Math.max(1, +b.n || 1)), ratio: String(b.ratio || ''), product: String(b.product || '').slice(0, 160), kind: b.kind === 'video' ? 'video' : 'image', words: (Array.isArray(b.words) ? b.words : []).slice(0, 10).map((w) => String(w || '').slice(0, 160)) }).catch((e) => ({ error: e.message }));
+    return r || { error: 'not ready' };
+  });
   on('POST', '/api/cards/:cid/remix', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     /* a jam opened on a card with no first draft yet gets one now, in the background, on Sloosh (27 Oct): the frames fill in as it lands */

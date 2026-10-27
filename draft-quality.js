@@ -12,7 +12,7 @@
 import sharp from 'sharp';
 
 // quality version: drafts and watcher pictures saved before it are judged once (drafts-bg healLooks, feed-service housekeep)
-export const LOOKS_V = 3; /* 3 (27 Oct): designed layouts and busy real scenes pass; only paste-ups are COLLAGE */ /* 2 (25 Oct): EXPERT fails a picture (a lab coat beside the shampoo on Arata); saved drafts are judged again */ /* the judge's words changed 25 Oct (split-screens pass, doubt passes): saved drafts already passed stay passed */
+export const LOOKS_V = 4; /* 4 (27 Oct): the headline set in a picture is read back word for word */ /* 3 (27 Oct): designed layouts and busy real scenes pass; only paste-ups are COLLAGE */ /* 2 (25 Oct): EXPERT fails a picture (a lab coat beside the shampoo on Arata); saved drafts are judged again */ /* the judge's words changed 25 Oct (split-screens pass, doubt passes): saved drafts already passed stay passed */
 const N = 64, SEG = 8;
 
 /* the picture shrunk to N×N, transparency on white (a see-through packshot reads as a plain ground) */
@@ -90,7 +90,7 @@ export async function cutQuality(input) {
 /* the vision judge's question (server.js draftLooks asks it with the picture). words: what the card says it shows */
 /* set: words the brand asked to be set in the picture (27 Oct: Sloosh sets the headline in the brand's type, often in a colour box or band):
    those, spelled exactly, are part of the design, never a paste-up */
-export const lookPrompt = (words = '', set = null) => `This is a first-draft ad picture for a card in a brand's feed.${String(words).trim() ? ` The card says: "${String(words).replace(/\s+/g, ' ').trim().slice(0, 500)}".` : ''}${set ? ` These words were asked to be set in the picture as its headline: "${[].concat(set).join(' / ').replace(/\s+/g, ' ').trim().slice(0, 200)}". Set in a text box, band or block of brand colour, spelled exactly, they are designed type and GOOD. If they are missing or misspelled, answer WORDS.` : ''}
+export const lookPrompt = (words = '', set = null) => `This is a first-draft ad picture for a card in a brand's feed.${String(words).trim() ? ` The card says: "${String(words).replace(/\s+/g, ' ').trim().slice(0, 500)}".` : ''}${set ? ` These words were asked to be set in the picture as its headline: "${[].concat(set).join(' / ').replace(/\s+/g, ' ').trim().slice(0, 200)}". Set in a text box, band or block of brand colour, spelled exactly, they are designed type and GOOD. If they are missing, misspelled, cut off, or have a word repeated, added or dropped, answer WORDS. After your verdict, on its own line, write READ: and the headline exactly as it appears in the picture, letter for letter, repeats included.` : ''}
 Judge only the picture, like a creative director who wants it shippable. Reply with one word, then a short reason.
 GOOD: a coherent photograph or a deliberate designed ad that shows what the card is about. A busy real scene (people, props, a lived-in place), a deliberate split-screen or before/after made of real photographs, or a type-led poster with intentional colour blocks is GOOD. Small soft print on a pack is fine. When in doubt, GOOD.
 COLLAGE: an obvious paste-up: products cut out with hard or jagged edges and no real shadow, a product pasted onto a panel that is not part of the scene or the design, a picture framed inside the picture by accident, a blank band, or big words or numbers the image model drew (garbled or doubled lettering).
@@ -100,8 +100,14 @@ EXPERT: a person shown as a doctor, dermatologist, scientist or other expert (a 
 /* the judge's reply → { ok, verdict, why }; no clear word → null (the check didn't answer: never counted as a failure) */
 export function lookVerdict(text = '') {
   const t = String(text || '').trim(), m = /^\W*(good|collage|cropped|offtopic|off-topic|expert|words)\b/i.exec(t); if (!m) return null;
-  const v = m[1].toLowerCase().replace('-', ''); return { ok: v === 'good', verdict: v, why: t.slice(0, 200) };
+  const v = m[1].toLowerCase().replace('-', ''), read = /^\s*READ:\s*(.+)$/im.exec(t)?.[1]?.trim().replace(/^["“']|["”']$/g, '') || null;
+  return { ok: v === 'good', verdict: v, why: t.replace(/^\s*READ:.*$/im, '').trim().slice(0, 200), ...(read ? { read } : {}) };
 }
+/* the headline asked for against what the judge read in the picture, word for word (27 Oct: "notice a a change" passed on Arata):
+   a word repeated, added, dropped or changed is a WORDS failure; case, punctuation and line breaks don't count */
+const wordsOf = (s) => String(s || '').toLowerCase().normalize('NFKC').replace(/[’']/g, '').replace(/[^\p{L}\p{N}₹%]+/gu, ' ').trim().split(' ').filter(Boolean);
+export const wordsMatch = (asked, read) => { const a = wordsOf([].concat(asked).join(' ')), b = wordsOf(read); return a.length === b.length && a.every((w, i) => w === b[i]); };
+export const doubled = (s) => { const w = wordsOf(s); return w.some((x, i) => i && x === w[i - 1] && !/^\d+$/.test(x)); };
 /* the line added to the prompt when a picture is made again after failing */
 export const FIX = {
   words: 'The last picture left out or misspelled the headline. Set the headline exactly as asked, once, in clean bold type where it reads first.',
