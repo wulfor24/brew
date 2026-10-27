@@ -13,7 +13,7 @@ import { one, oneOf } from './text-fit.js'; // the asset said as one; saved opti
 import { dejargon } from './plain.js'; // a plan's steps in the same plain words as the card (no GMC, webhook, products.json, JSON-LD)
 export { one, oneOf };
 
-export const PLAN_V = 5; /* 5: the draft keeps its product (Studio sets up the same one). 4: "page section" reads "page", search-info swaps said once, "Review it on the stage" never "each one" (final QA pass 19 Oct); 2: one, always (19 Oct): saved plans on jams and work items with v 1 are rebuilt from the card; 3: plain words in every step (QA FEED-ARV-07) */
+export const PLAN_V = 6; /* 6 (27 Oct): the draft says which pictures carry their own words (wordsIn, wordsInAll) */ /* 5: the draft keeps its product (Studio sets up the same one). 4: "page section" reads "page", search-info swaps said once, "Review it on the stage" never "each one" (final QA pass 19 Oct); 2: one, always (19 Oct): saved plans on jams and work items with v 1 are rebuilt from the card; 3: plain words in every step (QA FEED-ARV-07) */
 const cut = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 const lc = (s) => String(s || '').replace(/^./, (x) => x.toLowerCase());
 const andList = (xs) => xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
@@ -190,7 +190,7 @@ export function planFor(c = {}, { draft = null, action: forced = null } = {}) {
   let by = 'rule';
   const ai = !batch && c.plan?.by === 'ai' ? fromAi(c.plan.steps, steps) : null; if (ai) { steps = ai; by = 'ai'; }
   const plan = { v: PLAN_V, action, family, asset: FAMILY_NAME[family] || 'Version', cta, n, batch, by, target: ctx.where,
-    make: { n, what: asset, one: one(asset), kind: family }, steps: steps.map((s, i) => ({ n: i + 1, ...s, t: dejargon(s.t), s: dejargon(s.s) })), draft: draft ? { as: draft.as, images: draft.images || [], video: draft.video || null, poster: draft.poster || null, ratio: draft.ratio || null, title: draft.title || '', copy: draft.copy || '', product: draft.product || null /* the product its pictures show: the jam and Studio set up the same one (25 Oct) */, ...(draft.code ? { code: draft.code } : {}) } : null,
+    make: { n, what: asset, one: one(asset), kind: family }, steps: steps.map((s, i) => ({ n: i + 1, ...s, t: dejargon(s.t), s: dejargon(s.s) })), draft: draft ? { as: draft.as, images: draft.images || [], video: draft.video || null, poster: draft.poster || null, ratio: draft.ratio || null, title: draft.title || '', copy: draft.copy || '', product: draft.product || null /* the product its pictures show: the jam and Studio set up the same one (25 Oct) */, ...(draft.code ? { code: draft.code } : {}), ...(draft.wordsIn ? { wordsIn: draft.wordsIn } : {}), ...(draft.wordsInAll ? { wordsInAll: draft.wordsInAll } : {}) /* Sloosh set the words in these pictures (27 Oct): the jam never lays them on again */ } : null,
     conflict: !!recipe.conflict };
   plan.summary = dejargon(caseSummary(c, plan));
   return plan;
