@@ -50,7 +50,7 @@
       <button class="cmp-manage" data-nav="connectors">Manage connectors ${ic('right', 's14')}</button>`); };
 
   const tools = () => { const label = THINK.find(([k]) => k === P.model)?.[1] || 'Auto';
-    return `<span class="cmp-tools" data-cmp><button type="button" class="cmp-plus" data-cmp-open="plus" aria-label="Add to the jam" aria-expanded="${UI.open === 'plus'}">${ic('plus', 's16')}</button>
+    return `<span class="cmp-tools" data-cmp><button type="button" class="cmp-plus" data-cmp-open="plus" aria-label="Add to the jam"${window.BrewTips?.attr('attach') || ''} aria-expanded="${UI.open === 'plus'}">${ic('plus', 's16')}</button>
       <button type="button" class="cmp-chip" data-cmp-open="model" aria-expanded="${UI.open === 'model'}" aria-label="Model: ${esc(label)}"><span class="cmp-star">✱</span>${esc(label)} ${ic('chev', 's12')}</button>${plusPop()}${modelPop()}</span>`; };
   const foot = () => { const conns = UI.cat?.connected || [];
     /* two equal quiet pills: what the jam remembers and what it can reach; the count never shifts the line */

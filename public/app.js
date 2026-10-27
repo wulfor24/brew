@@ -37,6 +37,7 @@
     const push = () => { const t = buf.join('\n'); buf = []; if (code) { const x = t.replace(/^\s*\n|\n\s*$/g, ''); if (x.trim()) out.push({ code: true, lang: code.lang, text: x }); } else if (t.trim()) out.push({ code: false, text: t }); };
     for (const l of String(s ?? '').replace(/\r/g, '').split('\n')) { const m = /^\s*```\s*([\w+#./-]*)/.exec(l); if (m) { push(); code = code ? null : { lang: m[1].toLowerCase() }; continue; } buf.push(l); }
     push(); return out; };
+  const tipA = (k) => window.BrewTips?.attr(k) || '', tipArea = (k) => window.BrewTips?.area(k) || ''; /* ` data-tip="…"` from tips.js: the one place tooltip words live */
   const hasCode = (s) => /(^|\n)\s*```/.test(String(s ?? ''));
   const codePre = (b) => `<pre class="rx-code"${b.lang ? ` data-lang="${esc(b.lang)}"` : ''}><code>${esc(b.text)}</code></pre>`;
   const rich = (text) => hasCode(text) ? splitCode(text).map((x) => (x.code ? codePre(x) : richText(x.text))).join('') : richText(text);
@@ -794,7 +795,7 @@
       ${noLane ? '' : `<section class="ob3-s"><small class="ob3-k">The product you’re pushing</small>
         <div class="ob3-pills">${Object.entries(B.lanes).map(([k, l]) => `<button class="ob3-pill${lanePics ? ' ob3-prod' : ''}" data-lane="${k}" aria-pressed="${S.viewer.lane === k}">${lanePics ? `<img src="${LANE_IMG[k]}" alt="">` : ''}${esc(l.name)}</button>`).join('')}</div></section>`}
       <section class="ob3-s"><small class="ob3-k">In your own words</small>
-        <div class="ob3-say"><textarea id="ob-say" data-nomic data-ownmic rows="1" placeholder="Type here, or tap the mic and talk.">${esc(S.viewer.focusNote || '')}</textarea>${window.Mic?.supported ? `<button type="button" class="ob3-mic" id="ob-say-mic" aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}</div>
+        <div class="ob3-say"><textarea id="ob-say" data-nomic data-ownmic rows="1" placeholder="Type here, or tap the mic and talk.">${esc(S.viewer.focusNote || '')}</textarea>${window.Mic?.supported ? `<button type="button" class="ob3-mic" id="ob-say-mic" aria-label="Talk instead of typing"${tipA('mic')}>${ic('mic', 's16')}</button>` : ''}</div>
         <small id="ob-said" class="ob3-said">${S.viewer.focusNote ? `${ic('check', 's14')}Saved. Your plays, docs and cards follow this.` : ''}</small></section></div>
       ${obNav('Next', true)}`, 2);
     obPreview();
@@ -955,14 +956,14 @@
   };
   /* like, then jam on the left; save on the right */
   const actsHtml = (p) => `<div class="acts">
-      <button class="icon-btn" data-act="heart" aria-pressed="${!!S.hearts[p.id]}" aria-label="More like this">${ic('heart')}</button>
-      <button class="icon-btn" data-act="jam" aria-label="Jam with the team">${ic('hand')}</button>
+      <button class="icon-btn" data-act="heart" aria-pressed="${!!S.hearts[p.id]}" aria-label="More like this"${tipA('heart')}>${ic('heart')}</button>
+      <button class="icon-btn" data-act="jam" aria-label="Jam with the team"${tipA('jam')}>${ic('hand')}</button>
       ${proofBtn(p)}
-      <button class="icon-btn" data-act="take" aria-label="Another take, a free draft" title="Another take · Free draft">${ic('refresh')}</button>
+      <button class="icon-btn" data-act="take" aria-label="Another take, a free draft"${tipA('take')}>${ic('refresh')}</button>
       <span class="sp"></span>
-      <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later">${ic('bookmark')}</button></div>${p.proof?.seen ? `<button class="pf-seen" data-act="proof" aria-label="Seen in ${esc(p.proof.seen)}: open the proof">${ic('search', 's14')}<span>Seen in ${esc(p.proof.seen)}</span></button>` : ''}`;
+      <button class="icon-btn" data-act="save" aria-pressed="${S.saved.includes(p.id)}" aria-label="Save for later"${tipA('save')}>${ic('bookmark')}</button></div>${p.proof?.seen ? `<button class="pf-seen" data-act="proof" aria-label="Seen in ${esc(p.proof.seen)}: open the proof">${ic('search', 's14')}<span>Seen in ${esc(p.proof.seen)}</span></button>` : ''}`;
   /* the proof on every card (evidence.js via /api/cards/:cid/evidence): why Brew suggested it, and the hard evidence behind it */
-  const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 plays are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="${n ? `${n} ${n === 1 ? 'proof' : 'proofs'} behind this card` : 'Why this card, and the proof'}" title="Why we suggested this, and the proof">${ic('shield')}${n ? `<span class="pf-n">${n} ${n === 1 ? 'proof' : 'proofs'}</span>` : ''}</button>`; }; /* a number on a card always says what it counts (1.14) */
+  const proofBtn = (p) => { if (/^(build-|status-)/.test(String(p.id || '')) || p.kind === 'status') return ''; /* a status card ("All 56 plays are written") claims nothing to prove */ const n = +p.proof?.n || 0; return `<button class="icon-btn pf-btn${p.proof?.strength === 'thin' ? ' is-thin' : ''}" data-act="proof" aria-label="${n ? `${n} ${n === 1 ? 'proof' : 'proofs'} behind this card` : 'Why this card, and the proof'}"${tipA('proof')}>${ic('shield')}${n ? `<span class="pf-n">${n} ${n === 1 ? 'proof' : 'proofs'}</span>` : ''}</button>`; }; /* a number on a card always says what it counts (1.14) */
   /* an ISO date in words a person reads ("2026-10-19" → "19 Oct", with the year when it is not this year), wherever it sits in a line */
   const isoDay = (s) => String(s ?? '').replace(/\b(\d{4})-(\d\d)-(\d\d)(?:T[\d:.]+Z?)?\b/g, (m, y, mo, d) => { const t = Date.UTC(+y, +mo - 1, +d); return isNaN(t) ? m : new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', ...(+y !== new Date().getFullYear() ? { year: 'numeric' } : {}), timeZone: 'UTC' }); });
   const pfDay = (s) => { const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
@@ -1079,7 +1080,7 @@
   };
   /* the campaign line only when it adds something the label does not already say */
   const campLine = (c) => (c.campaign && !FROM_CAMPAIGN[c.campaign] && String(c.campaign).toLowerCase() !== String(fromLabel(c) || '').toLowerCase() ? c.campaign : ''); /* never "Move 08 · Move 08" (1.14) */
-  const head = (agent, sub, badge, more = true, title = AGENT[agent]) => `<header class="card-head">${face(agent)}<div class="who"><b>${esc(title)}</b><span>${esc(sub)}</span></div>${badge ? `<span class="badge ${badge[1]}">${esc(String(badge[0]).replace(/\b(\w+)s (\1)\b/gi, '$2'))}</span>` : ''}${more ? `<button class="icon-btn" data-more aria-label="More">${ic('more', 's18')}</button>` : ''}</header>`;
+  const head = (agent, sub, badge, more = true, title = AGENT[agent]) => `<header class="card-head">${face(agent)}<div class="who"><b${title === AGENT[agent] ? '' : tipA('from')}>${esc(title)}</b><span>${esc(sub)}</span></div>${badge ? `<span class="badge ${badge[1]}">${esc(String(badge[0]).replace(/\b(\w+)s (\1)\b/gi, '$2'))}</span>` : ''}${more ? `<button class="icon-btn" data-more aria-label="More"${tipA('cardMore')}>${ic('more', 's18')}</button>` : ''}</header>`;
   const srcLine = (c) => c.src ? `<div class="src-line" title="${esc(c.src)}">${c.type === 'competitor' && rivalIn(`${c.src} ${c.title}`) ? rivalLogo(`${c.src} ${c.title}`, 14) : ic('link', 's14')}<span class="src-tx">${esc(c.src)}${c.liveFrom ? ` · <b>live from ${esc(B.connectors[c.liveFrom].name)}</b>` : ''}</span></div>` : '';
 
   const slotHtml = (c) => {
@@ -1138,7 +1139,7 @@
     return h || line ? `<div class="fd-cap">${h ? `<b>${tokSpan(esc(h))}</b>` : ''}${line && line !== h ? `<span>${tokSpan(esc(line))}</span>` : ''}</div>` : ''; };
   const draftSlot = (c) => { const d = c.draft; if (!d || !(d.video || d.images?.length)) return '';
     /* a stand-in (the product photo alone, or a picture being made again) says a new one is coming; it is never called a first draft */
-    const lab = d.remaking || d.photoOnly ? `<span class="fd-lab is-wait">${ic('refresh', 's12')}New picture coming</span>` : d.takeErr ? `<span class="fd-lab is-wait" title="${esc(d.takeErr)}">${ic('info', 's12')}No new picture</span>` : `<span class="fd-lab">${ic(DRAFT_IC[d.as] || 'sparkles', 's12')}${d.as === 'take' ? 'Another take' : 'First draft'}</span>`, port = d.ratio !== '1:1';
+    const lab = d.remaking || d.photoOnly ? `<span class="fd-lab is-wait"${tipA('newPic')}>${ic('refresh', 's12')}New picture coming</span>` : d.takeErr ? `<span class="fd-lab is-wait" title="${esc(d.takeErr)}">${ic('info', 's12')}No new picture</span>` : `<span class="fd-lab"${tipA('firstDraft')}>${ic(DRAFT_IC[d.as] || 'sparkles', 's12')}${d.as === 'take' ? 'Another take' : 'First draft'}</span>`, port = d.ratio !== '1:1';
     const fb = [d.fallback, ...(isRival(c) ? [] : c.images || [])].filter((x) => x && !(d.images || []).includes(x)); /* never a rival's poster under our draft */ /* the real product photo, if the draft's picture can't load */
     /* a reel (9:16) fills the card's width in a 4:5 frame: the whole reel centred over a blurred copy of itself, never a narrow
        box with an empty side (17 Oct); every other draft keeps its own shape */
@@ -1292,7 +1293,7 @@
     if (GEN && !HC_MOVES) hcMoves().then(() => { const el = $('.card[data-health] [data-hc-how]'); if (el && hcFix(low)) el.outerHTML = hcCta(low); }).catch(() => {});
     return `<article class="card hc${B.health.dummy ? ' is-dummy' : ''}" data-health>${head('brew', B.health.public ? `From your public site${Object.values(SRV.healthLive || {}).some((x) => x?.what) ? ' and your accounts' : ''}${when ? ` · ${esc(when)}` : ''}` : `Up ${h.delta + Object.keys(S.conn).filter(conn).length} this week`, null, false, 'Store health')}
       <div class="body hc-body"><h3>${esc(head1)}</h3>${sub1 ? `<p>${esc(sub1)}</p>` : ''}</div>
-      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}${r.was != null && r.was !== r.v ? ` <small class="hc-was">Was ${r.was}${r.changed ? `: ${esc(r.changed)}` : ''}</small>` : ''}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.filter((x, i, all) => !((x.real || all.some((y) => +y.v)) && (x.v === 0 || x.v === '0'))) /* a zero reading stays quiet; the ring's own score says it once */.map((x) => `<li><span>${esc(x.k)}</span><b>${esc(String(x.v))}${x.of != null ? `<small>/${x.of}</small>` : x.real ? '<small> from your account</small>' : ''}</b><small>${esc(x.note || '')}${(x.at || r.at) ? ` · checked ${esc(fmtDay(Date.parse(x.at || r.at)) || x.at || r.at)}` : ''}</small></li>`).join('')}</ul>` : ''}${r.k === 'AI answers' && aiStand()?.rivals ? `<div class="ais ais-mini">${aisHtml(aiStand(), { compact: true })}<button class="linkbtn hc-ais" data-ais-proof="${esc(aiStand().src || 'weekly')}">${ic('shield', 's14')}Every question and each AI’s answer</button></div>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
+      <div class="inset"><div class="ring-wrap">${ringSvg(h)}<div class="ring-rows hc-rows">${h.rings.map((r) => `<details class="hc-ring${r === low ? ' is-low' : ''}"><summary><b${tipArea(r.k)}>${esc(r.k)}</b><em>${r.read === false ? '–' : `${r.v}<small>/100</small>`}</em><span>${esc(hcLine(r))}${r.was != null && r.was !== r.v ? ` <small class="hc-was">Was ${r.was}${r.changed ? `: ${esc(r.changed)}` : ''}</small>` : ''}</span></summary>${(r.parts || []).length ? `<ul class="hc-parts">${r.parts.filter((x, i, all) => !((x.real || all.some((y) => +y.v)) && (x.v === 0 || x.v === '0'))) /* a zero reading stays quiet; the ring's own score says it once */.map((x) => `<li><span>${esc(x.k)}</span><b>${esc(String(x.v))}${x.of != null ? `<small>/${x.of}</small>` : x.real ? '<small> from your account</small>' : ''}</b><small>${esc(x.note || '')}${(x.at || r.at) ? ` · checked ${esc(fmtDay(Date.parse(x.at || r.at)) || x.at || r.at)}` : ''}</small></li>`).join('')}</ul>` : ''}${r.k === 'AI answers' && aiStand()?.rivals ? `<div class="ais ais-mini">${aisHtml(aiStand(), { compact: true })}<button class="linkbtn hc-ais" data-ais-proof="${esc(aiStand().src || 'weekly')}">${ic('shield', 's14')}Every question and each AI’s answer</button></div>` : ''}${r.src ? `<p class="hc-src">${ic('link', 's14')}${esc(r.src)}</p>` : ''}</details>`).join('')}</div></div></div>
       ${read.length ? hcCta(low) : ''}</article>`; };
 
   /* the widget counts what the Work board counts (QV round 2, 26 Oct: "2 things in progress" over a board "Drafting 10"; "Nothing is
@@ -1450,7 +1451,7 @@
           <div class="notes-layer" id="notes" aria-hidden="true"></div> <!-- decorative margin layers: screen readers read each note once, on its card (1.14) -->
         </div>
       </div>
-      <button class="fab" aria-label="Jam with the team" data-open-jam>${ic('hand')}</button>`;
+      <button class="fab" aria-label="Jam with the team" data-open-jam${tipA('jam')}>${ic('hand')}</button>`;
   };
   /* the first open of the feed after onboarding starts a new brand's moves (build.js feedOpened); once per page, a no-op after that */
   const feedOpened = () => { if (!GEN || LANDING || feedOpened.sent) return; feedOpened.sent = true; api(`/api/brands/${B.slug || BR}/feed-open`, {}).then((r) => { if (r?.woke && BREW && !BREW.done) { BREW = null; loadMV(); } }); };
@@ -1615,7 +1616,7 @@
   /* Recap (what happened since your last visit) sits right after the brand's own ring, only when the server sent one */
   /* unseen rings first (each set keeps its own order), like stories anywhere */
   const ringKeys = (S2) => { const ks = (ROLE().stories || []).filter((k) => k !== 'recap'); if (S2.recap) ks.splice(ks[0] === 'brand' ? 1 : 0, 0, 'recap'); const on = ks.filter((k) => S2[k] && (k === 'brand' || S2[k].slides?.length)); /* a ring with nothing to show is hidden (QA FEED-QA-28) */ return [...on.filter((k) => !S2[k].seen), ...on.filter((k) => S2[k].seen)]; };
-  const storiesHtml = () => { const S2 = storySets(); return `<div class="stories">${ringKeys(S2).map((k, i) => `<button class="story${S2[k].seen ? ' seen' : ''}${S2[k].loading ? ' loading' : ''}" data-story="${k}" title="${esc(S2[k].title)}"><span class="ring">${ringCover(S2[k])}</span><span class="st-l">${esc(S2[k].title)}</span></button>`).join('')}</div>`; };
+  const storiesHtml = () => { const S2 = storySets(); return `<div class="stories">${ringKeys(S2).map((k, i) => `<button class="story${S2[k].seen ? ' seen' : ''}${S2[k].loading ? ' loading' : ''}" data-story="${k}"${tipA('story')}><span class="ring">${ringCover(S2[k])}</span><span class="st-l">${esc(S2[k].title)}</span></button>`).join('')}</div>`; };
 
   /* the end of a free day: a swipeable set of what Pro adds, in Brew's own art, ending on the one button */
   document.addEventListener('click', (e) => { if (e.target.closest('[data-gopro]')) openPlan('feed'); });
@@ -2331,8 +2332,8 @@
     const stats = c.rows?.length && !sameRows ? `<div class="cp-stats">${c.rows.slice(0, 4).map(([k, v], i) => `<div class="cp-stat${String(v).length > 22 ? ' is-long' : ''}" style="--d:${120 + i * 50}ms"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('')}</div>` : '';
     const liked = !!S.hearts[p.id], saved = S.saved.includes(p.id), canLike = !/^(work:|jam-)/.test(String(p.id)) && !!byId(p.id), i0 = pg ? pg.options.indexOf(cur) : -1;
     return `<article class="cpf ag-${esc(ag)}">
-        <header class="cpf-h"><div class="cp-meta">${face(ag)}<span>${esc(fromLabel(c))}</span>${c.type ? `<em>${esc(KIND[c.type] || c.type)}</em>` : ''}</div>
-          <span class="cpf-icons">${canLike ? `<button class="icon-btn" data-cp-heart aria-pressed="${liked}" aria-label="${liked ? 'Liked' : 'More like this'}">${ic('heart', 's18')}</button>` : ''}<button class="icon-btn" data-cp-save aria-pressed="${saved}" aria-label="${saved ? 'Saved' : 'Save'}">${ic('bookmark', 's18')}</button></span></header>
+        <header class="cpf-h"><div class="cp-meta">${face(ag)}<span${tipA('from')}>${esc(fromLabel(c))}</span>${c.type ? `<em>${esc(KIND[c.type] || c.type)}</em>` : ''}</div>
+          <span class="cpf-icons">${canLike ? `<button class="icon-btn" data-cp-heart aria-pressed="${liked}" aria-label="${liked ? 'Liked' : 'More like this'}"${tipA('heart')}>${ic('heart', 's18')}</button>` : ''}<button class="icon-btn" data-cp-save aria-pressed="${saved}" aria-label="${saved ? 'Saved' : 'Save'}"${tipA('save')}>${ic('bookmark', 's18')}</button></span></header>
         ${big}
         <h1 class="cp-t">${esc(c.title)}</h1><p class="cp-s">${esc(c.sub)}</p>${makeChip(c)}${stats}
         <div class="cpf-go"><button class="btn btn-primary cpf-jam" data-cp-jamgo>${ic('hand', 's16')}Jam on it</button>
@@ -2359,7 +2360,7 @@
     const tile = (o, i) => { const chosen = dec === o.id, on = o.id === cur?.id;
       return `<button class="cp-tile${on ? ' is-on' : ''}${chosen ? ' is-chosen' : ''}${o.pick ? ' is-pick' : ''}${dec && !chosen ? ' is-dim' : ''}" role="tab" aria-selected="${on}" data-cp-open="${esc(o.id)}" style="--d:${160 + i * 60}ms">
         <span class="cp-n">${chosen ? ic('check', 's14') : L[i]}</span><b>${esc(o.name)}</b>
-        ${chosen ? '<em class="cp-tag ok">Going with this</em>' : o.pick ? `<em class="cp-tag pick">${ic('sparkles', 's14')}Our pick${pg.reason ? `<span class="cp-why" role="tooltip"><b>Why we suggest this</b>${esc(pg.reason)}${o.moves?.length ? `<small>Backed by ${o.moves.length === 1 ? 'Play' : 'Plays'} ${o.moves.map((n) => esc(mv2(n))).join(', ')}</small>` : ''}</span>` : ''}</em>` : '<em class="cp-tag"></em>'}</button>`; };
+        ${chosen ? '<em class="cp-tag ok">Going with this</em>' : o.pick ? `<em class="cp-tag pick"${pg.reason ? '' : tipA('ourPick')}>${ic('sparkles', 's14')}Our pick${pg.reason ? `<span class="cp-why" role="tooltip"><b>Why we suggest this</b>${esc(pg.reason)}${o.moves?.length ? `<small>Backed by ${o.moves.length === 1 ? 'Play' : 'Plays'} ${o.moves.map((n) => esc(mv2(n))).join(', ')}</small>` : ''}</span>` : ''}</em>` : '<em class="cp-tag"></em>'}</button>`; };
     const panel = (o) => { const i = pg.options.indexOf(o), chosen = dec === o.id;
       return `<div class="cp-panel${chosen ? ' is-chosen' : o.pick ? ' is-pick' : ''}" role="tabpanel" style="--x:${(i + .5) / pg.options.length}">
         <p class="cp-says">${esc(o.says || o.name)}</p>
@@ -2374,7 +2375,7 @@
     const mFmt = (v) => /^(₹|\$|£|€|[ACS]\$)$/.test(m.unit || '') ? m.unit + Math.round(v) : m.unit === '%' ? (+v).toFixed(1) + '%' : v;
     return `${nowHtml(ph, p, c, w, pg, m, ch)}${ph !== 'fresh' ? '<small class="cp-k-card">The card</small>' : ''}<header class="cp-hero ag-${esc(ag)}${visual ? ' has-visual' : ''}${ph !== 'fresh' ? ' is-recap' : ''}">
         <div class="cp-hero-main">
-          <div class="cp-meta">${face(ag)}<span>${esc(fromLabel(c))}</span>${c.type ? `<em>${esc(KIND[c.type] || c.type)}</em>` : ''}${SECTOR[c.sector] ? `<em>${esc(SECTOR[c.sector])}</em>` : ''}</div>
+          <div class="cp-meta">${face(ag)}<span${tipA('from')}>${esc(fromLabel(c))}</span>${c.type ? `<em>${esc(KIND[c.type] || c.type)}</em>` : ''}${SECTOR[c.sector] ? `<em${tipArea(c.sector)}>${esc(SECTOR[c.sector])}</em>` : ''}</div>
           <h1 class="cp-t">${esc(c.title)}</h1><p class="cp-s">${esc(c.sub)}</p>${makeChip(c)}
           ${stats}${c.kind === 'variants' ? varPicker(p, c) : ''}
         </div>${visual}
@@ -3459,8 +3460,8 @@
   const colHTML = (k) => {
     const cards = byCol(k), sb = k === 'signals' ? sigBody() : k === 'visibility' ? `<article class="sig-lock ais-card"><div class="sig-lock-body ais">${aisHtml(aiStand())}</div></article>` : '';
     return `<section class="dcol" data-col="${k}">
-        <div class="col-head"><div class="col-top"><h2><span class="col-emo" aria-hidden="true">${SECTORS[k].emo}</span>${SECTORS[k].name}</h2>${colWhy(k)}<span class="col-fill"></span>
-          <span class="col-menu"><button class="col-dots" aria-label="Column options">${ic('more', 's18')}</button>
+        <div class="col-head"><div class="col-top"><h2${tipArea(k)}><span class="col-emo" aria-hidden="true">${SECTORS[k].emo}</span>${SECTORS[k].name}</h2>${colWhy(k)}<span class="col-fill"></span>
+          <span class="col-menu"><button class="col-dots" aria-label="Column options"${tipA('colMore')}>${ic('more', 's18')}</button>
             <div class="col-pop"><button data-colact="refresh">${ic('refresh', 's16')} Refresh new cards</button><button data-colact="hide">${ic('x', 's16')} Hide this column</button></div></span></div><hr></div>
         <div class="col-body">${sb ? `<div class="sig-body">${sb}</div>` : ''}${cards.map(([p, i]) => postCard(p, i)).join('')}${cards.length ? `<p class="col-end">You are caught up on ${SECTORS[k].name.toLowerCase()}.</p>` : ''}</div>
         <span class="grab" role="separator" aria-orientation="vertical" aria-label="Column width"></span></section>`;
@@ -3470,7 +3471,7 @@
     <p class="side-note">Every agent has its own column and posts all day.${sigEmpty() ? '' : ' Signals reads your orders and tells you which customers to reach today.'}</p>
     <div class="side-rule"></div>
     <div class="side-nav">${deckCols().map((k) => { const n = k === 'signals' ? byCol(k).length + (sigFake() ? SIGS.length : 0) : byCol(k).length;
-      return `<button data-colnav="${k}" class="${colState[k].hidden ? 'muted' : ''}" aria-current="false"><i class="col-dot" style="background:${SECTORS[k].dot}"></i>${SECTORS[k].name}<span class="n">${n || ''}</span></button>`; }).join('')}</div>
+      return `<button data-colnav="${k}" class="${colState[k].hidden ? 'muted' : ''}" aria-current="false"${tipArea(k)}><i class="col-dot" style="background:${SECTORS[k].dot}"></i>${SECTORS[k].name}<span class="n">${n || ''}</span></button>`; }).join('')}</div>
     <div class="side-acts"><button class="side-act" data-side="dash">${ic('grid', 's16')} Open dashboard</button><button class="side-act" data-side="jam">${ic('hand', 's16')} Jam with the team</button><button class="side-act" data-side="tune">${ic('sparkles', 's16')} Tune the deck</button></div>`;
   const deckEl = () => $('#deck');
   // the column you picked stays highlighted, even when the deck can't scroll far enough to make it the leftmost one;
@@ -3491,7 +3492,7 @@
     d.innerHTML = deckCols().filter((k) => !colState[k].hidden).map(colHTML).join('');
     d.style.setProperty('--col-w', colW + 'px');
     $('#deck-side').innerHTML = sideHTML();
-    $('#deck-tabs').innerHTML = $$('.dcol', d).map((c, i) => `<button class="dtab" role="tab" data-i="${i}">${SECTORS[c.dataset.col].name}</button>`).join('');
+    $('#deck-tabs').innerHTML = $$('.dcol', d).map((c, i) => `<button class="dtab" role="tab" data-i="${i}"${tipArea(c.dataset.col)}>${SECTORS[c.dataset.col].name}</button>`).join('');
     $$('.dcol', d).forEach((c) => { const b = $('.col-body', c); if (b && keepY[c.dataset.col]) b.scrollTop = keepY[c.dataset.col]; });
     d.scrollLeft = keep; markTab();
     requestAnimationFrame(() => { d.scrollLeft = keep; document.body.classList.remove('col-dragging'); });
@@ -3547,7 +3548,7 @@
       <div class="db-list">${bs.map((b) => `<div class="db-row">${b.team ? podFaces() : face(b.agent)}<div class="db-tx"><b>${esc(b.t)}</b><span>${esc(b.s)}</span></div>${pill(b)}</div>`).join('') || '<p class="sh-p">Nothing in progress yet.</p>'}</div></div>`); };
   const WIDTHS = [['Narrow', 380], ['Medium', 480], ['Wide', 600]];
   const openTune = () => {
-    const row = (k) => { const on = !colState[k].hidden, n = byCol(k).length + (k === 'signals' && sigFake() ? SIGS.length : 0); return `<button class="tn-row${on ? '' : ' is-off'}" data-tune="${k}" aria-pressed="${on}"><span class="tn-emo" aria-hidden="true">${SECTORS[k].emo}</span><span class="tn-tx"><b>${SECTORS[k].name}</b><span>${n ? `${n} card${n === 1 ? '' : 's'}` : 'Nothing yet'}</span></span><span class="sw" aria-checked="${on}" aria-hidden="true"><i></i></span></button>`; };
+    const row = (k) => { const on = !colState[k].hidden, n = byCol(k).length + (k === 'signals' && sigFake() ? SIGS.length : 0); return `<button class="tn-row${on ? '' : ' is-off'}" data-tune="${k}" aria-pressed="${on}"${tipArea(k)}><span class="tn-emo" aria-hidden="true">${SECTORS[k].emo}</span><span class="tn-tx"><b>${SECTORS[k].name}</b><span>${n ? `${n} card${n === 1 ? '' : 's'}` : 'Nothing yet'}</span></span><span class="sw" aria-checked="${on}" aria-hidden="true"><i></i></span></button>`; };
     const paintT = (m) => { $('.tn-list', m).innerHTML = deckCols().map(row).join(''); const near = WIDTHS.reduce((a, b) => (Math.abs(b[1] - colW) < Math.abs(a[1] - colW) ? b : a))[1]; $$('[data-tw]', m).forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.tw === near))); bindT(m); };
     const bindT = (m) => $$('[data-tune]', m).forEach((b) => (b.onclick = () => { const k = b.dataset.tune;
       if (!colState[k].hidden && COL_ORDER.filter((x) => !colState[x].hidden).length === 1) return toast('Keep at least one column on screen');
@@ -4030,16 +4031,30 @@
   /* every tooltip floats in one layer above the page (fixed, on body), so no panel, card or canvas edge can clip it; it
      flips below when there's no room above, shifts to stay inside the window, and long words (links) wrap */
   const tipShow = (el) => { let t = $('#tipx'); if (!t) { t = document.createElement('div'); t.id = 'tipx'; t.setAttribute('role', 'tooltip'); document.body.appendChild(t); }
-    t.textContent = el.dataset.tip; t.style.left = '0px'; t.style.top = '0px'; t.classList.add('on');
+    TIPT.el = el; t.textContent = el.dataset.tip; t.style.left = '0px'; t.style.top = '0px'; t.classList.add('on');
     const lo = Math.max(8, (el.closest('.jp')?.getBoundingClientRect().left || 0) + 8); /* inside the jam page, never over the app's left rail (QV P2-4) */
-    const r = el.getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight, x = Math.max(lo, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8)), up = r.top - h - 8;
-    t.style.left = `${x}px`; t.style.top = `${up >= 8 ? up : Math.min(r.bottom + 8, innerHeight - h - 8)}px`; };
-  const tipHide = () => $('#tipx')?.classList.remove('on');
-  document.addEventListener('mouseover', (e) => { const el = e.target.closest?.('[data-tip]'); if (el) tipShow(el); else tipHide(); }); /* a repaint can remove the button under the pointer: the next move hides the tip */
-  document.addEventListener('click', (e) => { if (!e.target.closest?.('[data-tip]')) tipHide(); }, true); addEventListener('hashchange', tipHide);
-  document.addEventListener('mouseout', (e) => { if (e.target.closest?.('[data-tip]') && !e.relatedTarget?.closest?.('[data-tip]')) tipHide(); });
-  document.addEventListener('focusin', (e) => { const el = e.target.closest?.('[data-tip]'); if (el) tipShow(el); });
-  document.addEventListener('focusout', (e) => { if (e.target.closest?.('[data-tip]')) tipHide(); });
+    const r = el.getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight, x = Math.max(lo, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8)), up = r.top - h - 8, down = r.bottom + 8;
+    /* never over its own button (a thumb on a phone sits on it): above, else below, else the side with more room even if it runs off the edge */
+    t.style.left = `${x}px`; t.style.top = `${up >= 8 ? up : down + h <= innerHeight - 8 ? down : r.top > innerHeight - r.bottom ? up : down}px`; };
+  const tipHide = () => { clearTimeout(TIPT.hide); $('#tipx')?.classList.remove('on'); };
+  /* a mouse shows the tip on hover; a finger never does (iOS takes a tap that changes the page on hover as hover only, so the
+     button would need a second tap). A finger holds the button half a second to see it, and that hold doesn't press it */
+  const TIPT = {};
+  document.addEventListener('pointerover', (e) => { if (e.pointerType === 'touch') return; const el = e.target.closest?.('[data-tip]'); if (el) tipShow(el); else tipHide(); }); /* a repaint can remove the button under the pointer: the next move hides the tip */
+  document.addEventListener('pointerout', (e) => { if (e.pointerType !== 'touch' && e.target.closest?.('[data-tip]') && !e.relatedTarget?.closest?.('[data-tip]')) tipHide(); });
+  document.addEventListener('pointerdown', (e) => { clearTimeout(TIPT.press); TIPT.held = null; if (e.pointerType !== 'touch') return; const el = e.target.closest?.('[data-tip]'); if (!el) return;
+    TIPT.at = [e.clientX, e.clientY]; TIPT.press = setTimeout(() => { TIPT.held = el; tipShow(el); }, 480); });
+  document.addEventListener('pointermove', (e) => { if (TIPT.at && Math.hypot(e.clientX - TIPT.at[0], e.clientY - TIPT.at[1]) > 10) clearTimeout(TIPT.press); });
+  const tipLift = () => { clearTimeout(TIPT.press); TIPT.at = null; if (TIPT.held) { clearTimeout(TIPT.hide); TIPT.hide = setTimeout(tipHide, 1800); } };
+  document.addEventListener('pointerup', tipLift); document.addEventListener('pointercancel', tipLift);
+  document.addEventListener('contextmenu', (e) => { if (TIPT.held || e.target.closest?.('[data-tip]') && TIPT.at) e.preventDefault(); }); /* the long-press menu on Android */
+  document.addEventListener('click', (e) => { const el = e.target.closest?.('[data-tip]');
+    if (el && TIPT.held === el) { TIPT.held = null; e.preventDefault(); e.stopPropagation(); return; } /* the hold showed the tip: it doesn't also press the button */
+    if (el?.classList.contains('tip-i')) { tipShow(el); return; } /* the (i) is only there for its words: a tap shows them */
+    if (!el) tipHide(); }, true); addEventListener('hashchange', tipHide);
+  /* focus from the keyboard shows it; a tap that focuses an action button (Android) doesn't flash the words on every press */
+  document.addEventListener('focusin', (e) => { const el = e.target.closest?.('[data-tip]'); if (el && (el.classList.contains('tip-i') || el.matches(':focus-visible'))) tipShow(el); });
+  document.addEventListener('focusout', (e) => { const el = e.target.closest?.('[data-tip]'); if (el && el === TIPT.el && !TIPT.held) tipHide(); }); /* only its own tip: the focus a tap moves off the last button never hides the one being held */
   addEventListener('scroll', tipHide, true); addEventListener('resize', tipHide);
   /* while a reply takes its time (about a minute on Flash), the bar says what the studio is doing and for how long: the
      server's step (change.thinking, remix.js think()) every 3 s, the clock every 1.5 s; never a bare spinner */
@@ -4064,13 +4079,13 @@
   /* say before it runs whether it costs (CRE-10/RMX-10/CRE-05): drafts are on Brew, so every draft-making button carries a quiet
      "Free draft" (a clip adds how long it takes); only the final shows credits (finalBtn) */
   const FREE = 'Free draft', FREE_CLIP = 'Free draft · about two minutes' /* the same wait the chat says when the clip starts (remix.js makeOne): a first frame, then Veo */;
-  const freeTag = (clip = false) => `<small class="btn-free" title="${clip ? FREE_CLIP : FREE}">${FREE}${clip ? `<span class="btn-free-t">${FREE_CLIP.slice(FREE.length)}</span>` : ''}</small>`; /* a phone keeps just Free draft */
+  const freeTag = (clip = false) => `<small class="btn-free"${tipA('free')}>${FREE}${clip ? `<span class="btn-free-t">${FREE_CLIP.slice(FREE.length)}</span>` : ''}</small>`; /* a phone keeps just Free draft */
   const finalBtn = (ch) => { const what = isReel(ch) || ch.pkg?.video ? 'reel' : 'picture'; RX.fq ||= {}; const f = RX.fq[fqKey(ch)];
     if (!f) { setTimeout(() => fqFetch(ch), 0); return `<button class="btn btn-primary ship-go" disabled><brew-load class="spin"></brew-load>Make it</button>`; }
     if (f.st === 'loading') return `<button class="btn btn-primary ship-go" disabled><brew-load class="spin"></brew-load>Make it</button>`;
     if (f.st === 'err') return `<button class="btn btn-primary ship-go" data-fn-one title="${esc(f.err)}">${ic('sparkles', 's16')}Make it</button>`;
     const q = f.q, n = Math.round((q.credits || 0) * 100) / 100, cost = q.dummy ? 'simulated' : q.provider === 'gemini' ? 'with Gemini' : n ? `${n} credit${n === 1 ? '' : 's'}` : 'no credits';
-    return `<button class="btn btn-primary ship-go" data-fn-one title="${esc(q.provider === 'gemini' ? `Sloosh isn’t ready (${q.fallbackWhy || 'no credits'}), so we make it with Gemini.` : `Made on Sloosh with ${q.label || q.model || 'its best model'}. Tap once to make the final ${what}.`)}">${ic('sparkles', 's16')}Make it<small class="btn-free">${esc(cost)}</small></button>`; };
+    return `<button class="btn btn-primary ship-go" data-fn-one${tipA(q.dummy ? 'simulated' : q.provider === 'gemini' ? 'gemini' : n ? 'credits' : '')}>${ic('sparkles', 's16')}Make it<small class="btn-free">${esc(cost)}</small></button>`; };
   /* a final the person started here stays "making" on this screen until it lands or fails: a read that left before the tap
      (the job poll, the jam tick) can come back after it without finalPending, and the button turned clickable again (Param, 21 Oct) */
   const nFinals = (ch) => (ch.versions || []).filter((v) => v.final).length;
@@ -4122,7 +4137,7 @@
     const fp0 = finalGoing(ch), job0 = jobOf(ch), sSt0 = ch.studio ? window.CreativeStage?.state(ch.id) : null, making0 = !!(fp0 || sSt0?.making);
     const steps = media || ch.studio ? ['Draft', 'Make', 'Send'] : ['Draft', 'Send'];
     const at = making0 || (sv && sv.quality === 'preview') /* a quick preview: the full one is still to make */ ? 'Make' : fix || job0 || ((media || ch.studio) && !fin) ? 'Draft' : 'Send';
-    const strip = `<ol class="ship-steps" aria-label="Steps">${steps.map((x) => `<li class="${x === at ? 'is-on' : steps.indexOf(x) < steps.indexOf(at) ? 'is-done' : ''}">${esc(x)}</li>`).join('')}</ol>`;
+    const strip = `<ol class="ship-steps" aria-label="Steps"${tipA(steps.includes('Make') ? 'steps' : 'stepsNoMake')}>${steps.map((x) => `<li class="${x === at ? 'is-on' : steps.indexOf(x) < steps.indexOf(at) ? 'is-done' : ''}">${esc(x)}</li>`).join('')}</ol>`;
     const nm = opt ? ` · <em>${esc(opt.name)}</em>` : '';
     let head, tip, main;
     const po = postOpenOf(ch); /* Reddit, Quora, X, LinkedIn, Pinterest, a group: copy it and open the place (post-open.js) */
@@ -4171,7 +4186,7 @@
     /* Redo it: one new take beside the one way forward, whenever the version can still change (not while something is being made) */
     const busy = !!job;
     const sSt = ch.studio ? window.CreativeStage?.state(ch.id) : null, sPl = sSt?.plan || null; /* a Studio redo is made again the same way, at its price */
-    const redo = !busy && !(op && !op.picked) && !(ch.studio && !studioMade(ch)) ? (ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" ${sSt?.making || !sPl || sPl.error || sPl.usd == null ? 'disabled' : ''} title="${sSt?.making ? 'It is being made now' : !sPl ? 'Pricing it…' : 'Made again with the same set-up, priced first. This one stays in History.'}">${ic('shuffle', 's16')}Redo it${sPl?.usd != null ? ` · ${moneyOf(sPl.usd)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" title="A new take from a new angle, a free draft. This one stays in History.">${ic('shuffle', 's16')}Redo it</button>`) : '';
+    const redo = !busy && !(op && !op.picked) && !(ch.studio && !studioMade(ch)) ? (ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" ${sSt?.making || !sPl || sPl.error || sPl.usd == null ? 'disabled' : ''} title="${sSt?.making ? 'It is being made now' : !sPl ? 'Pricing it…' : ''}"${sSt?.making || !sPl ? '' : tipA('redoPaid')}>${ic('shuffle', 's16')}Redo it${sPl?.usd != null ? ` · ${moneyOf(sPl.usd)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" ${tipA('redo')}>${ic('shuffle', 's16')}Redo it</button>`) : '';
     const headTxt = String(head).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&amp;/g, '&'); /* plain text: esc() below is its only escaping */
     const csReady = ch.studio && !studioMade(ch) && !csS?.error && !csPl?.error; /* a set-up ready to make is no warning: its line reads plain (25 Oct: orange "product shot picture · …") */
     return `<div class="ship one ${csReady ? 'plain' : fix || /Needs a look|things to look at|class="ship-one/.test(String(head)) ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l"${/ship-fixes/.test(head) ? '' : ` title="${esc(headTxt)}"`}>${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
@@ -4189,7 +4204,7 @@
     if (RX.sending) { if (!RX.thinkI) thinkStart(ch.id); return `<div class="ship busy"><div class="ship-tx"><b><brew-load class="spin"></brew-load>${esc(RX.sending)}</b><span id="ship-think">${esc(thinkLine())}</span></div><div class="ship-btns"><button class="btn btn-primary ship-go" disabled>${ic('sparkles', 's16')}Working…</button></div></div>`; }
     if (RX.thinkI) thinkStop();
     /* once Share the brief is gone (sent, live), the link can still be copied: a small icon next to what's left */
-    const lnk = `<button class="icon-btn ship-link" data-st-link aria-label="Copy the link to this jam" title="Copy the link">${ic('link', 's16')}</button>`;
+    const lnk = `<button class="icon-btn ship-link" data-st-link aria-label="Copy the link to this jam"${tipA('link')}>${ic('link', 's16')}</button>`;
     if (ch.batchKey && ch.state !== 'jam') {
       const N = RX.p?.images?.length || 12, fix = ch.verdict === 'fix', drop = ch.pick === 'drop';
       return `<div class="ship ${fix ? 'warn' : drop ? '' : 'ok'}"><div class="ship-tx"><b>${ic(fix ? 'x' : drop ? 'x' : 'check', 's16')}Ad ${ch.batchIndex + 1} of ${N} · ${drop ? 'Dropped' : fix ? 'Needs a fix' : 'Kept'}: v${curN(ch)}</b><span>${fix ? `Before it can queue: ${esc((ch.fixes || []).join('; '))}.` : 'Every change saves as a new version. It queues with the other ads you keep.'}</span></div>
@@ -4213,7 +4228,7 @@
     if (!ch.batchKey && ch.state !== 'jam' && jobOf(ch)) return stepBar(ch); /* being made: the bar says what, never Draft or Ready */
     if (!ch.batchKey && ch.state !== 'jam' && !planMade(ch)) { const pl = planOf(ch);
       const media0 = PH_FAM.includes(ch.family) && !ch.realOnly && (ch.family !== 'post' || isReel(ch) || ch.pkg?.image || ch.pkg?.media || ch.pkg?.video); /* the same steps as every other bar (stepBar) */
-      return `<div class="ship one ok"><ol class="ship-steps" aria-label="Steps">${(media0 ? ['Draft', 'Make', 'Send'] : ['Draft', 'Send']).map((x, i) => `<li class="${i ? '' : 'is-on'}">${x}</li>`).join('')}</ol><div class="ship-tx is-step"><b>${ic('sparkles', 's16')}<span class="ship-l">${ch.v0 === 'draft' ? 'First draft' : 'Draft'} · v${curN(ch)}</span>${tipBtn(`${planGo(ch, pl).line}. Then share the brief.`)}</b></div>
+      return `<div class="ship one ok"><ol class="ship-steps" aria-label="Steps"${tipA(media0 ? 'steps' : 'stepsNoMake')}>${(media0 ? ['Draft', 'Make', 'Send'] : ['Draft', 'Send']).map((x, i) => `<li class="${i ? '' : 'is-on'}">${x}</li>`).join('')}</ol><div class="ship-tx is-step"><b>${ic('sparkles', 's16')}<span class="ship-l">${ch.v0 === 'draft' ? 'First draft' : 'Draft'} · v${curN(ch)}</span>${tipBtn(`${planGo(ch, pl).line}. Then share the brief.`)}</b></div>
         <div class="ship-btns">${shipMenu(ch, [['data-rx="share-shopos"', 'send', 'Send the brief now', 'Our team, the build crew, gets it by email and makes it.'], ['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']])}<button class="btn btn-primary" data-rx="plan">${ic('sparkles', 's16')}${esc(planGo(ch, pl).label)}${freeTag(isReel(ch))}</button></div></div>`; }
     if (!ch.batchKey && ch.state !== 'jam') return stepBar(ch);
     if (ch.state === 'jam') return `<div class="ship warn"><div class="ship-tx"><b>${ic('hand', 's16')}Being planned in a jam</b><span>Answer the open questions there, then it ships.</span></div><div class="ship-btns">${postOpenOf(ch) ? poBtn(postOpenOf(ch), false) /* a ready post can still be copied out while the jam plans it */ : ''}<button class="btn btn-primary" data-rx="open">Open the jam</button></div></div>`;
@@ -4297,7 +4312,7 @@
     const ni = w?.jamBrief?.status === 'needs_info' ? (w.jamBrief.history || []).find((h) => h.s === 'needs_info') : null;
     const niHtml = ni ? `<div class="st-needs" role="status">${ic('hand', 's16')}<div><b>${esc(ni.name || 'Our team')} needs something from you${w.ticket ? ` · ${esc(w.ticket)}` : ''}</b>${ni.note ? `<p>${esc(ni.note)}</p>` : ''}<small>Answer with @Our team in your message: it goes to them by email.</small></div></div>` : '';
     return `<div class="it-log">${RX.p ? `<div class="it-empty">${face(ch.agent)}${caseBrief(ch)}</div>` : ''}${log || (RX.p ? '' : `<div class="it-empty">${face(ch.agent)}<p>What should change? Each change makes a new version, and you can always go back.</p></div>`)}${j2Extra(ch)}${RX.sending ? `<div class="lgm ai pending">${face(ch.agent)}<p><brew-load class="spin"></brew-load>${esc(RX.sending)}</p></div>` : ''}</div>
-      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${stAttHtml()}${partChip()}<div class="it-row${window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2" data-nomic placeholder="Ask Brew…" title="Ask Brew, or @ someone on the jam">${esc(RX.draft || '')}</textarea>${window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing" title="Talk instead of typing">${ic('mic', 's16')}</button>` : ''}<button class="jm-send${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</div></form>${window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
+      ${edit ? `<form class="it-ask" id="st-say">${niHtml}${stAttHtml()}${partChip()}<div class="it-row${window.Composer?.tools ? ' has-cmp' : ''}"><textarea id="st-in" rows="2" data-nomic placeholder="Ask Brew…" title="Ask Brew, or @ someone on the jam">${esc(RX.draft || '')}</textarea>${window.Composer?.tools ? `<span class="jm-tools">${window.Composer.tools()}<span class="jm-tools-r">${window.Mic?.supported ? `<button type="button" class="jm-mic" data-cmp-talk aria-label="Talk instead of typing"${tipA('mic')}>${ic('mic', 's16')}</button>` : ''}<button class="jm-send${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button></span></span>` : `<button class="btn btn-primary${RX.sending ? ' is-wait' : ''}" aria-label="Send" ${RX.sending ? 'disabled aria-busy="true"' : ''}>${RX.sending ? '<brew-load class="spin"></brew-load>' : ic('up', 's16')}</button>`}</div></form>${window.Composer?.foot ? window.Composer.foot() : ''}` : `<p class="it-locked">It’s in a jam. Shape it there.</p>`}`;
   };
   /* a Studio piece's Set-up is Studio only: the v1 word knobs ("Slides 5/7/10", "Story shape") rewrote words already set in the picture (25 Oct) */
   const adjustTab = (ch, edit) => ch.studio && window.CreativeStage ? `<div class="cs-panel">${!RX.viewing ? window.CreativeStage.html(ch) : '<p class="hs-tip">You’re looking at an older version. Go back to the newest to change the set-up.</p>'}</div>` : adjustTab0(ch, edit);
@@ -4319,7 +4334,7 @@
     const rows = [['What changes', bp.change], [/^(?:https?:\/\/)?(?:www\.)?[\w-]+(?:\.[\w-]+)+(?:\/\S*)?$/i.test(String(bp.audience || '').trim()) ? 'Where it runs' : 'Who it’s for', bp.audience] /* a site is where it runs, never who it is for (the brief says the same: 26 Oct) */, ['When', bp.when], ['Budget', bp.budget], ['Owner', bp.owner], ['Stop rule', bp.guard]].filter(([, v]) => v);
     const know = k ? `${k.metric.name}, ${k.how.toLowerCase()}, grade ${k.plannedGrade}, read after ${k.window} days` : kn ? `${bp.metric || kn.metric}, ${String(kn.bestHow || '').replace(/^./, (x) => x.toLowerCase())}${kn.bestGrade ? `, grade ${kn.bestGrade} at best` : ''}` : '';
     return `<section class="bf-top"><small class="dt-k">The final version · v${curN(ch)}</small>${rows.length ? `<dl class="bf-rows">${rows.map(([kk, v]) => `<div><dt>${esc(kk)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : '<p class="dt-empty">Who it’s for, when and the budget fill in as you jam.</p>'}
-      ${know ? `<p class="bf-know">${ic('trendup', 's14')}<b>How we’ll know:</b> ${esc(know)}</p>` : ''}${w?.doc?.missing?.length ? `<p class="bf-miss">Still missing: ${w.doc.missing.map((x) => `<button class="linkbtn" data-st-fill="${esc(x)}">${esc(String(x).toLowerCase())}</button>`).join(', ')}</p>` : ''}</section><h4 class="dt-h">The package</h4>`; };
+      ${know ? `<p class="bf-know">${ic('trendup', 's14')}<b>How we’ll know:</b> ${esc(know)}${/\bgrade [A-D]\b/.test(know) ? tipBtn(window.BrewTips?.T.grade) : ''}</p>` : ''}${w?.doc?.missing?.length ? `<p class="bf-miss">Still missing: ${w.doc.missing.map((x) => `<button class="linkbtn" data-st-fill="${esc(x)}">${esc(String(x).toLowerCase())}</button>`).join(', ')}</p>` : ''}</section><h4 class="dt-h">The package</h4>`; };
   const briefExtra = (ch) => { const w = workOfCard(RX.p?.id), md = w?.doc?.md || '';
     return `<section class="bf-doc"><div class="bf-doc-h"><h4 class="dt-h">The brief</h4><span>${RX.briefEdit ? '' : `<button class="linkbtn" data-st-briefedit>Edit</button> · `}<button class="linkbtn" data-st-brief>Full hand-off ${ic('right', 's14')}</button></span></div>
       ${RX.briefSync ? `<p class="dt-empty bf-syncing" role="status"><brew-load class="spin"></brew-load>Bringing the brief up to v${curN(ch)}…</p>` : ''}
@@ -4999,7 +5014,7 @@
   const jpMode = () => tbWork() && !RX.viewing ? `<div class="jp-seg jp-mode" role="tablist" aria-label="Piece or brief">${[['creative', 'Piece', 'pic'], ['brief', 'Brief', 'doc']].map(([k, n, i]) => `<button type="button" role="tab" data-tb-stage="${k}" aria-selected="${(RX.stage === 'brief') === (k === 'brief')}" aria-pressed="${(RX.stage === 'brief') === (k === 'brief')}">${ic(i, 's14')}${n}</button>`).join('')}</div>` : '';
   const jpHead = (ch, viewing) => `<header class="jp-hd"><button type="button" class="jp-back" data-st-back>${ic('left', 's16')}<span>${ch.batchKey ? `All ${RX.p?.images?.length || ''} ads` : 'Back'}</button>
       <button type="button" class="jp-ttl" data-jp-sw aria-haspopup="menu" aria-expanded="${!!RX.jpSw}" title="${esc(RX.p ? cardOf(RX.p).title || '' : '')}"><span>${esc(jpKind(ch))}${stSub(ch) ? ` <em><b class="jp-sep">· </b>${esc(stSub(ch))}</em>` : ''}</span>${ic('chev', 's14')}</button>
-      ${jpMode()}${RX.stage === 'brief' ? '' : verSw(ch)}${jpSent(ch)}<div class="jp-grow"></div>${studioJamCtl()}<button type="button" class="jp-ib" data-jp-more aria-label="More" aria-haspopup="menu" aria-expanded="${!!RX.jpMenu}">${ic('more', 's16')}</button>
+      ${jpMode()}${RX.stage === 'brief' ? '' : verSw(ch)}${jpSent(ch)}<div class="jp-grow"></div>${studioJamCtl()}<button type="button" class="jp-ib" data-jp-more aria-label="More"${tipA('pieceMore')} aria-haspopup="menu" aria-expanded="${!!RX.jpMenu}">${ic('more', 's16')}</button>
       ${RX.jpSw ? jpSwPop(ch) : ''}${RX.jpMenu ? jpMenuPop(ch) : ''}${RX.vmenu ? vmenuHtml(ch) : ''}</header>`;
   /* the tag on the stage: what the piece on it is right now */
   const jpTag = (ch, viewing) => { if (viewing) return ''; const st = ch.studio ? window.CreativeStage?.state(ch.id) : null, making = !!(st?.making || st?.working || ch.imagePending || ch.videoPending || ch.remakePending);

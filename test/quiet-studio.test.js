@@ -9,6 +9,6 @@ test('two chips and More, the mic named, the plan folded', () => {
   assert.match(src, /const all = \[\.\.\.asks, \.\.\.rest\], first = all\.slice\(0, 3\), more = all\.slice\(3\)/);
   assert.match(src, /data-chips-more/); assert.match(src, /\[data-chips-more\]'\) && RX\.ch\) \{ RX\.moreChips = RX\.ch\.id; paintStudio\(\)/);
   assert.match(src, /\{brief \? '' : v1Chips\(ch\)\}/, 'the chips sit in Brew\'s section, under its line (26 Oct, the prototype)');
-  assert.match(src, /class="jm-mic" data-cmp-talk aria-label="Talk instead of typing" title="Talk instead of typing"/);
+  assert.match(src, /class="jm-mic" data-cmp-talk aria-label="Talk instead of typing"\$\{tipA\('mic'\)\}/); /* its words show as a tooltip (tips.js) */
   assert.match(src, /<details class="case-s case-plan" data-keep="plan">/);
 });
