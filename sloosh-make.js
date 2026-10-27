@@ -22,6 +22,8 @@ const one = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 /* a failure worth trying again a little later (Sloosh busy, a dropped connection) vs one that won't change (a refused prompt) */
 /* real_person_reference: a cast photo Sloosh hasn't verified yet ("retry after a minute"), so it is waited on, never dropped */
 const personWait = (e) => /real_person_reference/i.test(String(e?.message || '') + String(e?.final?.owner?.errorCode || ''));
+/* a key an earlier make already spent (that run failed, e.g. the wallet was empty) is never reusable: the next try takes a new one */
+const keyUsed = (e) => /idempotency_conflict/i.test(String(e?.message || '') + String(e?.code || ''));
 const transient = (e) => personWait(e) || e?.timeout || e?.pollError || e?.status >= 500 || /timed? ?out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|socket hang up|busy|overload|rate|429|503|try again/i.test(String(e?.message || ''));
 
 export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = async () => {}, publicUrl = process.env.PUBLIC_URL || '', fetchImpl = fetch,
@@ -94,7 +96,7 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
         const buf = Buffer.from(await r.arrayBuffer()), credits = creditsOf(done) || creditsOf(q);
         try { record(slug, credits, where); } catch {}
         return Object.assign(buf, { provider: 'sloosh', model: route.model, credits, generationId: refOf(out)?.id || null, link });
-      } catch (e) { last = e; if (e?.terminal) ended++; if (!transient(e) || i === tries - 1) break; log.warn?.(`[sloosh-make] ${where} for ${slug}: ${String(e.message).slice(0, 160)}; trying again`); await sleep(personWait(e) ? Math.max(65e3, backoffMs) : backoffMs * (i + 1)); }
+      } catch (e) { last = e; const used = keyUsed(e); if (e?.terminal || used) ended++; if (!(transient(e) || used) || i === tries - 1) break; log.warn?.(`[sloosh-make] ${where} for ${slug}: ${String(e.message).slice(0, 160)}; trying again`); await sleep(personWait(e) ? Math.max(65e3, backoffMs) : backoffMs * (i + 1)); }
     }
     try { onRefuse(last, { slug, where }); } catch {} /* staff hear it (an upload agreement to accept, a limit, a refused model): the ops alert */
     throw Object.assign(new Error(`Sloosh couldn't make this just now (${String(last?.message || last).slice(0, 200)}). We'll try again.`), { soft: true, sloosh: true, cause: last });

@@ -120,3 +120,14 @@ test('a cast photo Sloosh has not verified yet (real_person_reference) is waited
   const buf = await M.video({ slug: 'arata', prompt: 'UGC', refs: [{ src: 'https://x.test/p.jpg', job: 'product' }, { src: 'https://x.test/face.jpg', job: 'person' }], seconds: 5 });
   assert.ok(buf.length); assert.equal(r.gens.length, 2); assert.notEqual(r.gens[0].runKey, r.gens[1].runKey, 'a run that ended needs a new key'); assert.ok(slept >= 65e3, 'waits a minute for verification');
 });
+
+test('a run key an earlier make already spent (idempotency_conflict, e.g. after an empty wallet) is retried under a new key, so a top-up unsticks the card', async () => {
+  const r = rig(); let n = 0;
+  const M = createSlooshMake({ sloosh: { modelSpecs: async (m) => SPECS[m], quoteGeneration: async () => ({ quoteId: '11111111-1111-4111-8111-111111111111', credits: 1 }),
+    generate: async (g) => { r.gens.push(g); if (n++ === 0) throw new Error('Sloosh generate: idempotency_conflict — The request conflicts with a previously recorded operation.'); return { operationId: `op${r.gens.length}` }; },
+    getGeneration: async () => ({ state: 'settled', owner: { phase: 'settled', outputs: [{ generationId: 'g1', status: 'completed', url: 'https://cdn.sloosh.test/out.png' }] } }), reconcileGeneration: async () => null, getAsset: async () => ({}), wait: async (getter) => getter() },
+  finals: { assetFor: async (slug, x) => ({ kind: 'workspace', id: 'a1', url: x.url, type: 'image' }) }, packs: null, viewOf: async () => VIEW, saveGen: () => {}, publicUrl: 'https://feed.test',
+  fetchImpl: async () => ({ ok: true, arrayBuffer: async () => new Uint8Array([1]).buffer }), mock: () => false, tries: 3, backoffMs: 1, sleep: async () => {}, log: { warn() {} } });
+  const buf = await M.image({ slug: 'arata', prompt: 'p', srcFile: 'https://a.test/s.jpg', productName: 'Balance Shampoo 200 ml', ratio: '4:5' });
+  assert.ok(buf.length); assert.equal(r.gens.length, 2); assert.notEqual(r.gens[0].runKey, r.gens[1].runKey);
+});
