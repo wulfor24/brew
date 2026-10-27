@@ -106,7 +106,7 @@ test('the reading screen asks the questions during the read, and only the questi
 });
 
 test('Another take is on every card, and a take shows on its card', () => {
-  assert.match(app, /<button class="icon-btn" data-act="take" aria-label="Another take, a free draft" title="Another take · Free draft">\$\{ic\('refresh'\)\}<\/button>/);
+  assert.match(app, /<button class="icon-btn" data-act="take" aria-label="Another take, a free draft"\$\{tipA\('take'\)\}>\$\{ic\('refresh'\)\}<\/button>/);
   assert.doesNotMatch(app, /data-act="make"/, 'no Make it yours sheet');
   assert.match(app, /document\.addEventListener\('click', async \(e\) => \{ const b = e\.target\.closest\('\.card \[data-act="take"\]'\)/, 'the card stays in place');
   assert.match(app, /if \(p\.take && \(p\.take\.image \|\| p\.take\.drawing \|\| p\.take\.drawError\)\)/, 'cardOf draws the take');

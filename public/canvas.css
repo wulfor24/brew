@@ -585,6 +585,7 @@ body[data-view="remix"] .fab{display:none}
 .tip-i::after{display:none} /* the words float in #tipx (app.js), above every panel edge */
 #tipx{position:fixed;z-index:1000;left:0;top:0;width:max-content;max-width:min(300px,calc(100vw - 16px));padding:8px 10px;border-radius:10px;background:var(--fg);color:var(--on-fg,#fff);font-size:13px;line-height:17px;font-weight:450;text-align:left;white-space:normal;overflow-wrap:anywhere;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .12s}
 #tipx.on{opacity:1}
+[data-tip]{-webkit-touch-callout:none} /* a long press shows the tip (app.js), never the phone's own menu */
 .ship.one .ship-tx b{min-width:0}
 .ship.one .ship-l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lg-made{display:flex;align-items:center;gap:6px;margin:2px 0 0;font-size:13px;line-height:17px;color:var(--fg-3)}

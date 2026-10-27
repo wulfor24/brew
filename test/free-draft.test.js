@@ -11,7 +11,8 @@ test('draft buttons say Free draft; the clip says how long; only the final names
   assert.match(app, /data-rx="video" title="Make the video">\$\{ic\('vid', 's16'\)\}Make it\$\{freeTag\(true\)\}/, 'the make step says Make it, the clip says how long');
   assert.ok(!/ship-redo[^\n]*Redo it\$\{freeTag\(\)\}/.test(app), 'a free Redo it carries no tag: the price or Free draft sits on the primary only (25 Oct)');
   assert.match(app, /Fix it with AI\$\{freeTag\(\)\}/);
-  assert.match(app, /data-act="take" aria-label="Another take, a free draft" title="Another take · Free draft"/);
+  assert.match(app, /data-act="take" aria-label="Another take, a free draft"\$\{tipA\('take'\)\}/); /* hover, focus or a long press says it (tips.js) */
+  assert.match(fs.readFileSync(new URL('../public/tips.js', import.meta.url), 'utf8'), /take: 'Another take: a new free draft/);
   assert.ok(!/class="it-free"/.test(app), 'the chips row has no Free drafts label (25 Oct)');
   assert.match(app, /FREE_CLIP = 'Free draft · about two minutes'/);
   assert.equal((rmx.match(/a free draft, about two minutes/g) || []).length, 2, 'the chat line when a clip starts says the same');
