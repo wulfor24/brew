@@ -455,6 +455,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
       fitLive: (cards) => fitCards(fitPhotos(visualize({ ...seed, posts: cards || [] }, { slug, config, staticText: {}, profile }), profile), { profile, config, seed }).posts,
       catalog: withHooks(catalogOf(profile), hooks), // the products with a photo each, so a draft's picture shows the product its words name
       catalogRank: { hero: profile?.catalog?.hero || [], bestSellers: /best/i.test(String(profile?.catalog?.order || '')), reviews: Object.fromEntries((profile?.catalog?.products || []).filter((x) => x?.handle && +x.reviews?.count).map((x) => [x.handle, +x.reviews.count])) }, // what sells most, for the catalog cards' order (feed-service salesRank)
+      reviewTexts: [...new Set(reviewTexts(profile).map((x) => String(x).trim()).filter(Boolean))].slice(0, 600), /* every real review in full: a quote in the copy is checked against these (claims.js quoteFlags), never the 5 short hooks */
       reviewQuotes: hooks.reviewQuotes, rivalHooks: hooks.rivalHooks, // what buyers say and the rival ads that keep running: every draft plan opens on them (drafts.js hookBlock)
       rivalPages: Object.fromEntries((profile?.ads?.rivals || []).filter((r) => r?.name).map((r) => [r.name, { page: r.page || null, host: r.host || null }])), // the Facebook page the read found per rival, for the story rings (research.js)
       personas: briefJ?.personas || [], // who buys: the studio's “Aim at” knob and chips (studio.js knobsFor)

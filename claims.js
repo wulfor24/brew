@@ -48,7 +48,13 @@ const APPROVED = /\[approved claims\]/;
 export const approvedText = (claims = []) => { const xs = (claims || []).map((c) => (typeof c === 'string' ? c : c?.text)).filter(Boolean); return xs.map((x) => `[approved claims] ${x}`); }; /* each its own segment, so approvedHas reads the list and nothing else */
 /* the phrase sits inside one of the Brand Book's approved claims, never just anywhere in the brand's words (QA audit 24 Oct: Arata's
    tagline said "dermat-approved" and passed because an approved list existed) */
-const approvedHas = (src, phrase) => { const k = String(phrase).toLowerCase().trim(); return src.split('¶').some((seg) => seg.includes('[approved claims]') && seg.includes(k)); };
+/* the same claim in other words passes too (27 Oct: "stronger by 78%" was flagged after "up to 78% stronger" was approved): its number
+   with its unit (78%, 7.4x, "7.4 times") and one of its telling words sit in the same approved claim */
+const claimCore = (x) => String(x || '').toLowerCase().replace(/\bupto\b/g, 'up to').replace(/(\d+(?:\.\d+)?)\s*(?:x\b|×|times\b|-fold\b|fold\b)/g, '$1x').replace(/(\d+(?:\.\d+)?)\s+%/g, '$1%');
+const STOPW = new Set(['up', 'to', 'by', 'in', 'of', 'the', 'and', 'for', 'with', 'your', 'more', 'than', 'less', 'just', 'only', 'over', 'after']);
+const approvedHas = (src, phrase) => { const k = String(phrase).toLowerCase().trim(), segs = src.split('¶').filter((seg) => seg.includes('[approved claims]')); if (segs.some((seg) => seg.includes(k))) return true;
+  const kc = claimCore(k), nums = kc.match(/\d+(?:\.\d+)?(?:%|x)/g) || [], tell = (kc.match(/\p{L}{4,}/gu) || []).filter((w) => !STOPW.has(w));
+  return segs.some((seg) => { const sc = claimCore(seg); if (nums.length) return nums.every((n) => sc.includes(n)) && (!tell.length || tell.some((w) => sc.includes(w.slice(0, Math.max(4, w.length - 2))))); return tell.length >= 2 && tell.every((w) => sc.includes(w.slice(0, Math.max(4, w.length - 2)))); }); };
 /* a rupee price with paise in the brand's words also stands as its whole-rupee rounding, the way the jam's words print it (jam-words.js
    wholeRupees): "₹2,182.15" backs "₹2,182" in every check that reads these words (26 Oct, QV N-P1-3). Added once, at the end */
 const PAISE = /(₹|\brs\.?\s?|\binr\s?)\s?(\d[\d,]*)\.(\d{1,2})\b/g;
@@ -202,11 +208,24 @@ export function copyFlags(text, opts = {}) {
    quotes, the card's evidence), close enough to be theirs. An invented testimonial ("Saw an incredible reduction in hair fall in
    just over 3 weeks") is never put in a shopper's mouth (QV P1-21, 26 Oct). A short quoted name or phrase is not a testimonial */
 const SAYS = /\b(?:i|i'm|i've|my|me|mine)\b|\b(?:love[ds]?|saw|seen|works?|worked|results?|recommend(?:ed)?|bought|tried|using|used|amazing|phenomenal|noticed|difference|reduction|changed|game ?changer|holy grail|stars?)\b/i;
-export function quoteFlags(text, source = '') { const s = String(text || ''), out = []; if (!/[“"]/.test(s)) return out; const src = ` ${words(srcNorm(source || ''))} `;
-  for (const m of s.matchAll(/“([^”]{12,320})”|"([^"\n]{12,320})"/g)) { const q = (m[1] || m[2]).trim(), ws = words(q).split(' ').filter(Boolean); if (ws.length < 5 || !SAYS.test(q)) continue;
-    if (src.includes(` ${ws.join(' ')} `)) continue; const sh = []; for (let i = 0; i + 4 <= ws.length; i++) sh.push(ws.slice(i, i + 4).join(' ')); /* a quote trimmed or lightly tidied is still theirs */
-    if (sh.length && sh.filter((x) => src.includes(` ${x} `)).length / sh.length >= 0.6) continue; out.push(q.length > 70 ? `${q.slice(0, 69).replace(/\s+\S*$/, '')}…` : q); }
+/* any language: letters and digits of every script, "hair fall" and "hairfall" alike, curly and straight quotes alike */
+const qWords = (x) => String(x || '').toLowerCase().normalize('NFKC').replace(/[’'`]/g, '').replace(/\bhair\s+fall\b/g, 'hairfall').replace(/[^\p{L}\p{N}₹%]+/gu, ' ').trim().split(' ').filter(Boolean);
+/* a quote cut short ("It's not an…") ends at the cut: the half word before the dots is dropped */
+const uncut = (q) => { const t = String(q || ''); return /(?:…|\.{3,})\s*$/.test(t) ? t.replace(/\s*(?:…|\.{3,})\s*$/, '').replace(/\s+\S*$/, '') : t; };
+/* the quote's words are one real review's, in a row, or nearly all its 4-word runs sit in ONE review (trimmed or lightly tidied) */
+const inReview = (ws, rev) => { const r = ` ${rev.join(' ')} `; if (r.includes(` ${ws.join(' ')} `)) return true; const sh = []; for (let i = 0; i + 4 <= ws.length; i++) sh.push(ws.slice(i, i + 4).join(' '));
+  return sh.length > 0 && sh.filter((x) => r.includes(` ${x} `)).length / sh.length >= 0.8; };
+const REV = new WeakMap();
+/* text: the shopper-facing words; source: the brand's words (the card's evidence and the review hooks among them); reviews: every real
+   review in full (pack reviewTexts). → the quotes no customer wrote, each in full (shortened only where it is shown) */
+export function quoteFlags(text, source = '', reviews = []) { const s = String(text || ''), out = []; if (!/[“"«„]/.test(s)) return out;
+  const src = ` ${qWords(srcNorm(source || '')).join(' ')} `; let revs = Array.isArray(reviews) ? REV.get(reviews) : null; if (!revs) { revs = (reviews || []).map(qWords).filter((x) => x.length); if (Array.isArray(reviews)) REV.set(reviews, revs); }
+  for (const m of s.matchAll(/“([^”]{12,600})”|"([^"\n]{12,600})"|«([^»]{12,600})»|„([^“”]{12,600})[“”]/g)) { const raw = (m[1] || m[2] || m[3] || m[4]).trim(), q = uncut(raw), ws = qWords(q); if (ws.length < 5 || (!SAYS.test(q) && /^[\x00-\x7F]*$/.test(q))) continue; /* a non-English quote is checked whatever it says */
+    if (src.includes(` ${ws.join(' ')} `) || revs.some((r) => inReview(ws, r))) continue;
+    const sh = []; for (let i = 0; i + 4 <= ws.length; i++) sh.push(ws.slice(i, i + 4).join(' ')); if (sh.length && sh.filter((x) => src.includes(` ${x} `)).length / sh.length >= 0.8) continue;
+    out.push(raw); }
   return [...new Set(out)]; }
+export const shortQuote = (q) => (String(q).length > 70 ? `${String(q).slice(0, 69).replace(/\s+\S*$/, '')}…` : String(q));
 export const COPY_RULE = 'Write natural, idiomatic English a good copywriter would sign off: no forced slang, no shouting caps, never the same product word twice in one name, line breaks as real line breaks. Never the "it\'s not X, it\'s Y" or "X isn\'t A; it\'s B" turn, and prices as the store shows them (₹2,182, never ₹2,182.15).';
 
 /* what a writer slipped on that a person would have to fix: an unbacked claim, the "isn't A; it's B" turn, paise on a price the store

@@ -3641,8 +3641,9 @@
     if (/demandware\.static|\/dw\/image\//.test(x.href)) { x.searchParams.set('sw', w); return x.toString(); }
     if (/(^|\.)imgix\.net$/.test(x.hostname) || x.searchParams.has('w')) { x.searchParams.set('w', w); return x.toString(); }
     return u; } catch { return u; } };
+  const NO_MEDIA = /^\s*(?:none|n\/a|no (?:photo|image|picture|media)|text(?: only| reply)?)\b/i; /* what a post's media line says when it has no picture */
   const pmMedia = (ch, p, lg, { ratio = '', video = false } = {}) => {
-    if (/^\s*(?:none|n\/a|no (?:photo|image|picture|media)|text(?: only| reply)?)\b/i.test(p.media || '')) p = { ...p, media: '' }; /* "None (Text reply)" is no picture, never an empty "Photo to add" box */
+    if (NO_MEDIA.test(p.media || '')) p = { ...p, media: '' }; /* "None (Text reply)" is no picture, never an empty "Photo to add" box */
     const made = imgOf(ch); if (!p.media && !made && !(p.photos || []).length) return lg && view === 'remix' && !/\.(?:reddit_post|quora_answer|comment_reply)$/.test(ch.action || '') /* a thread reply or an answer is words: no empty photo box on it */ ? `<div class="pm-media pm-add"><button class="btn btn-ghost sm" data-ph-open>${ic('pic', 's14')}Add a photo</button></div>` : '';
     if (video && p.video) return `<div class="pm-media sv-media" style="aspect-ratio:9/16"><video class="sv-vid" src="${esc(p.video)}"${p.poster ? ` poster="${esc(p.poster)}"` : ''} muted autoplay loop playsinline preload="metadata" data-sv-play></video>
       <button type="button" class="sv-snd" data-sv-sound aria-label="Turn the sound on" title="Sound">${ic('volOff', 's16')}</button><span class="sv-pbar" aria-hidden="true"><i></i></span></div>`;
@@ -4068,7 +4069,7 @@
     if (!f) { setTimeout(() => fqFetch(ch), 0); return `<button class="btn btn-primary ship-go" disabled><brew-load class="spin"></brew-load>Make it</button>`; }
     if (f.st === 'loading') return `<button class="btn btn-primary ship-go" disabled><brew-load class="spin"></brew-load>Make it</button>`;
     if (f.st === 'err') return `<button class="btn btn-primary ship-go" data-fn-one title="${esc(f.err)}">${ic('sparkles', 's16')}Make it</button>`;
-    const q = f.q, n = Math.round((q.credits || 0) * 100) / 100, cost = q.dummy ? 'simulated' : q.provider === 'gemini' ? 'with Gemini' : n ? `${n} credits` : 'no credits';
+    const q = f.q, n = Math.round((q.credits || 0) * 100) / 100, cost = q.dummy ? 'simulated' : q.provider === 'gemini' ? 'with Gemini' : n ? `${n} credit${n === 1 ? '' : 's'}` : 'no credits';
     return `<button class="btn btn-primary ship-go" data-fn-one title="${esc(q.provider === 'gemini' ? `Sloosh isn’t ready (${q.fallbackWhy || 'no credits'}), so we make it with Gemini.` : `Made on Sloosh with ${q.label || q.model || 'its best model'}. Tap once to make the final ${what}.`)}">${ic('sparkles', 's16')}Make it<small class="btn-free">${esc(cost)}</small></button>`; };
   /* a final the person started here stays "making" on this screen until it lands or fails: a read that left before the tap
      (the job poll, the jam tick) can come back after it without finalPending, and the button turned clickable again (Param, 21 Oct) */
@@ -4114,7 +4115,7 @@
     const act = own ? '' : x.k === 'preview' ? fullAct() : x.fix === 'redo' ? `<button type="button" class="linkbtn" data-cs-open>Change the set-up</button>` : `<button type="button" class="linkbtn" data-fix-one="${i}">Fix it</button>`;
     return `<span class="ship-one ${red ? 'is-red' : 'is-amber'}"><i></i><span title="${esc(x.t)}">${esc(lineCut(x.t))}</span>${act}${x.k === 'claims' ? apprBtn(x.phrases) : ''}${L0.length > 1 ? `<button type="button" class="linkbtn" data-tab="details">+${L0.length - 1} more</button>` : ''}</span>`; };
   const stepBar = (ch) => {
-    const p = ch.pkg || {}, op = null, opt = null, /* one, always: an old jam's options never ask to pick one */ _op = ch.options, media = PH_FAM.includes(ch.family) && !ch.realOnly && (ch.family !== 'post' || isReel(ch) || p.image || p.media || p.video);
+    const p = ch.pkg || {}, op = null, opt = null, /* one, always: an old jam's options never ask to pick one */ _op = ch.options, media = PH_FAM.includes(ch.family) && !ch.realOnly && (ch.family !== 'post' || isReel(ch) || p.image || (p.media && !NO_MEDIA.test(p.media)) || p.video); /* a text post's "None (text only)" is no picture: no photo step, no Make button (27 Oct, LinkedIn) */
     /* a Brew Studio take is already the finished piece (priced, made by the best maker): it is the final, no Sloosh step */
     const hv = ch.versions.find((v) => v.id === ch.head), sv = ch.studio && hv?.studio, fin = hv?.final || (sv ? { studio: true } : null), fix = ch.verdict === 'fix', reel = isReel(ch) || !!p.video;
     /* one step model on every jam (25 Oct: Draft·Send, Draft·Final·Send and Set up·Made·Send meant the same thing three ways) */
@@ -5468,7 +5469,7 @@
     { const f1 = e.target.closest('[data-fix-one]'); if (f1 && RX.ch && !a) rxAct('fix-one', RX.ch, f1); } /* one check's own fix, from the bar's line or its button */
     { const ap = e.target.closest('[data-approve-claims]'); if (ap && RX.ch) { let claims = []; try { claims = JSON.parse(ap.dataset.approveClaims); } catch {} const id = RX.ch.id; ap.disabled = true; ap.textContent = 'Approving…';
       const r = await tapi('POST', `/api/changes/${id}/approve-claims`, { claims }).catch((er) => ({ error: er.message })); if (r?.error) { toast(esc(r.error)); ap.disabled = false; ap.textContent = 'Approve'; return; }
-      if (r.change) { putCh(r.change); if (RX.ch?.id === id) RX.ch = r.change; } sound?.('tick'); toast(`${ic('check', 's16')}Approved ${r.approved.length > 1 ? `${r.approved.length} claims` : 'the claim'}: in your Brand Book → Claims`); paintStudio(); return; } }
+      if (r.change) { putCh(r.change); if (RX.ch?.id === id) RX.ch = r.change; } for (const x of r.others || []) putCh(x); /* the jam's other tabs, checked again */ sound?.('tick'); toast(`${ic('check', 's16')}Approved ${r.approved.length > 1 ? `${r.approved.length} claims` : 'the claim'}: in your Brand Book → Claims`); paintStudio(); return; } }
     { const pp = e.target.closest('[data-jp-prods]'); if (pp && RX.ch) { if (RX.prodList?.ch === RX.ch.id) { RX.prodList = null; return paintStudio(); } const id = RX.ch.id; RX.prodList = { ch: id, busy: true }; paintStudio(); const r = await tapi('GET', `/api/changes/${id}/products`).catch(() => ({})); if (RX.prodList?.ch === id) { RX.prodList = { ch: id, items: r.products || [] }; paintStudio(); } return; } }
     { const pk = e.target.closest('[data-jp-prod]'); if (pk && RX.ch && RX.prodList?.items) { const x = RX.prodList.items[+pk.dataset.jpProd]; RX.prodList = null; if (x && x.name !== RX.ch.product?.name) await jpSetup(RX.ch.id, { product: { name: x.name, img: x.img } }); else paintStudio(); return; } }
     { const fm = e.target.closest('[data-jp-fmt]'); if (fm && RX.ch && fm.getAttribute('aria-pressed') !== 'true') { await jpSetup(RX.ch.id, { format: fm.dataset.jpFmt }); return; } }

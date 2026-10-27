@@ -13,6 +13,7 @@ const EDIT = '(?:make|change|rewrite|re-?write|write|add|remove|drop|cut|shorten
 const POLITE = new RegExp(`^(?:(?:hey|ok|okay|so|and|now|also|please)[,\\s]+)*(?:(?:can|could|would|will) (?:you|we)\\s+(?:please\\s+)?|please\\s+|let'?s\\s+|i want (?:you )?to\\s+|go ahead and\\s+)?${EDIT}\\b`, 'i');
 const ASK = /^(?:(?:hey|ok|okay|so|and|but|also)[,\s]+)*(?:what|why|how|which|who|whom|whose|when|where|is|are|was|were|does|do|did|has|have|had|should|would|could|can|will|explain|tell me|any idea|i wonder)\b/i;
 
+const CHANGE_Q = /^(?:(?:hey|ok|okay|so|and|but|also)[,\s]+)*(?:can|could|should|would|shouldn'?t|couldn'?t) (?:it|this|that|these|the [\w-]+(?: [\w-]+)?|we|you) (?:be|get|have|say|read|use|show|look|sound|feel|start|end|lead|open|mention|include|drop|lose|go)\b/i;
 const SUGGEST = /^(?:(?:hey|ok|okay|so|and|but)[,\s]+)*(?:how|what) about\b|^(?:maybe|perhaps)\b|^(?:what if|why not) (?:we|you)\b/i; /* "how about a Hindi version?": a change asked politely */
 
 /* changes said other ways: "do a Hindi version", "tell me a punchier hook", "can I get a shorter one", "shorter please?" */
@@ -27,6 +28,7 @@ export function isQuestion(text) {
   if (DO.test(s)) return false;
   if (SUGGEST.test(s)) return false;
   if (POLITE.test(s)) return false; /* "can you make it shorter?", "please add the price": a change, even with a question mark */
+  if (CHANGE_Q.test(s)) return false; /* "could the hook be shorter?", "can it say ₹2,182?": a change asked as a question (27 Oct) */
   return /\?\s*$/.test(s) || ASK.test(s);
 }
 
