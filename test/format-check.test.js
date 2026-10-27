@@ -26,6 +26,6 @@ test('wiring: every save runs the format check; a words ask on an unmade Studio 
   assert.match(rx, /const sync = \(t, ch, c\) => \{[\s\S]{0,300}formatFix\(/);
   assert.match(app, /!\(WORDS_ASK\.test\(msg\) && !studioMade\(ch\)\)/); assert.ok(app.includes("WORDS_ASK = /\\b(?:text|words?"));
   assert.match(rt, /if \(!Object\.keys\(patch\)\.length\) out\.said = 'Nothing in the set-up changed/);
-  assert.match(rx, /: same \? `Nothing changed in the words/); assert.match(rx, /cutOut\(prevPkg, ch\.pkg, qs\)/); assert.doesNotMatch(rx, /out\.reply \|\| \(same \? 'Nothing needed changing\.'/);
+  assert.match(rx, /: same \? `Nothing changed in the words/); assert.match(rx, /cutOut\(prevPkg, ch\.pkg, qs, scopeOf\(message\)\)/); assert.doesNotMatch(rx, /out\.reply \|\| \(same \? 'Nothing needed changing\.'/);
   assert.match(fs.readFileSync(new URL('../jam2/studio.js', import.meta.url), 'utf8'), /if \(spec\.fixed\) return spec\.fixed;/);
 });

@@ -187,6 +187,12 @@ test('remove: exactly the words asked out leave the field they were in; the writ
   await S.call('POST /api/changes/:chid/iterate', { message: 'Change only the slide 1 (now: “Evening routine > morning wash.”); keep every other word and setting as it is. remove text: Evening routine > morning wash.', wait: true }, t, { chid: id });
   assert.equal(ch.pkg.slides[0].onSlide, '', 'slide 1 carries no words now'); assert.equal(ch.pkg.slides[1].onSlide, 'Wash away the day\'s buildup.');
   assert.match(ch.thread.filter((x) => x.from === 'ai').at(-1).text, /^Removed “Evening routine > morning wash\.” from slide 1/);
-  await S.call('POST /api/changes/:chid/iterate', { message: 'remove "caffeine" from the caption', wait: true }, t, { chid: id });
-  assert.equal(ch.pkg.caption, 'Rosemary and in our Anti-Hair Fall Intensive Shampoo.'.replace('and in', 'and in'));
+  /* a picked slide: the same words elsewhere (the caption) stay where they are */
+  ch.pkg.slides[1].onSlide = 'Anti-Hair Fall Intensive Shampoo'; const cap = ch.pkg.caption;
+  await S.call('POST /api/changes/:chid/iterate', { message: 'Change only the slide 2 (now: “Anti-Hair Fall Intensive Shampoo”); keep every other word and setting as it is. Remove text: Anti-Hair Fall Intensive Shampoo', wait: true }, t, { chid: id });
+  assert.equal(ch.pkg.slides[1].onSlide, ''); assert.equal(ch.pkg.caption, cap, 'the caption keeps the product name');
+  /* nothing picked: words are cut only where they stand on their own, never out of the middle of a sentence */
+  ch.pkg.caption = 'Rosemary and caffeine in our shampoo.\nShop now on arata.in.';
+  await S.call('POST /api/changes/:chid/iterate', { message: 'remove "Shop now on arata.in." and "caffeine"', wait: true }, t, { chid: id });
+  assert.equal(ch.pkg.caption, 'Rosemary and caffeine in our shampoo.');
 });

@@ -644,11 +644,19 @@ export function createRemix(o) {
   /* the words taken out of a field, case and spacing aside; a field left with only punctuation is empty */
   const cutText = (v, q) => { const rx = new RegExp(String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'), 'i'); if (!rx.test(String(v))) return null;
     const left = String(v).replace(rx, '').replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.;:!?])/g, '$1').replace(/^[\s,.;:–—-]+|[\s,;:–—-]+$/g, ''); return /[\p{L}\p{N}]/u.test(left) ? left : ''; };
-  const cutOut = (prev, next, qs) => { const out = { ...next }, where = [];
+  /* the part a remove ask was picked on ("Change only the slide 1", "…the caption"): { key, row } or null for the whole piece */
+  const scopeOf = (m) => { const x = /^Change only the ([^(;]+?)\s*(?:\(now:|;)/.exec(String(m || '')); if (!x) return null; const lab = x[1].trim().toLowerCase(), sl = /^slide (\d+)$/.exec(lab);
+    if (sl) return { key: /^(?:slides|cards)$/, row: +sl[1] - 1 }; const k = lab.replace(/^the /, '').replace(/[^a-z]+/g, '');
+    return { key: new RegExp(`^(?:${k}|${{ thewords: 'copy|message|body|text', thepost: 'copy|text|body', theemail: 'body|message', wordsonthepicture: 'overlay|headline', primarytext: 'primaryText', button: 'buttons?|cta' }[k] || k})$`, 'i'), row: null }; };
+  /* outside a picked part, words come out only where they stand on their own (a whole line or sentence); cut from the middle of a sentence
+     they would leave it broken (27 Oct: the product name came out of the middle of the caption too) */
+  const ownLine = (v, q) => String(v).split(/\n|(?<=[.!?])\s+/).some((x) => normWords(x) === normWords(q));
+  const cutOut = (prev, next, qs, scope = null) => { const out = { ...next }, where = [];
     for (const [k, v] of Object.entries(prev || {})) {
-      if (typeof v === 'string') { for (const q of qs) { const c = cutText(v, q); if (c != null) { out[k] = c; where.push(k === 'message' || k === 'copy' ? 'the words' : k.replace(/([A-Z])/g, ' $1').toLowerCase()); break; } } }
-      else if (Array.isArray(v)) v.forEach((row, i) => { if (typeof row === 'string') { for (const q of qs) { const c = cutText(row, q); if (c != null) { out[k] = [...(Array.isArray(out[k]) ? out[k] : v)]; out[k][i] = c; where.push(`${k === 'buttons' ? 'button' : 'item'} ${i + 1}`); break; } } }
-        else if (row && typeof row === 'object') for (const [cell, cv] of Object.entries(row)) { if (typeof cv !== 'string' || /^(?:visual|shot|image)$/.test(cell)) continue; for (const q of qs) { const c = cutText(cv, q); if (c != null) { out[k] = [...(Array.isArray(out[k]) ? out[k] : v)]; out[k][i] = { ...(out[k][i] || row), [cell]: c }; where.push(`${/slide|card/i.test(k) ? 'slide' : 'row'} ${i + 1}`); break; } } } }); }
+      if (scope && !scope.key.test(k)) continue;
+      if (typeof v === 'string') { for (const q of qs) { if (!scope && normWords(v) !== normWords(q) && !ownLine(v, q)) continue; const c = cutText(v, q); if (c != null) { out[k] = c; where.push(k === 'message' || k === 'copy' ? 'the words' : k.replace(/([A-Z])/g, ' $1').toLowerCase()); break; } } }
+      else if (Array.isArray(v)) v.forEach((row, i) => { if (scope?.row != null && i !== scope.row) return; if (typeof row === 'string') { for (const q of qs) { if (!scope && normWords(row) !== normWords(q) && !ownLine(row, q)) continue; const c = cutText(row, q); if (c != null) { out[k] = [...(Array.isArray(out[k]) ? out[k] : v)]; out[k][i] = c; where.push(`${k === 'buttons' ? 'button' : 'item'} ${i + 1}`); break; } } }
+        else if (row && typeof row === 'object') for (const [cell, cv] of Object.entries(row)) { if (typeof cv !== 'string' || /^(?:visual|shot|image)$/.test(cell)) continue; for (const q of qs) { if (!scope && normWords(cv) !== normWords(q) && !ownLine(cv, q)) continue; const c = cutText(cv, q); if (c != null) { out[k] = [...(Array.isArray(out[k]) ? out[k] : v)]; out[k][i] = { ...(out[k][i] || row), [cell]: c }; where.push(`${/slide|card/i.test(k) ? 'slide' : 'row'} ${i + 1}`); break; } } } }); }
     return { pkg: out, where: [...new Set(where)] }; };
   const normWords = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}₹%]+/gu, ' ').trim();
   const reviewsLine = (t) => { let rv = []; try { rv = (o.reviewsOf?.(t) || []).filter((x) => x && x.length >= 20 && x.length <= 400).slice(0, 12); } catch { rv = []; }
@@ -1166,7 +1174,7 @@ export function createRemix(o) {
       const prevPkg = ch.pkg; ch.pkg = { ...ch.pkg, ...nextPkg, ...keepMedia(ch.pkg) };
       /* "remove …" takes exactly those words out of the field they were in, whatever the writer sent back for it (27 Oct, Param: the writer
          swapped slide 1's line for the product name and said "Removed"); the rest of the package is the writer's */
-      let cutWhere = []; if (CLEAR_ASK.test(message)) { const qs = clearTargets(message); if (qs.length) { const r = cutOut(prevPkg, ch.pkg, qs); ch.pkg = r.pkg; cutWhere = r.where; } }
+      let cutWhere = []; if (CLEAR_ASK.test(message)) { const qs = clearTargets(message); if (qs.length) { const r = cutOut(prevPkg, ch.pkg, qs, scopeOf(message)); ch.pkg = r.pkg; cutWhere = r.where; } }
       if (BANNED.test(publicText(ch.family, ch.action, ch.pkg).join(' '))) ch.pkg = rulePkg(t, ch.agent, ch.family, ch.pkg);
       sync(t, ch, c);
       /* a version only when the package really changed: the same words back (a question the router missed) is no new version */

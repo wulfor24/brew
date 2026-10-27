@@ -44,3 +44,9 @@ test('the stage never puts the store photo in a frame: a frame being made shows 
   assert.doesNotMatch(body, /\|\| st\.productImg\b/, 'no frame falls back to the product photo'); assert.match(body, /waitPic\(i, n \|\| 1, st\.bc, fl\?\.err\)/); assert.match(body, /ownMade\(ch, st\)/);
   assert.match(fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8'), /firstLookNow\(sl, c\.id, \{ card, piece:/);
 });
+
+test('a made first look fills its frame: the packshot dressing (contain, padding, multiply) is only for the store photo standing in', () => {
+  const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'), css = fs.readFileSync(new URL('../public/creative-stage.css', import.meta.url), 'utf8');
+  assert.match(app, /class="cs-frame\$\{!made && pvDraft \? ' is-look' : ''\}/);
+  assert.match(css, /\.cs-frame\.is-look \.ig-slide>img\{object-fit:cover!important;padding:0!important;mix-blend-mode:normal!important/);
+});

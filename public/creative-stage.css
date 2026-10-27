@@ -300,3 +300,8 @@
 .cs-pop .cs-plist button.cs-prow{flex:none} /* rows never squash into each other in the scrolling list (27 Oct) */
 .cs-pop .cs-plist .cs-ptx b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .cs-pop .cs-plist .cs-ptx small{color:var(--fg-2,#505050)}
+
+/* a made first look (a picture per frame, made at the size picked) fills its frame edge to edge: the packshot dressing above (contain,
+   padding, multiply on a tinted ground) is only for the store photo standing in (27 Oct, Param: "why doesn't content fit the box?") */
+.cs-frame.is-look .am-media,.cs-frame.is-look .as-img,.cs-frame.is-look .ig-slide{background:none!important}
+.cs-frame.is-look .am-media>img,.cs-frame.is-look .as-img img,.cs-frame.is-look img.as-photo,.cs-frame.is-look .ig-slide>img{object-fit:cover!important;padding:0!important;mix-blend-mode:normal!important;filter:none!important;opacity:1!important}
