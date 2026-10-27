@@ -1136,6 +1136,8 @@ async function serve(req, res, u) {
     }
     if (u.pathname.startsWith('/research/')) { /* shared by every brand: this instance's disk, then the bucket (never the default brand's research, which has none) */
       const f = await researchFile(path.basename(u.pathname)); if (!f) return send(res, 404, 'no', 'text/plain');
+      /* ?raw=1: the file's own bytes, never a lighter WebP copy under its .png name (Sloosh's importer refuses that; 27 Oct) */
+      if (u.searchParams.get('raw') === '1') return serveFile(req, res, f, { immutable: true });
       return serveFile(req, res, (await lighter(f, req.headers.accept).catch(() => null)) || f, { immutable: true, vary: 'Accept' }); /* a page's <img> gets a light copy; the file itself is untouched (img-light.js, 26 Oct) */
     }
     if (u.pathname.startsWith('/gen/')) {

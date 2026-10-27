@@ -30,8 +30,10 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
   async function linkFor(x) {
     if (!x) return null;
     if (!Buffer.isBuffer(x) && isFile(x)) x = fs.readFileSync(x);
-    if (Buffer.isBuffer(x)) { const name = `ref-${sha(x)}.${extOf(x)}`; saveGen(name, x); await genFlush([name]); return `${base}/gen/${name}`; }
-    const s = String(x); return /^https?:\/\//.test(s) ? s : `${base}/${s.replace(/^\//, '')}`;
+    if (Buffer.isBuffer(x)) { const name = `ref-${sha(x)}.${extOf(x)}`; saveGen(name, x); await genFlush([name]); return `${base}/gen/${name}?raw=1`; }
+    const s = String(x); if (/^https?:\/\//.test(s)) return s;
+    /* a generated file is handed over as its own bytes (?raw=1), never the lighter copy the page gets */
+    return `${base}/${s.replace(/^\//, '')}${/^\/?gen\//.test(s) && !/[?]/.test(s) ? '?raw=1' : ''}`;
   }
 
   /* the brand's art direction and its own references, from the Brand Book (member view: generation only, never shown or shared) */

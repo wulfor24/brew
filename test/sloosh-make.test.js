@@ -92,7 +92,7 @@ test('an SVG logo is turned into a PNG; a reference that still won’t import is
   const M = createSlooshMake({ sloosh, finals, viewOf: async () => ({ kit: { logo: 'https://oasis.test/logo.svg' }, styleRefs: [{ src: 'https://oasis.test/bad.heic', from: 'team' }, { src: 'https://oasis.test/ok.jpg', from: 'team' }] }),
     saveGen: () => {}, publicUrl: 'https://feed.test', toPng: async () => Buffer.from([0x89, 0x50, 0x4e, 0x47]), fetchImpl: async (u) => (/heic/.test(u) ? { ok: false } : { ok: true, arrayBuffer: async () => new Uint8Array([60, 115, 118, 103]).buffer }), mock: () => false, log: { warn() {} } });
   await M.image({ slug: 'x', prompt: 'p', srcFile: 'https://oasis.test/p.jpg' });
-  assert.equal(imported[0], 'https://oasis.test/p.jpg'); assert.match(imported[1], /^https:\/\/feed\.test\/gen\/ref-[a-f0-9]{16}\.png$/, 'the logo as a PNG');
+  assert.equal(imported[0], 'https://oasis.test/p.jpg'); assert.match(imported[1], /^https:\/\/feed\.test\/gen\/ref-[a-f0-9]{16}\.png\?raw=1$/, 'the logo as a PNG');
   assert.equal(asks[0].references.length, 3, 'product, logo, the one good ref'); assert.match(asks[0].prompt, /Image 3 is the look/); assert.doesNotMatch(asks[0].prompt, /Image 4/);
   const finals2 = { assetFor: async () => { throw new Error('Sloosh import_asset: asset_media_unsupported'); } };
   const M2 = createSlooshMake({ sloosh, finals: finals2, viewOf: async () => ({}), saveGen: () => {}, publicUrl: 'https://feed.test', fetchImpl: async () => ({ ok: false }), mock: () => false, tries: 1, log: { warn() {} } });

@@ -83,7 +83,8 @@ export function createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFl
   async function assetFor(slug, ref) {
     const rel = String(ref?.url || ref?.file || ref?.rel || ref || '').trim(); if (!rel) throw new Error('a reference with no file');
     if (ref?.asset?.id) return ref.asset;
-    const url = /^https?:\/\//.test(rel) ? rel : `${publicUrl.replace(/\/$/, '')}/${rel.replace(/^\//, '')}`;
+    /* a generated file goes as its own bytes (?raw=1): the page's lighter WebP copy under a .png name is refused by Sloosh */
+    const url0 = /^https?:\/\//.test(rel) ? rel : `${publicUrl.replace(/\/$/, '')}/${rel.replace(/^\//, '')}`, url = /\/gen\/[^?]+$/.test(url0) && url0.startsWith(publicUrl.replace(/\/$/, '') || '\u0000') ? `${url0}?raw=1` : url0;
     const cache = await assetCache(slug), key = sha(url), ws = await wsId(), hit = cache[key];
     /* a kept asset id is reused, but never its old link: Sloosh's asset URLs have no fixed lifetime, and a quote that passes a stale one
        is refused ("An uploaded asset does not match its owned asset. Call get_asset and pass its returned url", owner_invalid_request:

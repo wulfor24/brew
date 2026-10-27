@@ -22,7 +22,8 @@ export const CAPS = Object.keys(ROUTES.route);
 export function createEngines({ geminiImage, vertexVideo, vertexVoice, vertexMusic = null, finals = null, saveGen, genFile, publicUrl = process.env.PUBLIC_URL || 'https://brew.joinsquareup.com', photo = async () => null,
   fetchImpl = fetch, env = process.env, mock = () => process.env.AI_MOCK === '1', log = console }) {
   const keep = (buf, ext) => { const name = `j2-${sha(buf)}.${ext}`; saveGen(name, buf); return 'gen/' + name; };
-  const pub = (rel) => (/^https?:/.test(rel) ? rel : `${publicUrl.replace(/\/$/, '')}/${String(rel).replace(/^\//, '')}`);
+  /* a generated file goes to Sloosh as its own bytes (?raw=1), never the page's lighter WebP copy (27 Oct) */
+  const pub = (rel) => (/^https?:/.test(rel) ? rel : `${publicUrl.replace(/\/$/, '')}/${String(rel).replace(/^\//, '')}${/^\/?gen\/[^?]+$/.test(String(rel)) ? '?raw=1' : ''}`);
   const V = ROUTES.vertex.usd, H = ROUTES.higgsfield;
 
   /* ---------- vertex (live) ---------- */
