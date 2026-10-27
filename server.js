@@ -250,7 +250,7 @@ const fileEntry = (f) => { const st = fs.statSync(f); const e0 = ZC.get(f); if (
   const raw = fs.readFileSync(f), e = { mtime: st.mtimeMs, size: st.size, raw, etag: `"${crypto.createHash('sha1').update(raw).digest('base64url').slice(0, 16)}"` }; ZC.set(f, e); return e; };
 const verOf = (f) => { try { return fileEntry(f).etag.slice(1, 9); } catch { return null; } };
 const serveFile = (req, res, f, o = {}) => {
-  const type = TYPES[path.extname(f)] || 'application/octet-stream', st = fs.statSync(f), size = st.size;
+  const type = o.type || TYPES[path.extname(f)] || 'application/octet-stream', st = fs.statSync(f), size = st.size;
   const pinned = o.immutable || /[?&]v=/.test(req.url || '') || /\/(research|gen)\//.test(f); // a versioned or content-named file never changes
   const cache = pinned ? 'public, max-age=31536000, immutable' : o.cache || (/\.(jpe?g|png|svg|webp|ico|mp4)$/i.test(f) ? 'public, max-age=3600' : 'no-cache');
   if (ZTEXT.test(f) && size < 8e6 && !req.headers.range) {
@@ -1136,9 +1136,15 @@ async function serve(req, res, u) {
     }
     if (u.pathname.startsWith('/research/')) { /* shared by every brand: this instance's disk, then the bucket (never the default brand's research, which has none) */
       const f = await researchFile(path.basename(u.pathname)); if (!f) return send(res, 404, 'no', 'text/plain');
-      /* ?raw=1: the file's own bytes, never a lighter WebP copy under its .png name (Sloosh's importer refuses that; 27 Oct) */
-      if (u.searchParams.get('raw') === '1') return serveFile(req, res, f, { immutable: true });
       return serveFile(req, res, (await lighter(f, req.headers.accept).catch(() => null)) || f, { immutable: true, vary: 'Accept' }); /* a page's <img> gets a light copy; the file itself is untouched (img-light.js, 26 Oct) */
+    }
+    /* /genraw/<name>: a generated file's own bytes, typed by what they are (a Sloosh JPEG saved under a .png name is image/jpeg), never
+       the lighter WebP copy the page gets: what Sloosh imports (its importer refuses a type that doesn't match the bytes; 27 Oct) */
+    if (u.pathname.startsWith('/genraw/')) {
+      const f = await genFile(path.basename(u.pathname)); if (!f) return send(res, 404, 'no', 'text/plain');
+      const h = Buffer.alloc(12); try { const fd = fs.openSync(f, 'r'); fs.readSync(fd, h, 0, 12, 0); fs.closeSync(fd); } catch {}
+      const type = h[0] === 0x89 ? 'image/png' : h[0] === 0xff && h[1] === 0xd8 ? 'image/jpeg' : h.slice(8, 12).toString() === 'WEBP' ? 'image/webp' : h.slice(4, 8).toString() === 'ftyp' ? 'video/mp4' : h.slice(0, 3).toString() === 'GIF' ? 'image/gif' : undefined;
+      return serveFile(req, res, f, { immutable: true, type });
     }
     if (u.pathname.startsWith('/gen/')) {
       const f = await genFile(path.basename(u.pathname)); if (!f) return send(res, 404, 'no', 'text/plain');
