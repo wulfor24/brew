@@ -222,11 +222,14 @@ let slooshMake = null;
 const rawImage = async (o) => { if (!slooshMake) throw Object.assign(new Error('Sloosh is not ready yet'), { soft: true }); return slooshMake.image({ ...o, slug: o.slug || inBrand()?.slug || null }); };
 /* SVG, GIF, AVIF or HEIC product photos become PNGs before any model or check sees them (img-norm.js) */
 const imgNorm = createImageNorm({ withBrowser, log: console });
-const geminiImage = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o), verify: sameProduct, looks: draftLooks, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
+/* the free flat-panel pixel test was made for Gemini paste-ups; Sloosh designs with colour blocks on purpose, and the test sent good
+   pictures round again (27 Oct, Arata): the vision judge alone decides */
+const SLOOSH_PIXELS = async () => ({ collage: false, why: '' });
+const geminiImage = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o), verify: sameProduct, looks: draftLooks, pixels: SLOOSH_PIXELS, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
 /* every picture the build (ad statics, the team's statics), background drafts and story watchers make counts against the day's
    image budget, the brand's share first (budget.js). The jam's own routes count theirs before calling imageGen */
 const countedImage = async (o = {}) => { if (!spend('image', o.slug)) throw Object.assign(new Error(budget.why('image', o.slug) || 'The image budget for today is used up.'), { soft: true, budget: true }); return geminiImage(o); };
-const imageGen = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o), verify: sameProduct, looks: draftLooks, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
+const imageGen = createImageGuard({ balance: balanceWarm, gen: (o) => rawImage(o), verify: sameProduct, looks: draftLooks, pixels: SLOOSH_PIXELS, fetchPhoto: photoAny, resolve: (f) => resolveLocal(f), normalize: imgNorm.normalize, context: inBrand, log: console });
 
 // ---------- mock replies (free, used when AI is off or fails) ----------
 // three cuts of the card itself when the writer is off: its own numbers, its reason, a smaller first step.
