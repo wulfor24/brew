@@ -111,7 +111,7 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     /* a look reference (the brand's own posts) can show other products: only the product photo's product may appear (27 Oct, Arata: a
        sea-salt spray from a post walked into a shampoo ad) */
     const onlyProduct = prod.length && refs.some((r) => r.job === 'style' || r.job === 'logo') ? 'Only the product from image 1 appears; never a product, bottle or pack from any other image (those are for the look only).' : '';
-    const prompt = [o.prompt, onlyProduct, words.length ? `Set these words in the picture exactly as written, in the brand's type, where they read first: ${words.map((w) => `"${w}"`).join(' / ')}.` : '',
+    const prompt = [o.prompt, onlyProduct, words.length ? `Set these words in the picture exactly as written, in the brand's type, where they read first: ${words.map((w) => `"${w}"`).join(' / ')}. No other words, banners, badges, prices or buttons anywhere; only the product's own label.` : '',
       b.block ? `The brand's art direction (follow it):\n${b.block}` : '', refLines(refs.map((r, i) => ({ ...r, n: i + 1 })))].filter(Boolean).join('\n\n');
     return run({ slug: o.slug, mode: 'image_gen', prompt, route, refs, path: o.path || job });
   }
