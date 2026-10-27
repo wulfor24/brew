@@ -119,6 +119,8 @@ export const sameCard = (d, c) => { if (!d?.cardTitle || d.cardTitle === c?.titl
   let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.min(a.size, b.size) >= 0.5; };
 /* 3 (27 Oct): made by Sloosh with the Brand Book, every reference and the headline set in the picture. A saved draft of an older
    version stays on its card until its Sloosh draft lands (needsDraft asks for one; draftFor keeps showing the old one) */
+/* a draft that shows a made picture, slides or a clip of its own (not only words, not only the real product photo) */
+export const hasPicture = (d) => !!d && !d.failedAt && (!!d.video || !!d.slides?.length || (!!(d.image || d.render) && !d.photoOnly) || ['email', 'whatsapp', 'page', 'catalog'].includes(d.as) && !!d.render);
 export const DRAFT_K = 4; /* 4 (27 Oct): a look per card, rotated across the feed, and real scenes (never a packshot on a plain ground) */
 export function draftFor(c, all = {}) {
   const d = c?.id ? all?.[c.id] : null; if (!d || d.failedAt) return null;
@@ -132,6 +134,7 @@ export const MAX_RETRIES = 6;
 export function needsDraft(c, all = {}, now = Date.now()) {
   const d = all?.[c.id]; if (!d) return true;
   if (d.failedAt) return !(d.key === draftKey(c) && now < (d.retryAt || d.failedAt + retryWait(d.fails || 1))); /* retryAt: a budget refusal waits for the reset */
+  if (d.retryAt && now < d.retryAt && d.key === draftKey(c) && sameCard(d, c)) return false; /* an older draft whose redraft came back without a picture waits */
   return !(d.k === DRAFT_K && d.key === draftKey(c) && sameCard(d, c));
 }
 // what the card says, as the jam brief would open: the card, its move, its post
@@ -302,7 +305,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       if (!fits(cfg.imageUsd)) return budgetWait(d, "The picture comes with tomorrow's budget.");
       try { const r = await makeStill(slug, c, { src, ip, ratio, text, catalog: p.catalog || null, brand: p.seed?.brand?.name || '', named, salt: take ? today(now()) : '', words: kind === 'image' && d.headline ? d.headline : null, kind: c.make?.format || kind });
         if (kind === 'image' && d.headline && !r.failed && !r.buf?.guard?.wordsMissing) d.wordsIn = true; /* the headline is in the picture: nothing is laid over it */
-        if (r.failed) { d.photoOnly = true; d.imgRetry = { n: 1, next: now() + retryWait(1), err: cut(r.error || '', 160) }; d.note = cut(`${d.note} For now this is the real product photo; the new picture is being made again.`, 220); log.warn?.('[drafts-bg] image fell back to the real photo', slug, c.id, r.error || ''); }
+        if (r.failed) { box.usd += imageCost(r.buf, cfg); /* a held-back picture was still made and paid for */ d.photoOnly = true; d.imgRetry = { n: 1, next: now() + retryWait(1), err: cut(r.error || '', 160) }; d.note = cut(`${d.note} For now this is the real product photo; the new picture is being made again.`, 220); log.warn?.('[drafts-bg] image fell back to the real photo', slug, c.id, r.error || ''); }
         else { box.usd += imageCost(r.buf, cfg); d.maker = r.buf?.provider || null; /* sloosh | vertex (the stand-in): kept after a top-up */ if (r.retried) d.retried = true; if (r.buf?.guard?.labelApprox) d.labelApprox = true; }
         stillBuf = r.buf; d.fromPhoto = true; return r.rel; }
       catch (e) { if (e.budget) return budgetWait(d, 'The picture comes when the picture budget resets.'); /* the brand's image share for today is used */
@@ -449,7 +452,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       const src = await photo(c, named) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); if (!src) continue;
       const t0 = box.usd; tried++;
       const inPic = d.kind === 'image' && d.headline; try { const r = await makeStill(slug, c, { src, ip: d.ip, ratio: d.ratio || '4:5', text: d.imgText || '', catalog: p.catalog || null, brand: brand.name, named, retry: true, words: inPic ? d.headline : null, kind: c.make?.format || d.kind });
-        if (r.failed) throw new Error(r.error || 'the picture still showed another product'); /* the real photo again is not a made picture: back off and try later */
+        if (r.failed) { box.usd += imageCost(r.buf, cfg); throw new Error(r.error || 'the picture still showed another product'); } /* the real photo again is not a made picture: back off and try later */
         box.usd += imageCost(r.buf, cfg); d.maker = r.buf?.provider || null; d.image = r.rel; d.fromPhoto = true; d.qv = LOOKS_V; delete d.imgRetry; delete d.photoOnly; delete d.err; d.note = cut(String(d.note || '').replace(/ ?For now this is the real product photo;.*$/, '').replace(/ The picture comes.*$/, ''), 220);
         if (r.buf?.guard?.labelApprox) d.labelApprox = true;
         if (d.as === 'text') d.as = d.kind === 'collection' ? 'collection' : 'image';
@@ -505,11 +508,16 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
         if (made.length >= n || box.cap - box.usd < cfg.textUsd) break;
         const kind = draftKind(c), est = estUsd(kind, cfg);
         if (box.usd + Math.min(est, cfg.textUsd + (['image', 'collection', 'video', 'carousel', 'stories'].includes(kind) ? cfg.imageUsd : 0)) > box.cap) { errors.push({ cardId: c.id, error: 'daily cap' }); continue; } /* a dearer card waits; a cheaper one further down may still fit */
-        box.start = box.usd;
-        try { const d = await makeOne(slug, p, c, kind, box, { cache }); cache[c.id] = d; made.push({ cardId: c.id, as: d.as, kind, title: d.title, image: d.render || d.image || null, video: d.video || null, usd: d.usd });
+        box.start = box.usd; const prev = hasPicture(draftFor(c, cache)) ? draftFor(c, cache) : null; /* a draft of an older version that has its picture */
+        const holdPrev = (why) => { prev.redrafts = (prev.redrafts || 0) + 1; prev.retryAt = now() + retryWait(prev.redrafts); errors.push({ cardId: c.id, error: `redraft waits: ${cut(why, 120)}` }); log.warn?.('[drafts-bg] redraft kept the old draft', slug, c.id, cut(why, 160)); };
+        try { const d = await makeOne(slug, p, c, kind, box, { cache });
+          if (prev && !hasPicture(d)) { holdPrev(d.err || d.note || 'no picture of its own'); await save(slug, cache).catch(() => {}); continue; } /* the redraft came back without a picture: the old draft stays, tried again later */
+          cache[c.id] = d; made.push({ cardId: c.id, as: d.as, kind, title: d.title, image: d.render || d.image || null, video: d.video || null, usd: d.usd });
           await save(slug, cache); }
-        catch (e) { if (e.mock) { errors.push({ cardId: c.id, error: 'AI is on mock' }); break; } errors.push({ cardId: c.id, error: e.message }); const prev = cache[c.id];
-          cache[c.id] = { k: DRAFT_K, cardId: c.id, key: draftKey(c), failedAt: now(), fails: (prev?.failedAt && prev.key === draftKey(c) ? prev.fails || 1 : 0) + 1, err: cut(e.message, 160), ...(e.budget ? { retryAt: nextDay(now()) } : {}) }; /* a budget refusal waits for the reset, then the card is drafted again */
+        catch (e) { if (e.mock) { errors.push({ cardId: c.id, error: 'AI is on mock' }); break; }
+          if (prev) { holdPrev(e.message); await save(slug, cache).catch(() => {}); continue; }
+          errors.push({ cardId: c.id, error: e.message }); const old0 = cache[c.id];
+          cache[c.id] = { k: DRAFT_K, cardId: c.id, key: draftKey(c), failedAt: now(), fails: (old0?.failedAt && old0.key === draftKey(c) ? old0.fails || 1 : 0) + 1, err: cut(e.message, 160), ...(e.budget ? { retryAt: nextDay(now()) } : {}) }; /* a budget refusal waits for the reset, then the card is drafted again */
           await save(slug, cache).catch(() => {}); log.warn?.('[drafts-bg]', slug, c.id, e.message); }
       }
       if (await remakeStills(slug, p, cache, box, made)) await save(slug, cache); /* made again, or its next try booked */
@@ -553,15 +561,15 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
       const d = draftFor(c, cache);
       if (box.usd + cfg.videoUsd + (d.kind === 'video' ? 0 : cfg.imageUsd) > box.cap + 1e-9) return;
       st.clipN = (st.clipN || 0) + 1; d.clipDay = day; /* tried today, whatever comes of it */
-      if (!spend('video', slug)) return; /* the server's video limit for today is used: the picture is not made for nothing */
       box.start = box.usd; let frame = null;
       if (d.kind !== 'video') { /* an image card: a 9:16 first frame of the same scene, then the clip */
         const brand = brandOf(p), named = cardProduct(c, p.catalog, { brand: brand.name }) || matchProduct(d.imgText || `${d.title}. ${d.copy}`, p.catalog, { brand: brand.name });
         const src = await photo(c, named) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); if (!src) continue;
         const ip = imagePrompt({ title: d.title, visual: d.visual || '' }, true, c, { name: brand.name, ...(p.config?.product || {}), product: named?.t || d.product || '' }, { ratio: '9:16', topSpace: !!d.headline });
         try { const r = await makeStill(slug, c, { src, ip, ratio: '9:16', text: d.imgText || '', catalog: p.catalog || null, brand: brand.name, named, salt: `clip|${day}` });
-          if (r.failed) continue; box.usd += imageCost(r.buf, cfg); frame = r.rel; d.clipStill = r.rel; const h = await headOn(r.buf, d, '9:16', r.rel); if (h) d.poster = h; }
-        catch (e) { log.warn?.('[drafts-bg] clip still', slug, c.id, e.message); continue; } }
+          box.usd += imageCost(r.buf, cfg); if (r.failed) { await save(slug, cache).catch(() => {}); continue; } frame = r.rel; d.clipStill = r.rel; const h = await headOn(r.buf, d, '9:16', r.rel); if (h) d.poster = h; }
+        catch (e) { log.warn?.('[drafts-bg] clip still', slug, c.id, e.message); await save(slug, cache).catch(() => {}); continue; } }
+      if (!spend('video', slug)) { await save(slug, cache).catch(() => {}); return; } /* the server's video limit for today is used */
       if (!d.motion) d.motion = clipMotion(d);
       if (await animate(slug, d, box, { frame, spent: true })) { d.usd = +((d.usd || 0) + box.usd - box.start).toFixed(4); made.push({ cardId: c.id, as: d.as, kind: d.kind, title: d.title, image: d.poster || d.render || d.image, video: d.video, usd: +(box.usd - box.start).toFixed(4), clip: true }); }
       else if (!d.video && d.kind !== 'video') { delete d.clipStill; delete d.poster; delete d.clipRetry; delete d.err; d.note = String(d.note || '').replace(/ The clip.*$/, ''); } /* an image ad stays a finished image ad: tried again another day */

@@ -211,3 +211,17 @@ test('looks rotate across the feed, and up to DRAFTS_CLIPS_PER_DAY image cards g
   const withClip = ds.filter((d) => d.video); assert.equal(withClip.length, 3, 'three clips a day'); assert.ok(!withClip.some((d) => d.photoOnly), 'never on the real photo');
   assert.ok(withClip.every((d) => d.kind === 'image' && d.clipStill), 'an image card clip opens on its own 9:16 still');
 });
+
+test('a redraft (DRAFT_K bump) that comes back without a picture keeps the card\'s old draft and waits', async () => {
+  const { hasPicture } = await import('../drafts-bg.js');
+  const posts = [{ id: 'm01-1', type: 'idea', kind: 'media', images: ['b/acme-com/a/runner.jpg'], title: 'Runner ad', sub: 's', src: 'Move 01', time: '5 min', agent: 'creative', make: { format: 'single image ad' } }];
+  const { P, photo } = await setup(posts);
+  const old = { k: DRAFT_K - 1, key: draftKey(posts[0]), cardId: 'm01-1', cardTitle: 'Runner ad', as: 'image', kind: 'image', image: 'gen/old.png', product: 'Runner', photo: 'b/acme-com/a/runner.jpg', qv: 3, checkedAt: NOW, at: NOW - DAY };
+  await P.put('acme-com', 'drafts/cards.json', { 'm01-1': old });
+  const geminiImage = async () => Object.assign(Buffer.from('jpg'), { guard: { genFailed: true, gens: 1, error: 'quota' } }); /* the new picture is only the real photo */
+  const J = createDraftsBg({ packs: P, ai: fakeAI(), geminiImage, saveGen: () => {}, genFile: async () => photo, photoAsync: async () => photo, treg: { onCharge: () => {} }, launchBrowser: () => ({}), makers: { render: async () => 'gen/r.jpg', head: async () => null }, spend: () => true,
+    loadPack: (slug) => P.load(slug, { fresh: true }), lastOpenOf: async () => NOW - DAY, log: quiet, env: { DRAFTS_BG: '1', DRAFTS_CLIPS_PER_DAY: '0' }, now: () => NOW });
+  await J.runOne('acme-com'); const d = (await J.cacheOf('acme-com'))['m01-1'];
+  assert.equal(d.image, 'gen/old.png', 'the old picture stays'); assert.ok(hasPicture(d)); assert.ok(d.retryAt > NOW, 'the redraft is tried again later');
+  assert.equal(needsDraft(posts[0], { 'm01-1': d }, NOW), false); assert.equal(needsDraft(posts[0], { 'm01-1': d }, d.retryAt + 1), true);
+});

@@ -178,3 +178,11 @@ test('the stand-in is off under VERTEX_STANDIN=0 or without one: Sloosh alone, a
     standin: { image: async () => { throw new Error('must not run'); } }, standinOn: () => false, log: { warn() {} } });
   await assert.rejects(() => M.image({ slug: 'x', prompt: 'p', srcFile: 'https://a.test/s.jpg' }), /Sloosh couldn/); assert.ok(r);
 });
+
+test('a refused prompt, or a cast face Sloosh has not verified, never goes round Sloosh to the stand-in', async () => {
+  for (const refuse of ['Sloosh generate: content_policy — the prompt was refused', 'Sloosh run failed (real_person_reference)']) {
+    const r = standinRig({ refuse }); await assert.rejects(() => r.M.image({ slug: 'x', prompt: 'p', srcFile: 'https://a.test/s.jpg' }), (e) => e.sloosh); assert.equal(r.made.length, 0, refuse);
+  }
+  const c = standinRig({ refuse: 'Sloosh isn’t connected yet. Our team connects it from the ops page.' });
+  assert.equal((await c.M.image({ slug: 'x', prompt: 'p', srcFile: 'https://a.test/s.jpg' })).provider, 'vertex'); assert.equal(c.M.skipping(), true, 'not connected: skipped for a while');
+});

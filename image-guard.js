@@ -50,7 +50,7 @@ export function createImageGuard({ balance = null, gen, verify = null, fetchPhot
   /* balance(buf, refFile) → { buf, fixed }: a picture washed warm is pulled back toward its product photo (color-cast.js) */
   const REF = Symbol('ref');
   const finish = async (r) => { if (!balance || !Buffer.isBuffer(r) || r.guard?.fallback) return r; const x = await balance(r, r[REF] || null).catch(() => null);
-    return x?.fixed ? Object.assign(x.buf, { guard: { ...r.guard, warmFixed: true } }) : r; };
+    return x?.fixed ? Object.assign(x.buf, { guard: { ...r.guard, warmFixed: true }, ...(r.provider ? { provider: r.provider } : {}) }) : r; };
   return async (o = {}) => finish(await gated(o));
   /* looks(buf, words) → { ok, verdict, why } | null (server.js draftLooks); pixels(buf) → { collage, why } (free, first).
      Judged: every picture meant to show a product (not a background-only scene, an edit of a finished picture, a cut-out) */
@@ -72,7 +72,7 @@ export function createImageGuard({ balance = null, gen, verify = null, fetchPhot
     if (q.verdict !== 'expert' && (q2?.verdict || q.verdict) !== 'expert') { keep.guard = { ...keep.guard, gens, pro, retried: !!r2, looks: q2?.verdict || q.verdict, looksDoubt: String(q.why).slice(0, 160), ...((q2?.verdict || q.verdict) === 'words' ? { wordsMissing: true } : {}) }; return keep; }
     /* held back: never shown. The real product photo stands in for callers that take one; the rest get a plain error */
     const ref = r[REF] || r2?.[REF];
-    if (o.fallback && ref) return Object.assign(fs.readFileSync(ref), { guard: { ...r.guard, gens, pro, fallback: true, genFailed: true, held: q.verdict, error: `held back: ${String(q.why).slice(0, 160)}` }, [REF]: ref });
+    if (o.fallback && ref) return Object.assign(fs.readFileSync(ref), { guard: { ...r.guard, gens, pro, fallback: true, genFailed: true, held: q.verdict, error: `held back: ${String(q.why).slice(0, 160)}` }, [REF]: ref, ...(r.provider ? { provider: r.provider } : {}) });
     throw Object.assign(new Error(`The picture didn't come out clean enough to show (${String(q.why).slice(0, 140)}). Try again.`), { soft: true, held: q.verdict });
   }
   async function guardedImage(o = {}) {

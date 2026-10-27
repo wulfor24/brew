@@ -28,7 +28,7 @@ import { moneyWords, symOf } from './jam-words.js'; // prices as the store shows
 import { createImageGuard } from './image-guard.js';
 import { createSlooshMake } from './sloosh-make.js'; // Sloosh makes and edits every picture and clip (27 Oct)
 import { createStandin, standinOn } from './vertex-standin.js'; // while Sloosh can't (no credit, not connected), Gemini image + Veo stand in
-import { setMakers, makeVideo } from './media.js';
+import { setMakers } from './media.js';
 import { lookPrompt, lookVerdict } from './draft-quality.js'; // the look check every product picture passes before it is shown
 import { createPacks, slugOf, DEFAULT } from './brand-pack.js';
 import { createBrandKit, toMarkdown, toJSON, llmsTxt } from './brand-kit.js'; // the Brand Book shared: /<slug>/brand, .md, .json, llms.txt, brand-kit.zip
@@ -573,7 +573,7 @@ const slooshAuth = createSlooshAuth({ packs, vault: createVault(packs), auth, lo
 const sloosh = createSloosh({ tokenFor: slooshAuth.tokenFor, log: console });
 /* finals (finals.js): the go-live image or video a team asks Sloosh for, quote first, behind a button; records per brand so a
    restart never pays twice (reconcileAll at boot); counted in budget 'credits' and in /api/ops/busy */
-const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, geminiImage: (o) => imageGen(o) /* Sloosh can't quote: the guard's maker, whose stand-in is Vertex */, makeVideo: (f, p, o) => makeVideo(f, p, o), slugs: async () => (await packs.list()).map((x) => x.slug), log: console, photo: photoAny,
+const finals = createFinals({ sloosh, slooshAuth, packs, budget, saveGen, genFlush, slugs: async () => (await packs.list()).map((x) => x.slug), log: console, photo: photoAny,
   onDone: async (slug, rec) => { const ok = await feedSvc?.finalDone?.(slug, rec); console.log(`[finals] ${slug} ${rec.runKey} ${rec.state} after the restart: ${ok ? 'landed on its card' : 'no card to land on'}`); return !!ok; } /* a run reconcileAll settles lands where it was asked */ });
 /* Sloosh makes and edits every picture and clip (sloosh-make.js): the image guard's model above, every clip (media.js), the jam's
    engines and Studio; when it can't, the stand-in (vertex-standin.js) makes the same one on Vertex. Each charge is recorded per brand (budget 'credits'), never capped while the account is unlimited */

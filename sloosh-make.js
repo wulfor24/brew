@@ -26,6 +26,8 @@ const one = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const personWait = (e) => /real_person_reference/i.test(String(e?.message || '') + String(e?.final?.owner?.errorCode || ''));
 /* a key an earlier make already spent (that run failed, e.g. the wallet was empty) is never reusable: the next try takes a new one */
 const keyUsed = (e) => /idempotency_conflict/i.test(String(e?.message || '') + String(e?.code || ''));
+/* Sloosh can't pay or isn't connected: the whole workspace is out, so the stand-in makes it and Sloosh is skipped for a while */
+const outOfReach = (e) => /credit|wallet|fund|balance|payment|\b402\b|allowance|insufficient|connect|unauthori|\b401\b|token|consent|agreement/i.test(String(e?.message || '') + String(e?.code || ''));
 const transient = (e) => personWait(e) || e?.timeout || e?.pollError || e?.status >= 500 || /timed? ?out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|socket hang up|busy|overload|rate.?limit|too many requests|429|503|try again/i.test(String(e?.message || ''));
 
 export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = async () => {}, publicUrl = process.env.PUBLIC_URL || '', fetchImpl = fetch,
@@ -39,7 +41,11 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
   async function orStandin(where, slug, viaSloosh, viaStandin) {
     if (standinReady() && now() < skipUntil) return stood(where, slug, viaStandin, null);
     try { return await viaSloosh(); }
-    catch (e) { if (!standinReady() || !e?.sloosh) throw e; if (!transient(e.cause || e)) skipUntil = now() + 30 * 60e3; return stood(where, slug, viaStandin, e); }
+    catch (e) { const why = e?.cause || e;
+      /* only an empty wallet or a lost connection (Sloosh skipped 30 min), or a Sloosh that stayed busy through its retries; a refused
+         prompt or product photo, or a cast face waiting for Sloosh's verification, never goes round Sloosh to the stand-in */
+      if (!standinReady() || !e?.sloosh || personWait(why) || !(outOfReach(why) || transient(why))) throw e;
+      if (outOfReach(why)) skipUntil = now() + 30 * 60e3; return stood(where, slug, viaStandin, e); }
   }
   async function stood(where, slug, viaStandin, why) {
     try { const buf = await viaStandin(); log.log?.(`[sloosh-make] ${where} for ${slug || '-'} made by the stand-in (${buf.model || 'vertex'})${why ? `: Sloosh ${String(why.cause?.message || why.message).slice(0, 120)}` : ': Sloosh skipped for now'}`);
