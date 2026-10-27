@@ -638,20 +638,26 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   async function firstLook(slug, cardId, o = {}) {
     const n = Math.max(1, Math.min(10, +o.n || 1)), ratio = DRAFT_RATIOS.includes(o.ratio) ? o.ratio : o.ratio === '3:4' ? '3:4' : '4:5', opts = { ...o, n, ratio }, key = lookKey(cardId, opts);
     const all = (await packs.getJSON(slug, L, null).catch(() => null)) || {}, rec = all[key];
-    const view = (r) => ({ key, images: r?.images || [], done: !!r && (r.images || []).filter(Boolean).length >= n, pending: lookJobs.has(`${slug}|${key}`), ...(r?.err ? { err: r.err } : {}) });
+    const view = (r) => ({ key, images: r?.images || [], done: !!r && (r.images || []).filter(Boolean).length >= n, pending: lookJobs.has(`${slug}|${key}`), ...(r?.err ? { err: r.err } : {}), ...(r?.stop ? { stop: true } : {}) });
     if (rec && (rec.images || []).filter(Boolean).length >= n) return view(rec);
     if (lookJobs.has(`${slug}|${key}`) || cfg.mock || (rec?.retryAt && now() < rec.retryAt)) return view(rec);
+    /* a first look that can't start says why, once: saved (the stage stops asking and says so) and logged, never a silent wait */
+    const skip = async (why) => { log.warn?.(`[drafts-bg] first look ${slug} ${cardId} skipped: ${why}`); const cur = (await packs.getJSON(slug, L, null).catch(() => null)) || {};
+      cur[key] = { ...(cur[key] || {}), images: cur[key]?.images || [], err: why, stop: true, retryAt: now() + 6 * 3600e3, at: now() }; await packs.put(slug, L, cur).catch(() => {}); };
     const job = (async () => {
-      const p = await loadPack(slug); const priv = ((await packs.getJSON(slug, 'private/cards.json', []).catch(() => [])) || []);
-      const c = [...(p?.seed?.posts || []), ...priv].find((x) => x?.id === cardId); if (!c) return;
+      const p = await loadPack(slug).catch(() => null); if (!p) return skip('the brand could not be loaded');
+      const priv = ((await packs.getJSON(slug, 'private/cards.json', []).catch(() => [])) || []);
+      const c = (o.card?.id === cardId ? o.card : null) || [...(p?.seed?.posts || []), ...priv].find((x) => x?.id === cardId); if (!c) return skip('the card is not in this brand');
       const brand = brandOf(p), named = (o.product && matchProduct(String(o.product), p.catalog, { brand: brand.name })) || cardProduct(c, p.catalog, { brand: brand.name });
-      const src = await photo(c, named) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); if (!src) return;
+      const src = await photo(c, named) || (named?.img ? await photo({}, named) : null) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); if (!src) return skip('no product photo to stage');
       const words = [].concat(o.words || []).map((w) => cut(w, 140));
       let r = { images: Array.from({ length: n }, (_, i) => rec?.images?.[i] || null), at: now(), piece: o.piece || null }; /* frames already made are kept */
       const seen = {}; /* the looks this set already took: every frame takes another */
       for (let i = 0; i < n; i++) {
         const lk = pickLook(seen, `${cardId}|${i}`, o.kind === 'video' ? 'video' : 'image'); seen[`f${i}`] = { cardId: `f${i}`, look: lk.key }; if (r.images[i]) continue;
-        const ip = imagePrompt({ title: `${o.piece || 'ad'}${n > 1 ? `, frame ${i + 1} of ${n}` : ''}`, visual: `Built as ${lk.how}.${words[i] ? ` This frame goes with the words "${words[i]}" (set on it afterwards: leave calm space for them, draw no words).` : ''}${n > 1 ? ' Every frame of the set shares one light and colour story, each a new composition.' : ''}` }, true, c, { name: brand.name, ...(p.config?.product || {}), product: named?.t || '' }, { ratio, topSpace: true });
+        /* the card's own context carries over to whatever piece the team added (27 Oct, Param): what the card is about, its point, its product */
+        const about = [c.title, c.sub, ...(c.detail?.why || []).slice(0, 1)].filter(Boolean).map((x) => cut(x, 200)).join(' ');
+        const ip = imagePrompt({ title: `${o.piece || 'ad'}${n > 1 ? `, frame ${i + 1} of ${n}` : ''}`, visual: `${about ? `The piece is about: ${about}. ` : ''}Built as ${lk.how}.${words[i] ? ` This frame goes with the words "${words[i]}" (set on it afterwards: leave calm space for them, draw no words).` : ''}${n > 1 ? ' Every frame of the set shares one light and colour story, each a new composition.' : ''}` }, true, c, { name: brand.name, ...(p.config?.product || {}), product: named?.t || '' }, { ratio, topSpace: true });
         try { const m = await makeStill(slug, c, { src, ip, ratio, text: `${words[i] || ''}. ${c.title || ''}`, catalog: p.catalog || null, brand: brand.name, named, retry: true, salt: `look|${key}|${i}`, kind: 'carousel' });
           r.images[i] = m.rel; }
         catch (e) { r.err = cut(e.message, 160); log.warn?.('[drafts-bg] first look', slug, cardId, i, e.message); if (e.budget) break; }

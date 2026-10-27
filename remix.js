@@ -1646,7 +1646,9 @@ export function createRemix(o) {
   on('POST', '/api/cards/:cid/firstlook', async (b, t, p) => {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' }; if (isMock()) return { images: [], done: false, pending: false };
     const sl = o.slugOfT?.(t); if (!sl) return { error: 'no brand' };
-    const r = await firstLookNow(sl, c.id, { piece: String(b.piece || '').slice(0, 60), n: Math.min(10, Math.max(1, +b.n || 1)), ratio: String(b.ratio || ''), product: String(b.product || '').slice(0, 160), kind: b.kind === 'video' ? 'video' : 'image', words: (Array.isArray(b.words) ? b.words : []).slice(0, 10).map((w) => String(w || '').slice(0, 160)) }).catch((e) => ({ error: e.message }));
+    /* the jam's own card goes with it: a team static, a connector or live card is in no saved list (27 Oct: static-…-p made nothing) */
+    const card = { id: c.id, title: c.title, sub: c.sub, detail: c.detail?.why ? { why: c.detail.why.slice(0, 2) } : undefined, make: c.make || null, images: c.images || [], img: c.img || null, product: c.product || null, post: c.post?.evidence ? { evidence: c.post.evidence } : undefined, research: c.research || undefined };
+    const r = await firstLookNow(sl, c.id, { card, piece: String(b.piece || '').slice(0, 60), n: Math.min(10, Math.max(1, +b.n || 1)), ratio: String(b.ratio || ''), product: String(b.product || '').slice(0, 160), kind: b.kind === 'video' ? 'video' : 'image', words: (Array.isArray(b.words) ? b.words : []).slice(0, 10).map((w) => String(w || '').slice(0, 160)) }).catch((e) => ({ error: e.message }));
     return r || { error: 'not ready' };
   });
   on('POST', '/api/cards/:cid/remix', async (b, t, p) => {

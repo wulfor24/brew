@@ -243,3 +243,16 @@ test('a jam piece\'s first look: one made picture per frame, each a different lo
   clock = NOW + 31 * 60e3; await J.firstLook('acme-com', 'static-wash-p', o); await new Promise((r) => setTimeout(r, 50)); v = await J.firstLook('acme-com', 'static-wash-p', o);
   assert.equal(v.images.filter(Boolean).length, 4); assert.equal(v.done, true); assert.equal(asks.length, 5, 'only the missing frame is made again');
 });
+
+test('a first look for a card in no saved list (a team static, static-…-p) uses the card the jam hands it; a look that can\'t start says why', async () => {
+  const { P, photo } = await setup([]); const asks = [];
+  const geminiImage = async (o) => { asks.push(o); return Object.assign(Buffer.from(`png${asks.length}`), { guard: {} }); };
+  const J = createDraftsBg({ packs: P, ai: fakeAI(), geminiImage, saveGen: () => {}, genFile: async () => photo, photoAsync: async () => photo, treg: { onCharge: () => {} }, launchBrowser: () => ({}), makers: {}, spend: () => true,
+    loadPack: (slug) => P.load(slug, { fresh: true }), lastOpenOf: async () => NOW, log: quiet, env: { DRAFTS_BG: '1' }, now: () => NOW });
+  const card = { id: 'static-trio-3-p', title: 'Wake up dormant follicles', sub: '3% Redensyl in every drop', product: 'Runner', images: ['/b/acme-com/team/statics/trio-3.jpg'] };
+  await J.firstLook('acme-com', card.id, { card, piece: 'carousel-ad', n: 2, ratio: '1:1', product: 'Runner' }); await new Promise((r) => setTimeout(r, 50));
+  const v = await J.firstLook('acme-com', card.id, { card, piece: 'carousel-ad', n: 2, ratio: '1:1', product: 'Runner' });
+  assert.equal(v.images.filter(Boolean).length, 2); assert.match(asks[0].prompt, /Wake up dormant follicles/, 'the card\'s context in every frame');
+  await J.firstLook('acme-com', 'nope-p', { piece: 'carousel-ad', n: 2 }); await new Promise((r) => setTimeout(r, 50));
+  const s = await J.firstLook('acme-com', 'nope-p', { piece: 'carousel-ad', n: 2 }); assert.equal(s.stop, true); assert.match(s.err, /not in this brand/);
+});

@@ -38,3 +38,9 @@ test('wiring: every writer gets the real reviews and the approved claims; approv
   assert.match(app, /\(p\.media && !NO_MEDIA\.test\(p\.media\)\)/); assert.match(app, /credit\$\{n === 1 \? '' : 's'\}/);
   assert.match(fs.readFileSync(new URL('../brand-pack.js', import.meta.url), 'utf8'), /reviewTexts: \[\.\.\.new Set\(reviewTexts\(profile\)/);
 });
+
+test('the stage never puts the store photo in a frame: a frame being made shows its placeholder; the card\'s own made pictures count', () => {
+  const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'), i = app.indexOf('const studioStage = '), body = app.slice(i, app.indexOf('const pvDraft', i));
+  assert.doesNotMatch(body, /\|\| st\.productImg\b/, 'no frame falls back to the product photo'); assert.match(body, /waitPic\(i, n \|\| 1, st\.bc, fl\?\.err\)/); assert.match(body, /ownMade\(ch, st\)/);
+  assert.match(fs.readFileSync(new URL('../remix.js', import.meta.url), 'utf8'), /firstLookNow\(sl, c\.id, \{ card, piece:/);
+});
