@@ -310,8 +310,13 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
           words('The slides did not come through; the words are here.'); } }
     } else if (['email', 'whatsapp', 'page', 'catalog'].includes(kind) && launchBrowser) { /* free: the words laid out where they will live, with a real product photo */
       const code = hasCode(d.copy); if (code) d.photo = null; /* markup has no product: no product photo on it or under it */
-      const ph = src && !code ? dataUri(src) : null, html = kind === 'email' ? emailHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : kind === 'whatsapp' ? whatsappHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : kind === 'page' ? pageHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : null;
-      try { d.render = html ? await render(html, '4:5', `${d.key}|${d.copy}${code ? '|code' : ''}`) : await (async () => { const products = await gridOf(p, named); return products.length >= 2 ? render(collectionHtml({ brand, title: j.title || c.title, products, catalog: true }), '4:5', `${d.key}|${d.title}`) : null; })(); }
+      /* the hero is made on Sloosh around the real product (27 Oct), never the raw store photo; the photo stands in only if Sloosh can't */
+      let hero = null;
+      if (src && !code && kind !== 'catalog' && geminiImage && saveGen) { try { const hr = kind === 'whatsapp' ? '1:1' : '16:9';
+          const r = await makeStill(slug, c, { src, ip: imagePrompt({ ...j, visual: j.visual || `the hero picture of this ${kind}: the product in a real moment that says what the message is about` }, true, c, { name: brand.name, ...(p.config?.product || {}), product: named?.t || d.product || '' }, { ratio: hr }), ratio: hr, text: `${j.title || ''}. ${c.title || ''}`, catalog: p.catalog || null, brand: brand.name, named, kind });
+          if (!r.failed) { hero = `data:image/png;base64,${r.buf.toString('base64')}`; d.hero = r.rel; } } catch (e) { log.warn?.('[drafts-bg] hero', slug, c.id, e.message); } }
+      const ph = hero || (src && !code ? dataUri(src) : null), html = kind === 'email' ? emailHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : kind === 'whatsapp' ? whatsappHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : kind === 'page' ? pageHtml({ brand, title: d.title, copy: d.copy, photo: ph }) : null;
+      try { d.render = html ? await render(html, '4:5', `${d.key}|${d.copy}${code ? '|code' : ''}${d.hero ? `|${d.hero}` : ''}`) : await (async () => { const products = await gridOf(p, named); return products.length >= 2 ? render(collectionHtml({ brand, title: j.title || c.title, products, catalog: true }), '4:5', `${d.key}|${d.title}`) : null; })(); }
       catch (e) { log.warn?.('[drafts-bg] mock', slug, c.id, e.message); }
       if (!d.render) d.as = 'text'; else if (code) d.codeMock = 1;
     } else if (kind !== 'text') d.as = 'text';
