@@ -248,3 +248,8 @@ test('the draft job caches each draft per card, respects the cap, and the jam op
   assert.equal((await mk({ AI_MOCK: '1' }).runOne('acme-com', { manual: true })).made.length, 0);
   assert.equal((await mk({ DRAFTS_BG_OFF: '1' }).runOne('acme-com')).why, 'DRAFTS_BG_OFF');
 });
+
+test('DRAFTS_FIRST: listed brands are read from the env, others are not', () => {
+  assert.deepEqual(draftsConfig({ DRAFTS_FIRST: 'arata-in, nutrova-com' }).first, ['arata-in', 'nutrova-com']);
+  assert.deepEqual(draftsConfig({}).first, []);
+});

@@ -196,7 +196,7 @@ export function draftView(d, c = null) {
 export const DRAFTS_DEFAULTS = { tickMs: 30 * 60e3, firstMs: 4 * 60e3, readyMs: 3 * 60e3, openDays: 3, dayCapUsd: 12 /* a brand's day: Sloosh is counted in budget 'credits'; this caps what its Vertex stand-in spends (27 Oct) */, topN: 6, perTick: 2, perRun: 8, takes: 2, textUsd: 0.04, imageUsd: 0.04, proImageUsd: 0.14, videoUsd: 0.9, voiceUsd: 0.01, slides: 5, clipsPerDay: 3 };
 export function draftsConfig(env = process.env) {
   const n = (k, d) => (env[k] != null && env[k] !== '' && Number.isFinite(+env[k]) ? +env[k] : d);
-  return { ...DRAFTS_DEFAULTS, dayCapUsd: n('DRAFTS_DAY_CAP_USD', DRAFTS_DEFAULTS.dayCapUsd), topN: n('DRAFTS_TOP_N', DRAFTS_DEFAULTS.topN), perRun: n('DRAFTS_PER_RUN', DRAFTS_DEFAULTS.perRun), imageUsd: n('DRAFTS_IMAGE_USD', DRAFTS_DEFAULTS.imageUsd), videoUsd: n('DRAFTS_VIDEO_USD', DRAFTS_DEFAULTS.videoUsd), readyMs: n('DRAFTS_READY_MS', DRAFTS_DEFAULTS.readyMs), takes: n('DRAFTS_TAKES', DRAFTS_DEFAULTS.takes), clipsPerDay: n('DRAFTS_CLIPS_PER_DAY', DRAFTS_DEFAULTS.clipsPerDay),
+  return { ...DRAFTS_DEFAULTS, dayCapUsd: n('DRAFTS_DAY_CAP_USD', DRAFTS_DEFAULTS.dayCapUsd), topN: n('DRAFTS_TOP_N', DRAFTS_DEFAULTS.topN), perRun: n('DRAFTS_PER_RUN', DRAFTS_DEFAULTS.perRun), imageUsd: n('DRAFTS_IMAGE_USD', DRAFTS_DEFAULTS.imageUsd), videoUsd: n('DRAFTS_VIDEO_USD', DRAFTS_DEFAULTS.videoUsd), readyMs: n('DRAFTS_READY_MS', DRAFTS_DEFAULTS.readyMs), takes: n('DRAFTS_TAKES', DRAFTS_DEFAULTS.takes), clipsPerDay: n('DRAFTS_CLIPS_PER_DAY', DRAFTS_DEFAULTS.clipsPerDay), first: String(env.DRAFTS_FIRST || '').split(',').map((x) => x.trim()).filter(Boolean) /* brands drafted first every tick, open or not (ops: a brand whose feed is being redone) */,
     killed: env.DRAFTS_BG_OFF === '1', mock: env.AI_MOCK === '1', local: env.DRAFTS_BG !== '1' && (!!env.RESEARCH_OFF || !!env.LIVE_OFF) };
 }
 /* what one draft of each kind costs before it is made (the words, then the pictures and the clip); booked after at real cost */
@@ -482,7 +482,7 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     if (busy.has(slug)) return { busy: true };
     busy.add(slug);
     try {
-      const st = await stateOf(slug), lastOpen = Math.max(opens.get(slug) || 0, await lastOpenOf(slug).catch(() => 0) || 0);
+      const st = await stateOf(slug), lastOpen = (cfg.first || []).includes(slug) ? now() : Math.max(opens.get(slug) || 0, await lastOpenOf(slug).catch(() => 0) || 0);
       const due = draftsDue(st, cfg, { now: now(), aiLive: ai?.live !== false, lastOpen, manual });
       if (!due.ok) { /* nothing new is due, but saved drafts are still mended: the free re-lettering and the look check (25 Oct: both waited behind the daily cap) */
         if (ai?.live !== false) { const p0 = await loadPack(slug).catch(() => null), c0 = p0?.seed?.posts ? await cacheOf(slug) : null;
@@ -588,9 +588,10 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
   async function tick({ list = null, first = null, onlyFirst = false } = {}) {
     if (ticking) return { busy: true }; ticking = true; const ran = [];
     try { const all = stayHere(list || await packs.list().catch(() => [])), fresh = first || await freshReady(all), ready = all.filter((x) => x.slug && x.status?.ready);
-      for (const b of [...ready.filter((x) => fresh.includes(x.slug)), ...(onlyFirst ? [] : ready.filter((x) => !fresh.includes(x.slug)))]) {
+      const pri = onlyFirst ? [] : ready.filter((x) => (cfg.first || []).includes(x.slug)); /* DRAFTS_FIRST: before every other brand */
+      for (const b of [...pri, ...ready.filter((x) => fresh.includes(x.slug) && !pri.includes(x)), ...(onlyFirst ? [] : ready.filter((x) => !fresh.includes(x.slug) && !pri.includes(x)))]) {
       if (ran.length >= cfg.perTick) break;
-      const st = await stateOf(b.slug), lastOpen = Math.max(opens.get(b.slug) || 0, await lastOpenOf(b.slug).catch(() => 0) || 0);
+      const st = await stateOf(b.slug), lastOpen = pri.includes(b) ? now() : Math.max(opens.get(b.slug) || 0, await lastOpenOf(b.slug).catch(() => 0) || 0);
       if (!draftsDue(st, cfg, { now: now(), aiLive: ai?.live !== false, lastOpen }).ok) { await runOne(b.slug).catch(() => null); continue; } /* nothing new is due: runOne still mends the saved drafts */
       const r = await runOne(b.slug).catch((e) => ({ error: e.message })); if (r?.made?.length) ran.push(b.slug); } }
     finally { ticking = false; }
