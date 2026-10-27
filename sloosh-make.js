@@ -122,7 +122,7 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
   async function edit(o = {}) {
     const route = pickRoute({ specs: await specs('image_gen'), job: 'edit', ratio: o.ratio || 'auto', tier: o.tier || 'draft' });
     const refs = gather([[{ src: o.src, job: 'other', label: 'the current picture' }], o.srcFile ? [{ src: o.srcFile, job: 'product', label: o.productName || 'the product' }] : [], o.refs || []], route.maxRefs || 14);
-    const prompt = [`Edit image 1. Change only this: ${one(o.instruction)}.`, `Keep everything else exactly as in image 1: the product, its label and colours, any people, the layout, the words and the light.`,
+    const prompt = [`Edit image 1. Change only this: ${one(o.instruction)}.`, `Keep everything else exactly as in image 1: the product, its label and colours, any people, the layout and the words.`,
       refs.length > 1 ? refLines(refs.slice(1).map((r, i) => ({ ...r, n: i + 2 }))) : ''].filter(Boolean).join(' ');
     return run({ slug: o.slug, mode: 'image_gen', prompt, route, refs, path: o.path || 'edit' });
   }
