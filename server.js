@@ -578,7 +578,7 @@ slooshMake = createSlooshMake({ sloosh, finals, packs, saveGen, genFlush, log: c
 const withSlug = (fn) => (o = {}) => fn({ ...o, slug: o.slug || inBrand()?.slug || null });
 setMakers({ ...slooshMake, image: withSlug(slooshMake.image), edit: withSlug(slooshMake.edit), video: withSlug(slooshMake.video), editVideo: withSlug(slooshMake.editVideo), space: withSlug(slooshMake.space), firstDraft: (slug, cardId) => draftsBg.runOne(slug, { manual: true, only: [cardId], n: 1 }) });
 /* Sloosh's health for the ops alerts: when it needs a reconnect or can't pay, finals quietly go to Gemini, so staff hear it once a day */
-/* SLOOSH_CHECK=0: Sloosh is off on purpose here (production until Param says, 25 Oct): finals use Gemini and nobody is emailed about it */
+/* every picture and clip is Sloosh (27 Oct): staff are emailed when it needs a reconnect or cannot pay. SLOOSH_CHECK=0 silences it */
 if (process.env.K_SERVICE && process.env.DEMO_MODE !== '1' && process.env.AI_MOCK !== '1' && process.env.SLOOSH_CHECK !== '0') { const slooshCheck = () => finals.status({ fresh: true }).then((st) => { if (!st.ok && !st.dummy) noteAlert('sloosh', st.fallbackWhy || st.why || 'not ready'); }).catch((e) => noteAlert('sloosh', e.message));
   setTimeout(() => leaderOnly(slooshCheck), 120e3).unref?.(); setInterval(() => leaderOnly(slooshCheck), 3600e3).unref?.(); }
 /* GET /api/ops/sloosh (staff): the connection, the workspace and what Sloosh says about today's limit and credits */
