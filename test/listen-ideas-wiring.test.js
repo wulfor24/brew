@@ -388,7 +388,7 @@ test('history: one file a day, read back by window; heard facets by source, mode
 
 test('What we heard counts: sources by display name sorted by count, total and how it was heard', () => {
   const items = [...LISTEN.items, { id: 'tt:1', platform: 'tiktok', text: 'a b c d' }, { id: 'tt:2', platform: 'tiktok', text: 'a b c d', mode: 'asked', askedFor: 'm1' }, { id: 'tt:3', platform: 'tiktok', text: 'e f g h' }, { id: 'ny:1', platform: 'nykaa', text: 'ok' }];
-  const v = heardView({ ...LISTEN, items }, { name: 'Acme' });
+  const v = heardView({ ...LISTEN, items }, { name: 'Acme', now: NOW }); /* pinned: the fixture's threads age out of themes and questions as real days pass */
   assert.deepEqual(v.sources, [{ id: 'reddit', name: 'Reddit', n: 3 }, { id: 'tiktok', name: 'TikTok', n: 3 }, { id: 'nykaa', name: 'Nykaa reviews', n: 1 }].sort((a, b) => b.n - a.n));
   assert.equal(v.total, 7); assert.deepEqual(v.byMode, { heard: 6, asked: 1 }); assert.equal(v.items, 120, 'the existing count stays');
   assert.ok(v.themes.length && v.questions.length && v.communities.length);
