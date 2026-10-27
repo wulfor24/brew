@@ -92,7 +92,7 @@ export function createImageGuard({ balance = null, gen, verify = null, fetchPhot
     /* every picture the model and the check see is a PNG, JPEG or WebP: a store's SVG or AVIF photo is turned into one first */
     if (ref) ref = await normalize(ref);
     const refFiles = o.refFiles?.length ? (await Promise.all(o.refFiles.map((f) => normalize(f).catch((e) => { log.warn?.('[image-guard] reference dropped', e.message); return null; })))).filter(Boolean) : [];
-    let base = { ...o, srcFile: ref, refFiles, prompt: ref ? `${o.prompt}\n\n${KEEP(named?.t)}` : o.prompt };
+    let base = { ...o, srcFile: ref, refFiles, prompt: ref ? `${o.prompt}\n\n${KEEP(named?.t)}` : o.prompt, ...(named?.t && !o.productName ? { productName: named.t } : {}) };
     delete base.text; delete base.catalog; delete base.brand; delete base.product; delete base.fallback; delete base.named;
     /* gens: pictures made for this one (booked at real cost by callers); pro: how many of them on the other, dearer model */
     const note = { product: named?.t || null, ref: !!ref, checked: false, same: null, retried: false, fallback: false, genFailed: false, gens: 1, pro: 0 };

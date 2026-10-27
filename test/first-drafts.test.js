@@ -182,3 +182,10 @@ test('a draft made before Sloosh (k 2) stays on its card until its Sloosh draft 
   assert.equal(DRAFT_K, 3); assert.ok(draftFor(card, old), 'still shown'); assert.equal(needsDraft(card, old), true, 'remade on Sloosh');
   assert.equal(needsDraft(card, { 'm9-1': { ...old['m9-1'], k: 3 } }), false);
 });
+
+test('the team’s private move cards (private/cards.json, ids ending -p) get first drafts too; live readings still never do (27 Oct)', async () => {
+  const { rankCards } = await import('../drafts-bg.js');
+  const posts = [{ id: 'm24-2-p', title: 'Stop curl buildup', liveOnly: true, privateOf: 24, make: { format: 'instagram carousel' } }, { id: 'live-ga4', title: 'Sessions', liveOnly: true }];
+  const r = rankCards(posts).map((c) => c.id); assert.ok(r.includes('m24-2-p')); assert.ok(!r.includes('live-ga4'));
+  const src = fs.readFileSync(new URL('../drafts-bg.js', import.meta.url), 'utf8'); assert.match(src, /getJSON\(slug, 'private\/cards\.json'/);
+});

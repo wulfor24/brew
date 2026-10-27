@@ -57,7 +57,7 @@ export const TAKES = ['a hand or person using the product mid-action', 'the prob
 const SKIP = /^(build-|statics-batch$|story-|live-)/;
 export const cardKey = (c) => sha(`${c.id}|${c.title || ''}`); /* the old key (by title), kept to read drafts made before keys carried the format */
 const isVis = (c) => !!(c?.images?.length || c?.img || c?.video || ['media', 'chat', 'answer', 'variants'].includes(c?.kind));
-const eligible = (c) => c?.id && c.title && !SKIP.test(c.id) && !c.liveOnly && !c.demo && !c.mock && c.kind !== 'answer' && !(c.origin === 'listen' && c.heard?.kind === 'theme');
+const eligible = (c) => c?.id && c.title && !SKIP.test(c.id) && !(c.liveOnly && c.privateOf == null) /* a team's private move card is drafted too (27 Oct) */ && !c.demo && !c.mock && c.kind !== 'answer' && !(c.origin === 'listen' && c.heard?.kind === 'theme');
 // the order the feed opens in for a brand-neutral viewer: fresh cadence moves and cards that ask for a thing first,
 // then the feed's own mix (two visual cards for every text card), as feed-service feed() does for a new workspace
 export function rankCards(posts = []) {
@@ -468,7 +468,10 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
         return { made: [], usd: 0, why: due.why }; }
       const p = await loadPack(slug); if (!p?.seed?.posts) return { made: [], usd: 0, why: 'no feed yet' };
       const cache = await cacheOf(slug); if (fresh && only?.length) for (const id of only) delete cache[id]; /* staff: make these cards' drafts again now */
-      const ranked = rankCards(p.seed.posts), top = new Set(ranked.slice(0, cfg.topN).map((c) => c.id)), order = byValue(p, ranked), day = today(now());
+      /* the team's private cards (private/cards.json: moves rewritten on their own accounts, ids ending -p) get first drafts too (27 Oct);
+         their drafts sit in the same cache, which is never served, and only members ever see those cards */
+      const priv = ((await packs.getJSON(slug, 'private/cards.json', []).catch(() => [])) || []).filter((c) => c?.id && c.title && !c.archived);
+      const ranked = rankCards([...p.seed.posts, ...priv]), top = new Set(ranked.slice(0, cfg.topN).map((c) => c.id)), order = byValue(p, ranked), day = today(now());
       if (await healMissing(slug, cache)) await save(slug, cache).catch(() => {});
       if (healWrongProduct(p, cache)) await save(slug, cache).catch(() => {});
       if (await healCodeMocks(p, cache)) await save(slug, cache).catch(() => {});

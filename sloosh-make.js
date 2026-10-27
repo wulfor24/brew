@@ -20,7 +20,9 @@ const extOf = (b) => (b[0] === 0x89 ? 'png' : b[0] === 0xff ? 'jpg' : b.slice(4,
 const isFile = (f) => { try { return !!f && path.isAbsolute(String(f)) && fs.statSync(f).isFile(); } catch { return false; } };
 const one = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 /* a failure worth trying again a little later (Sloosh busy, a dropped connection) vs one that won't change (a refused prompt) */
-const transient = (e) => e?.timeout || e?.pollError || e?.status >= 500 || /timed? ?out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|socket hang up|busy|overload|rate|429|503|try again/i.test(String(e?.message || ''));
+/* real_person_reference: a cast photo Sloosh hasn't verified yet ("retry after a minute"), so it is waited on, never dropped */
+const personWait = (e) => /real_person_reference/i.test(String(e?.message || '') + String(e?.final?.owner?.errorCode || ''));
+const transient = (e) => personWait(e) || e?.timeout || e?.pollError || e?.status >= 500 || /timed? ?out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|socket hang up|busy|overload|rate|429|503|try again/i.test(String(e?.message || ''));
 
 export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = async () => {}, publicUrl = process.env.PUBLIC_URL || '', fetchImpl = fetch,
   record = () => {}, onRefuse = () => {}, toPng = null /* (buf) → PNG buffer (img-norm normalizeBuf): an SVG or HEIC Sloosh won't take */, mock = () => process.env.AI_MOCK === '1', viewOf = (slug) => loadView(packs, slug, { scope: 'member' }), tries = 3, backoffMs = 20e3, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), log = console } = {}) {
@@ -78,11 +80,12 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     if (skipped) prompt = String(prompt).replace(/\n\n(?:Image \d+ [^\n]*)$/, '') + '\n\n' + refLines(kept.map((r, i) => ({ ...r, n: i + 1 })));
     const ask = { mode, prompt: one(prompt).slice(0, 30000), model: route.model, references: uploaded.slice(0, 20), ratio: route.ratio, resolution: route.resolution, seconds: vid ? route.seconds : undefined, sound: vid ? route.sound : undefined, count: 1, enhance: true };
     const key = `brew-${sha(JSON.stringify([slug, ask.mode, ask.prompt, ask.model, ask.ratio, ask.resolution, ask.seconds, uploaded.map((u) => u.id)]))}`;
-    let last;
+    let last, ended = 0;
     for (let i = 0; i < tries; i++) {
       try {
         const q = await sloosh.quoteGeneration(ask); const qid = idOf(q); if (!qid) throw new Error(`Sloosh gave no quote (${Object.keys(q || {}).join(', ')})`);
-        const op = await sloosh.generate({ quote: qid, runKey: key, confirmed: true }); const gid = idOf(op); if (!gid) throw new Error('Sloosh started nothing');
+        /* the same key retries the same start (a dropped call is never paid twice); a run that ended failed needs a new one */
+        const op = await sloosh.generate({ quote: qid, runKey: ended ? `${key}-${ended}` : key, confirmed: true }); const gid = idOf(op); if (!gid) throw new Error('Sloosh started nothing');
         const done = await sloosh.wait(async () => { const x = await sloosh.getGeneration(gid); return x?.reconciliationRequired || /ambiguous/i.test(x?.state || '') ? (await sloosh.reconcileGeneration(gid).catch(() => null)) || x : x; },
           { every: vid ? 10e3 : 4e3, maxMs: vid ? 25 * 60e3 : 8 * 60e3 });
         const out = outputsOf(done)[0]; let link = linkOf(out); if (!link && refOf(out)) link = linkOf(await sloosh.getAsset(refOf(out)));
@@ -91,7 +94,7 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
         const buf = Buffer.from(await r.arrayBuffer()), credits = creditsOf(done) || creditsOf(q);
         try { record(slug, credits, where); } catch {}
         return Object.assign(buf, { provider: 'sloosh', model: route.model, credits, generationId: refOf(out)?.id || null, link });
-      } catch (e) { last = e; if (!transient(e) || i === tries - 1) break; log.warn?.(`[sloosh-make] ${where} for ${slug}: ${String(e.message).slice(0, 160)}; trying again`); await sleep(backoffMs * (i + 1)); }
+      } catch (e) { last = e; if (e?.terminal) ended++; if (!transient(e) || i === tries - 1) break; log.warn?.(`[sloosh-make] ${where} for ${slug}: ${String(e.message).slice(0, 160)}; trying again`); await sleep(personWait(e) ? Math.max(65e3, backoffMs) : backoffMs * (i + 1)); }
     }
     try { onRefuse(last, { slug, where }); } catch {} /* staff hear it (an upload agreement to accept, a limit, a refused model): the ops alert */
     throw Object.assign(new Error(`Sloosh couldn't make this just now (${String(last?.message || last).slice(0, 200)}). We'll try again.`), { soft: true, sloosh: true, cause: last });
@@ -103,7 +106,14 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
    * o: { slug, prompt, srcFile (the product photo), refFiles, refs: [{ src, job, label, keep }], productName, ratio, job ('image' | 'type' |
    *      'concept' | 'edit'), tier ('draft' | 'final'), kind (the deliverable, for the Brand Book's playbook), words (set in the picture) }
    */
+  /* a pack or a combo (Pack of 3, a Kit, Shampoo + Serum): every item in it is shown, the same count, each as photographed; on Nano
+     Banana Pro, which holds counts and labels best. A single bottle for a "Pack of 3" was the commonest product-check failure (27 Oct) */
+  const PACK = /\bpack of (\d+)|\b(\d+)\s*(?:x|pack|pcs|pieces)\b|\bcombo\b|\bkit\b|\bduo\b|\btrio\b|\bbundle\b|\bset of (\d+)|\s\+\s/i;
+  const packLine = (name) => { const m = PACK.exec(String(name || '')); if (!m) return ''; const n = +(m[1] || m[2] || m[3] || 0);
+    return `Image 1 shows the whole ${/combo|\+|kit|bundle/i.test(name) ? 'combo' : 'pack'}${n ? ` of ${n}` : ''}: show every item in it${n ? `, exactly ${n}` : ''}, each exactly as in image 1, together in the picture; never a single item alone and never a different number.`; };
   async function image(o = {}) {
+    const pack = packLine(o.productName || o.named?.t);
+    if (pack && (!o.model || /gemini-2|gemini-3-pro-image$|veo/.test(o.model)) && (o.job || 'image') === 'image') o = { ...o, model: 'gemini-3-pro-image-preview' };
     const job = o.job || 'image', route = pickRoute({ specs: await specs('image_gen'), job, ratio: o.ratio || '4:5', tier: o.tier || 'draft', model: o.model && !/gemini-2|gemini-3-pro-image$|veo/.test(o.model) ? o.model : null });
     const b = o.brand === false ? { block: '', refs: [] } : await brand(o.slug, o.kind || '');
     const prod = o.srcFile ? [{ src: o.srcFile, job: 'product', label: o.productName || o.named || 'the product' }] : [];
@@ -113,7 +123,7 @@ export function createSlooshMake({ sloosh, finals, packs, saveGen, genFlush = as
     /* a look reference (the brand's own posts) can show other products: only the product photo's product may appear (27 Oct, Arata: a
        sea-salt spray from a post walked into a shampoo ad) */
     const onlyProduct = prod.length && refs.some((r) => r.job === 'style' || r.job === 'logo') ? 'Only the product from image 1 appears; never a product, bottle or pack from any other image (those are for the look only).' : '';
-    const prompt = [o.prompt, onlyProduct, words.length ? `Set these words in the picture exactly as written, in the brand's type, where they read first: ${words.map((w) => `"${w}"`).join(' / ')}. No other words, banners, badges, prices or buttons anywhere; only the product's own label.` : '',
+    const prompt = [o.prompt, pack, onlyProduct, words.length ? `Set these words in the picture exactly as written, in the brand's type, where they read first: ${words.map((w) => `"${w}"`).join(' / ')}. No other words, banners, badges, prices or buttons anywhere; only the product's own label.` : '',
       b.block ? `The brand's art direction (follow it):\n${b.block}` : '', refLines(refs.map((r, i) => ({ ...r, n: i + 1 })))].filter(Boolean).join('\n\n');
     return run({ slug: o.slug, mode: 'image_gen', prompt, route, refs, path: o.path || job });
   }

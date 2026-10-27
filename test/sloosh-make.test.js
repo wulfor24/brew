@@ -98,3 +98,25 @@ test('an SVG logo is turned into a PNG; a reference that still won’t import is
   const M2 = createSlooshMake({ sloosh, finals: finals2, viewOf: async () => ({}), saveGen: () => {}, publicUrl: 'https://feed.test', fetchImpl: async () => ({ ok: false }), mock: () => false, tries: 1, log: { warn() {} } });
   await assert.rejects(() => M2.image({ slug: 'x', prompt: 'p', srcFile: 'https://oasis.test/p.jpg' }), /Sloosh couldn/);
 });
+
+test('a pack or combo shows every item, the same count, on Nano Banana Pro (27 Oct: a single bottle for a Pack of 3 failed the product check)', async () => {
+  const specs = { image_gen: { default: 'gemini-nano-banana-2.1', models: { 'gemini-nano-banana-2.1': SPECS.image_gen.models['gemini-nano-banana-2.1'], 'gemini-3-pro-image-preview': SPECS.image_gen.models['gemini-nano-banana-2.1'] } } };
+  const { M, asks } = rig({ specs });
+  await M.image({ slug: 'arata', prompt: 'p', srcFile: 'https://a.test/pack.jpg', productName: 'MitoActive Serum - 30 ml - Pack of 3', ratio: '4:5' });
+  assert.equal(asks[0].model, 'gemini-3-pro-image-preview'); assert.match(asks[0].prompt, /show every item in it, exactly 3/);
+  await M.image({ slug: 'arata', prompt: 'p', srcFile: 'https://a.test/c.jpg', productName: 'MitoActive + Anti-Hair Fall Shampoo Combo', ratio: '4:5', model: 'gemini-3-pro-image' });
+  assert.equal(asks[1].model, 'gemini-3-pro-image-preview'); assert.match(asks[1].prompt, /whole combo/);
+  await M.image({ slug: 'arata', prompt: 'p', srcFile: 'https://a.test/s.jpg', productName: 'Balance Shampoo 200 ml', ratio: '4:5' });
+  assert.equal(asks[2].model, 'gemini-nano-banana-2.1'); assert.doesNotMatch(asks[2].prompt, /whole pack/);
+});
+
+test('a cast photo Sloosh has not verified yet (real_person_reference) is waited on and run again under a new key, never dropped', async () => {
+  const r = rig(); let n = 0, slept = 0;
+  const M = createSlooshMake({ sloosh: { modelSpecs: async (m) => SPECS[m], quoteGeneration: async () => ({ quoteId: '11111111-1111-4111-8111-111111111111', credits: 17 }), generate: async (g) => { r.gens.push(g); return { operationId: `op${r.gens.length}` }; },
+    getGeneration: async () => ({ state: 'settled', owner: { phase: 'settled', outputs: [{ generationId: 'g1', status: 'completed', url: 'https://cdn.sloosh.test/out.mp4' }] } }), reconcileGeneration: async () => null, getAsset: async () => ({}),
+    wait: async (getter) => { if (n++ === 0) throw Object.assign(new Error('Sloosh run failed (real_person_reference)'), { terminal: true }); return getter(); } },
+  finals: { assetFor: async (slug, x) => ({ kind: 'workspace', id: 'a1', url: x.url, type: 'image' }) }, packs: null, viewOf: async () => VIEW, saveGen: () => {}, publicUrl: 'https://feed.test',
+  fetchImpl: async () => ({ ok: true, arrayBuffer: async () => new Uint8Array([1]).buffer }), mock: () => false, tries: 3, backoffMs: 1, sleep: async (ms) => { slept = ms; }, log: { warn() {} } });
+  const buf = await M.video({ slug: 'arata', prompt: 'UGC', refs: [{ src: 'https://x.test/p.jpg', job: 'product' }, { src: 'https://x.test/face.jpg', job: 'person' }], seconds: 5 });
+  assert.ok(buf.length); assert.equal(r.gens.length, 2); assert.notEqual(r.gens[0].runKey, r.gens[1].runKey, 'a run that ended needs a new key'); assert.ok(slept >= 65e3, 'waits a minute for verification');
+});
