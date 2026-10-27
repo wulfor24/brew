@@ -177,3 +177,16 @@ test('P1-16: the open and the PDF asking at once write one brief; the next open 
   assert.equal(writes, 1, 'not written again'); assert.deepEqual(v2.sections, v1.sections); assert.deepEqual(v2.evidence, v1.evidence);
   X.pkg.version = 4; await TB.build({}, w); assert.equal(writes, 2, 'a new version of the piece writes it again'); X.pkg.version = 3;
 });
+
+/* 27 Oct (Param): "remove text" on slide 1 came back with the product name in its place and "Removed …". The words asked out are taken
+   out of the field they were in, whatever the writer sent back for it, and the reply says where */
+test('remove: exactly the words asked out leave the field they were in; the writer\'s swap never lands; the reply says where', async () => {
+  const ai = async (prompt, schema, mx, tag) => (tag === 'studio_iterate' ? { reply: 'Removed it from the first slide hook.', label: 'MitoActive title on first slide', next: [], newImage: false,
+    pkg: [{ k: 'slides', v: 'MitoActive Mitochondrial Hair Growth Serum | The stick in hand\nWash away the day\'s buildup. | Photo of the shampoo' }] } : null);
+  const S = harness(ai), t = tenant(), { id, ch } = await madeJam(S, t);
+  await S.call('POST /api/changes/:chid/iterate', { message: 'Change only the slide 1 (now: “Evening routine > morning wash.”); keep every other word and setting as it is. remove text: Evening routine > morning wash.', wait: true }, t, { chid: id });
+  assert.equal(ch.pkg.slides[0].onSlide, '', 'slide 1 carries no words now'); assert.equal(ch.pkg.slides[1].onSlide, 'Wash away the day\'s buildup.');
+  assert.match(ch.thread.filter((x) => x.from === 'ai').at(-1).text, /^Removed “Evening routine > morning wash\.” from slide 1/);
+  await S.call('POST /api/changes/:chid/iterate', { message: 'remove "caffeine" from the caption', wait: true }, t, { chid: id });
+  assert.equal(ch.pkg.caption, 'Rosemary and in our Anti-Hair Fall Intensive Shampoo.'.replace('and in', 'and in'));
+});

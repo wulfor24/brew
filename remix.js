@@ -636,6 +636,20 @@ export function createRemix(o) {
   const CLEAR_ASK = /\b(?:remove|delete|drop|clear|erase|strip|take (?:out|off|away)|get rid of|lose|cut)\b|\bno (?:text|words|headline|emoji|emojis|hashtags?|caption|title|line|button)\b|\bwithout (?:the |any )?(?:text|words|headline|emoji|emojis|hashtags?|caption|title)\b/i;
   /* the words a person quoted, or named after "text:", in what they asked: what must be gone afterwards */
   const quotedIn = (m) => { const out = [...String(m || '').matchAll(/[“"']([^“”"']{4,200})[”"']/g)].map((x) => x[1]); const tx = /\b(?:text|words|headline|line)\s*:\s*(.{4,200})$/i.exec(String(m || '')); if (tx) out.push(tx[1].trim()); return out; };
+  /* what a "remove" ask names: its quoted words or the words after "text:"; a picked part's own words (now: “…”) only when the ask is
+     the whole of it ("remove the text") */
+  const clearTargets = (m) => { const s = String(m || ''), nowT = /\(now: “([^”]*)”\)/.exec(s)?.[1], rest = s.replace(/\(now: “[^”]*”\)/g, '').replace(/^Change only this part: “[^”]*”;?/, '');
+    const picked = /^Change only this part: “([^”]*)”/.exec(s)?.[1], qs = quotedIn(rest).filter((q) => q.trim().length >= 3);
+    if (qs.length) return qs; if (picked) return [picked]; return nowT && /\b(?:text|words|line|headline|everything|all of it|it)\b/i.test(rest) ? [nowT] : []; };
+  /* the words taken out of a field, case and spacing aside; a field left with only punctuation is empty */
+  const cutText = (v, q) => { const rx = new RegExp(String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'), 'i'); if (!rx.test(String(v))) return null;
+    const left = String(v).replace(rx, '').replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.;:!?])/g, '$1').replace(/^[\s,.;:–—-]+|[\s,;:–—-]+$/g, ''); return /[\p{L}\p{N}]/u.test(left) ? left : ''; };
+  const cutOut = (prev, next, qs) => { const out = { ...next }, where = [];
+    for (const [k, v] of Object.entries(prev || {})) {
+      if (typeof v === 'string') { for (const q of qs) { const c = cutText(v, q); if (c != null) { out[k] = c; where.push(k === 'message' || k === 'copy' ? 'the words' : k.replace(/([A-Z])/g, ' $1').toLowerCase()); break; } } }
+      else if (Array.isArray(v)) v.forEach((row, i) => { if (typeof row === 'string') { for (const q of qs) { const c = cutText(row, q); if (c != null) { out[k] = [...(Array.isArray(out[k]) ? out[k] : v)]; out[k][i] = c; where.push(`${k === 'buttons' ? 'button' : 'item'} ${i + 1}`); break; } } }
+        else if (row && typeof row === 'object') for (const [cell, cv] of Object.entries(row)) { if (typeof cv !== 'string' || /^(?:visual|shot|image)$/.test(cell)) continue; for (const q of qs) { const c = cutText(cv, q); if (c != null) { out[k] = [...(Array.isArray(out[k]) ? out[k] : v)]; out[k][i] = { ...(out[k][i] || row), [cell]: c }; where.push(`${/slide|card/i.test(k) ? 'slide' : 'row'} ${i + 1}`); break; } } } }); }
+    return { pkg: out, where: [...new Set(where)] }; };
   const normWords = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}₹%]+/gu, ' ').trim();
   const reviewsLine = (t) => { let rv = []; try { rv = (o.reviewsOf?.(t) || []).filter((x) => x && x.length >= 20 && x.length <= 400).slice(0, 12); } catch { rv = []; }
     return rv.length ? `\nREAL REVIEWS (a quote from a customer must be one of these, word for word, cut short only at a sentence end; never write or extend a review):\n${rv.map((x) => `- "${String(x).replace(/"/g, '”')}"`).join('\n')}` : '\nThere are no real reviews to quote: never put words in a customer\'s mouth.'; };
@@ -1149,7 +1163,10 @@ export function createRemix(o) {
       const nextPkg = cleanPkg(ch.family, ch.action, fromKV(ch.family, ch.action, out.pkg), clean);
       /* "remove the text / the headline / the emoji": a field the writer sent back empty is cleared, never kept as it was (27 Oct) */
       if (CLEAR_ASK.test(message)) for (const { k, v } of Array.isArray(out.pkg) ? out.pkg : []) if (k && String(v ?? '').trim() === '' && ch.pkg[k] != null && !(k in nextPkg)) nextPkg[k] = Array.isArray(ch.pkg[k]) ? [] : '';
-      ch.pkg = { ...ch.pkg, ...nextPkg, ...keepMedia(ch.pkg) };
+      const prevPkg = ch.pkg; ch.pkg = { ...ch.pkg, ...nextPkg, ...keepMedia(ch.pkg) };
+      /* "remove …" takes exactly those words out of the field they were in, whatever the writer sent back for it (27 Oct, Param: the writer
+         swapped slide 1's line for the product name and said "Removed"); the rest of the package is the writer's */
+      let cutWhere = []; if (CLEAR_ASK.test(message)) { const qs = clearTargets(message); if (qs.length) { const r = cutOut(prevPkg, ch.pkg, qs); ch.pkg = r.pkg; cutWhere = r.where; } }
       if (BANNED.test(publicText(ch.family, ch.action, ch.pkg).join(' '))) ch.pkg = rulePkg(t, ch.agent, ch.family, ch.pkg);
       sync(t, ch, c);
       /* a version only when the package really changed: the same words back (a question the router missed) is no new version */
@@ -1159,7 +1176,7 @@ export function createRemix(o) {
       /* the reply says what really happened (27 Oct, Param: "I asked to remove text, it didn't remove, just confirmed"): nothing changed is
          never "Removed…"/"Updated…", and words asked out that are still there are named, whatever the writer wrote */
       const pubOut = publicText(ch.family, ch.action, ch.pkg).join('\n'), still = CLEAR_ASK.test(message) ? quotedIn(message).filter((q) => normWords(pubOut).includes(normWords(q))) : [];
-      const reply = same ? `Nothing changed in the words${still.length ? `: “${still[0].slice(0, 80)}” is still there` : ''}. Say it another way, or use Change it yourself.` : still.length ? `${clean(out.reply || 'Updated.').replace(/^(?:removed|deleted|cleared|took out)\b[^.]*\.?\s*/i, '')} “${still[0].slice(0, 80)}” is still in it: say which part to drop, or use Change it yourself.`.trim() : clean(out.reply || 'Updated.');
+      const reply = cutWhere.length ? `Removed “${clearTargets(message)[0].slice(0, 80)}” from ${cutWhere.slice(0, 3).join(', ')}; everything else is as it was.` : same ? `Nothing changed in the words${still.length ? `: “${still[0].slice(0, 80)}” is still there` : ''}. Say it another way, or use Change it yourself.` : still.length ? `${clean(out.reply || 'Updated.').replace(/^(?:removed|deleted|cleared|took out)\b[^.]*\.?\s*/i, '')} “${still[0].slice(0, 80)}” is still in it: say which part to drop, or use Change it yourself.`.trim() : clean(out.reply || 'Updated.');
       void pubIn; if (!quiet) ch.thread.push({ from: 'ai', text: onProduct(t, ch, c, reply, message), at: now(t), ...(same ? {} : { v: versionsOf(t, ch.id).length }) });
       // the chips follow the conversation: what to try next on this version
       if (Array.isArray(out.next)) { const ctx = chipCtx(ch.action, ch.actionLabel, c); const nx = out.next.map((x) => clean(String(x)).replace(/[.]$/, '')).filter((x) => x && x.length <= 48 && chipRelates(x, ctx)); if (nx.length >= 2) ch.next = nx.slice(0, 4); } /* only chips about this change's action */
