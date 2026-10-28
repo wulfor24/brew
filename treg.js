@@ -120,9 +120,16 @@ export const tagParts = (tag) => { const m = String(tag || '').match(/^([a-z0-9]
 // books spend per brand and month (debounced: one write per brand-month every few seconds, merged with what is stored)
 export function spendLedger(treg, packs, { debounceMs = 5000, log = console } = {}) {
   const pend = new Map(); let timer = null;
+  /* a tag without a brand in it ('ai-questions') reads as brand "questions": spend lands only on a brand that exists, the rest on
+     Brew's own ledger with the whole tag, never a new brand folder (28 Oct: one stray row blocked a production release) */
+  const known = new Set(), isBrand = async (slug) => { if (slug === '_brew' || known.has(slug)) return true;
+    const ok = !!((await packs.getJSON(slug, 'status.json', null).catch(() => null)) || (await packs.getJSON(slug, 'seed.json', null).catch(() => null))); if (ok) known.add(slug); return ok; };
   const flush = async () => {
-    timer = null; const jobs = [...pend.entries()]; pend.clear();
-    await Promise.all(jobs.map(async ([key, rows]) => { const [slug, month] = key.split('|'), name = `spend/${month}.json`;
+    timer = null; const jobs0 = [...pend.entries()]; pend.clear();
+    const jobs = new Map(); for (const [key, rows] of jobs0) { const [slug, month] = key.split('|'), to = (await isBrand(slug)) ? slug : '_brew';
+      if (to !== slug) { log.warn?.(`[treg] spend for "${slug}", which is not a brand, booked to _brew`); for (const r of rows.values()) r.tag = `${r.tag}-${slug}`; }
+      const k = `${to}|${month}`, m = jobs.get(k) || new Map(); for (const r of rows.values()) { const kk = `${r.day}|${r.tag}`, x = m.get(kk); if (x) { x.usd = +(x.usd + r.usd).toFixed(6); x.calls += r.calls; } else m.set(kk, { ...r }); } jobs.set(k, m); }
+    await Promise.all([...jobs.entries()].map(async ([key, rows]) => { const [slug, month] = key.split('|'), name = `spend/${month}.json`;
       try { const cur = await packs.getJSON(slug, name, null) || { month, rows: [] }; const idx = new Map(cur.rows.map((r, i) => [`${r.day}|${r.tag}`, i]));
         for (const r of rows.values()) { const i = idx.get(`${r.day}|${r.tag}`); if (i == null) { idx.set(`${r.day}|${r.tag}`, cur.rows.length); cur.rows.push({ ...r }); } else { cur.rows[i].usd = +(cur.rows[i].usd + r.usd).toFixed(6); cur.rows[i].calls = (cur.rows[i].calls || 0) + r.calls; } }
         cur.usd = +cur.rows.reduce((a, r) => a + r.usd, 0).toFixed(6); cur.at = new Date().toISOString();

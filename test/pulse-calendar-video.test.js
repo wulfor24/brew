@@ -132,7 +132,7 @@ test('video read: URL parsing', () => {
 test('spend ledger: charges booked per brand and month, debounced', async () => {
   assert.deepEqual(tagParts('pulse-wearcomet-com'), { what: 'pulse', slug: 'wearcomet-com' });
   assert.equal(tagParts('tikhub.tiktok.search.videos').slug, '_brew');
-  const packs = memPacks({ comet: { [`spend/${new Date().toISOString().slice(0, 7)}.json`]: { month: 'x', rows: [{ day: new Date().toISOString().slice(0, 10), tag: 'pulse', usd: 1, calls: 1 }] } } });
+  const packs = memPacks({ comet: { 'status.json': { slug: 'comet' }, [`spend/${new Date().toISOString().slice(0, 7)}.json`]: { month: 'x', rows: [{ day: new Date().toISOString().slice(0, 10), tag: 'pulse', usd: 1, calls: 1 }] } } });
   const treg = fakeTreg({ x: {} }), led = spendLedger(treg, packs, { debounceMs: 50 });
   await treg.call('x', { tag: 'pulse-comet' }); await treg.call('x', { tag: 'pulse-comet' }); await treg.call('x', { tag: 'listen-comet' }); await treg.call('x');
   assert.ok(led.pending() >= 1); await led.flush();

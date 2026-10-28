@@ -43,19 +43,19 @@ export function createAiQuestions({ packs, treg = null, ai = null, fetchFn = fet
   const aiCall = ai ? (typeof ai === 'function' ? ai : ai.call?.bind(ai)) : null;
 
   /* Google's own suggestions, free; treg's autocomplete when Google refuses (each call says which answered) */
-  const suggest = async (q, gl, errors, hl = 'en') => {
+  const suggest = async (q, gl, errors, hl = 'en', slug = '_brew') => {
     try { const r = await fetchFn(`https://suggestqueries.google.com/complete/search?client=firefox&hl=${hl}&gl=${gl}&q=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(8000), headers: { 'user-agent': 'Mozilla/5.0' } });
       if (r.ok) { const j = JSON.parse(await r.text()); if (Array.isArray(j?.[1])) return j[1].filter((x) => typeof x === 'string'); } throw new Error(`google ${r.status}`); }
     catch (e) {
       if (!treg?.call) { errors.add(`Google suggestions: ${e.message}`); return []; }
-      try { const j = await treg.call('serper.google.serp.autocomplete', { body: { q, gl, hl }, tag: 'ai-questions' }); return (j?.suggestions || []).map((s) => s.value || s).filter((s) => typeof s === 'string'); }
+      try { const j = await treg.call('serper.google.serp.autocomplete', { body: { q, gl, hl }, tag: `aiq-${slug}` }); return (j?.suggestions || []).map((s) => s.value || s).filter((s) => typeof s === 'string'); }
       catch (e2) { errors.add(`Google suggestions: ${e2.message}`); return []; }
     }
   };
   /* monthly Google searches for each phrase, one treg call for all of them */
-  const volumes = async (phrases, loc, errors, lang = 'en') => {
+  const volumes = async (phrases, loc, errors, lang = 'en', slug = '_brew') => {
     const kws = [...new Set(phrases.map(norm).filter((k) => k && k.split(' ').length <= 10))].slice(0, 300); if (!kws.length || !treg?.call) return {};
-    try { const j = await treg.call('dataforseo.google.keywords.volume', { body: [{ keywords: kws, location_code: loc, language_code: lang }], tag: 'ai-questions' });
+    try { const j = await treg.call('dataforseo.google.keywords.volume', { body: [{ keywords: kws, location_code: loc, language_code: lang }], tag: `aiq-${slug}` });
       const t = j?.tasks?.[0]; if (t && t.status_code !== 20000) throw new Error(t.status_message);
       return Object.fromEntries((t?.result || []).filter((r) => r?.keyword).map((r) => [norm(r.keyword), r.search_volume || 0])); }
     catch (e) { errors.add(`Search volumes: ${e.message}`); return {}; }
@@ -89,11 +89,11 @@ export function createAiQuestions({ packs, treg = null, ai = null, fetchFn = fet
     const gl = b.country.toLowerCase(), seeds = await seedsOf(b), brand = norm(b.base || b.name), names = [...new Set([norm(b.name), brand])]; /* "PUMA India" is searched as "puma" */
     const starts = seeds.flatMap((s) => [`best ${s}`, `which ${s}`, `${s} for`, `is ${s}`]);
     const bStarts = [`${brand}`, `is ${brand}`, `${brand} vs`, ...b.heroes.slice(0, 2).map((h) => `${brand} ${norm(h.title).split(' ').slice(0, 3).join(' ')}`)];
-    const got = await pool([...starts, ...bStarts], 6, async (q) => ({ q, out: await suggest(q, gl, errors, b.lang) }));
+    const got = await pool([...starts, ...bStarts], 6, async (q) => ({ q, out: await suggest(q, gl, errors, b.lang, b.slug) }));
     const cands = [], seen = new Set();
     const add = (c) => { const k = norm(c.text); if (!k || seen.has(k)) return; seen.add(k); cands.push({ id: `c${cands.length + 1}`, ...c }); };
     for (const g of got.filter(Boolean)) for (const s of g.out.slice(0, 8)) add({ kind: 'suggest', text: s, seed: g.q, branded: names.some((n) => new RegExp(`\\b${escRe(n)}\\b`).test(norm(s))) });
-    const vol = await volumes([...cands.map((c) => c.text), ...seeds.map((s) => `best ${s}`)], b.loc, errors, b.lang);
+    const vol = await volumes([...cands.map((c) => c.text), ...seeds.map((s) => `best ${s}`)], b.loc, errors, b.lang, b.slug);
     for (const c of cands) c.volume = vol[norm(c.text)] || 0;
     for (const s of seeds) { const k = `best ${s}`; if (!seen.has(k) && vol[k]) add({ kind: 'search', text: k, volume: vol[k], branded: false }); }
     for (const t of b.threads) add({ kind: 'thread', text: cut(t.title || t.quote, 160), platform: t.platform, url: t.url, replies: t.replies || 0, branded: names.some((n) => new RegExp(`\\b${escRe(n)}\\b`).test(norm(t.title || t.quote))) });

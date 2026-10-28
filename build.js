@@ -924,7 +924,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     return { handle: handleOf(u), title: String(t).trim(), price, currency: cur, /* the same handle the catalog read gives the page (no duplicate) */ img: asset, images: asset ? [asset] : [], url: u, inStock: item?.inStock ?? item?.available ?? null, addedByBrand: true, claims: [] }; /* as the page says, never assumed in stock (1.11) */
   }
   // a rival's website → name, logo, a few live prices (Shopify), and its live ads by domain
-  async function readRival(url, p) {
+  async function readRival(url, p, slug = '_brew') {
     /* a rival is a website: "nike" or a sentence is asked for again in plain words before anything is fetched (1.12), never a raw
        network error; the brand's own site is not a rival */
     const raw = String(url || '').trim(), host = /^[^\s]+$/.test(raw) ? hostOf(raw) : null;
@@ -941,7 +941,7 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       let f = await findProductUrls({ urls: [], homeLinks: rlinks(h, `https://${host}/`), origin: `https://${host}`, fetchPage: get, max: 6 });
       if (!f.urls.length) f = await findProductUrls({ urls: await sitemapUrls(async (x) => { const rr = await safeFetch(x, { headers: UA, signal: AbortSignal.timeout(20e3) }).catch(() => null); return { ok: !!rr?.ok, text: rr?.ok ? await rr.text() : '' }; }, `https://${host}`), origin: `https://${host}`, fetchPage: get, max: 6, market: p.country });
       for (const x of f.urls.slice(0, 4)) { const hh = await get(x); const it = hh && productFromPage(hh, x); if (it?.price > 0) prices.push({ title: it.title.slice(0, 70), price: it.price, currency: it.currency || p.currency, url: x }); } } catch {}
-    let live = null; try { const k = await adCall(treg, 'scrapecreators.x.v1-facebook-adlibrary-search-ads', { query: { query: host, country: p.country || 'ALL', status: 'ACTIVE', trim: true }, tag: 'check-rival-ads' }); live = (k?.searchResults || []).filter((a) => String(a.snapshot?.link_url || '').includes(host)).length; } catch {}
+    let live = null; try { const k = await adCall(treg, 'scrapecreators.x.v1-facebook-adlibrary-search-ads', { query: { query: host, country: p.country || 'ALL', status: 'ACTIVE', trim: true }, tag: `rivalads-${slug}` }); live = (k?.searchResults || []).filter((a) => String(a.snapshot?.link_url || '').includes(host)).length; } catch {}
     return { name, host, url: `https://${host}`, why: 'Named by the brand', how: 'named by the brand, site read live', prices, claims: [], offers: [], liveAds: live };
   }
   async function applyCheck(slug, b = {}) {
@@ -959,14 +959,14 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
       if (x.price) L.push({ key: `price.${x.handle}`, label: x.title, v: moneyFmt(x.currency || p.currency, p.locale)(x.price), n: x.price, unit: x.currency, layer: 'observed', src: hostOf(x.url) + new URL(x.url).pathname, url: x.url, at, method: 'product page (added by the brand)' }); } catch (e) { notes.push(e.message); } } /* readProduct says what went wrong in plain words */
     const rivals0 = (p.rivals || []).map((r) => r.name).join('|');
     if (Array.isArray(b.removeRivals)) p.rivals = (p.rivals || []).filter((r) => !b.removeRivals.includes(r.host));
-    for (const u of (b.addRivals || []).slice(0, 6)) { try { const r = await readRival(u, p); p.rivals = [...(p.rivals || []).filter((x) => x.host !== r.host), r]; L.push({ key: `rival.${r.host.replace(/\./g, '-')}.found`, label: `Rival: ${r.name}`, v: r.host, layer: 'observed', src: r.host, url: r.url, at, method: 'brand-confirmed' });
+    for (const u of (b.addRivals || []).slice(0, 6)) { try { const r = await readRival(u, p, slug); p.rivals = [...(p.rivals || []).filter((x) => x.host !== r.host), r]; L.push({ key: `rival.${r.host.replace(/\./g, '-')}.found`, label: `Rival: ${r.name}`, v: r.host, layer: 'observed', src: r.host, url: r.url, at, method: 'brand-confirmed' });
       r.prices.forEach((x, i) => L.push({ key: `rival.${r.host.replace(/\./g, '-')}.price.${i + 1}`, label: `${r.name}: ${x.title}`, v: moneyFmt(p.currency, p.locale)(x.price), n: x.price, unit: p.currency, layer: 'observed', src: r.host, url: x.url, at, method: 'products.json' })); } catch (e) { notes.push(e.message); } } /* readRival's words already name the address (1.12) */
     const src = b.sources || {};
     if (src.instagram) { const h = (String(src.instagram).match(/instagram\.com\/([A-Za-z0-9_.]+)/) || [])[1]; if (h) { p.socials ||= {}; p.socials.instagram = { ...(p.socials.instagram || {}), url: `https://www.instagram.com/${h}`, handle: h }; conf('social.instagram.confirmed', 'Instagram (confirmed by the brand)', '@' + h, `https://www.instagram.com/${h}`); } else notes.push('That Instagram link did not look right.'); }
     if (src.adpage) { try { const m = String(src.adpage).match(/facebook\.com\/(?:profile\.php\?id=)?([A-Za-z0-9.\-]+)/); let pageId = /^\d+$/.test(m?.[1] || '') ? m[1] : null;
-        if (!pageId && m) { const s2 = await adCall(treg, 'scrapecreators.x.v1-facebook-adlibrary-search-companies', { query: { query: m[1] }, tag: 'check-adpage' }); pageId = (s2?.searchResults || []).find((x) => (x.page_alias || '').toLowerCase() === m[1].toLowerCase())?.page_id || s2?.searchResults?.[0]?.page_id; }
+        if (!pageId && m) { const s2 = await adCall(treg, 'scrapecreators.x.v1-facebook-adlibrary-search-companies', { query: { query: m[1] }, tag: `adpage-${slug}` }); pageId = (s2?.searchResults || []).find((x) => (x.page_alias || '').toLowerCase() === m[1].toLowerCase())?.page_id || s2?.searchResults?.[0]?.page_id; }
         if (!pageId) throw new Error('We could not find that page in the Ad Library.');
-        const k = await adCall(treg, 'scrapecreators.x.v1-facebook-adlibrary-company-ads', { query: { pageId, country: p.country || 'ALL', status: 'ACTIVE' }, tag: 'check-adpage-ads' });
+        const k = await adCall(treg, 'scrapecreators.x.v1-facebook-adlibrary-company-ads', { query: { pageId, country: p.country || 'ALL', status: 'ACTIVE' }, tag: `adpageads-${slug}` });
         const rows = (k?.results || []); p.ads ||= {}; p.ads.own = { page: rows[0]?.page_name || m[1], pageId, live: k?.searchResultsCount ?? rows.length, items: p.ads.own?.items || [] };
         conf('ads.own.live', `Live Meta ads (${p.country || 'all countries'})`, String(p.ads.own.live), `https://www.facebook.com/ads/library/?view_all_page_id=${pageId}`); } catch (e) { notes.push(`Ad page: ${e.message}`); } }
     if (src.reviews) { const u = String(src.reviews).trim(); if (/^https?:\/\//.test(u)) { p.reviews ||= {}; p.reviews.brandSource = u; conf('reviews.source.confirmed', 'Where the brand says its reviews live', hostOf(u), u); notes.push('Saved that link for the team. Brew doesn’t read reviews from a pasted page yet.'); } }

@@ -242,7 +242,7 @@ export function createFactsDesk({ packs, builder, ai = null, onPack = async () =
             fresh.push({ key: `price.${x.handle}`, label: `${x.title} price`, v, n: x.price, unit: x.currency || P.currency, layer: 'observed', src: hostOf(url) + new URL(x.url || url).pathname, url: x.url || url, at, method: 'product page (added by the brand)' });
             P.catalog ||= {}; const was = handleOf(k0); P.catalog.products = [{ ...((P.catalog.products || []).find((y) => y.handle === was) || {}), ...x, priceLabel: v }, ...(P.catalog.products || []).filter((y) => y.handle !== was && y.handle !== x.handle)];
             if (was !== x.handle) P.catalog.hero = (P.catalog.hero || []).map((h) => (h === was ? x.handle : h)); }
-          else if (/^rival\./.test(k0) && builder?.readRival) { const hk = k0.split('.')[1], r = await builder.readRival(url, P);
+          else if (/^rival\./.test(k0) && builder?.readRival) { const hk = k0.split('.')[1], r = await builder.readRival(url, P, slug);
             P.rivals = [...(P.rivals || []).filter((x) => String(x.host).replace(/\./g, '-') !== hk && x.host !== r.host), r];
             fresh.push({ key: `rival.${r.host.replace(/\./g, '-')}.found`, label: `Rival: ${r.name}`, v: r.host, layer: 'observed', src: r.host, url: r.url, at, method: 'brand-confirmed' },
               ...r.prices.map((x, i) => ({ key: `rival.${r.host.replace(/\./g, '-')}.price.${i + 1}`, label: `${r.name}: ${x.title}`, v: moneyFmt(P.currency, P.locale)(x.price), n: x.price, unit: P.currency, layer: 'observed', src: r.host, url: x.url, at, method: 'products.json' })));
