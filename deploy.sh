@@ -5,6 +5,16 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 [ -z "$(git status --porcelain)" ] || { echo "uncommitted changes: commit first, then deploy"; exit 1; }
+# deploys only add (Param, 28 Oct): this tree must contain every commit staging runs now, or another session's deployed work
+# goes away (an old worktree, a branch behind origin). A deliberate rollback says so: ROLLBACK=1 ./deploy.sh
+if [ "${ROLLBACK:-0}" != 1 ]; then
+  git fetch -q origin 2>/dev/null || true
+  LIVE_SHA=$(gcloud run services describe shopos-feed --project=squareup-492617 --region=asia-south1 --format=json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); t=[x for x in d['status'].get('traffic',[]) if x.get('percent')]; print(t[0]['revisionName'] if t else '')" 2>/dev/null | xargs -I{} gcloud run revisions describe {} --project=squareup-492617 --region=asia-south1 --format='value(metadata.labels.git-sha)' 2>/dev/null || true)
+  if [ -n "$LIVE_SHA" ]; then
+    git cat-file -e "$LIVE_SHA^{commit}" 2>/dev/null || { echo "staging runs $LIVE_SHA, which this checkout doesn't have: git pull --rebase origin main, then deploy"; exit 1; }
+    git merge-base --is-ancestor "$LIVE_SHA" HEAD || { echo "staging runs $LIVE_SHA and this tree doesn't contain it: git pull --rebase origin main first (a real rollback: ROLLBACK=1)"; exit 1; }
+  fi
+fi
 for f in *.js db/*.js reader/*.js reader/stages/*.js connectors/*.js pdf/*.js public/*.js public/data/brew.js; do node --check "$f"; done
 # every module server.js imports must be in the image (the Dockerfile copies *.js and these folders)
 for d in reader connectors pdf db skills prompts data sources/moves public; do [ -d "$d" ] || { echo "missing $d/"; exit 1; }; done

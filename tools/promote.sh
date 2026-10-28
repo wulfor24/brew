@@ -45,6 +45,16 @@ if gcloud run services describe brew-web --region=$REGION --project=$P --format=
   [ -n "$PREV_WEB" ] || die "could not read which revision brew-web serves now (nothing to roll back to)"
   [ "$PREV_WEB" != SPLIT ] || die "brew-web splits its traffic between revisions; put it on one revision first"
 fi
+# releases only add (Param, 28 Oct): what goes live must contain every commit production runs now. Read under the lock, so a run
+# that waited behind another can't ship the older image it read before (28 Oct: eb5a427 went live over aafda87 and the Shopify
+# fix disappeared). A deliberate rollback says so: ROLLBACK=1 tools/promote.sh <image>
+if [ -n "$PREV_WEB" ] && [ "${ROLLBACK:-0}" != 1 ]; then
+  LIVE_SHA=$(gcloud run revisions describe "$PREV_WEB" --region=$REGION --project=$P --format='value(metadata.labels.git-sha)')
+  [ -n "$LIVE_SHA" ] || die "could not read the commit production runs ($PREV_WEB has no git-sha label)"
+  git cat-file -e "$LIVE_SHA^{commit}" 2>/dev/null || die "production runs $LIVE_SHA, which this checkout doesn't have: git fetch origin, then promote again"
+  git merge-base --is-ancestor "$LIVE_SHA" "$SHA" || die "production runs $LIVE_SHA and $SHA does not contain it: this would take work off production. Deploy staging from origin/main (./deploy.sh), then promote. A real rollback: ROLLBACK=1"
+  echo "   adds to production: $LIVE_SHA → $SHA ($(git rev-list --count "$LIVE_SHA..$SHA") commits)"
+fi
 # the worker revision that serves now (its traffic), not the newest one: after a rollback those differ, and the newest is the bad one
 PREV_WORKER=$(gcloud run services describe brew-worker --region=$REGION --project=$P --format=json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); t=[x for x in d['status'].get('traffic',[]) if x.get('percent')]; print(t[0]['revisionName'] if t else '')" || true)
 CHANGED_WORKER=0
