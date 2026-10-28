@@ -94,6 +94,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   // who this person is to the brand: owner | member | admin | null
   async function roleOf(slug, u) {
     if (!u) return null;
+    await starterJoins(slug);
     const m = await getM(slug), me = m.members.find((x) => x.email === u.email);
     /* the name and picture follow the Google account: copied when they joined, refreshed when they change */
     if (me && ((u.name && me.name !== u.name) || (u.pic && me.pic !== u.pic)) && !u.demo) editM(slug, (mm) => { const x = mm.members.find((y) => y.email === u.email); if (x) { if (u.name) x.name = u.name; if (u.pic) x.pic = u.pic; } }).catch(() => {});
@@ -139,8 +140,20 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   }
   /* starting a read gives nothing on its own (Param, 23 Oct): a Gmail could start a read of a brand nobody claimed and take it.
      Only an official email, an invite or SquareUp's own people open a brand */
+  /* ...except Brew's own people: one of them starting the read of a brand nobody has claimed runs it for the brand (as
+     marketing@shopos.ai does Arata), so they are on its team as its admin, not an invisible full-access visitor. The brand's own
+     domain still joins on its own after them (roleOf). Saved brands heal on their next open */
+  async function starterJoins(slug) {
+    const m = await getM(slug); if (m.owner) return false;
+    const by = String((await packs.getJSON(slug, 'private/created.json', null).catch(() => null))?.by || '').toLowerCase().trim();
+    if (!by || !isAdmin({ email: by })) return false;
+    const host = await hostOf(slug).catch(() => null); if (host && !m.host) await editM(slug, (mm) => { mm.host ||= host; });
+    const added = await addMember(slug, { email: by }, 'owner', 'Started the read');
+    log.log?.(`[auth] ${slug}: ${by} is its admin (started the read)`); return added;
+  }
   // claim by email domain (instant); a connected account claims through claimWith (connectors/index.js)
   async function claimInfo(slug, u) {
+    await starterJoins(slug);
     const host = await hostOf(slug), m = await getM(slug), role = await roleOf(slug, u);
     const domainOk = !!u && !freeMail(u.email) && ownDomain(domainOf(u.email), host);
     const boss = role === 'owner' || role === 'admin', seats = role ? await seatsOf(slug, u) : null;

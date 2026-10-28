@@ -51,3 +51,17 @@ test('the demo site (DEMO_MODE=1) keeps its gate open: every visitor owns a thro
   process.env.DEMO_MODE = '1';
   try { assert.equal((await mkAuth().accessOf('cozy', { email: 'raj@gmail.com' })).gen, true); } finally { delete process.env.DEMO_MODE; }
 });
+
+test('Brew’s own person who started the read is on the team as its admin; a Gmail starter still gets nothing; the brand’s domain still joins', async () => {
+  const packs = memPacks(), a2 = createAuth({ packs, hostOf: async (s) => HOSTS[s] || null, log: { warn() {}, log() {} } });
+  await packs.put('cozy', 'private/created.json', { by: 'Prashanth.B@shopos.ai', at: Date.now() });
+  const v = await a2.accessOf('cozy', { email: 'param@joinsquareup.com' });
+  assert.ok(v.members.some((x) => x.email === 'prashanth.b@shopos.ai' && x.role === 'owner'), 'listed on Team as admin (healed on open)');
+  assert.equal((await a2.getMembers('cozy')).owner, 'prashanth.b@shopos.ai');
+  assert.equal((await a2.accessOf('cozy', { email: 'prashanth.b@shopos.ai', name: 'Prashanth' })).role, 'owner');
+  assert.equal((await a2.accessOf('cozy', { email: 'ana@cozysnugglet.shop' })).role, 'member', 'the brand’s own domain joins on its own');
+  /* a Gmail starter: starting a read never opens a brand (23 Oct) */
+  await packs.put('allbirds', 'private/created.json', { by: 'founder@gmail.com', at: Date.now() });
+  assert.equal((await a2.accessOf('allbirds', { email: 'founder@gmail.com' })).role, null);
+  assert.equal((await a2.getMembers('allbirds')).owner, null);
+});
