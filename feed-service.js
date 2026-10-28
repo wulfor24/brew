@@ -285,7 +285,7 @@ export function createFeedService(o) {
   const { PUB, claudeJSON, claudeTool, mockVariants, geminiImage, BANNED, clean, store, packs, builder, log = console } = o;
   /* every card's plan (card-plan.js): the ground-work steps toward its action, with its first draft as v0. Worked out from
      the card itself, so saved cards get it without new spend; every prompt that reads a card reads its plan too */
-  const planOfCard = (c) => { if (!c?.id || !c.title) return null; try { return planFor(c, { draft: draftView(draftFor(c, B()?.firstDrafts), c) }); } catch (e) { log.warn?.('[plan]', e.message); return null; } };
+  const planOfCard = (c) => { if (!c?.id || !c.title) return null; try { const dv = draftView(draftFor(c, B()?.firstDrafts), c); return planFor(c, { draft: dv && draftFits(dv, c, { catalog: B()?.catalog || [], brand: BN() }) ? dv : null }); } /* a draft about another product never becomes the plan's v0 (QV 28 Oct) */ catch (e) { log.warn?.('[plan]', e.message); return null; } };
   /* the Brand Book (voice, claims allowed, words, real reviews, what the team keeps undoing) reaches every v1 writer too, not only Studio:
      read from its 5-minute cache, filled in the background the first time a brand's writer runs */
   const BOOKTXT = new Map(); const bookText = (t) => { if (!t) return ''; const slug = slugOfT(t), hit = BOOKTXT.get(slug);

@@ -20,7 +20,7 @@ const priceOf = (x) => { if (x.priceLabel) return String(x.priceLabel); const n 
 const NOT_FOR_SALE = /\b(?:test|dummy|sample|placeholder)\s+(?:product|listing|item|sku)\b|\bdo not (?:buy|use|purchase|order)\b|(?:^|\s)test\s*$|^\s*test\b(?!\s+kits?\b)|\bevent test\b/i;
 /* a give-away the store adds to orders (Arata's 15ml "free-product" sizes, no price): a real listing, never the product a card means
    when its full size is also there (26 Oct: the jam drew the 15ml conditioner sample for a ₹2,182 combo ad) */
-const freeSample = (x) => (x.tags || []).some((g) => /^free[- ]?(?:product|gift|sample)$/i.test(String(g))) || x.price === 0 || x.price === '0'; /* a store's free tag or a stated zero price; a read that just didn't get a price is no sample (26 Oct review) */
+export const freeSample = (x) => (x.tags || []).some((g) => /^free[- ]?(?:product|gift|sample)$/i.test(String(g))) || x.price === 0 || x.price === '0'; /* a store's free tag or a stated zero price; a read that just didn't get a price is no sample (26 Oct review) */
 export const sellable = (x) => !!x && !NOT_FOR_SALE.test(String(x.title || x.t || '')) && !/-copy(?:-\d+)?\/?$/i.test(String(x.handle || x.url || '').split('?')[0]);
 export const catalogOf = (profile, max = 400) => (profile?.catalog?.products || []).filter(sellable)
   .map((x) => ({ t: String(x.title || ''), img: [x.img, ...(x.images || [])].find((u) => u && !JUNK.test(u)) || null, ...(priceOf(x) ? { price: priceOf(x) } : {}), ...(x.inStock === false ? { out: true } : {}), ...(freeSample(x) ? { free: true } : {}), ...(x.handle ? { handle: String(x.handle) } : {}), ...(x.url ? { url: String(x.url) } : {}), ...((x.claims || [])[0] ? { claim: String(x.claims[0]) } : {}), imgs: [...new Set([x.img, ...(x.images || [])].filter((u) => u && typeof u === 'string' && !JUNK.test(u)))].slice(0, 8) /* every photo of it: a listing's photo set where no photo can be made (remix listingFromCatalog) */ })) /* skip a "sold out" placeholder, keep the product; price and stock for a product grid (draft-mocks.js); its page and first claim for the jam's product line (studio productFor) */
@@ -99,7 +99,14 @@ export function pricedProduct(text, catalog, opts = {}) {
 export const cardAssetText = (c = {}) => [c?.make?.pieces, c?.title, c?.sub].filter(Boolean).join('. ');
 export function cardProduct(c, catalog, opts = {}) {
   const words = `${c?.title || ''}. ${c?.sub || ''}`, strict = { ...opts, byNameOnly: true };
-  return matchProduct(words, catalog, strict) || (c?.make?.pieces && matchProduct(c.make.pieces, catalog, strict)) || (opts.byNameOnly ? null : matchProduct(words, catalog, opts));
+  return matchProduct(words, catalog, strict) || (c?.make?.pieces && matchProduct(c.make.pieces, catalog, strict)) || rowsProduct(c, catalog, strict) || (opts.byNameOnly ? null : matchProduct(words, catalog, opts));
+}
+/* a card that lists its products in its rows ("Pause ads for 3 sold-out products": three serums, one per row) is about the first
+   one named there, by name only (QV 28 Oct: its "Plan the restock" opened on a conditioner the rows never named) */
+export function rowsProduct(c, catalog, opts = {}) {
+  if (!Array.isArray(c?.rows) || !catalog?.length) return null;
+  for (const r of c.rows) { const t = (Array.isArray(r) ? r : [r]).filter((x) => typeof x === 'string').join(' '); const m = t && matchProduct(t, catalog, { ...opts, byNameOnly: true }); if (m) return m; }
+  return null;
 }
 /* the scene the card promises its asset shows, as a line for any picture prompt ('' when the card names none). The words an ad
    carries ("headline 'Warm toes'", "price line $39", "button Shop now") are set afterwards in exact type, never asked of the

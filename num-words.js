@@ -11,8 +11,10 @@ const CARD = new RegExp(`\\b(?:(${TEN_RE})(?:[-\\s](${ONES.slice(1, 10).join('|'
 export const wordNum = (w) => { const m = new RegExp(`^${CARD.source}$`, 'i').exec(String(w || '').trim()); if (!m) return null; return m[3] ? ONES.indexOf(m[3].toLowerCase()) : TENS[m[1].toLowerCase()] + (m[2] ? ONES.indexOf(m[2].toLowerCase()) : 0); };
 const ordNum = (w) => { const s = String(w || '').toLowerCase().trim(); if (ORD[s]) return ORD[s]; const m = /^(twenty|thirty)[-\s](\w+)$/.exec(s); return m && ORD[m[2]] && ORD[m[2]] < 10 ? TENS[m[1]] + ORD[m[2]] : null; };
 const MONTHS = 'January|February|March|April|May|June|July|August|September|October|November|December';
-const NUM = `(?:(?:${TEN_RE})(?:-(?:${ONES.slice(1, 10).join('|')}))?|${ONE_RE})`;
-const ORDS = `(?:(?:twenty|thirty)-(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth)|${Object.keys(ORD).join('|')})`;
+/* "thirty-one" and "thirty one" are one number, never "30 one" (Arata QV 28 Oct) */
+const NUM = `(?:(?:${TEN_RE})(?:[-\\s](?:${ONES.slice(1, 10).join('|')}))?|${ONE_RE})`;
+const UNIT = ONES.slice(1, 10).join('|');
+const ORDS = `(?:(?:twenty|thirty)[-\\s](?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth)|${Object.keys(ORD).join('|')})`;
 export function numeralsIn(text, { counts = true, locale = 'en-IN' } = {}) {
   if (typeof text !== 'string' || !text) return text;
   let x = text
@@ -29,7 +31,10 @@ export function numeralsIn(text, { counts = true, locale = 'en-IN' } = {}) {
      word that counts something, so a year, a code or an id is never touched */
   x = x.replace(/(^|[\s(])(\d{4,9})(?=\s+(?:new\s+|public\s+|live\s+|active\s+|unanswered\s+)?(?:live|ads?|replies|reviews?|ratings?|orders?|people|visitors?|visits|searches|followers|views|comments|posts|products?|customers?|buyers?|sessions|clicks|units|mentions|answers|questions|subscribers|likes|shares|impressions|times)\b)/g, (m, pre, n) => `${pre}${(+n).toLocaleString(locale)}`);
   /* a count of 11 or more said in words ("forty-one public reviews", "twelve unanswered") */
-  if (counts) x = x.replace(new RegExp(`\\b(${NUM})\\b(?=\\s+[a-z])`, 'gi'), (m) => { const n = wordNum(m); return n != null && n >= 11 ? String(n) : m; });
+  /* "day twenty one", "week three" of a flow → "day 21", as the email titles say it */
+  x = x.replace(new RegExp(`\\b(day|week|month)\\s+(${NUM})\\b(?![-\\s](?:${UNIT})\\b)`, 'gi'), (m, u, w) => { const n = wordNum(w); return n != null ? `${u} ${n}` : m; });
+  /* a count of 11 or more said in words ("forty-one public reviews", "twelve unanswered"); never the "thirty" of "thirty one" */
+  if (counts) x = x.replace(new RegExp(`\\b(${NUM})\\b(?![-\\s](?:${UNIT})\\b)(?=\\s+[a-z])`, 'gi'), (m) => { const n = wordNum(m); return n != null && n >= 11 ? String(n) : m; });
   return x;
 }
 /* every word a card shows, healed on a copy (title, sub, rows, the proof's why/how); a margin note keeps its words for counts */

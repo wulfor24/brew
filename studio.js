@@ -1,5 +1,5 @@
 import { B, BN, BH, CTRY } from './brand-ctx.js';
-import { matchProduct, sceneOf } from './product-match.js';
+import { matchProduct, sceneOf, freeSample } from './product-match.js';
 import { planFamilies, planSpecs, planChips, planMock, dlOfKey } from './deliverables.js';
 import { splitList, joinList, noneCell } from './jam-words.js'; // lists, cells and money as the shopper reads them (26 Oct)
 // Remix studio: what each kind of change is, as a commission-ready package.
@@ -732,7 +732,7 @@ export const productFor = (c = {}, F, extra = '') => {
   if (cat?.length) for (const text of [extra, c.product, cardWords(c)]) { const m = text && matchProduct(text, cat, { brand }); if (m) return asProduct(m); } /* c.product: the product a card names outright (a team static's photo) */
   const LP = B()?.config?.laneProducts; if (LP && (LP[c.lane] || Object.values(LP)[0])) return PRODUCT(c.lane, F);
   /* a card that names no product and a brand with no lane products: its first in-stock catalog product, never the words "the product" */
-  const first = (cat || []).find((x) => x?.t && !x.out) || (cat || []).find((x) => x?.t); if (first) return asProduct(first);
+  const first = (cat || []).find((x) => x?.t && !x.out && !freeSample(x)) || (cat || []).find((x) => x?.t && !freeSample(x)) || (cat || []).find((x) => x?.t); if (first) return asProduct(first); /* never a free sample when a full size is there */
   return PRODUCT(c.lane, F);
 };
 

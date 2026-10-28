@@ -29,7 +29,7 @@ import { safeFetch } from './reader/util.js'; // photo links reach only the publ
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { matchProduct, cardProduct, sceneOf } from './product-match.js';
+import { matchProduct, cardProduct, sceneOf, freeSample } from './product-match.js';
 import { aiTextsOf, dropAiQuotes, QUOTE_RULE } from './quote-guard.js'; // only real customers are quoted, never an AI answer (QV round 2, 26 Oct)
 import { draftPrompt, imagePrompt, hookBlock, smallOf, DRAFT_SCHEMA, DRAFT_RATIOS, createMakers, HEAD_V } from './drafts.js';
 import { cardValue } from './value.js'; // what a card is worth doing: the order drafts are made in
@@ -178,7 +178,9 @@ export function draftFits(d, c = {}, { catalog = [], brand = '' } = {}) {
   const cw = tell([c.title, c.sub, ...(c.rows || []).flat(), c.make?.pieces, ...(c.detail?.how || [])].filter((x) => typeof x === 'string').join(' '), drop);
   const named = catalog.length ? cardProduct(c, catalog, { brand, byNameOnly: true }) : null;
   if (named?.t) return String(named.t).toLowerCase() === name.toLowerCase() || [...tell(named.t, drop)].every((w) => pw.has(w)); /* the card names a product: the draft shows that one */
-  return [...pw].some((w) => cw.has(w));
+  /* no product named on the card: the draft's product shares at least two of its telling words with the card (or its only one), so
+     "Anti-Breakage Conditioner" never fits a card about "Anti-Grey Serum" on "anti" alone (QV 28 Oct) */
+  const shared = [...pw].filter((w) => cw.has(w)).length; return shared >= Math.min(2, pw.size);
 }
 export function draftView(d, c = null) {
   if (!d) return null; const images = d.slides?.length ? d.slides.map((x) => x.image).filter(Boolean) : d.render ? [d.render] : d.image ? [d.image] : [];
@@ -293,8 +295,9 @@ export function createDraftsBg({ packs, ai, geminiImage = null, saveGen = null, 
     /* the product the copy names, not the card's default shot (a Hukum ad must show the Hukum shoe) */
     /* the card's asset line names the product it promises ("an office worker wearing Toe Toasters"): that one wins over the draft's words */
     const named = cardProduct(c, p.catalog, { brand: brand.name }) || matchProduct(`${j.title || ''}. ${j.copy || ''}. ${(j.slides || []).map((x) => x?.onSlide).join('. ')}`, p.catalog, { brand: brand.name });
-    const src = await photo(c, named) || (p.catalog?.[0]?.img ? await photo({}, p.catalog[0]) : null); /* nothing named and no card photo: the brand's lead product, never an invented one */
-    if (named) d.product = named.t; else if (p.catalog?.[0] && !(c.images?.length || c.img)) d.product = p.catalog[0].t;
+    const lead = (p.catalog || []).find((x) => x?.t && !x.out && !freeSample(x)) || (p.catalog || []).find((x) => x?.t && !freeSample(x)) || null; /* the brand's lead product: in stock, never a free sample */
+    const src = await photo(c, named) || (lead?.img ? await photo({}, lead) : null); /* nothing named and no card photo: the brand's lead product, never an invented one */
+    if (named) d.product = named.t; else if (lead && !(c.images?.length || c.img)) d.product = lead.t;
     d.photo = src ? photoRelOf(c, named, p) : null;
     let stillBuf = null;
     const still = async () => { /* one picture of the real product in a new scene; null when there is no photo or no budget */
