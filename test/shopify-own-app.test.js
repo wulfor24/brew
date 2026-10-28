@@ -112,3 +112,8 @@ test('own app end to end: Connect, Install app and the callback all reach the ap
   assert.equal(r.code, 302); assert.match(r.headers.location, /^\/cozy#v=connectors&cx=shopify&/);
   assert.match(String(f.mock.calls[0].arguments[0]), /cozy-test\.myshopify\.com\/admin\/oauth\/access_token/); assert.match(String(f.mock.calls[0].arguments[1].body), /code=abc/);
 });
+
+test('the own app asks only for what sync reads, all read-only (no locations: nothing reads them)', () => {
+  assert.equal(OWN_SCOPES, 'read_products,read_inventory,read_orders,read_customers');
+  for (const s of OWN_SCOPES.split(',')) assert.match(s, /^read_/);
+});

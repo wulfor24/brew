@@ -142,7 +142,7 @@
   /* ---------- the guided connect: what to do on each platform, in order, with the links that land on the right page ---------- */
   /* the brand's own Shopify app: the App URL, redirect and scopes come from the server (ownUrls in connectors/shopify.js), the
      same ones its approve screen and launch route use, ready for every brand from the day it onboards */
-  const ownApp = () => L.ownApp || { appUrl: `${location.origin}/shopify/own/b/${slug}`, redirect: `${location.origin}/shopify/own/callback`, scopes: 'read_products,read_inventory,read_locations,read_orders,read_customers' };
+  const ownApp = () => L.ownApp || { appUrl: `${location.origin}/shopify/own/b/${slug}`, redirect: `${location.origin}/shopify/own/callback`, scopes: 'read_products,read_inventory,read_orders,read_customers' };
   function guide(id, av, oauth) {
     const shop = L.shop || '', handle = shop.replace(/\.myshopify\.com$/, ''), n = B().brand.name;
     const last = (t, p) => ({ t, p, last: true });

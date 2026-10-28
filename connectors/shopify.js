@@ -11,7 +11,7 @@ const API = '2026-04';
 const BASE = 'read_products,read_inventory'; /* only what sync reads (App Store requirement 3.2); the same list as docs/shopify.app.toml */
 const PCD = 'read_orders,read_customers';
 /* the brand's own app: one list, asked for on the approve screen AND shown in the connect box to paste (they drifted once) */
-export const OWN_SCOPES = 'read_products,read_inventory,read_locations,read_orders,read_customers';
+export const OWN_SCOPES = 'read_products,read_inventory,read_orders,read_customers'; /* only what sync reads: no locations */
 /* the three things the brand pastes into its own app, built by the server from the site it answers on, for every brand from
    the day it onboards. The App URL carries the brand, so "Install app" in Shopify lands on the approve screen, never the home page */
 export const ownUrls = (base, slug) => ({ appUrl: `${base}/shopify/own/b/${slug}`, redirect: `${base}/shopify/own/callback`, scopes: OWN_SCOPES });
