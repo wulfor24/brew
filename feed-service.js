@@ -641,7 +641,7 @@ export function createFeedService(o) {
     if (PAGE_BUILD.test(c.title || '') && !/\b(?:facebook|instagram) page\b/i.test(c.title || '')) return c.sector === 'storefront' && !storefrontOn() ? c.sector : 'catalog';
     const said = `${c.title || ''} ${c.cta?.label || ''}`; for (const [k, re] of SECTOR_BY) if (re.test(said)) return k === 'catalog' && !storefrontOn() && c.sector === 'storefront' ? c.sector : k;
     return c.sector; };
-  const visible = (t, c) => seatOk(t, c) && (c.sector !== 'storefront' || storefrontOn()) && !claimHeld(t, c) && !noChange(c) && !(c.origin === 'watcher' && c.type === 'idea' && !titlePricesMatch(c)) && ['ready', 'shown', 'approved', 'done'].includes(c.state) && !t.snoozed[c.id] && (!c.onlyWhen || connOn(t, c.onlyWhen))
+  const visible = (t, c) => seatOk(t, c) && (c.sector !== 'storefront' || storefrontOn()) && !claimHeld(t, c) && !noChange(c) && !(c.origin === 'watcher' && c.type === 'idea' && !titlePricesMatch(c)) && ['ready', 'shown', 'approved', 'done'].includes(c.state) && !t.snoozed[c.id] && !(c.liveSrc?.kind === 'catalog' && /^(Out of stock|Back in stock)$/.test((c.badge || [])[0] || '') && connOn(t, 'shopify')) /* a saved page-check stock card goes once Shopify is connected (QV 28 Oct) */ && (!c.onlyWhen || connOn(t, c.onlyWhen))
     && !(c.liveOnly && !t.member) && !(c.demo && (t.member || t.liveConn?.[c.onlyWhen])) && !(!c.liveOnly && t.privMoves?.includes(moveOfId(c.id))) && !(!c.liveOnly && t.privStatics && isStaticCard(c.id));
   // bring a workspace in line with what this viewer may see: add the live cards, drop the ones they may not have
   const applyLive = async (t, viewer) => {
@@ -675,6 +675,7 @@ export function createFeedService(o) {
     if (c.research?.kind === 'ad') return `ad:${String(c.title || '').split(':')[0].toLowerCase()}`;
     if (c.research?.kind) return `res:${c.research.kind}`; return null; };
   /* cards that say the same thing twice: only the newest stays at all */
+  const STOCK_RE = /\b(sold[- ]out|out of stock|back in stock|units left)\b/i;
   const dupOf = (c) => {
     // two stories written from one rising-searches list show the same widget: one card is enough
     if (c.research?.kind === 'trend' && c.rows?.length) return `one:trend:${JSON.stringify(c.rows)}`;
@@ -682,6 +683,8 @@ export function createFeedService(o) {
     const day = /^(lv-vis-score|ow-own-[a-z]+)-\d{4}-\d\d-\d\d$/.exec(String(c.id || '')); if (day) return `one:day:${day[1]}`;
     /* two cards of one rival's ads with the same title ("Modivo: live 136 days in 1 version") */
     if (c.research?.kind === 'ad' && c.title) return `one:ad:${String(c.title).toLowerCase()}`;
+    /* two stock cards about the same products (a connector's "3 sold out" and the live catalog's "Out of stock"): one card (QV 28 Oct) */
+    if (STOCK_RE.test(`${c.title || ''} ${(c.badge || [])[0] || ''}`) && c.rows?.length) { const ps = c.rows.map((r) => String((Array.isArray(r) ? r[0] : r) || '').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 18) /* one name, however each card cut it */).filter(Boolean).sort(); if (ps.length) return `one:stock:${ps.join('|')}`; }
     // the scheduled Creative agent pitching the brand's festival again: only its newest idea stays
     const fest = FESTN(); if (c.origin === 'watcher' && c.type === 'idea' && fest && fest !== 'the next sale' && new RegExp(`\\b${fest.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(c.title || '')) return `one:fest`;
     return null; };
@@ -1188,6 +1191,8 @@ export function createFeedService(o) {
       const t0 = short(x[0].title, 32), isQ = (i) => quoted.has(handleOf(i)), nq = x.filter(isQ).length;
       const base = { id: 'lv-' + e.id, catV: CAT_V, agent: 'storefront', sector: 'catalog', lane: firstLane(), roles: ['ecom', 'founder', 'growth'], kind: 'rows', src: `${BH()}, checked ${at}`, liveSrc: { kind: 'catalog', id: e.id }, link: x[0]?.url ? { label: `Open on ${BH()}`, url: x[0].url } : undefined, ttlDays: 7 };
       const rows = (f) => x.slice(0, 4).map((i) => [short(i.title, 34), f(i)]), order = `Order: ${r.said}.`;
+      /* once the store's Shopify is connected, stock comes from it one to one: the page check makes no stock card of its own (QV 28 Oct) */
+      if ((e.kind === 'oos' || e.kind === 'back') && t && connOn(t, 'shopify')) return null;
       if (e.kind === 'oos') return { ...base, type: 'decision', family: 'exception', badge: ['Out of stock', 'warn'],
         title: n === 1 ? `${t0} is sold out: pause the ads that point to it` : `${plural(n, 'product is', 'products are')} sold out: pause the ads that point to them`,
         sub: `${nq ? (n === 1 ? 'Our ads point to it. ' : `${nq} of them ${nq === 1 ? 'is a product' : 'are products'} our ads point to. `) : ''}Shoppers who land there can’t buy until it’s back.`,

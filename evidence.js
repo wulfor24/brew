@@ -85,6 +85,10 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
   /* the best fact for one number: one the card's move used, then the most words in common with the card, then observed */
   /* a plain count ("30 days", "12 of 32") is in many facts by chance: it backs the card only when the move used that fact or the
      fact shares a word with the card. Money, shares and big counts are specific enough on their own */
+  /* an account line backs a card's number only when it is about what the card says: its label or value shares a telling word with the
+     card (QV 28 Oct: a stock card's "3" was "backed" by the abandoned-cart line "MitoActive (473 carts)" and the chat concluded sold out) */
+  const GENERIC = new Set('products product orders order items item total count number last days day week month share rate people customers store sales value'.split(' '));
+  const onTopic = (text, cw) => words(text).some((w) => !/^\d/.test(w) && !GENERIC.has(w) && cw.has(w));
   const pick = (cands, cw, used, loose) => cands.map((f) => { let hit = 0; for (const w of new Set(words(f.label).filter((x) => !/^\d/.test(x)))) if (cw.has(w)) hit++; return { f, hit, s: hit + (used.has(f.key) ? 3 : 0) + (f.kind === 'current' ? 1 : 0) }; })
     .filter((x) => !loose || x.hit >= 2 || used.has(x.f.key)).sort((a, b) => b.s - a.s)[0]?.f;
 
@@ -107,7 +111,7 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
     const live = liveLedger && typeof liveLedger === 'object' ? Object.entries(liveLedger) : [];
     const backed = new Set();
     for (const n of nums) {
-      const acct = live.find(([, e]) => e && allNums(e.v).includes(n));
+      const acct = live.find(([key, e]) => e && allNums(e.v).includes(n) && (String(n).replace(/\D/g, '').length >= 4 || onTopic(`${e.label || key} ${e.v}`, cw))); /* a small number ("3", "30") is everywhere: only a line on the card's topic backs it */
       if (acct) { const [key, e] = acct; add({ kind: 'account', label: plainLabel(e.label) || key, value: String(e.v), src: `Your ${connName(key)} account`, at: e.at ? new Date(e.at).toISOString().slice(0, 10) : null, url: null, num: n }); backed.add(n); continue; }
       const loose = !gated.has(n) || String(n).replace(/\D/g, '').length <= 2, f = pick(idx.get(n) || [], cw, used, loose) || pickPulse(pidx.get(n) || [], cw, used, loose); /* "10%", "₹0", "2x" are common too */
       if (!f) { const d = ns.flatMap((k) => M[k]?.derived || []).find((x) => x?.v != null && allNums(x.v).includes(n)); /* the move's own sum, shown with its working */

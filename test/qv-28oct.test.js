@@ -34,3 +34,24 @@ test('A: a card that lists its products in rows is about those products, never a
   assert.equal(draftFits({ product: 'Anti-Breakage Intensive Conditioner 200ml' }, { title: 'Show the anti-frizz routine' }, { catalog: CAT, brand: 'Acme' }), false, 'one shared word ("anti") is not a fit');
   assert.equal(draftFits({ product: 'Anti-Grey Hair Serum 30ml' }, STOCK, { catalog: CAT, brand: 'Acme' }), true);
 });
+
+const { createEvidence } = await import('../evidence.js');
+test('B: an account line backs a small number only when it is about what the card says', () => {
+  const EV = createEvidence({ factsOf: () => ({}), movesOf: () => ({}), numsOf: () => [] });
+  const ledger = { 'shopify.carts.7d': { v: 'MitoActive (473 carts), Scalp Massager (3 carts)', label: 'Abandoned carts by product' }, 'shopify.stock': { v: '3 products sold out: Anti-Grey Hair Serum 30ml, 50ml, Kit', label: 'Sold out' } };
+  const e = EV.evidenceOf(STOCK, { liveLedger: ledger });
+  const acct = e.items.filter((x) => x.kind === 'account');
+  assert.ok(!acct.some((x) => /carts/i.test(x.value)), 'the cart line never backs a sold-out card');
+  assert.ok(acct.some((x) => /sold out/i.test(x.label)), 'the stock line does');
+  const big = EV.evidenceOf({ id: 'r', title: 'Your store made ₹2,40,000', sub: 'A good month.' }, { liveLedger: { 'shopify.revenue.30d': { v: '₹2,40,000', label: 'Revenue, last 30 days' } } });
+  assert.ok(big.items.some((x) => x.kind === 'account'), 'an exact big number still backs its card');
+});
+
+import fs from 'node:fs';
+const src = (f) => fs.readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+test('D: once Shopify is connected, stock comes from it one to one; two stock cards on the same products are one', () => {
+  const fsvc = src('feed-service.js');
+  assert.match(fsvc, /\(e\.kind === 'oos' \|\| e\.kind === 'back'\) && t && connOn\(t, 'shopify'\)\) return null;/, 'the page check makes no stock card once Shopify is connected');
+  assert.match(fsvc, /!\(c\.liveSrc\?\.kind === 'catalog' && \/\^\(Out of stock\|Back in stock\)\$\/\.test\(\(c\.badge \|\| \[\]\)\[0\] \|\| ''\) && connOn\(t, 'shopify'\)\)/, 'a saved one steps aside');
+  assert.match(fsvc, /return `one:stock:\$\{ps\.join\('\|'\)\}`/, 'the same products make one stock card, whatever made them');
+});
