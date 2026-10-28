@@ -149,3 +149,15 @@ test('Ask our team for changes: a note box, and the note rides on top of the bri
   assert.match(sh, /data-team-note/); assert.match(sh, /send\(p, w, 'shopos', false, note\)/);
   assert.match(jb, /w\.jamBrief\.md = `\*\*What to change:\*\* \$\{note\}/); assert.match(jb, /if \(note\) say\(t, w, \{ from: 'me', body: note \}\);/);
 });
+
+test('partner mode: the page shows the partner bar to everyone, staff too; staff make from the ··· menu only', () => {
+  const was = process.env.MAKE_MODE; process.env.MAKE_MODE = 'partner';
+  try {
+    assert.deepEqual(MM.pageModeOf('param@joinsquareup.com'), { makeMode: 'partner', staffMake: true });
+    assert.deepEqual(MM.pageModeOf('ana@brand.com'), { makeMode: 'partner' });
+    delete process.env.MAKE_MODE; assert.deepEqual(MM.pageModeOf('param@joinsquareup.com'), { makeMode: 'paid' });
+  } finally { if (was == null) delete process.env.MAKE_MODE; else process.env.MAKE_MODE = was; }
+  const app = src('public/app.js');
+  assert.match(app, /Make it here · staff only/); assert.match(app, /window\.LIVE\?\.staffMake/);
+  assert.match(src('auth.js'), /\.\.\.pageModeOf\(me\?\.email\)/); assert.match(src('connectors/index.js'), /\.\.\.pageModeOf\(me\?\.email\)/);
+});

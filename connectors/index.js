@@ -10,7 +10,7 @@ import { leaderOnly } from '../roles.js'; // timers run their work on the backgr
 import crypto from 'node:crypto';
 import { safeFetch } from '../reader/util.js'; // a Meta winner's picture, saved once for the Brand Book
 import shopify, { ownUrls } from './shopify.js';
-import { makeModeOf } from '../make-mode.js';
+import { pageModeOf } from '../make-mode.js';
 import { queryOk as brewLaunchOk } from '../shopify-app.js'; // a launch signed by Brew's own public app, not a brand's
 import meta from './meta.js';
 import google, { ga4 } from './google.js';
@@ -305,7 +305,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         ...(d && !d.gone ? { stats: d.stats, changed: d.changed, cards: (d.cards || []).length } : {}) };
     }
     const ctx = await ctxOf(slug), born = (await packs.getJSON(slug, 'status.json', null).catch(() => null))?.born || null;
-    return { me, signin: auth.signinOn(), access, full: auth.isAdmin(me), makeMode: makeModeOf(me?.email) /* partner: no prices, our team makes it (make-mode.js) */, conns: out, avail: Object.fromEntries(Object.entries(avail()).filter(([id]) => !hide.has(id))), shop: member ? ctx.shopifyShop : null, dummy: DEMO, born };
+    return { me, signin: auth.signinOn(), access, full: auth.isAdmin(me), ...pageModeOf(me?.email) /* partner: no prices for anyone on the page; staff make from the ··· menu (make-mode.js) */, conns: out, avail: Object.fromEntries(Object.entries(avail()).filter(([id]) => !hide.has(id))), shop: member ? ctx.shopifyShop : null, dummy: DEMO, born };
   }
   /* the accounts connected right now (read at least once, not disconnected): what a private move's connectedWith is checked against */
   async function connectedIds(slug) { const L = await liveOf(slug); return Object.keys(L.live).filter((id) => !L.live[id]?.gone); }

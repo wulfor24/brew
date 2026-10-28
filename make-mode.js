@@ -7,5 +7,8 @@ import { isFullAccess } from './auth.js';
 export const MAKE_MODE = () => (String(process.env.MAKE_MODE || '').toLowerCase() === 'partner' ? 'partner' : 'paid');
 /* email: whoever is signed in. Staff always make (they fulfil the partners' asks); everyone else follows the mode */
 export const makeModeOf = (email) => (email && isFullAccess(email) ? 'paid' : MAKE_MODE());
+/* what the page shows: in partner mode everyone sees the partner bar, staff too (Param, 28 Oct: a demo on a staff login still showed
+   "Make it · about ₹14"). staffMake: this viewer may still make, from the ··· menu only */
+export const pageModeOf = (email) => ({ makeMode: MAKE_MODE(), ...(MAKE_MODE() === 'partner' && makeModeOf(email) === 'paid' ? { staffMake: true } : {}) });
 export const PARTNER_NOTE = 'Free for initial partners';
 export const partnerNo = () => ({ status: 409, needsTeam: true, error: 'Our team makes this one for you, free for initial partners: press “Our team makes it” and we send it back here.' });
