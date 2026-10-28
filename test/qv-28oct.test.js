@@ -171,3 +171,8 @@ test('A: a live card that now names other products opens a fresh jam, never the 
   assert.match(rx, /x\.cardId === c\.id && !otherReading\(c, x\) && !x\.discarded && !x\.batchKey && \(fits\.has/);
   assert.match(rx, /x\.cardId === c\.id && !otherReading\(c, x\) && !x\.discarded && !x\.batchKey && fits\.has\(x\.action\) && !editable/);
 });
+test('A: the page never opens a live card\'s older-reading jam from the card', () => {
+  assert.match(src('feed-service.js'), /if \(ch && RMX\.otherReading\?\.\(c, ch\)\) o\.oldReading = true;/);
+  assert.match(src('public/app.js'), /const workOfCard = \(id\) => WORK\.items\.find\(\(w\) => w\.cardId === id && !w\.oldReading/);
+  assert.match(src('remix.js'), /return \{ busyOf, finalOf, otherReading,/);
+});

@@ -2543,5 +2543,5 @@ export function createRemix(o) {
     const r = recipeFor(c); if (!r.primary || r.actionKeys.includes(ch.action)) return false;
     if ((ch.thread || []).some((m) => m.from === 'you') || versionsOf(t, ch.id).some((v) => v.author === 'you' || v.studio || v.final)) return false;
     ch.discarded = true; ch.discardedWhy = `The card is ${actOf(r.primary).label}, not ${ch.actionLabel}`; w.changeId = null; return true; };
-  return { busyOf, finalOf, retype, productOfCh, landStudio, studioOf, studioState, remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
+  return { busyOf, finalOf, otherReading, retype, productOfCh, landStudio, studioOf, studioState, remakeFromJam, photoFromJam, iterateFromJam, pickFromJam, makePlan, ensurePlan, planReady, onWorkVersion, pubChange, changes, packageOf, finalDone, v2, landMedia };
 }

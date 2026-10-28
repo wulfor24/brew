@@ -2004,7 +2004,7 @@
     return dd <= 0 ? `Sent ${hm}` : dd === 1 ? `Sent yesterday ${hm}` : dd < 7 ? `Sent ${d.toLocaleDateString(undefined, { weekday: 'short' })} ${hm}` : `Sent ${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`; };
   const ago = (ms) => { const d = Math.max(0, (SRV.clock || Date.now()) - ms) / 60e3; return d < 1 ? 'just now' : d < 60 ? `${Math.round(d)}m ago` : d < 1440 ? `${Math.round(d / 60)}h ago` : `${Math.round(d / 1440)}d ago`; };
   const curV = (w) => w.versions.find((v) => v.n === w.current) || w.versions[w.versions.length - 1];
-  const workOfCard = (id) => WORK.items.find((w) => w.cardId === id && w.stage !== 'shared') || WORK.items.find((w) => w.cardId === id);
+  const workOfCard = (id) => WORK.items.find((w) => w.cardId === id && !w.oldReading && w.stage !== 'shared') || WORK.items.find((w) => w.cardId === id && !w.oldReading); /* a jam about the card's older reading is not this card's jam now (feed-service oldReading) */
   const pseudoPost = (w) => ({ id: 'work:' + w.id, agent: w.agent || 'brew', sector: w.sector || 'creatives', kind: w.img ? 'media' : 'rows', images: w.img ? [w.img] : null, title: w.title, sub: curV(w)?.sub || '', cta: { label: w.cta || 'Deploy' }, time: ago(w.updatedAt), _work: w });
   /* the people who ship are the ShopOS team; work saved before the rename still says "Brew team" */
   const byTeam = (s) => /^(the )?(brew|shopos) team$/i.test(String(s || ''));
