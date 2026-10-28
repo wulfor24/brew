@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 let acorn = null, walk = null;
-try { acorn = await import('acorn'); walk = await import('acorn-walk'); } catch {}
+try { acorn = await import('acorn'); walk = await import('acorn-walk'); } catch { acorn = null; walk = null; } /* both or neither: acorn alone crashed the run on walk.full (28 Oct) */
 const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
 const files = [...fs.readdirSync(ROOT).filter((f) => f.endsWith('.js')), ...['reader', 'public'].flatMap((d) => (fs.existsSync(path.join(ROOT, d)) ? fs.readdirSync(path.join(ROOT, d)).filter((f) => f.endsWith('.js')).map((f) => `${d}/${f}`) : []))];
 const GLOBALS = new Set(['JSON', 'URL', 'NaN', 'BREW_DEMO', 'BREW_MONEY', 'FEED_DATA', 'BREW_FACTS', 'BREW_SEED', 'BREW_V', 'BREW_LIVE', 'BREW_CONFIG', 'DOMParser', 'CSS', 'HTML']);
