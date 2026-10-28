@@ -41,10 +41,10 @@ test('GA4 by property ID: a property whose stream isn’t the brand’s site is 
   const bad = await run(ga4Fetch('https://somebodyelse.com'), () => C.finish('other', 'ga4', SA('111'), { email: 'mo@otherbrand.com' }));
   assert.equal(bad.ok, false); assert.equal(bad.state, 'refused'); assert.match(bad.error, /couldn’t match that GA4 property to otherbrand\.com/); assert.equal(bad.override, undefined, 'only staff are offered the override');
   assert.equal(await packs.getJSON('other', 'private/connections.json', null), null);
-  /* an unclaimed brand isn't claimed by a refused connect */
+  /* the brand's own email is its admin by signing in (Param, 28 Oct), whatever the connect does; a refused connect saves nothing */
   await packs.put('other', 'private/members.json', { owner: null, members: [] });
   const claim = await run(ga4Fetch('https://somebodyelse.com'), () => C.finish('other', 'ga4', SA('112'), { email: 'mo@otherbrand.com' }));
-  assert.equal(claim.ok, false); assert.equal((await auth.getMembers('other')).owner, null, 'nobody claimed it');
+  assert.equal(claim.ok, false); assert.equal(await packs.getJSON('other', 'private/connections.json', null), null, 'nothing saved');
   await packs.put('other', 'private/members.json', { owner: 'mo@otherbrand.com', members: [{ email: 'mo@otherbrand.com', role: 'owner' }] });
   const good = await run(ga4Fetch('https://www.otherbrand.com/'), () => C.finish('other', 'ga4', SA('222'), { email: 'mo@otherbrand.com' }));
   assert.equal(good.ok, true); assert.equal(good.verified, true);

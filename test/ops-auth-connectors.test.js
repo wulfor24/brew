@@ -34,7 +34,7 @@ test('starting a read opens nothing: only the brand’s own email (or an invite,
   assert.match((await auth.claim('acme-in', founder, 'Confirmed the read')).error, /work email at acme\.in/, 'nor may it claim the brand');
   assert.equal((await auth.claimInfo('acme-in', { email: 'x@otherco.com' })).gen, false, 'another company is not let in');
   assert.equal((await auth.claimInfo('acme-in', work)).gen, true, 'the brand’s own email is');
-  const c = await auth.claim('acme-in', work, 'Confirmed the read'); assert.equal(c.role, 'owner');
+  assert.equal((await auth.claim('acme-in', work, 'Confirmed the read')).ok, true); /* already its admin: signing in made them (Param, 28 Oct) */
   assert.equal((await auth.getMembers('acme-in')).owner, 'ana@acme.in');
   assert.equal((await auth.claimInfo('acme-in', { email: 'param@joinsquareup.com' })).gen, true, 'SquareUp sees every brand');
   assert.equal((await auth.claimInfo('acme-in', { email: 'x@shopos.ai' })).gen, true);

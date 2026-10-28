@@ -356,7 +356,7 @@
     const pop = document.createElement('div'); pop.id = 'lc-pop'; pop.className = 'lc-pop';
     const r = btn.getBoundingClientRect(); pop.style.left = (r.right + 10) + 'px'; pop.style.bottom = Math.max(12, innerHeight - r.bottom) + 'px'; pop.style.position = 'fixed';
     const ac = L.access, n = B()?.brand?.name || 'this brand';
-    const role = ac?.role === 'owner' ? `Owner of ${n}` : ac?.role === 'admin' ? 'Our team · full access' : ac?.role ? `On ${possT(n)} team` : L.full ? 'Our team · full access' : GENB ? `Visitor · you see ${possT(n)} demo` : '';
+    const role = ac?.role === 'owner' && !ac?.full ? `Owner of ${n}` : ac?.role === 'admin' || ac?.full ? 'Our team · full access' : ac?.role ? `On ${possT(n)} team` : L.full ? 'Our team · full access' : GENB ? `Visitor · you see ${possT(n)} demo` : '';
     pop.innerHTML = !L.me ? `<div class="lc-me"><b>Not signed in</b><small>Sign in to read a new brand, claim yours and connect real accounts.</small></div><a class="btn btn-primary sm" href="${signin()}">Sign in with Google</a><div class="lc-grp">${tuneRow()}</div>${window.BrewAcct?.rows?.() || ''}${helpRows()}`
       : `<div class="lc-me">${L.me.pic ? `<img src="${esc(L.me.pic)}" alt="" referrerpolicy="no-referrer">` : ''}<span><b>${esc(L.me.name || L.me.email)}</b><small>${esc(L.me.demo || /@demo\.brew$/i.test(L.me.email || '') ? 'Demo visitor, no email' : L.me.email)}</small>${role ? `<em>${esc(role)}</em>` : ''}</span></div>
         ${GENB && ac?.canClaim ? `<button class="btn btn-primary sm" data-lclaim>Claim ${esc(n)}</button>` : ''}

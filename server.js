@@ -857,6 +857,7 @@ const brandRoutes = async (req, res, u) => {
   const [, slug, what] = m;
   // only the team (or an official email on an unclaimed brand, or SquareUp) changes it: confirm, check, rewrite, retry, auto.
   // Everyone else sees the brand in demo mode
+  if (what === 'status' && req.method === 'GET') { const me = auth.user(req); if (me && auth.isAdmin(me) && await auth.staffJoins(slug, me).catch(() => false)) MEMO.clear(); }
   const v = await viewerOf(req, slug);
   if (!v.gen && req.method === 'POST' && what !== 'notify' && !v.email && auth.signinOn() && process.env.BUILD_SIGNIN !== '0') return send(res, 401, { error: 'Sign in with your work email to continue.', signin: true }), true;
   if (!v.gen && req.method === 'POST' && what !== 'notify') return send(res, 403, { ...demoErr(v.host), error: v.claimed ? 'Only this brand’s team changes it. Ask the owner for an invite.' : `Sign in with a work email at ${v.host || 'the brand’s domain'}, or ask the owner for an invite.`, team: true }), true;

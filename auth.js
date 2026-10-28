@@ -152,9 +152,30 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     const added = await addMember(slug, { email: by }, 'owner', 'Started the read');
     log.log?.(`[auth] ${slug}: ${by} is its admin (started the read)`); return added;
   }
+  /* the brand's own first person (an email at its own domain, signed in) is its admin, also when only Brew's own people run it
+     so far; after that its domain joins as members (roleOf). Param, 28 Oct. Only for a real sign-in, never an email looked up
+     to tag someone in a jam */
+  async function brandFirstJoins(slug, u) {
+    if (!u?.email || u.demo || freeMail(u.email) || isAdmin(u)) return false;
+    const m = await getM(slug); if (m.members.some((x) => x.email === u.email)) return false;
+    if (!m.members.filter((x) => x.role === 'owner').every((x) => isAdmin(x))) return false; /* the brand already has its own admin */
+    const host = m.host || (await hostOf(slug).catch(() => null)); if (!host || !officialFor(u.email, host)) return false;
+    if (!m.host) await editM(slug, (mm) => { mm.host ||= host; });
+    const added = await addMember(slug, u, 'owner', `Email at ${domainOf(u.email)}`);
+    if (added) log.log?.(`[auth] ${slug}: ${u.email} is its admin (the brand's first person)`); return added;
+  }
+  /* everyone at Brew who opens a brand is on its team, as admin (Param, 28 Oct): called when they open its page, never from a
+     list of brands */
+  async function staffJoins(slug, u) {
+    if (!u?.email || u.demo || !isAdmin(u)) return false;
+    const m = await getM(slug); if (m.members.some((x) => x.email === u.email)) return false;
+    if (!(await hostOf(slug).catch(() => null))) return false; /* not a brand */
+    const added = await addMember(slug, u, 'owner', 'Brew');
+    if (added) log.log?.(`[auth] ${slug}: ${u.email} is on its team (Brew, opened it)`); return added;
+  }
   // claim by email domain (instant); a connected account claims through claimWith (connectors/index.js)
   async function claimInfo(slug, u) {
-    await starterJoins(slug);
+    await starterJoins(slug); await brandFirstJoins(slug, u);
     const host = await hostOf(slug), m = await getM(slug), role = await roleOf(slug, u);
     const domainOk = !!u && !freeMail(u.email) && ownDomain(domainOf(u.email), host);
     const boss = role === 'owner' || role === 'admin', seats = role ? await seatsOf(slug, u) : null;
@@ -324,5 +345,5 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
   }
   const page = (h, p, slug, extra = '') => smallPage(h, p, { extra, link: slug ? { href: `/${slug}`, label: 'Open the brand' } : null });
 
-  return { handle, newSession, isRootAdmin, signinOn: () => !!(CID && SECRET), user, roleOf, seatsOf, isMember, isAdmin, claim, claimInfo, accessOf: claimInfo, addMember, invite, teamOp, getMembers: getM, sign, verify, baseOf, setCookie, cookies, mail };
+  return { handle, newSession, isRootAdmin, signinOn: () => !!(CID && SECRET), user, roleOf, seatsOf, isMember, isAdmin, claim, claimInfo, accessOf: claimInfo, staffJoins, addMember, invite, teamOp, getMembers: getM, sign, verify, baseOf, setCookie, cookies, mail };
 }

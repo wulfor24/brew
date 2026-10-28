@@ -31,14 +31,14 @@ test('SquareUp people: admin on every brand, may make new work, never take a bra
   assert.equal((await auth.accessOf('cozy', sq)).role, 'admin', 'and still full access after the claim');
 });
 
-test('the Claim button: only an official email, first one wins; a Gmail or another company sees the demo', async () => {
+test('the brand’s first official email is its admin on sign-in (Param, 28 Oct); a Gmail or another company sees the demo', async () => {
   const auth = mkAuth();
   for (const e of ['ana@gmail.com', 'x@allbirds.com', 'x@myshopify.com']) {
     const a = await auth.accessOf('cozy', { email: e }); assert.equal(a.eligible, false, e); assert.equal(a.gen, false, e);
     const r = await claimBtn(auth, 'cozy', e); assert.match(r.error, /work email at cozysnugglet\.shop/, e);
   }
-  const ana = await auth.accessOf('cozy', { email: 'ana@cozysnugglet.shop' }); assert.equal(ana.eligible, true); assert.equal(ana.gen, true); assert.equal(ana.canClaim, true);
-  assert.equal((await claimBtn(auth, 'cozy', 'ana@cozysnugglet.shop')).ok, true);
+  const ana = await auth.accessOf('cozy', { email: 'ana@cozysnugglet.shop' }); assert.equal(ana.role, 'owner', 'signing in is enough'); assert.equal(ana.gen, true); assert.equal(ana.canClaim, false);
+  assert.equal((await claimBtn(auth, 'cozy', 'ana@cozysnugglet.shop')).ok, true, 'the Claim button still answers ok');
   const m = await auth.getMembers('cozy'); assert.equal(m.owner, 'ana@cozysnugglet.shop'); assert.equal(m.domain, 'cozysnugglet.shop');
   /* a colleague arrives later: they join the team, they don't claim it again */
   const bo = await auth.accessOf('cozy', { email: 'bo@cozysnugglet.shop' }); assert.equal(bo.role, 'member'); assert.equal(bo.eligible, false); assert.equal(bo.gen, true);
@@ -59,9 +59,23 @@ test('Brew’s own person who started the read is on the team as its admin; a Gm
   assert.ok(v.members.some((x) => x.email === 'prashanth.b@shopos.ai' && x.role === 'owner'), 'listed on Team as admin (healed on open)');
   assert.equal((await a2.getMembers('cozy')).owner, 'prashanth.b@shopos.ai');
   assert.equal((await a2.accessOf('cozy', { email: 'prashanth.b@shopos.ai', name: 'Prashanth' })).role, 'owner');
-  assert.equal((await a2.accessOf('cozy', { email: 'ana@cozysnugglet.shop' })).role, 'member', 'the brand’s own domain joins on its own');
+  assert.equal((await a2.accessOf('cozy', { email: 'ana@cozysnugglet.shop' })).role, 'owner', 'the brand’s first own person is admin too (Param, 28 Oct)');
+  assert.equal((await a2.accessOf('cozy', { email: 'bo@cozysnugglet.shop' })).role, 'member', 'the next one joins as a member');
   /* a Gmail starter: starting a read never opens a brand (23 Oct) */
   await packs.put('allbirds', 'private/created.json', { by: 'founder@gmail.com', at: Date.now() });
   assert.equal((await a2.accessOf('allbirds', { email: 'founder@gmail.com' })).role, null);
   assert.equal((await a2.getMembers('allbirds')).owner, null);
+});
+
+test('everyone at Brew who opens a brand is on its team as admin; a jam lookup by email never adds anyone', async () => {
+  const packs = memPacks(), a = createAuth({ packs, hostOf: async (s) => HOSTS[s] || null, log: { warn() {}, log() {} } });
+  assert.equal(await a.staffJoins('cozy', { email: 'sai@shopos.ai', name: 'Sai' }), true);
+  assert.equal(await a.staffJoins('cozy', { email: 'sai@shopos.ai' }), false, 'once');
+  assert.equal(await a.staffJoins('nope', { email: 'sai@shopos.ai' }), false, 'not a brand');
+  assert.equal(await a.staffJoins('cozy', { email: 'ana@gmail.com' }), false, 'only Brew’s own people');
+  const v = await a.accessOf('cozy', { email: 'param@joinsquareup.com' });
+  assert.ok(v.members.some((x) => x.email === 'sai@shopos.ai' && x.role === 'owner'));
+  assert.equal((await a.accessOf('cozy', { email: 'ana@cozysnugglet.shop' })).role, 'owner', 'the brand’s first own person is admin beside Brew');
+  assert.equal(await a.roleOf('allbirds', { email: 'x@allbirds.com' }), null, 'a lookup (no sign-in) of an unclaimed brand adds nobody');
+  assert.equal((await a.getMembers('allbirds')).members.length, 0);
 });

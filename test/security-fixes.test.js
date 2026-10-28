@@ -65,14 +65,14 @@ test('another domain never connects or owns a brand, even a simulated account', 
     assert.equal(await packs.getJSON('cozy', 'private/connections.json', null), null, 'the brand’s connections are untouched');
   }
 });
-test('the first official email to connect any account becomes the admin; Slack is real and never evidence', async () => {
+test('the first official email is the admin (signed in, before any connect); Slack is real and never evidence', async () => {
   const { packs, auth, C } = sandbox();
   await packs.put('cozy', 'profile.json', { name: 'Cozy', host: 'cozysnugglet.shop', slug: 'cozy', catalog: { products: [{ title: 'Paw Warmer', price: 39 }] }, reviews: { total: 120 } });
   await packs.put('cozy', 'seed.json', { brand: { name: 'Cozy' }, lanes: { core: {} } });
   const f0 = globalThis.fetch; globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ ok: true, team: 'Cozy HQ' }) });
   let r; try { r = await C.finish('cozy', 'slack', { token: 'xoxb-1', team: 'T1', teamName: 'Cozy HQ', channel: 'C1', channelName: '#growth' }, { email: 'ana@cozysnugglet.shop' }); } finally { globalThis.fetch = f0; }
-  assert.equal(r.ok, true); assert.equal(r.claimed, true); assert.equal(r.dummy, false); const m = await auth.getMembers('cozy'); assert.equal(m.owner, 'ana@cozysnugglet.shop');
-  assert.match(m.via, /^Connected /); assert.equal(m.domain, 'cozysnugglet.shop');
+  assert.equal(r.ok, true); assert.equal(r.dummy, false); const m = await auth.getMembers('cozy'); assert.equal(m.owner, 'ana@cozysnugglet.shop');
+  assert.match(m.via, /^(Connected |Email at )/); assert.equal(m.domain, 'cozysnugglet.shop');
   const s = (await packs.getJSON('cozy', 'private/connections.json')).slack; assert.equal(s.sim, undefined); assert.equal(s.account.id, 'T1');
   const d = await packs.getJSON('cozy', 'private/live/slack.json'); assert.deepEqual(d.ledger, [], 'Slack is never evidence'); assert.deepEqual(d.cards, []);
   assert.ok([...packs.D.keys()].some((k) => k.includes('vault/')), 'the bot token is in the vault');
