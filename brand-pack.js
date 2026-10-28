@@ -34,6 +34,7 @@ import { pastOf, liveStat } from './festival-past.js'; // a festival move after 
 import { sellable } from './product-match.js'; // a listing a shopper can buy (never a test or duplicate listing)
 import { markStat, reviewTexts } from './stat-check.js';
 import { retailerWords } from './assortment.js'; // a retailer's moves say store, never brand-as-maker // a cover number means what its label says, or reads "to confirm"
+import { staticTitle } from './static-title.js'; // a static ad's card title (never its headline)
 import { createObjects } from './objects.js'; // where packs live: Postgres rows + the bucket for binaries, or the bucket alone
 
 /* the raw material of a hook, for every draft plan (drafts.js hookBlock), for every brand: real review lines (top 5, at most
@@ -304,7 +305,7 @@ export function createPacks({ ROOT, PUB, bucket, gToken, objects = null, log = c
     /* every finished static is its own card (config.statics, or the made ones in statics.json when a re-read reset the list) */
     for (const [i, id] of (config.statics?.length ? config.statics : Object.keys(staticText || {})).entries()) { const t = staticText[id] || {}; if (have.has(`static-${id}`) || !t.headline) continue;
       posts.push({ id: `static-${id}`, agent: 'creative', sector: 'creatives', type: 'idea', lane, roles: ['brand', 'growth', 'founder'], src: 'Move 21 · static ad', time: `${12 + i * 17} min`, kind: 'media', origin: 'build',
-        images: [`b/${slug}/statics/${id}.jpg`], campaign: 'From your ad plan', title: String(t.headline).slice(0, 120), sub: `${t.small ? `${String(t.small).replace(/\.?$/, '.')} ` : ''}Made from Play 21 with a real ${seed.brand?.name || 'product'} photo. Jam on it to change it, then download it for your team to run.`,
+        images: [`b/${slug}/statics/${id}.jpg`], campaign: 'From your ad plan', title: staticTitle('', seed.brand?.name), headline: String(t.headline).slice(0, 120) /* said in the picture, never the title too (statics.js) */, sub: `${t.small ? `${String(t.small).replace(/\.?$/, '.')} ` : ''}Made from Play 21 with a real ${seed.brand?.name || 'product'} photo. Jam on it to change it, then download it for your team to run.`,
         detail: { why: ['The concept comes from the ad-creative play.', 'Every number on it is in your fact sheet.'], how: ['Jam on it to change the words or the scene.', 'Share the brief and your team puts it in the ad account.'] }, cta: { label: 'Make the ad' } }); }
     const prods = catalogOf(profile); /* one photo per product, sold-out placeholders skipped */
     if (prods.length) { const lanePics = new Set(Object.values(seed.laneImg || {}).map((x) => String(x).replace(/^\//, '')));

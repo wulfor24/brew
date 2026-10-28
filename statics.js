@@ -8,6 +8,8 @@ import path from 'node:path';
 import { numbersIn, allowedFrom } from './fact-gate.js';
 import { claimFlags, checkCopy, sourceText, CLAIMS_RULE } from './claims.js'; // words set on an ad are checked like every draft's
 import { buildDraft } from './sloosh-prompt.js';
+import { staticTitle } from './static-title.js';
+export { staticTitle, healStatic } from './static-title.js';
 
 const SCHEMA = { type: 'object', properties: { ads: { type: 'array', items: { type: 'object', properties: {
   id: { type: 'string', description: 'short kebab-case id, unique' },
@@ -32,7 +34,7 @@ export function teamStaticCards(slug, ids = [], text = {}, { lane = 'core', name
   return [{ ...base, id: 'statics-batch-p', src: 'Move 21 · static ads · your accounts', time: '5 min', images: ids.map((id) => teamStaticUrl(slug, id)),
     title: `${ids.length} ads from your ad plan, written with your account numbers`, sub: `Each one puts a real ${name} product photo in a new scene, with a headline from your Play 21. Only your team sees these.`,
     detail: { why: ['Concepts come from your rewrite of the ad-creative play.', 'Every number on them is in your fact sheet or your connected accounts.'], how: ['Open the set and keep or drop each ad.', 'Edit any of them in the studio.', 'Queue the kept ones as one test.'] }, cta: { label: 'Queue the ads' } },
-  ...ids.filter((id) => text[id]?.headline).map((id, i) => ({ ...base, ...staticProduct(titleOf(text[id].product)), id: `static-${id}-p`, src: 'Move 21 · static ad · your accounts', time: `${12 + i * 17} min`, images: [teamStaticUrl(slug, id)], title: `Run this ad for ${titleOf(text[id].product) || name}`.slice(0, 120) /* the headline is in the picture: the title says what to do, so it is never said three times (QV 28 Oct) */, headline: String(text[id].headline).slice(0, 120),
+  ...ids.filter((id) => text[id]?.headline).map((id, i) => ({ ...base, ...staticProduct(titleOf(text[id].product)), id: `static-${id}-p`, src: 'Move 21 · static ad · your accounts', time: `${12 + i * 17} min`, images: [teamStaticUrl(slug, id)], title: staticTitle(titleOf(text[id].product), name) /* the headline is in the picture: the title says what to do, so it is never said three times (QV 28 Oct) */, headline: String(text[id].headline).slice(0, 120),
     sub: `${text[id].small ? `${String(text[id].small).replace(/\.?$/, '.')} ` : ''}Made from your Play 21 with a real ${name} photo. Only your team sees it.`,
     detail: { why: ['The concept comes from your rewrite of the ad-creative play.', 'Every number on it is in your fact sheet or your connected accounts.'], how: ['Jam on it to change the words or the scene.', 'Share the brief and your team puts it in the ad account.'] }, cta: { label: 'Make the ad' } }))];
 }

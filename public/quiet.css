@@ -385,6 +385,7 @@ a.fs-src:hover{color:var(--fg);background:var(--surface-2)}
 .rd2-more>summary::-webkit-details-marker{display:none}
 .rd2-more>summary:hover,.rd2-more[open]>summary{background:var(--surface);color:var(--fg)}
 .rd2-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:230px;padding:6px;border-radius:14px;background:var(--card);box-shadow:0 0 0 1px var(--line),0 12px 32px rgba(0,0,0,.14);display:flex;flex-direction:column}
+.rd2-menu{max-width:calc(100vw - 16px)}.rd2-menu.is-left{right:auto;left:0} /* opens rightward when leftward runs off the screen (app.js __rd2Fit) */
 .rd2-menu a,.rd2-menu button{display:flex;align-items:center;gap:8px;padding:9px 10px;border:0;border-radius:10px;background:none;font:inherit;font-size:14px;color:var(--fg);text-align:left;cursor:pointer;text-decoration:none!important;white-space:nowrap}
 .rd2-menu a:hover,.rd2-menu button:hover:not(:disabled){background:var(--surface)}
 .rd2-menu button:disabled{opacity:.5;cursor:default}

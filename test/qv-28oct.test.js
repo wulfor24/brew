@@ -126,3 +126,18 @@ test('partner mode: the page shows no price and offers our team, the prompt and 
   for (const r of ['studio/make', 'studio/slide', 'boards/:bid/render', 'boards/:bid/reshot']) assert.match(j2, new RegExp(`'/api/jam2/jams/:jid/${r.replace(/[/:]/g, (c) => `\\${c}`)}', paid\\(wrap\\(`), r);
   assert.match(src('deploy.sh'), /MAKE_MODE=\$\{MAKE_MODE:-partner\}/); assert.match(src('tools/prod-env.sh'), /MAKE_MODE=\$\{MAKE_MODE:-partner\}/);
 });
+
+const { healStatic } = await import('../static-title.js');
+test('G: a static ad saved with its headline as its title heals on serve; the public set never uses its headline as the title', () => {
+  const c = healStatic({ id: 'static-founder-desk-nap-1-p', title: 'We started Cozy Snugglet because our offices were freezing.', product: 'Snugglet Nap Buddy', images: ['x.jpg'] }, 'Cozy Snugglet');
+  assert.equal(c.title, 'Run this ad for Snugglet Nap Buddy'); assert.equal(c.headline, 'We started Cozy Snugglet because our offices were freezing.');
+  assert.equal(healStatic({ id: 'static-a-1', title: 'Fewer clumps' }, 'Acme').title, 'Run this ad for Acme', 'no product: the brand');
+  assert.equal(healStatic({ id: 'statics-batch-p', title: '8 ads from your ad plan' }).title, '8 ads from your ad plan', 'the batch card keeps its title');
+  assert.equal(healStatic({ id: 'm1-c2', title: 'Some move' }).title, 'Some move', 'other cards untouched');
+  assert.match(src('brand-pack.js'), /title: staticTitle\('', seed\.brand\?\.name\), headline: String\(t\.headline\)/);
+  assert.match(src('feed-service.js'), /const pub = \(c0, t\) => \{ healStatic\(c0, BN\(\)\);/);
+});
+test('the ··· menu opens toward the side it fits', () => {
+  assert.match(src('public/app.js'), /if \(r\.left < 8\) m\.classList\.add\('is-left'\)/);
+  assert.match(src('public/quiet.css'), /\.rd2-menu\.is-left\{right:auto;left:0\}/);
+});

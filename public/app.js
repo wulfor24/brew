@@ -4078,6 +4078,10 @@
   /* ---------- the jam's one way forward (Param, 19 Oct: "super confusing"): the step in plain words (Pick one → Draft → Final →
      Send), ONE main button that does the next step, and the rest under ···. Send brief = the ShopOS team gets it by email and makes
      it (its status shows in the top bar); Share with my team = copy the brief and a link to paste in your own team's chat ---------- */
+  /* a ··· menu opens toward the side it fits: anchored on the right it ran off the left edge when the ··· sat at the left of the jam's
+     bar (28 Oct). Measured on open, for every rd2 menu on any page and width */
+  if (!window.__rd2Fit) { window.__rd2Fit = true; document.addEventListener('toggle', (e) => { const d = e.target; if (!(d instanceof HTMLDetailsElement) || !d.open || !d.classList.contains('rd2-more')) return;
+    const m = d.querySelector(':scope > .rd2-menu'); if (!m) return; m.classList.remove('is-left'); const r = m.getBoundingClientRect(); if (r.left < 8) m.classList.add('is-left'); }, true); }
   const shipMenu = (ch, items) => items.length ? `<details class="rd2-more ship-more" data-keep="ship-more"><summary aria-label="More ways to share">${ic('more', 's16')}</summary><div class="rd2-menu">${items.map(([attr, icon, label, sub]) => `<button type="button" ${attr}>${ic(icon, 's16')}<span><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></button>`).join('')}</div></details>` : '';
   const optOn = (ch) => { const op = ch.options; return op ? op.list.find((x) => x.id === (op.picked || op.on)) || null : null; };
   const isReel = (ch) => ch.family === 'post' && /short_video$/.test(String(ch.action || ''));
