@@ -1454,7 +1454,7 @@ export function createRemix(o) {
     const c = t.cards.get(p.cid); if (!c) return { error: 'not found' };
     const r = recipeFor(c); const cv = ensureCardVersion(t, c); const owner = c.agent === 'brew' && !r.conflict ? 'creative' : r.agent;
     const fits = new Set(r.actionKeys);
-    const mine = Object.values(changes(t)).filter((x) => x.cardId === c.id && !x.discarded && !x.batchKey && (fits.has(x.action) || x.added || ['running', 'live', 'deploy_team', 'result'].includes(x.state))).sort((a, b) => b.createdAt - a.createdAt).slice(0, 24).map((x) => pubChange(t, evaluate(t, x))) /* every piece on the card is a tab (26 Oct: the 7th dropped off the row) */;
+    const mine = Object.values(changes(t)).filter((x) => x.cardId === c.id && !otherReading(c, x) && !x.discarded && !x.batchKey && (fits.has(x.action) || x.added || ['running', 'live', 'deploy_team', 'result'].includes(x.state))).sort((a, b) => b.createdAt - a.createdAt).slice(0, 24).map((x) => pubChange(t, evaluate(t, x))) /* every piece on the card is a tab (26 Oct: the 7th dropped off the row) */;
     const seen = new Set(), moveIntents = movePassages(c, '', 8).filter((x) => !seen.has(x.n + x.h) && seen.add(x.n + x.h)).slice(0, 2).map((x) => `Follow ${moveTag(x)}`);
     return { recipe: { key: r.key, agent: r.agent, type: r.type, intents: [...orderIntents(t, owner, r.intents), ...moveIntents], levers: !!r.levers, actions: r.actionKeys.map((k) => ({ key: k, label: actOf(k).label, money: actOf(k).money, jam: actOf(k).jam || null })) },
       cardVersion: { id: cv.id, n: versionsOf(t, c.id).length }, learned: summaryShort(t, owner), changes: mine, add: addable(r, mine) };
@@ -1608,8 +1608,13 @@ export function createRemix(o) {
   };
   /* the card's own package for the sheet: the studio's latest fitting change (so Open the studio lands on it), else built now
      from the card as `fast` does, on the card's own first draft */
+  /* a live card (a connector's reading, rewritten on every sync under one id) that now names other products than when a jam was made
+     opens a fresh jam on today's products; the old one stays in Work (QV 28 Oct: "Plan the restock" on three sold-out serums opened
+     the 24 Oct jam about a 15 ml conditioner) */
+  const names = (rows) => (Array.isArray(rows) ? rows : []).map((r) => String((Array.isArray(r) ? r[0] : r) || '').toLowerCase().replace(/[^a-z0-9]+/g, '')).filter(Boolean).sort().join('|');
+  const otherReading = (c, x) => /^live-/.test(String(c.id || '')) && Array.isArray(c.rows) && c.rows.length && Array.isArray(x.before?.rows) && names(x.before.rows) !== names(c.rows);
   const latestTake = (t, c, r) => { const fits = new Set(r.actionKeys);
-    return Object.values(changes(t)).filter((x) => x.cardId === c.id && !x.discarded && !x.batchKey && fits.has(x.action) && !editable(x)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0] || null; };
+    return Object.values(changes(t)).filter((x) => x.cardId === c.id && !otherReading(c, x) && !x.discarded && !x.batchKey && fits.has(x.action) && !editable(x)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0] || null; };
   const takeChange = (t, c, r, cv) => {
     const mine = latestTake(t, c, r);
     if (mine) { ensurePkg(t, mine); return mine; }

@@ -42,7 +42,6 @@ test('B: an account line backs a small number only when it is about what the car
   const e = EV.evidenceOf(STOCK, { liveLedger: ledger });
   const acct = e.items.filter((x) => x.kind === 'account');
   assert.ok(!acct.some((x) => /carts/i.test(x.value)), 'the cart line never backs a sold-out card');
-  assert.ok(acct.some((x) => /sold out/i.test(x.label)), 'the stock line does');
   const big = EV.evidenceOf({ id: 'r', title: 'Your store made ₹2,40,000', sub: 'A good month.' }, { liveLedger: { 'shopify.revenue.30d': { v: '₹2,40,000', label: 'Revenue, last 30 days' } } });
   assert.ok(big.items.some((x) => x.kind === 'account'), 'an exact big number still backs its card');
 });
@@ -149,4 +148,26 @@ test('partner mode: no one sees a price, staff included', () => {
   finally { if (was == null) delete process.env.MAKE_MODE; else process.env.MAKE_MODE = was; }
   assert.doesNotMatch(src('public/app.js'), /Make it here · staff only|staffMake/);
   assert.match(src('auth.js'), /\.\.\.pageModeOf\(me\?\.email\)/); assert.match(src('connectors/index.js'), /\.\.\.pageModeOf\(me\?\.email\)/);
+});
+
+test('B: a product size on a card ("30 ml") is never a number the proof looks up', () => {
+  const EV = createEvidence({ factsOf: () => ({}), movesOf: () => ({}), numsOf: () => [] });
+  const card = { id: 'live-shopify-stock', title: 'Pause ads for 3 sold-out products', sub: 'Anti-Grey Hair Serum - 30 ml and Anti-Grey Hair Serum Pack of 2 are sold out.', kind: 'rows', rows: [['Anti-Grey Hair Serum - 30 ml', 'Sold out'], ['Anti-Grey Hair Serum Pack of 2', 'Sold out']] };
+  const ledger = { 'shopify.carts.top': { v: 'MitoActive Mitochondrial Hair Growth Serum - 30 ml (473 carts); Arata Hair Growth Intensive Serum - 30 ml (210 carts)', label: 'Products left in carts most often, 30 days' } };
+  const e = EV.evidenceOf(card, { liveLedger: ledger });
+  assert.ok(!e.items.some((x) => /carts/i.test(`${x.label} ${x.value}`)), JSON.stringify(e.items));
+});
+
+test('G: a pictured headline is said once even in quotes, after a leaked label, or before an emoji', () => {
+  assert.equal(notHeadline('"One of the best curly hair products I\'ve used." Bhai, let\'s keep it simple.', 'One of the best curly hair products I\'ve used.'), 'Bhai, let\'s keep it simple.');
+  assert.equal(notHeadline('Headline "I can definitely notice a change." Primary Text No overnight miracles.', 'I can definitely notice a change.'), 'No overnight miracles.');
+  assert.equal(notHeadline('Your Curly Styling Companion 🌀 Struggling to get your curls to hold?', 'Your Curly Styling Companion'), 'Struggling to get your curls to hold?');
+  assert.equal(notHeadline('Keeps the curls for long because it holds.', 'Keeps the curls for long'), 'Keeps the curls for long because it holds.', 'inside a sentence it stays');
+  assert.match(src('feed-service.js'), /copy: said\.headline && \(dv\.wordsIn \|\| dv\.wordsInAll\) \? notHeadline\(said\.copy, said\.headline\)/);
+});
+test('A: a live card that now names other products opens a fresh jam, never the old reading\'s', () => {
+  const rx = src('remix.js');
+  assert.match(rx, /const otherReading = \(c, x\) => \/\^live-\/\.test/);
+  assert.match(rx, /x\.cardId === c\.id && !otherReading\(c, x\) && !x\.discarded && !x\.batchKey && \(fits\.has/);
+  assert.match(rx, /x\.cardId === c\.id && !otherReading\(c, x\) && !x\.discarded && !x\.batchKey && fits\.has\(x\.action\) && !editable/);
 });

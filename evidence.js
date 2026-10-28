@@ -80,7 +80,10 @@ export function createEvidence({ factsOf, movesOf, numsOf, adOf = () => null, co
       for (const n of new Set(allNums(f.v))) { if (!m.has(n)) m.set(n, []); m.get(n).push(f); } }
     PIDX.set(lines, m); return m; };
   const cardText = (c) => [c.title, c.sub, ...(c.rows || []).map((r) => (Array.isArray(r) ? r.join(' ') : '')), ...(c.detail?.why || []), c.make?.pieces, c.make?.backedBy].filter(Boolean).join(' \n ');
-  const numsOfCard = (c) => allNums(cardText(c));
+  /* a product's size ("Anti-Grey Hair Serum - 30 ml", "200 g") is part of its name, not a claim to back: it is left out of the numbers
+     the proof looks up (QV 28 Oct: the "30" of a 30 ml serum on a sold-out card was "backed" by "MitoActive 30 ml (473 carts)") */
+  const SIZE = /\b\d+(?:\.\d+)?\s*(?:ml|g|gm|gms|kg|l|ltr|oz|mg|pcs|tablets|capsules|caps)\b/gi;
+  const numsOfCard = (c) => allNums(cardText(c).replace(SIZE, ' '));
   const gatedOfCard = (c) => { const s = cardText(c); return [...new Set([...numbersIn(s, { strict: true }), ...numbersIn(s)])]; }; /* money, shares, multiples, big counts: what must have a source */
   /* the best fact for one number: one the card's move used, then the most words in common with the card, then observed */
   /* a plain count ("30 days", "12 of 32") is in many facts by chance: it backs the card only when the move used that fact or the

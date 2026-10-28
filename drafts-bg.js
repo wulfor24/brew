@@ -163,7 +163,11 @@ export const notHeadline = (copy, headline) => { const k = (x) => String(x || ''
   const ls = String(copy ?? '').split('\n'), i = ls.findIndex((l) => l.trim()); if (i >= 0 && k(ls[i]) === h) return ls.filter((_, j) => j !== i).join('\n').replace(/^\s*\n/, '');
   /* the headline as a whole sentence inside a longer line, in any case ("light as air! Made for long days"): said once, in the picture (QV 28 Oct) */
   const hw = h.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^\\p{L}\\p{N}]+');
-  const out = String(copy ?? '').replace(new RegExp(`(^|\\n|[.!?]\\s+)${hw}(?:[.!?]+\\s*|\\s*(?=\\n|$))`, 'giu'), '$1').replace(/^[\s.!?:,;–—-]+/, '').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '');
+  /* also in quotes, after a leaked "Headline" label, or followed by an emoji ("Your Curly Styling Companion 🌀 Struggling…") */
+  const E = '[\\p{Extended_Pictographic}\\uFE0F\\u200D]', Q = '["“”\'‘’]';
+  const out = String(copy ?? '').replace(new RegExp(`(^|\\n|[.!?]["”’]?\\s+)(?:headline\\s*[:\\-–]?\\s*)?${Q}?${hw}(?:[.!?]*${Q}?(?:\\s*${E}+)?(?=\\s|$)\\s*)`, 'giu'), (m, pre, off, str) => { const end = off + m.length, rest = str.slice(end); const before = m.slice(pre.length);
+      const closed = /[.!?]["”’]?\s*$|["”’]\s*$/.test(before) || new RegExp(`${E}`, 'u').test(before) || !rest.trim() || /^\n/.test(rest); return closed ? pre : m; })
+    .replace(/(^|\n|[.!?]\s+)primary text\s*[:\-–]?\s*/giu, '$1') /* the writer's own label, never shown */.replace(/^[\s.!?:,;–—-]+/, '').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '');
   return out.trim() ? out.replace(/^(\p{Ll})/u, (c) => c.toUpperCase()) : copy; };
 /* a draft belongs under its card when the product it shows is the one the card is about: the product's own words are in the card's
    (title, line, rows, asset line, how-steps), or the card names no product and shares a telling word with it. A draft about another
