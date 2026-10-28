@@ -8,6 +8,8 @@ import { isResearchImage } from './rival-ad.js'; // a rival's ad is never a phot
 import { sceneOf, cardProduct } from './product-match.js';
 import { familyOf, matchSpaces } from './sloosh-spaces.js';
 import { PRODUCT_NAME } from './product-name.js';
+import { makeModeOf, partnerNo } from './make-mode.js';
+import { buildFinal } from './sloosh-prompt.js'; // "Copy the prompt": the words a final would be made from, built here and never sent // while we're with design partners only staff start a paid final
 
 const firstLine = (md = '') => String(md).split('\n').map((l) => l.replace(/^[#>*\-\s]+/, '').replace(/\*\*/g, '').trim()).find((l) => l && !/^(headline|primary text|button|cta)[:\s]/i.test(l)) || '';
 const SPACES_TTL = 24 * 3600e3;
@@ -60,8 +62,16 @@ export function createFinalsSheet({ finals, sloosh, references = null, creditsLe
 }
 
 /* ---------- the jam: a final is a draft card ---------- */
+/* "Copy the prompt" (free, partner mode or not): the prompt a final would be made from, its model and the pictures it stands on, as one
+   plain text a team pastes into its own tool. Nothing is quoted, sent or spent */
+const promptOut = (spec) => { const f = buildFinal(spec), refs = (spec.refs || []).filter((r) => r?.url).map((r) => ({ url: r.url, label: r.label || r.job || 'Picture', job: r.job || 'other' }));
+  const size = spec.kind === 'video' ? `${spec.ratio}, about ${Math.round(spec.seconds || 6)} seconds${spec.sound ? ', with sound' : ''}` : spec.ratio;
+  return { prompt: f.prompt, model: f.label, size, refs, kind: spec.kind }; };
+/* a paid final (its quote, its run, a Space checkpoint) is for staff only in partner mode: a partner's press gets "Our team makes it" */
+const gateFinals = (on, meOf) => (m, path, fn) => on(m, path, /\/final\/(?:quote|run|checkpoint)$/.test(path) ? (b, t, p, q) => (makeModeOf(meOf(t)?.email) === 'partner' ? partnerNo() : fn(b, t, p, q)) : fn);
 export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slugOfT, brandOfT, cardOfW = () => null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, onReady = () => {}, save = () => {}, now = () => Date.now(), uid = (p) => `${p}_${Math.random().toString(36).slice(2, 10)}`, log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
+  on = gateFinals(on, meOf);
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const draftOf = (w, id) => (w.drafts || []).find((d) => d.id === id && d.state !== 'making');
   /* a draft of "Make our version": the rival's ad read (rival-ad.js), with our headline and button where theirs sit */
@@ -71,6 +81,10 @@ export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slu
   on('GET', '/api/work/:wid/final/status', async (b, t, p, q) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const slug = slugOfT(t); const d = draftOf(w, q?.get?.('draftId') || b.draftId) || null; const c = cardOfW(t, w);
     return sheet.status(t, { slug, kind: d?.as === 'video' ? 'video' : 'image', format: c?.make?.format || '', photos: sheet.photosOf(t, c), pending: w.finalQuote?.draftId ? { draftId: w.finalQuote.draftId, at: w.finalQuote.at } : null,
       draft: d ? { id: d.id, as: d.as, title: d.title, visual: d.visual || '', motion: d.motion || '', text: d.as !== 'video' ? firstLine(d.copy || '') : '', ratio: d.ratio, final: !!d.final, image: d.image, video: d.video } : null }); });
+
+  on('GET', '/api/work/:wid/final/prompt', async (b, t, p, q) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const d = draftOf(w, q?.get?.('draftId')) || (w.drafts || []).filter((x) => x && !x.final).slice(-1)[0]; if (!d) return { error: 'Make the first draft, then copy its prompt.' };
+    const base = await withRival(t, w, d, baseOf(t, w, d)), c = cardOfW(t, w), ps = sheet.photosOf(t, c), lead = ps.find((x) => x.named) || ps[0] || null;
+    return promptOut(sheet.spec(t, base, { refs: lead ? [{ url: lead.url, job: 'product', label: lead.label || 'Product' }] : [] })); });
 
   on('POST', '/api/work/:wid/final/quote', async (b, t, p) => { const w = W(t, p.wid); if (!w) return { error: 'not found' }; const d = draftOf(w, b.draftId); if (!d) return { error: 'That draft is not here any more.' };
     const block = blockOf(t, w, d); if (block) return { error: block, fixFirst: true }; /* the same gate as the studio's: no paid final over a flagged claim */
@@ -117,6 +131,7 @@ export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slu
 /* ---------- the studio: a final is the next version, labelled Final ---------- */
 export function createStudioFinals({ blockOf = () => null, headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, viralClip = null, textCheck = null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, onFinal = () => {} /* the bell: ready, paused or failed (Param, 21 Oct: "we'll notify you once ready") */, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
+  on = gateFinals(on, meOf);
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const headFinal = (ch) => (ch.versions || []).find?.((v) => v.id === ch.headVersionId)?.final || ch.lastFinal?.versionId === ch.headVersionId ? ch.lastFinal : null;
   /* a version remade as a reel, a carousel or a picture (remix.js remakeOf): the final is made in that format, from that draft's
@@ -139,6 +154,10 @@ export function createStudioFinals({ blockOf = () => null, headOf = () => null, 
 
   on('GET', '/api/changes/:chid/final/status', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); const base = baseOf(t, ch);
     return sheet.status(t, { slug: slugOfT(t), kind: base.kind, format: base.format, photos: photos(t, ch), draft: draftOf(t, ch), pending: ch.finalQuote ? { at: ch.finalQuote.at } : null }); });
+
+  on('GET', '/api/changes/:chid/final/prompt', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch);
+    const base = baseOf(t, ch), rival = await rivalOf(t, ch, ch.pkg || {}).catch(() => null), ps = photos(t, ch) || [], lead = ps.find((x) => x.named) || ps[0] || null;
+    return promptOut(sheet.spec(t, { ...base, ...(rival ? { rival } : {}) }, { refs: lead ? [{ url: lead.url, job: 'product', label: lead.label || 'Product' }] : [], ...(base.kind === 'video' ? { seconds: Math.max(6, Math.min(15, 3 * Math.max(2, (base.beats || []).length))), sound: true } : {}) })); });
 
   on('POST', '/api/changes/:chid/final/quote', async (b, t, p) => { const ch = C(t, p.chid); if (!ch) return { error: 'not found' }; ensurePkg(t, ch); if (ch.imagePending || ch.videoPending || ch.remakePending) return { error: 'A picture is still being made. One moment.' };
     const block = blockOf(t, ch); if (block) return { error: block, fixFirst: true }; /* a paid final never carries an invented code, guarantee or timed result, or copy that reads wrong (QA-25, QA-02) */

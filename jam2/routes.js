@@ -24,6 +24,7 @@ import { isRestock } from '../product-match.js';
 import { withBrowser } from '../pdf/render.js';
 import { answerGrounded } from '../jam-answer.js';
 import { PRODUCT_NAME } from '../product-name.js';
+import { makeModeOf, partnerNo } from '../make-mode.js';
 
 export function mountJam2(d) {
   const { on, packs, slugOfT, brandOfT, meOf, reqOf, cardOf, sourceOf, refsOf, isMock, spend, log = console } = d;
@@ -96,6 +97,8 @@ export function mountJam2(d) {
   const load = async (t, jid) => { const j = await store.get(slugOfT(t), jid, whoOf(t)); if (!j) throw Object.assign(new Error('not found'), { status: 404 }); return j; };
   /* every jam call reads the brand's pack (catalog, config): right after a restart it may not be loaded yet, so it is loaded first
      (23 Oct: the first Studio make after a deploy refused the brand's own product as "not from your catalog") */
+  /* a paid make, for staff only while we're with design partners (make-mode.js): a partner's own press gets "Our team makes it" */
+  const paid = (fn, free = () => false) => async (b, t, p, q) => (!free(b) && makeModeOf(whoOf(t).email) === 'partner' ? partnerNo() : fn(b, t, p, q));
   const wrap = (fn) => async (b, t, p, q) => { try { if (t && !brandOfT(t) && d.loadBrandOfT) await d.loadBrandOfT(t).catch(() => null); return await fn(b, t, p, q); } catch (e) { return { error: e.message, status: e.status || 200 }; } };
 
   /* ---------- catalogue, partners, brand book ---------- */
@@ -239,7 +242,7 @@ export function mountJam2(d) {
   /* a test server with Higgsfield really connected still asks for the price (mock mode only skips it when nothing can be spent) */
   const mustConfirm = () => !isMock() || !!engines.hf?.live?.();
   /* make: only with the brand's yes on the price it was shown; one board per take (the empty board the composer sat on first) */
-  on('POST', '/api/jam2/jams/:jid/studio/make', wrap(async (b, t, p) => { const j = await load(t, p.jid), ctx0 = await ctxOf(t, j), c = await cleanSpec(t, j, ctx0, b.spec); if (c.error) return { error: c.error }; const spec = c.spec;
+  on('POST', '/api/jam2/jams/:jid/studio/make', paid(wrap(async (b, t, p) => { const j = await load(t, p.jid), ctx0 = await ctxOf(t, j), c = await cleanSpec(t, j, ctx0, b.spec); if (c.error) return { error: c.error }; const spec = c.spec;
     const pl = await studio.plan(ctx0, spec); if (pl.error) return { error: pl.error };
     if (mustConfirm() && !(+b.confirmUsd + 0.01 >= pl.usd)) return { needsConfirm: true, plan: pl };
     /* one make per board across every instance (make-claim.js): claimed before anything is paid, let go when its runs end */
@@ -267,10 +270,10 @@ export function mountJam2(d) {
     const run = boards.length > 1 ? uid('run') : null; /* a batch: its takes land together in the v1 jam, one strip to keep or drop each */
     boards.forEach((bd, i) => started(runBg(t, j, bd.id, 'studio', held(async () => { const ctx = await ctxOf(t, j); const take = await studio.make(ctx, bd, spec, i, jobsOf(t, j, bd, b.press || null)); take.studio.spec = specOf(spec); if (run) Object.assign(take, { run, runN: boards.length, runI: i }); const tk = addTake(j, bd, take); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }), { resume: true, spec, i, confirmUsd: pl.per, press: b.press || null, ...(run ? { run, runN: boards.length, runI: i } : {}) })));
     note(j, `Studio: ${pl.line} · $${pl.usd}`, whoOf(t).email); v1State(t, j, pl, boards.length); return { jam: out(j), plan: pl, boards: boards.map((x) => x.id) };
-    } finally { if (left === 0) claim.release(); } /* nothing started (refused, or failed before a run): the board is free again */ }));
+    } finally { if (left === 0) claim.release(); } /* nothing started (refused, or failed before a run): the board is free again */ })));
   /* one slide of a set: redo it (priced, one take of its style, the rest kept), drop it (free) or add one (priced). Each lands
      as the set's next take and, from v1, as the jam's next version */
-  on('POST', '/api/jam2/jams/:jid/studio/slide', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, b.bid), head = bd && headOf(bd);
+  on('POST', '/api/jam2/jams/:jid/studio/slide', paid(wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, b.bid), head = bd && headOf(bd);
     if (!head?.slides?.length) return { error: 'There’s no set to change yet.' };
     if ((busy.get(`${j.id}:${bd.id}`)?.op && !busy.get(`${j.id}:${bd.id}`)?.error) || elsewhere(j.running?.[bd.id])) return { error: 'This set is still being made. Wait for it.' };
     const i = Math.max(0, Math.min(head.slides.length - 1, Math.floor(+b.i || 0))), base = head.studio?.spec || {}, copyOf = (slides) => { const { id: _i, n: _n, at: _a, gate: _g, ...rest } = head; return { ...rest, slides, file: slides[0].file, scene: slides[0].scene, words: slides[0].words || head.words, made: [], cost: { usd: 0, credits: 0 }, missing: [], missingIds: [], studio: { ...(head.studio || {}), set: slides.map((x) => x.style), spec: { ...base, set: slides.map((x) => x.style) } } }; };
@@ -289,7 +292,7 @@ export function mountJam2(d) {
       const slides = b.op === 'add' ? [...head.slides, slide] : head.slides.map((x, q) => (q === i ? slide : x));
       const tk = addTake(j, bd, { ...copyOf(slides), made: one.made || [], cost: one.cost || { usd: 0, credits: 0 } }); tk.gate = maker.gate(ctx, tk, bd); toV1(t, j, tk); }
     v1State(t, j, { ...pl, line: `${b.op === 'add' ? 'a new slide' : `slide ${i + 1}`} · ${style.label}` }, 1);
-    note(j, `Studio: ${b.op === 'add' ? 'added a slide' : `slide ${i + 1} again`} · ${style.label} · $${pl.usd}`, whoOf(t).email); return { jam: out(j), plan: pl }; }));
+    note(j, `Studio: ${b.op === 'add' ? 'added a slide' : `slide ${i + 1} again`} · ${style.label} · $${pl.usd}`, whoOf(t).email); return { jam: out(j), plan: pl }; }), (b) => b?.op === 'drop'));
   /* a film's captions file saved before .srt could be stored (24 Oct) is written again from the captions its take kept: the same
      words give the same name, so the link the jam already holds starts working */
   const healFiles = async (j) => { for (const bd of j.boards) for (const tk of bd.takes || []) { if (!tk.srt || !tk.captions?.segs?.length || !d.genFile || !d.saveGen) continue;
@@ -334,17 +337,17 @@ export function mountJam2(d) {
     return started ? { jam: out(j) } : { error: 'We’re still working on this board.', jam: out(j) }; }));
   on('GET', '/api/jam2/jams/:jid/prices', wrap(async (b, t, p) => { const j = await load(t, p.jid); return { prices: await maker.prices(await ctxOf(t, j)), partners: engines.status() }; }));
   /* video: the quote, then Render only with the brand's yes on that price */
-  on('POST', '/api/jam2/jams/:jid/boards/:bid/render', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const ctx = await ctxOf(t, j);
+  on('POST', '/api/jam2/jams/:jid/boards/:bid/render', paid(wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const ctx = await ctxOf(t, j);
     const h = headOf(bd); const q = await maker.videoQuote(ctx, bd, h); if (q.error) return { error: q.error };
     if (!isMock() && !(+b.confirmUsd + 0.01 >= q.usd)) return { needsConfirm: true, quote: q };
-    runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: b.confirmUsd ?? q.usd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: b.confirmUsd ?? q.usd }); return { jam: out(j), quote: q }; }));
+    runBg(t, j, bd.id, 'render', async () => { const r = await maker.renderVideo(ctx, bd, { confirmUsd: b.confirmUsd ?? q.usd }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: b.confirmUsd ?? q.usd }); return { jam: out(j), quote: q }; })));
   /* one shot of a rendered video: edit its first frame and animate it again (price first), the rest of the video kept */
-  on('POST', '/api/jam2/jams/:jid/boards/:bid/reshot', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const ctx = await ctxOf(t, j);
+  on('POST', '/api/jam2/jams/:jid/boards/:bid/reshot', paid(wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid); if (!bd) return { error: 'not found' }; const ctx = await ctxOf(t, j);
     const i = Number.isInteger(b.i) ? b.i : -1, ask = String(b.ask || '').slice(0, 300).trim(); if (!ask) return { error: 'Say what should change in this shot.' };
     const region = b.region && [b.region.x, b.region.y, b.region.w, b.region.h].every((v) => Number.isFinite(+v) && +v >= 0 && +v <= 1) ? { x: +b.region.x, y: +b.region.y, w: +b.region.w, h: +b.region.h } : null;
     if (b.confirmUsd == null && !isMock()) { const r = await maker.reshot(ctx, bd, { i, ask, region, confirmUsd: null }); return r.needsConfirm ? { needsConfirm: true, quote: r.quote } : { jam: out(j) }; }
     const started = runBg(t, j, bd.id, 'reshot', async () => { const r = await maker.reshot(await ctxOf(t, j), bd, { i, ask, region, confirmUsd: b.confirmUsd ?? 0 }); if (r.needsConfirm) throw new Error('The price went up; check it and confirm again.'); }, { resume: true, confirmUsd: b.confirmUsd ?? 0, i, ask, region, head: headOf(bd)?.id });
-    return started ? { jam: out(j) } : { error: 'We’re still working on this board.', jam: out(j) }; }));
+    return started ? { jam: out(j) } : { error: 'We’re still working on this board.', jam: out(j) }; })));
   on('POST', '/api/jam2/jams/:jid/boards/:bid/approve', wrap(async (b, t, p) => { const j = await load(t, p.jid), bd = boardOf(j, p.bid), h = headOf(bd); if (!h) return { error: 'Nothing to approve yet.' };
     if (h.gate && !h.gate.pass && !b.anyway) return { error: `Fix this first: ${h.gate.checks.filter((c) => !c.ok && !c.soft).map((c) => c.why).join(' ')}`, gate: h.gate };
     const w = whoOf(t); bd.approved = { takeId: h.id, by: w.email, at: Date.now() }; bd.status = 'approved'; note(j, `approved ${bd.label}`, w.email);

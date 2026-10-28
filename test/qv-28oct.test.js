@@ -85,3 +85,44 @@ test('G: a headline in the picture is said once: not again in the caption, not a
   const [, c] = teamStaticCards('acme', ['a-1'], { 'a-1': { headline: 'Fewer clumps, every wash', product: 'x' } }, { name: 'Acme', titleOf: () => 'Scalp Massager' });
   assert.equal(c.title, 'Run this ad for Scalp Massager'); assert.equal(c.headline, 'Fewer clumps, every wash');
 });
+
+/* ---------- partner mode (Arvind 28 Oct): no prices, "Our team makes it", Copy the prompt ---------- */
+const MM = await import('../make-mode.js');
+const { createFinalsRoutes } = await import('../finals-routes.js');
+test('partner mode: staff always make, a brand\'s own people get "Our team makes it"', () => {
+  const was = process.env.MAKE_MODE;
+  try {
+    delete process.env.MAKE_MODE; assert.equal(MM.makeModeOf('ana@brand.com'), 'paid', 'unset: the priced flow as before');
+    process.env.MAKE_MODE = 'partner';
+    assert.equal(MM.makeModeOf('ana@brand.com'), 'partner'); assert.equal(MM.makeModeOf(null), 'partner');
+    assert.equal(MM.makeModeOf('param@joinsquareup.com'), 'paid', 'staff fulfil the asks');
+    const no = MM.partnerNo(); assert.equal(no.status, 409); assert.equal(no.needsTeam, true); assert.doesNotMatch(no.error, /[$₹]|credit/i);
+  } finally { if (was == null) delete process.env.MAKE_MODE; else process.env.MAKE_MODE = was; }
+});
+test('partner mode: a paid final is refused on the server for a partner, the prompt is free for everyone', async () => {
+  const was = process.env.MAKE_MODE; process.env.MAKE_MODE = 'partner';
+  try {
+    const R = new Map(), on = (m, path, fn) => R.set(`${m} ${path}`, fn);
+    const w = { id: 'w1', drafts: [{ id: 'd1', as: 'image', state: 'ready', title: 'Ad', visual: 'a bathroom shelf', copy: 'Fewer clumps', ratio: '4:5', image: 'gen/x.png' }] };
+    let quoted = 0; const finals = { quote: async () => { quoted++; return { quoteId: 'q', credits: 3 }; }, status: async () => ({ ok: true }) };
+    let who = { email: 'ana@brand.com' };
+    createFinalsRoutes({ on, W: () => w, say: () => {}, meOf: () => who, slugOfT: () => 'acme', brandOfT: () => ({ name: 'Acme', catalog: [] }), finals, sloosh: { listSpaces: async () => [] } });
+    const r = await R.get('POST /api/work/:wid/final/quote')({ draftId: 'd1' }, {}, { wid: 'w1' });
+    assert.equal(r.needsTeam, true); assert.equal(quoted, 0, 'nothing was quoted or spent');
+    who = { email: 'param@joinsquareup.com' }; await R.get('POST /api/work/:wid/final/quote')({ draftId: 'd1' }, {}, { wid: 'w1' }); assert.equal(quoted, 1, 'staff get through');
+    who = { email: 'ana@brand.com' };
+    const pr = await R.get('GET /api/work/:wid/final/prompt')({}, {}, { wid: 'w1' }, new URLSearchParams('draftId=d1'));
+    assert.ok(pr.prompt && pr.prompt.length > 40, JSON.stringify(pr)); assert.equal(pr.size, '4:5'); assert.equal(quoted, 1, 'the prompt quotes nothing');
+  } finally { if (was == null) delete process.env.MAKE_MODE; else process.env.MAKE_MODE = was; }
+});
+test('partner mode: the page shows no price and offers our team, the prompt and the brief', () => {
+  const app = src('public/app.js'), cs = src('public/creative-stage.js'), jr = src('public/jam-room.js'), j2 = src('jam2/routes.js');
+  assert.match(app, /const finalBtn = \(ch\) => \{ if \(PARTNER\(\)\) return teamBtn\(\);/);
+  assert.match(app, /Our team makes it<small class="btn-free">Free for initial partners<\/small>/);
+  assert.match(app, /if \(PARTNER\(\) && PAID_MAIN\.test\(main\)/, 'every priced main button becomes our team');
+  assert.match(app, /'data-rx="copy-prompt"', 'copy', 'Copy the prompt'/); assert.match(app, /'Send the brief to your team'/);
+  assert.match(app, /Ask our team for changes/); assert.match(cs, /Ask our team to redo it/); assert.match(cs, /Ask our team to add it/);
+  assert.match(jr, /window\.LIVE\?\.makeMode !== 'partner'/);
+  for (const r of ['studio/make', 'studio/slide', 'boards/:bid/render', 'boards/:bid/reshot']) assert.match(j2, new RegExp(`'/api/jam2/jams/:jid/${r.replace(/[/:]/g, (c) => `\\${c}`)}', paid\\(wrap\\(`), r);
+  assert.match(src('deploy.sh'), /MAKE_MODE=\$\{MAKE_MODE:-partner\}/); assert.match(src('tools/prod-env.sh'), /MAKE_MODE=\$\{MAKE_MODE:-partner\}/);
+});

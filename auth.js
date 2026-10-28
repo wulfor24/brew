@@ -1,5 +1,6 @@
 import { smallPage } from './small-page.js';
 import { PRODUCT_NAME } from './product-name.js';
+import { makeModeOf } from './make-mode.js';
 // Google sign-in, brand claiming and the team behind a brand.
 // Sign-in is the Google OAuth code flow with PKCE (lifted from SquareUp's google-auth.ts): a nonce + verifier ride
 // in a short httpOnly cookie, the code is traded server-to-server, and we trust only a Google-verified email.
@@ -290,7 +291,7 @@ export function createAuth({ packs, hostOf, seatNames = async () => ({}), onTeam
     }
     if (p === '/api/me' && req.method === 'GET') {
       const me = user(req), slug = String(u.searchParams.get('brand') || '').replace(/[^a-z0-9-]/g, '');
-      return json(res, 200, { user: me, signin: !!(CID && SECRET), access: slug && slug !== 'brew-sample' ? await claimInfo(slug, me) : null, full: isAdmin(me) }), true;
+      return json(res, 200, { user: me, signin: !!(CID && SECRET), access: slug && slug !== 'brew-sample' ? await claimInfo(slug, me) : null, full: isAdmin(me), makeMode: makeModeOf(me?.email) /* partner: no prices, our team makes it (make-mode.js) */ }), true;
     }
     const m = p.match(/^\/api\/brands\/([a-z0-9-]+)\/(claim|team)$/);
     if (m) {
