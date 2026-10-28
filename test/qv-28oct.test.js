@@ -86,45 +86,45 @@ test('G: a headline in the picture is said once: not again in the caption, not a
   assert.equal(c.title, 'Run this ad for Scalp Massager'); assert.equal(c.headline, 'Fewer clumps, every wash');
 });
 
-/* ---------- partner mode (Arvind 28 Oct): no prices, "Our team makes it", Copy the prompt ---------- */
+/* ---------- partner mode (Param 28 Oct): no price for anyone, Make works, one silent day budget ---------- */
 const MM = await import('../make-mode.js');
 const { createFinalsRoutes } = await import('../finals-routes.js');
-test('partner mode: staff always make, a brand\'s own people get "Our team makes it"', () => {
-  const was = process.env.MAKE_MODE;
-  try {
-    delete process.env.MAKE_MODE; assert.equal(MM.makeModeOf('ana@brand.com'), 'paid', 'unset: the priced flow as before');
-    process.env.MAKE_MODE = 'partner';
-    assert.equal(MM.makeModeOf('ana@brand.com'), 'partner'); assert.equal(MM.makeModeOf(null), 'partner');
-    assert.equal(MM.makeModeOf('param@joinsquareup.com'), 'paid', 'staff fulfil the asks');
-    const no = MM.partnerNo(); assert.equal(no.status, 409); assert.equal(no.needsTeam, true); assert.doesNotMatch(no.error, /[$₹]|credit/i);
-  } finally { if (was == null) delete process.env.MAKE_MODE; else process.env.MAKE_MODE = was; }
-});
-test('partner mode: a paid final is refused on the server for a partner, the prompt is free for everyone', async () => {
-  const was = process.env.MAKE_MODE; process.env.MAKE_MODE = 'partner';
-  try {
-    const R = new Map(), on = (m, path, fn) => R.set(`${m} ${path}`, fn);
-    const w = { id: 'w1', drafts: [{ id: 'd1', as: 'image', state: 'ready', title: 'Ad', visual: 'a bathroom shelf', copy: 'Fewer clumps', ratio: '4:5', image: 'gen/x.png' }] };
-    let quoted = 0; const finals = { quote: async () => { quoted++; return { quoteId: 'q', credits: 3 }; }, status: async () => ({ ok: true }) };
-    let who = { email: 'ana@brand.com' };
-    createFinalsRoutes({ on, W: () => w, say: () => {}, meOf: () => who, slugOfT: () => 'acme', brandOfT: () => ({ name: 'Acme', catalog: [] }), finals, sloosh: { listSpaces: async () => [] } });
-    const r = await R.get('POST /api/work/:wid/final/quote')({ draftId: 'd1' }, {}, { wid: 'w1' });
-    assert.equal(r.needsTeam, true); assert.equal(quoted, 0, 'nothing was quoted or spent');
-    who = { email: 'param@joinsquareup.com' }; await R.get('POST /api/work/:wid/final/quote')({ draftId: 'd1' }, {}, { wid: 'w1' }); assert.equal(quoted, 1, 'staff get through');
-    who = { email: 'ana@brand.com' };
-    const pr = await R.get('GET /api/work/:wid/final/prompt')({}, {}, { wid: 'w1' }, new URLSearchParams('draftId=d1'));
-    assert.ok(pr.prompt && pr.prompt.length > 40, JSON.stringify(pr)); assert.equal(pr.size, '4:5'); assert.equal(quoted, 1, 'the prompt quotes nothing');
-  } finally { if (was == null) delete process.env.MAKE_MODE; else process.env.MAKE_MODE = was; }
-});
-test('partner mode: the page shows no price and offers our team, the prompt and the brief', () => {
-  const app = src('public/app.js'), cs = src('public/creative-stage.js'), jr = src('public/jam-room.js'), j2 = src('jam2/routes.js');
-  assert.match(app, /const finalBtn = \(ch\) => \{ if \(PARTNER\(\)\) return teamBtn\(\);/);
-  assert.match(app, /Our team makes it<small class="btn-free">Free for initial partners<\/small>/);
-  assert.match(app, /if \(PARTNER\(\) && PAID_MAIN\.test\(main\)/, 'every priced main button becomes our team');
-  assert.match(app, /'data-rx="copy-prompt"', 'copy', 'Copy the prompt'/); assert.match(app, /'Send the brief to your team'/);
-  assert.match(app, /Ask our team for changes/); assert.match(cs, /Ask our team to redo it/); assert.match(cs, /Ask our team to add it/);
-  assert.match(jr, /window\.LIVE\?\.makeMode !== 'partner'/);
+const env = (v, fn) => async () => { const was = { m: process.env.MAKE_MODE, c: process.env.MAKE_DAY_CAP_USD }; Object.assign(process.env, v); try { await fn(); } finally { for (const [k, e] of [['MAKE_MODE', was.m], ['MAKE_DAY_CAP_USD', was.c]]) if (e == null) delete process.env[k]; else process.env[k] = e; MM.useCounters(null); } };
+const fakeCounters = () => { const m = new Map(); return { add: (s, k, n) => m.set(`${s}|${k}`, (m.get(`${s}|${k}`) || 0) + n), total: (s, k) => m.get(`${s}|${k}`) || 0 }; };
+test('partner mode: the page shows no price to anyone', env({ MAKE_MODE: 'partner' }, () => {
+  assert.deepEqual(MM.pageModeOf('param@joinsquareup.com'), { makeMode: 'partner' }); assert.deepEqual(MM.pageModeOf('ana@brand.com'), { makeMode: 'partner' });
+  assert.match(src('auth.js'), /\.\.\.pageModeOf\(me\?\.email\)/); assert.match(src('connectors/index.js'), /\.\.\.pageModeOf\(me\?\.email\)/);
+}));
+test('partner mode: a final runs for anyone and books its credits; over the silent day budget it says try again tomorrow', env({ MAKE_MODE: 'partner', MAKE_DAY_CAP_USD: '1' }, async () => {
+  const C = fakeCounters(); MM.useCounters(C);
+  const R = new Map(), on = (m, path, fn) => R.set(`${m} ${path}`, fn);
+  const w = { id: 'w1', drafts: [{ id: 'd1', as: 'image', state: 'ready', title: 'Ad', visual: 'a bathroom shelf', copy: 'Fewer clumps', ratio: '4:5', image: 'gen/x.png' }], thread: [] };
+  let runs = 0; const finals = { quote: async () => ({ quoteId: 'q', credits: 8 }), run: async () => { runs++; return { state: 'making', runKey: 'k' }; }, status: async () => ({ ok: true }) };
+  createFinalsRoutes({ on, W: () => w, say: () => {}, meOf: () => ({ email: 'ana@brand.com' }), slugOfT: () => 'acme', brandOfT: () => ({ name: 'Acme', catalog: [] }), finals, sloosh: { listSpaces: async () => [] } });
+  const q = await R.get('POST /api/work/:wid/final/quote')({ draftId: 'd1' }, {}, { wid: 'w1' }); assert.ok(!q.error, JSON.stringify(q));
+  await R.get('POST /api/work/:wid/final/run')({ draftId: 'd1', expect: 'q' }, {}, { wid: 'w1' });
+  assert.ok(Math.abs(MM.spentToday() - 8 * MM.CREDIT_USD) < 1e-9, 'the run booked 8 credits');
+  C.add('make', 'usd', 5); const over = await R.get('POST /api/work/:wid/final/run')({ draftId: 'd1', expect: 'q' }, {}, { wid: 'w1' });
+  assert.equal(over.capped, true); assert.doesNotMatch(over.error, /[$₹]|credit|budget|cap/i, 'silent: no price, no cap named');
+  const pr = await R.get('GET /api/work/:wid/final/prompt')({}, {}, { wid: 'w1' }, new URLSearchParams('draftId=d1')); assert.ok(pr.prompt, 'the prompt stays free');
+}));
+test('paid mode: no day budget, the quote is the guard', env({ MAKE_MODE: 'paid', MAKE_DAY_CAP_USD: '1' }, () => { const C = fakeCounters(); MM.useCounters(C); C.add('make', 'usd', 50); assert.equal(MM.overCap(), false); }));
+test('partner mode: the page strips every price, keeps Make, offers Copy the prompt', () => {
+  const app = src('public/app.js'), cs = src('public/creative-stage.js'), j2 = src('jam2/routes.js'), tips = src('public/tips.js');
+  assert.match(app, /if \(PARTNER\(\)\) \{ main = noPrice\(main\);/); assert.doesNotMatch(app, /teamBtn|PAID_MAIN/);
+  assert.match(app, /'data-rx="copy-prompt"', 'copy', 'Copy the prompt'/);
+  assert.match(app, /PARTNER\(\) \? 'Make the full one' :/); assert.match(app, /Redo it\$\{sPl\?\.usd != null && !PARTNER\(\)/);
+  assert.match(cs, /Add this slide\$\{ap\?\.usd != null && !PARTNER\(\)/); assert.match(cs, /Redo this slide\$\{sp\?\.usd != null && !PARTNER\(\)/);
+  assert.match(tips, /window\.LIVE\?\.makeMode === 'partner' \? v : paid/);
   for (const r of ['studio/make', 'studio/slide', 'boards/:bid/render', 'boards/:bid/reshot']) assert.match(j2, new RegExp(`'/api/jam2/jams/:jid/${r.replace(/[/:]/g, (c) => `\\${c}`)}', paid\\(wrap\\(`), r);
+  assert.match(j2, /if \(overCap\(\)\) return capNo\(\);/); assert.match(src('server.js'), /useCounters\(COUNTERS\);/);
   assert.match(src('deploy.sh'), /MAKE_MODE=\$\{MAKE_MODE:-partner\}/); assert.match(src('tools/prod-env.sh'), /MAKE_MODE=\$\{MAKE_MODE:-partner\}/);
+});
+test('the page strips a price chip and keeps a Free draft tag', () => {
+  const app = src('public/app.js'); const re = new RegExp(/noPrice = \(h\) => \(PARTNER\(\) \? String\(h\)\.replace\((\/.*\/g), ''\)/.exec(app)[1].slice(1, -2), 'g');
+  assert.equal('<button>Make it<small class="btn-free">about ₹14</small></button>'.replace(re, ''), '<button>Make it</button>');
+  assert.equal('<button>Make it<small class="btn-free">3 credits</small></button>'.replace(re, ''), '<button>Make it</button>');
+  assert.equal('<button>Make it<small class="btn-free">Free draft</small></button>'.replace(re, ''), '<button>Make it<small class="btn-free">Free draft</small></button>');
 });
 
 const { healStatic } = await import('../static-title.js');
@@ -142,22 +142,11 @@ test('the ··· menu opens toward the side it fits', () => {
   assert.match(src('public/quiet.css'), /\.rd2-menu\.is-left\{right:auto;left:0\}/);
 });
 
-test('Ask our team for changes: a note box, and the note rides on top of the brief and in the chat', () => {
-  const sh = src('public/share.js'), jb = src('jam-brief.js'), app = src('public/app.js');
-  assert.match(app, /btn\?\.hasAttribute\?\.\('data-team-change'\) \? \{ askNote: true \}/);
-  assert.match(sh, /if \(to === 'shopos' && opts\.askNote\) return askNote\(p, w\);/);
-  assert.match(sh, /data-team-note/); assert.match(sh, /send\(p, w, 'shopos', false, note\)/);
-  assert.match(jb, /w\.jamBrief\.md = `\*\*What to change:\*\* \$\{note\}/); assert.match(jb, /if \(note\) say\(t, w, \{ from: 'me', body: note \}\);/);
-});
 
-test('partner mode: the page shows the partner bar to everyone, staff too; staff make from the ··· menu only', () => {
+test('partner mode: no one sees a price, staff included', () => {
   const was = process.env.MAKE_MODE; process.env.MAKE_MODE = 'partner';
-  try {
-    assert.deepEqual(MM.pageModeOf('param@joinsquareup.com'), { makeMode: 'partner', staffMake: true });
-    assert.deepEqual(MM.pageModeOf('ana@brand.com'), { makeMode: 'partner' });
-    delete process.env.MAKE_MODE; assert.deepEqual(MM.pageModeOf('param@joinsquareup.com'), { makeMode: 'paid' });
-  } finally { if (was == null) delete process.env.MAKE_MODE; else process.env.MAKE_MODE = was; }
-  const app = src('public/app.js');
-  assert.match(app, /Make it here · staff only/); assert.match(app, /window\.LIVE\?\.staffMake/);
+  try { assert.deepEqual(MM.pageModeOf('param@joinsquareup.com'), { makeMode: 'partner' }); assert.deepEqual(MM.pageModeOf('ana@brand.com'), { makeMode: 'partner' }); }
+  finally { if (was == null) delete process.env.MAKE_MODE; else process.env.MAKE_MODE = was; }
+  assert.doesNotMatch(src('public/app.js'), /Make it here · staff only|staffMake/);
   assert.match(src('auth.js'), /\.\.\.pageModeOf\(me\?\.email\)/); assert.match(src('connectors/index.js'), /\.\.\.pageModeOf\(me\?\.email\)/);
 });

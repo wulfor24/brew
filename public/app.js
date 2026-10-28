@@ -4095,12 +4095,11 @@
      "Free draft" (a clip adds how long it takes); only the final shows credits (finalBtn) */
   const FREE = 'Free draft', FREE_CLIP = 'Free draft · about two minutes' /* the same wait the chat says when the clip starts (remix.js makeOne): a first frame, then Veo */;
   const freeTag = (clip = false) => `<small class="btn-free"${tipA('free')}>${FREE}${clip ? `<span class="btn-free-t">${FREE_CLIP.slice(FREE.length)}</span>` : ''}</small>`; /* a phone keeps just Free draft */
-  /* partner mode (make-mode.js, Arvind 28 Oct): while nobody is charged, a brand's people never see a price or start a paid make. The
-     Make step is "Our team makes it" (the brief goes to our team, who make it here), with Copy the prompt and Send the brief beside it */
+  /* partner mode (make-mode.js, Param 28 Oct): for any brand we onboard no price is shown to anyone; Make works as ever, and one silent
+     day budget on the server guards against misuse. noPrice takes a price chip ("about ₹14", "3 credits") off a button's html */
   const PARTNER = () => window.LIVE?.makeMode === 'partner';
-  const teamBtn = (cls = 'btn btn-primary ship-go') => `<button class="${cls}" data-rx="share-shopos">${ic('send', 's16')}Our team makes it<small class="btn-free">Free for initial partners</small></button>`;
-  const PAID_MAIN = /data-cs-make|data-cs-full|data-fn-one/;
-  const finalBtn = (ch) => { if (PARTNER()) return teamBtn(); const what = isReel(ch) || ch.pkg?.video ? 'reel' : 'picture'; RX.fq ||= {}; const f = RX.fq[fqKey(ch)];
+  const noPrice = (h) => (PARTNER() ? String(h).replace(/<small class="btn-free"[^>]*>(?:(?!<\/small>)[\s\S])*?(?:[₹$€£]|\bcredits?\b|with Gemini|simulated)(?:(?!<\/small>)[\s\S])*?<\/small>/g, '') : h);
+  const finalBtn = (ch) => { const what = isReel(ch) || ch.pkg?.video ? 'reel' : 'picture'; RX.fq ||= {}; const f = RX.fq[fqKey(ch)];
     if (!f) { setTimeout(() => fqFetch(ch), 0); return `<button class="btn btn-primary ship-go" disabled><brew-load class="spin"></brew-load>Make it</button>`; }
     if (f.st === 'loading') return `<button class="btn btn-primary ship-go" disabled><brew-load class="spin"></brew-load>Make it</button>`;
     if (f.st === 'err') return `<button class="btn btn-primary ship-go" data-fn-one title="${esc(f.err)}">${ic('sparkles', 's16')}Make it</button>`;
@@ -4117,7 +4116,7 @@
     btn.disabled = true; btn.innerHTML = '<brew-load class="spin"></brew-load>Starting…';
     /* no price yet, or it ran out: ask again; a new price is shown first, never spent unseen */
     if (!f || f.st !== 'ok' || (f.q.expiresAt && f.q.expiresAt < Date.now() + 5e3)) { const was = f?.q?.credits; f = await fqFetch(ch);
-      if (f.st !== 'ok') return toast(`${ic('info', 's16')}${esc(f.err)}`); if (was != null && Math.abs((f.q.credits || 0) - was) > 0.001) return toast(`${ic('info', 's16')}The price is now ${Math.round(f.q.credits * 100) / 100} credits. Tap again to make it.`); }
+      if (f.st !== 'ok') return toast(`${ic('info', 's16')}${esc(f.err)}`); if (was != null && Math.abs((f.q.credits || 0) - was) > 0.001 && !PARTNER()) return toast(`${ic('info', 's16')}The price is now ${Math.round(f.q.credits * 100) / 100} credits. Tap again to make it.`); }
     const what = isReel(ch) || ch.pkg?.video ? 'reel' : 'picture'; RX.fgo ||= {}; /* locked from the tap on: a repaint while the run is asked never shows the button again */
     RX.fgo[ch.id] = { at: Date.now(), nf: nFinals(ch), err: ch.imageError || ch.videoError || '', what, fp: { at: Date.now(), fallback: f.q.provider === 'gemini' } };
     const r = await tapi('POST', `/api/changes/${ch.id}/final/run`, { expect: f.q.quoteId }).catch((e) => ({ error: e.message }));
@@ -4140,8 +4139,8 @@
   /* the line names the item the bar's button acts on (the first red one, else the preview), so the two never point at different things */
   const lineIdx = (L0) => { const r = L0.findIndex((x) => !x.soft && x.k !== 'preview'); return r >= 0 ? r : Math.max(0, L0.findIndex((x) => x.k === 'preview')); };
   /* a paid action is a priced button or opens the priced set-up, never a bare link (26 Oct, QV P1-3: "Make the full one" read as free) */
-  const fullLbl = () => { if (PARTNER()) return ''; const f = window.CreativeStage?.fullPrice?.(); return f?.usd != null ? `Make the full one · ${moneyOf(f.usd)}` : ''; };
-  const fullAct = () => PARTNER() ? '' : fullLbl() ? `<button type="button" class="linkbtn" data-cs-full>${esc(fullLbl())}</button>` : `<button type="button" class="linkbtn" data-cs-open>Price the full one</button>`;
+  const fullLbl = () => { const f = window.CreativeStage?.fullPrice?.(); return f?.usd != null ? (PARTNER() ? 'Make the full one' : `Make the full one · ${moneyOf(f.usd)}`) : ''; };
+  const fullAct = () => fullLbl() ? `<button type="button" class="linkbtn" data-cs-full>${esc(fullLbl())}</button>` : `<button type="button" class="linkbtn" data-cs-open>Price the full one</button>`;
   /* a claim the store doesn't back yet, approvable where it is flagged (the bar, Before it goes, a make that printed it): one tap saves it
      to the Brand Book's approved claims and every check and make accepts it (26 Oct, Param: "approve such cases here itself") */
   const apprBtn = (claims, label = 'Approve') => (Array.isArray(claims) && claims.length && !RX.viewing && !document.body.classList.contains('is-guest') ? ` <button type="button" class="linkbtn jp-appr" data-approve-claims="${esc(JSON.stringify(claims.slice(0, 6)))}" title="Approve ${esc(claims.map((c) => `“${c}”`).join(', '))} as true: it goes to your Brand Book → Claims">${esc(label)}</button>` : '');
@@ -4189,8 +4188,7 @@
     /* a post with no thread to open: its main button copies the post (it said "you post it yourself" over a Send brief button: QA J-20) */
     else if (ch.family === 'post' && ch.target?.conn !== 'meta' && (p.copy || p.title)) { head = `Ready${nm}`; tip = 'Copy the post and paste it where it goes. You post it yourself; we never post in communities for you. The brief carries it too.'; main = `<button class="btn btn-primary ship-go" data-rx="copy-post">${ic('copy', 's16')}${ch.target?.object === 'Review reply' ? 'Copy the reply' : 'Copy the post'}</button>`; }
     else { head = `Ready${nm}`; tip = `${ch.verdict === 'jam' && (ch.reasons || [])[0] ? `${ch.reasons[0]}: the brief carries everything the team needs. ` : ''}Send brief: our team, the build crew, gets it by email and runs it. Its status shows in the top bar.`; main = send; }
-    const staffMain = PARTNER() && window.LIVE?.staffMake && PAID_MAIN.test(main) && !/aria-busy|\sdisabled[\s>]/.test(main) ? main : ''; /* staff still make, from the ··· menu */
-    if (PARTNER() && PAID_MAIN.test(main) && !/aria-busy/.test(main)) { main = teamBtn(); if (/Nothing is made or paid|Pricing it/.test(head)) head = 'Our team makes it for you'; tip = 'Free for initial partners: our team gets the brief, makes it and sends it back here. Or copy the prompt for your own tool, or send the brief to your team.'; }
+    if (PARTNER()) { main = noPrice(main); head = String(head).replace('Nothing is made or paid until you press Make it', 'Nothing is made until you press Make it'); tip = String(tip || '').replace(/Nothing is made, or paid, before you press Make it\./, 'Nothing is made before you press Make it.'); } /* no price for anyone (make-mode.js) */
     if (document.body.classList.contains('is-guest') && /data-cs-make|data-cs-full|data-fn-one|data-rx="(?:video|image|images-all|variants|listing-photos)"/.test(main)) main = `<button class="btn btn-primary ship-go" disabled title="Pictures, videos and finals cost money, so ${esc(B.brand.name)}’s team makes them. You can chat and change the words.">${ic('person', 's16')}The team makes it</button>`; /* a jam guest (QV 25 Oct) */
     const items = [];
     /* a final reel or picture is post-ready: its caption and hashtags one tap away, beside Download (Param, 21 Oct) */
@@ -4198,9 +4196,7 @@
     if (po && !fix && !job && !/data-rx="post-open"/.test(main)) items.push(['data-rx="post-open"', 'send', po.label, po.filled ? `Opens ${PO_WHERE(po)} with the post filled in.` : `Copies the post and opens ${PO_WHERE(po)}.`]);
     if (/data-cs-full/.test(main)) items.unshift(['data-tb-open', 'send', 'Send the preview’s brief anyway', 'The brief with this low-resolution preview; the team can make the full one.']);
     if (!/data-rx="share-shopos"/.test(main)) items.push(['data-rx="share-shopos"', 'send', 'Send the brief now', 'Our team, the build crew, gets it by email and makes it.']);
-    if (staffMain) { const at = (/data-(cs-make|cs-full|fn-one)\b/.exec(staffMain) || [])[0], cost = (/<small class="btn-free"[^>]*>([^<]*)</.exec(staffMain) || [])[1] || '';
-      if (at) items.unshift([at, 'sparkles', `Make it here · staff only${cost ? ` · ${cost}` : ''}`, 'Spends our credits now. Partners never see this.']); }
-    if (PARTNER() && (media || ch.studio)) items.push(['data-rx="copy-prompt"', 'copy', 'Copy the prompt', 'The words and the pictures a final is made from, to paste into your own tool.'], ...(/data-tb-open/.test(main) ? [] : [['data-tb-open', 'send', 'Send the brief to your team', 'Your designer or agency gets everything they need to make it.']]));
+    if (PARTNER() && (media || ch.studio)) items.push(['data-rx="copy-prompt"', 'copy', 'Copy the prompt', 'The words and the pictures a final is made from, to paste into your own tool.']);
     items.push(['data-rx="share-team"', 'copy', 'Share with my team', 'Copy the brief and a link to paste in your team’s chat.']);
     /* a customer message (WhatsApp, email, SMS) goes out from the brand's own tool: copy its words, or take the template file (2.5) */
     if (ch.family === 'crm' && (p.message || p.subject)) { const tool = ch.target?.name && !/^a person$/i.test(ch.target.name) ? ch.target.name : 'your messaging tool';
@@ -4211,7 +4207,7 @@
     /* Redo it: one new take beside the one way forward, whenever the version can still change (not while something is being made) */
     const busy = !!job;
     const sSt = ch.studio ? window.CreativeStage?.state(ch.id) : null, sPl = sSt?.plan || null; /* a Studio redo is made again the same way, at its price */
-    const redo = !busy && !(op && !op.picked) && !(ch.studio && !studioMade(ch)) ? (ch.studio && PARTNER() ? `<button class="btn btn-ghost ship-redo" data-rx="share-shopos" data-team-change>${ic('shuffle', 's16')}Ask our team for changes</button>` : ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" ${sSt?.making || !sPl || sPl.error || sPl.usd == null ? 'disabled' : ''} title="${sSt?.making ? 'It is being made now' : !sPl ? 'Pricing it…' : ''}"${sSt?.making || !sPl ? '' : tipA('redoPaid')}>${ic('shuffle', 's16')}Redo it${sPl?.usd != null ? ` · ${moneyOf(sPl.usd)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" ${tipA('redo')}>${ic('shuffle', 's16')}Redo it</button>`) : '';
+    const redo = !busy && !(op && !op.picked) && !(ch.studio && !studioMade(ch)) ? (ch.studio ? `<button class="btn btn-ghost ship-redo" data-rx="variants" ${sSt?.making || !sPl || sPl.error || sPl.usd == null ? 'disabled' : ''} title="${sSt?.making ? 'It is being made now' : !sPl ? 'Pricing it…' : ''}"${sSt?.making || !sPl ? '' : tipA('redoPaid')}>${ic('shuffle', 's16')}Redo it${sPl?.usd != null && !PARTNER() ? ` · ${moneyOf(sPl.usd)}` : ''}</button>` : `<button class="btn btn-ghost ship-redo" data-rx="variants" ${tipA('redo')}>${ic('shuffle', 's16')}Redo it</button>`) : '';
     const headTxt = String(head).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&amp;/g, '&'); /* plain text: esc() below is its only escaping */
     const csReady = ch.studio && !studioMade(ch) && !csS?.error && !csPl?.error; /* a set-up ready to make is no warning: its line reads plain (25 Oct: orange "product shot picture · …") */
     return `<div class="ship one ${csReady ? 'plain' : fix || /Needs a look|things to look at|class="ship-one/.test(String(head)) ? 'warn' : 'ok'}">${strip}<div class="ship-tx is-step"><b><span class="ship-l"${/ship-fixes/.test(head) ? '' : ` title="${esc(headTxt)}"`}>${head}</span>${tipBtn(tip)}</b></div><div class="ship-btns">${shipMenu(ch, items)}${redo}${main}</div></div>`; };
@@ -4320,7 +4316,7 @@
   const v1Chips = (ch) => { const dis = RX.sending ? ' disabled' : '';
     if (RX.part?.ch === ch.id) return `<div class="it-sugg">${(RX.part.label === 'Cover' ? ['Another colour', 'A simpler icon', 'Shorter name'] : PIC_PART.test(RX.part.label) ? ['Warmer light', ch.product ? 'Closer on the product' : 'Simpler', 'Another angle'] : ['Shorter', ch.product?.price ? 'Say the price' : 'Plainer words', 'Warmer']).map((x) => `<button type="button" class="chip" data-say="${esc(x)}"${dis}>${esc(x)}</button>`).join('')}</div>`; /* a part picked on the piece: the chips are about that part (the prototype) */
     const sc = studioChips(ch), asks0 = [...sc.filter((x) => x !== '__full'), ...fitSuggest(ch.suggest).filter((x) => !(ch.studio && COUNT_CHIP.test(x)))];
-    const asks = [...(sc.includes('__full') && !PARTNER() ? [`<button type="button" class="chip" data-cs-full${dis}>${ic('sparkles', 's14')}${esc(fullLbl() || 'Make the full one')}</button>`] /* with its price once known (QV P1-3) */ : []), ...asks0.slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip${RX.sending && RX.from === x ? ' is-wait' : ''}" data-say="${esc(x)}"${dis}>${RX.sending && RX.from === x ? '<brew-load class="spin"></brew-load>' : ''}${esc(x)}</button>`)];
+    const asks = [...(sc.includes('__full') ? [`<button type="button" class="chip" data-cs-full${dis}>${ic('sparkles', 's14')}${esc(fullLbl() || 'Make the full one')}</button>`] /* with its price once known (QV P1-3) */ : []), ...asks0.slice(0, PH_FAM.includes(ch.family) ? 3 : 4).map((x) => `<button type="button" class="chip${RX.sending && RX.from === x ? ' is-wait' : ''}" data-say="${esc(x)}"${dis}>${RX.sending && RX.from === x ? '<brew-load class="spin"></brew-load>' : ''}${esc(x)}</button>`)];
     const rest = [...(PH_FAM.includes(ch.family) && !ch.studio && !wordsOnly(ch) && !phTools(ch, ch, null) ? [`<button type="button" class="chip chip-ph" data-ph-open>${ic('pic', 's14')}Change the photo</button>`] : []),
       ...j2Acts(ch, (attr, icon, label, cls = '') => `<button type="button" class="chip j1-chip${cls}" ${attr}${dis}>${icon ? ic(icon, 's14') : ''}${esc(label)}</button>`)];
     const all = [...asks, ...rest], first = all.slice(0, 3), more = all.slice(3), open = RX.moreChips === ch.id;

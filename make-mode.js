@@ -1,14 +1,16 @@
-// Who may press a paid Make (a Sloosh final, a Studio make, a slide, a video render). While Brew runs with its first design partners
-// (MAKE_MODE=partner, set in deploy.sh and promote.sh) nobody is charged, so a brand's own people never see a price or start paid work:
-// "Our team makes it" sends the brief to us, and staff (FULL_ACCESS_DOMAINS / ADMIN_EMAILS) make it from the same jam. Arvind, 28 Oct.
-// The free first drafts Brew makes on its own are not touched. MAKE_MODE=paid (or unset) is the priced, quote-first flow as before.
-import { isFullAccess } from './auth.js';
-
+// Paid makes (a Sloosh final, a Studio make, a slide, a video render) while Brew runs with its first design partners (MAKE_MODE=partner,
+// set in deploy.sh and tools/prod-env.sh). Param, 28 Oct: for any brand we onboard, no price is shown to anyone, and anyone may press
+// Make. One generous, silent budget guards against misuse: MAKE_DAY_CAP_USD (default $100) across every brand per UTC day, counted
+// on the shared Postgres counters (counters.js) so every instance sees one total. Over it, a make says to try again tomorrow, never
+// a price or a cap. MAKE_MODE=paid (or unset) is the priced, quote-first flow as before. Free first drafts are not counted here.
 export const MAKE_MODE = () => (String(process.env.MAKE_MODE || '').toLowerCase() === 'partner' ? 'partner' : 'paid');
-/* email: whoever is signed in. Staff always make (they fulfil the partners' asks); everyone else follows the mode */
-export const makeModeOf = (email) => (email && isFullAccess(email) ? 'paid' : MAKE_MODE());
-/* what the page shows: in partner mode everyone sees the partner bar, staff too (Param, 28 Oct: a demo on a staff login still showed
-   "Make it · about ₹14"). staffMake: this viewer may still make, from the ··· menu only */
-export const pageModeOf = (email) => ({ makeMode: MAKE_MODE(), ...(MAKE_MODE() === 'partner' && makeModeOf(email) === 'paid' ? { staffMake: true } : {}) });
-export const PARTNER_NOTE = 'Free for initial partners';
-export const partnerNo = () => ({ status: 409, needsTeam: true, error: 'Our team makes this one for you, free for initial partners: press “Our team makes it” and we send it back here.' });
+export const pageModeOf = () => ({ makeMode: MAKE_MODE() }); /* what the page shows: in partner mode, no price for anyone */
+export const CREDIT_USD = 0.09; /* one Sloosh credit, as jam2/sloosh-studio.js prices it */
+let C = null;
+export const useCounters = (counters) => { C = counters || null; };
+export const DAY_CAP_USD = () => +process.env.MAKE_DAY_CAP_USD || 100;
+export const spentToday = () => (C ? C.total('make', 'usd') : 0);
+/* in partner mode a make over today's budget is refused; in paid mode the quote is the guard, as before */
+export const overCap = () => MAKE_MODE() === 'partner' && spentToday() >= DAY_CAP_USD();
+export const bookMake = (usd) => { const n = +usd || 0; if (C && n > 0) C.add('make', 'usd', n); };
+export const capNo = () => ({ status: 429, capped: true, error: 'We’ve made a lot today. Try again tomorrow.' });

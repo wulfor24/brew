@@ -24,7 +24,7 @@ import { isRestock } from '../product-match.js';
 import { withBrowser } from '../pdf/render.js';
 import { answerGrounded } from '../jam-answer.js';
 import { PRODUCT_NAME } from '../product-name.js';
-import { makeModeOf, partnerNo } from '../make-mode.js';
+import { overCap, capNo, bookMake } from '../make-mode.js';
 
 export function mountJam2(d) {
   const { on, packs, slugOfT, brandOfT, meOf, reqOf, cardOf, sourceOf, refsOf, isMock, spend, log = console } = d;
@@ -97,8 +97,9 @@ export function mountJam2(d) {
   const load = async (t, jid) => { const j = await store.get(slugOfT(t), jid, whoOf(t)); if (!j) throw Object.assign(new Error('not found'), { status: 404 }); return j; };
   /* every jam call reads the brand's pack (catalog, config): right after a restart it may not be loaded yet, so it is loaded first
      (23 Oct: the first Studio make after a deploy refused the brand's own product as "not from your catalog") */
-  /* a paid make, for staff only while we're with design partners (make-mode.js): a partner's own press gets "Our team makes it" */
-  const paid = (fn, free = () => false) => async (b, t, p, q) => (!free(b) && makeModeOf(whoOf(t).email) === 'partner' ? partnerNo() : fn(b, t, p, q));
+  /* a paid make counts against the day's silent budget (make-mode.js): over it, "try again tomorrow"; a make that went through books its price */
+  const paid = (fn, free = () => false) => async (b, t, p, q) => { if (free(b)) return fn(b, t, p, q); if (overCap()) return capNo();
+    const r = await fn(b, t, p, q); if (r && !r.error && !r.needsConfirm) bookMake(b?.confirmUsd); return r; };
   const wrap = (fn) => async (b, t, p, q) => { try { if (t && !brandOfT(t) && d.loadBrandOfT) await d.loadBrandOfT(t).catch(() => null); return await fn(b, t, p, q); } catch (e) { return { error: e.message, status: e.status || 200 }; } };
 
   /* ---------- catalogue, partners, brand book ---------- */

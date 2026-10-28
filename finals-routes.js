@@ -8,7 +8,7 @@ import { isResearchImage } from './rival-ad.js'; // a rival's ad is never a phot
 import { sceneOf, cardProduct } from './product-match.js';
 import { familyOf, matchSpaces } from './sloosh-spaces.js';
 import { PRODUCT_NAME } from './product-name.js';
-import { makeModeOf, partnerNo } from './make-mode.js';
+import { overCap, capNo, bookMake, CREDIT_USD } from './make-mode.js'; // a paid final counts against the day's silent budget
 import { buildFinal } from './sloosh-prompt.js'; // "Copy the prompt": the words a final would be made from, built here and never sent // while we're with design partners only staff start a paid final
 
 const firstLine = (md = '') => String(md).split('\n').map((l) => l.replace(/^[#>*\-\s]+/, '').replace(/\*\*/g, '').trim()).find((l) => l && !/^(headline|primary text|button|cta)[:\s]/i.test(l)) || '';
@@ -67,11 +67,13 @@ export function createFinalsSheet({ finals, sloosh, references = null, creditsLe
 const promptOut = (spec) => { const f = buildFinal(spec), refs = (spec.refs || []).filter((r) => r?.url).map((r) => ({ url: r.url, label: r.label || r.job || 'Picture', job: r.job || 'other' }));
   const size = spec.kind === 'video' ? `${spec.ratio}, about ${Math.round(spec.seconds || 6)} seconds${spec.sound ? ', with sound' : ''}` : spec.ratio;
   return { prompt: f.prompt, model: f.label, size, refs, kind: spec.kind }; };
-/* a paid final (its quote, its run, a Space checkpoint) is for staff only in partner mode: a partner's press gets "Our team makes it" */
-const gateFinals = (on, meOf) => (m, path, fn) => on(m, path, /\/final\/(?:quote|run|checkpoint)$/.test(path) ? (b, t, p, q) => (makeModeOf(meOf(t)?.email) === 'partner' ? partnerNo() : fn(b, t, p, q)) : fn);
+/* a paid final's run counts against the day's silent budget (make-mode.js): over it, "try again tomorrow"; a run that went through books
+   its quoted credits. The quote and a Space checkpoint stay free */
+const gateFinals = (on, quoteOf) => (m, path, fn) => on(m, path, /\/final\/run$/.test(path) ? async (b, t, p, q) => { if (overCap()) return capNo(); const credits = +quoteOf(t, p)?.quote?.credits || 0;
+  const r = await fn(b, t, p, q); if (r && !r.error && !r.requote) bookMake(credits * CREDIT_USD); return r; } : fn);
 export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slugOfT, brandOfT, cardOfW = () => null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, onReady = () => {}, save = () => {}, now = () => Date.now(), uid = (p) => `${p}_${Math.random().toString(36).slice(2, 10)}`, log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
-  on = gateFinals(on, meOf);
+  on = gateFinals(on, (t, p) => W(t, p.wid)?.finalQuote);
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const draftOf = (w, id) => (w.drafts || []).find((d) => d.id === id && d.state !== 'making');
   /* a draft of "Make our version": the rival's ad read (rival-ad.js), with our headline and button where theirs sit */
@@ -131,7 +133,7 @@ export function createFinalsRoutes({ blockOf = () => null, on, W, say, meOf, slu
 /* ---------- the studio: a final is the next version, labelled Final ---------- */
 export function createStudioFinals({ blockOf = () => null, headOf = () => null, useVersion = () => {}, versionById = () => null, on, C, ensurePkg, sync, version, pubChange, cardOf = () => null, cardPhoto = () => null, catalogOf = () => [], jobs, vidJobs = null, references = null, finals, sloosh, creditsLeft = () => null, rivalOf = async () => null, viralClip = null, textCheck = null, brandOfT, slugOfT, meOf = () => null, onMedia = () => {}, onFinal = () => {} /* the bell: ready, paused or failed (Param, 21 Oct: "we'll notify you once ready") */, isVideo = () => false, RATIO = {}, now = () => Date.now(), log = console }) {
   const sheet = createFinalsSheet({ finals, sloosh, references, creditsLeft, brandOfT, log, now });
-  on = gateFinals(on, meOf);
+  on = gateFinals(on, (t, p) => C(t, p.chid)?.finalQuote);
   const nameOf = (t) => meOf(t)?.name || meOf(t)?.email || 'Someone';
   const headFinal = (ch) => (ch.versions || []).find?.((v) => v.id === ch.headVersionId)?.final || ch.lastFinal?.versionId === ch.headVersionId ? ch.lastFinal : null;
   /* a version remade as a reel, a carousel or a picture (remix.js remakeOf): the final is made in that format, from that draft's

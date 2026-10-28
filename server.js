@@ -44,6 +44,7 @@ import { enabled as pgEnabled } from './db/index.js';
 import { migrate } from './db/migrate.js';
 import { isWeb, isWorker, isLeader, whenLeader, leaderOnly, startLease } from './roles.js'; // ROLE=web|worker; the background lease
 import { createJobs } from './jobs.js'; // work any instance asks for and one worker does
+import { useCounters } from './make-mode.js'; // paid makes: one silent day budget across every brand
 import { createCounters } from './counters.js'; // the day's spend, shared by every instance
 import { createBuildEvents } from './build-events.js'; // a build's progress, followed from any instance
 import { createSessions } from './sessions.js'; // sign-ins that can be ended (Postgres)
@@ -128,6 +129,7 @@ let MOCK = process.env.AI_MOCK === '1' || (PROVIDER === 'anthropic' && !ANTHROPI
 /* the day's AI budget (budget.js): one ceiling for the server and a share for each brand (DAILY_BRAND_SHARE, BRAND_<KIND>_CAP),
    kept in the bucket with treg's day total and loaded before the first call (await budget.load() below) */
 const COUNTERS = createCounters({ log: console }); /* Postgres: caps count every instance (started once the schema is up) */
+useCounters(COUNTERS); /* the silent day budget on paid makes (make-mode.js) */
 const budget = createBudget({ shared: COUNTERS, store: { get: () => packs.getJSON('_brew', 'usage-day.json', null), put: (x) => packs.put('_brew', 'usage-day.json', { ...x, treg: { day: treg.meter.day, usd: treg.meter.dayUsd } }) }, log: console });
 const CAPS = budget.caps.all;
 const spend = (k, slug, n) => budget.spend(k, slug, n);

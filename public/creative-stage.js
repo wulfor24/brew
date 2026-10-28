@@ -73,7 +73,7 @@
     const press = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
     const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/make`, { spec: S.spec, confirmUsd: pl.usd, bid: S.bid, redo: redo || S.made, press });
     if (S !== mine) return; S.working = false;
-    if (r?.needsConfirm) { S.plan = r.plan; paint(); return H.toast?.(`The price changed to ${usd(r.plan.usd)}. Tap Make it again.`); }
+    if (r?.needsConfirm) { S.plan = r.plan; paint(); return H.toast?.(PARTNER() ? 'It was set up again. Tap Make it again.' : `The price changed to ${usd(r.plan.usd)}. Tap Make it again.`); }
     if (r?.error) { paint(); return H.toast?.(H.esc(r.error)); }
     S.boards = r.jam?.boards?.map((b) => b.id) || S.boards; S.busy = r.jam?.busy || {}; S.making = { line: r.plan.line, usd: r.plan.usd, at: Date.now(), n: (r.boards || []).length || 1, video: S.spec?.kind === 'video' }; S.open = false; S.failed = null;
     H.making?.(S.chId, S.making); paint(); poll();
@@ -91,7 +91,7 @@
     const mine = S; S.working = true; paint();
     const r = await api('POST', `/api/jam2/jams/${S.jid}/studio/slide`, { bid: S.bid, i, op, style, confirmUsd: pl?.usd });
     if (S !== mine) return; S.working = false;
-    if (r?.needsConfirm) { S.slidePlan[style] = r.plan; paint(); return H.toast?.(`The price changed to ${usd(r.plan.usd)}. Tap it again.`); }
+    if (r?.needsConfirm) { S.slidePlan[style] = r.plan; paint(); return H.toast?.(PARTNER() ? 'It was set up again. Tap it again.' : `The price changed to ${usd(r.plan.usd)}. Tap it again.`); }
     if (r?.error) { paint(); return H.toast?.(H.esc(r.error)); }
     if (op === 'drop') { S.sel = Math.max(0, i - 1); H.landed?.(S.chId, {}); return; }
     S.busy = r.jam?.busy || {}; S.making = { line: `${op === 'add' ? 'a new slide' : `slide ${i + 1}`} · ${styleById(style)?.label || ''}`, usd: pl.usd, at: Date.now(), n: 1 }; S.adding = false; S.gallery = false; H.making?.(S.chId, S.making); paint(); poll(); }
@@ -225,8 +225,8 @@
     if (!S.open && sl?.length > 1) { const i = Math.min(S.sel || 0, sl.length - 1), cur = sl[i], st = styleById(cur.style); slidePrice(cur.style); const sp = S.slidePlan?.[cur.style];
       return `${batchHtml}<div class="cs-line cs-made">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}${S.gallery && S.adding ? `<div class="j2-studio cs cs-addgal">${gallery()}</div>` : ''}
         <div class="cs-sec"><small>Your set · ${sl.length} slides</small><div class="cs-grid" style="--ar:${AR}">${sl.map((x, k) => `<button class="${k === i ? 'on' : ''}" data-cs-sel="${k}" title="${H.esc(styleById(x.style)?.label || '')}"><img src="${H.esc(srcOf(x.file))}" alt=""><span>${k + 1}</span></button>`).join('')}<button class="cs-add" data-cs-addslide title="Add a slide">＋<small>Add a slide</small></button></div>
-        ${S.adding && S.addStyle ? (() => { const ap = S.slidePlan?.[S.addStyle]; return `<div class="cs-acts cs-addrow"><span>Add a slide: ${H.esc(styleById(S.addStyle)?.label || '')}</span>${PARTNER() ? '<button class="j2-pri" data-rx="share-shopos" data-team-change>Ask our team to add it</button>' : `<button class="j2-pri" data-cs-addgo ${!ap || ap.error || S.working ? 'disabled' : window.BrewTips?.attr('price') || ''}>${ap?.error ? H.esc(ap.error) : `Add this slide${ap?.usd != null ? ` · ${usd(ap.usd)}` : ''}`}</button>`}<button class="linkbtn" data-cs-addx>Cancel</button></div>`; })() : ''}
-        <div class="cs-pick"><b>Slide ${i + 1} of ${sl.length}${st ? ` · ${H.esc(st.label)}` : ''}</b><div>${PARTNER() ? '<button class="btn btn-ghost sm" data-rx="share-shopos" data-team-change>Ask our team to redo it</button>' : `<button class="btn btn-ghost sm" data-cs-slide="redo" ${!sp || sp.error ? 'disabled' : window.BrewTips?.attr('price') || ''}>Redo this slide${sp?.usd != null ? ` · ${usd(sp.usd)}` : ''}</button>`}<button class="linkbtn" data-cs-slide="drop" ${sl.length <= 2 ? 'disabled title="A set needs at least two slides"' : ''}>Drop it</button></div></div></div>
+        ${S.adding && S.addStyle ? (() => { const ap = S.slidePlan?.[S.addStyle]; return `<div class="cs-acts cs-addrow"><span>Add a slide: ${H.esc(styleById(S.addStyle)?.label || '')}</span><button class="j2-pri" data-cs-addgo ${!ap || ap.error || S.working ? 'disabled' : window.BrewTips?.attr('price') || ''}>${ap?.error ? H.esc(ap.error) : `Add this slide${ap?.usd != null && !PARTNER() ? ` · ${usd(ap.usd)}` : ''}`}</button><button class="linkbtn" data-cs-addx>Cancel</button></div>`; })() : ''}
+        <div class="cs-pick"><b>Slide ${i + 1} of ${sl.length}${st ? ` · ${H.esc(st.label)}` : ''}</b><div><button class="btn btn-ghost sm" data-cs-slide="redo" ${!sp || sp.error ? 'disabled' : window.BrewTips?.attr('price') || ''}>Redo this slide${sp?.usd != null && !PARTNER() ? ` · ${usd(sp.usd)}` : ''}</button><button class="linkbtn" data-cs-slide="drop" ${sl.length <= 2 ? 'disabled title="A set needs at least two slides"' : ''}>Drop it</button></div></div></div>
         ${madeWith()}</div>`; }
     if (!S.open) { const img = (H.ch?.() || ch)?.pkg?.poster || ch.pkg?.image;
       return `${batchHtml}<div class="cs-line cs-made">${S.failed ? `<p class="j2-err">${H.esc(S.failed)}</p>` : ''}${img ? `<div class="cs-sec"><small>Made</small><div class="cs-grid is-one" style="--ar:${AR}"><button class="on" type="button" tabindex="-1"><img src="${H.esc(srcOf(img))}" alt=""></button></div></div>` : ''}${madeWith()}</div>`; }

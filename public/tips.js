@@ -52,6 +52,9 @@
   const AREA_NAME = { creative: 'creatives', storefront: 'storefront', 'ai answers': 'visibility', signals: 'signals', catalog: 'catalog', creatives: 'creatives', ads: 'ads' };
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   /* ` data-tip="…"` for a key (or words of its own), ready to drop into a tag; nothing when there are no words */
+  /* partner mode (make-mode.js): no price is shown to anyone, so the tips that talk about prices or credits say what the button does */
+  const NO_PRICE = { redoPaid: 'Made again with the same set-up; this one stays in History.', credits: 'Makes the finished piece.', free: 'A quick draft to check the idea.', price: '', simulated: 'Simulated on this site.' };
+  for (const [k, v] of Object.entries(NO_PRICE)) { const paid = T[k]; Object.defineProperty(T, k, { enumerable: true, configurable: true, get: () => (typeof window !== 'undefined' && window.LIVE?.makeMode === 'partner' ? v : paid) }); }
   const attr = (k) => { const t = T[k] || (k && !/^[a-z][A-Za-z]*$/.test(k) ? k : ''); return t ? ` data-tip="${esc(t)}"` : ''; };
   const area = (k) => { const key = AREA_NAME[String(k || '').toLowerCase()] || k; return T[`area_${key}`] ? attr(`area_${key}`) : ''; };
   if (typeof window !== 'undefined') window.BrewTips = { T, attr, area };
