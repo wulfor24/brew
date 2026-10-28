@@ -372,8 +372,10 @@ export function createJamBrief(o) {
       if (behind(t, w)) await syncHead(t, w).catch((e) => log.warn('[brief sync at send]', e.message));
       if (w.doc.missing.length && !b.force) return { needs: w.doc.missing, work: w };
       if (b.decided !== undefined) w.decided = b.decided || null;
-      const to = b.to === 'team' ? 'team' : 'shopos', prev = w.jamBrief || null;
-      w.jamBrief = finalDoc(t, w); w.doc.shippedAt = now(t); w.jamBrief.sharedAt = now(t); w.jamBrief.to = to; w.jamBrief.spec = w.doc.spec || [];
+      const to0 = (x) => (x.to === 'team' ? 'team' : 'shopos'), to = to0(b), prev = w.jamBrief || null;
+      const note = to0(b) === 'shopos' ? String(b.note || '').replace(/\s+/g, ' ').trim().slice(0, 600) : ''; /* "Ask our team for changes": what to change, said once */
+      if (note) say(t, w, { from: 'me', body: note });
+      w.jamBrief = finalDoc(t, w); if (note) { w.jamBrief.note = note; w.jamBrief.md = `**What to change:** ${note}\n\n${w.jamBrief.md || ''}`; } w.doc.shippedAt = now(t); w.jamBrief.sharedAt = now(t); w.jamBrief.to = to; w.jamBrief.spec = w.doc.spec || [];
       /* a brief already with the ShopOS team stays theirs: a copy for your own team is built and copied, then the ShopOS brief is put back */
       const teamOfShopos = to === 'team' && prev?.status && prev.to !== 'team';
       /* the same brief, already emailed in the last ten minutes and not yet touched by the team, is not emailed twice */

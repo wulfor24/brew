@@ -141,3 +141,11 @@ test('the ··· menu opens toward the side it fits', () => {
   assert.match(src('public/app.js'), /if \(r\.left < 8\) m\.classList\.add\('is-left'\)/);
   assert.match(src('public/quiet.css'), /\.rd2-menu\.is-left\{right:auto;left:0\}/);
 });
+
+test('Ask our team for changes: a note box, and the note rides on top of the brief and in the chat', () => {
+  const sh = src('public/share.js'), jb = src('jam-brief.js'), app = src('public/app.js');
+  assert.match(app, /btn\?\.hasAttribute\?\.\('data-team-change'\) \? \{ askNote: true \}/);
+  assert.match(sh, /if \(to === 'shopos' && opts\.askNote\) return askNote\(p, w\);/);
+  assert.match(sh, /data-team-note/); assert.match(sh, /send\(p, w, 'shopos', false, note\)/);
+  assert.match(jb, /w\.jamBrief\.md = `\*\*What to change:\*\* \$\{note\}/); assert.match(jb, /if \(note\) say\(t, w, \{ from: 'me', body: note \}\);/);
+});
