@@ -140,17 +140,17 @@
     return true;
   }
   /* ---------- the guided connect: what to do on each platform, in order, with the links that land on the right page ---------- */
-  const SHOPIFY_SCOPES = 'read_products,read_inventory,read_locations,read_orders,read_customers';
+  /* the brand's own Shopify app: the App URL, redirect and scopes come from the server (ownUrls in connectors/shopify.js), the
+     same ones its approve screen and launch route use, ready for every brand from the day it onboards */
+  const ownApp = () => L.ownApp || { appUrl: `${location.origin}/shopify/own/b/${slug}`, redirect: `${location.origin}/shopify/own/callback`, scopes: 'read_products,read_inventory,read_locations,read_orders,read_customers' };
   function guide(id, av, oauth) {
     const shop = L.shop || '', handle = shop.replace(/\.myshopify\.com$/, ''), n = B().brand.name;
     const last = (t, p) => ({ t, p, last: true });
     if (id === 'meta') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Facebook', p: `Facebook asks which ad accounts we may read. Tick ${esc(possT(n))}, then pick it here.`, last: true, oauth: true }] };
-    if (id === 'shopify') return oauth && !av.fields?.length ? { time: 'About 1 minute', steps: [{ t: 'Sign in with Shopify', last: true, oauth: true }] } : { time: 'Takes about 3 minutes', alt: 'Use your own app', steps: [
-      { t: `Create an app called ${globalThis.PRODUCT_NAME}`, p: 'Sign in to the Dev Dashboard (the store’s owner, or an agency or collaborator login). Click <b>Create app</b>, paste this as the <b>App URL</b> and untick <b>Embed app in Shopify admin</b>.', go: ['Open the Dev Dashboard', 'https://dev.shopify.com/dashboard'], copy: location.origin },
-      { t: 'Let it come back here', p: 'Paste this into <b>Allowed redirection URL(s)</b> and tick <b>Use legacy install flow</b>. If the app sits in another organization than the store, we open the store’s approve screen once and come back here.', copy: `${location.origin}/shopify/own/callback` },
-      { t: 'Give it read-only access', p: 'On the same page, under <b>API access</b>, paste these into <b>Scopes</b>. Then click <b>Create app</b>.', copy: SHOPIFY_SCOPES },
-      { t: `Install it on ${shop ? esc(shop) : 'your store'}`, p: 'On the app’s home, click <b>Install app</b>.' },
-      last('Paste the app’s keys', 'They’re in the app’s <b>Settings</b>.') ] };
+    if (id === 'shopify') { const o = ownApp();
+      return oauth && !av.fields?.length ? { time: 'About 1 minute', steps: [{ t: 'Sign in with Shopify', last: true, oauth: true }] } : { time: 'About 2 minutes', alt: 'Use your own app', steps: [
+      { t: 'Create an app in Shopify', p: 'Paste these three, tick <b>Use legacy install flow</b>, untick <b>Embed app</b>.', go: ['Open the Dev Dashboard', 'https://dev.shopify.com/dashboard'], copies: [['App URL', o.appUrl], ['Redirect URL', o.redirect], ['Scopes', o.scopes]] },
+      last('Paste its keys', `From the app’s <b>Settings</b>. Connect opens Shopify to approve it${shop ? ` on ${esc(shop)}` : ''}.`) ] }; }
     if (id === 'slack') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Slack', p: 'Slack asks which channel we post to. Pick the one your team plans in. Replies in our threads come back to the jam.', last: true, oauth: true }] };
     if (id === 'google') return { time: 'About 1 minute', steps: [{ t: 'Sign in with Google', p: `Pick ${esc(possT(n))} Google Ads account. You can add Google Analytics in the same step.`, last: true, oauth: true }] };
     if (id === 'ga4') return { time: 'Takes about a minute', alt: 'Use a property ID', steps: [
@@ -164,7 +164,7 @@
       last('Paste it here', '') ] };
     return { time: 'Takes about a minute', steps: [last(`Connect ${esc(nm(id))}`, av.help ? esc(av.help) : '')] };
   }
-  const stepList = (steps) => `<ol class="cxb-n">${steps.map((st, i) => `<li><i>${i + 1}</i><span><b>${esc(st.t)}</b>${st.p ? `<small>${st.p}</small>` : ''}${st.go ? `<a class="cxb-a" href="${esc(st.go[1])}" target="_blank" rel="noopener">${esc(st.go[0])}${ic('external', 's14')}</a>` : ''}${st.copy ? `<span class="cxb-copy"><code>${esc(st.copy).replace(/,/g, ',<wbr>')}</code><button type="button" class="gd-cp" data-copy="${esc(st.copy)}">${ic('copy', 's14')}<span>Copy</span></button></span>` : ''}</span></li>`).join('')}</ol>`;
+  const stepList = (steps) => `<ol class="cxb-n">${steps.map((st, i) => `<li><i>${i + 1}</i><span><b>${esc(st.t)}</b>${st.p ? `<small>${st.p}</small>` : ''}${st.go ? `<a class="cxb-a" href="${esc(st.go[1])}" target="_blank" rel="noopener">${esc(st.go[0])}${ic('external', 's14')}</a>` : ''}${(st.copies || (st.copy ? [[null, st.copy]] : [])).map(([k, v]) => `${k ? `<small class="cxb-cl">${esc(k)}</small>` : ''}<span class="cxb-copy"><code>${esc(v).replace(/,/g, ',<wbr>')}</code><button type="button" class="gd-cp" data-copy="${esc(v)}">${ic('copy', 's14')}<span>Copy</span></button></span>`).join('')}</span></li>`).join('')}</ol>`;
   const canPaste = () => !!navigator.clipboard?.readText;
   const field = (f, attr = '') => { const v = f.k === 'shop' ? L.shop || '' : '';
     return `<label class="lc-f${f.alt ? ' is-alt' : ''}"${f.alt ? ' hidden' : ''}><small>${esc(f.label)}</small><span class="lc-in"><input ${attr || `data-k="${f.k}"`} ${f.secret ? 'type="password" autocomplete="off"' : 'autocomplete="off"'} spellcheck="false" placeholder="${esc(f.hint || '')}" value="${esc(v)}"${f.req ? ' required' : ''}>${canPaste() && f.k !== 'shop' ? `<button type="button" class="lc-paste" data-paste>${ic('paste', 's14')}Paste</button>` : ''}</span></label>`; };

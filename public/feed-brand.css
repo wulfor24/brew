@@ -809,6 +809,8 @@ body.has-me-cur .me-cur{display:flex}
 .cxb-a{display:inline-flex;align-items:center;gap:6px;height:30px;margin-top:6px;padding:0 12px;border-radius:999px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);font-size:13.5px;font-weight:500;color:var(--fg);text-decoration:none;transition:background .15s}
 .cxb-a:hover{background:var(--surface-2)}
 .cxb-a .ic{width:13px;height:13px;color:var(--fg-3)}
+.cxb-cl{display:block;margin-top:10px;font-size:12px;font-weight:600;color:var(--fg-2)}
+.cxb-cl+.cxb-copy{margin-top:4px}
 .cxb-copy{display:flex;align-items:center;gap:10px;width:100%;margin-top:8px;padding:8px 8px 8px 12px;box-sizing:border-box;border-radius:12px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
 .cxb-copy code{flex:1;min-width:0;font-family:var(--font-mono);font-size:12.5px;line-height:18px;color:var(--fg);overflow-wrap:anywhere}
 /* where the keys go: one grouped panel under the steps */

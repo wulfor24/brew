@@ -10,6 +10,11 @@ import { card, L, n0, pct, has, fmt, getJSON, form, dayISO } from './common.js';
 const API = '2026-04';
 const BASE = 'read_products,read_inventory'; /* only what sync reads (App Store requirement 3.2); the same list as docs/shopify.app.toml */
 const PCD = 'read_orders,read_customers';
+/* the brand's own app: one list, asked for on the approve screen AND shown in the connect box to paste (they drifted once) */
+export const OWN_SCOPES = 'read_products,read_inventory,read_locations,read_orders,read_customers';
+/* the three things the brand pastes into its own app, built by the server from the site it answers on, for every brand from
+   the day it onboards. The App URL carries the brand, so "Install app" in Shopify lands on the approve screen, never the home page */
+export const ownUrls = (base, slug) => ({ appUrl: `${base}/shopify/own/b/${slug}`, redirect: `${base}/shopify/own/callback`, scopes: OWN_SCOPES });
 // read only: Brew never changes the store (SCOPE.md)
 const scopes = () => [BASE, process.env.SHOPIFY_PCD_APPROVED === '1' && PCD].filter(Boolean).join(',');
 // the feed's own app (squareup-prod: public, allows the feed's callback); SquareUp's custom app is only a fallback
@@ -82,14 +87,18 @@ export default {
     const t = await token(s, { grant_type: 'client_credentials', client_id: clientId.trim(), client_secret: clientSecret.trim() }).catch((e) => {
       /* the own-app route only reaches a store in the app's own Shopify organization; say so instead of Shopify's code */
       /* the app sits in another Shopify organization (an agency's or a collaborator's): the store approves it once (ownAuthorize), and the code comes back as an offline token */
-      if (/shop_not_permitted/i.test(e.message)) throw Object.assign(new Error(`${s} is in another Shopify organization than this app, so Shopify asks the store to approve it once. Approve it in the Shopify tab that opens.`), { user: true, approve: { shop: s, clientId: clientId.trim(), clientSecret: clientSecret.trim() } });
       if (/invalid_client/i.test(e.message)) throw Object.assign(new Error('Shopify did not accept that Client ID and secret. Copy both again from the app’s Settings.'), { user: true });
+      /* any other refusal (another organization: shop_not_permitted; not installed yet; installed without the scopes): the store's
+         approve screen installs the app and grants the scopes in one go, then comes back on /shopify/own/callback */
+      if (e.status >= 400 && e.status < 500) throw Object.assign(new Error('Opening Shopify to approve the app…'), { user: true, approve: { shop: s, clientId: clientId.trim(), clientSecret: clientSecret.trim() }, why: e.message.slice(0, 160) });
       throw e;
     });
     return setOf(t, { shop: s, app: 'own', clientId: clientId.trim(), clientSecret: clientSecret.trim() });
   },
   /* the brand's own app installed from another organization (custom distribution): Shopify's approve screen, back to /shopify/own/callback */
-  ownAuthorize: ({ shop, clientId, state, redirect }) => `https://${shop}/admin/oauth/authorize?${form({ client_id: clientId, scope: 'read_products,read_inventory,read_orders,read_customers', redirect_uri: redirect, state })}`,
+  ownAuthorize: ({ shop, clientId, state, redirect }) => `https://${shop}/admin/oauth/authorize?${form({ client_id: clientId, scope: OWN_SCOPES, redirect_uri: redirect, state })}`,
+  /* Shopify's launch of the brand's own app ("Install app", or opening it): signed with that app's secret, for that store */
+  ownLaunchOk: (query, pend) => !!pend?.clientSecret && shopOf(query.get('shop')) === pend.shop && hmacOk(query, pend.clientSecret),
   async ownExchange({ query, pend }) {
     if (!hmacOk(query, pend.clientSecret)) throw new Error('shopify: the redirect signature did not match');
     const shop = shopOf(query.get('shop')); if (!shop || shop !== pend.shop) throw new Error('shopify: the store that answered is not the one being connected');

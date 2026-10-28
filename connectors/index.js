@@ -9,8 +9,9 @@
 import { leaderOnly } from '../roles.js'; // timers run their work on the background lease holder only
 import crypto from 'node:crypto';
 import { safeFetch } from '../reader/util.js'; // a Meta winner's picture, saved once for the Brand Book
-import shopify from './shopify.js';
+import shopify, { ownUrls } from './shopify.js';
 import { makeModeOf } from '../make-mode.js';
+import { queryOk as brewLaunchOk } from '../shopify-app.js'; // a launch signed by Brew's own public app, not a brand's
 import meta from './meta.js';
 import google, { ga4 } from './google.js';
 import klaviyo from './klaviyo.js';
@@ -399,9 +400,20 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         const r = await finish(st.slug, st.id, creds, me); return back(r.ok ? 'done=1' : `cxerr=${encodeURIComponent(r.error || 'Could not connect')}`), true; }
       catch (e) { log.warn('[connect] own callback', st.slug, e.message); return back(`cxerr=${encodeURIComponent(e.message.slice(0, 160))}`), true; }
     }
-    if (p === '/shopify/own' && req.method === 'GET') return redirect(res, '/'), true; /* the own app's App URL: Brew lives outside the admin */
+    /* the brand's own app opened by Shopify ("Install app" with the legacy install flow, or opening the app): Shopify waits for the
+       app to send the store to its approve screen. With keys pasted here (pending), that is where it goes; without them, back to
+       the connect box to paste them. The bare site and the old /shopify/own were pasted as App URL before: they find the brand */
+    const launch = req.method === 'GET' && SHOP_RE.test(u.searchParams.get('shop') || '') && u.searchParams.get('hmac') && u.searchParams.get('embedded') !== '1' && !u.searchParams.get('id_token');
+    const om = p.match(/^\/shopify\/own\/b\/([a-z0-9-]+)$/);
+    if (om && req.method === 'GET') return ownLaunch(req, res, u, om[1]), true;
+    if (launch && (p === '/shopify/own' || (p === '/' && !brewLaunchOk(u.searchParams)))) {
+      const slug = await shopBrand(u.searchParams.get('shop'), auth.user(req));
+      if (slug) return ownLaunch(req, res, u, slug), true;
+      if (p === '/shopify/own') return redirect(res, '/'), true;
+    }
+    if (p === '/shopify/own' && req.method === 'GET') return redirect(res, '/'), true; /* Brew lives outside the admin */
     const lm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/live$/);
-    if (lm && req.method === 'GET') return json(res, 200, await liveView(lm[1], auth.user(req))), true;
+    if (lm && req.method === 'GET') return json(res, 200, { ...(await liveView(lm[1], auth.user(req))), ownApp: ownUrls(base(req), lm[1]) }), true;
     const cm = p.match(/^\/api\/brands\/([a-z0-9-]+)\/connect\/([a-z0-9]+)(\/options)?$/);
     if (cm) {
       const [, slug, id, opt] = cm, me = auth.user(req);
@@ -441,8 +453,10 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         try { return json(res, 200, await finish(slug, id, await C.fromKey(b.fields || {}), me, { override: b.override === true, force: b.force === true })), true; } catch (e) {
           /* an app from another Shopify organization: keep the keys (pending, PENDING_MS) and send this person to the store's approve screen */
           if (e.approve && C.ownAuthorize) { await savePending(slug, `${id}-own`, me.email, e.approve);
+            log.warn('[connect] own app', slug, e.approve.shop, 'to the approve screen:', e.why || e.message);
             const state = auth.sign({ slug, id, email: me.email, n: crypto.randomBytes(9).toString('base64url') }, 900, 'connect-own');
-            return json(res, 200, { ok: false, error: e.message, approve: C.ownAuthorize({ ...e.approve, state, redirect: `${base(req)}/shopify/own/callback` }) }), true; }
+            return json(res, 200, { ok: false, error: e.message, approve: C.ownAuthorize({ ...e.approve, state, redirect: ownUrls(base(req), slug).redirect }) }), true; }
+          log.warn('[connect] key', slug, id, e.message.slice(0, 160));
           return json(res, 200, { ok: false, error: e.user ? e.message : `Could not connect: ${e.message.slice(0, 140)}` }), true; } }
       if (b.action === 'select') { if (!C.select) return json(res, 400, { error: 'unknown action' }), true;
         const pend = await loadPending(slug, id, me.email); if (!pend) return json(res, 200, { ok: false, error: 'Connect again: the sign-in expired.' }), true;
@@ -557,6 +571,25 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     let found = null, at = 0;
     for (const { slug } of await packs.list().catch(() => [])) { const s = (await conns(slug).catch(() => ({})))?.shopify; if (s?.account?.id === shop && !s.sim && (s.at || 0) >= at) { found = slug; at = s.at || 0; } }
     if (found) shops.set(shop, found); else shops.delete(shop); return found;
+  }
+  /* the brand a store belongs to: connected, or the store its site's read found (ctx.shopifyShop), for a launch before connecting */
+  const SHOP_RE = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
+  /* also the keys this person just pasted for that store (pending), for a brand whose read found no store (headless, a custom domain) */
+  async function shopBrand(shop, me) {
+    const hit = await shopSlug(shop).catch(() => null); if (hit) return hit;
+    for (const { slug } of await packs.list().catch(() => [])) {
+      if (me && (await loadPending(slug, 'shopify-own', me.email).catch(() => null))?.shop === shop) return slug;
+      if ((await ctxOf(slug).catch(() => null))?.shopifyShop === shop) return slug; }
+    return null;
+  }
+  async function ownLaunch(req, res, u, slug) {
+    const me = auth.user(req), q = u.searchParams, back = (msg) => redirect(res, `/${slug}#v=connectors&cx=shopify${msg ? `&cxerr=${encodeURIComponent(msg)}` : ''}`);
+    if (!me) return back('Sign in, paste the app’s Client ID and secret, then press Connect.');
+    const pend = await loadPending(slug, 'shopify-own', me.email);
+    if (!REAL.shopify.ownLaunchOk(q, pend)) return back('Now paste the app’s Client ID and secret here, then press Connect.');
+    const state = auth.sign({ slug, id: 'shopify', email: me.email, n: crypto.randomBytes(9).toString('base64url') }, 900, 'connect-own');
+    log.info?.(`[connect] own launch ${slug} ${pend.shop}: to the approve screen`);
+    return redirect(res, REAL.shopify.ownAuthorize({ ...pend, state, redirect: ownUrls(base(req), slug).redirect }));
   }
   /* how a brand's Shopify is connected: 'brew' (Brew's own app), 'own' / 'own-oauth' (the brand's app) or 'token'; null when not */
   const shopApp = async (slug) => (await vault.load(slug, 'shopify').catch(() => null))?.app || null;
