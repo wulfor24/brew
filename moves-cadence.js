@@ -21,6 +21,7 @@ import { evidenceRows, privId } from './connectors/common.js';
 import { mergeLedger } from './refresh.js';
 import { factTruth } from './facts-desk.js'; // a member's numbers rest on one truth (stale rows out, replaced site values gone)
 import { withLive } from './on-connect.js';
+import { hiddenFor } from './connector-hide.js';
 import { stayHere } from './moved.js'; // a brand moved to production: no background work here on staging
 
 const H = 3600e3, DAY = 24 * H;
@@ -150,7 +151,8 @@ export function auditScorecard({ profile: p = {}, slug = '', now = Date.now(), l
   /* email and CRM */
   { const tech = p.site?.tech, parts = [];
     if (tech) {
-      parts.push(part('Email tool', tech.klaviyo ? 40 : 0, 40, tech.klaviyo ? 'Klaviyo was detected on the site' : 'no email tool (Klaviyo) was detected on the pages read (to confirm: it may load later or run elsewhere)', `${host} home page`, site));
+      const named = !hiddenFor(host, p.host).has('klaviyo'); /* a tool the brand doesn't use is never named (connector-hide.js) */
+      parts.push(part('Email tool', tech.klaviyo ? 40 : 0, 40, tech.klaviyo ? (named ? 'Klaviyo was detected on the site' : 'an email tool was detected on the site') : named ? 'no email tool (Klaviyo) was detected' : 'no email tool was detected on the pages read (to confirm: it may load later or run elsewhere)', `${host} home page`, site));
       parts.push(part('Chat or WhatsApp', tech.chat ? 25 : 0, 25, tech.chat ? `${tech.chat} chat on the site` : 'no chat or WhatsApp button was detected', `${host} home page`, site));
       parts.push(part('Subscriptions or loyalty', tech.subscriptionApp ? 15 : 0, 15, tech.subscriptionApp ? `subscription app: ${tech.subscriptionApp}` : 'no subscription or loyalty app was detected', `${host} home page`, site));
       const pop = (p.site?.checkout?.popups || []).length; parts.push(part('Sign-up capture', pop ? 20 : 0, 20, pop ? `${pop} sign-up popup${pop === 1 ? '' : 's'} seen on the walk` : 'no email or WhatsApp sign-up popup appeared on the walk to checkout', 'Checkout walk', site));
@@ -215,12 +217,13 @@ export function automationContext({ profile: p = {}, listen = null, scorecard = 
   /* routines the brand's team runs on its own tools from the shared brief; Brew never runs them */
   const tech = p.site?.tech || {}, own = p.ads?.own || {}, out = [], skipped = [], lv = live || {};
   /* the team's view: Klaviyo connected says which key flows run (skip those) and which are off (fix those) */
-  const klav = !!(lv['klaviyo.flows.live'] || lv['klaviyo.flows.off']);
+  const named = !hiddenFor(p.host).has('klaviyo'); /* a tool the brand doesn't use is never named (connector-hide.js) */
+  const klav = named && !!(lv['klaviyo.flows.live'] || lv['klaviyo.flows.off']);
   const off = klav ? String(lv['klaviyo.flows.off']?.v ?? '').split(/,\s*/).map((x) => x.trim()).filter((x) => KEY_FLOWS.includes(x)) : null;
   const flowOn = (k) => klav && FLOW_OF[k] && !off.includes(FLOW_OF[k]);
-  const email = klav ? 'Klaviyo (connected)' : tech.klaviyo ? 'Klaviyo (detected on the site)' : 'their email tool (none was detected on the site)';
+  const email = klav ? 'Klaviyo (connected)' : tech.klaviyo && named ? 'Klaviyo (detected on the site)' : tech.klaviyo ? 'their email tool' : 'their email tool (none was detected on the site)';
   const chat = /whatsapp/i.test(tech.chat || '') ? 'WhatsApp (chat button on the site)' : 'WhatsApp, for customers who said yes';
-  const mail = klav || tech.klaviyo ? 'Klaviyo' : 'their email tool';
+  const mail = klav || (tech.klaviyo && named) ? 'Klaviyo' : 'their email tool';
   const offWhy = (k) => (klav && FLOW_OF[k] && off.includes(FLOW_OF[k]) ? `the ${FLOW_OF[k]} flow is not live in Klaviyo; ` : '');
   if (listen?.questions?.length) out.push({ k: 'reply-sweep', name: 'Weekly reply-to-questions sweep', why: `${listen.questions.length} open public questions were heard${listen.communities[0] ? `; the busiest community is ${listen.communities[0].name}` : ''}`, runs: 'Every Monday the team lists new public questions and posts an honest reply as the brand', tools: ['community replies'] });
   if (nOf(lv['meta.ads.live']) > 0 || lv['meta.frequency.max']) out.push({ k: 'creative-refresh', name: 'Weekly creative refresh', why: [lv['meta.ads.live'] && `${lv['meta.ads.live'].v} live Meta ads in the account`, lv['meta.frequency.max'] && `the highest campaign frequency over 7 days is ${lv['meta.frequency.max'].v}`, lv['meta.cpa'] && `cost per purchase ${lv['meta.cpa'].v}`].filter(Boolean).join('; '), runs: 'Every Monday the team reads the ads, pauses the ones that fell behind and makes two fresh versions of the winners', tools: ['Meta Ads'] });

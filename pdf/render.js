@@ -10,6 +10,7 @@ import zlib from 'node:zlib';
 import { pathToFileURL } from 'node:url';
 import puppeteer from 'puppeteer-core';
 import { moveHtml } from './template.js';
+import { hiddenFor, scrubText } from '../connector-hide.js'; // a tool the brand doesn't use is never named in its PDFs
 
 const MAC_CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
@@ -69,7 +70,7 @@ export async function renderMove(move, brand, outFile, opts = {}) {
   const own = !opts.browser;
   const browser = opts.browser || (await launchBrowser());
   try {
-    const html = moveHtml(move, brand, { moves: opts.moves });
+    const html = scrubText(moveHtml(move, brand, { moves: opts.moves }), hiddenFor(brand?.slug || '', brand?.host || ''));
     if (opts.html) { fs.mkdirSync(path.dirname(outFile), { recursive: true }); fs.writeFileSync(outFile.replace(/\.pdf$/i, '.html'), html); }
     await htmlToPdf(browser, html, outFile);
   } finally {

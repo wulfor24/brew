@@ -43,6 +43,7 @@ import { createApify } from './apify.js'; // the reader's Myntra and Flipkart ra
 import { providerNow, geminiModel } from './gemini-client.js';
 import { KINDS, flagKind, runKind, potOf, potLeft, potAdd, potFit, perMove, capOf as potCapOf, nextWeek } from './rewrite-pot.js'; // one weekly rewrite budget a brand
 import { moveLabel, moveNum, moveSay } from './move-label.js'; // weekly moves read "Weekly move 11", never "Move 1011" (QA FEED-QA-12)
+import { hiddenFor } from './connector-hide.js'; // a brand that hides a tool draws its PDFs again without its name
 import { createBookReader } from './brand-book-read.js';
 import { createEnricher } from './brand-enrich.js'; // the Brand Book's fresh posts, reels, TikToks and film words (paid, capped, saved once) // the Brand Book as the read finds it: built after the brief, healed on open
 import { markMoveClaims, sourceText } from './claims.js'; // move PDFs mark a claim the store never made, like the page
@@ -1744,6 +1745,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   /* Saved PDFs heal: when the PDF text rules change (PDF_V) the saved PDFs are forgotten and each is drawn again on its next
      download (pdfOn); entries for moves that no longer exist leave status.pdfs. Nothing is drawn ahead of time. */
   const PDF_V = 12; // 12: a retailer's moves say "store" where a writer slipped in "brand" (assortment.js retailerWords); 11: drawn from the loaded brand (not a peek), so a PDF after a deploy gets the load-time fixes; 10: a cover number that doesn't hold reads "to confirm" (stat-check.js, 24 Oct); team PDFs keep their version too; 9: moves tidied at load (one date stamp, no empty blocks, no zero or repeated covers), PDF names say the move as a person reads it (QA 20 Oct); 8: Brew drafts, the brand's team ships: no Brew roles or "built, run and owned by" Brew people (Param, 20 Oct); 7: the page's load-time fixes (claims in tables and covers, banned words to confirm, plain hero lines, the fitted index) (QA 20 Oct); 6: cover line names the move once ("Move 05", "Weekly move 4"), never "OF 50" (QA 20 Oct); 5: ₹ never ‹, claims the store never made marked "Proposed (team decides)" (final QA pass 19 Oct); 2: kickers without "OF N", "What to watch", BREW DRAFTS; 3: no "Brew re-reads / we pause", index without a count; 4: no source-method narration (brew-name.js unSkill) (2026-10-15)
+  /* a brand that hides a tool (connector-hide.js) draws its PDFs once more without the tool's name */
+  const pdfVOf = (slug) => (hiddenFor(slug).size ? `${PDF_V}-h${[...hiddenFor(slug)].join('')}` : PDF_V);
   let pdfHealQ = Promise.resolve();
   const healPdfs = (slug) => (pdfHealQ = pdfHealQ.catch(() => {}).then(async () => {
     if (blocked(slug) || process.env.PDF_HEAL_OFF === '1') return;
@@ -1751,10 +1754,10 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
     const s0 = await status(slug), moves = await packs.getJSON(slug, 'moves.json', {}), profile = await packs.getJSON(slug, 'profile.json');
     if (!s0?.done || !profile) return;
     const have = s0.pdfs || {};
-    if (s0.pdfV === PDF_V && Object.keys(have).every((n) => moves[n])) return;
-    const keep = s0.pdfV === PDF_V ? Object.fromEntries(Object.entries(have).filter(([n]) => moves[n])) : {};
+    if (s0.pdfV === pdfVOf(slug) && Object.keys(have).every((n) => moves[n])) return;
+    const keep = s0.pdfV === pdfVOf(slug) ? Object.fromEntries(Object.entries(have).filter(([n]) => moves[n])) : {};
     log.log(`[pdf] heal ${slug}: ${Object.keys(have).length - Object.keys(keep).length} PDFs forgotten, drawn again on their next download`);
-    await setStatus(slug, { pdfs: keep, pdfVer: Object.fromEntries(Object.entries(s0.pdfVer || {}).filter(([n]) => n in keep)), pdfV: PDF_V, zips: [] });
+    await setStatus(slug, { pdfs: keep, pdfVer: Object.fromEntries(Object.entries(s0.pdfVer || {}).filter(([n]) => n in keep)), pdfV: pdfVOf(slug), zips: [] });
   }).catch((e) => log.warn('[pdf] heal', slug, e.message)));
   // a finished brand whose lanes would come out differently today (the lane rules improved): publish its base again (free)
   async function rebase(slug) {
@@ -1778,8 +1781,8 @@ export function createBuilder({ ROOT, packs, ai, treg, image = null, onPack = ()
   async function pdfOn(slug, n) {
     if (blocked(slug)) return null;
     const moves = await packs.getJSON(slug, 'moves.json', {}), mv = moves?.[n]; if (!mv) return null;
-    const s0 = (await status(slug)) || {}, ver = `${PDF_V}:${mv.meta?.at || ''}`, f = s0.pdfs?.[n];
-    const fresh = f && (s0.pdfVer?.[n] ? s0.pdfVer[n] === ver : s0.pdfV === PDF_V); /* a PDF from before versions counts while the rules have not changed */
+    const s0 = (await status(slug)) || {}, ver = `${pdfVOf(slug)}:${mv.meta?.at || ''}`, f = s0.pdfs?.[n];
+    const fresh = f && (s0.pdfVer?.[n] ? s0.pdfVer[n] === ver : s0.pdfV === pdfVOf(slug)); /* a PDF from before versions counts while the rules have not changed */
     if (fresh) { const buf = await packs.get(slug, 'pdf/' + f); if (buf) return { name: f, buf }; }
     const key = `${slug}:${n}:${ver}`;
     if (!pdfJobs.has(key)) pdfJobs.set(key, (async () => {

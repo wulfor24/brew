@@ -22,6 +22,7 @@ import { DEMO, sk } from '../demo-mode.js';
 import { privId, realRows, backoff, connectedOk } from './common.js';
 import { emailHtml, p as para } from '../mail-layout.js';
 import { ideaCards, pickIdeas } from '../social-feed.js';
+import { hiddenFor } from '../connector-hide.js';
 import { staticProduct } from '../statics.js'; // a team static names the product in its photo
 
 const REAL = { shopify, meta, ga4, google, klaviyo, reviews, slack, marketplaces: market };
@@ -125,6 +126,8 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   }
 
   /* ---------- connect, check, read ---------- */
+  /* a tool the brand doesn't use (connector-hide.js): never offered, connected or shown for it. A saved connection stays as it is */
+  const hiddenOf = async (slug) => { const x = await ctxOf(slug).catch(() => ({})); return hiddenFor(slug, x.host, x.hosts || []); };
   // who may connect: the brand's team, or the first official email on an unclaimed brand, who claims it by connecting
   async function mayUse(slug, id, me) {
     const info = await auth.claimInfo(slug, me);
@@ -290,7 +293,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       fields: (C.keyFields || []).map(({ k, label, hint, secret, optional }) => ({ k, label, hint, secret: !!secret, optional: !!optional })) }];
   }));
   async function liveView(slug, me) {
-    const access = await auth.claimInfo(slug, me), member = !!access.role, L = await liveOf(slug), out = {};
+    const access = await auth.claimInfo(slug, me), member = !!access.role, L = await liveOf(slug), out = {}, hide = await hiddenOf(slug);
     for (const [id, s0] of Object.entries(L.conns)) {
       if (!member && !PUBLIC.has(id)) continue;
       const d = L.live[id], s = healAccounts(s0), accts = member && Array.isArray(s.accounts) ? s.accounts : null;
@@ -300,7 +303,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
         ...(d && !d.gone ? { stats: d.stats, changed: d.changed, cards: (d.cards || []).length } : {}) };
     }
     const ctx = await ctxOf(slug), born = (await packs.getJSON(slug, 'status.json', null).catch(() => null))?.born || null;
-    return { me, signin: auth.signinOn(), access, full: auth.isAdmin(me), conns: out, avail: avail(), shop: member ? ctx.shopifyShop : null, dummy: DEMO, born };
+    return { me, signin: auth.signinOn(), access, full: auth.isAdmin(me), conns: out, avail: Object.fromEntries(Object.entries(avail()).filter(([id]) => !hide.has(id))), shop: member ? ctx.shopifyShop : null, dummy: DEMO, born };
   }
   /* the accounts connected right now (read at least once, not disconnected): what a private move's connectedWith is checked against */
   async function connectedIds(slug) { const L = await liveOf(slug); return Object.keys(L.live).filter((id) => !L.live[id]?.gone); }
@@ -316,15 +319,15 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
   }
   async function forViewer(slug, member) {
     if (member) freshen(slug);
-    const L = await liveOf(slug), cards = [], on = {};
-    for (const [id, d] of Object.entries(L.live)) { if (d.gone) continue; if (!member && !PUBLIC.has(id)) continue; on[id] = true;
+    const L = await liveOf(slug), cards = [], on = {}, hide = await hiddenOf(slug);
+    for (const [id, d] of Object.entries(L.live)) { if (d.gone || hide.has(id)) continue; if (!member && !PUBLIC.has(id)) continue; on[id] = true;
       /* an account that stopped reading (stale, or its sign-in ran out) keeps its cards out: "this week" would be weeks old. The
          connectors page and Signals say to connect it again */
       if (L.conns[id]?.stale || L.conns[id]?.needsReconnect) continue;
       cards.push(...(d.cards || []).map((c) => ({ ...c, time: agoShort(d.at), ...(simOnly(id) || d.sim ? { dummy: true } : {}), ...(PUBLIC.has(id) ? { liveOnly: false, publicLive: true } : {}) }))); }
     /* DUMMY: a simulated account's rows never reach the team's numbers (they lose their demo flag once copied, so they stay out here) */
     /* a stale account (connections.json stale) is never quoted: its numbers wait for a good read */
-    const ledger = {}; if (member) for (const [id, d] of Object.entries(L.live)) if (!d.gone && !d.sim && !simOnly(id) && !L.conns[id]?.stale) for (const e of realRows(d.ledger)) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label, ...(e.cur ? { cur: e.cur } : {}) };
+    const ledger = {}; if (member) for (const [id, d] of Object.entries(L.live)) if (!d.gone && !hide.has(id) && !d.sim && !simOnly(id) && !L.conns[id]?.stale) for (const e of realRows(d.ledger)) ledger[e.key] = { v: e.v, n: e.n, at: d.at, label: e.label, ...(e.cur ? { cur: e.cur } : {}) };
     /* the moves rewritten from the team's accounts (private/cards.json): members get those cards, and the shared cards of the
        same moves step aside (privMoves). Cards saved before they had their own id get it here */
     let privMoves = [], privStatics = false;
@@ -355,6 +358,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
       if (!CONNECTORS[id] || OFF.has(id)) return json(res, 404, { error: 'unknown connector' }), true;
       if (step === 'start') {
         const slug = slugOf(u.searchParams.get('brand'));
+        if ((await hiddenOf(slug)).has(id)) return json(res, 404, { error: 'unknown connector' }), true;
         if (!me) return redirect(res, `/auth/google?next=${encodeURIComponent(`/${slug}#v=connectors&cx=${id}`)}`), true;
         if (simOnly(id)) { const r = await finish(slug, id, null, me); return redirect(res, `/${slug}#v=connectors&cx=${id}&${r.ok ? 'done=1' : `cxerr=${encodeURIComponent(r.error || 'Could not connect')}`}`), true; }
         const C = REAL[id]; if (!C.modes.includes('oauth')) return json(res, 404, { error: 'This one connects with a key.' }), true;
@@ -401,7 +405,7 @@ export function createConnectors({ packs, auth, builder, treg = null, log = cons
     if (cm) {
       const [, slug, id, opt] = cm, me = auth.user(req);
       if (OFF.has(id)) return json(res, 404, { error: 'Marketplaces are coming soon.' }), true;
-      if (!CONNECTORS[id]) return json(res, 404, { error: 'unknown connector' }), true;
+      if (!CONNECTORS[id] || (await hiddenOf(slug)).has(id)) return json(res, 404, { error: 'unknown connector' }), true;
       if (!me) return json(res, 401, { error: 'Sign in with Google first.', signin: true }), true;
       const access = await auth.claimInfo(slug, me); if (!access.host) return json(res, 404, { error: 'unknown brand' }), true;
       if (!access.gen) return json(res, 403, { error: noGen(access, access.host), demo: true, host: access.host }), true;

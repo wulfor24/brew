@@ -222,7 +222,7 @@
   const KEY = `${LSP()}demo-v1`;
   const fresh = () => ({
     onboarded: false, viewer: { role: 'founder', wants: ['decision', 'idea'], lane: Object.keys(B.lanes || {})[0] || 'core', hindi: false, name: '' }, /* the brand's first product line, never a lane it doesn't have */
-    hearts: {}, saved: [...B.saved], snoozed: {}, boost: {}, dismissed: {}, fewer: {}, done: {}, conn: {}, pro: false,
+    hearts: {}, saved: [...B.saved], snoozed: {}, boost: {}, dismissed: {}, noStack: {}, fewer: {}, done: {}, conn: {}, pro: false,
     slack: { channel: '#growth', names: {} },
     log: [],
     extra: [], batches: B.batches.map((b) => ({ ...b })), sessions: 0, ticket: 1041
@@ -1316,8 +1316,19 @@
     return `<article class="card is-connect" data-connect-card="${id}">${head('brew', 'Needs access', null, false)}
       <div class="cn-body"><div class="cn-top">${glyph(id, 40)}<h3>See this with real numbers</h3></div>
         <p>${esc(why || `Connect ${c.name} and this card uses your own numbers instead of estimates.`)}</p>
-        <ul class="cn-list">${c.changed.map((t) => `<li>${ic('sparkles', 's14')}${esc(t)}</li>`).join('')}</ul></div>
+        <ul class="cn-list">${c.changed.map((t) => `<li>${ic('sparkles', 's14')}${esc(t)}</li>`).join('')}</ul>
+        <button class="linkbtn cn-skip" data-no-stack="${id}">We don’t use ${esc(c.name)}</button></div>
       <button class="bar" data-cx="${id}"><span class="lead">${ic('plug', 's16')}Connect ${esc(c.name)}</span>${ic('right', 's16')}</button></article>`; };
+
+  /* a tool the brand's stack doesn't have: its connect card goes and doesn't come back for this person (Undo puts it back).
+     The connector itself stays on the Connectors page, for the day they start using it */
+  document.addEventListener('click', (e) => {
+    const k = e.target.closest('[data-no-stack]'), u = e.target.closest('[data-stack-back]');
+    if (k) { e.stopPropagation(); const id = k.dataset.noStack, card = k.closest('[data-connect-card]'); S.noStack = { ...(S.noStack || {}), [id]: Date.now() }; save();
+      if (card) { card.style.transition = 'opacity .22s, transform .22s'; card.style.opacity = '0'; card.style.transform = 'scale(.98)'; setTimeout(() => card.remove(), 230); }
+      toastLong(`${ic('check', 's16')}<span>Got it. No more ${esc(B.connectors[id]?.name || id)} cards.</span> <button class="linkbtn" data-stack-back="${esc(id)}">Undo</button>`, 6000); }
+    if (u) { e.stopImmediatePropagation(); $('.toast')?.remove(); const id = u.dataset.stackBack; if (S.noStack) delete S.noStack[id]; save(); FEED_X.asked.delete(id); renderView(); }
+  });
 
   /* the three counts on the greeting, and the full pages behind them */
   /* one rule for each count, read from the ranked feed only (loadFeed), never from FEED, which the deck, the lists and
@@ -1681,7 +1692,7 @@
     for (let i = from; i < end; i++) { const p = FEED[i];
       out.push(i < 2 ? postCard(p, i) : lazyImgs(postCard(p, i))); /* the first two cards' pictures load at once; the rest as they near the screen */
       const need = p.conn || (p.live && Object.keys(p.live)[0]) || NEEDS[p.cta?.label];
-      if (need && B.connectors[need] && !conn(need) && !X.asked.has(need) && X.asked.size < 3 && i < 24) { X.asked.add(need); X.wait.push(need); }
+      if (need && B.connectors[need] && !conn(need) && !S.noStack?.[need] && !X.asked.has(need) && X.asked.size < 3 && i < 24) { X.asked.add(need); X.wait.push(need); }
       if (i >= 5 && X.wait.length) out.push(connectCard(X.wait.shift()));
       if (i === 2 && S.sessions <= 1) out.push(introCard());
       if (i === 3 && (!GEN || S.batches.length)) out.push(teamCard());

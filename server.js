@@ -97,6 +97,7 @@ import { movesEta } from './pack-numbers.js';
 import { named as namedStage } from './reader/stages/named.js'; // which brands an AI answer names
 import { createAiQuestions, Q_V } from './ai-questions.js'; // the AI answers questions, each earned by real searches or real threads
 import { awaitingCheck, createConfirmRemind } from './confirm-remind.js'; // "Check what we read" waits for a person: hold the watchers, remind by email // the time left on a brand's moves, from the pace the build really kept
+import { hiddenFor, scrubText } from './connector-hide.js'; // a tool the brand doesn't use: never named in what it is served
 import { drawableSvg } from './reader/svg-logo.js';
 import { markMoveClaims, packSource } from './claims.js'; // the team's private moves read like the shared ones
 import { movedList, movedAway, stayHere, prodUrl, guardMovedSends } from './moved.js'; // Phase 6: partners moved to production (staging only)
@@ -275,6 +276,22 @@ const serveFile = (req, res, f, o = {}) => {
   fs.createReadStream(f).pipe(res);
 };
 /* every other answer goes out compressed (http-zip.js zipRes) */
+/* a tool a brand doesn't use (connector-hide.js) is never named in anything served for that brand: its page, its API answers
+   (the page sends x-brand), its jams, brief, Brand Book and check page. Whole text answers only; files and streams pass as they are */
+const HTYPE = /^(application\/json|text\/(html|plain|markdown))/;
+const hideRes = (req, res, u) => {
+  const seg = u.pathname.match(/^\/(?:api\/brands\/|b\/)?([a-z0-9-]+)/)?.[1];
+  const hidden = hiddenFor(String(req.headers['x-brand'] || ''), seg || ''); if (!hidden.size) return;
+  const wh = res.writeHead, en = res.end; let wrote = false, type = null;
+  const wr = res.write; res.write = function (...a) { wrote = true; return wr.apply(res, a); };
+  res.writeHead = function (code, ...a) { const hd = a.find((x) => x && typeof x === 'object') || {}; type = String(Object.entries(hd).find(([k]) => k.toLowerCase() === 'content-type')?.[1] || res.getHeader('content-type') || '');
+    if (HTYPE.test(type)) { for (const k of Object.keys(hd)) if (k.toLowerCase() === 'content-length') delete hd[k]; res.removeHeader('content-length'); }
+    return wh.call(res, code, ...a); };
+  res.end = function (body, ...rest) {
+    if (!wrote && body != null && (typeof body === 'string' || Buffer.isBuffer(body)) && HTYPE.test(type || String(res.getHeader('content-type') || ''))) {
+      const t = Buffer.isBuffer(body) ? body.toString('utf8') : body; if (t.includes('Klaviyo')) body = scrubText(t, hidden); }
+    return en.call(res, body, ...rest); };
+};
 const send = (res, code, body, type = 'application/json') => { res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' }); res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body)); };
 const readBody = (req) => new Promise((res) => { let d = ''; req.on('data', (c) => (d += c)); req.on('end', () => { try { res(JSON.parse(d || '{}')); } catch { res({}); } }); });
 // a page-relative image path → the file: public/… or a brand pack asset (b/<slug>/a/<file>)
@@ -1039,6 +1056,7 @@ const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   zipRes(req, res);
   keepRes(res, CDN, possBody); /* no answer serves an expiring Facebook/Instagram CDN link, nor "Mana Projects’s" (26 Oct) */
+  hideRes(req, res, u); /* after zipRes: the words are scrubbed before they are compressed */
   res.once('finish', () => alerts.response(res.statusCode)); /* the 5xx rate for the ops alerts */
   retire.claim(); // traffic reaches this revision: it is the live one
   if (DEMO) { const ses = sessionOf(req, u); if (ses.set) res.setHeader('set-cookie', ses.set); return runDemo(ses.sid, () => timed(req, res, u, () => serve(req, res, u))); }
