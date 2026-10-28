@@ -205,6 +205,7 @@ export function createIdeas({ slug, packs, ai, treg, log = console, now = () => 
     if (txt.includes(c.noun.replace(/s$/, ''))) s += 2;
     (c.config.rivals || []).forEach((r) => { if (txt.includes(norm(r))) s += 2; });
     if (/\b(buy|sell|wts|wtb)\b/i.test(t.title) || /buysell|marketplace/i.test(t.sub)) s -= 3;
+    if (s <= 0) return s; /* a busy thread about nothing of the brand's is not relevant: popularity counts only on top of a brand, category or rival word (QV 28 Oct) */
     const age = t.at ? (T() - Date.parse(t.at)) / 864e5 : 60;
     return s + Math.min(2, Math.log10((t.comments || 0) + 1)) + (age <= 30 ? 1 : age > 120 ? -2 : 0);
   };

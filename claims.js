@@ -191,6 +191,7 @@ export function copyFlags(text, opts = {}) {
   const caps = runs.filter((r) => !banner(r) && !inName(r)).flatMap((r) => r.match(/\b[A-Z]{3,}\b/g) || []).filter((w) => !ACRO.test(w) && (w.length > 4 || SHOUT.test(w)) /* a short capital word is an acronym (DHT, PCOS, NAD), never shouting, unless it is a plain word (NOT, NOW) (1.10) */ && !(w.length <= 6 && theirs(w)) && !nameWords.has(w.toLowerCase()) && /[a-z]/.test(s.replace(/\b[A-Z]{3,}\b/g, '')));
   if (caps.length) out.push(`shouting caps (“${caps[0]}”)`);
   if (/\bnot giving\s*[?!.]|\b(?:is|are)\s+(?:not\s+)?giving\s*[?!.]/i.test(s)) out.push('slang that doesn’t read right (“… giving?”)');
+  if (/\blet us\b/i.test(s)) out.push('stiff wording (“let us”): people write “let’s”'); /* QV 28 Oct: "so let us share" in a Reddit reply */
   if (/\bup to \d+ days a week\b|\b(?:[8-9]|\d{2,}) days a week\b/i.test(s)) out.push('a time phrase that doesn’t make sense (“days a week”)');
   /* a word written twice in a row ("Oil Oil"), or a capitalised name word twice within a few words ("Onion Oil Onion Hair Oil"),
      unless that stretch is a real product name, or each one starts a product's name (a list of the store's products). Plain

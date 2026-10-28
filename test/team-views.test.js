@@ -228,7 +228,7 @@ test('static ads: the team’s set is made under private/ only, its cards point 
   await P.put(slug, 'private/cards.json', cards);
   const C = createConnectors({ packs: P, auth: { claimInfo: async () => ({}), signinOn: () => true, isAdmin: () => false }, builder: {}, treg: null, log: quiet });
   const mem = await C.forViewer(slug, true), vis = await C.forViewer(slug, false);
-  assert.equal(mem.privStatics, true); assert.ok(mem.cards.some((c) => c.id === 'static-aov-1-p' && /\$623/.test(c.title)));
+  assert.equal(mem.privStatics, true); assert.ok(mem.cards.some((c) => c.id === 'static-aov-1-p' && /\$623/.test(c.headline) && /^Run this ad for/.test(c.title)));
   assert.equal(vis.privStatics, false); assert.deepEqual(vis.cards, []);
   const { isStaticCard } = await import('../feed-service.js'); assert.ok(isStaticCard('statics-batch') && isStaticCard('static-x-1') && !isStaticCard('statics-batch-p'.replace(/^/, 'm')));
   /* the team route: a member gets the bytes; a signed-out visitor 401, a signed-in non-member 403; never a path */

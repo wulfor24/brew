@@ -90,6 +90,7 @@ export function usableThread(t, { now = Date.now(), profile = {}, minRel = 3, re
   if (!quora && !freshThread(t, now)) why.push(`last active ${lastActiveOf(t) ? Math.round((now - lastActiveOf(t)) / DAY) + ' days ago' : 'on an unknown date'} (replies go to threads active in the last ${REPLY_DAYS} days)`);
   const m = inMarket(t, profile); if (!m.ok) why.push(m.why);
   if (t.locked || t.archived || t.removed) why.push('closed to replies');
+  { const sub = (/reddit\.com\/r\/([^/?#]+)/i.exec(t.url) || [])[1]; if (!quora && sub && (GENERIC.has(sub.toLowerCase()) || dealsBoard(sub))) why.push(`r/${sub} is a general-chat or deals community, off-topic for a brand (QV 28 Oct)`); }
   if (/\b(buy|sell|wts|wtb)\b/i.test(t.title || '') || dealsBoard(t.sub || t.where)) why.push('a buy/sell, deals or replica board');
   if (rel != null && rel < minRel) why.push(`not close enough to the brand (score ${rel} < ${minRel})`);
   return { ok: !why.length, why };

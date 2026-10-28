@@ -49,6 +49,8 @@ test('a store with more orders than one read: Shopify counts the 30 days, the ne
   assert.match(r.cards.find((c) => /repeat/.test(c.id))?.title || 'recent', /recent/);
   /* a card's title never states a share its own rows and words don't add up to (COD: cancelled + unpaid, 24 Oct) */
   const cod = r.cards.find((c) => /cod/.test(c.id)); if (cod) { assert.match(cod.title, /cancelled or still/); assert.ok(cod.rows.some(([k]) => /Cancelled/.test(k)) && cod.rows.some(([k]) => /still unpaid/.test(k))); }
+  /* a status word in a title stands on a non-zero row of its own (QV 28 Oct: "cancelled" over 0% cancelled) */
+  for (const c of r.cards) for (const [w, re] of [['cancelled', /cancel/i], ['unpaid', /unpaid/i], ['sold out', /sold out/i]]) if (new RegExp(`\\b${w}\\b`, 'i').test(c.title)) assert.ok((c.rows || []).some(([k, v]) => re.test(`${k} ${v}`) && !/^0%$/.test(String(v))), `${c.id}: "${w}" in the title has no non-zero row`);
   for (const c of r.cards) for (const p of (c.title.match(/\d+%/g) || [])) assert.ok([c.sub, ...(c.rows || []).flat(), ...(c.badge || [])].join(' ').includes(p) , `${c.id}: ${p} in the title is shown nowhere below it`);
 });
 
@@ -140,4 +142,14 @@ test('the COD card sits in Signals, next to the checkout card (storefront cards 
   const r = await shopify.sync(conn, { ...ctx, profile: { currency: 'INR', country: 'IN', locale: 'en-IN' } });
   const c = r.cards.find((x) => /cod/.test(x.id)); assert.ok(c, r.cards.map((x) => x.id).join(','));
   assert.equal(c.sector, 'signals'); assert.equal(r.cards.find((x) => /carts/.test(x.id)).sector, 'signals');
+});
+
+test('COD with none cancelled: the title says unpaid only, never "cancelled or still unpaid" (QV 28 Oct)', async (t) => {
+  const pages = [[...Array(40)].map((_, k) => order(11 + k % 25, true))];
+  const s = shop({ pages, count: 40, cancelled: 0, products: [] });
+  const f0 = s.fetch; t.mock.method(globalThis, 'fetch', async (u, o) => { const r = await f0(u, o); const q = JSON.parse(o.body).query;
+    if (!(/orders\(first:250/.test(q) && /paymentGatewayNames/.test(q))) return r; const d = JSON.parse(await r.text()); for (const n of d.data.orders.nodes) n.cancelledAt = null; return ok(d); });
+  const r = await shopify.sync(conn, ctx);
+  const cod = r.cards.find((c) => /cod/.test(c.id)); assert.ok(cod, JSON.stringify([r.metrics.cod, r.metrics.codFail, r.metrics.codCancel, r.notes]));
+  assert.doesNotMatch(cod.title, /cancelled/); assert.ok(!cod.rows.some(([k]) => /^Cancelled/.test(k)), JSON.stringify(cod.rows));
 });

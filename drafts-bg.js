@@ -160,7 +160,11 @@ export const onceLines = (s) => { const seen = new Set(); return String(s ?? '')
 /* the copy's first line said again under its own headline reads once (QV round 2: "• The biggest plus is how light these shoes are." as the
    headline and the first body line of a PUMA video ad) */
 export const notHeadline = (copy, headline) => { const k = (x) => String(x || '').replace(/^[\s•*\-–\d.)]+/, '').replace(/[.!?\s]+$/, '').trim().toLowerCase(); const h = k(headline); if (h.length < 8) return copy;
-  const ls = String(copy ?? '').split('\n'), i = ls.findIndex((l) => l.trim()); return i >= 0 && k(ls[i]) === h ? ls.filter((_, j) => j !== i).join('\n').replace(/^\s*\n/, '') : copy; };
+  const ls = String(copy ?? '').split('\n'), i = ls.findIndex((l) => l.trim()); if (i >= 0 && k(ls[i]) === h) return ls.filter((_, j) => j !== i).join('\n').replace(/^\s*\n/, '');
+  /* the headline as a whole sentence inside a longer line, in any case ("light as air! Made for long days"): said once, in the picture (QV 28 Oct) */
+  const hw = h.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^\\p{L}\\p{N}]+');
+  const out = String(copy ?? '').replace(new RegExp(`(^|\\n|[.!?]\\s+)${hw}(?:[.!?]+\\s*|\\s*(?=\\n|$))`, 'giu'), '$1').replace(/^[\s.!?:,;–—-]+/, '').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '');
+  return out.trim() ? out.replace(/^(\p{Ll})/u, (c) => c.toUpperCase()) : copy; };
 /* a draft belongs under its card when the product it shows is the one the card is about: the product's own words are in the card's
    (title, line, rows, asset line, how-steps), or the card names no product and shares a telling word with it. A draft about another
    product ("Honeymoon Travel Pack" under "Set automated budget rules to protect hero inventory") is not shown on the card (QV P1-17) */
